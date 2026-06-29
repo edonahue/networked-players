@@ -5,7 +5,7 @@ The roadmap follows the study lab's phase gates while favoring one complete vert
 ## 0. Foundation
 
 - [x] Select the Networked Players name
-- [x] Register `networked-players.com` for the eventual public product
+- [x] Register `networked-players.com` as the eventual production game host
 - [x] Create the public monorepo
 - [x] Establish public/private and rights boundaries
 - [x] Record the initial product and architecture direction
@@ -50,7 +50,7 @@ The roadmap follows the study lab's phase gates while favoring one complete vert
 - [ ] Build a small accessible browser experience
 - [ ] Show release-level evidence for every step
 - [ ] Confirm full use with all home services disabled
-- [ ] Publish through the canonical domain when the experience is ready
+- [ ] Deploy the game to `networked-players.com`
 
 ## 6. Medium graph and measured expansion
 

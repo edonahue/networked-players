@@ -6,7 +6,7 @@ Networked Players makes the hidden human network behind recorded music visible a
 
 ## Public identity
 
-`networked-players.com` is registered and reserved as the intended canonical home for the eventual website and game. The GitHub repository remains the source and development record, while the Music-Credit Graph Study Lab remains the learning companion. No application is deployed at the domain yet.
+`networked-players.com` is registered and reserved as the eventual production host for the public game. The GitHub repository remains the source and development record, while the Music-Credit Graph Study Lab remains the learning companion. No application is deployed at the domain yet.
 
 ## Audience
 
@@ -21,7 +21,7 @@ Given two artists or releases, Networked Players can present a documented route 
 
 ## First useful release
 
-A small browser experience loads a versioned static challenge, lets a player reveal or construct a path, and displays release-level evidence. It remains functional when all home-hosted services are offline.
+A small browser experience loads a versioned static challenge, lets a player reveal or construct a path, and displays release-level evidence. It remains functional when all home-hosted services are offline and is deployed as the core experience at `networked-players.com`.
 
 ## Not yet promised
 
