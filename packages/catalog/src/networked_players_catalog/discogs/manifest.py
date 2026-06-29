@@ -69,7 +69,9 @@ def validate_snapshot_date(snapshot_date: str) -> None:
     if not SNAPSHOT_RE.fullmatch(snapshot_date):
         raise ValueError("snapshot date must use YYYYMMDD")
     if snapshot_date[6:] != "01":
-        raise ValueError("Discogs monthly snapshot dates are expected to use the first day of a month")
+        raise ValueError(
+            "Discogs monthly snapshot dates are expected to use the first day of a month"
+        )
 
 
 def object_url(snapshot_date: str, kind: DumpKind, base_url: str = DEFAULT_BASE_URL) -> str:
