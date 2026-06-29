@@ -1,0 +1,45 @@
+name: Research Discogs dump sizing
+
+on:
+  pull_request:
+  push:
+    branches:
+      - codex/discogs-ingestion-foundation
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Probe known and current Discogs object URLs
+        run: |
+          set +e
+          urls=(
+            'https://discogs-data-dumps.s3-us-west-2.amazonaws.com/data/2024/discogs_20240701_releases.xml.gz'
+            'https://discogs-data-dumps.s3.us-west-2.amazonaws.com/data/2024/discogs_20240701_releases.xml.gz'
+            'https://discogs-data-dumps.s3-us-west-2.amazonaws.com/data/2026/discogs_20260501_releases.xml.gz'
+            'https://discogs-data-dumps.s3.us-west-2.amazonaws.com/data/2026/discogs_20260501_releases.xml.gz'
+            'https://discogs-data-dumps.s3-us-west-2.amazonaws.com/data/2026/discogs_20260601_releases.xml.gz'
+            'https://discogs-data-dumps.s3.us-west-2.amazonaws.com/data/2026/discogs_20260601_releases.xml.gz'
+          )
+          : > probe.txt
+          for url in "${urls[@]}"; do
+            {
+              echo "===== $url ====="
+              curl --location --silent --show-error \
+                --range 0-0 \
+                --dump-header - \
+                --output /dev/null \
+                --write-out 'curl_code=%{exitcode} http_code=%{http_code} size_download=%{size_download}\n' \
+                "$url"
+              echo
+            } >> probe.txt 2>&1
+          done
+          cat probe.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: discogs-object-probe
+          path: probe.txt
