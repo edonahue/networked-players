@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 import pytest
@@ -7,27 +8,48 @@ pytest.importorskip("duckdb")
 
 from networked_players_catalog.discogs.parquet import write_release_dataset
 from networked_players_catalog.discogs.releases import iter_releases
-from networked_players_catalog.discogs.validation import validate_dataset
+from networked_players_catalog.discogs.validation import ValidationError, validate_dataset
 
 FIXTURE = Path(__file__).parent / "fixtures" / "releases.xml"
 
 
-def test_parquet_round_trip_and_duckdb_validation(tmp_path: Path) -> None:
+def _write_fixture_dataset(tmp_path: Path) -> Path:
     source_url = "https://example.test/discogs_20260501_releases.xml.gz"
     records = iter_releases(FIXTURE, snapshot_date="20260501", source_url=source_url)
-    manifest = write_release_dataset(
+    write_release_dataset(
         records,
         tmp_path,
         snapshot_date="20260501",
         source_url=source_url,
         chunk_releases=1,
     )
-    dataset = tmp_path / "snapshot=20260501"
+    return tmp_path / "snapshot=20260501"
+
+
+def test_parquet_round_trip_and_duckdb_validation(tmp_path: Path) -> None:
+    dataset = _write_fixture_dataset(tmp_path)
+    manifest = json.loads((dataset / "manifest.json").read_text())
     assert manifest["counts"] == {"releases": 2, "tracks": 4, "credits": 9}
     assert len(list(dataset.glob("table=releases/*.parquet"))) == 2
     metrics = validate_dataset(dataset)
     assert metrics["release_rows"] == 2
+    assert metrics["track_rows"] == 4
+    assert metrics["credit_rows"] == 9
     assert metrics["orphan_credits"] == 0
+
+
+@pytest.mark.parametrize("table_name", ["tracks", "credits"])
+def test_validation_rejects_manifest_evidence_count_mismatch(
+    tmp_path: Path, table_name: str
+) -> None:
+    dataset = _write_fixture_dataset(tmp_path)
+    manifest_path = dataset / "manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    manifest["counts"][table_name] += 1
+    manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
+
+    with pytest.raises(ValidationError, match=f"manifest_{table_name}_count_mismatch"):
+        validate_dataset(dataset)
 
 
 def test_empty_optional_tables_remain_queryable(tmp_path: Path) -> None:
@@ -51,5 +73,7 @@ def test_empty_optional_tables_remain_queryable(tmp_path: Path) -> None:
     assert len(list(dataset.glob("table=credits/*.parquet"))) == 1
     metrics = validate_dataset(dataset)
     assert metrics["release_rows"] == 1
+    assert metrics["track_rows"] == 0
+    assert metrics["credit_rows"] == 0
     assert metrics["orphan_tracks"] == 0
     assert metrics["orphan_credits"] == 0
