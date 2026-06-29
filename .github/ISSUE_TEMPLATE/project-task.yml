@@ -1,0 +1,37 @@
+name: Project task
+description: Propose a bounded product, data, infrastructure, or documentation task.
+title: ""
+labels: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Keep the task proportional to the current project maturity. Do not include secrets, private collection data, or deployment identity.
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Outcome
+      description: What useful result should exist when this is complete?
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: What is included and intentionally excluded?
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence or acceptance checks
+      description: How will the result be verified?
+    validations:
+      required: true
+  - type: textarea
+    id: risks
+    attributes:
+      label: Data, rights, security, or hardware constraints
+      description: Note any relevant boundaries or write "none identified."
+    validations:
+      required: true
