@@ -9,11 +9,11 @@ The project begins with a private collection-derived seed, expands through adjac
 ## Project identity
 
 - **Project and product name:** Networked Players
-- **Future canonical domain:** `networked-players.com` — registered and reserved for the eventual public website and game
+- **Eventual production game host:** `networked-players.com` — registered and reserved for the public game
 - **Source and project history:** this repository
 - **Learning companion:** the Music-Credit Graph Study Lab
 
-No application is deployed at the domain yet. Until the first public experience exists, the repository and study lab remain the active references.
+No application is deployed at the domain yet. When the first public game is ready, `networked-players.com` will host the player-facing experience rather than merely redirecting to GitHub or the study lab.
 
 ## Study companion
 
