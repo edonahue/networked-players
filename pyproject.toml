@@ -1,0 +1,56 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "networked-players-catalog"
+version = "0.1.0"
+description = "Evidence-preserving catalog ingestion tools for Networked Players"
+requires-python = ">=3.12"
+dependencies = [
+  "duckdb>=1.2,<2",
+  "lxml>=5.3,<7",
+  "pyarrow>=18,<24",
+]
+
+[project.optional-dependencies]
+dev = [
+  "mypy>=1.15,<2",
+  "pytest>=8,<10",
+  "ruff>=0.12,<1",
+]
+
+[project.scripts]
+networked-players-catalog = "networked_players_catalog.cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "packages/catalog/src"}
+
+[tool.setuptools.packages.find]
+where = ["packages/catalog/src"]
+
+[tool.pytest.ini_options]
+testpaths = ["packages/catalog/tests"]
+addopts = "-ra"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+src = ["packages/catalog/src", "packages/catalog/tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "RUF"]
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+packages = ["networked_players_catalog"]
+mypy_path = "packages/catalog/src"
+warn_unused_ignores = true
+
+[[tool.mypy.overrides]]
+module = ["duckdb", "pyarrow", "pyarrow.parquet"]
+ignore_missing_imports = true
