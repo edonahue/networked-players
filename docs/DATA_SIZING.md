@@ -2,7 +2,7 @@
 
 ## What is measured versus estimated
 
-Exact object sizes change each month and were not retrievable from the clean GitHub runner used during this PR because the Discogs S3 endpoints returned HTTP 403. This document therefore separates a published benchmark from a 2026 planning projection. The checked-in downloader records exact bytes and SHA-256 after a successful local transfer.
+Exact object sizes change each month and were not retrievable from the clean CI runner used during initial research because the Discogs S3 endpoints returned HTTP 403. This document therefore separates a published benchmark from a 2026 planning projection. The checked-in downloader records exact bytes and SHA-256 after a successful local transfer.
 
 ## Published August 2025 benchmark
 
@@ -20,7 +20,7 @@ The releases object dominates both conversion time and storage. Parquet's main b
 
 ## June 2026 planning envelope
 
-The most recently corroborated count available during this PR was the May 2026 release dump at 19,113,243 releases, about 3.8% above the August 2025 benchmark. Scaling bytes by record count is imperfect because record complexity changes, so use ranges rather than a point estimate.
+The most recently corroborated count available at the time of writing was the May 2026 release dump at 19,113,243 releases, about 3.8% above the August 2025 benchmark. Scaling bytes by record count is imperfect because record complexity changes, so use ranges rather than a point estimate.
 
 | Layer | Practical planning range | Notes |
 | --- | ---: | --- |
