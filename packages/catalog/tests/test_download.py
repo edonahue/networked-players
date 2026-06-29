@@ -11,7 +11,7 @@ PAYLOAD = b"networked-players-discogs-fixture\n" * 200_000
 
 
 class RangeHandler(BaseHTTPRequestHandler):
-    def do_GET(self) -> None:  # noqa: N802
+    def do_GET(self) -> None:
         start = 0
         range_header = self.headers.get("Range")
         if range_header:
