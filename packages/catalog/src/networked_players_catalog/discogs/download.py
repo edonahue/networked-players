@@ -132,6 +132,10 @@ def download_file(
                     resumed=bool(initial_partial_size and resumed),
                     etag=response.headers.get("ETag", "").strip('"') or None,
                 )
+        except urllib.error.HTTPError as error:
+            last_error = error
+            if error.code == 416:
+                partial.unlink(missing_ok=True)
         except _RestartDownload as error:
             last_error = error
             partial.unlink(missing_ok=True)
