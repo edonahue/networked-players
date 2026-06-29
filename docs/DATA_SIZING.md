@@ -56,4 +56,4 @@ du -h -d 3 local/processed/discogs/snapshot=20260501
 find local/processed/discogs/snapshot=20260501 -name '*.parquet' -printf '%s %p\n' | sort -n
 ```
 
-A later benchmark issue should capture elapsed time, peak RSS, CPU, input bytes, output bytes, row counts, DuckDB spill, and hardware identity for both the x600 and coordination host. The Pi workers should be benchmarked only on bounded partitions, not on the full raw dump.
+A later benchmark issue should capture elapsed time, peak RSS, CPU, input bytes, output bytes, row counts, DuckDB spill, and hardware class for both the optional workstation and coordination host. The Pi workers should be benchmarked only on bounded partitions, not on the full raw dump.

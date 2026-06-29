@@ -33,6 +33,8 @@ def validate_dataset(dataset_root: Path) -> dict[str, Any]:
 
     metrics = {
         "release_rows": _scalar(connection, "SELECT count(*) FROM releases"),
+        "track_rows": _scalar(connection, "SELECT count(*) FROM tracks"),
+        "credit_rows": _scalar(connection, "SELECT count(*) FROM credits"),
         "distinct_release_ids": _scalar(
             connection, "SELECT count(DISTINCT release_id) FROM releases"
         ),
@@ -52,7 +54,7 @@ def validate_dataset(dataset_root: Path) -> dict[str, Any]:
             "SELECT count(*) FROM credits WHERE credit_scope IS NULL OR credit_scope = ''",
         ),
     }
-    failures = {
+    failures: dict[str, object] = {
         key: value
         for key, value in metrics.items()
         if key
@@ -68,8 +70,26 @@ def validate_dataset(dataset_root: Path) -> dict[str, Any]:
         failures["duplicate_release_ids"] = (
             metrics["release_rows"] - metrics["distinct_release_ids"]
         )
-    if metrics["release_rows"] != manifest["counts"]["releases"]:
-        failures["manifest_release_count_mismatch"] = metrics["release_rows"]
+
+    manifest_counts = manifest.get("counts")
+    if not isinstance(manifest_counts, dict):
+        failures["manifest_counts_invalid"] = manifest_counts
+    else:
+        for table_name, metric_name in (
+            ("releases", "release_rows"),
+            ("tracks", "track_rows"),
+            ("credits", "credit_rows"),
+        ):
+            expected = manifest_counts.get(table_name)
+            actual = metrics[metric_name]
+            if not isinstance(expected, int):
+                failures[f"manifest_{table_name}_count_invalid"] = expected
+            elif actual != expected:
+                failures[f"manifest_{table_name}_count_mismatch"] = {
+                    "expected": expected,
+                    "actual": actual,
+                }
+
     if failures:
         raise ValidationError(json.dumps(failures, sort_keys=True))
     return metrics

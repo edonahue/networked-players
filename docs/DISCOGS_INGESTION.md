@@ -39,7 +39,7 @@ provenance manifest          release / track / credit rows
                                         evidence graph / static challenge
 ```
 
-Only the releases parser is implemented in this PR. The downloader and manifest understand all four dump kinds so artists, masters, and labels can be added without redesigning acquisition.
+The initial implementation parses releases. The downloader and manifest understand all four dump kinds so artists, masters, and labels can be added without redesigning acquisition.
 
 ## Download behavior
 

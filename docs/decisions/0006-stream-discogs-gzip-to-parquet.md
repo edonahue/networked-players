@@ -5,7 +5,7 @@
 
 ## Context
 
-The release dump is much larger and structurally more complex than the artist, label, and master dumps. The coordination host has SSD storage but modest compute, the Pi 3B workers have 1 GB RAM, and the optional x600 is powerful but should not become an uptime dependency. Expanding XML to disk duplicates tens of gigabytes of transient data without improving the final product.
+The release dump is much larger and structurally more complex than the artist, label, and master dumps. The coordination host has SSD storage but modest compute, the Pi 3B workers have 1 GB RAM, and the optional workstation-class machine is powerful but should not become an uptime dependency. Expanding XML to disk duplicates tens of gigabytes of transient data without improving the final product.
 
 ## Decision
 
@@ -21,4 +21,4 @@ Synthetic tests must cover release and track artists, release and track extra ar
 
 ## Revisit trigger
 
-Revisit the parser architecture after a measured full conversion on both the x600 and coordination host, or if a mature external parser demonstrably meets the project's evidence, schema, reproducibility, and ARM64 requirements with less maintenance.
+Revisit the parser architecture after a measured full conversion on both the optional workstation and coordination host, or if a mature external parser demonstrably meets the project's evidence, schema, reproducibility, and ARM64 requirements with less maintenance.

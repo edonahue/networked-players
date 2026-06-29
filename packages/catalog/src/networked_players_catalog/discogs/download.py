@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import http.client
 import os
 import re
 import time
@@ -18,6 +19,10 @@ CONTENT_RANGE_RE = re.compile(r"bytes\s+(\d+)-(\d+)/(\d+|\*)")
 
 class DownloadError(RuntimeError):
     """Raised when a dump object cannot be transferred safely."""
+
+
+class _RestartDownload(DownloadError):
+    """Raised when retrying must discard the current partial file."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -59,12 +64,16 @@ def download_file(
 
     A partial file is resumed only when the server answers a Range request with HTTP 206 and a
     matching starting offset. If Range is ignored, the transfer restarts rather than appending
-    incompatible bytes.
+    incompatible bytes. Integrity failures discard the partial file before another attempt.
     """
+
+    if retries <= 0:
+        raise ValueError("retries must be positive")
+    if chunk_size <= 0:
+        raise ValueError("chunk_size must be positive")
 
     destination.parent.mkdir(parents=True, exist_ok=True)
     partial = destination.with_name(destination.name + ".part")
-    original_partial_size = partial.stat().st_size if partial.exists() else 0
     last_error: Exception | None = None
 
     for attempt in range(1, retries + 1):
@@ -73,15 +82,28 @@ def download_file(
             with _request(url, start, timeout) as response:
                 status = getattr(response, "status", response.getcode())
                 resumed = bool(start and status == 206)
+                response_size = expected_size
                 if resumed:
                     content_range = response.headers.get("Content-Range", "")
                     match = CONTENT_RANGE_RE.fullmatch(content_range.strip())
                     if not match or int(match.group(1)) != start:
-                        raise DownloadError(f"invalid resume response: {content_range!r}")
+                        raise _RestartDownload(f"invalid resume response: {content_range!r}")
+                    range_total = match.group(3)
+                    if range_total != "*":
+                        reported_size = int(range_total)
+                        if expected_size is not None and reported_size != expected_size:
+                            raise _RestartDownload(
+                                f"server size mismatch for {url}: "
+                                f"expected {expected_size}, reported {reported_size}"
+                            )
+                        response_size = expected_size or reported_size
                     mode = "ab"
                 else:
                     mode = "wb"
                     start = 0
+                    content_length = response.headers.get("Content-Length")
+                    if response_size is None and content_length and content_length.isdigit():
+                        response_size = int(content_length)
 
                 with partial.open(mode) as output:
                     while True:
@@ -93,26 +115,39 @@ def download_file(
                     os.fsync(output.fileno())
 
                 actual_size = partial.stat().st_size
-                if expected_size is not None and actual_size != expected_size:
+                if response_size is not None and actual_size < response_size:
                     raise DownloadError(
-                        f"size mismatch for {url}: expected {expected_size}, got {actual_size}"
+                        f"incomplete download for {url}: "
+                        f"expected {response_size}, got {actual_size}"
                     )
+                if response_size is not None and actual_size > response_size:
+                    raise _RestartDownload(
+                        f"size mismatch for {url}: expected {response_size}, got {actual_size}"
+                    )
+
                 actual_sha256 = sha256_file(partial)
                 if expected_sha256 is not None and actual_sha256.lower() != expected_sha256.lower():
-                    raise DownloadError(f"SHA-256 mismatch for {url}")
+                    raise _RestartDownload(f"SHA-256 mismatch for {url}")
 
                 partial.replace(destination)
                 return DownloadResult(
                     path=destination,
                     size_bytes=actual_size,
                     sha256=actual_sha256,
-                    resumed=bool(original_partial_size and resumed),
+                    resumed=resumed,
                     etag=response.headers.get("ETag", "").strip('"') or None,
                 )
-        except (OSError, urllib.error.URLError, DownloadError) as error:
+        except urllib.error.HTTPError as error:
             last_error = error
-            if attempt == retries:
-                break
+            if error.code == 416:
+                partial.unlink(missing_ok=True)
+        except _RestartDownload as error:
+            last_error = error
+            partial.unlink(missing_ok=True)
+        except (OSError, http.client.HTTPException, urllib.error.URLError, DownloadError) as error:
+            last_error = error
+
+        if attempt < retries:
             time.sleep(2 ** (attempt - 1))
 
     raise DownloadError(f"failed to download {url} after {retries} attempts: {last_error}")
