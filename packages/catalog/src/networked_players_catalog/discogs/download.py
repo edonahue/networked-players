@@ -68,7 +68,6 @@ def download_file(
 
     destination.parent.mkdir(parents=True, exist_ok=True)
     partial = destination.with_name(destination.name + ".part")
-    initial_partial_size = partial.stat().st_size if partial.exists() else 0
     last_error: Exception | None = None
 
     for attempt in range(1, retries + 1):
@@ -129,7 +128,7 @@ def download_file(
                     path=destination,
                     size_bytes=actual_size,
                     sha256=actual_sha256,
-                    resumed=bool(initial_partial_size and resumed),
+                    resumed=resumed,
                     etag=response.headers.get("ETag", "").strip('"') or None,
                 )
         except urllib.error.HTTPError as error:
