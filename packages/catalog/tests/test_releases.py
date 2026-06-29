@@ -22,19 +22,27 @@ def test_stream_parser_preserves_credit_scope_and_identity(tmp_path: Path) -> No
     first = records[0]
     assert first.release["master_id"] == 501
     assert first.release["master_is_main_release"] is True
-    assert len(first.tracks) == 2
+    assert len(first.tracks) == 3
+    nested_track = next(row for row in first.tracks if row["title"] == "Nested Part")
+    assert nested_track["track_path"] == "1.0"
+    assert nested_track["parent_track_index"] == 1
 
-    unlinked = [row for row in first.credits if row["name"] == "Unlinked Orchestra"][0]
+    unlinked = next(row for row in first.credits if row["name"] == "Unlinked Orchestra")
     assert unlinked["artist_id"] is None
     assert unlinked["is_linked"] is False
     assert unlinked["playable_identity"] is False
     assert unlinked["role_text"] == "Strings"
     assert unlinked["credited_tracks_text"] == "A2"
 
-    track_credit = [row for row in first.credits if row["name"] == "Casey Guitar"][0]
+    track_credit = next(row for row in first.credits if row["name"] == "Casey Guitar")
     assert track_credit["credit_scope"] == "track_credit"
     assert track_credit["track_position"] == "A1"
+    assert track_credit["track_path"] == "0"
     assert track_credit["anv"] == "C. Guitar"
+
+    nested_credit = next(row for row in first.credits if row["name"] == "Nested Player")
+    assert nested_credit["track_path"] == "1.0"
+    assert nested_credit["track_position"] == "A2a"
 
 
 def test_stream_parser_can_stop_after_a_bounded_slice() -> None:
