@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import hashlib
 import threading
+from collections.abc import Iterator
 from contextlib import contextmanager
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from typing import Iterator
 
 from networked_players_catalog.discogs.download import download_file
 
