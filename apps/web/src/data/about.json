@@ -1,0 +1,40 @@
+{
+  "eyebrow": "About",
+  "title": "What Networked Players is — and isn't, yet.",
+  "lede": "An evidence-first music-credit graph and game. Given two artists or releases, it presents a documented route through credited work and explains each step.",
+  "sections": [
+    {
+      "heading": "The idea",
+      "paragraphs": [
+        "Recorded music is a dense web of collaboration. The people who play, produce, engineer, arrange, and sing on a release leave a documented trail of credits. Networked Players treats those credits as a graph: two artists are connected when they are credited on the same release or track, and a path between two artists is a chain of those documented connections.",
+        "The point is the evidence. Every hop in a path keeps its proof attached — the release, the role text, the credit scope — so you can see exactly why two artists are linked."
+      ]
+    },
+    {
+      "heading": "Evidence, not influence",
+      "paragraphs": [
+        "A shared credit proves documented participation. It does not prove that one artist influenced another, that they are friends, or that any artistic lineage exists. Networked Players deliberately refuses to make those inferences. Collaboration is a fact in the record; influence is a story we don't tell."
+      ]
+    },
+    {
+      "heading": "Where the project actually is",
+      "paragraphs": [
+        "This is an early placeholder, not a finished product. Today the project is scaffolding plus one tested vertical slice: a Discogs release-ingestion pipeline that parses monthly data dumps into a normalized, provenance-bearing credits schema. There is no deployed application, public API, or full catalog yet.",
+        "The connections demo on this site is a faithful proof of concept of the shape of the experience, running on a small synthetic dataset."
+      ]
+    },
+    {
+      "heading": "Data and rights",
+      "paragraphs": [
+        "Publishable catalog facts derive from CC0 Discogs monthly data dumps, always carried with provenance: snapshot date, source URL, parser and schema versions, and the original role text.",
+        "Private collection membership is never published. Discogs API responses, images, marketplace, and pricing data are restricted and are not republished. The demo dataset here is synthetic and privacy-safe by construction — it contains no real release identifiers, no collection membership, and no images."
+      ]
+    },
+    {
+      "heading": "What's next",
+      "paragraphs": [
+        "Deriving a small, public, real dataset from the CC0 dumps (with full provenance and no collection membership); a larger graph; and, eventually, an interactive pick-two-artists mode. A future live-search mode is additive and must fail gracefully — the static-first core always works on its own."
+      ]
+    }
+  ]
+}

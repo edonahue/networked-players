@@ -1,0 +1,58 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import SpinningRecord from '../components/SpinningRecord.astro';
+import site from '../data/site.json';
+
+const { hero, focus } = site;
+---
+
+<BaseLayout>
+  <section class="hero hero--split shell">
+    <div>
+      <p class="eyebrow">{hero.eyebrow}</p>
+      <h1>{hero.headline}</h1>
+      <p class="lede">{hero.lede}</p>
+      <div class="hero-actions">
+        <a class="button primary" href={hero.ctaPrimary.href}>{hero.ctaPrimary.label}</a>
+        <a class="button" href={hero.ctaSecondary.href}>{hero.ctaSecondary.label}</a>
+      </div>
+    </div>
+    <SpinningRecord />
+  </section>
+
+  <section class="section shell" aria-labelledby="how-title">
+    <div class="section-heading">
+      <p class="eyebrow">{focus.eyebrow}</p>
+      <h2 id="how-title">{focus.heading}</h2>
+      <p class="lede">{focus.lede}</p>
+    </div>
+    <div class="feature-grid">
+      {
+        focus.cards.map((card) => (
+          <article class="feature-card" data-tone={card.tone}>
+            <span class="kicker">{card.kicker}</span>
+            <h3>{card.title}</h3>
+            <p>{card.body}</p>
+          </article>
+        ))
+      }
+    </div>
+  </section>
+
+  <section class="section shell" aria-labelledby="state-title">
+    <div class="section-heading">
+      <p class="eyebrow">Honest status</p>
+      <h2 id="state-title">An early build, not a finished product.</h2>
+      <p class="lede">
+        Today the project is scaffolding plus one tested vertical slice: a Discogs
+        release-ingestion pipeline. There is no deployed app, public API, or full catalog yet. The
+        connections demo runs on a small <strong>synthetic</strong> dataset shaped exactly like the
+        real credits schema.
+      </p>
+    </div>
+    <div class="hero-actions" style="margin-top:0">
+      <a class="button primary" href="/demo/">See the connections demo</a>
+      <a class="button" href="/about/">Read the full picture</a>
+    </div>
+  </section>
+</BaseLayout>

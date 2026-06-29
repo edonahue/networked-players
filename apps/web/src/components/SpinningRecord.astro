@@ -1,0 +1,15 @@
+---
+interface Props {
+  catNo?: string;
+}
+const { catNo = 'NP-001' } = Astro.props;
+---
+
+<div class="spinning-record" role="img" aria-label="A spinning vinyl record">
+  <span class="spinning-record__disc" aria-hidden="true"></span>
+  <span class="spinning-record__label" aria-hidden="true">
+    <span>Networked</span>
+    <span>Players</span>
+    <span>{catNo}</span>
+  </span>
+</div>

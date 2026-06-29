@@ -1,0 +1,154 @@
+---
+import '../styles/global.css';
+import site from '../data/site.json';
+
+interface Props {
+  title?: string;
+  description?: string;
+  noIndex?: boolean;
+  pageType?: string;
+}
+
+const {
+  title = site.title,
+  description = site.description,
+  noIndex = false,
+  pageType = 'website',
+} = Astro.props;
+
+const canonicalUrl = new URL(Astro.url.pathname, Astro.site);
+const ogImageUrl = new URL(site.socialImage, Astro.site);
+const fullTitle = title === site.title ? title : `${title} · ${site.title}`;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{fullTitle}</title>
+    <meta name="description" content={description} />
+    {noIndex && <meta name="robots" content="noindex, nofollow" />}
+    <link rel="canonical" href={canonicalUrl} />
+    <meta name="author" content="Erich Donahue" />
+
+    <!-- Open Graph -->
+    <meta property="og:site_name" content={site.title} />
+    <meta property="og:title" content={fullTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content={pageType} />
+    <meta property="og:url" content={canonicalUrl} />
+    <meta property="og:image" content={ogImageUrl} />
+    <meta property="og:image:alt" content={`${site.title} — ${site.tagline}`} />
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={fullTitle} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImageUrl} />
+
+    <meta name="theme-color" content="#10100e" data-theme-color />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><circle cx=%2250%22 cy=%2250%22 r=%2248%22 fill=%22%231a1a18%22/><circle cx=%2250%22 cy=%2250%22 r=%2230%22 fill=%22none%22 stroke=%22%23ffffff%22 stroke-opacity=%220.3%22/><circle cx=%2250%22 cy=%2250%22 r=%2222%22 fill=%22none%22 stroke=%22%23ffffff%22 stroke-opacity=%220.3%22/><circle cx=%2250%22 cy=%2250%22 r=%2212%22 fill=%22%2378aaa0%22/><circle cx=%2250%22 cy=%2250%22 r=%223%22 fill=%22%23101010%22/></svg>"
+    />
+
+    <!-- Set theme before paint to avoid a flash of the wrong theme. -->
+    <script is:inline>
+      (() => {
+        const key = 'networked-players-theme';
+        const stored = window.localStorage.getItem(key);
+        const theme = stored === 'light' ? 'light' : 'dark';
+        document.documentElement.dataset.theme = theme;
+        const meta = document.querySelector('[data-theme-color]');
+        if (meta) meta.setAttribute('content', theme === 'light' ? '#f1ebde' : '#10100e');
+      })();
+    </script>
+
+    <script
+      type="application/ld+json"
+      set:html={JSON.stringify({
+        '@context': 'https://schema.org',
+        '@graph': [
+          {
+            '@type': 'Person',
+            '@id': 'https://erichdonahue.com/#erich',
+            name: 'Erich Donahue',
+            url: 'https://erichdonahue.com/',
+            sameAs: ['https://erichdonahue.com/', 'https://github.com/edonahue'],
+          },
+          {
+            '@type': 'WebSite',
+            '@id': 'https://networked-players.com/#website',
+            url: 'https://networked-players.com/',
+            name: site.title,
+            description: site.description,
+            author: { '@id': 'https://erichdonahue.com/#erich' },
+            inLanguage: 'en',
+          },
+        ],
+      })}
+    />
+    <slot name="head" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="site-header shell">
+      <a class="wordmark" href="/" aria-label={`${site.title} home`}>
+        <span class="wordmark-mark" aria-hidden="true"></span>
+        <span>{site.title}</span>
+      </a>
+      <div class="site-header__right">
+        <nav aria-label="Primary">
+          <a href="/about/">About</a>
+          <a href="/demo/">Demo</a>
+          <a href={site.repositoryUrl}>Source</a>
+        </nav>
+        <button
+          class="theme-toggle"
+          type="button"
+          aria-label="Switch to light theme"
+          aria-pressed="false"
+          data-theme-toggle
+        >
+          <span aria-hidden="true"></span>
+        </button>
+      </div>
+    </header>
+    <main id="main"><slot /></main>
+    <footer class="site-footer shell">
+      <p>An early, evidence-first project by <a href={site.authorUrl}>Erich Donahue</a>.</p>
+      <p><a href={site.repositoryUrl}>View source on GitHub</a></p>
+    </footer>
+    <script is:inline>
+      (() => {
+        const key = 'networked-players-theme';
+        const root = document.documentElement;
+        const toggle = document.querySelector('[data-theme-toggle]');
+        const meta = document.querySelector('[data-theme-color]');
+        if (!toggle) return;
+
+        const apply = (theme, persist = false) => {
+          const next = theme === 'light' ? 'light' : 'dark';
+          root.dataset.theme = next;
+          if (persist) window.localStorage.setItem(key, next);
+          meta?.setAttribute('content', next === 'light' ? '#f1ebde' : '#10100e');
+          const light = next === 'light';
+          toggle.setAttribute('aria-label', light ? 'Switch to dark theme' : 'Switch to light theme');
+          toggle.setAttribute('aria-pressed', String(light));
+        };
+
+        toggle.addEventListener('click', () => {
+          apply(root.dataset.theme === 'light' ? 'dark' : 'light', true);
+        });
+
+        // Keep multiple tabs in sync.
+        window.addEventListener('storage', (event) => {
+          if (event.key === key) apply(event.newValue, false);
+        });
+
+        apply(root.dataset.theme, false);
+      })();
+    </script>
+  </body>
+</html>
