@@ -50,7 +50,7 @@ One row per release, including source snapshot, release and master IDs, title, c
 
 ### `tracks`
 
-One row per ordered track with position, title, and duration.
+One row per ordered track or subtrack with a stable traversal index, hierarchy path, parent index, position, title, and duration.
 
 ### `credits`
 
