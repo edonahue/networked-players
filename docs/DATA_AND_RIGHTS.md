@@ -1,20 +1,28 @@
 # Data, provenance, and rights
 
-Technical access to music metadata does not automatically grant permission to republish every field or response.
+Technical access to music metadata does not automatically grant permission to republish every field or response. Review current source terms again before each public release.
 
 ## Data classes
 
 ### Private seed
 
-The owner's collection membership, exports, account identifiers, and user-associated fields remain local. The repository may publish the import contract and synthetic examples, not the real seed.
+The owner's collection membership, exports, account identifiers, notes, folders, ratings, and other user-associated fields remain local. The repository may publish the import contract and synthetic examples, not the real seed. The first adapter should reduce a local export to release IDs before catalog processing.
 
-### Catalog facts
+### Monthly catalog dumps
 
-Release identifiers, names, credited contributors, roles, and relationships may be usable as source facts subject to the source's current terms, attribution, linking, rate limits, and redistribution rules. Those requirements must be reviewed before each public dataset or artifact is released.
+Discogs describes its monthly artist, label, master, and release XML exports as CC0. These dumps are the preferred durable source for bulk catalog facts. The project still records source, snapshot date, object URL, checksum, parser version, and schema version so an output can be reproduced and corrected.
+
+### API responses
+
+API access is a separate contractual path. Current terms distinguish CC0 database data from restricted user, collection, wantlist, marketplace, and other account-associated data; they also include notice, linking, credential, and freshness requirements. API integration therefore remains centralized, bounded, and optional for the initial graph build. Raw API responses are not assumed safe to republish merely because some fields overlap a dump.
+
+### Images and audio
+
+Album art, artist images, preview audio, and marketplace assets are not part of the initial ingestion contract. The first playable release must work from textual evidence and locally generated presentation assets.
 
 ### Derived artifacts
 
-Paths, aggregate findings, graph statistics, and challenges should retain enough provenance to show the source release and credit behind each step. Derived does not mean rights-free.
+Paths, aggregate findings, graph statistics, and challenges should retain enough provenance to show the source release and credit behind each step. Derived does not mean rights-free. Public artifacts should contain only fields needed to understand and verify the experience.
 
 ## Required provenance
 
@@ -22,12 +30,21 @@ A published dataset or challenge should record:
 
 - source and access method;
 - retrieval or snapshot date;
-- source identifiers and links where required;
-- schema version;
-- transformation version;
-- graph snapshot version;
+- source identifiers and evidence links where appropriate;
+- compressed object size and SHA-256 when locally available;
+- schema and parser versions;
+- transformation and graph snapshot versions;
 - restricted or omitted fields;
-- redistribution and deletion obligations.
+- redistribution, notice, linking, freshness, and deletion obligations reviewed for that output.
+
+## Identity semantics
+
+- A positive linked artist ID is the initial playable identity key.
+- PAN and ANV are not interchangeable: the stable artist identity and the credited display name are retained separately.
+- Alias and namesake resolution belongs to explicit artist data and later rules, not string similarity.
+- A missing or zero artist ID is retained as non-linked evidence and excluded from playable identity nodes until a documented resolution exists.
+- Main release artists and extra artists, plus release and track scope, remain distinguishable.
+- Original role text is preserved before any role taxonomy or normalization.
 
 ## Influence versus participation
 

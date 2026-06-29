@@ -11,6 +11,8 @@ __pycache__/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+.coverage
+htmlcov/
 .venv/
 venv/
 *.egg-info/
@@ -50,10 +52,13 @@ data/raw/
 data/exports/
 data/collection/
 data/generated/
+*.xml
+*.xml.gz
 *.duckdb
 *.sqlite
 *.sqlite3
 *.parquet
+*.part
 
 # Machine-specific project state
 local/**

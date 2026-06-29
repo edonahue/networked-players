@@ -27,20 +27,24 @@ The roadmap follows the study lab's phase gates while favoring one complete vert
 - [ ] Remove and rejoin one worker
 - [ ] Back up and test recovery of manager state
 
-## 3. Collection slice
+## 3. Discogs acquisition and collection slice
 
+- [x] Record the hybrid private-seed, dump, and optional-API strategy
+- [x] Add a versioned monthly manifest and checksummed download scaffold
+- [x] Add a streaming synthetic release parser and normalized evidence contract
+- [x] Add bounded Parquet output and DuckDB validation tests
+- [ ] Measure a real compressed release dump on the planned storage host
 - [ ] Define the smallest private seed import contract
-- [ ] Create matching synthetic public fixtures
-- [ ] Normalize a small release and credit slice
-- [ ] Expand one catalog hop
-- [ ] Produce versioned Parquet and validation queries
+- [ ] Create matching synthetic seed fixtures
+- [ ] Run a 10,000-release local slice and record time, memory, and bytes
+- [ ] Extract a private seed and expand one catalog hop
 - [ ] Manually verify at least one evidence path
 
 ## 4. Durable contracts
 
-- [ ] Version normalized schemas and stable identifiers
+- [ ] Version normalized artist, master, label, identifier, format, and company schemas as needed
 - [ ] Preserve source role text while defining a role taxonomy
-- [ ] Record provenance, source obligations, and snapshot manifests
+- [ ] Define snapshot retention, free-space guardrails, and recovery automation
 - [ ] Define graph-snapshot and static-challenge contracts
 - [ ] Add mutable registry or search state only when the vertical slice requires it
 
@@ -54,8 +58,8 @@ The roadmap follows the study lab's phase gates while favoring one complete vert
 
 ## 6. Medium graph and measured expansion
 
-- [ ] Add repeatable RQ worker jobs
-- [ ] Measure snapshot size, transfer, memory, and execution limits
+- [ ] Add repeatable RQ worker jobs over immutable partitions
+- [ ] Measure snapshot size, transfer, memory, and execution limits on each hardware class
 - [ ] Expand challenge generation and public findings
 - [ ] Verify repeated publication and rollback
 
@@ -68,7 +72,7 @@ The roadmap follows the study lab's phase gates while favoring one complete vert
 
 ## 8. Full scale
 
-- [ ] Complete full-catalog ingest within acceptable resource limits
+- [ ] Parse all required dump types within acceptable resource limits
 - [ ] Produce compact versioned publication artifacts
 - [ ] Demonstrate reproducible rebuild and rollback
 - [ ] Keep optional workstation compute outside the uptime contract
