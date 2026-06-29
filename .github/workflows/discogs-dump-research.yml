@@ -1,6 +1,7 @@
 name: Research Discogs dump sizing
 
 on:
+  pull_request:
   push:
     branches:
       - codex/discogs-ingestion-foundation
