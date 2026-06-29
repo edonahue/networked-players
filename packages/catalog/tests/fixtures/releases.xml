@@ -22,6 +22,12 @@
       <track>
         <position>A2</position><title>Second Track</title><duration>4:02</duration>
         <extraartists><artist><name>Anonymous Choir</name><role>Vocals</role></artist></extraartists>
+        <sub_tracks>
+          <track>
+            <position>A2a</position><title>Nested Part</title><duration>1:02</duration>
+            <extraartists><artist><id>32</id><name>Nested Player</name><role>Keyboards</role></artist></extraartists>
+          </track>
+        </sub_tracks>
       </track>
     </tracklist>
     <data_quality>Correct</data_quality>
