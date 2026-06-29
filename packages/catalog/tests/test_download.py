@@ -39,7 +39,7 @@ class RangeHandler(BaseHTTPRequestHandler):
         self.send_header("ETag", '"fixture-etag"')
         self.end_headers()
         if range_header is None and self.truncate_first_full_response:
-            self.truncate_first_full_response = False
+            type(self).truncate_first_full_response = False
             self.wfile.write(body[: 5 * 1024 * 1024])
             self.close_connection = True
             return
