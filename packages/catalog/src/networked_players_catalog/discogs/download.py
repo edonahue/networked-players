@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import http.client
 import os
 import re
 import time
@@ -65,6 +66,11 @@ def download_file(
     matching starting offset. If Range is ignored, the transfer restarts rather than appending
     incompatible bytes. Integrity failures discard the partial file before another attempt.
     """
+
+    if retries <= 0:
+        raise ValueError("retries must be positive")
+    if chunk_size <= 0:
+        raise ValueError("chunk_size must be positive")
 
     destination.parent.mkdir(parents=True, exist_ok=True)
     partial = destination.with_name(destination.name + ".part")
@@ -138,7 +144,7 @@ def download_file(
         except _RestartDownload as error:
             last_error = error
             partial.unlink(missing_ok=True)
-        except (OSError, urllib.error.URLError, DownloadError) as error:
+        except (OSError, http.client.HTTPException, urllib.error.URLError, DownloadError) as error:
             last_error = error
 
         if attempt < retries:
