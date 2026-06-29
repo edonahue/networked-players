@@ -14,119 +14,46 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - name: Fetch the public Discogs S3 listing
+      - name: Probe the public Discogs dump endpoints
         run: |
-          curl --fail --location --silent --show-error \
+          set +e
+          curl --location --silent --show-error --dump-header index.headers \
+            'https://discogs-data-dumps.s3.us-west-2.amazonaws.com/index.html' \
+            --output index.html 2>index.error
+          echo $? > index.status
+
+          curl --location --silent --show-error --dump-header old-listing.headers \
+            'https://discogs-data-dumps.s3.us-west-2.amazonaws.com/?prefix=data%2F2026%2F' \
+            --output old-listing.xml 2>old-listing.error
+          echo $? > old-listing.status
+
+          curl --location --silent --show-error --dump-header v2-listing.headers \
             'https://discogs-data-dumps.s3.us-west-2.amazonaws.com/?list-type=2&prefix=data%2F2026%2F' \
-            --output discogs-listing.xml
-          wc -c discogs-listing.xml
-          head -c 300 discogs-listing.xml
-      - name: Inspect current objects and sample gzip expansion
-        run: |
-          python - <<'PY'
-          from __future__ import annotations
+            --output v2-listing.xml 2>v2-listing.error
+          echo $? > v2-listing.status
 
-          import json
-          import traceback
-          import urllib.request
-          import xml.etree.ElementTree as ET
-          import zlib
-          from datetime import datetime, timezone
-          from pathlib import Path
-
-          bucket = "https://discogs-data-dumps.s3.us-west-2.amazonaws.com"
-          try:
-              root = ET.fromstring(Path("discogs-listing.xml").read_bytes())
-              namespace = {"s3": "http://s3.amazonaws.com/doc/2006-03-01/"}
-              contents = root.findall("s3:Contents", namespace) or root.findall("Contents")
-              objects = []
-              for item in contents:
-                  key_node = item.find("s3:Key", namespace) or item.find("Key")
-                  size_node = item.find("s3:Size", namespace) or item.find("Size")
-                  modified_node = item.find("s3:LastModified", namespace) or item.find("LastModified")
-                  key = key_node.text if key_node is not None and key_node.text else ""
-                  size = int(size_node.text) if size_node is not None and size_node.text else 0
-                  modified = modified_node.text if modified_node is not None and modified_node.text else ""
-                  if key.endswith(".xml.gz"):
-                      objects.append({"key": key, "size_bytes": size, "last_modified": modified})
-
-              if not objects:
-                  raise RuntimeError(f"No XML dump objects found; root={root.tag!r}, contents={len(contents)}")
-
-              latest_date = max(obj["key"].split("discogs_")[1][:8] for obj in objects)
-              latest = [obj for obj in objects if f"discogs_{latest_date}_" in obj["key"]]
-              latest.sort(key=lambda obj: obj["key"])
-
-              sample_bytes = 32 * 1024 * 1024
-              for obj in latest:
-                  request = urllib.request.Request(
-                      f"{bucket}/{obj['key']}",
-                      headers={
-                          "Range": f"bytes=0-{sample_bytes - 1}",
-                          "User-Agent": "networked-players-research/0.1",
-                      },
-                  )
-                  decompressor = zlib.decompressobj(16 + zlib.MAX_WBITS)
-                  compressed_read = 0
-                  uncompressed_read = 0
-                  with urllib.request.urlopen(request, timeout=120) as response:
-                      while compressed_read < sample_bytes:
-                          chunk = response.read(min(1024 * 1024, sample_bytes - compressed_read))
-                          if not chunk:
-                              break
-                          compressed_read += len(chunk)
-                          uncompressed_read += len(decompressor.decompress(chunk))
-                  ratio = uncompressed_read / compressed_read if compressed_read else None
-                  obj["sample_compressed_bytes"] = compressed_read
-                  obj["sample_uncompressed_bytes"] = uncompressed_read
-                  obj["sample_expansion_ratio"] = ratio
-                  obj["estimated_uncompressed_bytes"] = round(obj["size_bytes"] * ratio) if ratio else None
-
-              payload = {
-                  "observed_at": datetime.now(timezone.utc).isoformat(),
-                  "bucket": bucket,
-                  "prefix": "data/2026/",
-                  "latest_snapshot_date": latest_date,
-                  "sample_method": "Sequentially decompress the first 32 MiB of each gzip object; extrapolate only as a planning estimate.",
-                  "objects": latest,
-              }
-              Path("discogs-dump-research.json").write_text(json.dumps(payload, indent=2) + "\n")
-
-              def gib(value: int | None) -> str:
-                  return "—" if value is None else f"{value / (1024 ** 3):.2f} GiB"
-
-              lines = [
-                  "# Discogs dump sizing research",
-                  "",
-                  f"Observed: {payload['observed_at']}",
-                  f"Latest snapshot discovered: `{latest_date}`",
-                  "",
-                  "| Object | Compressed | Sample expansion | Estimated XML |",
-                  "| --- | ---: | ---: | ---: |",
-              ]
-              for obj in latest:
-                  name = obj["key"].rsplit("/", 1)[-1]
-                  lines.append(
-                      f"| `{name}` | {gib(obj['size_bytes'])} | {obj['sample_expansion_ratio']:.2f}× | {gib(obj['estimated_uncompressed_bytes'])} |"
-                  )
-              lines.extend([
-                  "",
-                  "> Estimated XML sizes are planning estimates from a 32 MiB prefix sample, not authoritative object metadata.",
-              ])
-              Path("discogs-dump-research.md").write_text("\n".join(lines) + "\n")
-              print(Path("discogs-dump-research.md").read_text())
-          except Exception:
-              Path("discogs-dump-research-error.txt").write_text(traceback.format_exc())
-              raise
-          PY
+          for file in index.status index.headers index.error old-listing.status old-listing.headers old-listing.error v2-listing.status v2-listing.headers v2-listing.error; do
+            echo "===== $file ====="
+            cat "$file"
+          done
+          for file in index.html old-listing.xml v2-listing.xml; do
+            echo "===== $file ($(wc -c < "$file") bytes) ====="
+            head -c 500 "$file"
+            echo
+          done
       - uses: actions/upload-artifact@v4
-        if: always()
         with:
-          name: discogs-dump-research
+          name: discogs-dump-probe
           path: |
-            discogs-listing.xml
-            discogs-dump-research.json
-            discogs-dump-research.md
-            discogs-dump-research-error.txt
-          if-no-files-found: warn
+            index.html
+            index.headers
+            index.error
+            index.status
+            old-listing.xml
+            old-listing.headers
+            old-listing.error
+            old-listing.status
+            v2-listing.xml
+            v2-listing.headers
+            v2-listing.error
+            v2-listing.status
