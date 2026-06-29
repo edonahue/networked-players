@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import gzip
+from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
-from typing import BinaryIO, Iterator
+from typing import BinaryIO, cast
 
 from lxml import etree
 
@@ -42,6 +43,7 @@ def _artist_row(
     release_id: int,
     scope: str,
     track_index: int | None,
+    track_path: str | None,
     track_position: str | None,
     track_title: str | None,
 ) -> dict[str, object]:
@@ -50,6 +52,7 @@ def _artist_row(
         "snapshot_date": snapshot_date,
         "release_id": release_id,
         "track_index": track_index,
+        "track_path": track_path,
         "track_position": track_position,
         "track_title": track_title,
         "credit_scope": scope,
@@ -73,6 +76,7 @@ def _append_artists(
     release_id: int,
     scope: str,
     track_index: int | None = None,
+    track_path: str | None = None,
     track_position: str | None = None,
     track_title: str | None = None,
 ) -> None:
@@ -84,9 +88,75 @@ def _append_artists(
                 release_id=release_id,
                 scope=scope,
                 track_index=track_index,
+                track_path=track_path,
                 track_position=track_position,
                 track_title=track_title,
             )
+        )
+
+
+def _append_track_tree(
+    track: etree._Element,
+    *,
+    path: tuple[int, ...],
+    parent_track_index: int | None,
+    snapshot_date: str,
+    release_id: int,
+    tracks: list[dict[str, object]],
+    credits: list[dict[str, object]],
+) -> None:
+    """Flatten one track and its nested subtracks while preserving hierarchy."""
+
+    track_index = len(tracks)
+    track_path = ".".join(str(component) for component in path)
+    position = _text(track, "position")
+    title = _text(track, "title")
+    tracks.append(
+        {
+            "snapshot_date": snapshot_date,
+            "release_id": release_id,
+            "track_index": track_index,
+            "parent_track_index": parent_track_index,
+            "track_path": track_path,
+            "position": position,
+            "title": title,
+            "duration": _text(track, "duration"),
+        }
+    )
+    _append_artists(
+        track,
+        "artists/artist",
+        credits,
+        snapshot_date=snapshot_date,
+        release_id=release_id,
+        scope="track_artist",
+        track_index=track_index,
+        track_path=track_path,
+        track_position=position,
+        track_title=title,
+    )
+    _append_artists(
+        track,
+        "extraartists/artist",
+        credits,
+        snapshot_date=snapshot_date,
+        release_id=release_id,
+        scope="track_credit",
+        track_index=track_index,
+        track_path=track_path,
+        track_position=position,
+        track_title=title,
+    )
+
+    for child_index, subtrack in enumerate(track.findall("sub_tracks/track")):
+        _append_track_tree(
+            subtrack,
+            path=(*path, child_index),
+            parent_track_index=track_index,
+            snapshot_date=snapshot_date,
+            release_id=release_id,
+            tracks=tracks,
+            credits=credits,
         )
 
 
@@ -133,40 +203,15 @@ def parse_release_element(
     )
 
     tracks: list[dict[str, object]] = []
-    for track_index, track in enumerate(element.findall("tracklist/track")):
-        position = _text(track, "position")
-        title = _text(track, "title")
-        tracks.append(
-            {
-                "snapshot_date": snapshot_date,
-                "release_id": release_id,
-                "track_index": track_index,
-                "position": position,
-                "title": title,
-                "duration": _text(track, "duration"),
-            }
-        )
-        _append_artists(
+    for top_level_index, track in enumerate(element.findall("tracklist/track")):
+        _append_track_tree(
             track,
-            "artists/artist",
-            credits,
+            path=(top_level_index,),
+            parent_track_index=None,
             snapshot_date=snapshot_date,
             release_id=release_id,
-            scope="track_artist",
-            track_index=track_index,
-            track_position=position,
-            track_title=title,
-        )
-        _append_artists(
-            track,
-            "extraartists/artist",
-            credits,
-            snapshot_date=snapshot_date,
-            release_id=release_id,
-            scope="track_credit",
-            track_index=track_index,
-            track_position=position,
-            track_title=title,
+            tracks=tracks,
+            credits=credits,
         )
 
     return ParsedRelease(release=release, tracks=tracks, credits=credits)
@@ -213,13 +258,18 @@ def iter_releases(
     if max_releases is not None and max_releases <= 0:
         raise ValueError("max_releases must be positive")
     if path.name.endswith(".gz"):
-        handle_context = gzip.open(path, "rb")
+        with gzip.open(path, "rb") as handle:
+            yield from _iter_handle(
+                cast(BinaryIO, handle),
+                snapshot_date=snapshot_date,
+                source_url=source_url,
+                max_releases=max_releases,
+            )
     else:
-        handle_context = path.open("rb")
-    with handle_context as handle:
-        yield from _iter_handle(
-            handle,
-            snapshot_date=snapshot_date,
-            source_url=source_url,
-            max_releases=max_releases,
-        )
+        with path.open("rb") as handle:
+            yield from _iter_handle(
+                cast(BinaryIO, handle),
+                snapshot_date=snapshot_date,
+                source_url=source_url,
+                max_releases=max_releases,
+            )
