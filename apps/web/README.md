@@ -1,6 +1,6 @@
 # Web application
 
-This directory is reserved for the future public Networked Players website and game.
+This directory is reserved for the future public Networked Players game hosted at `networked-players.com`.
 
 The first implementation should render a versioned static challenge artifact and explain every step of an evidence-backed path. Framework selection is intentionally deferred until that vertical slice is designed.
 
