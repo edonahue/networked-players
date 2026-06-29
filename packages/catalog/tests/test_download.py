@@ -22,6 +22,11 @@ class RangeHandler(BaseHTTPRequestHandler):
         start = 0
         if range_header:
             start = int(range_header.removeprefix("bytes=").removesuffix("-"))
+            if start >= len(PAYLOAD):
+                self.send_response(416)
+                self.send_header("Content-Range", f"bytes */{len(PAYLOAD)}")
+                self.end_headers()
+                return
             self.send_response(206)
             self.send_header("Content-Range", f"bytes {start}-{len(PAYLOAD) - 1}/{len(PAYLOAD)}")
         else:
@@ -88,3 +93,23 @@ def test_checksum_failure_restarts_without_corrupt_partial(tmp_path: Path) -> No
     assert destination.read_bytes() == PAYLOAD
     assert not partial.exists()
     assert RangeHandler.range_headers == ["bytes=123456-", None]
+
+
+def test_unsatisfiable_range_restarts_without_stale_partial(tmp_path: Path) -> None:
+    with serving_range_fixture() as url:
+        destination = tmp_path / "fixture.xml.gz"
+        partial = destination.with_name(destination.name + ".part")
+        partial.write_bytes(b"x" * len(PAYLOAD))
+        expected_hash = hashlib.sha256(PAYLOAD).hexdigest()
+        result = download_file(
+            url,
+            destination,
+            expected_size=len(PAYLOAD),
+            expected_sha256=expected_hash,
+        )
+
+    assert result.resumed is False
+    assert result.sha256 == expected_hash
+    assert destination.read_bytes() == PAYLOAD
+    assert not partial.exists()
+    assert RangeHandler.range_headers == [f"bytes={len(PAYLOAD)}-", None]
