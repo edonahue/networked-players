@@ -6,6 +6,7 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from typing import ClassVar
 
 from networked_players_catalog.discogs.download import download_file
 
@@ -13,7 +14,7 @@ PAYLOAD = b"networked-players-discogs-fixture\n" * 200_000
 
 
 class RangeHandler(BaseHTTPRequestHandler):
-    range_headers: list[str | None] = []
+    range_headers: ClassVar[list[str | None]] = []
 
     def do_GET(self) -> None:
         range_header = self.headers.get("Range")
