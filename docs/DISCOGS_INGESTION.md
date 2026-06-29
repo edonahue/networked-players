@@ -39,7 +39,7 @@ provenance manifest          release / track / credit rows
                                         evidence graph / static challenge
 ```
 
-Only the releases parser is implemented in this PR. The downloader and manifest understand all four dump kinds so artists, masters, and labels can be added without redesigning acquisition.
+The initial implementation parses releases. The downloader and manifest understand all four dump kinds so artists, masters, and labels can be added without redesigning acquisition.
 
 ## Download behavior
 
@@ -72,7 +72,7 @@ A documented credit proves participation on a release or track. It does not prov
 
 | Role | Appropriate work | Initial limits |
 | --- | --- | --- |
-| Optional x600 build node | Full release parse, full-catalog transforms, Parquet compaction, benchmarks | Preferred full-ingest host; local NVMe; bounded process count |
+| Optional workstation-class build node | Full release parse, full-catalog transforms, Parquet compaction, benchmarks | Preferred full-ingest host; local NVMe; bounded process count |
 | SSD-backed coordination host | Manifest/download control, small slices, canonical artifact registry, DuckDB validation, publication | Keep free-space guardrails; no unbounded concurrent full parses |
 | Four Pi 3B workers | Checksummed partition validation, role summaries, challenge batches, graph tests | One worker process each; inputs normally below 128–256 MB; no raw full release dump |
 | Static hosting | Versioned challenges and compact public data | No dependency on the home cluster |
