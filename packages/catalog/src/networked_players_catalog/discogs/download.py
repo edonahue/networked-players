@@ -112,7 +112,8 @@ def download_file(
                 actual_size = partial.stat().st_size
                 if response_size is not None and actual_size < response_size:
                     raise DownloadError(
-                        f"incomplete download for {url}: expected {response_size}, got {actual_size}"
+                        f"incomplete download for {url}: "
+                        f"expected {response_size}, got {actual_size}"
                     )
                 if response_size is not None and actual_size > response_size:
                     raise _RestartDownload(
