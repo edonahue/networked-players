@@ -4,6 +4,10 @@
 
 Networked Players makes the hidden human network behind recorded music visible and playable. It should reward curiosity while showing the evidence for every connection.
 
+## Public identity
+
+`networked-players.com` is registered and reserved as the intended canonical home for the eventual website and game. The GitHub repository remains the source and development record, while the Music-Credit Graph Study Lab remains the learning companion. No application is deployed at the domain yet.
+
 ## Audience
 
 - music listeners interested in credits and collaboration;

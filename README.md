@@ -6,6 +6,15 @@ The project begins with a private collection-derived seed, expands through adjac
 
 > **Status:** planning and repository scaffolding. No working application, API, data pipeline, or cluster deployment is claimed yet.
 
+## Project identity
+
+- **Project and product name:** Networked Players
+- **Future canonical domain:** `networked-players.com` — registered and reserved for the eventual public website and game
+- **Source and project history:** this repository
+- **Learning companion:** the Music-Credit Graph Study Lab
+
+No application is deployed at the domain yet. Until the first public experience exists, the repository and study lab remain the active references.
+
 ## Study companion
 
 The design grew out of the [Music-Credit Graph Study Lab](https://lab.erichdonahue.com/projects/music-graph-study/) on [Erich's Lab](https://lab.erichdonahue.com/). The lab remains a learning artifact; this repository owns the actual Networked Players product, data, application, and infrastructure work.
@@ -49,7 +58,7 @@ local/                Ignored machine-specific working area
 
 ## Public by default, private by necessity
 
-This repository is public for learning, reproducibility, and honest project development. It may document the actual classes and models of hardware used in the lab. It must not expose the identity or access path of the running environment.
+This repository is public for learning, reproducibility, and honest project development. It may document hardware classes and selected components when they materially explain a constraint. It must not expose the identity or access path of the running environment.
 
 Never commit:
 
