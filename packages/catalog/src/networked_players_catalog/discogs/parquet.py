@@ -6,9 +6,9 @@ import hashlib
 import json
 import shutil
 import uuid
-from datetime import datetime, timezone
+from collections.abc import Iterable
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Iterable
 
 import pyarrow as pa
 import pyarrow.parquet as pq
@@ -17,7 +17,7 @@ from networked_players_catalog import __version__
 
 from .releases import ParsedRelease
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 RELEASE_SCHEMA = pa.schema(
     [
@@ -38,6 +38,8 @@ TRACK_SCHEMA = pa.schema(
         ("snapshot_date", pa.string()),
         ("release_id", pa.int64()),
         ("track_index", pa.int32()),
+        ("parent_track_index", pa.int32()),
+        ("track_path", pa.string()),
         ("position", pa.string()),
         ("title", pa.string()),
         ("duration", pa.string()),
@@ -48,6 +50,7 @@ CREDIT_SCHEMA = pa.schema(
         ("snapshot_date", pa.string()),
         ("release_id", pa.int64()),
         ("track_index", pa.int32()),
+        ("track_path", pa.string()),
         ("track_position", pa.string()),
         ("track_title", pa.string()),
         ("credit_scope", pa.string()),
@@ -77,8 +80,10 @@ def _write_rows(
     table_name: str,
     part: int,
     rows: list[dict[str, object]],
+    *,
+    allow_empty: bool = False,
 ) -> Path | None:
-    if not rows:
+    if not rows and not allow_empty:
         return None
     directory = root / f"table={table_name}"
     directory.mkdir(parents=True, exist_ok=True)
@@ -157,6 +162,21 @@ def write_release_dataset(
         if counts["releases"] == 0:
             raise ValueError("no release records were parsed")
 
+        for table_name in ("tracks", "credits"):
+            prefix = f"table={table_name}/"
+            if not any(str(item["path"]).startswith(prefix) for item in files):
+                path = _write_rows(staging_root, table_name, 0, [], allow_empty=True)
+                if path is None:
+                    raise AssertionError(f"failed to create empty {table_name} table")
+                files.append(
+                    {
+                        "path": str(path.relative_to(staging_root)),
+                        "size_bytes": path.stat().st_size,
+                        "sha256": _sha256(path),
+                        "rows": 0,
+                    }
+                )
+
         manifest: dict[str, object] = {
             "dataset_manifest_version": 1,
             "schema_version": SCHEMA_VERSION,
@@ -164,7 +184,7 @@ def write_release_dataset(
             "source": "Discogs monthly data dumps",
             "source_url": source_url,
             "snapshot_date": snapshot_date,
-            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "generated_at": datetime.now(UTC).isoformat(),
             "compression": "zstd",
             "counts": counts,
             "files": files,
