@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import argparse
 import json
-from datetime import date, datetime, timezone
+from collections.abc import Sequence
+from datetime import UTC, date, datetime
 from pathlib import Path
-from typing import Sequence
 
 from .discogs.download import download_file
 from .discogs.manifest import DumpKind, SnapshotManifest, build_manifest
@@ -44,17 +44,14 @@ def _parser() -> argparse.ArgumentParser:
 def main(argv: Sequence[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     if args.command == "manifest":
+        kwargs = {}
         if args.base_url:
-            manifest = build_manifest(
-                args.snapshot,
-                terms_reviewed_at=args.terms_reviewed_at,
-                base_url=args.base_url,
-            )
-        else:
-            manifest = build_manifest(
-                args.snapshot,
-                terms_reviewed_at=args.terms_reviewed_at,
-            )
+            kwargs["base_url"] = args.base_url
+        manifest = build_manifest(
+            args.snapshot,
+            terms_reviewed_at=args.terms_reviewed_at,
+            **kwargs,
+        )
         manifest.write(args.output)
         print(args.output)
         return 0
@@ -71,7 +68,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         item.size_bytes = result.size_bytes
         item.sha256 = result.sha256
         item.etag = result.etag
-        item.downloaded_at = datetime.now(timezone.utc).isoformat()
+        item.downloaded_at = datetime.now(UTC).isoformat()
         manifest.write(args.manifest)
         print(json.dumps({"path": str(result.path), "sha256": result.sha256}, indent=2))
         return 0
@@ -86,7 +83,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             source_url=args.source_url,
             max_releases=args.max_releases,
         )
-        manifest = write_release_dataset(
+        dataset_manifest = write_release_dataset(
             records,
             args.output_root,
             snapshot_date=args.snapshot,
@@ -94,7 +91,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             chunk_releases=args.chunk_releases,
             overwrite=args.overwrite,
         )
-        print(json.dumps(manifest, indent=2, sort_keys=True))
+        print(json.dumps(dataset_manifest, indent=2, sort_keys=True))
         return 0
 
     if args.command == "validate":
