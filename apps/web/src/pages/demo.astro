@@ -1,0 +1,97 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import PathCard from '../components/PathCard.astro';
+import type { Challenge } from '../data/challenge';
+import challengeData from '../../public/data/challenge.v1.json';
+
+// The same versioned artifact that is served at /data/challenge.v1.json. The
+// demo is static-first: paths are rendered at build time and need no backend.
+const challenge = challengeData as Challenge;
+const { provenance, releases, artists, paths } = challenge;
+
+const description =
+  'A static, client-side proof of concept: documented paths between artists, with the credit evidence shown at every hop. Synthetic, privacy-safe data.';
+---
+
+<BaseLayout title="Connections demo" description={description}>
+  <section class="prose shell" style="padding-bottom:24px">
+    <p class="eyebrow">Connections demo</p>
+    <h1>Documented paths, with their evidence.</h1>
+    <p class="lede">
+      Pick a path below. Each hop links two artists who are credited on the same release, and shows
+      the credit rows that prove it — scope, role text, and linked identity — exactly as the
+      ingestion pipeline records them.
+    </p>
+  </section>
+
+  <section class="shell" aria-label="Connections demo" style="padding-bottom:80px">
+    <p class="synthetic-banner">
+      <span aria-hidden="true">◉</span>
+      <span>
+        <strong>Synthetic demo data.</strong> These artists and releases are invented and
+        privacy-safe — no real catalog records, no Discogs collection membership, no images. The
+        data is shaped exactly like real derived credits so a CC0-sourced dataset can replace it
+        later.
+      </span>
+    </p>
+
+    <div class="path-picker" role="group" aria-label="Choose a path">
+      {
+        paths.map((path, index) => (
+          <button type="button" data-path-target={path.id} aria-pressed={index === 0 ? 'true' : 'false'}>
+            {path.label}
+          </button>
+        ))
+      }
+    </div>
+
+    {
+      paths.map((path, index) => (
+        <PathCard path={path} releases={releases} artists={artists} hidden={index !== 0} />
+      ))
+    }
+
+    <section class="provenance" aria-label="Provenance">
+      <p>
+        <strong>How to read this:</strong> an edge means two artists are credited on the same
+        release or track — documented collaboration, never inferred influence. Linked identities
+        (with an <code>artist_id</code>) can be path nodes; non-linked names are kept as evidence
+        but never become playable identities.
+      </p>
+      <dl>
+        <dt>Source</dt>
+        <dd>{provenance.source}</dd>
+        <dt>License</dt>
+        <dd>{provenance.license}</dd>
+        <dt>Snapshot</dt>
+        <dd>{provenance.snapshot_date}</dd>
+        <dt>Parser</dt>
+        <dd>networked-players-catalog {provenance.catalog_parser_version}</dd>
+        <dt>Schema</dt>
+        <dd>credits schema v{provenance.catalog_schema_version}</dd>
+        <dt>Artifact</dt>
+        <dd><a href="/data/challenge.v1.json">/data/challenge.v1.json</a></dd>
+      </dl>
+      <p style="margin-top:12px">{provenance.note}</p>
+    </section>
+  </section>
+</BaseLayout>
+
+<script is:inline>
+  (() => {
+    const buttons = Array.from(document.querySelectorAll('[data-path-target]'));
+    const cards = Array.from(document.querySelectorAll('.path-card'));
+    if (!buttons.length) return;
+    const show = (id) => {
+      cards.forEach((card) => {
+        card.toggleAttribute('hidden', card.getAttribute('data-path-id') !== id);
+      });
+      buttons.forEach((btn) => {
+        btn.setAttribute('aria-pressed', String(btn.getAttribute('data-path-target') === id));
+      });
+    };
+    buttons.forEach((btn) => {
+      btn.addEventListener('click', () => show(btn.getAttribute('data-path-target')));
+    });
+  })();
+</script>

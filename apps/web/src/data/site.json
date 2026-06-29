@@ -1,0 +1,40 @@
+{
+  "title": "Networked Players",
+  "tagline": "An evidence-first music-credit graph",
+  "description": "Given two artists or releases, Networked Players shows a documented path through credited work — and explains every step. Collaboration, never inferred influence.",
+  "socialImage": "/og.svg",
+  "repositoryUrl": "https://github.com/edonahue/networked-players",
+  "authorUrl": "https://erichdonahue.com",
+  "hero": {
+    "eyebrow": "Early build · evidence-first",
+    "headline": "Trace the credits between two artists.",
+    "lede": "Networked Players finds a documented path through credited work — who played, produced, engineered, or sang on which release — and shows the evidence behind every step. It connects collaborators; it never infers influence.",
+    "ctaPrimary": { "label": "Try the demo", "href": "/demo/" },
+    "ctaSecondary": { "label": "What this is", "href": "/about/" }
+  },
+  "focus": {
+    "eyebrow": "How it works",
+    "heading": "Every connection carries its evidence.",
+    "lede": "An edge between two artists means they are credited on the same release or track. The path keeps that proof attached at every hop, with provenance back to the source.",
+    "cards": [
+      {
+        "kicker": "Evidence, not influence",
+        "tone": "teal",
+        "title": "Documented credits only",
+        "body": "A shared credit proves documented participation — playing, producing, engineering, singing. It is never read as artistic influence, friendship, or lineage."
+      },
+      {
+        "kicker": "Provenance",
+        "tone": "gold",
+        "title": "Sourced and versioned",
+        "body": "Publishable facts derive from CC0 Discogs monthly dumps, carried with snapshot date, source, parser and schema versions, and original role text."
+      },
+      {
+        "kicker": "Static-first",
+        "tone": "rust",
+        "title": "Works with no backend",
+        "body": "The experience loads a small, versioned static artifact and runs entirely in your browser. No live API is required for the core experience."
+      }
+    ]
+  }
+}

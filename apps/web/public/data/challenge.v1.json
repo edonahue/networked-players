@@ -1,0 +1,219 @@
+{
+  "schema_version": 1,
+  "provenance": {
+    "source": "Synthetic fixture — Networked Players placeholder demo",
+    "license": "Synthetic data (no real catalog records); released CC0 alongside the repository",
+    "snapshot_date": "20260601",
+    "source_url": "https://example.invalid/synthetic-snapshot",
+    "generated_by": "networked-players/apps/web placeholder demo",
+    "catalog_parser_version": "0.1.0",
+    "catalog_schema_version": 2,
+    "note": "Privacy-safe synthetic data modeled on the real Discogs credits schema (packages/catalog). It contains no Discogs collection membership, no API responses, no images, and no real release identifiers. Real data, when added, must derive from CC0 Discogs monthly dumps and carry full provenance."
+  },
+  "releases": [
+    {
+      "snapshot_date": "20260601",
+      "release_id": 101,
+      "status": "Accepted",
+      "title": "Connected Record",
+      "country": "US",
+      "released": "2001",
+      "master_id": 501,
+      "master_is_main_release": true,
+      "data_quality": "Correct",
+      "source_url": "https://example.invalid/release/101",
+      "credits": [
+        {
+          "snapshot_date": "20260601", "release_id": 101,
+          "track_index": null, "track_path": null, "track_position": null, "track_title": null,
+          "credit_scope": "release_artist", "artist_id": 11, "name": "Alpha Group", "anv": "Alpha",
+          "join_text": "&", "role_text": null, "credited_tracks_text": null,
+          "is_linked": true, "playable_identity": true
+        },
+        {
+          "snapshot_date": "20260601", "release_id": 101,
+          "track_index": null, "track_path": null, "track_position": null, "track_title": null,
+          "credit_scope": "release_artist", "artist_id": 12, "name": "Beta Singer", "anv": null,
+          "join_text": null, "role_text": null, "credited_tracks_text": null,
+          "is_linked": true, "playable_identity": true
+        },
+        {
+          "snapshot_date": "20260601", "release_id": 101,
+          "track_index": null, "track_path": null, "track_position": null, "track_title": null,
+          "credit_scope": "release_credit", "artist_id": 21, "name": "Pat Producer", "anv": null,
+          "join_text": null, "role_text": "Producer, Engineer", "credited_tracks_text": null,
+          "is_linked": true, "playable_identity": true
+        },
+        {
+          "snapshot_date": "20260601", "release_id": 101,
+          "track_index": null, "track_path": null, "track_position": null, "track_title": null,
+          "credit_scope": "release_credit", "artist_id": null, "name": "Unlinked Orchestra", "anv": null,
+          "join_text": null, "role_text": "Strings", "credited_tracks_text": "A2",
+          "is_linked": false, "playable_identity": false
+        },
+        {
+          "snapshot_date": "20260601", "release_id": 101,
+          "track_index": 0, "track_path": "0", "track_position": "A1", "track_title": "First Track",
+          "credit_scope": "track_artist", "artist_id": 11, "name": "Alpha Group", "anv": null,
+          "join_text": null, "role_text": null, "credited_tracks_text": null,
+          "is_linked": true, "playable_identity": true
+        },
+        {
+          "snapshot_date": "20260601", "release_id": 101,
+          "track_index": 0, "track_path": "0", "track_position": "A1", "track_title": "First Track",
+          "credit_scope": "track_credit", "artist_id": 31, "name": "Casey Guitar", "anv": "C. Guitar",
+          "join_text": null, "role_text": "Guitar", "credited_tracks_text": null,
+          "is_linked": true, "playable_identity": true
+        },
+        {
+          "snapshot_date": "20260601", "release_id": 101,
+          "track_index": 1, "track_path": "1", "track_position": "A2", "track_title": "Second Track",
+          "credit_scope": "track_credit", "artist_id": null, "name": "Anonymous Choir", "anv": null,
+          "join_text": null, "role_text": "Vocals", "credited_tracks_text": null,
+          "is_linked": false, "playable_identity": false
+        },
+        {
+          "snapshot_date": "20260601", "release_id": 101,
+          "track_index": 2, "track_path": "1.0", "track_position": "A2a", "track_title": "Nested Part",
+          "credit_scope": "track_credit", "artist_id": 32, "name": "Nessa Keys", "anv": null,
+          "join_text": null, "role_text": "Keyboards", "credited_tracks_text": null,
+          "is_linked": true, "playable_identity": true
+        }
+      ]
+    },
+    {
+      "snapshot_date": "20260601",
+      "release_id": 102,
+      "status": "Accepted",
+      "title": "Second Record",
+      "country": "GB",
+      "released": "2003-04-01",
+      "master_id": null,
+      "master_is_main_release": null,
+      "data_quality": "Needs Vote",
+      "source_url": "https://example.invalid/release/102",
+      "credits": [
+        {
+          "snapshot_date": "20260601", "release_id": 102,
+          "track_index": null, "track_path": null, "track_position": null, "track_title": null,
+          "credit_scope": "release_artist", "artist_id": 40, "name": "Gamma", "anv": null,
+          "join_text": null, "role_text": null, "credited_tracks_text": null,
+          "is_linked": true, "playable_identity": true
+        },
+        {
+          "snapshot_date": "20260601", "release_id": 102,
+          "track_index": null, "track_path": null, "track_position": null, "track_title": null,
+          "credit_scope": "release_credit", "artist_id": 21, "name": "Pat Producer", "anv": null,
+          "join_text": null, "role_text": "Producer", "credited_tracks_text": null,
+          "is_linked": true, "playable_identity": true
+        },
+        {
+          "snapshot_date": "20260601", "release_id": 102,
+          "track_index": 0, "track_path": "0", "track_position": "1", "track_title": "Only Track",
+          "credit_scope": "track_credit", "artist_id": 41, "name": "Devon Drums", "anv": null,
+          "join_text": null, "role_text": "Drums", "credited_tracks_text": null,
+          "is_linked": true, "playable_identity": true
+        }
+      ]
+    },
+    {
+      "snapshot_date": "20260601",
+      "release_id": 103,
+      "status": "Accepted",
+      "title": "Third Pressing",
+      "country": "US",
+      "released": "2005",
+      "master_id": null,
+      "master_is_main_release": null,
+      "data_quality": "Correct",
+      "source_url": "https://example.invalid/release/103",
+      "credits": [
+        {
+          "snapshot_date": "20260601", "release_id": 103,
+          "track_index": null, "track_path": null, "track_position": null, "track_title": null,
+          "credit_scope": "release_artist", "artist_id": 40, "name": "Gamma", "anv": null,
+          "join_text": null, "role_text": null, "credited_tracks_text": null,
+          "is_linked": true, "playable_identity": true
+        },
+        {
+          "snapshot_date": "20260601", "release_id": 103,
+          "track_index": null, "track_path": null, "track_position": null, "track_title": null,
+          "credit_scope": "release_credit", "artist_id": 51, "name": "Robin Strings", "anv": null,
+          "join_text": null, "role_text": "Strings, Arranged By", "credited_tracks_text": null,
+          "is_linked": true, "playable_identity": true
+        }
+      ]
+    },
+    {
+      "snapshot_date": "20260601",
+      "release_id": 104,
+      "status": "Accepted",
+      "title": "Session Tapes",
+      "country": "US",
+      "released": "1999",
+      "master_id": null,
+      "master_is_main_release": null,
+      "data_quality": "Correct",
+      "source_url": "https://example.invalid/release/104",
+      "credits": [
+        {
+          "snapshot_date": "20260601", "release_id": 104,
+          "track_index": null, "track_path": null, "track_position": null, "track_title": null,
+          "credit_scope": "release_artist", "artist_id": 12, "name": "Beta Singer", "anv": null,
+          "join_text": null, "role_text": null, "credited_tracks_text": null,
+          "is_linked": true, "playable_identity": true
+        },
+        {
+          "snapshot_date": "20260601", "release_id": 104,
+          "track_index": null, "track_path": null, "track_position": null, "track_title": null,
+          "credit_scope": "release_credit", "artist_id": 31, "name": "Casey Guitar", "anv": "C. Guitar",
+          "join_text": null, "role_text": "Guitar", "credited_tracks_text": null,
+          "is_linked": true, "playable_identity": true
+        }
+      ]
+    }
+  ],
+  "artists": [
+    { "artist_id": 11, "name": "Alpha Group" },
+    { "artist_id": 12, "name": "Beta Singer" },
+    { "artist_id": 21, "name": "Pat Producer" },
+    { "artist_id": 31, "name": "Casey Guitar" },
+    { "artist_id": 32, "name": "Nessa Keys" },
+    { "artist_id": 40, "name": "Gamma" },
+    { "artist_id": 41, "name": "Devon Drums" },
+    { "artist_id": 51, "name": "Robin Strings" }
+  ],
+  "paths": [
+    {
+      "id": "short-hop",
+      "label": "Alpha Group → Beta Singer",
+      "description": "The simplest case: two artists credited on the very same release.",
+      "from_artist_id": 11,
+      "to_artist_id": 12,
+      "hops": [{ "release_id": 101, "artist_a_id": 11, "artist_b_id": 12 }]
+    },
+    {
+      "id": "through-the-producer",
+      "label": "Alpha Group → Devon Drums",
+      "description": "Two releases, bridged by a producer credited on both.",
+      "from_artist_id": 11,
+      "to_artist_id": 41,
+      "hops": [
+        { "release_id": 101, "artist_a_id": 11, "artist_b_id": 21 },
+        { "release_id": 102, "artist_a_id": 21, "artist_b_id": 41 }
+      ]
+    },
+    {
+      "id": "the-long-way",
+      "label": "Casey Guitar → Robin Strings",
+      "description": "Three documented hops, from a track-level guitar credit to a release-level arrangement credit.",
+      "from_artist_id": 31,
+      "to_artist_id": 51,
+      "hops": [
+        { "release_id": 101, "artist_a_id": 31, "artist_b_id": 21 },
+        { "release_id": 102, "artist_a_id": 21, "artist_b_id": 40 },
+        { "release_id": 103, "artist_a_id": 40, "artist_b_id": 51 }
+      ]
+    }
+  ]
+}

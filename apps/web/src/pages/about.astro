@@ -1,0 +1,28 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import about from '../data/about.json';
+---
+
+<BaseLayout title="About" description={about.lede} pageType="article">
+  <article class="prose shell">
+    <p class="eyebrow">{about.eyebrow}</p>
+    <h1>{about.title}</h1>
+    <p class="lede">{about.lede}</p>
+
+    {
+      about.sections.map((section) => (
+        <>
+          <h2>{section.heading}</h2>
+          {section.paragraphs.map((p) => (
+            <p set:html={p} />
+          ))}
+        </>
+      ))
+    }
+
+    <div class="callout">
+      The connections demo is a faithful proof of concept on synthetic, privacy-safe data.
+      <a class="text-link" href="/demo/">Open the demo →</a>
+    </div>
+  </article>
+</BaseLayout>

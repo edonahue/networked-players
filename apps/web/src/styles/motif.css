@@ -1,0 +1,261 @@
+/* Light record-store motif: a spinning vinyl accent + groove framing.
+   Kept intentionally small and self-contained — easy to expand or redesign. */
+
+/* Spinning record ------------------------------------------------------- */
+.spinning-record {
+  --size: clamp(180px, 26vw, 280px);
+  position: relative;
+  width: var(--size);
+  height: var(--size);
+  flex: 0 0 auto;
+}
+.spinning-record__disc {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at center, var(--surface-strong) 0 14%, transparent 14.5%),
+    repeating-radial-gradient(
+      circle at center,
+      rgba(0, 0, 0, 0.55) 0 1px,
+      transparent 1px 4px
+    ),
+    radial-gradient(circle at center, #1a1a18 0 60%, #0c0c0b 100%);
+  box-shadow: var(--shadow-strong);
+  border: 1px solid var(--line);
+  animation: record-spin 11s linear infinite;
+}
+.spinning-record__label {
+  position: absolute;
+  inset: 33%;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  background:
+    radial-gradient(circle at 30% 30%, var(--accent-strong), var(--accent) 70%);
+  color: #0d171d;
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border: 1px solid rgba(0, 0, 0, 0.25);
+}
+.spinning-record__label span {
+  display: block;
+  font-weight: 700;
+  line-height: 1.2;
+}
+@keyframes record-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.hero--split {
+  display: grid;
+  grid-template-columns: 1.3fr 0.7fr;
+  gap: clamp(24px, 5vw, 56px);
+  align-items: center;
+}
+@media (max-width: 760px) {
+  .hero--split {
+    grid-template-columns: 1fr;
+  }
+  .hero--split .spinning-record {
+    order: -1;
+    margin-bottom: 8px;
+  }
+}
+
+/* Synthetic-data banner -------------------------------------------------- */
+.synthetic-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0 0 28px;
+  padding: 12px 16px;
+  border: 1px dashed var(--gold);
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--gold) 12%, var(--surface));
+  color: var(--ink);
+  font-size: 0.92rem;
+}
+.synthetic-banner strong {
+  color: var(--ink-strong);
+}
+
+/* Path picker + cards ---------------------------------------------------- */
+.path-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 26px;
+}
+.path-picker button {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 8px 14px;
+  font: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+.path-picker button[aria-pressed="true"] {
+  border-color: var(--accent);
+  color: var(--ink-strong);
+  background: color-mix(in srgb, var(--accent) 16%, var(--surface));
+}
+
+.path-card {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  padding: clamp(18px, 3vw, 28px);
+}
+.path-card__summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 10px;
+  margin: 0 0 6px;
+}
+.path-card__summary .arrow {
+  color: var(--accent-strong);
+}
+.path-card__sub {
+  margin: 0 0 22px;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.hop {
+  position: relative;
+  padding-left: 26px;
+  padding-bottom: 26px;
+  border-left: 2px solid var(--line);
+}
+.hop:last-child {
+  border-left-color: transparent;
+  padding-bottom: 0;
+}
+.hop::before {
+  content: "";
+  position: absolute;
+  left: -8px;
+  top: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at center, var(--bg) 0 30%, transparent 31%),
+    var(--accent);
+  border: 1px solid var(--line);
+}
+.hop__title {
+  margin: 0 0 4px;
+  font-family: var(--display);
+  font-size: 1.15rem;
+  color: var(--ink-strong);
+}
+.hop__release {
+  margin: 0 0 12px;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+.hop__release a {
+  color: var(--accent-strong);
+}
+
+.evidence {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--bg-elevated);
+}
+.evidence table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.84rem;
+}
+.evidence caption {
+  text-align: left;
+  padding: 8px 12px;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  background: var(--surface-soft);
+}
+.evidence th,
+.evidence td {
+  text-align: left;
+  padding: 7px 12px;
+  border-top: 1px solid var(--line);
+  vertical-align: top;
+}
+.evidence th {
+  color: var(--muted);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.evidence td {
+  color: var(--ink);
+}
+.evidence code {
+  font-family: var(--mono);
+  font-size: 0.8rem;
+}
+.tag {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  border: 1px solid var(--line);
+}
+.tag--linked {
+  color: var(--accent-strong);
+  border-color: color-mix(in srgb, var(--accent) 50%, var(--line));
+}
+.tag--unlinked {
+  color: var(--warm);
+  border-color: color-mix(in srgb, var(--warm) 45%, var(--line));
+}
+
+.provenance {
+  margin-top: 26px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+.provenance dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 4px 16px;
+  margin: 8px 0 0;
+}
+.provenance dt {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.provenance dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 560px) {
+  .evidence {
+    overflow-x: auto;
+  }
+  .provenance dl {
+    grid-template-columns: 1fr;
+  }
+}

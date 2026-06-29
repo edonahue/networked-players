@@ -1,0 +1,28 @@
+# Networked Players
+
+> An evidence-first music-credit graph project and game. Given two artists or releases, show a documented path through credited work and explain every step — collaboration, never inferred influence.
+
+Networked Players (networked-players.com) is an early, evidence-first project by Erich Donahue. The core idea: connect artists through **documented credits** (who played, produced, engineered, or sang on which release), and present a path between two artists where every hop is backed by release-level evidence and provenance. It deliberately does **not** infer artistic influence, friendship, or lineage — a shared credit proves documented participation, nothing more.
+
+## Current state (honest)
+
+This site is an early placeholder, not a finished product. Today the project is scaffolding plus one tested vertical slice: a Discogs release-ingestion pipeline (`packages/catalog`). There is no deployed application, public API, or full catalog yet. The connections demo on this site runs entirely client-side from a small, versioned, **synthetic** static dataset — it is a proof of concept of the shape, not real catalog data.
+
+## Data & rights stance
+
+- Publishable catalog facts derive from CC0 Discogs monthly data dumps, always carried with provenance (snapshot date, source URL, parser/schema versions, original role text).
+- Private collection membership is never published. Discogs API responses, images, marketplace, and pricing data are restricted and are not republished.
+- The demo dataset on this site is synthetic and privacy-safe by construction.
+
+## Site
+
+- Home: https://networked-players.com/
+- About: https://networked-players.com/about/
+- Connections demo: https://networked-players.com/demo/
+- Repository: https://github.com/edonahue/networked-players
+- Sitemap: https://networked-players.com/sitemap.xml
+
+## Author
+
+- Erich Donahue — https://erichdonahue.com/
+- GitHub: https://github.com/edonahue
