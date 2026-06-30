@@ -1,0 +1,27 @@
+# Optional local hooks mirroring the CI gates (.github/workflows/python.yml).
+# Enable with:  uvx pre-commit install
+#
+# Local `system` hooks call `uv run` so the pinned dev-dependency versions in
+# uv.lock are used (no separate, drifting hook versions). Tests are intentionally
+# left to CI and `make check`, not pre-commit.
+repos:
+  - repo: local
+    hooks:
+      - id: ruff-check
+        name: ruff check
+        entry: uv run ruff check
+        language: system
+        types: [python]
+        pass_filenames: false
+      - id: ruff-format
+        name: ruff format (check)
+        entry: uv run ruff format --check
+        language: system
+        types: [python]
+        pass_filenames: false
+      - id: mypy
+        name: mypy
+        entry: uv run mypy
+        language: system
+        types: [python]
+        pass_filenames: false
