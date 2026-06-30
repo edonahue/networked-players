@@ -68,7 +68,7 @@ To run a real Discogs ingestion slice on a workstation or the coordination host,
 
 **Raspberry Pi note:** use a **64-bit (aarch64) operating system**. The pinned wheels (`duckdb`, `lxml`, `pyarrow`) are not published for 32-bit Raspberry Pi OS and would fall back to source builds.
 
-**Developed with AI agents.** This project is built with the help of AI coding agents (Claude, Codex). [`AGENTS.md`](AGENTS.md) is the canonical agent guidance and the `Makefile` is the canonical command surface; keep both accurate when workflows change.
+**Developed with AI agents.** This project is built with the help of AI coding agents (Claude Code, Codex). [`AGENTS.md`](AGENTS.md) is the canonical, tool-agnostic guidance for both, and the `Makefile` is the canonical command surface; keep both accurate when workflows change. Claude Code loads it through [`CLAUDE.md`](CLAUDE.md) (an `@AGENTS.md` import); nested `AGENTS.md` give per-area context (e.g. `apps/web/` is Node/npm, not `uv`); and `.claude/settings.json` allowlists safe commands to reduce approval prompts.
 
 ## Planned architecture
 

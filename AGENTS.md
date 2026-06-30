@@ -10,6 +10,15 @@ This repository is scaffold-first but now contains a small working Discogs inges
 - `make check` runs every gate CI runs (Ruff lint, Ruff format check, mypy, pytest). Run it before reporting a change complete, and report anything you did not exercise.
 - A real Discogs ingestion is operator work: see `docs/OPERATOR_SETUP.md` and `scripts/run-ingest.sh`. Never run a full raw dump as a Pi job.
 
+## Agent tooling
+
+This file is the canonical, tool-agnostic guidance. Both supported CLI agents load it:
+
+- **Codex** reads `AGENTS.md` natively (root and nested, merged by directory).
+- **Claude Code** loads `CLAUDE.md`, which imports this file via `@AGENTS.md`; edit guidance here, not there.
+- Nested `AGENTS.md` (each with a one-line `CLAUDE.md` import) exist for `apps/web/` (Node/npm, not `uv`) and `packages/catalog/`.
+- `.claude/settings.json` allowlists safe commands (`make`, `uv run` checks, read-only `git`) and denies reads of secrets and `data/private/`. Personal overrides go in the git-ignored `CLAUDE.local.md` / `.claude/settings.local.json`.
+
 ## Required behavior
 
 - Read `README.md`, `docs/PRODUCT.md`, `docs/ARCHITECTURE.md`, `docs/DISCOGS_INGESTION.md`, `docs/DATA_AND_RIGHTS.md`, and `docs/PUBLIC_PRIVATE_BOUNDARY.md` before proposing architecture changes.
