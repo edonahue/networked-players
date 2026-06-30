@@ -5,7 +5,7 @@
 # target maps to a command documented in README.md / AGENTS.md.
 
 .DEFAULT_GOAL := help
-.PHONY: help setup test lint fmt fmt-check typecheck check ingest
+.PHONY: help setup test lint fmt fmt-check typecheck check ingest ingest-check
 
 help: ## List available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
@@ -34,3 +34,6 @@ check: lint fmt-check typecheck test ## Run every gate CI runs (lint + format + 
 
 ingest: ## Run a Discogs ingestion slice (see scripts/run-ingest.sh and docs/OPERATOR_SETUP.md)
 	./scripts/run-ingest.sh
+
+ingest-check: ## Check disk-space feasibility for a bounded Discogs ingest slice
+	./scripts/check-ingest-feasibility.sh
