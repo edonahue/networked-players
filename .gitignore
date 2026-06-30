@@ -64,6 +64,10 @@ data/generated/
 local/**
 !local/.gitignore
 
+# Personal agent overrides (keep shared config committed)
+CLAUDE.local.md
+.claude/settings.local.json
+
 # Real infrastructure identity
 infra/ansible/inventories/production/
 infra/ansible/inventories/local/

@@ -1,4 +1,28 @@
 {
+  "permissions": {
+    "allow": [
+      "Bash(make:*)",
+      "Bash(uv run pytest:*)",
+      "Bash(uv run ruff:*)",
+      "Bash(uv run mypy:*)",
+      "Bash(uv sync:*)",
+      "Bash(uv run networked-players-catalog:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git show:*)",
+      "Bash(git branch:*)",
+      "Bash(npm run:*)"
+    ],
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(secrets/**)",
+      "Read(**/vault.yml)",
+      "Read(**/vault.yaml)",
+      "Read(data/private/**)"
+    ]
+  },
   "hooks": {
     "SessionStart": [
       {
