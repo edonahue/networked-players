@@ -42,14 +42,33 @@ The first working vertical slice lives in `packages/catalog` and deliberately st
 - write bounded Zstandard Parquet parts with a dataset manifest;
 - validate identity and evidence invariants with DuckDB.
 
-The working parser covers the releases dump first because release- and track-level credits are the shortest path to the initial collection-plus-one-hop graph. See [Discogs ingestion](docs/DISCOGS_INGESTION.md), [data sizing](docs/DATA_SIZING.md), and the [catalog package](packages/catalog/README.md).
-
-```bash
-uv sync --extra dev
-uv run pytest
-```
+The working parser covers the releases dump first because release- and track-level credits are the shortest path to the initial collection-plus-one-hop graph. See [Discogs ingestion](docs/DISCOGS_INGESTION.md), [data sizing](docs/DATA_SIZING.md), the [catalog package](packages/catalog/README.md), and the [operator runbook](docs/OPERATOR_SETUP.md).
 
 Real dumps, account exports, generated catalogs, and local manifests remain outside Git.
+
+## Develop
+
+**Prerequisites**
+
+- [uv](https://docs.astral.sh/uv/) (Python toolchain and dependency manager)
+- Python 3.12 or newer (`uv` can install it for you)
+- `libxml2` and `libxslt` development headers for `lxml` — on Debian/Ubuntu: `sudo apt-get install libxml2-dev libxslt1-dev`
+
+**Common commands** (the [`Makefile`](Makefile) is the canonical command surface):
+
+```bash
+make setup    # uv sync --extra dev
+make check    # lint + format check + type check + tests (mirrors CI)
+make test     # tests only
+```
+
+Prefer raw commands? `uv sync --extra dev`, then `uv run pytest`, `uv run ruff check .`, `uv run mypy`.
+
+To run a real Discogs ingestion slice on a workstation or the coordination host, see the [operator runbook](docs/OPERATOR_SETUP.md) (`make ingest`).
+
+**Raspberry Pi note:** use a **64-bit (aarch64) operating system**. The pinned wheels (`duckdb`, `lxml`, `pyarrow`) are not published for 32-bit Raspberry Pi OS and would fall back to source builds.
+
+**Developed with AI agents.** This project is built with the help of AI coding agents (Claude, Codex). [`AGENTS.md`](AGENTS.md) is the canonical agent guidance and the `Makefile` is the canonical command surface; keep both accurate when workflows change.
 
 ## Planned architecture
 
