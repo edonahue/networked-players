@@ -1,0 +1,60 @@
+---
+# Idempotent facts + health playbook (ROADMAP Phase 1).
+#
+# Read-only by design: it gathers facts and reports/asserts, but changes nothing
+# (no package installs, no accounts). Safe to run repeatedly as a first contact
+# with new hardware. Mutating baseline roles come later, each behind its own ADR.
+#
+# Usage (from infra/ansible/, with a real local inventory):
+#   ansible-playbook -i inventories/local/hosts.yml playbooks/health.yml
+- name: Cluster facts and health
+  hosts: all
+  gather_facts: true
+  tasks:
+    - name: Require a 64-bit architecture
+      # Pinned wheels (duckdb/lxml/pyarrow) need aarch64 or x86_64; 32-bit Pi OS fails.
+      ansible.builtin.assert:
+        that:
+          - ansible_architecture in ['aarch64', 'x86_64']
+        fail_msg: >-
+          {{ inventory_hostname }} reports {{ ansible_architecture }};
+          use a 64-bit OS (aarch64 on Raspberry Pi).
+
+    - name: Find the root filesystem mount
+      ansible.builtin.set_fact:
+        root_mount: "{{ ansible_mounts | selectattr('mount', 'equalto', '/') | first }}"
+
+    - name: Require a minimum free space floor
+      # Catches a full disk. The ~250 GB ingest floor (docs/DATA_SIZING.md) is a
+      # workstation/coordination-host concern, set per group, not enforced here.
+      ansible.builtin.assert:
+        that:
+          - (root_mount.size_available | int) > (min_free_gb | int) * 1024 * 1024 * 1024
+        fail_msg: >-
+          {{ inventory_hostname }} has
+          {{ (root_mount.size_available / 1024 / 1024 / 1024) | round(1) }} GB free on /,
+          below the {{ min_free_gb }} GB floor.
+
+    - name: Check time synchronization
+      ansible.builtin.command: timedatectl show --property=NTPSynchronized --value
+      register: ntp_sync
+      changed_when: false
+      failed_when: false
+
+    - name: Read SoC temperature when available (Raspberry Pi)
+      ansible.builtin.slurp:
+        src: /sys/class/thermal/thermal_zone0/temp
+      register: soc_temp_raw
+      failed_when: false
+
+    - name: Report node health
+      ansible.builtin.debug:
+        msg:
+          - "host: {{ inventory_hostname }} ({{ ansible_distribution }} {{ ansible_distribution_version }}, {{ ansible_architecture }})"
+          - "cpus: {{ ansible_processor_vcpus | default('?') }}  memory_mb: {{ ansible_memtotal_mb }}"
+          - "root free GB: {{ (root_mount.size_available / 1024 / 1024 / 1024) | round(1) }}"
+          - "ntp synchronized: {{ ntp_sync.stdout | default('unknown') }}"
+          - >-
+            soc temp C:
+            {{ ((soc_temp_raw.content | b64decode | trim | int) / 1000) | round(1)
+               if soc_temp_raw.content is defined else 'n/a' }}

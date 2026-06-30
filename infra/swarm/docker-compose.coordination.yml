@@ -1,0 +1,43 @@
+# Coordination-host stateful services for the local development loop.
+#
+# Postgres (mutable application state) and Redis (RQ background jobs) pinned to
+# the coordination host. This is the dev-loop definition, NOT a Swarm stack:
+# Swarm does not make local storage distributed, so stateful services stay here.
+#
+# Run:  cp .env.example .env  &&  edit .env  &&  docker compose -f docker-compose.coordination.yml up -d
+# Secrets come from a git-ignored .env (never commit real credentials).
+services:
+  postgres:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?set in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set in .env}
+      POSTGRES_DB: ${POSTGRES_DB:?set in .env}
+    ports:
+      # Bind to loopback only; do not expose the database on the network.
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres-data:
+  redis-data:
