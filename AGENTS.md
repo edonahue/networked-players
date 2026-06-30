@@ -2,6 +2,14 @@
 
 This repository is scaffold-first but now contains a small working Discogs ingestion slice. Automated contributors must preserve the distinction between a tested vertical slice and a production-ready pipeline.
 
+## Setup and commands
+
+- The `Makefile` is the canonical command surface; prefer it over ad-hoc commands.
+- Prerequisites: `uv`, Python 3.12+, and the `libxml2`/`libxslt` dev headers for `lxml` (see `README.md`).
+- `make setup` installs dependencies (`uv sync --extra dev`).
+- `make check` runs every gate CI runs (Ruff lint, Ruff format check, mypy, pytest). Run it before reporting a change complete, and report anything you did not exercise.
+- A real Discogs ingestion is operator work: see `docs/OPERATOR_SETUP.md` and `scripts/run-ingest.sh`. Never run a full raw dump as a Pi job.
+
 ## Required behavior
 
 - Read `README.md`, `docs/PRODUCT.md`, `docs/ARCHITECTURE.md`, `docs/DISCOGS_INGESTION.md`, `docs/DATA_AND_RIGHTS.md`, and `docs/PUBLIC_PRIVATE_BOUNDARY.md` before proposing architecture changes.

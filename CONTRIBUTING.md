@@ -9,6 +9,14 @@ Networked Players is currently a personal learning and portfolio project. Though
 3. Search existing issues and decisions.
 4. Keep the proposed change proportional to the project's current maturity.
 
+## Set up your environment
+
+1. Install the [prerequisites](README.md#develop): `uv`, Python 3.12+, and the `libxml2`/`libxslt` dev headers.
+2. `make setup` (installs dependencies with dev extras).
+3. `make check` before pushing — it runs lint, format check, type check, and tests, mirroring CI.
+
+Optionally, `uvx pre-commit install` enables the local hooks in `.pre-commit-config.yaml`.
+
 ## Pull requests
 
 A useful pull request should explain:
