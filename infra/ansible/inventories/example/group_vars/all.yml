@@ -1,0 +1,17 @@
+---
+# Example group variables. Copy inventories/example/ to a git-ignored
+# inventories/local/ and replace these with real values there.
+
+# SSH user Ansible connects as (a non-root service account on real hosts).
+ansible_user: deploy
+
+# Minimum free space on / that the health playbook requires, in GB. This is a
+# "disk not full" floor, not the ~250 GB ingest floor in docs/DATA_SIZING.md;
+# raise it per-group for hosts that store dumps.
+min_free_gb: 1
+
+# System packages a later (mutating) baseline role would ensure are present.
+# Listed here for reference; the health playbook does not install anything.
+baseline_packages:
+  - python3
+  - ca-certificates

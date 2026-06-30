@@ -1,0 +1,9 @@
+---
+# Example host variables. Real hosts live in a git-ignored inventories/local/
+# with real addresses. Addresses here use the RFC 5737 documentation range
+# (192.0.2.0/24) and are not routable.
+ansible_host: 192.0.2.10
+
+# Coordination host stores dumps and canonical datasets, so it carries a higher
+# free-space floor than the workers (override of group_vars/all.yml).
+min_free_gb: 250
