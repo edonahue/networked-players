@@ -91,6 +91,19 @@ now has two playbooks with meaningfully different risk profiles (`health.yml` re
 to as clearly as these two do. No parallel-parser code exists yet; this ADR sets up the
 measurement step that decides whether and how to build one, not the parallelism itself.
 
+**A real, confirmed gap found while applying this ADR, not a hypothetical:** after the
+`live-restore` misstep (above) took `dockerd` down and it was restarted via
+`systemctl restart docker`, the coordination stack and Portainer containers — all
+defined with `restart: unless-stopped` — did **not** come back up automatically. They
+were left in a clean `Exited` state (Postgres/Redis exit code 0, Portainer exit code
+2) rather than being restarted by the daemon on its own. Recovery required manually
+re-running `deploy-coordination.sh`/`deploy-portainer.sh` (idempotent, safe — they
+recognized the existing stopped containers and started them without recreating).
+**Don't assume `unless-stopped` alone makes this host self-healing after a Docker
+daemon restart** — the actual, confirmed recovery path is re-running the deploy
+scripts. Root cause not investigated further here (out of scope for this pass); worth
+revisiting if it recurs.
+
 ## Validation
 
 `journalctl --list-boots` succeeds and lists more than the current boot after a
