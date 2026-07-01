@@ -21,6 +21,25 @@ docker compose -f docker-compose.coordination.yml ps
 
 Both services bind to loopback only.
 
+## Portainer (Swarm visibility)
+
+`docker-compose.portainer.yml` runs Portainer CE, a web UI for inspecting Swarm nodes,
+services, and containers. Like the coordination-host services above, it is intentionally
+**not** a Swarm stack — Swarm's `--publish` always binds `0.0.0.0`, which is unacceptable
+for an unauthenticated-until-first-login admin UI with full `docker.sock` access. See
+`docs/decisions/0008-portainer-swarm-visibility.md` and
+`docs/decisions/0009-portainer-tailscale-access.md` for the reasoning.
+
+```bash
+./scripts/install-tailscale.sh    # one-time; joins this host to your tailnet
+cd infra/swarm
+./deploy-portainer.sh             # auto-binds to the Tailscale IP if connected,
+                                   # else falls back to loopback-only
+```
+
+The script prints exactly which URL to use. Never bind this to a LAN interface or
+`0.0.0.0` directly — only loopback (SSH tunnel) or Tailscale (tailnet-only).
+
 ## Swarm init / join runbook
 
 Initialize the manager on the coordination host and join the workers. Real tokens and

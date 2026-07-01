@@ -1,0 +1,30 @@
+# Portainer CE: lightweight web UI for inspecting/managing the Swarm and its
+# services. Deployed as a PLAIN container directly on the manager's Docker
+# Engine -- deliberately NOT a `docker service create`. Swarm's own --publish
+# cannot bind to a specific host IP (always 0.0.0.0), unacceptable for an
+# unauthenticated-until-first-login admin UI. A plain compose container
+# sidesteps that, exactly like docker-compose.coordination.yml does for
+# Postgres/Redis. See docs/decisions/0008-portainer-swarm-visibility.md and
+# docs/decisions/0009-portainer-tailscale-access.md.
+#
+# Run via ./deploy-portainer.sh, which sets PORTAINER_BIND_IP automatically:
+# your Tailscale IP if `tailscale` is connected, else 127.0.0.1 (loopback
+# only). Never bind this to a LAN interface or 0.0.0.0 directly.
+#
+# First login: set the admin password within 5 minutes of container start or
+# Portainer locks its init endpoint. If missed, just restart it (resets the
+# 5-minute window, keeps all other state): docker compose -f
+# docker-compose.portainer.yml restart portainer
+services:
+  portainer:
+    image: portainer/portainer-ce:2.39.4-alpine
+    restart: unless-stopped
+    command: -H unix:///var/run/docker.sock
+    ports:
+      - "${PORTAINER_BIND_IP:-127.0.0.1}:9443:9443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer_data:/data
+
+volumes:
+  portainer_data:
