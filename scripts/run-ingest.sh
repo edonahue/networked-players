@@ -57,11 +57,23 @@ print(next(o['url'] for o in manifest['objects'] if o['kind'] == 'releases'))
 ")"
 
 echo "==> 2/4 download (releases)"
-echo "    If this fails, edit ${MANIFEST_PATH}'s url/source_url to a working link."
-uv run networked-players-catalog download \
-  --manifest "${MANIFEST_PATH}" \
-  --kind releases \
-  --raw-dir "${RAW_DIR}"
+# download_file() has no skip-if-already-downloaded logic of its own -- without this
+# check, every run would re-fetch the full compressed dump even when an already
+# checksum-verified copy exists locally (confirmed live: this cost a needless ~11GB
+# re-download during a bounded-slice profiling run that only needed the file already
+# on disk). The destination filename only exists post-verification (download_file()
+# only renames .part -> its final name after a SHA-256 match), so its presence is a
+# reliable "already downloaded and verified" signal.
+RELEASES_DEST="${RAW_DIR}/${SNAPSHOT}/${RELEASES_FILE}"
+if [[ -f "${RELEASES_DEST}" ]]; then
+  echo "    already downloaded and verified: ${RELEASES_DEST}"
+else
+  echo "    If this fails, edit ${MANIFEST_PATH}'s url/source_url to a working link."
+  uv run networked-players-catalog download \
+    --manifest "${MANIFEST_PATH}" \
+    --kind releases \
+    --raw-dir "${RAW_DIR}"
+fi
 
 echo "==> 3/4 parse-releases"
 parse_args=(
