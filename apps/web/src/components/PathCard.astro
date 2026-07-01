@@ -20,6 +20,17 @@ const scopeLabel: Record<Credit['credit_scope'], string> = {
   track_artist: 'track artist',
   track_credit: 'track credit',
 };
+
+// Deduplicated cover thumbnails across every release in this path, in hop order.
+const pathReleases = path.hops
+  .map((hop) => releaseById.get(hop.release_id))
+  .filter((release): release is Release => release !== undefined);
+const seenReleaseIds = new Set<number>();
+const coverReleases = pathReleases.filter((release) => {
+  if (seenReleaseIds.has(release.release_id) || release.images.length === 0) return false;
+  seenReleaseIds.add(release.release_id);
+  return true;
+});
 ---
 
 <article class="path-card" data-path-id={path.id} hidden={hidden}>
@@ -29,6 +40,23 @@ const scopeLabel: Record<Credit['credit_scope'], string> = {
     {displayName(path.to_artist_id)}
   </h3>
   <p class="path-card__sub">{path.description}</p>
+
+  {
+    coverReleases.length > 0 && (
+      <div class="path-card__covers" aria-hidden="true">
+        {coverReleases.map((release) => (
+          <img
+            class="cover-thumb"
+            src={release.images[0].uri150}
+            width="56"
+            height="56"
+            loading="lazy"
+            alt=""
+          />
+        ))}
+      </div>
+    )
+  }
 
   {
     path.hops.map((hop, index) => {
@@ -41,18 +69,37 @@ const scopeLabel: Record<Credit['credit_scope'], string> = {
       );
       // Non-linked contributors are retained as evidence but are never nodes.
       const nonLinked = release.credits.filter((c) => !c.is_linked);
+      const cover = release.images[0];
       return (
         <div class="hop">
-          <p class="hop__title">
-            Hop {index + 1}: {displayName(hop.artist_a_id)} and {displayName(hop.artist_b_id)}
-          </p>
-          <p class="hop__release">
-            both credited on <strong>{release.title}</strong>
-            {release.released ? ` (${release.released}` : ''}
-            {release.released && release.country ? `, ${release.country})` : release.released ? ')' : ''}
-            {' · '}
-            <a href={release.source_url} rel="nofollow noopener">source</a>
-          </p>
+          <div class="hop__head">
+            {cover && (
+              <img
+                class="hop__cover"
+                src={cover.uri150}
+                width="64"
+                height="64"
+                loading="lazy"
+                alt={`Cover art for ${release.title}`}
+              />
+            )}
+            <div class="hop__head-text">
+              <p class="hop__title">
+                Hop {index + 1}: {displayName(hop.artist_a_id)} and {displayName(hop.artist_b_id)}
+              </p>
+              <p class="hop__release">
+                both credited on <strong>{release.title}</strong>
+                {release.released ? ` (${release.released}` : ''}
+                {release.released && release.country
+                  ? `, ${release.country})`
+                  : release.released
+                    ? ')'
+                    : ''}
+                {' · '}
+                <a href={release.source_url} rel="nofollow noopener">source</a>
+              </p>
+            </div>
+          </div>
           <div class="evidence">
             <table>
               <caption>Release {release.release_id} · evidence</caption>

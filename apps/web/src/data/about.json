@@ -20,20 +20,20 @@
       "heading": "Where the project actually is",
       "paragraphs": [
         "This is an early placeholder, not a finished product. Today the project is scaffolding plus one tested vertical slice: a Discogs release-ingestion pipeline that parses monthly data dumps into a normalized, provenance-bearing credits schema. There is no deployed application, public API, or full catalog yet.",
-        "The connections demo on this site is a faithful proof of concept of the shape of the experience, running on a small synthetic dataset."
+        "The connections demo on this site now runs on real Discogs data for a small, curated subset of releases and artist connections — fetched via the Discogs API ahead of the full CC0 dump pipeline (see the project's ADR 0012)."
       ]
     },
     {
       "heading": "Data and rights",
       "paragraphs": [
         "Publishable catalog facts derive from CC0 Discogs monthly data dumps, always carried with provenance: snapshot date, source URL, parser and schema versions, and the original role text.",
-        "Private collection membership is never published. Discogs API responses, images, marketplace, and pricing data are restricted and are not republished. The demo dataset here is synthetic and privacy-safe by construction — it contains no real release identifiers, no collection membership, and no images."
+        "Private collection membership is never published, and raw API responses stay on the coordination host. The demo dataset here is a small, curated subset of real Discogs releases — not a reconstruction of any private collection. Cover art is hotlinked directly from Discogs' own CDN, never downloaded or rehosted; marketplace and pricing data remain out of scope entirely."
       ]
     },
     {
       "heading": "What's next",
       "paragraphs": [
-        "Deriving a small, public, real dataset from the CC0 dumps (with full provenance and no collection membership); a larger graph; and, eventually, an interactive pick-two-artists mode. A future live-search mode is additive and must fail gracefully — the static-first core always works on its own."
+        "Replacing this API-sourced demo dataset with one derived from the CC0 monthly dumps (with full provenance and no collection membership) once that pipeline is built; a larger graph; and, eventually, an interactive pick-two-artists mode. A future live-search mode is additive and must fail gracefully — the static-first core always works on its own."
       ]
     }
   ]

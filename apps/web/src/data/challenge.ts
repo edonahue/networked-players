@@ -2,9 +2,10 @@
 //
 // These mirror the real credits schema produced by the Discogs ingestion
 // pipeline in packages/catalog (see discogs/parquet.py CREDIT_SCHEMA and
-// discogs/releases.py). The demo data is SYNTHETIC and privacy-safe, but it is
-// shaped exactly like real derived catalog facts so a real, CC0-dump-derived
-// artifact can be dropped in later without changing this code.
+// discogs/releases.py). The artifact is real Discogs data for a small, curated
+// subset of releases (see packages/catalog discogs/demo_challenge.py and ADR
+// 0012) — not the full private seed, and not yet the CC0 monthly-dump-derived
+// dataset that Milestone 8 will eventually produce under this same shape.
 
 /** One credited contribution. Faithful to packages/catalog CREDIT_SCHEMA. */
 export interface Credit {
@@ -15,7 +16,8 @@ export interface Credit {
   track_position: string | null;
   track_title: string | null;
   /** release_artist | release_credit | track_artist | track_credit */
-  credit_scope: 'release_artist' | 'release_credit' | 'track_artist' | 'track_credit';
+  credit_scope:
+    "release_artist" | "release_credit" | "track_artist" | "track_credit";
   /** Discogs linked artist id (PAN). null when the contributor is not linked. */
   artist_id: number | null;
   /** Credited name as given in the source. */
@@ -32,6 +34,14 @@ export interface Credit {
   playable_identity: boolean;
 }
 
+/** A cover-art image, hotlinked from Discogs' own CDN — never downloaded or rehosted. */
+export interface ReleaseImage {
+  uri: string;
+  uri150: string;
+  width: number;
+  height: number;
+}
+
 /** A release plus its credit rows. */
 export interface Release {
   snapshot_date: string;
@@ -44,6 +54,7 @@ export interface Release {
   master_is_main_release: boolean | null;
   data_quality: string | null;
   source_url: string;
+  images: ReleaseImage[];
   credits: Credit[];
 }
 

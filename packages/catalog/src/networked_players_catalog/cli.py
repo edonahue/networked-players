@@ -8,6 +8,7 @@ from collections.abc import Sequence
 from datetime import UTC, date, datetime
 from pathlib import Path
 
+from . import __version__
 from .discogs.download import download_file
 from .discogs.manifest import DumpKind, SnapshotManifest, build_manifest
 
@@ -45,6 +46,20 @@ def _parser() -> argparse.ArgumentParser:
     import_seed.add_argument("--input", type=Path, required=True)
     import_seed.add_argument("--output", type=Path, required=True)
     import_seed.add_argument("--source", default="discogs-collection-export-csv")
+
+    build_demo = subparsers.add_parser(
+        "build-demo-challenge",
+        help="fetch curated Discogs API releases and emit a real challenge.v1-shaped artifact",
+    )
+    build_demo.add_argument("--seed", type=Path, default=Path("data/private/discogs-seed.json"))
+    build_demo.add_argument(
+        "--cache-dir", type=Path, default=Path("data/private/discogs-api-cache")
+    )
+    build_demo.add_argument("--output", type=Path, required=True)
+    build_demo.add_argument("--snapshot", default=date.today().strftime("%Y%m%d"))
+    build_demo.add_argument("--max-paths", type=int, default=8)
+    build_demo.add_argument("--seed-artists", type=int, default=10)
+    build_demo.add_argument("--request-delay", type=float, default=1.1)
     return parser
 
 
@@ -114,6 +129,48 @@ def main(argv: Sequence[str] | None = None) -> int:
         seed.write(args.output)
         payload = {"path": str(args.output), "release_id_count": len(seed.release_ids)}
         print(json.dumps(payload, indent=2))
+        return 0
+
+    if args.command == "build-demo-challenge":
+        import sys
+
+        from .discogs.api_client import ApiClient, ReleaseCache, fetch_releases, load_token
+        from .discogs.demo_challenge import build_challenge, parse_api_release
+        from .discogs.seed import SeedManifest
+
+        seed = SeedManifest.read(args.seed)
+        client = ApiClient(token=load_token(), request_delay_seconds=args.request_delay)
+        cache = ReleaseCache(args.cache_dir)
+
+        def _progress(index: int, total: int, from_cache: bool) -> None:
+            print(f"[{index}/{total}] {'cache' if from_cache else 'fetch'}", file=sys.stderr)
+
+        raw = fetch_releases(seed.release_ids, client=client, cache=cache, on_progress=_progress)
+        releases_by_id = {
+            rid: parse_api_release(payload, snapshot_date=args.snapshot)
+            for rid, payload in raw.items()
+        }
+
+        challenge = build_challenge(
+            releases_by_id,
+            snapshot_date=args.snapshot,
+            generated_by=f"networked-players-catalog build-demo-challenge {__version__}",
+            max_paths=args.max_paths,
+            seed_count=args.seed_artists,
+        )
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(json.dumps(challenge, indent=2) + "\n")
+        print(
+            json.dumps(
+                {
+                    "output": str(args.output),
+                    "releases_fetched": len(raw),
+                    "releases_published": len(challenge["releases"]),
+                    "paths_published": len(challenge["paths"]),
+                },
+                indent=2,
+            )
+        )
         return 0
 
     raise AssertionError(f"unhandled command: {args.command}")

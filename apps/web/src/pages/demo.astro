@@ -10,7 +10,7 @@ const challenge = challengeData as Challenge;
 const { provenance, releases, artists, paths } = challenge;
 
 const description =
-  'A static, client-side proof of concept: documented paths between artists, with the credit evidence shown at every hop. Synthetic, privacy-safe data.';
+  'A static, client-side proof of concept: documented paths between real artists, with the credit evidence and cover art shown at every hop.';
 ---
 
 <BaseLayout title="Connections demo" description={description}>
@@ -25,13 +25,13 @@ const description =
   </section>
 
   <section class="shell" aria-label="Connections demo" style="padding-bottom:80px">
-    <p class="synthetic-banner">
+    <p class="data-banner">
       <span aria-hidden="true">◉</span>
       <span>
-        <strong>Synthetic demo data.</strong> These artists and releases are invented and
-        privacy-safe — no real catalog records, no Discogs collection membership, no images. The
-        data is shaped exactly like real derived credits so a CC0-sourced dataset can replace it
-        later.
+        <strong>Real Discogs data, a curated subset.</strong> These {releases.length} releases and{' '}
+        {paths.length} paths are real, fetched from the Discogs API — cover art is hotlinked
+        directly from Discogs' own CDN, never downloaded or rehosted. This is a small slice, not a
+        reconstruction of any private collection; see the provenance note below for details.
       </span>
     </p>
 

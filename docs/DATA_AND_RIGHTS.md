@@ -18,7 +18,13 @@ API access is a separate contractual path. Current terms distinguish CC0 databas
 
 ### Images and audio
 
-Album art, artist images, preview audio, and marketplace assets are not part of the initial ingestion contract. The first playable release must work from textual evidence and locally generated presentation assets.
+Cover art may be hotlinked directly from Discogs' own image CDN (`i.discogs.com`) by
+referencing its URL in an `<img src>` -- the repository never downloads, stores, or
+rehosts the image bytes themselves. Hotlinking is a scoping decision (pointing at a
+URL Discogs already serves publicly), not a rights determination (republishing an
+asset would be); see ADR 0012. Artist images, preview audio, and marketplace assets
+remain out of scope. A playable release must still work from textual evidence first --
+cover art is presentation, not load-bearing evidence.
 
 ### Derived artifacts
 

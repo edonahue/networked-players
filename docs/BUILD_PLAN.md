@@ -34,17 +34,20 @@ been imported; no one-hop expansion and no artist graph exist yet, anywhere.
 planned responsibility. No source code exists in any of them.
 
 **Web application (`apps/web`).** Early implementation. A static Astro site with
-`/`, `/about/`, and `/demo/` pages, dark/light theme, and SEO basics. The demo
-renders 2–3 curated paths from a synthetic, privacy-safe artifact
-(`public/data/challenge.v1.json`) shaped to match the real credits schema so a real
-artifact can drop in later without code changes. Deploy configuration
-(`wrangler.jsonc`) targets `networked-players.com`, but `npm run deploy` has not
-been run — nothing is live at the domain yet. The coordination host's Node
-mismatch (Node 20.20.2 vs. `package.json`'s `>=22` requirement) blocked local
-dev/test until `scripts/setup-node-playwright.sh` installed Node 22 via `nvm`
-plus Playwright's Chromium and Debian system deps; `.github/workflows/web.yml`
-now runs format check, Astro check/build, and the Playwright smoke test on every
-pull request and push to `main`.
+`/`, `/about/`, and `/demo/` pages, dark/light theme, and SEO basics. As of this
+session the demo runs on **real Discogs data** — a small, curated subset of
+releases and artist connections fetched via the Discogs API against the
+operator's private seed, with cover art hotlinked directly from Discogs' own CDN
+([ADR 0012](decisions/0012-real-discogs-api-demo-challenge.md)) — a deliberate
+detour ahead of Milestone 8's dump-derived pipeline, not a replacement for it.
+Deploy configuration (`wrangler.jsonc`) targets `networked-players.com`; the
+operator deploys via their Cloudflare Git integration on push to `main` rather
+than a manual `npm run deploy`. The coordination host's Node mismatch (Node
+20.20.2 vs. `package.json`'s `>=22` requirement) blocked local dev/test until
+`scripts/setup-node-playwright.sh` installed Node 22 via `nvm` plus Playwright's
+Chromium and Debian system deps; `.github/workflows/web.yml` now runs format
+check, Astro check/build, and the Playwright smoke test on every pull request and
+push to `main`.
 
 **Infrastructure and hardware (`infra/`).** Real bring-up began the night of
 2026-06-30/07-01 and has continued since. Per
@@ -108,7 +111,7 @@ uptime contract per architecture direction.
 | `game-rules` | Placeholder (README only) |
 | `workers` | Placeholder (README only) |
 | `apps/api` | Placeholder (README only) |
-| `apps/web` | Early implementation, synthetic demo, not deployed; Node 22 + Playwright fixed locally, CI added |
+| `apps/web` | Early implementation, real curated demo (ADR 0012); deploys via Cloudflare Git integration on push to `main`; Node 22 + Playwright fixed locally, CI added |
 | Coordination host OS + inventory | Done (64-bit confirmed, local inventory created) |
 | Coordination host storage | eMMC headroom recovered (~11.5 GB free); NVMe still not attached; 250 GB bulk-ingest floor still unmet |
 | Docker Swarm manager | Active (ADR 0007) |
@@ -376,6 +379,13 @@ Milestone 6.
       omitted fields)
 
 ## Milestone 8: Generate and swap in the real challenge (ROADMAP 5)
+
+> **Note:** `apps/web`'s demo already runs on real, curated Discogs data as of
+> [ADR 0012](decisions/0012-real-discogs-api-demo-challenge.md) — an API-sourced
+> detour taken ahead of this milestone, not a substitute for it. This milestone's
+> tasks below still apply to the *dump-derived* artifact; when it lands, decide
+> explicitly (per ADR 0012's revisit trigger) whether to replace, keep both
+> alongside, or retire the API-sourced one.
 
 ### Goal
 Produce one real, privacy-safe, evidence-backed challenge from the actual one-hop

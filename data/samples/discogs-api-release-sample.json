@@ -1,0 +1,373 @@
+[
+  {
+    "id": 5001,
+    "status": "Accepted",
+    "title": "First Light",
+    "country": "US",
+    "released": "1994-03-01",
+    "master_id": 9001,
+    "data_quality": "Correct",
+    "uri": "https://www.discogs.com/release/5001-First-Light",
+    "images": [
+      {
+        "type": "primary",
+        "uri": "https://img.discogs.com/aaa/r-5001-front.jpg",
+        "uri150": "https://img.discogs.com/aaa/r-5001-front-150.jpg",
+        "width": 600,
+        "height": 600
+      },
+      {
+        "type": "secondary",
+        "uri": "https://img.discogs.com/aaa/r-5001-back.jpg",
+        "uri150": "https://img.discogs.com/aaa/r-5001-back-150.jpg",
+        "width": 600,
+        "height": 600
+      }
+    ],
+    "artists": [
+      {"id": 101, "name": "Alpha Ray", "anv": "", "join": "&", "role": "", "tracks": ""},
+      {"id": 102, "name": "Beta Sound", "anv": "", "join": "", "role": "", "tracks": ""}
+    ],
+    "extraartists": [
+      {"id": 0, "name": "Unknown Artist", "anv": "", "join": "", "role": "Executed By", "tracks": ""}
+    ],
+    "tracklist": [
+      {"position": "A1", "title": "Opening", "artists": [], "extraartists": []},
+      {"position": "A2", "title": "Drift", "artists": [], "extraartists": []}
+    ]
+  },
+  {
+    "id": 5002,
+    "status": "Accepted",
+    "title": "Second Wave",
+    "country": "UK",
+    "released": "1995-06-15",
+    "master_id": null,
+    "data_quality": "Correct",
+    "uri": "https://www.discogs.com/release/5002-Second-Wave",
+    "images": [
+      {
+        "type": "primary",
+        "uri": "https://img.discogs.com/bbb/r-5002-front.jpg",
+        "uri150": "https://img.discogs.com/bbb/r-5002-front-150.jpg",
+        "width": 500,
+        "height": 500
+      }
+    ],
+    "artists": [
+      {"id": 101, "name": "Alpha Ray", "anv": "", "join": "", "role": "", "tracks": ""},
+      {"id": 103, "name": "Gamma Waves", "anv": "", "join": "", "role": "", "tracks": ""}
+    ],
+    "extraartists": [],
+    "tracklist": [
+      {"position": "1", "title": "Tide", "artists": [], "extraartists": []}
+    ]
+  },
+  {
+    "id": 5003,
+    "status": "Accepted",
+    "title": "Third Circuit",
+    "country": "DE",
+    "released": "1996-01-20",
+    "master_id": null,
+    "data_quality": "Correct",
+    "uri": "https://www.discogs.com/release/5003-Third-Circuit",
+    "images": [],
+    "artists": [
+      {"id": 101, "name": "Alpha Ray", "anv": "", "join": "", "role": "", "tracks": ""},
+      {"id": 104, "name": "Delta Tone", "anv": "", "join": "", "role": "", "tracks": ""}
+    ],
+    "extraartists": [],
+    "tracklist": []
+  },
+  {
+    "id": 5004,
+    "status": "Accepted",
+    "title": "Fourth Signal",
+    "country": "US",
+    "released": "1997-09-09",
+    "master_id": 9004,
+    "data_quality": "Needs Vote",
+    "uri": "https://www.discogs.com/release/5004-Fourth-Signal",
+    "images": [
+      {
+        "type": "primary",
+        "uri": "https://img.discogs.com/ccc/r-5004-front.jpg",
+        "uri150": "https://img.discogs.com/ccc/r-5004-front-150.jpg",
+        "width": 600,
+        "height": 600
+      }
+    ],
+    "artists": [
+      {"id": 102, "name": "Beta Sound", "anv": "", "join": "", "role": "", "tracks": ""},
+      {"id": 103, "name": "Gamma Waves", "anv": "", "join": "", "role": "", "tracks": ""}
+    ],
+    "extraartists": [],
+    "tracklist": [
+      {"position": "1", "title": "Carrier", "artists": [], "extraartists": []}
+    ]
+  },
+  {
+    "id": 5005,
+    "status": "Accepted",
+    "title": "Fifth Element",
+    "country": "FR",
+    "released": "1998-04-11",
+    "master_id": null,
+    "data_quality": "Correct",
+    "uri": "https://www.discogs.com/release/5005-Fifth-Element",
+    "images": [],
+    "artists": [
+      {"id": 102, "name": "Beta Sound", "anv": "", "join": "", "role": "", "tracks": ""},
+      {"id": 105, "name": "Epsilon Drift", "anv": "", "join": "", "role": "", "tracks": ""}
+    ],
+    "extraartists": [],
+    "tracklist": []
+  },
+  {
+    "id": 5006,
+    "status": "Accepted",
+    "title": "Sixth Sense",
+    "country": "NL",
+    "released": "1999-11-02",
+    "master_id": null,
+    "data_quality": "Correct",
+    "uri": "https://www.discogs.com/release/5006-Sixth-Sense",
+    "images": [
+      {
+        "type": "primary",
+        "uri": "https://img.discogs.com/ddd/r-5006-front.jpg",
+        "uri150": "https://img.discogs.com/ddd/r-5006-front-150.jpg",
+        "width": 600,
+        "height": 600
+      }
+    ],
+    "artists": [
+      {"id": 103, "name": "Gamma Waves", "anv": "", "join": "", "role": "", "tracks": ""},
+      {"id": 106, "name": "Zeta Loop", "anv": "", "join": "", "role": "", "tracks": ""}
+    ],
+    "extraartists": [],
+    "tracklist": [
+      {"position": "A", "title": "Feedback", "artists": [], "extraartists": []},
+      {"position": "B", "title": "Echo", "artists": [], "extraartists": []}
+    ]
+  },
+  {
+    "id": 5007,
+    "status": "Accepted",
+    "title": "Seventh Hour",
+    "country": "US",
+    "released": "2000-02-14",
+    "master_id": null,
+    "data_quality": "Correct",
+    "uri": "https://www.discogs.com/release/5007-Seventh-Hour",
+    "images": [],
+    "artists": [
+      {"id": 104, "name": "Delta Tone", "anv": "", "join": "", "role": "", "tracks": ""},
+      {"id": 107, "name": "Eta Pulse", "anv": "", "join": "", "role": "", "tracks": ""}
+    ],
+    "extraartists": [],
+    "tracklist": []
+  },
+  {
+    "id": 5008,
+    "status": "Accepted",
+    "title": "Eighth Note",
+    "country": "JP",
+    "released": "2001-07-07",
+    "master_id": 9008,
+    "data_quality": "Correct",
+    "uri": "https://www.discogs.com/release/5008-Eighth-Note",
+    "images": [
+      {
+        "type": "primary",
+        "uri": "https://img.discogs.com/eee/r-5008-front.jpg",
+        "uri150": "https://img.discogs.com/eee/r-5008-front-150.jpg",
+        "width": 600,
+        "height": 600
+      }
+    ],
+    "artists": [
+      {"id": 105, "name": "Epsilon Drift", "anv": "", "join": "", "role": "", "tracks": ""},
+      {"id": 108, "name": "Theta Field", "anv": "", "join": "", "role": "", "tracks": ""}
+    ],
+    "extraartists": [],
+    "tracklist": [
+      {"position": "1", "title": "Interval", "artists": [], "extraartists": []}
+    ]
+  },
+  {
+    "id": 5009,
+    "status": "Accepted",
+    "title": "Ninth Wave",
+    "country": "US",
+    "released": "2002-05-30",
+    "master_id": null,
+    "data_quality": "Correct",
+    "uri": "https://www.discogs.com/release/5009-Ninth-Wave",
+    "images": [],
+    "artists": [
+      {"id": 106, "name": "Zeta Loop", "anv": "", "join": "", "role": "", "tracks": ""},
+      {"id": 109, "name": "Iota Grain", "anv": "", "join": "", "role": "", "tracks": ""}
+    ],
+    "extraartists": [],
+    "tracklist": []
+  },
+  {
+    "id": 5010,
+    "status": "Accepted",
+    "title": "Tenth Degree",
+    "country": "CA",
+    "released": "2003-08-19",
+    "master_id": null,
+    "data_quality": "Correct",
+    "uri": "https://www.discogs.com/release/5010-Tenth-Degree",
+    "images": [],
+    "artists": [
+      {"id": 107, "name": "Eta Pulse", "anv": "", "join": "", "role": "", "tracks": ""},
+      {"id": 110, "name": "Kappa Static", "anv": "", "join": "", "role": "", "tracks": ""}
+    ],
+    "extraartists": [],
+    "tracklist": []
+  },
+  {
+    "id": 5011,
+    "status": "Accepted",
+    "title": "Eleventh Hour Session",
+    "country": "US",
+    "released": "2004-10-05",
+    "master_id": null,
+    "data_quality": "Correct",
+    "uri": "https://www.discogs.com/release/5011-Eleventh-Hour-Session",
+    "images": [
+      {
+        "type": "primary",
+        "uri": "https://img.discogs.com/fff/r-5011-front.jpg",
+        "uri150": "https://img.discogs.com/fff/r-5011-front-150.jpg",
+        "width": 600,
+        "height": 600
+      }
+    ],
+    "artists": [
+      {"id": 101, "name": "Alpha Ray", "anv": "", "join": "", "role": "", "tracks": ""},
+      {"id": 105, "name": "Epsilon Drift", "anv": "", "join": "", "role": "", "tracks": ""}
+    ],
+    "extraartists": [],
+    "tracklist": [
+      {
+        "position": "1",
+        "title": "Session One",
+        "artists": [
+          {"id": 108, "name": "Theta Field", "anv": "T. Field", "join": "", "role": "Featuring", "tracks": ""}
+        ],
+        "extraartists": [
+          {"id": 109, "name": "Iota Grain", "anv": "", "join": "", "role": "Engineer", "tracks": ""}
+        ]
+      },
+      {
+        "position": "2",
+        "title": "Session Two",
+        "artists": [],
+        "extraartists": []
+      }
+    ]
+  },
+  {
+    "id": 5012,
+    "status": "Accepted",
+    "title": "Twelfth Gate",
+    "country": "UK",
+    "released": "2005-12-01",
+    "master_id": null,
+    "data_quality": "Correct",
+    "uri": "https://www.discogs.com/release/5012-Twelfth-Gate",
+    "images": [],
+    "artists": [
+      {"id": 102, "name": "Beta Sound", "anv": "", "join": "", "role": "", "tracks": ""},
+      {"id": 106, "name": "Zeta Loop", "anv": "", "join": "", "role": "", "tracks": ""}
+    ],
+    "extraartists": [],
+    "tracklist": []
+  },
+  {
+    "id": 5013,
+    "status": "Accepted",
+    "title": "Thirteenth Floor",
+    "country": "US",
+    "released": "2006-03-17",
+    "master_id": null,
+    "data_quality": "Correct",
+    "uri": "https://www.discogs.com/release/5013-Thirteenth-Floor",
+    "images": [],
+    "artists": [
+      {"id": 103, "name": "Gamma Waves", "anv": "", "join": "", "role": "", "tracks": ""},
+      {"id": 107, "name": "Eta Pulse", "anv": "", "join": "", "role": "", "tracks": ""}
+    ],
+    "extraartists": [],
+    "tracklist": []
+  },
+  {
+    "id": 5014,
+    "status": "Accepted",
+    "title": "Fourteenth Path",
+    "country": "SE",
+    "released": "2007-06-23",
+    "master_id": null,
+    "data_quality": "Correct",
+    "uri": "https://www.discogs.com/release/5014-Fourteenth-Path",
+    "images": [],
+    "artists": [
+      {"id": 104, "name": "Delta Tone", "anv": "", "join": "", "role": "", "tracks": ""},
+      {"id": 108, "name": "Theta Field", "anv": "", "join": "", "role": "", "tracks": ""}
+    ],
+    "extraartists": [],
+    "tracklist": []
+  },
+  {
+    "id": 5015,
+    "status": "Accepted",
+    "title": "Fifteenth Cycle",
+    "country": "US",
+    "released": "2008-09-08",
+    "master_id": null,
+    "data_quality": "Correct",
+    "uri": "https://www.discogs.com/release/5015-Fifteenth-Cycle",
+    "images": [
+      {
+        "type": "primary",
+        "uri": "https://img.discogs.com/ggg/r-5015-front.jpg",
+        "uri150": "https://img.discogs.com/ggg/r-5015-front-150.jpg",
+        "width": 600,
+        "height": 600
+      }
+    ],
+    "artists": [
+      {"id": 101, "name": "Alpha Ray", "anv": "", "join": "", "role": "", "tracks": ""},
+      {"id": 109, "name": "Iota Grain", "anv": "", "join": "", "role": "", "tracks": ""}
+    ],
+    "extraartists": [
+      {"id": 110, "name": "Kappa Static", "anv": "", "join": "", "role": "Mixed By", "tracks": "1-2"}
+    ],
+    "tracklist": [
+      {"position": "1", "title": "Return", "artists": [], "extraartists": []},
+      {"position": "2", "title": "Recur", "artists": [], "extraartists": []}
+    ]
+  },
+  {
+    "id": 5016,
+    "status": "Accepted",
+    "title": "Sixteenth Bar",
+    "country": null,
+    "released": null,
+    "year": 1993,
+    "master_id": null,
+    "data_quality": null,
+    "artists": [
+      {"id": 105, "name": "Epsilon Drift", "anv": "", "join": "", "role": "", "tracks": ""},
+      {"id": 110, "name": "Kappa Static", "anv": "", "join": "", "role": "", "tracks": ""}
+    ],
+    "extraartists": [],
+    "images": [],
+    "tracklist": []
+  }
+]
