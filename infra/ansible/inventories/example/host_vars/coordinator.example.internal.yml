@@ -5,5 +5,7 @@
 ansible_host: 192.0.2.10
 
 # Coordination host stores dumps and canonical datasets, so it carries a higher
-# free-space floor than the workers (override of group_vars/all.yml).
+# free-space floor than the workers (override of group_vars/all.yml), checked
+# against its dedicated data mount rather than the root filesystem (see ADR 0013).
+disk_floor_mount: /mnt/data
 min_free_gb: 250

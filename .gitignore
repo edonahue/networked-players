@@ -60,9 +60,12 @@ data/generated/
 *.parquet
 *.part
 
-# Machine-specific project state
-local/**
-!local/.gitignore
+# Machine-specific project state. Ignored as a whole path, not just its contents:
+# on hosts with a dedicated data volume, local/ is itself a symlink (see ADR 0013),
+# and git does not resolve tracked-file lookups through a symlinked parent -- a
+# tracked local/.gitignore would show as spuriously deleted. Never track anything
+# under local/, including local/ itself.
+local
 
 # Personal agent overrides (keep shared config committed)
 CLAUDE.local.md

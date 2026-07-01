@@ -26,6 +26,16 @@ local/
 `*.duckdb`. Nothing here is committed. Create the directories with `scripts/run-ingest.sh`
 (it makes them) or by hand.
 
+### Storage layout on this host
+
+On the ZimaBoard 832 coordination host, `local/` is a symlink to
+`/mnt/data/networked-players/local/` on a dedicated 1TB NVMe mounted at `/mnt/data` —
+see [ADR 0013](decisions/0013-nvme-storage-layout.md) for the mount layout, why it's
+manual (not CasaOS's Storage app), and the coordination stack's Postgres/Redis volume
+migration. `ls -la local` on this host will show a symlink, not a plain directory; every
+script and CLI path reference above still works unchanged, since they're all relative
+paths that resolve through the symlink transparently.
+
 ## Free space and sizing
 
 See [data sizing](DATA_SIZING.md) for the full budget. In short: one compressed dump set is

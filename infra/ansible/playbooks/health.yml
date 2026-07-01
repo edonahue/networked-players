@@ -20,20 +20,24 @@
           {{ inventory_hostname }} reports {{ ansible_architecture }};
           use a 64-bit OS (aarch64 on Raspberry Pi).
 
-    - name: Find the root filesystem mount
+    - name: Find the target filesystem mount
+      # disk_floor_mount defaults to '/' but the coordinator overrides it to /mnt/data
+      # once its NVMe is attached (see ADR 0013) -- the ~250 GB ingest floor
+      # (docs/DATA_SIZING.md) is only meaningful against the filesystem that actually
+      # holds local/raw and local/processed, not necessarily the root filesystem.
       ansible.builtin.set_fact:
-        root_mount: "{{ ansible_mounts | selectattr('mount', 'equalto', '/') | first }}"
+        floor_mount: "{{ ansible_mounts | selectattr('mount', 'equalto', disk_floor_mount | default('/')) | first }}"
 
     - name: Require a minimum free space floor
       # Catches a full disk. The ~250 GB ingest floor (docs/DATA_SIZING.md) is a
-      # workstation/coordination-host concern, set per group, not enforced here.
+      # workstation/coordination-host concern, set per group via min_free_gb.
       ansible.builtin.assert:
         that:
-          - (root_mount.size_available | int) > (min_free_gb | int) * 1024 * 1024 * 1024
+          - (floor_mount.size_available | int) > (min_free_gb | int) * 1024 * 1024 * 1024
         fail_msg: >-
           {{ inventory_hostname }} has
-          {{ (root_mount.size_available / 1024 / 1024 / 1024) | round(1) }} GB free on /,
-          below the {{ min_free_gb }} GB floor.
+          {{ (floor_mount.size_available / 1024 / 1024 / 1024) | round(1) }} GB free on
+          {{ disk_floor_mount | default('/') }}, below the {{ min_free_gb }} GB floor.
 
     - name: Check time synchronization
       ansible.builtin.command: timedatectl show --property=NTPSynchronized --value
@@ -52,7 +56,7 @@
         msg:
           - "host: {{ inventory_hostname }} ({{ ansible_distribution }} {{ ansible_distribution_version }}, {{ ansible_architecture }})"
           - "cpus: {{ ansible_processor_vcpus | default('?') }}  memory_mb: {{ ansible_memtotal_mb }}"
-          - "root free GB: {{ (root_mount.size_available / 1024 / 1024 / 1024) | round(1) }}"
+          - "{{ disk_floor_mount | default('/') }} free GB: {{ (floor_mount.size_available / 1024 / 1024 / 1024) | round(1) }}"
           - "ntp synchronized: {{ ntp_sync.stdout | default('unknown') }}"
           - >-
             soc temp C:

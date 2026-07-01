@@ -6,6 +6,16 @@
 #
 # Run:  cp .env.example .env  &&  edit .env  &&  docker compose -f docker-compose.coordination.yml up -d
 # Secrets come from a git-ignored .env (never commit real credentials).
+# Data volumes bind onto /mnt/data/docker-volumes (see ADR 0013); that path must exist
+# before `up` -- see migrate-coordination-volumes-to-nvme.sh for a fresh-attach or
+# migrate-from-eMMC flow.
+#
+# CAUTION: this file and docker-compose.portainer.yml both live in infra/swarm/ with no
+# explicit Compose project name set, so Compose infers the SAME project ("swarm") for
+# both -- confirmed live: `down` on this file logs Portainer as an "orphan container" of
+# this project. `down` alone leaves it alone; NEVER add --remove-orphans to a command
+# against this file, or it will stop (not delete data from, but stop) the separately
+# managed Portainer container. See ADR 0013's Consequences section.
 services:
   postgres:
     image: postgres:17
@@ -38,6 +48,21 @@ services:
       timeout: 5s
       retries: 5
 
+# Bind-mounted to the NVMe (see ADR 0013) rather than Docker's default data-root, which
+# stays on the 28GB eMMC. Docker's local driver only applies driver_opts at volume
+# *creation* -- these directories must already exist and the old (eMMC-backed) named
+# volumes must already be removed before `up` recreates them, or this config is
+# silently ignored. See infra/swarm/migrate-coordination-volumes-to-nvme.sh.
 volumes:
   postgres-data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /mnt/data/docker-volumes/postgres-data
   redis-data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /mnt/data/docker-volumes/redis-data

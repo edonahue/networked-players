@@ -15,6 +15,12 @@
 # Portainer locks its init endpoint. If missed, just restart it (resets the
 # 5-minute window, keeps all other state): docker compose -f
 # docker-compose.portainer.yml restart portainer
+#
+# CAUTION: this file and docker-compose.coordination.yml both live in infra/swarm/ with
+# no explicit Compose project name set, so Compose infers the SAME project ("swarm") for
+# both. NEVER run a command with --remove-orphans against either file while the other
+# stack is up -- it will stop the other stack's containers (data volumes survive, but
+# services go down unexpectedly). See ADR 0013's Consequences section.
 services:
   portainer:
     image: portainer/portainer-ce:2.39.4-alpine
