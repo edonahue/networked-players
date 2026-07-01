@@ -51,11 +51,14 @@ recovery from a hang, independent of diagnosing what caused any specific past in
 3. **Four concrete changes in `harden.yml`:** persistent journald storage (the
    forensic-trail fix); an armed hardware watchdog (`RuntimeWatchdogSec`, confirmed most
    reliably via a deliberate, operator-timed reboot, not forced by the playbook itself);
-   Docker log rotation plus `live-restore: true` (prevents unbounded log growth from
-   long-lived containers, and lets future `dockerd` restarts avoid killing running
-   containers); lower `vm.swappiness` (protects latency-sensitive services like
-   Postgres/Redis/SSH from being swapped out during a long batch job, given ample free
-   RAM either way).
+   Docker log rotation (prevents unbounded log growth from long-lived containers); lower
+   `vm.swappiness` (protects latency-sensitive services like Postgres/Redis/SSH from
+   being swapped out during a long batch job, given ample free RAM either way).
+   `live-restore: true` was tried and reverted: confirmed live that it's a hard,
+   documented incompatibility with Docker Swarm mode (this host has Swarm active per
+   ADR 0007) — `dockerd` failed to start entirely with it set, taking
+   Postgres/Redis/Portainer down until fixed. Not revisited unless Swarm mode itself is
+   ever dropped from this host.
 4. **Heavy jobs run under `systemd-run`** (`scripts/run-ingest-supervised.sh`) instead of
    a bare backgrounded shell process — survives session/SSH disconnects, gets real cgroup
    resource accounting (`Nice`, I/O scheduling class, a generous `MemoryMax` safety
@@ -92,9 +95,10 @@ measurement step that decides whether and how to build one, not the parallelism 
 
 `journalctl --list-boots` succeeds and lists more than the current boot after a
 deliberate reboot; `systemctl show | grep Watchdog` reports a non-zero
-`RuntimeWatchdogUSec` (armed) after that same reboot; `docker info` reports
-`Live Restore Enabled: true` and the configured logging driver/opts;
-`sysctl vm.swappiness` reports `10`; `scripts/run-ingest-supervised.sh` run against the
+`RuntimeWatchdogUSec` (armed) after that same reboot; `docker info` reports the
+configured logging driver/opts and `Live Restore Enabled: false` (deliberate, see
+Decision above); `sysctl vm.swappiness` reports `10`;
+`scripts/run-ingest-supervised.sh` run against the
 short profiling job (Step 5) completes cleanly and is visible via
 `journalctl -u <unit>`, confirming the supervised pattern works before trusting it for
 a real multi-hour run.

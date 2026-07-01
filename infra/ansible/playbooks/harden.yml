@@ -64,13 +64,18 @@
       become: true
       notify: Reexec systemd manager
 
-    - name: Configure Docker log rotation and live-restore
+    - name: Configure Docker log rotation
       # No daemon.json existed before this -- Docker ran with unbounded json-file logs
-      # (a real risk for the long-lived Postgres/Redis/Portainer containers) and no
-      # live-restore (a dockerd restart would otherwise kill running containers).
+      # (a real risk for the long-lived Postgres/Redis/Portainer containers).
       # NOTE: log-opts only apply to newly CREATED containers -- already-running
       # containers need to be recreated (via deploy-coordination.sh/deploy-portainer.sh)
       # to pick up rotation retroactively. This playbook does not force that.
+      #
+      # live-restore is deliberately NOT set here: confirmed live on this host that
+      # it's a hard, documented incompatibility with Docker Swarm mode (this host has
+      # Swarm active per ADR 0007) -- dockerd fails to start entirely with it set
+      # ("Active: failed", exit code 1), taking Postgres/Redis/Portainer down with it
+      # until fixed. Not something to reach for again on a Swarm-active host.
       ansible.builtin.copy:
         dest: /etc/docker/daemon.json
         mode: "0644"
@@ -80,8 +85,7 @@
             "log-opts": {
               "max-size": "10m",
               "max-file": "3"
-            },
-            "live-restore": true
+            }
           }
       become: true
       notify: Restart docker
