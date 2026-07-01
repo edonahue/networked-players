@@ -259,15 +259,17 @@ health playbook).
       that silently killed the script on a 403 response instead of reporting it,
       and a plain `uv sync` (missing `--extra dev`) that uninstalled `ruff`/`mypy`/
       `pytest` [`scripts/`]
-- [ ] Obtain a real monthly snapshot manifest and confirm the object URL resolves —
-      **blocked**: a real manifest for `20260601` was generated, but the release
-      object's URL returns HTTP 403 `AccessDenied` from Discogs' S3, confirmed via
-      direct `curl` against both the object and the bucket root (not snapshot- or
-      network-specific — `docs/DISCOGS_INGESTION.md` already anticipated this from
-      earlier research on unrelated infrastructure). Per `docs/OPERATOR_SETUP.md`'s
-      "S3 access note," next step is obtaining the current official URL from
-      Discogs' own data page and editing the manifest's `url`/`source_url`
-      [`packages/catalog`]
+- [x] Obtain a real monthly snapshot manifest and confirm the object URL resolves —
+      the direct-S3 URL scheme returned a bucket-level `AccessDenied` (confirmed via
+      `curl` against both the object and the bucket root — not snapshot- or
+      network-specific). Root cause: Discogs moved public dump hosting behind a
+      Cloudflare proxy at `data.discogs.com` with a query-string download endpoint,
+      not the old direct path. Fixed in `manifest.py`'s `object_url()`; verified the
+      real `20260601` releases object exists and is fetchable (11,099,074,063 bytes,
+      matching `DATA_SIZING.md`'s estimate) via a headers-only GET, without
+      downloading it. `check-ingest-feasibility.sh`'s HEAD-based size probe also
+      needed fixing — the new host never returns `Content-Length` on `HEAD`
+      [`packages/catalog`, `scripts/`]
 - [ ] Run a bounded `MAX_RELEASES` slice end to end (`make ingest`) and record
       observed elapsed time, peak memory, and input/output bytes per
       `docs/OPERATOR_SETUP.md`'s "Measure each run" [`packages/catalog`,
