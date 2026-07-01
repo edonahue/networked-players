@@ -18,6 +18,26 @@ A third-party full-fidelity conversion of the August 2025 dumps used Zstandard P
 
 The releases object dominates both conversion time and storage. Parquet's main benefit here is selective queries and partitioned processing, not a dramatic reduction from already-compressed gzip XML.
 
+## June 2026 real observation vs. the August 2025 benchmark
+
+All four dump kinds for the June 2026 snapshot were downloaded and directly counted
+(`zcat | grep -c`) on the coordination host, 2026-07-01 — a real, independent
+corroboration of the table above, not a projection. Byte-size growth uses decimal
+GB/MB (10^9/10^6 bytes) throughout for a consistent comparison:
+
+| Dump | Aug 2025 records | Jun 2026 records | Record growth | Aug 2025 `.xml.gz` | Jun 2026 `.xml.gz` | Size growth |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Labels | 2,274,143 | 2,383,990 | +4.8% | 83 MB | 89.0 MB | +2.3% |
+| Artists | 9,174,834 | 10,081,427 | +9.9% | 441 MB | 490.1 MB | +6.0% |
+| Masters | 2,459,324 | 2,560,991 | +4.1% | 577 MB | 614.3 MB | +1.5% |
+| Releases | 18,412,655 | ~19,113,243 (May 2026 count, not independently recounted this session) | ~+3.8% | 10.74 GB | 11.10 GB | +3.3% |
+
+Record-count growth consistently outpaces byte-size growth across all three
+independently recounted kinds (labels, artists, masters) — average record size is
+shrinking slightly, not growing, as the catalog expands. Field-by-field structure
+for all four kinds, grounded in this same real download, is documented in
+[`docs/discogs-data/`](discogs-data/README.md).
+
 ## June 2026 planning envelope
 
 The most recently corroborated count available at the time of writing was the May 2026 release dump at 19,113,243 releases, about 3.8% above the August 2025 benchmark. Scaling bytes by record count is imperfect because record complexity changes, so use ranges rather than a point estimate.
