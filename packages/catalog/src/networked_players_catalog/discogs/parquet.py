@@ -7,6 +7,7 @@ import json
 import shutil
 import uuid
 from collections.abc import Iterable
+from concurrent.futures import Future, ThreadPoolExecutor
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -101,6 +102,32 @@ def _write_rows(
     return path
 
 
+def _write_chunk(
+    staging_root: Path,
+    part: int,
+    release_rows: list[dict[str, object]],
+    track_rows: list[dict[str, object]],
+    credit_rows: list[dict[str, object]],
+) -> list[dict[str, object]]:
+    chunk_files: list[dict[str, object]] = []
+    for table_name, rows in (
+        ("releases", release_rows),
+        ("tracks", track_rows),
+        ("credits", credit_rows),
+    ):
+        path = _write_rows(staging_root, table_name, part, rows)
+        if path is not None:
+            chunk_files.append(
+                {
+                    "path": str(path.relative_to(staging_root)),
+                    "size_bytes": path.stat().st_size,
+                    "sha256": _sha256(path),
+                    "rows": len(rows),
+                }
+            )
+    return chunk_files
+
+
 def write_release_dataset(
     records: Iterable[ParsedRelease],
     output_root: Path,
@@ -110,7 +137,19 @@ def write_release_dataset(
     chunk_releases: int = 5_000,
     overwrite: bool = False,
 ) -> dict[str, object]:
-    """Write versioned, partitioned Parquet with bounded in-memory buffers."""
+    """Write versioned, partitioned Parquet with bounded in-memory buffers.
+
+    Each chunk's write (Parquet/zstd serialization + SHA-256 hashing) runs on a
+    single background thread while the next chunk continues accumulating on the
+    main thread. Real profiling (docs/DATA_SIZING.md) found writing is ~9% of
+    total time -- pyarrow's C++ write path and hashlib's C-backed digest updates
+    both release the GIL for their actual work, so this is genuine overlap, not
+    just thread-switching overhead. At most one write is ever in flight (a fresh
+    set of row lists starts accumulating immediately after handing the completed
+    chunk to the executor; the *next* flush waits for that prior write's result
+    before submitting again), so memory stays bounded exactly like before --
+    this never turns into an unbounded background queue.
+    """
 
     if chunk_releases <= 0:
         raise ValueError("chunk_releases must be positive")
@@ -126,39 +165,34 @@ def write_release_dataset(
     track_rows: list[dict[str, object]] = []
     credit_rows: list[dict[str, object]] = []
     part = 0
-
-    def flush() -> None:
-        nonlocal part
-        for table_name, rows in (
-            ("releases", release_rows),
-            ("tracks", track_rows),
-            ("credits", credit_rows),
-        ):
-            path = _write_rows(staging_root, table_name, part, rows)
-            if path is not None:
-                files.append(
-                    {
-                        "path": str(path.relative_to(staging_root)),
-                        "size_bytes": path.stat().st_size,
-                        "sha256": _sha256(path),
-                        "rows": len(rows),
-                    }
-                )
-            rows.clear()
-        part += 1
+    pending: Future[list[dict[str, object]]] | None = None
 
     try:
-        for record in records:
-            release_rows.append(record.release)
-            track_rows.extend(record.tracks)
-            credit_rows.extend(record.credits)
-            counts["releases"] += 1
-            counts["tracks"] += len(record.tracks)
-            counts["credits"] += len(record.credits)
-            if len(release_rows) >= chunk_releases:
-                flush()
-        if release_rows or track_rows or credit_rows:
-            flush()
+        with ThreadPoolExecutor(max_workers=1) as executor:
+
+            def start_flush() -> None:
+                nonlocal release_rows, track_rows, credit_rows, part, pending
+                if pending is not None:
+                    files.extend(pending.result())
+                pending = executor.submit(
+                    _write_chunk, staging_root, part, release_rows, track_rows, credit_rows
+                )
+                release_rows, track_rows, credit_rows = [], [], []
+                part += 1
+
+            for record in records:
+                release_rows.append(record.release)
+                track_rows.extend(record.tracks)
+                credit_rows.extend(record.credits)
+                counts["releases"] += 1
+                counts["tracks"] += len(record.tracks)
+                counts["credits"] += len(record.credits)
+                if len(release_rows) >= chunk_releases:
+                    start_flush()
+            if release_rows or track_rows or credit_rows:
+                start_flush()
+            if pending is not None:
+                files.extend(pending.result())
         if counts["releases"] == 0:
             raise ValueError("no release records were parsed")
 

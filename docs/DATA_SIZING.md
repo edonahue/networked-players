@@ -158,8 +158,28 @@ The re-profiled run confirms the fix landed exactly where intended: `_text()`'s
 essentially unchanged (no regression introduced elsewhere). Revised full-scale
 projection: 19,113,243 releases ÷ ~1,018/sec ≈ **~5.2 hours** for a full unbounded
 parse (down from the earlier ~12.4 hour estimate) — still a real, single-threaded
-estimate, not a claim that a full run has completed. Multiprocess parallelism
-remains a distinct, larger follow-up decision, not pursued in this pass.
+estimate, not a claim that a full run has completed.
+
+### "Light" parallelism explored before the full run (2026-07-01)
+
+Two ideas were checked for real, low-risk wins before committing to the full run.
+Larger `--chunk-releases` (already a CLI flag, no code change) was tested directly
+and made **no measurable difference** — write cost is proportional to data volume,
+not per-flush overhead, so this isn't worth reaching for. Overlapping each chunk's
+Parquet write (with SHA-256 hashing) on a background thread while the next chunk
+continues accumulating on the main thread (`parquet.py`'s `write_release_dataset`,
+bounded to one write in flight — never an unbounded queue) *did* help, matching the
+predicted ceiling: 50.6s → 48.5s on the same 50,000-release workload, ~4.2%,
+consistent with pyarrow's/hashlib's C code releasing the GIL for the real work while
+some Python-level overhead (building the Arrow table from row dicts) doesn't. Output
+verified identical (same row counts, zero invariant violations) — a pure performance
+change.
+
+Both of these targeted the ~9% of time spent writing. The real remaining lever is
+the transform stage (`_append_artists`/`_append_track_tree`/`_artist_row`, ~68% of
+time, three of four host cores idle throughout) — genuine multiprocess parallelism
+there, not attempted in this pass, is where the next big win would come from if the
+now-revised ~5 hour full-parse time still isn't fast enough in practice.
 
 ## Recommended 1 TB NVMe policy
 
