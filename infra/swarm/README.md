@@ -19,6 +19,9 @@ docker compose -f docker-compose.coordination.yml up -d
 docker compose -f docker-compose.coordination.yml ps
 ```
 
+Or run `./deploy-coordination.sh`, which generates `.env` automatically with a
+random password (idempotent, safe to re-run).
+
 Both services bind to loopback only.
 
 ## Portainer (Swarm visibility)

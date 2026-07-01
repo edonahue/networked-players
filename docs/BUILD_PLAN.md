@@ -39,31 +39,58 @@ renders 2–3 curated paths from a synthetic, privacy-safe artifact
 (`public/data/challenge.v1.json`) shaped to match the real credits schema so a real
 artifact can drop in later without code changes. Deploy configuration
 (`wrangler.jsonc`) targets `networked-players.com`, but `npm run deploy` has not
-been run — nothing is live at the domain yet.
+been run — nothing is live at the domain yet. The coordination host's Node
+mismatch (Node 20.20.2 vs. `package.json`'s `>=22` requirement) blocked local
+dev/test until `scripts/setup-node-playwright.sh` installed Node 22 via `nvm`
+plus Playwright's Chromium and Debian system deps; `.github/workflows/web.yml`
+now runs format check, Astro check/build, and the Playwright smoke test on every
+pull request and push to `main`.
 
-**Infrastructure and hardware (`infra/`).** Real bring-up began last night. Per
+**Infrastructure and hardware (`infra/`).** Real bring-up began the night of
+2026-06-30/07-01 and has continued since. Per
 [ADR 0007](decisions/0007-zimaboard-swarm-manager.md): the ZimaBoard 832
 coordination host has Docker Engine installed, and Docker Swarm was initialized on
 it — it is now an independently verifiable single-manager Swarm (`docker info`
 reports `Swarm: active`, `Is Manager: true`). A worker join token was captured to
 local, git-ignored storage (`local/swarm/`) so joining a Pi later is a one-line
-operation. However: **the four Raspberry Pi 3B workers are not yet provisioned**
-(not flashed, not joined — the token is just waiting for them), and **the
-coordination Postgres/Redis compose stack described in `infra/swarm/
-docker-compose.coordination.yml` was explicitly deferred**, not brought up, because
-the host's storage can't safely absorb it yet (see below). A local, git-ignored
-Ansible inventory now exists, and tooling to run the read-only health playbook
-locally was added (`infra/ansible/run-health-local.sh`), but a full pass has not
-been achieved: the playbook's free-space assertion is expected to fail honestly
-against the current root filesystem until storage is expanded.
+operation. Portainer CE now runs alongside it as a plain (non-Swarm) container for
+Swarm visibility, bound to the host's Tailscale IP rather than a loopback-only SSH
+tunnel ([ADR 0008](decisions/0008-portainer-swarm-visibility.md), revised by
+[ADR 0009](decisions/0009-portainer-tailscale-access.md)); Tailscale itself was
+installed and this host joined to the operator's tailnet
+(`scripts/install-tailscale.sh`). The GitHub CLI (`gh`) was installed for
+persistent, tunnel-friendly GitHub authentication (`scripts/install-gh-cli.sh`),
+and a standalone DuckDB CLI was installed for inspecting Parquet/DuckDB output
+directly on the host (`scripts/install-duckdb-cli.sh`, since the `duckdb` Python
+package ships no CLI entry point). However: **the four Raspberry Pi 3B workers are
+not yet provisioned** (not flashed, not joined — the token is just waiting for
+them). The coordination Postgres/Redis compose stack described in
+`infra/swarm/docker-compose.coordination.yml`, originally deferred by ADR 0007
+pending the NVMe, is now **running** — brought up ahead of the NVMe via the new
+`infra/swarm/deploy-coordination.sh` once the eMMC's real headroom recovered (see
+below); see
+[ADR 0010](decisions/0010-coordination-stack-ahead-of-nvme.md). A local,
+git-ignored Ansible inventory now exists, and tooling to run the read-only health
+playbook locally was added (`infra/ansible/run-health-local.sh`), but a full pass
+has not been achieved: the playbook's free-space assertion has not been re-run
+against the recovered headroom this session, so its outcome remains unverified.
 
-**The current hard blocker:** the coordination host's eMMC root filesystem (28 GB)
-was at 97% full as of the bootstrap session, with no NVMe attached yet. An NVMe
-install was planned as an immediate follow-up. Until it's attached and the local
-data root (Postgres/Redis volumes, `local/raw/`, `local/processed/`) is relocated
-onto it, the host cannot satisfy the ~250 GB ingest floor in `docs/DATA_SIZING.md`,
-and a new guarded pre-flight script (`scripts/check-ingest-feasibility.sh`, wired
-to `make ingest-check`) is expected to defer any real ingestion attempt until then.
+**The current hard blocker — narrower than it was.** The coordination host's eMMC
+root filesystem (28 GB) was at 97% full (817 MB free) as of the ADR 0007
+bootstrap session, with no NVMe attached. As of this session, `df` shows the eMMC
+with roughly 11.5 GB free — real, verified headroom recovered without the NVMe
+ever having been attached; the cause of that recovery was not diagnosed this
+session. An NVMe install remains planned. Until it's attached and the local data
+root is fully relocated onto it, the host still cannot satisfy the ~250 GB ingest
+floor in `docs/DATA_SIZING.md`, and the guarded pre-flight script
+(`scripts/check-ingest-feasibility.sh`, wired to `make ingest-check`) is still
+expected to defer any real bulk-ingestion attempt (Milestone 3) until then. That
+250 GB floor, however, was never a requirement for the two lightweight, bounded
+Postgres/Redis containers — per
+[ADR 0010](decisions/0010-coordination-stack-ahead-of-nvme.md), the recovered
+headroom is judged sufficient for those specifically, and they are now running on
+the eMMC ahead of the NVMe, with a known migration obligation once it lands (see
+ADR 0010's revisit trigger).
 
 **Hardware.** One ZimaBoard 832 coordination host: OS flashed and confirmed
 64-bit; Docker Swarm manager active; storage expansion (NVMe) pending. Four
@@ -75,18 +102,23 @@ uptime contract per architecture direction.
 | --- | --- |
 | Discogs release ingestion (code) | Working, tested, synthetic-only |
 | Discogs release ingestion (real run) | Not attempted; currently infeasible (storage) |
-| Private seed import | Not implemented |
+| Private seed import | Not implemented; operator's private export is ready — Milestone 4 not yet scoped |
 | One-hop graph expansion | Not implemented |
 | `graph-core` | Placeholder (README only) |
 | `game-rules` | Placeholder (README only) |
 | `workers` | Placeholder (README only) |
 | `apps/api` | Placeholder (README only) |
-| `apps/web` | Early implementation, synthetic demo, not deployed |
+| `apps/web` | Early implementation, synthetic demo, not deployed; Node 22 + Playwright fixed locally, CI added |
 | Coordination host OS + inventory | Done (64-bit confirmed, local inventory created) |
-| Coordination host storage | Blocked: eMMC ~97% full, NVMe pending |
+| Coordination host storage | eMMC headroom recovered (~11.5 GB free); NVMe still not attached; 250 GB bulk-ingest floor still unmet |
 | Docker Swarm manager | Active (ADR 0007) |
 | Worker join token | Captured locally, unused |
-| Coordination compose (Postgres/Redis) | Deferred (ADR 0007), not running |
+| Portainer | Running (ADR 0008), Tailscale-bound (ADR 0009) |
+| Tailscale (coordination host) | Installed, connected to operator's tailnet |
+| Coordination compose (Postgres/Redis) | Running (ADR 0010), brought up ahead of NVMe; loopback-bound |
+| DuckDB CLI (host) | Installed (`scripts/install-duckdb-cli.sh`) |
+| GitHub CLI (`gh`, host) | Installed (`scripts/install-gh-cli.sh`) |
+| `apps/web` CI | Added (`.github/workflows/web.yml`): format/check/build/Playwright smoke |
 | Health playbook | Runnable locally; free-space check expected to fail |
 | Raspberry Pi workers | Not yet provisioned |
 | `networked-players.com` | Registered, not live |
@@ -103,14 +135,20 @@ of a track if scope grows.
 
 ### Goal
 Resolve the current storage blocker and get a full, passing health check on the
-real host before it carries any more ingestion or Swarm-manager weight.
+real host before it carries any more ingestion or Swarm-manager weight. (The
+coordination Postgres/Redis stack no longer waits on this milestone — it was
+brought up ahead of the NVMe per
+[ADR 0010](decisions/0010-coordination-stack-ahead-of-nvme.md); this milestone
+still gates Milestone 3's bulk ingest, which needs the full 250 GB floor.)
 
 ### Depends on
 Nothing outstanding — this is the current critical path.
 
 ### Tasks
 - [ ] Attach the NVMe and relocate the local data root off the eMMC (Postgres/Redis
-      volumes, `local/raw/`, `local/processed/`) — the explicit next step named in
+      volumes — now live and must be migrated, not recreated, per
+      [ADR 0010](decisions/0010-coordination-stack-ahead-of-nvme.md) — plus
+      `local/raw/`, `local/processed/`) — the explicit next step named in
       [ADR 0007](decisions/0007-zimaboard-swarm-manager.md)'s revisit trigger
       [`infra/`]
 - [ ] Set a revised free-space floor for the coordination host's Ansible
@@ -125,12 +163,19 @@ Nothing outstanding — this is the current critical path.
 
 ### Goal
 Complete cluster bring-up: the manager is already live; provision and join the
-four Pi workers. Independent of Milestones 3–9 (the data/graph track) — can proceed
-in parallel with them once Milestone 1's NVMe work is done, since Postgres/Redis
-placement should wait for stable storage.
+four Pi workers. Independent of Milestones 3–9 (the data/graph track) — can
+proceed in parallel with them. The coordination Postgres/Redis stack (see Tasks
+below) no longer waits on Milestone 1's NVMe work — per
+[ADR 0010](decisions/0010-coordination-stack-ahead-of-nvme.md), the recovered
+eMMC headroom is judged sufficient for those two lightweight containers, distinct
+from the 250 GB bulk-ingest floor Milestone 3 still needs. This milestone's
+sessions also picked up host tooling (Portainer, Tailscale, Node/Playwright,
+DuckDB CLI, `apps/web` CI, GitHub CLI) that isn't strictly Swarm-specific; folded
+in below as its own block rather than a new milestone, per current decision.
 
 ### Depends on
-Milestone 1 for the compose-stack task below; otherwise already underway.
+Nothing outstanding for the tasks below. The compose-stack task no longer depends
+on Milestone 1 (see ADR 0010); Pi provisioning was never gated by it.
 
 ### Tasks
 - [x] Initialize a single-manager Swarm on the coordination host — done, see
@@ -146,11 +191,35 @@ Milestone 1 for the compose-stack task below; otherwise already underway.
       and confirm placement on each worker via `docker service ps` [`infra/swarm`]
 - [ ] Remove the smoke service; drain, remove, and rejoin one worker as a recovery
       drill, confirming it rejoins cleanly [`infra/swarm`]
-- [ ] Once Milestone 1 relocates storage, bring up
-      `docker-compose.coordination.yml` and confirm Postgres/Redis stay pinned to
-      the manager (placement constraint), never scheduled onto a Pi [`infra/swarm`]
+- [x] Bring up `docker-compose.coordination.yml` (Postgres 17 + Redis 7-alpine) —
+      done ahead of Milestone 1/NVMe, using recovered eMMC headroom, via
+      `infra/swarm/deploy-coordination.sh`; see
+      [ADR 0010](decisions/0010-coordination-stack-ahead-of-nvme.md). Both
+      services are loopback-bound (confirmed via `ss -tln`) and pinned to the
+      manager simply by running as a plain `docker compose` container here, not
+      a Swarm service — there is no Swarm placement constraint to confirm, since
+      this was never designed as a Swarm stack [`infra/swarm`]
 - [ ] Back up manager state (Swarm CA/raft) and locally test its recovery
       procedure
+
+### Host tooling (this session, folded into this milestone)
+- [x] Deploy Portainer CE as a plain (non-Swarm) container for Swarm visibility,
+      bound to the coordination host's Tailscale IP — see
+      [ADR 0008](decisions/0008-portainer-swarm-visibility.md) and
+      [ADR 0009](decisions/0009-portainer-tailscale-access.md) [`infra/swarm`]
+- [x] Install Tailscale on the coordination host and join it to the operator's
+      tailnet (`scripts/install-tailscale.sh`) — see ADR 0009
+- [x] Fix `apps/web`'s Node version mismatch (host had Node 20.20.2;
+      `package.json` requires `>=22`) and install Playwright's Chromium plus
+      Debian system deps via `scripts/setup-node-playwright.sh`
+- [x] Install a standalone DuckDB CLI via `scripts/install-duckdb-cli.sh` (the
+      `duckdb` Python package ships no CLI entry point)
+- [x] Add `.github/workflows/web.yml` to validate `apps/web` (format check,
+      Astro check/build, Playwright smoke test) on pull requests and pushes to
+      `main`
+- [x] Install the GitHub CLI (`gh`) via `scripts/install-gh-cli.sh` for
+      persistent, tunneling-friendly GitHub authentication from the coordination
+      host
 
 ## Milestone 3: Real ingestion dry run (ROADMAP 3)
 
@@ -183,6 +252,13 @@ defer this milestone until then.
 ### Goal
 Build the missing mechanism that turns the user's private Discogs Spinner export
 into a local, never-published release-ID seed the pipeline can consume.
+
+**Status note (flag only, not scoped here):** the operator's private Discogs
+collection export is ready (or nearly ready) as of this session — this milestone
+is well-motivated to start as soon as Milestone 3 lands a real dataset to select
+from. Its seed-input contract, import mechanism, and ADR are intentionally left
+fully unscoped by this note; see Tasks and "Possible ADR" below for what's still
+undecided.
 
 ### Depends on
 Milestone 3 (a real normalized release/credit dataset to select from).
@@ -478,9 +554,12 @@ Milestones 2, 11, 12, 13, and 14, all complete.
 - **The NVMe relocation is tonight's real critical-path discovery, not a
   hypothetical.** Per [ADR 0007](decisions/0007-zimaboard-swarm-manager.md), the
   coordination host's eMMC was at 97% full with no NVMe attached during the first
-  bootstrap session — this is why Milestone 1 now gates Milestone 3 (ingestion) and
-  part of Milestone 2 (the compose stack). Revisit ADR 0007 itself once the NVMe is
-  attached; its own revisit trigger names this exact moment.
+  bootstrap session — this is why Milestone 1 gates Milestone 3 (ingestion). It no
+  longer gates any part of Milestone 2: the coordination compose stack was brought
+  up ahead of the NVMe once the eMMC's real headroom recovered, per
+  [ADR 0010](decisions/0010-coordination-stack-ahead-of-nvme.md) — see "Where
+  things stand today" above. Revisit ADR 0007 itself once the NVMe is attached;
+  its own revisit trigger names this exact moment.
 - **ADR triggers flagged in this document are not self-enforcing.** Confirm the
   corresponding ADR actually got filed when a flagged milestone lands — don't
   pre-assign ADR numbers here, since unrelated work (like ADR 0007) can take the

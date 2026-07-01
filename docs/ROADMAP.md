@@ -23,7 +23,7 @@ See [docs/BUILD_PLAN.md](BUILD_PLAN.md) for the granular, code-level task breakd
 
 ## 2. Swarm skeleton
 
-- [ ] Initialize a single-manager Swarm
+- [x] Initialize a single-manager Swarm
 - [ ] Build or select one harmless AMD64/ARM64 image
 - [ ] Run a bounded service on each worker
 - [ ] Remove and rejoin one worker
