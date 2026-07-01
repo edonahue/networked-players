@@ -47,7 +47,12 @@ MAX_RELEASES="${MAX_RELEASES:-2000}"
 FLOOR_MB="${FLOOR_MB:-500}"
 MANIFEST_DIR="${MANIFEST_DIR:-local/manifests}"
 
-free_mb() { echo $(( $(df -Pk . | awk 'NR==2{print $4}') / 1024 )); }
+# Defaults to the current directory (the eMMC-resident repo root -- correct for the
+# uv-sync headroom check below, since .venv lives there). The dump-size safety check
+# further down must instead check `local`, which is bind-mounted onto the NVMe (see
+# ADR 0013) -- local/raw and local/processed are where the real bytes land, not the
+# repo root, and the two filesystems now have very different free space.
+free_mb() { local path="${1:-.}"; echo $(( $(df -Pk "${path}" | awk 'NR==2{print $4}') / 1024 )); }
 
 # --- Step 1: uv environment bootstrap, guarded and measured ---
 if ! command -v uv >/dev/null 2>&1; then
@@ -59,10 +64,11 @@ fi
 
 before_mb=$(free_mb)
 if (( before_mb < FLOOR_MB + 200 )); then
-  echo "ABORT: ${before_mb} MB free is not enough headroom for uv's first-run" >&2
-  echo "       environment sync (toolchain + pyarrow/duckdb/lxml, plausibly" >&2
-  echo "       150-300MB) on top of the ${FLOOR_MB}MB floor. Defer until the" >&2
-  echo "       NVMe is mounted." >&2
+  echo "ABORT: ${before_mb} MB free on the repo root's filesystem is not enough" >&2
+  echo "       headroom for uv's first-run environment sync (toolchain plus" >&2
+  echo "       pyarrow/duckdb/lxml, plausibly 150-300MB) on top of the" >&2
+  echo "       ${FLOOR_MB}MB floor. .venv lives on this host's eMMC, not the" >&2
+  echo "       NVMe local/ is bind-mounted onto -- free up space there first." >&2
   exit 1
 fi
 echo "==> ${before_mb} MB free; syncing the uv project environment..."
@@ -78,13 +84,22 @@ if (( after_mb < FLOOR_MB )); then
 fi
 
 # --- Step 2: manifest (now cheap -- env already exists) ---
-YEAR="${SNAPSHOT:0:4}"
-RELEASES_FILE="discogs_${SNAPSHOT}_releases.xml.gz"
-SOURCE_URL="https://discogs-data-dumps.s3.us-west-2.amazonaws.com/data/${YEAR}/${RELEASES_FILE}"
 MANIFEST_PATH="${MANIFEST_DIR}/discogs-${SNAPSHOT}.json"
 
 mkdir -p "${MANIFEST_DIR}"
 uv run networked-players-catalog manifest --snapshot "${SNAPSHOT}" --output "${MANIFEST_PATH}"
+
+# The manifest (built by manifest.py's object_url()) is the single source of truth
+# for the real download URL -- read it back rather than reconstructing it here a
+# second time. This exact duplication (a separate hardcoded URL in this script vs.
+# run-ingest.sh vs. manifest.py) is what let this script keep pointing at the old,
+# now-dead S3 path after manifest.py itself was already fixed.
+SOURCE_URL="$(uv run python3 -c "
+import json
+with open('${MANIFEST_PATH}') as f:
+    manifest = json.load(f)
+print(next(o['url'] for o in manifest['objects'] if o['kind'] == 'releases'))
+")"
 
 # --- Step 3: dump size via a headers-only GET, no body read ---
 # data.discogs.com (confirmed 2026-07-01) is a Cloudflare download proxy: HEAD
@@ -118,19 +133,19 @@ if [[ -z "${content_length}" ]] || ! [[ "${content_length}" =~ ^[0-9]+$ ]]; then
   exit 0
 fi
 
-free_bytes=$(( $(free_mb) * 1024 * 1024 ))
+free_bytes=$(( $(free_mb local) * 1024 * 1024 ))
 floor_bytes=$(( FLOOR_MB * 1024 * 1024 ))
 required_bytes=$(( content_length + floor_bytes ))
 human() { numfmt --to=iec-i --suffix=B "$1" 2>/dev/null || echo "${1} B"; }
 
 echo "==> Releases object size : $(human "${content_length}")"
-echo "==> Free space here      : $(human "${free_bytes}")"
+echo "==> Free space on local/ : $(human "${free_bytes}")"
 echo "==> Required (object + ${FLOOR_MB}MB floor): $(human "${required_bytes}")"
 
 if (( free_bytes < required_bytes )); then
   echo "==> NOT SAFE: short by $(human $(( required_bytes - free_bytes )))."
   echo "==> DEFERRED: no download attempted, nothing partial left behind."
-  echo "    Re-run after the NVMe is attached and local/ moves there."
+  echo "    Free up space on /mnt/data (local/ is bind-mounted there; see ADR 0013)."
   exit 0
 fi
 
