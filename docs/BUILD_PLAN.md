@@ -245,17 +245,28 @@ Prove the existing, tested catalog pipeline against a real Discogs snapshot on r
 hardware — the prerequisite for every later graph milestone.
 
 ### Depends on
-Milestone 1's NVMe relocation — now satisfied (see [ADR 0013](decisions/0013-nvme-storage-layout.md)
+Milestone 1's NVMe relocation — satisfied (see [ADR 0013](decisions/0013-nvme-storage-layout.md)
 and "Where things stand today" above; 869.2 GB free, confirmed via the Ansible
-health playbook). `scripts/check-ingest-feasibility.sh` has not yet been run for
-real against this host; that's this milestone's own first task, not something to
-claim done in advance.
+health playbook).
 
 ### Tasks
-- [ ] Run `make ingest-check` (wraps `scripts/check-ingest-feasibility.sh`) and
-      confirm it reports enough free space before attempting anything real
-      [`scripts/`]
-- [ ] Obtain a real monthly snapshot manifest and confirm the object URL resolves
+- [x] Run `make ingest-check` (wraps `scripts/check-ingest-feasibility.sh`) and
+      confirm it reports enough free space before attempting anything real —
+      confirmed 2026-07-01 against `SNAPSHOT=20260601` (11 GB free on the eMMC,
+      well above the script's own 500MB/700MB floors; this check runs before the
+      manifest, so it isn't gated on the 250 GB NVMe floor). Along the way, found
+      and fixed two real bugs in the script itself: a `set -euo pipefail` pipeline
+      that silently killed the script on a 403 response instead of reporting it,
+      and a plain `uv sync` (missing `--extra dev`) that uninstalled `ruff`/`mypy`/
+      `pytest` [`scripts/`]
+- [ ] Obtain a real monthly snapshot manifest and confirm the object URL resolves —
+      **blocked**: a real manifest for `20260601` was generated, but the release
+      object's URL returns HTTP 403 `AccessDenied` from Discogs' S3, confirmed via
+      direct `curl` against both the object and the bucket root (not snapshot- or
+      network-specific — `docs/DISCOGS_INGESTION.md` already anticipated this from
+      earlier research on unrelated infrastructure). Per `docs/OPERATOR_SETUP.md`'s
+      "S3 access note," next step is obtaining the current official URL from
+      Discogs' own data page and editing the manifest's `url`/`source_url`
       [`packages/catalog`]
 - [ ] Run a bounded `MAX_RELEASES` slice end to end (`make ingest`) and record
       observed elapsed time, peak memory, and input/output bytes per
