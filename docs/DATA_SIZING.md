@@ -115,6 +115,52 @@ existing 10–25 GB planning range. This is a projection from one sample of the 
 first N releases, not a new authoritative figure; record complexity may not be
 uniform across the full dataset.
 
+### Real profiling: where parse time actually goes (2026-07-01)
+
+A completed, supervised 50,000-release run (`scripts/run-ingest-supervised.sh`, see
+ADR 0014) measured **537.6 releases/sec** (50,000 releases in 93s of parse time,
+validated clean) — the first fully-completed real run at this scale, not a partial
+one. A `cProfile` pass over the same 50,000-release sample (real, not projected;
+~26% slower under profiling overhead but the *relative* breakdown is what matters)
+found the bottleneck is **neither decompression nor Parquet writing**:
+
+| Stage | Self time (profiled run) | Share of total |
+| --- | ---: | ---: |
+| `_text()` (`lxml` `element.findtext()` calls) | 62.6s | **54%** |
+| Credit-row assembly (`_append_artists`/`_append_track_tree`/`_artist_row`, itself calling `_text()` repeatedly) | ~23s | 20% |
+| The `iterparse` loop itself (`_iter_handle`) | 10.8s | 9% |
+| Parquet writing (`_write_rows`/`pyarrow.write_table`) | ~6s | 5% |
+| gzip decompression (`zlib`/`gzip`) | <1s | <1% |
+
+3.95 million calls to `_text()` — about 79 per release — each doing a fresh linear
+scan of an element's children via `findtext()`, even when multiple fields are read
+off the same element. This directly informs the parallelism question this section
+previously left open: file-splitting for parallel decompression/tokenization would
+target a stage that's already cheap (<1% of total time); the real cost is in
+Python-level field extraction, addressed first as an algorithmic fix (same
+single-threaded design, no multiprocessing complexity) before any parallelism work
+is reconsidered.
+
+**The algorithmic fix, implemented and measured the same day:** `releases.py` now
+builds a `{tag: text}` map once per XML element (`_child_text_map`) instead of one
+`findtext()` linear scan per field. Confirmed correct (full test suite passes
+unchanged — this is a pure performance change, not a behavior change) and confirmed
+fast, two independent ways:
+
+| Measurement | Before | After | Speedup |
+| --- | ---: | ---: | ---: |
+| Real wall-clock, 50,000 releases (parse stage only) | 93.0s (537.6/sec) | ~49s (~1,018/sec) | **~1.9x** |
+| `cProfile` total, same 50,000-release sample | 115.9s | 64.6s | **1.79x** |
+
+The re-profiled run confirms the fix landed exactly where intended: `_text()`'s
+62.6s (54%) is gone, replaced by `_child_text_map` + `_text_from_map` at a combined
+~11s — an 82% reduction in that specific cost, with every other stage's timing
+essentially unchanged (no regression introduced elsewhere). Revised full-scale
+projection: 19,113,243 releases ÷ ~1,018/sec ≈ **~5.2 hours** for a full unbounded
+parse (down from the earlier ~12.4 hour estimate) — still a real, single-threaded
+estimate, not a claim that a full run has completed. Multiprocess parallelism
+remains a distinct, larger follow-up decision, not pursued in this pass.
+
 ## Recommended 1 TB NVMe policy
 
 The planned 1 TB project NVMe is sufficient with explicit retention:

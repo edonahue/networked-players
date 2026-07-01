@@ -18,8 +18,25 @@ class ParsedRelease:
     credits: list[dict[str, object]]
 
 
-def _text(element: etree._Element, path: str) -> str | None:
-    value = element.findtext(path)
+def _child_text_map(element: etree._Element) -> dict[str, str | None]:
+    """Direct children's text, keyed by tag; first occurrence wins (matches
+    findtext()'s semantics). Real profiling (docs/DATA_SIZING.md, 2026-07-01) found
+    repeated per-field findtext() calls -- each a fresh linear scan of an element's
+    children -- were 54% of total parse time on a 50,000-release sample. Building
+    this map once per element and doing O(1) lookups against it removes that
+    redundant rescanning; only the tag names this parser actually reads are ever
+    looked up, so unread children (e.g. a release's <labels>, <formats>, <notes>)
+    are harmlessly present in the map but never touched.
+    """
+    result: dict[str, str | None] = {}
+    for child in element:
+        if child.tag not in result:
+            result[child.tag] = child.text
+    return result
+
+
+def _text_from_map(text_map: dict[str, str | None], tag: str) -> str | None:
+    value = text_map.get(tag)
     if value is None:
         return None
     stripped = value.strip()
@@ -47,7 +64,8 @@ def _artist_row(
     track_position: str | None,
     track_title: str | None,
 ) -> dict[str, object]:
-    artist_id = _integer(_text(artist, "id"))
+    text_map = _child_text_map(artist)
+    artist_id = _integer(_text_from_map(text_map, "id"))
     return {
         "snapshot_date": snapshot_date,
         "release_id": release_id,
@@ -57,11 +75,11 @@ def _artist_row(
         "track_title": track_title,
         "credit_scope": scope,
         "artist_id": artist_id,
-        "name": _text(artist, "name"),
-        "anv": _text(artist, "anv"),
-        "join_text": _text(artist, "join"),
-        "role_text": _text(artist, "role"),
-        "credited_tracks_text": _text(artist, "tracks"),
+        "name": _text_from_map(text_map, "name"),
+        "anv": _text_from_map(text_map, "anv"),
+        "join_text": _text_from_map(text_map, "join"),
+        "role_text": _text_from_map(text_map, "role"),
+        "credited_tracks_text": _text_from_map(text_map, "tracks"),
         "is_linked": artist_id is not None,
         "playable_identity": artist_id is not None,
     }
@@ -109,8 +127,9 @@ def _append_track_tree(
 
     track_index = len(tracks)
     track_path = ".".join(str(component) for component in path)
-    position = _text(track, "position")
-    title = _text(track, "title")
+    text_map = _child_text_map(track)
+    position = _text_from_map(text_map, "position")
+    title = _text_from_map(text_map, "title")
     tracks.append(
         {
             "snapshot_date": snapshot_date,
@@ -120,7 +139,7 @@ def _append_track_tree(
             "track_path": track_path,
             "position": position,
             "title": title,
-            "duration": _text(track, "duration"),
+            "duration": _text_from_map(text_map, "duration"),
         }
     )
     _append_artists(
@@ -169,18 +188,19 @@ def parse_release_element(
     release_id = int(element.attrib["id"])
     master = element.find("master_id")
     master_id = _integer(master.text.strip() if master is not None and master.text else None)
+    text_map = _child_text_map(element)
     release = {
         "snapshot_date": snapshot_date,
         "release_id": release_id,
         "status": element.attrib.get("status"),
-        "title": _text(element, "title"),
-        "country": _text(element, "country"),
-        "released": _text(element, "released"),
+        "title": _text_from_map(text_map, "title"),
+        "country": _text_from_map(text_map, "country"),
+        "released": _text_from_map(text_map, "released"),
         "master_id": master_id,
         "master_is_main_release": (
             master is not None and master.attrib.get("is_main_release", "false").lower() == "true"
         ),
-        "data_quality": _text(element, "data_quality"),
+        "data_quality": _text_from_map(text_map, "data_quality"),
         "source_url": source_url,
     }
 
