@@ -1,6 +1,6 @@
 # Networked Players
 
-**Networked Players** is an open, evidence-first music-credit graph project and game. It explores the people who connect recorded music: performers, writers, producers, engineers, arrangers, designers, and other credited contributors.
+**Networked Players** is an open, evidence-first music-credit graph project and game. It explores the people who connect recorded music: performers, writers, producers, engineers, arrangers, designers, and other credited contributors to a release.
 
 The project begins with a private collection-derived seed, expands through adjacent catalog credits, and produces documented paths between artists and releases. The first public experience will be static-first so it remains useful even when the home lab is offline.
 
