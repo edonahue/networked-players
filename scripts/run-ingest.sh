@@ -33,9 +33,7 @@ MANIFEST_DIR="${MANIFEST_DIR:-local/manifests}"
 RAW_DIR="${RAW_DIR:-local/raw/discogs}"
 PROCESSED_DIR="${PROCESSED_DIR:-local/processed/discogs}"
 
-YEAR="${SNAPSHOT:0:4}"
 RELEASES_FILE="discogs_${SNAPSHOT}_releases.xml.gz"
-SOURCE_URL="https://discogs-data-dumps.s3.us-west-2.amazonaws.com/data/${YEAR}/${RELEASES_FILE}"
 MANIFEST_PATH="${MANIFEST_DIR}/discogs-${SNAPSHOT}.json"
 
 mkdir -p "${MANIFEST_DIR}" "${RAW_DIR}" "${PROCESSED_DIR}"
@@ -47,8 +45,19 @@ uv run networked-players-catalog manifest \
   --snapshot "${SNAPSHOT}" \
   --output "${MANIFEST_PATH}"
 
+# The manifest (built by manifest.py's object_url()) is the single source of truth
+# for the real download URL -- read it back for provenance rather than
+# reconstructing it here a second time, so recorded provenance always matches
+# whatever was actually fetched, even if the URL scheme changes again later.
+SOURCE_URL="$(uv run python3 -c "
+import json
+with open('${MANIFEST_PATH}') as f:
+    manifest = json.load(f)
+print(next(o['url'] for o in manifest['objects'] if o['kind'] == 'releases'))
+")"
+
 echo "==> 2/4 download (releases)"
-echo "    If this fails with HTTP 403, edit ${MANIFEST_PATH} to use an officially obtained URL."
+echo "    If this fails, edit ${MANIFEST_PATH}'s url/source_url to a working link."
 uv run networked-players-catalog download \
   --manifest "${MANIFEST_PATH}" \
   --kind releases \

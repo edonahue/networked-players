@@ -32,7 +32,7 @@ uv run networked-players-catalog download \
 uv run networked-players-catalog parse-releases \
   --input local/raw/discogs/20260501/discogs_20260501_releases.xml.gz \
   --snapshot 20260501 \
-  --source-url https://discogs-data-dumps.s3.us-west-2.amazonaws.com/data/2026/discogs_20260501_releases.xml.gz \
+  --source-url "https://data.discogs.com/?download=data%2F2026%2Fdiscogs_20260501_releases.xml.gz" \
   --output-root local/processed/discogs \
   --max-releases 10000
 

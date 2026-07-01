@@ -86,18 +86,34 @@ MANIFEST_PATH="${MANIFEST_DIR}/discogs-${SNAPSHOT}.json"
 mkdir -p "${MANIFEST_DIR}"
 uv run networked-players-catalog manifest --snapshot "${SNAPSHOT}" --output "${MANIFEST_PATH}"
 
-# --- Step 3: dump size via HEAD, no download ---
-echo "==> HEAD ${SOURCE_URL}"
-headers="$(curl -sIL --max-time 30 "${SOURCE_URL}" || true)"
-# grep exits 1 when there's no content-length line (e.g. a 403 body with no such
-# header) -- under `set -euo pipefail` that would otherwise kill the script right
-# here, silently, before the "no size available" handling below ever runs.
-content_length="$(printf '%s' "${headers}" | grep -i '^content-length:' | tail -1 | tr -d '\r' | awk '{print $2}' || true)"
+# --- Step 3: dump size via a headers-only GET, no body read ---
+# data.discogs.com (confirmed 2026-07-01) is a Cloudflare download proxy: HEAD
+# requests never return Content-Length there, and Range requests are not honored
+# either (a byte-range request still gets a full 200, not 206). Opening a real GET
+# and reading only the headers -- never calling .read() -- is the only cheap way to
+# learn the size; urlopen() returns as soon as headers arrive, so this is fast
+# regardless of the object's actual size.
+echo "==> Checking object size (headers-only GET): ${SOURCE_URL}"
+content_length="$(SOURCE_URL="${SOURCE_URL}" uv run python3 -c '
+import os
+import urllib.error
+import urllib.request
 
-if [[ -z "${content_length}" ]]; then
-  echo "==> Could not determine the object size (HEAD failed, or no"
-  echo "    Content-Length -- this network sometimes gets HTTP 403 from"
-  echo "    Discogs' S3; see docs/OPERATOR_SETUP.md). Treating as UNSAFE."
+url = os.environ["SOURCE_URL"]
+request = urllib.request.Request(
+    url, headers={"User-Agent": "networked-players-catalog/feasibility-check"}
+)
+try:
+    with urllib.request.urlopen(request, timeout=30) as response:
+        print(response.headers.get("Content-Length", ""))
+except (urllib.error.URLError, OSError):
+    print("")
+' || true)"
+
+if [[ -z "${content_length}" ]] || ! [[ "${content_length}" =~ ^[0-9]+$ ]]; then
+  echo "==> Could not determine the object size (network error, or no"
+  echo "    Content-Length in the response -- see docs/OPERATOR_SETUP.md's data"
+  echo "    access note). Treating as UNSAFE."
   echo "==> DEFERRED: no download attempted. Manifest saved at ${MANIFEST_PATH}."
   exit 0
 fi

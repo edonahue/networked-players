@@ -8,8 +8,13 @@ from dataclasses import asdict, dataclass
 from enum import StrEnum
 from pathlib import Path
 from typing import Any
+from urllib.parse import quote
 
-DEFAULT_BASE_URL = "https://discogs-data-dumps.s3.us-west-2.amazonaws.com"
+# Discogs moved public dump hosting off the raw S3 bucket path behind a Cloudflare
+# proxy at data.discogs.com; the old direct-path scheme now returns a bucket-level
+# AccessDenied (confirmed 2026-07-01, not network- or snapshot-specific). The new
+# host serves objects via a query-string download endpoint, not a literal path.
+DEFAULT_BASE_URL = "https://data.discogs.com"
 SNAPSHOT_RE = re.compile(r"^\d{8}$")
 
 
@@ -74,10 +79,14 @@ def validate_snapshot_date(snapshot_date: str) -> None:
         )
 
 
+def dump_filename(snapshot_date: str, kind: DumpKind) -> str:
+    return f"discogs_{snapshot_date}_{kind.value}.xml.gz"
+
+
 def object_url(snapshot_date: str, kind: DumpKind, base_url: str = DEFAULT_BASE_URL) -> str:
     validate_snapshot_date(snapshot_date)
-    filename = f"discogs_{snapshot_date}_{kind.value}.xml.gz"
-    return f"{base_url.rstrip('/')}/data/{snapshot_date[:4]}/{filename}"
+    key = f"data/{snapshot_date[:4]}/{dump_filename(snapshot_date, kind)}"
+    return f"{base_url.rstrip('/')}/?download={quote(key, safe='')}"
 
 
 def build_manifest(
@@ -95,7 +104,8 @@ def build_manifest(
     objects = []
     for kind in DumpKind:
         url = object_url(snapshot_date, kind, base_url)
-        objects.append(DumpObject(kind=kind.value, url=url, filename=url.rsplit("/", 1)[-1]))
+        filename = dump_filename(snapshot_date, kind)
+        objects.append(DumpObject(kind=kind.value, url=url, filename=filename))
     return SnapshotManifest(
         manifest_version=1,
         source="Discogs monthly data dumps",

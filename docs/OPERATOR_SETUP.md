@@ -72,15 +72,22 @@ uv run networked-players-catalog download   --manifest local/manifests/discogs-2
 uv run networked-players-catalog parse-releases \
   --input local/raw/discogs/20260501/discogs_20260501_releases.xml.gz \
   --snapshot 20260501 \
-  --source-url https://discogs-data-dumps.s3.us-west-2.amazonaws.com/data/2026/discogs_20260501_releases.xml.gz \
+  --source-url "https://data.discogs.com/?download=data%2F2026%2Fdiscogs_20260501_releases.xml.gz" \
   --output-root local/processed/discogs --max-releases 10000
 uv run networked-players-catalog validate --dataset local/processed/discogs/snapshot=20260501
 ```
 
-**S3 access note:** the default URL follows the public monthly naming convention, but
-Discogs' storage provider rejects listing/direct access from some networks (HTTP 403). If
-the download fails, obtain the official URL through Discogs' documented channel and edit the
-manifest JSON's `url`/`source_url` — the parser does not change.
+(`scripts/run-ingest.sh` reads the real URL back out of the generated manifest rather than
+hardcoding it a second time, so `--source-url` always matches whatever was actually fetched.)
+
+**Data access note:** Discogs serves monthly dumps from `data.discogs.com` (a
+Cloudflare-fronted download proxy, not a direct S3 path) — `manifest.py`'s `object_url()`
+constructs this automatically. An older direct-S3 URL scheme (`discogs-data-dumps.s3.us-west-2.amazonaws.com`)
+returned a bucket-level `AccessDenied` as of 2026-07-01, confirmed not network- or
+snapshot-specific; if Discogs' hosting changes again and downloads start failing, obtain
+the current official URL from [Discogs' data page](https://www.discogs.com/data/) and
+either edit the manifest JSON's `url`/`source_url` directly, or pass `manifest`'s
+`--base-url` flag.
 
 ## Measure each run
 
