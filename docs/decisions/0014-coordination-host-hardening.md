@@ -104,6 +104,20 @@ daemon restart** — the actual, confirmed recovery path is re-running the deplo
 scripts. Root cause not investigated further here (out of scope for this pass); worth
 revisiting if it recurs.
 
+A second real consequence of the same `live-restore` failure: because Ansible handlers
+run in notification order and a failed handler stops the rest for that host, the
+`Restart docker` handler's failure meant the later-notified `Reload sysctl` handler
+never ran in that pass — the swappiness *file* was written correctly by its task, but
+`vm.swappiness` stayed at the default `60` at runtime until `sudo sysctl --system` was
+run by hand. A bare playbook re-run would **not** have fixed this on its own either:
+once the file already matches, its task reports `ok` rather than `changed`, so it
+wouldn't re-notify the handler. Independent hardening changes probably shouldn't be
+coupled this way — a future revision of `harden.yml` could apply each change's effect
+within its own task (e.g. `ansible.builtin.command: sysctl --system` immediately
+after writing the file, not via a deferred handler) rather than relying on
+handler-notification order across unrelated changes. Not restructured in this pass;
+noted for the next time this playbook is touched.
+
 ## Validation
 
 `journalctl --list-boots` succeeds and lists more than the current boot after a
