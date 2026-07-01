@@ -2,6 +2,8 @@
 
 The roadmap follows the study lab's phase gates while favoring one complete vertical path over broad parallel scaffolding.
 
+See [docs/BUILD_PLAN.md](BUILD_PLAN.md) for the granular, code-level task breakdown from today's state through MVP to production.
+
 ## 0. Foundation
 
 - [x] Select the Networked Players name
