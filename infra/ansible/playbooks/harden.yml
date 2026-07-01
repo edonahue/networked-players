@@ -7,14 +7,18 @@
 # read-only health check. Scoped to `coordinators` only -- the Pi workers aren't
 # provisioned yet and will need their own, differently-scoped hardening pass later.
 #
-# Requires root for every task here (become: true). With the local inventory's
-# `ansible_connection: local`, that means a local sudo prompt:
+# become is set per-task below, NOT at the play level. Gathering facts needs no
+# root at all (reading /proc, /sys, hostname is all normal-user-readable); a blanket
+# play-level `become: true` applies to the implicit facts-gathering task too, which
+# on this host hung indefinitely on a `sudo -S ... password:` prompt during a real
+# run (confirmed live, not a hypothetical) even with --ask-become-pass already
+# supplied. Scoping become to only the tasks that truly need root avoids that and is
+# the least-privilege default anyway.
 #
 # Usage (from infra/ansible/, with a real local inventory):
 #   ansible-playbook -i inventories/local/hosts.yml playbooks/harden.yml --ask-become-pass
 - name: Coordination host hardening
   hosts: coordinators
-  become: true
   gather_facts: true
   tasks:
     - name: Ensure the persistent journal directory exists
@@ -27,6 +31,7 @@
         owner: root
         group: systemd-journal
         mode: "2755"
+      become: true
 
     - name: Set explicit persistent journald storage
       ansible.builtin.lineinfile:
@@ -34,6 +39,7 @@
         regexp: "^#?Storage="
         line: "Storage=persistent"
         insertafter: "^\\[Journal\\]"
+      become: true
       notify: Restart systemd-journald
 
     - name: Arm the hardware watchdog (RuntimeWatchdogSec)
@@ -46,6 +52,7 @@
         regexp: "^#?RuntimeWatchdogSec="
         line: "RuntimeWatchdogSec=30"
         insertafter: "^\\[Manager\\]"
+      become: true
       notify: Reexec systemd manager
 
     - name: Arm the reboot-time watchdog (RebootWatchdogSec)
@@ -54,6 +61,7 @@
         regexp: "^#?RebootWatchdogSec="
         line: "RebootWatchdogSec=10min"
         insertafter: "^\\[Manager\\]"
+      become: true
       notify: Reexec systemd manager
 
     - name: Configure Docker log rotation and live-restore
@@ -75,6 +83,7 @@
             },
             "live-restore": true
           }
+      become: true
       notify: Restart docker
 
     - name: Lower vm.swappiness for latency-sensitive services
@@ -88,6 +97,7 @@
         mode: "0644"
         content: |
           vm.swappiness=10
+      become: true
       notify: Reload sysctl
 
     - name: Report hardening status
@@ -104,18 +114,22 @@
       ansible.builtin.systemd:
         name: systemd-journald
         state: restarted
+      become: true
 
     - name: Reexec systemd manager
       # Applies most system.conf changes without a reboot; hardware watchdog arming
       # is most reliably confirmed after a real reboot (see ADR 0014's Validation).
       ansible.builtin.command: systemctl daemon-reexec
+      become: true
       changed_when: true
 
     - name: Restart docker
       ansible.builtin.systemd:
         name: docker
         state: restarted
+      become: true
 
     - name: Reload sysctl
       ansible.builtin.command: sysctl --system
+      become: true
       changed_when: true
