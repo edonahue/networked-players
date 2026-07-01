@@ -69,31 +69,43 @@ package ships no CLI entry point). However: **the four Raspberry Pi 3B workers a
 not yet provisioned** (not flashed, not joined — the token is just waiting for
 them). The coordination Postgres/Redis compose stack described in
 `infra/swarm/docker-compose.coordination.yml`, originally deferred by ADR 0007
-pending the NVMe, is now **running** — brought up ahead of the NVMe via the new
-`infra/swarm/deploy-coordination.sh` once the eMMC's real headroom recovered (see
-below); see
-[ADR 0010](decisions/0010-coordination-stack-ahead-of-nvme.md). A local,
-git-ignored Ansible inventory now exists, and tooling to run the read-only health
-playbook locally was added (`infra/ansible/run-health-local.sh`), but a full pass
-has not been achieved: the playbook's free-space assertion has not been re-run
-against the recovered headroom this session, so its outcome remains unverified.
+pending the NVMe, came up ahead of the NVMe via `infra/swarm/deploy-coordination.sh`
+once the eMMC's real headroom recovered (see
+[ADR 0010](decisions/0010-coordination-stack-ahead-of-nvme.md)), and has since been
+migrated onto the NVMe along with the rest of the local data root (see below). A
+local, git-ignored Ansible inventory now exists; the read-only health playbook
+(`infra/ansible/run-health-local.sh`) has been re-run against the real, mounted NVMe
+and passes cleanly — no longer an unverified outcome.
 
-**The current hard blocker — narrower than it was.** The coordination host's eMMC
-root filesystem (28 GB) was at 97% full (817 MB free) as of the ADR 0007
-bootstrap session, with no NVMe attached. As of this session, `df` shows the eMMC
-with roughly 11.5 GB free — real, verified headroom recovered without the NVMe
-ever having been attached; the cause of that recovery was not diagnosed this
-session. An NVMe install remains planned. Until it's attached and the local data
-root is fully relocated onto it, the host still cannot satisfy the ~250 GB ingest
-floor in `docs/DATA_SIZING.md`, and the guarded pre-flight script
-(`scripts/check-ingest-feasibility.sh`, wired to `make ingest-check`) is still
-expected to defer any real bulk-ingestion attempt (Milestone 3) until then. That
-250 GB floor, however, was never a requirement for the two lightweight, bounded
-Postgres/Redis containers — per
-[ADR 0010](decisions/0010-coordination-stack-ahead-of-nvme.md), the recovered
-headroom is judged sufficient for those specifically, and they are now running on
-the eMMC ahead of the NVMe, with a known migration obligation once it lands (see
-ADR 0010's revisit trigger).
+**Storage (`/mnt/data`).** The planned 1TB NVMe is now physically attached, wiped,
+partitioned (ext4, one partition spanning the disk), and mounted at `/mnt/data`
+(916G) — see [ADR 0013](decisions/0013-nvme-storage-layout.md). The repo's `local/`
+directory is bind-mounted onto `/mnt/data/networked-players/local/` (revised from an
+initial symlink approach after a `git rebase` was found to silently delete an
+untracked symlink sitting where a previously-tracked file used to live — a bind mount
+is immune to that failure mode, since `local/` stays a plain directory to git at every
+point in its history). The coordination stack's `postgres-data`/`redis-data` Docker
+volumes are migrated off the 28GB eMMC onto `/mnt/data/docker-volumes/`
+(`infra/swarm/migrate-coordination-volumes-to-nvme.sh`), confirmed `Up (healthy)`
+post-migration. The Ansible free-space floor now targets `/mnt/data` instead of the
+eMMC root (`disk_floor_mount` in `infra/ansible/playbooks/health.yml`), and
+`run-health-local.sh` reports **869.2 GB free** against the coordinator's 250GB floor
+— a real, passing measurement, not a projection.
+
+**The former hard blocker — now resolved.** The coordination host's eMMC root
+filesystem (28 GB) was at 97% full (817 MB free) as of the ADR 0007 bootstrap
+session, with no NVMe attached; it later recovered to roughly 11.5 GB free without
+the NVMe ever having been attached (cause never diagnosed) and remains there today
+— relocating `local/` didn't materially change eMMC headroom, since its prior
+contents were tiny. What actually resolved the blocker is the NVMe itself: now
+attached, mounted at `/mnt/data`, and holding the relocated data root (see
+"Storage" above and [ADR 0013](decisions/0013-nvme-storage-layout.md)), the host
+has **869.2 GB free** against `docs/DATA_SIZING.md`'s ~250 GB ingest floor —
+confirmed via the Ansible health playbook, not projected. The guarded pre-flight
+script (`scripts/check-ingest-feasibility.sh`, wired to `make ingest-check`) should
+now judge a real bulk-ingestion attempt (Milestone 3) feasible; this has not yet
+been run for real, so that remains Milestone 3's own first task, not something
+this section can claim in advance.
 
 **Hardware.** One ZimaBoard 832 coordination host: OS flashed and confirmed
 64-bit; Docker Swarm manager active; storage expansion (NVMe) pending. Four
@@ -113,7 +125,7 @@ uptime contract per architecture direction.
 | `apps/api` | Placeholder (README only) |
 | `apps/web` | Early implementation, real curated demo (ADR 0012); deploys via Cloudflare Git integration on push to `main`; Node 22 + Playwright fixed locally, CI added |
 | Coordination host OS + inventory | Done (64-bit confirmed, local inventory created) |
-| Coordination host storage | eMMC headroom recovered (~11.5 GB free); NVMe still not attached; 250 GB bulk-ingest floor still unmet |
+| Coordination host storage | NVMe attached and mounted at `/mnt/data` (916G ext4, ADR 0013); `local/` and coordination volumes relocated; 250 GB bulk-ingest floor met (869 GB free, confirmed) |
 | Docker Swarm manager | Active (ADR 0007) |
 | Worker join token | Captured locally, unused |
 | Portainer | Running (ADR 0008), Tailscale-bound (ADR 0009) |
@@ -122,7 +134,7 @@ uptime contract per architecture direction.
 | DuckDB CLI (host) | Installed (`scripts/install-duckdb-cli.sh`) |
 | GitHub CLI (`gh`, host) | Installed (`scripts/install-gh-cli.sh`) |
 | `apps/web` CI | Added (`.github/workflows/web.yml`): format/check/build/Playwright smoke |
-| Health playbook | Runnable locally; free-space check expected to fail |
+| Health playbook | Passing (confirmed 2026-07-01: 869.2 GB free on `/mnt/data`) |
 | Raspberry Pi workers | Not yet provisioned |
 | `networked-players.com` | Registered, not live |
 
@@ -148,16 +160,18 @@ still gates Milestone 3's bulk ingest, which needs the full 250 GB floor.)
 Nothing outstanding — this is the current critical path.
 
 ### Tasks
-- [ ] Attach the NVMe and relocate the local data root off the eMMC (Postgres/Redis
-      volumes — now live and must be migrated, not recreated, per
-      [ADR 0010](decisions/0010-coordination-stack-ahead-of-nvme.md) — plus
-      `local/raw/`, `local/processed/`) — the explicit next step named in
-      [ADR 0007](decisions/0007-zimaboard-swarm-manager.md)'s revisit trigger
-      [`infra/`]
-- [ ] Set a revised free-space floor for the coordination host's Ansible
-      `host_vars` reflecting the new mount [`infra/ansible`]
-- [ ] Re-run `./infra/ansible/run-health-local.sh` and confirm the free-space
-      assertion passes [`infra/ansible`]
+- [x] Attach the NVMe and relocate the local data root off the eMMC (Postgres/Redis
+      volumes — migrated via `infra/swarm/migrate-coordination-volumes-to-nvme.sh`,
+      not recreated — plus `local/raw/`, `local/processed/` via a bind-mounted
+      `local/`) — the explicit next step named in
+      [ADR 0007](decisions/0007-zimaboard-swarm-manager.md)'s revisit trigger; see
+      [ADR 0013](decisions/0013-nvme-storage-layout.md) [`infra/`]
+- [x] Set a revised free-space floor for the coordination host's Ansible
+      `host_vars` reflecting the new mount (`disk_floor_mount: /mnt/data`,
+      `min_free_gb: 250`) [`infra/ansible`]
+- [x] Re-run `./infra/ansible/run-health-local.sh` and confirm the free-space
+      assertion passes — confirmed 2026-07-01, 869.2 GB free on `/mnt/data`
+      [`infra/ansible`]
 - [ ] Write and locally test coordination-host recovery notes (state backup /
       restore path for the eventual compose-managed Postgres + Redis volumes)
       [`infra/`, local-only notes]
@@ -231,8 +245,11 @@ Prove the existing, tested catalog pipeline against a real Discogs snapshot on r
 hardware — the prerequisite for every later graph milestone.
 
 ### Depends on
-Milestone 1's NVMe relocation. `scripts/check-ingest-feasibility.sh` is expected to
-defer this milestone until then.
+Milestone 1's NVMe relocation — now satisfied (see [ADR 0013](decisions/0013-nvme-storage-layout.md)
+and "Where things stand today" above; 869.2 GB free, confirmed via the Ansible
+health playbook). `scripts/check-ingest-feasibility.sh` has not yet been run for
+real against this host; that's this milestone's own first task, not something to
+claim done in advance.
 
 ### Tasks
 - [ ] Run `make ingest-check` (wraps `scripts/check-ingest-feasibility.sh`) and

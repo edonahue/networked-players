@@ -45,17 +45,28 @@ Two things were confirmed rather than assumed before deciding:
 3. **No LUKS encryption.** This data is already excluded from git via `data/private/`
    and `local/`; physical drive theft is not in this project's current threat model, and
    encryption would add an unlock step to every headless reboot.
-4. **Replace the repo's `local/` directory with a symlink** to
-   `/mnt/data/networked-players/local/`. Every script and CLI argument in the repo
-   already references `local/...` as a relative path (`docs/OPERATOR_SETUP.md`), so this
-   requires zero code changes anywhere. Discovered while doing this: git does **not**
-   transparently resolve a tracked file through a newly-symlinked parent directory —
-   the previously-tracked `local/.gitignore` showed as deleted, and the new `local`
-   symlink showed as a separate untracked entry, once `local/` stopped being a real
-   directory. `.gitignore`'s old `local/**` / `!local/.gitignore` pair (meant to keep a
-   placeholder file tracked) is replaced with a single `local` line that ignores the
-   path itself regardless of whether it's a directory or a symlink, and the stale
-   `local/.gitignore` blob is untracked (`git rm --cached`).
+4. **Bind-mount `/mnt/data/networked-players/local/` onto the repo's `local/`
+   directory** via `/etc/fstab` (`none ... bind,noatime,nofail`). Every script and CLI
+   argument in the repo already references `local/...` as a relative path
+   (`docs/OPERATOR_SETUP.md`), so this requires zero code changes anywhere.
+   **Revised from an initial symlink approach**, based on two things discovered in
+   practice, not in advance: first, git does not transparently resolve a tracked file
+   through a newly-symlinked parent directory — the previously-tracked
+   `local/.gitignore` showed as deleted, and the new `local` symlink showed as a
+   separate untracked entry, once `local/` stopped being a real directory (worked around
+   at the time by replacing `.gitignore`'s `local/**` / `!local/.gitignore` pair with a
+   single `local` line and untracking the stale blob). Second, and decisively: a routine
+   `git rebase` onto an updated `origin/main` — needed only because unrelated commits had
+   landed upstream in the meantime — **silently deleted the `local` symlink itself**
+   while replaying the commit that untracked `local/.gitignore`. `git status --short`
+   stayed clean throughout (an ignored path's absence isn't a "change"), so this was a
+   silent failure mode, not a loud one; the actual data on `/mnt/data` was never at risk
+   since only the checkout-side pointer vanished, but any ingest script run afterward
+   would have silently recreated `local/` as an empty directory back on the 28GB eMMC
+   instead of erroring. A bind mount keeps `local/` a real directory to every tool,
+   including git, at every point in its history — this class of bug becomes structurally
+   impossible rather than merely documented against. The single-line `local` `.gitignore`
+   entry from the symlink era is unaffected and still correct.
 5. **Migrate only the coordination stack's `postgres-data`/`redis-data` Docker volumes**
    onto `/mnt/data/docker-volumes/`, via a new `infra/swarm/migrate-coordination-volumes-to-nvme.sh`
    and a `driver_opts` bind-mount edit to `docker-compose.coordination.yml`'s top-level
@@ -73,11 +84,15 @@ Two things were confirmed rather than assumed before deciding:
 The coordination host now has real, documented headroom for the bulk Discogs dump
 pipeline (`docs/DATA_SIZING.md`'s ~250GB floor, Milestone 3 in `docs/BUILD_PLAN.md`),
 though Milestone 3 itself is not being started by this ADR — only the storage
-prerequisite it was blocked on. `local/` being a symlink is transparent to every script
-in the repo (plain relative-path opens resolve through it identically to a real
-directory) but **not** to git, which needed the `.gitignore` fix described above — a
-future contributor running `ls -la local` should not be surprised either way;
-`docs/OPERATOR_SETUP.md` now says so explicitly. The eMMC's `docker`
+prerequisite it was blocked on. `local/` being a bind mount is transparent to every
+script in the repo and to git (it's a plain directory throughout, never a distinct
+filesystem object type) — a future contributor running `ls -la local` sees a normal
+directory, not a symlink arrow; `docs/OPERATOR_SETUP.md` now says so explicitly. Unlike
+a symlink, a bind mount that isn't yet mounted (e.g. immediately after a fresh boot
+before `/etc/fstab` is processed, or before `/mnt/data` itself is mounted) leaves
+`local/` present as an *empty* real directory rather than a missing/broken path —
+worth knowing if a script ever appears to silently write nothing where data was
+expected; `mount | grep local` is the way to check. The eMMC's `docker`
 data-root still holds every other container's images/volumes (including CasaOS's own
 apps); this ADR does not relieve eMMC pressure from those. `/mnt/data` is unencrypted, so
 if the threat model changes (e.g. the host leaves a trusted physical location), that
@@ -97,9 +112,9 @@ operator, not this ADR, should make.
 
 ## Validation
 
-`df -h /mnt/data` reports the ext4 filesystem correctly mounted; `git status --short`
-shows no unexpected changes after the `local/` symlink swap and the `.gitignore` fix
-(confirmed: `git check-ignore -v local` reports it ignored); `docker compose -f
+`df -h /mnt/data` reports the ext4 filesystem correctly mounted; `mount | grep
+'on .../local'` shows the bind mount active; `git status --short` shows no unexpected
+changes (confirmed: `git check-ignore -v local` reports it ignored); `docker compose -f
 infra/swarm/docker-compose.coordination.yml ps` shows both services `Up (healthy)` on
 the NVMe-backed volumes post-migration, with `ss -tln` still showing loopback-only
 binding (unchanged from ADR 0010); `find /mnt/data/docker-volumes -maxdepth 2` shows
