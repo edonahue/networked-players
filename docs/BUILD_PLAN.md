@@ -18,16 +18,22 @@ without one, per AGENTS.md: do not claim an application, service, cluster
 deployment, full dump conversion, benchmark, or public dataset exists until the
 repository contains evidence for it.
 
-**Catalog ingestion (`packages/catalog`).** Working and tested. The `manifest`,
-`download`, `parse-releases`, and `validate` CLI commands are implemented and
-covered by synthetic tests (`make check` green). The release parser streams gzip
-XML into bounded Zstandard Parquet release/track/credit tables, preserving PAN/ANV
-and evidence per `data/contracts/discogs-release-v2.md` (schema v2). Artists,
-labels, and masters parsers remain intentionally deferred. No real Discogs dump has
-been downloaded or parsed on real hardware yet, and — as of last night's bootstrap
-session — a real attempt is currently expected to be infeasible on the coordination
-host until its storage is expanded (see Infrastructure, below). No private seed has
-been imported; no one-hop expansion and no artist graph exist yet, anywhere.
+**Catalog ingestion (`packages/catalog`).** Working and tested, and — as of
+2026-07-01 — proven against real data on real hardware. The `manifest`, `download`,
+`parse-releases`, and `validate` CLI commands are implemented and covered by
+synthetic tests (`make check` green). The release parser streams gzip XML into
+bounded Zstandard Parquet release/track/credit tables, preserving PAN/ANV and
+evidence per `data/contracts/discogs-release-v2.md` (schema v2). Artists, labels,
+and masters parsers remain intentionally deferred. A real bounded slice
+(`MAX_RELEASES=10000`) of the June 2026 snapshot ran end to end on the coordination
+host: real 11GB download (checksummed), 10,000 releases / 59,009 tracks / 91,202
+credits parsed, `validate` reporting zero invariant violations — see
+[Milestone 3](#milestone-3-real-ingestion-dry-run-roadmap-3) and
+`docs/DATA_SIZING.md`'s "First real measurement." Discogs also moved public dump
+hosting behind a Cloudflare proxy (`data.discogs.com`) with a different URL scheme
+than the old direct-S3 path; `manifest.py` was updated accordingly. The operator's
+real private seed was imported ([ADR 0011](decisions/0011-private-seed-contract.md));
+no one-hop expansion and no artist graph exist yet.
 
 **Graph, game rules, workers, API (`packages/graph-core`, `packages/game-rules`,
 `packages/workers`, `apps/api`).** Placeholders. Each has only a README describing
@@ -116,7 +122,7 @@ uptime contract per architecture direction.
 | Area | State |
 | --- | --- |
 | Discogs release ingestion (code) | Working, tested, synthetic-only |
-| Discogs release ingestion (real run) | Not attempted; currently infeasible (storage) |
+| Discogs release ingestion (real run) | Done for a bounded 10,000-release slice (2026-07-01); validated clean; full unbounded parse not yet decided |
 | Private seed import | Implemented (ADR 0011); operator's real seed imported locally |
 | One-hop graph expansion | Not implemented |
 | `graph-core` | Placeholder (README only) |
@@ -270,15 +276,24 @@ health playbook).
       downloading it. `check-ingest-feasibility.sh`'s HEAD-based size probe also
       needed fixing — the new host never returns `Content-Length` on `HEAD`
       [`packages/catalog`, `scripts/`]
-- [ ] Run a bounded `MAX_RELEASES` slice end to end (`make ingest`) and record
+- [x] Run a bounded `MAX_RELEASES` slice end to end (`make ingest`) and record
       observed elapsed time, peak memory, and input/output bytes per
-      `docs/OPERATOR_SETUP.md`'s "Measure each run" [`packages/catalog`,
-      `docs/DATA_SIZING.md`]
-- [ ] Run `validate` against the resulting dataset and confirm DuckDB invariants
-      hold on real (not synthetic) data [`packages/catalog`]
+      `docs/OPERATOR_SETUP.md`'s "Measure each run" — confirmed 2026-07-01 on the
+      coordination host: 10,000 releases / 59,009 tracks / 91,202 credits parsed
+      from the real 11,099,074,063-byte June 2026 `.xml.gz`, 2.3 MB Parquet output.
+      Elapsed time and peak memory were **not** captured this run — a real gap, not
+      a claimed figure; see `docs/DATA_SIZING.md`'s "First real measurement"
+      [`packages/catalog`, `docs/DATA_SIZING.md`]
+- [x] Run `validate` against the resulting dataset and confirm DuckDB invariants
+      hold on real (not synthetic) data — confirmed: 0 invalid linked-artist IDs, 0
+      missing credit scope, 0 orphan credits, 0 orphan tracks [`packages/catalog`]
 - [ ] Decide, from the measured slice, whether a full unbounded parse is
       coordination-host-feasible or workstation-only; update
-      `docs/DATA_SIZING.md` with observed (not projected) figures
+      `docs/DATA_SIZING.md` with observed (not projected) figures — the bounded
+      slice's naive scale-up projects ~4.3 GB of Parquet output for a full parse
+      (well within the 869 GB available), but this is a projection from one
+      10,000-release sample, not an observed full-dataset figure, and elapsed
+      time/peak memory for a full ~19M-release parse are still unknown
 
 ## Milestone 4: Private seed import (ROADMAP 3)
 

@@ -33,6 +33,34 @@ The most recently corroborated count available at the time of writing was the Ma
 
 These are capacity-planning ranges, not claims about a specific future snapshot.
 
+## First real measurement (coordination host, 2026-07-01)
+
+A bounded 10,000-release slice (`MAX_RELEASES=10000`) of the June 2026 snapshot ran
+end to end on the ZimaBoard 832 coordination host — the first real run against real
+hardware (Milestone 3). Observed, not projected:
+
+| Item | Observed value |
+| --- | ---: |
+| Compressed releases dump (`.xml.gz`), full object | 11,099,074,063 bytes (~11 GB) |
+| Releases parsed (bounded) | 10,000 |
+| Tracks parsed | 59,009 |
+| Credit rows parsed | 91,202 |
+| Parquet output for this slice | 2.3 MB total (`credits` 1.4 MB, `tracks` 700 KB, `releases` 212 KB) |
+| Validation invariants | All zero: invalid linked-artist IDs, missing credit scope, orphan credits, orphan tracks |
+
+Two things worth stating plainly: the full `.xml.gz` object downloads regardless of
+`MAX_RELEASES` (only parsing is bounded), so even a smoke-test run needs the full
+~11 GB transfer and the full free-space floor. Elapsed time and peak memory were
+**not** captured by this run — a real gap, not filled in here; a follow-up run should
+wrap the pipeline with `/usr/bin/time -v` or similar.
+
+A naive linear scale-up from this slice (10,000 of ~19.1M May 2026 releases, per the
+planning envelope above) projects roughly 2.3 MB × 1,911 ≈ **4.3 GB** of Parquet
+output for a full unbounded parse — within, but toward the lower half of, the
+existing 10–25 GB planning range. This is a projection from one sample of the dump's
+first N releases, not a new authoritative figure; record complexity may not be
+uniform across the full dataset.
+
 ## Recommended 1 TB NVMe policy
 
 The planned 1 TB project NVMe is sufficient with explicit retention:
