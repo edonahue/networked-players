@@ -28,13 +28,15 @@ local/
 
 ### Storage layout on this host
 
-On the ZimaBoard 832 coordination host, `local/` is a symlink to
+On the ZimaBoard 832 coordination host, `local/` is an `/etc/fstab` bind mount onto
 `/mnt/data/networked-players/local/` on a dedicated 1TB NVMe mounted at `/mnt/data` —
 see [ADR 0013](decisions/0013-nvme-storage-layout.md) for the mount layout, why it's
-manual (not CasaOS's Storage app), and the coordination stack's Postgres/Redis volume
-migration. `ls -la local` on this host will show a symlink, not a plain directory; every
-script and CLI path reference above still works unchanged, since they're all relative
-paths that resolve through the symlink transparently.
+manual (not CasaOS's Storage app), why a bind mount rather than a symlink (a `git
+rebase` was found to silently delete an untracked symlink sitting where a
+previously-tracked file used to live), and the coordination stack's Postgres/Redis
+volume migration. `ls -la local` on this host shows a normal directory; every script
+and CLI path reference above works unchanged, since a bind mount is transparent to
+every tool, including git.
 
 ## Free space and sizing
 
@@ -115,6 +117,59 @@ find local/raw/discogs -name '*.part' -delete
 # An incomplete processed dataset (re-parse is idempotent with --overwrite):
 rm -rf local/processed/discogs/snapshot=<snapshot>
 ```
+
+## Lessons from the first real bring-up (2026-07-01)
+
+Bringing the NVMe online and running the pipeline against real data for the first
+time surfaced several real, reproducible issues that synthetic tests couldn't have
+caught. Recorded here as a single scannable reference; each links to the commit or
+ADR with full detail, so this section stays a summary, not the only copy.
+
+- **`git rebase`/`checkout` can silently delete an untracked symlink** sitting where
+  a previously-tracked file used to live, with `git status` staying clean throughout
+  (an ignored path's absence isn't a "change"). Hit this for real when `local/` was
+  briefly a symlink; fixed by switching to a bind mount instead — see
+  [ADR 0013](decisions/0013-nvme-storage-layout.md).
+- **Two Compose files in the same directory share a project name if neither sets one
+  explicitly**, even if they're logically unrelated (`docker-compose.coordination.yml`
+  vs. `docker-compose.portainer.yml` in `infra/swarm/`). `docker compose down`
+  without `--remove-orphans` is safe; adding that flag to silence the resulting
+  warning would stop the other stack's containers. Documented as an inline caution in
+  both compose files rather than fixed, since fixing it would force a Portainer
+  first-login reset.
+- **CasaOS's `local-storage.service` catalogs every block device from its own
+  periodic scan**, independent of how (or whether) it's mounted — manually mounting a
+  drive via `/etc/fstab` doesn't hide it from the CasaOS Storage UI, it just skips
+  CasaOS's own one-click format/eject controls.
+- **Discogs moved public dump hosting off the direct S3 bucket path** to a
+  Cloudflare-fronted `data.discogs.com` proxy with a query-string download scheme
+  (`?download=<url-encoded key>`), confirmed via a generic `AccessDenied` on both the
+  object and the bucket root — not network- or snapshot-specific, not something a
+  retry fixes. See the "Data access note" above.
+- **A shell pre-flight check can silently die instead of degrading gracefully.**
+  `check-ingest-feasibility.sh` originally used `curl -sIL` (HEAD) to probe object
+  size; under `set -euo pipefail`, a `grep` finding no `content-length:` line (e.g.
+  the 403 above) killed the script before its own intended "treat as unsafe" fallback
+  ever ran. Separately, `data.discogs.com` never returns `Content-Length` on `HEAD`
+  at all (confirmed) and doesn't honor `Range` requests either — the fix is a
+  headers-only `GET` (`urlopen()` without calling `.read()`), fast regardless of
+  object size.
+- **A helper script's own `uv sync` can silently degrade the dev environment.**
+  `check-ingest-feasibility.sh` called plain `uv sync` (no `--extra dev`), which
+  uninstalled `ruff`/`mypy`/`pytest` if they'd already been installed via
+  `make setup`, breaking `make check` for the rest of the session with no warning.
+- **A hardcoded URL/constant duplicated across scripts drifts.** The old S3 URL was
+  hardcoded independently in `manifest.py`, `run-ingest.sh`, *and*
+  `check-ingest-feasibility.sh`; fixing the first two still left the third pointing
+  at the dead host. All three now read the URL back from the generated manifest (the
+  single source of truth) instead of reconstructing it.
+- **A free-space check can measure the wrong filesystem after a storage migration.**
+  `check-ingest-feasibility.sh`'s pre-flight check ran `df -Pk .` from the repo root
+  (the eMMC) even after `local/` moved to the NVMe — comparing an ~11GB object against
+  the eMMC's ~11GB free instead of the NVMe's ~869GB free, which would have reported
+  `NOT SAFE` for a completely wrong reason. Fixed by checking `local` explicitly for
+  the dump-size gate, while still correctly checking the repo root for `uv sync`'s own
+  eMMC-resident `.venv` headroom.
 
 ## Which host runs what
 
