@@ -75,8 +75,16 @@ a {
   aspect-ratio: 1;
   border-radius: 999px;
   background:
-    radial-gradient(circle at center, var(--surface-strong) 24%, transparent 25%),
-    repeating-radial-gradient(circle at center, var(--ink) 0 1px, transparent 1px 3px);
+    radial-gradient(
+      circle at center,
+      var(--surface-strong) 24%,
+      transparent 25%
+    ),
+    repeating-radial-gradient(
+      circle at center,
+      var(--ink) 0 1px,
+      transparent 1px 3px
+    );
   border: 1px solid var(--line);
 }
 .site-header nav {
