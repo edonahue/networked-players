@@ -102,7 +102,7 @@ uptime contract per architecture direction.
 | --- | --- |
 | Discogs release ingestion (code) | Working, tested, synthetic-only |
 | Discogs release ingestion (real run) | Not attempted; currently infeasible (storage) |
-| Private seed import | Not implemented; operator's private export is ready — Milestone 4 not yet scoped |
+| Private seed import | Implemented (ADR 0011); operator's real seed imported locally |
 | One-hop graph expansion | Not implemented |
 | `graph-core` | Placeholder (README only) |
 | `game-rules` | Placeholder (README only) |
@@ -250,38 +250,52 @@ defer this milestone until then.
 ## Milestone 4: Private seed import (ROADMAP 3)
 
 ### Goal
-Build the missing mechanism that turns the user's private Discogs Spinner export
-into a local, never-published release-ID seed the pipeline can consume.
+Build the missing mechanism that turns a local Discogs collection export into a
+local, never-published release-ID seed the pipeline can consume.
 
-**Status note (flag only, not scoped here):** the operator's private Discogs
-collection export is ready (or nearly ready) as of this session — this milestone
-is well-motivated to start as soon as Milestone 3 lands a real dataset to select
-from. Its seed-input contract, import mechanism, and ADR are intentionally left
-fully unscoped by this note; see Tasks and "Possible ADR" below for what's still
-undecided.
+**Done.** This milestone did not actually require Milestone 3's real dataset —
+only *using* the seed downstream (Milestone 5) does, since the import mechanism
+itself never checks a release ID against any dataset. See
+[ADR 0011](decisions/0011-private-seed-contract.md).
 
 ### Depends on
-Milestone 3 (a real normalized release/credit dataset to select from).
+Nothing outstanding. (Milestone 5, which consumes this milestone's output, still
+depends on Milestone 3.)
 
 ### Tasks
-- [ ] Define the smallest seed input contract (e.g. a flat release-ID list) and
-      where it lives under the git-ignored `local/` tree [`packages/catalog`,
-      `docs/DISCOGS_INGESTION.md`]
-- [ ] Implement a seed-import command or module that reduces a local export to
-      release IDs only, rejecting any account-linked fields [`packages/catalog`]
-- [ ] Add synthetic seed fixtures under `data/samples/` that exercise the import
-      contract without reproducing real collection membership [`data/samples`]
-- [ ] Add tests: valid seed, malformed seed, seed IDs absent from the current
-      snapshot, empty seed [`packages/catalog`]
-- [ ] Confirm no seed-derived file this milestone touches is committable (extend
-      `.gitignore` coverage if a new local path is introduced)
+- [x] Define the smallest seed input contract (`SeedManifest`: `seed_version`,
+      `source`, `imported_at`, a deduplicated/sorted `release_ids: list[int]`)
+      and store the real seed under `data/private/`, not `local/` as originally
+      sketched — matches `docs/DATA_AND_RIGHTS.md`'s "Private seed" data-class
+      naming and inherits an existing agent-level `Read` deny in
+      `.claude/settings.json` as defense in depth [`packages/catalog`,
+      `data/contracts/discogs-seed-v1.md`]
+- [x] Implement `import-seed` (`discogs/seed.py`, wired into `cli.py`) — reads
+      exactly one column (`release_id`) from a source CSV and has no code path
+      that reads any other column, so account-linked fields are structurally
+      excluded, not filtered after the fact [`packages/catalog`]
+- [x] Add a synthetic seed fixture at `data/samples/discogs-collection-export.csv`
+      (3 fictional releases; IDs 101/102 deliberately match the existing
+      `tests/fixtures/releases.xml` fixture) [`data/samples`]
+- [x] Add tests: valid seed, malformed seed (missing column, non-integer ID),
+      empty seed, duplicate IDs, seed IDs absent from any dataset, manifest
+      round-trip, CLI integration, and a dedicated test asserting the output
+      contains no trace of any non-`release_id` column value
+      [`packages/catalog/tests/test_seed.py`]
+- [x] `data/private/**` already covered the new real-file paths; no `.gitignore`
+      change was needed — confirmed via `git check-ignore -v`
 
-### Possible ADR
-The seed input format and import mechanism is a "durable contract" per ROADMAP 4
-and a candidate settled direction under AGENTS.md — record an ADR once the
-contract is chosen. (Don't pre-assign a number; the next available one is
-whatever hasn't been used when this actually lands — six exist as of this writing,
-0007 was just taken by the Swarm-manager bootstrap.)
+### ADR
+[ADR 0011](decisions/0011-private-seed-contract.md) — private seed contract:
+release-IDs-only JSON, stored under `data/private/`.
+
+### Real import
+The operator's real Discogs collection export (standard discogs.com "Export
+Collection" CSV) was imported locally this session, producing a real
+`data/private/discogs-seed.json`. Per
+`docs/PUBLIC_PRIVATE_BOUNDARY.md`'s "confirm no personal collection membership
+can be reconstructed," neither the release-ID count nor any release ID is
+recorded here or in any commit message.
 
 ## Milestone 5: One-hop catalog expansion (ROADMAP 3)
 
@@ -291,7 +305,7 @@ one-hop expansion `docs/DISCOGS_INGESTION.md` already describes, producing the
 smallest real graph-ready corpus.
 
 ### Depends on
-Milestones 3 and 4.
+Milestone 3 (Milestone 4 is done — the real seed already exists locally).
 
 ### Tasks
 - [ ] Extract the seed releases' linked credited-artist IDs into an artist-ID

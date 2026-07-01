@@ -38,6 +38,13 @@ def _parser() -> argparse.ArgumentParser:
 
     validate = subparsers.add_parser("validate", help="validate a normalized snapshot with DuckDB")
     validate.add_argument("--dataset", type=Path, required=True)
+
+    import_seed = subparsers.add_parser(
+        "import-seed", help="reduce a local Discogs collection export to a release-ID seed"
+    )
+    import_seed.add_argument("--input", type=Path, required=True)
+    import_seed.add_argument("--output", type=Path, required=True)
+    import_seed.add_argument("--source", default="discogs-collection-export-csv")
     return parser
 
 
@@ -98,6 +105,15 @@ def main(argv: Sequence[str] | None = None) -> int:
         from .discogs.validation import validate_dataset
 
         print(json.dumps(validate_dataset(args.dataset), indent=2, sort_keys=True))
+        return 0
+
+    if args.command == "import-seed":
+        from .discogs.seed import import_seed_csv
+
+        seed = import_seed_csv(args.input, source=args.source)
+        seed.write(args.output)
+        payload = {"path": str(args.output), "release_id_count": len(seed.release_ids)}
+        print(json.dumps(payload, indent=2))
         return 0
 
     raise AssertionError(f"unhandled command: {args.command}")
