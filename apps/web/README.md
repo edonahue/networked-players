@@ -5,7 +5,7 @@ output, deployed to Cloudflare Workers via `wrangler`.
 
 This is an early, well-informed placeholder — more than a stub, less than a finished
 product. It explains the project honestly and ships a static, client-side **connections
-demo**: documented paths between artists with the credit evidence shown at every hop.
+demo**: documented paths between artists with the credit evidence shown at every hop within the game.
 
 ## Status
 
