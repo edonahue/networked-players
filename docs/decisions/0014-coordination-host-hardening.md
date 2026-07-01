@@ -134,9 +134,18 @@ a real multi-hour run.
 
 Revisit once the Raspberry Pi workers are provisioned — they'll need their own hardening
 pass, scoped to their 1GB RAM constraint, likely a different `harden.yml` task set or a
-separate playbook rather than extending this one's `coordinators`-only scope. Revisit
-once Step 5's profiling data exists and a parallel-parser decision is actually made
-(replace this ADR's "explicitly deferred" language with a real design decision, in its
-own ADR if it changes a settled direction). Revisit if a future incident occurs with
-the hardening in place — the persistent logs and watchdog behavior from that incident
-are real signal this ADR's assumptions should be checked against.
+separate playbook rather than extending this one's `coordinators`-only scope.
+
+**Step 5's profiling happened the same day** (see `docs/DATA_SIZING.md`'s "Real
+profiling" section) and produced a real, decisive finding: the bottleneck was neither
+decompression nor Parquet writing (both expected-but-wrong guesses) but 3.95 million
+repeated `lxml` `findtext()` calls in `_text()` — 54% of total time. That was fixed as
+a same-day algorithmic change (`_child_text_map`, ~1.9x measured speedup), explicitly
+*not* a parallel-parser redesign. Multiprocess parallelism (the original open question
+this ADR deferred) remains genuinely undecided — revisit it as its own decision if the
+now-revised ~5.2 hour full-parse estimate is still too slow for the intended cadence,
+informed by this same real profiling data rather than a fresh guess.
+
+Revisit if a future incident occurs with the hardening in place — the persistent logs
+and watchdog behavior from that incident are real signal this ADR's assumptions should
+be checked against.
