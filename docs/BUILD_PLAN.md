@@ -288,12 +288,19 @@ health playbook).
       hold on real (not synthetic) data — confirmed: 0 invalid linked-artist IDs, 0
       missing credit scope, 0 orphan credits, 0 orphan tracks [`packages/catalog`]
 - [ ] Decide, from the measured slice, whether a full unbounded parse is
-      coordination-host-feasible or workstation-only; update
-      `docs/DATA_SIZING.md` with observed (not projected) figures — the bounded
-      slice's naive scale-up projects ~4.3 GB of Parquet output for a full parse
-      (well within the 869 GB available), but this is a projection from one
-      10,000-release sample, not an observed full-dataset figure, and elapsed
-      time/peak memory for a full ~19M-release parse are still unknown
+      coordination-host-feasible or workstation-only — **real throughput data now
+      exists, but the decision itself is still open.** A partial full-scale run
+      (650,000 real releases, stopped deliberately, not failed) measured ~428.5
+      releases/sec, ~167.6 MB peak RSS (confirms the streaming design stays
+      memory-bounded at 65x the smoke-test scale), single-core utilization (3 of 4
+      host cores idle). Projected full-scale time: **~12.4 hours** — disk space is
+      not the constraint (859 GB free after this run vs. a projected ~4.3 GB
+      Parquet output), wall-clock time on a single core is. Coordination-host-
+      feasible as an unattended background/cron-style job (the host is always-on),
+      but a genuinely completed full run — with real Parquet output size and a
+      full-dataset `validate` pass — has not happened yet. See
+      `docs/DATA_SIZING.md`'s "Partial full-scale run" [`packages/catalog`,
+      `docs/DATA_SIZING.md`]
 
 ## Milestone 4: Private seed import (ROADMAP 3)
 

@@ -51,8 +51,42 @@ hardware (Milestone 3). Observed, not projected:
 Two things worth stating plainly: the full `.xml.gz` object downloads regardless of
 `MAX_RELEASES` (only parsing is bounded), so even a smoke-test run needs the full
 ~11 GB transfer and the full free-space floor. Elapsed time and peak memory were
-**not** captured by this run — a real gap, not filled in here; a follow-up run should
-wrap the pipeline with `/usr/bin/time -v` or similar.
+**not** captured by this run — filled in by the partial full-scale run below instead.
+
+### Partial full-scale run (same day, same host)
+
+An unbounded parse (no `MAX_RELEASES`) of the same already-downloaded snapshot was
+started to gather real throughput/memory data, then deliberately stopped partway
+through (not a failure) once it was clear the full run would take multiple hours —
+a bigger commitment than initially assumed, worth surfacing before committing the
+host to it unattended. `parse-releases` writes to a hidden `.snapshot=<date>.tmp-*`
+staging directory and only atomically renames it over the final path on full
+completion, so stopping early left the original bounded 10,000-release dataset
+above completely untouched and still valid (confirmed: unchanged `manifest.json`,
+same counts). Observed before stopping, via `resource.getrusage(RUSAGE_CHILDREN)`
+and a direct Parquet-part count (both real measurements, not estimates):
+
+| Item | Observed value |
+| --- | ---: |
+| Releases processed before stopping | 650,000 (130 parts × the 5,000/part default chunk size) |
+| Elapsed (wall clock) | 1,516.78 s (~25.3 min) |
+| Peak RSS | 167.6 MB |
+| Throughput | ~428.5 releases/sec |
+| CPU utilization | ~100% of one core (single-threaded; 3 of 4 host cores idle throughout) |
+
+Peak memory staying near-identical (167.6 MB at 650,000 releases vs. an unmeasured
+but visibly small figure at 10,000) is itself a meaningful confirmed result: it
+directly supports the streaming/bounded-memory design claim (`AGENTS.md`: "memory
+tracks the active XML subtree rather than the total dump size") at 65x the earlier
+sample size, not just in a synthetic test.
+
+**Full-scale projection from this real throughput** (not the earlier untested linear
+guess from Parquet output size alone): 19,113,243 releases ÷ ~428.5/sec ≈ **~12.4
+hours** for a full unbounded parse on this host's single-threaded implementation.
+This is a real, evidence-based estimate, not a claim that a full run has completed —
+no full-scale Parquet output or full-scale `validate` result exists yet. The
+single-core utilization also means there's real unused parallelism headroom on this
+4-core host if a future need justified speeding this up.
 
 A naive linear scale-up from this slice (10,000 of ~19.1M May 2026 releases, per the
 planning envelope above) projects roughly 2.3 MB × 1,911 ≈ **4.3 GB** of Parquet
