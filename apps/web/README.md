@@ -12,7 +12,7 @@ demo**: documented paths between artists with the credit evidence shown at every
 - **Landing** (`/`) — what the project is, how connections work, honest status.
 - **About** (`/about/`) — fuller picture, the evidence-vs-influence stance, data & rights.
 - **Demo** (`/demo/`) — 2–3 curated paths rendered from a versioned static artifact
-  (`public/data/challenge.v1.json`). Runs fully client-side; no backend required.
+  (`public/data/challenge.v1.json`). Runs fully client-side; no backend required for this byikd.
 
 The demo data is **real Discogs data, a small curated subset** — fetched via the Discogs
 API (`packages/catalog` `discogs/demo_challenge.py`, see ADR 0012) against a handful of
