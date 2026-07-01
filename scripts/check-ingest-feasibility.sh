@@ -66,7 +66,9 @@ if (( before_mb < FLOOR_MB + 200 )); then
   exit 1
 fi
 echo "==> ${before_mb} MB free; syncing the uv project environment..."
-uv sync 2>&1 | tail -20
+# --extra dev matches `make setup`; a plain `uv sync` uninstalls ruff/mypy/pytest if
+# they were already present, silently breaking `make check` for the rest of the session.
+uv sync --extra dev 2>&1 | tail -20
 after_mb=$(free_mb)
 echo "==> uv environment ready. Free space ${before_mb}MB -> ${after_mb}MB (used $(( before_mb - after_mb ))MB)."
 if (( after_mb < FLOOR_MB )); then
@@ -87,7 +89,10 @@ uv run networked-players-catalog manifest --snapshot "${SNAPSHOT}" --output "${M
 # --- Step 3: dump size via HEAD, no download ---
 echo "==> HEAD ${SOURCE_URL}"
 headers="$(curl -sIL --max-time 30 "${SOURCE_URL}" || true)"
-content_length="$(printf '%s' "${headers}" | grep -i '^content-length:' | tail -1 | tr -d '\r' | awk '{print $2}')"
+# grep exits 1 when there's no content-length line (e.g. a 403 body with no such
+# header) -- under `set -euo pipefail` that would otherwise kill the script right
+# here, silently, before the "no size available" handling below ever runs.
+content_length="$(printf '%s' "${headers}" | grep -i '^content-length:' | tail -1 | tr -d '\r' | awk '{print $2}' || true)"
 
 if [[ -z "${content_length}" ]]; then
   echo "==> Could not determine the object size (HEAD failed, or no"
