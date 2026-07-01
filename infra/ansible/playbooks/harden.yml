@@ -1,0 +1,121 @@
+---
+# Coordination-host hardening for long-running background jobs (ADR 0014).
+#
+# Unlike health.yml, this playbook DOES change state -- persistent journald storage,
+# an armed hardware watchdog, Docker log rotation + live-restore, and lower swappiness.
+# Idempotent (safe to re-run), but treat it as a different risk category than the
+# read-only health check. Scoped to `coordinators` only -- the Pi workers aren't
+# provisioned yet and will need their own, differently-scoped hardening pass later.
+#
+# Requires root for every task here (become: true). With the local inventory's
+# `ansible_connection: local`, that means a local sudo prompt:
+#
+# Usage (from infra/ansible/, with a real local inventory):
+#   ansible-playbook -i inventories/local/hosts.yml playbooks/harden.yml --ask-become-pass
+- name: Coordination host hardening
+  hosts: coordinators
+  become: true
+  gather_facts: true
+  tasks:
+    - name: Ensure the persistent journal directory exists
+      # journald falls back to volatile /run/log/journal (wiped on every reboot) when
+      # /var/log/journal doesn't exist -- confirmed missing on this host, meaning the
+      # crash that motivated this playbook left no forensic trail at all.
+      ansible.builtin.file:
+        path: /var/log/journal
+        state: directory
+        owner: root
+        group: systemd-journal
+        mode: "2755"
+
+    - name: Set explicit persistent journald storage
+      ansible.builtin.lineinfile:
+        path: /etc/systemd/journald.conf
+        regexp: "^#?Storage="
+        line: "Storage=persistent"
+        insertafter: "^\\[Journal\\]"
+      notify: Restart systemd-journald
+
+    - name: Arm the hardware watchdog (RuntimeWatchdogSec)
+      # /dev/watchdog + the wdat_wdt kernel module are present but unused on this host --
+      # confirmed via `ls -la /dev/watchdog*` and `lsmod`. Systemd pings the hardware
+      # watchdog while healthy; if the kernel/systemd itself hangs, the hardware timer
+      # fires a hard reset after this timeout instead of requiring physical intervention.
+      ansible.builtin.lineinfile:
+        path: /etc/systemd/system.conf
+        regexp: "^#?RuntimeWatchdogSec="
+        line: "RuntimeWatchdogSec=30"
+        insertafter: "^\\[Manager\\]"
+      notify: Reexec systemd manager
+
+    - name: Arm the reboot-time watchdog (RebootWatchdogSec)
+      ansible.builtin.lineinfile:
+        path: /etc/systemd/system.conf
+        regexp: "^#?RebootWatchdogSec="
+        line: "RebootWatchdogSec=10min"
+        insertafter: "^\\[Manager\\]"
+      notify: Reexec systemd manager
+
+    - name: Configure Docker log rotation and live-restore
+      # No daemon.json existed before this -- Docker ran with unbounded json-file logs
+      # (a real risk for the long-lived Postgres/Redis/Portainer containers) and no
+      # live-restore (a dockerd restart would otherwise kill running containers).
+      # NOTE: log-opts only apply to newly CREATED containers -- already-running
+      # containers need to be recreated (via deploy-coordination.sh/deploy-portainer.sh)
+      # to pick up rotation retroactively. This playbook does not force that.
+      ansible.builtin.copy:
+        dest: /etc/docker/daemon.json
+        mode: "0644"
+        content: |
+          {
+            "log-driver": "json-file",
+            "log-opts": {
+              "max-size": "10m",
+              "max-file": "3"
+            },
+            "live-restore": true
+          }
+      notify: Restart docker
+
+    - name: Lower vm.swappiness for latency-sensitive services
+      # Default (60) favors reclaiming page cache over swapping process memory less
+      # aggressively than desired when a long CPU-bound batch job runs alongside
+      # Postgres/Redis/sshd. Ample free RAM either way (869GB NVMe, ~5.9GB RAM
+      # available at idle) -- this is precautionary, not a response to observed swap
+      # pressure.
+      ansible.builtin.copy:
+        dest: /etc/sysctl.d/99-networked-players-swappiness.conf
+        mode: "0644"
+        content: |
+          vm.swappiness=10
+      notify: Reload sysctl
+
+    - name: Report hardening status
+      ansible.builtin.debug:
+        msg:
+          - "host: {{ inventory_hostname }}"
+          - "journald persistent storage: configured (full effect after journald restart, applied via handler)"
+          - "hardware watchdog: RuntimeWatchdogSec=30 configured (reliable confirmation needs a deliberate reboot -- not triggered by this playbook)"
+          - "docker: log-opts + live-restore configured (does NOT retroactively apply to already-running containers)"
+          - "vm.swappiness: 10 (applied via handler)"
+
+  handlers:
+    - name: Restart systemd-journald
+      ansible.builtin.systemd:
+        name: systemd-journald
+        state: restarted
+
+    - name: Reexec systemd manager
+      # Applies most system.conf changes without a reboot; hardware watchdog arming
+      # is most reliably confirmed after a real reboot (see ADR 0014's Validation).
+      ansible.builtin.command: systemctl daemon-reexec
+      changed_when: true
+
+    - name: Restart docker
+      ansible.builtin.systemd:
+        name: docker
+        state: restarted
+
+    - name: Reload sysctl
+      ansible.builtin.command: sysctl --system
+      changed_when: true
