@@ -9,11 +9,18 @@
 #
 #   SNAPSHOT       Required. Monthly snapshot, YYYYMMDD, first of month (e.g. 20260501).
 #   MAX_RELEASES   Optional. Cap releases parsed (omit for a full pass).
+#   OVERWRITE      Optional. Set to any non-empty value to replace an existing
+#                  processed dataset for this snapshot (parse-releases refuses to
+#                  overwrite by default -- a real safeguard, not a bug to route
+#                  around silently). Unset by default: a second run against a
+#                  snapshot that already has processed output fails loudly rather
+#                  than risking a partial/mismatched overwrite.
 #   RAW_DIR        Optional. Default: local/raw/discogs
 #   PROCESSED_DIR  Optional. Default: local/processed/discogs
 #   MANIFEST_DIR   Optional. Default: local/manifests
 #
 # Example:  SNAPSHOT=20260501 MAX_RELEASES=10000 ./scripts/run-ingest.sh
+# Example:  SNAPSHOT=20260501 OVERWRITE=1 ./scripts/run-ingest.sh
 
 set -euo pipefail
 
@@ -84,6 +91,9 @@ parse_args=(
 )
 if [[ -n "${MAX_RELEASES:-}" ]]; then
   parse_args+=(--max-releases "${MAX_RELEASES}")
+fi
+if [[ -n "${OVERWRITE:-}" ]]; then
+  parse_args+=(--overwrite)
 fi
 uv run networked-players-catalog parse-releases "${parse_args[@]}"
 

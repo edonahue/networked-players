@@ -15,7 +15,7 @@
 # as your normal user, not root -- only the unit *creation* needs root.
 #
 # Configure via the same environment variables as run-ingest.sh (SNAPSHOT required;
-# MAX_RELEASES, RAW_DIR, PROCESSED_DIR, MANIFEST_DIR optional), or an optional
+# MAX_RELEASES, OVERWRITE, RAW_DIR, PROCESSED_DIR, MANIFEST_DIR optional), or an optional
 # git-ignored local/ingest.env.
 #
 # Usage:  SNAPSHOT=20260601 ./scripts/run-ingest-supervised.sh
@@ -56,6 +56,7 @@ sudo systemd-run \
     "PATH=${HOME}/.local/bin:${PATH}" \
     "SNAPSHOT=${SNAPSHOT}" \
     "MAX_RELEASES=${MAX_RELEASES:-}" \
+    "OVERWRITE=${OVERWRITE:-}" \
     "RAW_DIR=${RAW_DIR:-}" \
     "PROCESSED_DIR=${PROCESSED_DIR:-}" \
     "MANIFEST_DIR=${MANIFEST_DIR:-}" \
