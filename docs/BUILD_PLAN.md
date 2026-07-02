@@ -190,7 +190,7 @@ member. Onboarding tooling exists for both the Pi workers and this node
 | Fleet onboarding tooling | Added (ADR 0015, `infra/ansible/playbooks/onboard.yml`); not yet run against physical hardware |
 | Portainer | Running (ADR 0008), Tailscale-bound (ADR 0009) |
 | Tailscale (coordination host) | Installed, connected to operator's tailnet |
-| Coordination compose (Postgres/Redis) | Running (ADR 0010), brought up ahead of NVMe; loopback-bound |
+| Coordination compose (Postgres/Redis) | Running (ADR 0010), brought up ahead of NVMe; loopback-bound. Backup/restore built and live-tested 2026-07-02 (ADR 0016) |
 | DuckDB CLI (host) | Installed (`scripts/install-duckdb-cli.sh`) |
 | GitHub CLI (`gh`, host) | Installed (`scripts/install-gh-cli.sh`) |
 | `apps/web` CI | Added (`.github/workflows/web.yml`): format/check/build/Playwright smoke |
@@ -233,9 +233,16 @@ Nothing outstanding — this is the current critical path.
 - [x] Re-run `./infra/ansible/run-health-local.sh` and confirm the free-space
       assertion passes — confirmed 2026-07-01, 869.2 GB free on `/mnt/data`
       [`infra/ansible`]
-- [ ] Write and locally test coordination-host recovery notes (state backup /
+- [x] Write and locally test coordination-host recovery notes (state backup /
       restore path for the eventual compose-managed Postgres + Redis volumes)
-      [`infra/`, local-only notes]
+      [`infra/`, local-only notes] — done 2026-07-02:
+      `scripts/backup-coordination-stack.sh`/`restore-coordination-stack.sh`
+      (`pg_dump` + Redis `BGSAVE`, no downtime, see
+      [ADR 0016](decisions/0016-state-backup-and-recovery.md)), and a real
+      round-trip tested live on the coordination host: set a Redis marker
+      key, backed up, restored into the running stack, confirmed the marker
+      key survived intact. Runbook in `docs/OPERATOR_SETUP.md`'s "Backup and
+      recovery" section
 
 ## Milestone 2: Finish Swarm bring-up on real hardware (ROADMAP 2)
 
