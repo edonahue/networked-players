@@ -181,6 +181,33 @@ time, three of four host cores idle throughout) — genuine multiprocess paralle
 there, not attempted in this pass, is where the next big win would come from if the
 now-revised ~5 hour full-parse time still isn't fast enough in practice.
 
+### Full unbounded run: in progress (2026-07-01 evening)
+
+With the fixes above landed, a genuine full, unbounded parse of the June 2026
+snapshot was launched the same evening via the hardened supervised pipeline
+(`SNAPSHOT=20260601 OVERWRITE=1 ./scripts/run-ingest-supervised.sh`, started
+17:59:48 EDT). This section records real interim numbers, not a completed run —
+update it once the run finishes or fails.
+
+| Sample time (EDT) | Releases so far | Parquet parts | Disk free | Mem available |
+| --- | --- | --- | --- | --- |
+| 18:29:49 | ~1,625,000 | 325 | — | 5.79 GB |
+| 19:59:50 | ~6,315,000 | 1,263 | 854 G | 5.85 GB |
+| 21:29:51 | ~10,995,000 | 2,199 | 852 G | 5.86 GB |
+| 22:59:53 | ~15,790,000 | 3,158 | 851 G | 5.83 GB |
+
+Sustained throughput over the observed window: **~877–886 releases/sec** (5-hour
+run average and the most recent 30-minute interval agree within 1%, i.e. no
+slowdown as the run progresses) — consistent with, slightly under, the ~1,018/sec
+profiled-and-extrapolated figure above (real wall-clock includes the ntfy-driven
+progress monitor's own periodic overhead and full I/O, not just parse CPU time).
+Memory stayed flat around 5.8 GB available (no leak across ~5 hours and 15M+
+releases) and disk consumption was steady at ~1 GB/hour, nowhere near the 851+ GB
+still free. Against the closest known total (May 2026's corroborated 19,113,243
+releases — June's own count is not yet independently confirmed, so this is a
+proxy target, not exact), the revised full-run estimate is **roughly 6 hours**
+total, versus the original pre-fix ~12.4 hour projection.
+
 ## Recommended 1 TB NVMe policy
 
 The planned 1 TB project NVMe is sufficient with explicit retention:

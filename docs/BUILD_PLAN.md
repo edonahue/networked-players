@@ -33,7 +33,19 @@ credits parsed, `validate` reporting zero invariant violations — see
 hosting behind a Cloudflare proxy (`data.discogs.com`) with a different URL scheme
 than the old direct-S3 path; `manifest.py` was updated accordingly. The operator's
 real private seed was imported ([ADR 0011](decisions/0011-private-seed-contract.md));
-no one-hop expansion and no artist graph exist yet.
+no one-hop expansion and no artist graph exist yet. Later the same day, real
+`cProfile` output on the parser (not the initially assumed "decompression or
+Parquet writing" cause) found the actual bottleneck was `releases.py` re-scanning
+each element's children once per field via repeated `findtext()` calls; fixing it
+(a single child-text map built once per element) cut measured parse time by
+**~1.9x**, and a bounded single-thread write/parse overlap in `parquet.py` measured
+a further **~4.2%** — see `docs/DATA_SIZING.md`'s "Real profiling" and "'Light'
+parallelism" sections. On the strength of that fix, a **full, unbounded parse of
+the June 2026 snapshot was launched the same evening** (2026-07-01 17:59:48 EDT,
+via the hardened supervised pipeline below) and is still running as this section
+is written — see [Milestone 3](#milestone-3-real-ingestion-dry-run-roadmap-3)'s
+last task for the real in-progress numbers. This is progress on that task, not a
+claim that it's complete.
 
 **Graph, game rules, workers, API (`packages/graph-core`, `packages/game-rules`,
 `packages/workers`, `apps/api`).** Placeholders. Each has only a README describing
@@ -73,7 +85,25 @@ and a standalone DuckDB CLI was installed for inspecting Parquet/DuckDB output
 directly on the host (`scripts/install-duckdb-cli.sh`, since the `duckdb` Python
 package ships no CLI entry point). However: **the four Raspberry Pi 3B workers are
 not yet provisioned** (not flashed, not joined — the token is just waiting for
-them). The coordination Postgres/Redis compose stack described in
+them), nor is the newly identified second ZimaBoard 832 (stock, no NVMe) the
+operator wants as an optional build node. Onboarding tooling for both now exists
+(`infra/ansible/playbooks/onboard.yml`, [ADR 0015](decisions/0015-fleet-onboarding.md))
+but has not yet been run against any physical node. Separately, the coordination
+host itself was hardened the same day for safely running long, unattended
+background jobs — persistent journald, a hardware watchdog, Docker log rotation,
+and `vm.swappiness` tuning via `infra/ansible/playbooks/harden.yml`
+([ADR 0014](decisions/0014-coordination-host-hardening.md)) — after real testing
+surfaced two host-specific gotchas: `live-restore` is flatly incompatible with
+Swarm mode (took `dockerd` down entirely until reverted), and
+`restart: unless-stopped` alone did not bring the coordination stack back up after
+a Docker daemon restart. A supervised-job pattern
+(`scripts/run-ingest-supervised.sh`, `scripts/monitor-heavy-job.sh`) now runs heavy
+ingestion as a resource-bounded (`Nice`, `IOSchedulingClass`, `MemoryMax`) systemd
+transient unit with periodic progress logging, and an end-to-end ntfy.sh push
+pipeline (`scripts/lib/notify.sh`, `scripts/install-run-and-ntfy.sh`, plus a
+Claude Code hook pair for long ad hoc builds) notifies the operator on job
+start/finish rather than requiring them to poll — verified end to end with real
+notifications received. The coordination Postgres/Redis compose stack described in
 `infra/swarm/docker-compose.coordination.yml`, originally deferred by ADR 0007
 pending the NVMe, came up ahead of the NVMe via `infra/swarm/deploy-coordination.sh`
 once the eMMC's real headroom recovered (see
@@ -108,21 +138,25 @@ attached, mounted at `/mnt/data`, and holding the relocated data root (see
 "Storage" above and [ADR 0013](decisions/0013-nvme-storage-layout.md)), the host
 has **869.2 GB free** against `docs/DATA_SIZING.md`'s ~250 GB ingest floor —
 confirmed via the Ansible health playbook, not projected. The guarded pre-flight
-script (`scripts/check-ingest-feasibility.sh`, wired to `make ingest-check`) should
-now judge a real bulk-ingestion attempt (Milestone 3) feasible; this has not yet
-been run for real, so that remains Milestone 3's own first task, not something
-this section can claim in advance.
+script (`scripts/check-ingest-feasibility.sh`, wired to `make ingest-check`) has
+since been run for real against `SNAPSHOT=20260601` and passed — see
+[Milestone 3](#milestone-3-real-ingestion-dry-run-roadmap-3)'s first task.
 
 **Hardware.** One ZimaBoard 832 coordination host: OS flashed and confirmed
-64-bit; Docker Swarm manager active; storage expansion (NVMe) pending. Four
+64-bit; Docker Swarm manager active; 1TB NVMe attached, mounted, and hardened for
+long-running jobs (see "Storage" and "Infrastructure and hardware" above). Four
 Raspberry Pi 3B workers (1 GB RAM, ARM64) are planned per `docs/HARDWARE.md` but not
-yet provisioned. One optional workstation-class build node remains outside the
-uptime contract per architecture direction.
+yet provisioned. A second ZimaBoard 832 (stock, no NVMe yet) was identified this
+session as an optional workstation-class build node — like the first, it remains
+outside the uptime contract per architecture direction and, per
+[ADR 0015](decisions/0015-fleet-onboarding.md), is deliberately not a Swarm
+member. Onboarding tooling exists for both the Pi workers and this node
+(`infra/ansible/playbooks/onboard.yml`) but neither has been run yet.
 
 | Area | State |
 | --- | --- |
-| Discogs release ingestion (code) | Working, tested, synthetic-only |
-| Discogs release ingestion (real run) | Done for a bounded 10,000-release slice (2026-07-01); validated clean; full unbounded parse not yet decided |
+| Discogs release ingestion (code) | Working, tested, synthetic-only; parser hot path fixed (~1.9x) and write/parse overlap added (~4.2%), 2026-07-01 |
+| Discogs release ingestion (real run) | Bounded 10,000-release slice done and validated clean (2026-07-01); a full unbounded parse of the June 2026 snapshot is **in progress** as of this writing (launched 17:59:48 EDT), not yet complete — see Milestone 3 |
 | Private seed import | Implemented (ADR 0011); operator's real seed imported locally |
 | One-hop graph expansion | Not implemented |
 | `graph-core` | Placeholder (README only) |
@@ -132,8 +166,11 @@ uptime contract per architecture direction.
 | `apps/web` | Early implementation, real curated demo (ADR 0012); deploys via Cloudflare Git integration on push to `main`; Node 22 + Playwright fixed locally, CI added |
 | Coordination host OS + inventory | Done (64-bit confirmed, local inventory created) |
 | Coordination host storage | NVMe attached and mounted at `/mnt/data` (916G ext4, ADR 0013); `local/` and coordination volumes relocated; 250 GB bulk-ingest floor met (869 GB free, confirmed) |
+| Coordination host hardening | Done (ADR 0014): persistent journald, hardware watchdog, Docker log rotation, `vm.swappiness` tuning (`infra/ansible/playbooks/harden.yml`) |
+| Supervised job + ntfy tooling | Added and verified end-to-end: resource-bounded `systemd-run` job wrapper, periodic progress monitor, ntfy.sh push notifications on start/finish |
 | Docker Swarm manager | Active (ADR 0007) |
 | Worker join token | Captured locally, unused |
+| Fleet onboarding tooling | Added (ADR 0015, `infra/ansible/playbooks/onboard.yml`); not yet run against physical hardware |
 | Portainer | Running (ADR 0008), Tailscale-bound (ADR 0009) |
 | Tailscale (coordination host) | Installed, connected to operator's tailnet |
 | Coordination compose (Postgres/Redis) | Running (ADR 0010), brought up ahead of NVMe; loopback-bound |
@@ -141,7 +178,8 @@ uptime contract per architecture direction.
 | GitHub CLI (`gh`, host) | Installed (`scripts/install-gh-cli.sh`) |
 | `apps/web` CI | Added (`.github/workflows/web.yml`): format/check/build/Playwright smoke |
 | Health playbook | Passing (confirmed 2026-07-01: 869.2 GB free on `/mnt/data`) |
-| Raspberry Pi workers | Not yet provisioned |
+| Raspberry Pi workers | Not yet provisioned; onboarding tooling ready (ADR 0015) |
+| Second ZimaBoard 832 (optional build node) | Identified, stock, no NVMe yet; not yet onboarded; not a Swarm member by design (ADR 0015) |
 | `networked-players.com` | Registered, not live |
 
 ## How to use this document
@@ -249,6 +287,12 @@ done until there's evidence for it.
 - [x] Install the GitHub CLI (`gh`) via `scripts/install-gh-cli.sh` for
       persistent, tunneling-friendly GitHub authentication from the coordination
       host
+- [x] Write `infra/ansible/playbooks/onboard.yml` (installs Docker and prints the
+      real `docker swarm join` command for the `workers` group; verifies Docker on
+      `optional_build_nodes` without installing or joining anything) and
+      [ADR 0015](decisions/0015-fleet-onboarding.md) — the tooling exists and
+      passed `--syntax-check`, but has not been run against any physical Pi or the
+      second ZimaBoard yet [`infra/ansible`]
 
 ## Milestone 3: Real ingestion dry run (ROADMAP 3)
 
@@ -295,18 +339,75 @@ health playbook).
       missing credit scope, 0 orphan credits, 0 orphan tracks [`packages/catalog`]
 - [ ] Decide, from the measured slice, whether a full unbounded parse is
       coordination-host-feasible or workstation-only — **real throughput data now
-      exists, but the decision itself is still open.** A partial full-scale run
-      (650,000 real releases, stopped deliberately, not failed) measured ~428.5
-      releases/sec, ~167.6 MB peak RSS (confirms the streaming design stays
-      memory-bounded at 65x the smoke-test scale), single-core utilization (3 of 4
-      host cores idle). Projected full-scale time: **~12.4 hours** — disk space is
-      not the constraint (859 GB free after this run vs. a projected ~4.3 GB
-      Parquet output), wall-clock time on a single core is. Coordination-host-
-      feasible as an unattended background/cron-style job (the host is always-on),
-      but a genuinely completed full run — with real Parquet output size and a
-      full-dataset `validate` pass — has not happened yet. See
-      `docs/DATA_SIZING.md`'s "Partial full-scale run" [`packages/catalog`,
-      `docs/DATA_SIZING.md`]
+      exists, but the decision itself is still open — a full run is in progress,
+      not finished.** A partial full-scale run (650,000 real releases, stopped
+      deliberately, not failed) measured ~428.5 releases/sec, ~167.6 MB peak RSS
+      (confirms the streaming design stays memory-bounded at 65x the smoke-test
+      scale), single-core utilization (3 of 4 host cores idle), and projected
+      **~12.4 hours** for a full parse at that rate. That projection is now
+      superseded: after the same-day `_text()`/`findtext()` hot-path fix
+      (~1.9x) and write-overlap thread (~4.2%), a genuine full, unbounded parse
+      of the June 2026 snapshot was launched at 17:59:48 EDT via the hardened
+      supervised pipeline (`SNAPSHOT=20260601 OVERWRITE=1
+      ./scripts/run-ingest-supervised.sh`, [ADR 0014](decisions/0014-coordination-host-hardening.md)).
+      As of the last recorded progress sample (22:59:53 EDT, ~5 hours in): ~15.79M
+      releases processed (3,158 Parquet parts), sustained throughput ~877–886
+      releases/sec (5-hour average and most recent 30-minute interval agree within
+      1%), 851 GB disk free (~1 GB/hour consumed), memory and temperature nominal
+      throughout — roughly **double** the pre-fix rate, revising the full-run
+      projection to **roughly 6 hours** against the closest known total (May 2026's
+      corroborated 19,113,243 releases — June's exact count is not yet
+      independently confirmed, so this is a proxy, not an exact target). The run
+      was still active, not yet complete, non-failed, as of this document's last
+      edit — coordination-host-feasibility looks likely from these numbers but
+      stays an open checkbox until the run actually finishes and a full-dataset
+      `validate` pass confirms it clean. See `docs/DATA_SIZING.md`'s "Partial
+      full-scale run," "Real profiling," and "'Light' parallelism" sections
+      [`packages/catalog`, `docs/DATA_SIZING.md`]
+
+### Host reliability and performance work (this session, folded into this milestone)
+This work exists because the operator asked, ahead of the full run above, to
+harden the coordination host for long-term unattended background jobs and to
+look for safe parallelism — see [ADR 0014](decisions/0014-coordination-host-hardening.md).
+- [x] Persistent journald storage, a hardware watchdog
+      (`RuntimeWatchdogSec`/`RebootWatchdogSec`), Docker log rotation
+      (`max-size`/`max-file`), and `vm.swappiness` tuning via
+      `infra/ansible/playbooks/harden.yml` — found and fixed three real bugs along
+      the way: play-level `become: true` hanging the implicit facts-gathering
+      task, `live-restore: true` being flatly incompatible with Docker Swarm mode
+      (took `dockerd` down until reverted), and a failed handler silently blocking
+      a later-notified handler in the same play [`infra/ansible`]
+- [x] A supervised-job pattern (`scripts/run-ingest-supervised.sh`,
+      `scripts/monitor-heavy-job.sh`) running ingestion as a resource-bounded
+      (`Nice=10`, `IOSchedulingClass=best-effort`, `MemoryMax=4G`) `systemd-run`
+      transient unit with an auto-launched progress monitor, independent of the
+      operator's terminal session [`scripts/`]
+- [x] Found and fixed two real bugs surfaced by dogfooding the above: a redundant
+      re-download of an already-verified 11 GB file (`run-ingest.sh` had no
+      skip-if-present check), and a `FileExistsError` on re-run with no way to
+      opt into replacing an existing dataset (added an explicit `OVERWRITE` env
+      var rather than failing silently) [`scripts/`]
+- [x] Real `cProfile` profiling of the parser — contradicting the initial
+      "decompression or Parquet writing" hypothesis — found the actual bottleneck
+      was `releases.py` calling `findtext()` once per field (~79 calls per
+      release), each a fresh linear scan of the element's children. Fixing it
+      (build each element's child-text map once) cut measured parse time
+      **~1.9x** [`packages/catalog`]
+- [x] Added a bounded single-background-thread write/parse overlap in
+      `parquet.py` (`ThreadPoolExecutor(max_workers=1)`, one write in flight at a
+      time) — measured **~4.2%** further real improvement; a chunk-size tuning
+      experiment (`--chunk-releases 50000` vs. the 5000 default) was also tried
+      and showed no measurable difference, reported as a real negative result
+      rather than assumed to help [`packages/catalog`]
+- [x] An end-to-end ntfy.sh push-notification pipeline
+      (`scripts/lib/notify.sh`, enhancements to the two scripts above,
+      `scripts/install-run-and-ntfy.sh`, and a Claude Code `PreToolUse`/
+      `PostToolUse` hook pair for long ad hoc builds) so the operator gets a push
+      notification on job start/finish instead of needing to poll — avoids the
+      ambient token cost of continuous status-checking. Verified end to end with
+      real notifications received, including a real bug fix along the way (a
+      stale, broken `ntfy` block earlier in `~/.bashrc` was shadowing the correct
+      one) [`scripts/`, `.claude/hooks/`]
 
 ## Milestone 4: Private seed import (ROADMAP 3)
 
@@ -632,7 +733,11 @@ Milestones 2, 11, 12, 13, and 14, all complete.
   release-to-artist index, even though Milestone 3 only asks for a bounded slice.
   If Milestone 5 can't build its frontier from a bounded slice, Milestone 3 may
   need to be redone as a full parse first. Don't treat this as resolved until
-  Milestone 3's real results are in.
+  Milestone 3's real results are in. As of 2026-07-01 evening, a full unbounded
+  parse is running (launched 17:59:48 EDT, ~15.79M/~19.1M releases in by
+  22:59:53 EDT, revised ETA roughly 6 hours total) but has not finished — don't
+  start Milestone 5 or tick Milestone 3's last checkbox until it completes and
+  passes a full-dataset `validate`.
 - **The NVMe relocation is tonight's real critical-path discovery, not a
   hypothetical.** Per [ADR 0007](decisions/0007-zimaboard-swarm-manager.md), the
   coordination host's eMMC was at 97% full with no NVMe attached during the first
