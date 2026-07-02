@@ -1,0 +1,49 @@
+---
+# Cluster CPU/memory benchmark probe (pre-hardware tooling).
+#
+# Read-only in spirit, like health.yml: no package installs, no accounts
+# changed. Copies a small, dependency-free Python probe
+# (infra/ansible/files/benchmark_parse.py -- deliberately NOT the
+# production Discogs parser, see that file's own docstring) to each node,
+# runs it, reports the result, and cleans up after itself. Safe to re-run.
+#
+# Run health.yml first -- this assumes the node is already reachable and
+# healthy, the same layering onboard.yml uses relative to health.yml.
+#
+# Usage (from infra/ansible/, with a real local inventory):
+#   ansible-playbook -i inventories/local/hosts.yml playbooks/benchmark.yml
+#   BENCHMARK_ITERATIONS=50000 ansible-playbook -i inventories/local/hosts.yml playbooks/benchmark.yml -e benchmark_iterations=50000
+- name: Cluster CPU/memory benchmark
+  hosts: all
+  gather_facts: false
+  vars:
+    benchmark_iterations: "{{ lookup('env', 'BENCHMARK_ITERATIONS') | default(20000, true) }}"
+    remote_probe_path: /tmp/networked-players-benchmark_parse.py
+  tasks:
+    - name: Require python3
+      ansible.builtin.command: python3 --version
+      register: python3_check
+      changed_when: false
+      failed_when: python3_check.rc != 0
+
+    - name: Copy the benchmark probe
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../files/benchmark_parse.py"
+        dest: "{{ remote_probe_path }}"
+        mode: "0644"
+
+    - name: Run the benchmark probe
+      ansible.builtin.command: "python3 {{ remote_probe_path }} {{ benchmark_iterations }}"
+      register: benchmark_result
+      changed_when: false
+
+    - name: Clean up the probe
+      ansible.builtin.file:
+        path: "{{ remote_probe_path }}"
+        state: absent
+
+    - name: Report benchmark result
+      ansible.builtin.debug:
+        msg:
+          - "host: {{ inventory_hostname }}  groups: {{ group_names | join(',') }}"
+          - "{{ benchmark_result.stdout }}"

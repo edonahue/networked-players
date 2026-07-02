@@ -6,7 +6,8 @@
 
 .DEFAULT_GOAL := help
 .PHONY: help setup test lint fmt fmt-check typecheck check ingest ingest-check profile-discogs \
-	backup-coordination restore-coordination backup-swarm-manager restore-swarm-manager
+	backup-coordination restore-coordination backup-swarm-manager restore-swarm-manager \
+	cluster-health cluster-benchmark
 
 help: ## List available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
@@ -53,3 +54,9 @@ backup-swarm-manager: ## Back up Swarm manager CA/raft state (sudo, brief Docker
 
 restore-swarm-manager: ## Restore Swarm manager state (needs BACKUP_FILE=...swarm-state.tar.gz; DESTRUCTIVE)
 	./scripts/restore-swarm-manager-state.sh "$(BACKUP_FILE)" --yes-i-am-sure
+
+cluster-health: ## Confirm every inventory node is reachable and healthy (read-only)
+	./infra/ansible/run-health-local.sh
+
+cluster-benchmark: ## Benchmark CPU/memory per node type; run cluster-health first
+	./infra/ansible/run-benchmark-local.sh

@@ -22,3 +22,21 @@ Hardware classes and selected models may be named when they explain a design con
 - Snapshot distribution should be incremental, checksummed, and infrequent enough for 100 Mbps worker links.
 - The 2.5GbE backbone chiefly benefits the coordination host, uplink organization, future endpoints, and large transfers that do not terminate on a Pi 3B.
 - Heavy full-catalog work can run on an optional workstation and publish compact immutable inputs back to the always-on environment.
+
+## Measured capability
+
+Real numbers from `infra/ansible/playbooks/benchmark.yml`
+(`make cluster-benchmark`, see `infra/ansible/README.md`'s "Benchmarking"
+section) — a small, dependency-free CPU/memory probe run per node, not the
+production Discogs parser. Filled in as each node type actually becomes
+reachable; do not extend this table with unmeasured numbers.
+
+| Node | Arch | CPUs | Iterations | Elapsed | Releases/sec | Peak RSS | Measured |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Coordination host (ZimaBoard 832) | x86_64 | 4 | 20,000 | ~2.7s | ~14,600 | ~14 MB | 2026-07-02 |
+| Raspberry Pi 3B worker | aarch64 | — | — | — | — | — | not yet reachable |
+| Second ZimaBoard 832 (optional build node) | x86_64 | — | — | — | — | — | not yet reachable |
+
+No routing decision follows from this yet — one data point isn't a
+comparison. Update this table for real once the Pi workers and the second
+ZimaBoard are wired up and `make cluster-benchmark` has run against them.

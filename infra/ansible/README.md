@@ -18,8 +18,11 @@ Commit only example inventories. Real inventory, host variables, addresses, and 
 ```text
 ansible.cfg                                       defaults; points at the example inventory
 playbooks/health.yml                              read-only facts + health checks (Phase 1)
+playbooks/benchmark.yml                           read-only-safe CPU/memory probe per node
 playbooks/harden.yml                               coordinator hardening, state-changing (ADR 0014)
 playbooks/onboard.yml                              Pi worker + build-node onboarding (ADR 0015)
+files/benchmark_parse.py                          standalone probe copied to each node by benchmark.yml
+run-health-local.sh, run-benchmark-local.sh       guarded local entry points (share run-playbook-local.sh)
 inventories/example/hosts.yml                     example hosts (placeholder names)
 inventories/example/group_vars/all.yml            example shared variables
 inventories/example/group_vars/workers.yml        example Pi 3B worker variables
@@ -38,6 +41,38 @@ cd infra/ansible
 cp -r inventories/example inventories/local   # then edit with real hosts (git-ignored)
 ansible-playbook -i inventories/local/hosts.yml playbooks/health.yml
 ```
+
+Or use the guarded wrapper (`./run-health-local.sh`), which also installs
+`ansible-core` via `uv tool install` if it isn't already on `PATH`.
+
+## Benchmarking
+
+`playbooks/benchmark.yml` is read-only-safe like `health.yml` (no package installs,
+no accounts changed — it copies a small script, runs it, deletes it) but is
+its own playbook rather than folded into `health.yml`, since it exercises a
+real CPU/memory workload rather than just reading facts. Run it *after*
+`health.yml` confirms a node is reachable and healthy, same layering
+`onboard.yml` uses.
+
+The probe (`files/benchmark_parse.py`) is a small, dependency-free (stdlib
+only) script — deliberately **not** the production Discogs parser in
+`packages/catalog` — that models the same bottleneck already profiled for
+real (`docs/DATA_SIZING.md`'s "Real profiling" section: repeated per-child
+XML text lookups). Zero pip/apt installs needed on any node, which matters
+for untested 1GB-RAM ARM64 Pi 3B hardware. Results report hostname,
+architecture, CPU count, elapsed time, and peak RSS as one JSON line per
+node, annotated with its inventory group for cross-node-type comparison.
+
+```bash
+./run-benchmark-local.sh
+BENCHMARK_ITERATIONS=50000 ./run-benchmark-local.sh   # more iterations for noisy/fast hardware
+```
+
+Real result on the coordination host (x86_64, 4 CPUs), 2026-07-02: 20,000
+iterations (40,000 releases parsed) in ~2.7s, ~14,600 releases/sec, ~14MB
+peak RSS. No Pi or second-ZimaBoard numbers exist yet — see
+`docs/HARDWARE.md`'s "Measured capability" section, to be filled in once
+that hardware is reachable.
 
 ## Mutating playbooks
 
