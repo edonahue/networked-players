@@ -5,7 +5,8 @@
 # target maps to a command documented in README.md / AGENTS.md.
 
 .DEFAULT_GOAL := help
-.PHONY: help setup test lint fmt fmt-check typecheck check ingest ingest-check profile-discogs
+.PHONY: help setup test lint fmt fmt-check typecheck check ingest ingest-check profile-discogs \
+	backup-coordination restore-coordination backup-swarm-manager restore-swarm-manager
 
 help: ## List available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
@@ -40,3 +41,15 @@ ingest-check: ## Check disk-space feasibility for a bounded Discogs ingest slice
 
 profile-discogs: ## Profile a completed Discogs dataset with DuckDB (needs SNAPSHOT=YYYYMMDD)
 	./scripts/profile-discogs-dataset.sh
+
+backup-coordination: ## Back up the Postgres/Redis dev-loop stack (pg_dump + Redis BGSAVE, no downtime)
+	./scripts/backup-coordination-stack.sh
+
+restore-coordination: ## Restore the Postgres/Redis stack (needs BACKUP_DIR=local/backups/coordination/<ts>)
+	./scripts/restore-coordination-stack.sh "$(BACKUP_DIR)"
+
+backup-swarm-manager: ## Back up Swarm manager CA/raft state (sudo, brief Docker downtime)
+	./scripts/backup-swarm-manager-state.sh
+
+restore-swarm-manager: ## Restore Swarm manager state (needs BACKUP_FILE=...swarm-state.tar.gz; DESTRUCTIVE)
+	./scripts/restore-swarm-manager-state.sh "$(BACKUP_FILE)" --yes-i-am-sure

@@ -177,3 +177,57 @@ ADR with full detail, so this section stays a summary, not the only copy.
   artifact retention.
 - **Raspberry Pi 3B workers:** only bounded, immutable, checksummed partitions — never the
   full raw dump. See [HARDWARE.md](HARDWARE.md) and the catalog package's resource posture.
+
+## Backup and recovery
+
+Two independent recovery concerns, with different risk profiles — see
+[ADR 0016](decisions/0016-state-backup-and-recovery.md) for the full reasoning.
+Both back up to `local/backups/` (already git-ignored; never committed).
+
+### Coordination stack (Postgres/Redis)
+
+Low-stakes: a dev-loop database with no real consumers yet. Zero-downtime,
+logical backup via `pg_dump`/Redis `BGSAVE`, no root needed.
+
+```bash
+./scripts/backup-coordination-stack.sh
+# writes local/backups/coordination/<timestamp>/{postgres.sql,redis-dump.rdb,manifest.json}
+
+./scripts/restore-coordination-stack.sh local/backups/coordination/<timestamp>
+# requires the stack already up (./infra/swarm/deploy-coordination.sh)
+```
+
+Run a backup before anything that touches the stack destructively (a schema
+change, a Docker daemon restart, etc.). Worth testing the full round-trip at
+least once: write a marker row/key, back up, restore, confirm the marker
+survives.
+
+### Swarm manager state (CA/raft)
+
+Higher-stakes: this is the only Swarm manager. There's no logical-export
+equivalent for the raft store, so the backup briefly stops the Docker daemon
+— which also stops the coordination stack (see ADR 0014's `unless-stopped`
+finding). The backup script re-deploys the coordination stack automatically
+afterward, but expect a real, brief outage while it runs.
+
+```bash
+./scripts/backup-swarm-manager-state.sh
+# writes local/backups/swarm-manager/<timestamp>/swarm-state.tar.gz (chmod 600)
+
+# Verify without restoring:
+tar -tzf local/backups/swarm-manager/<timestamp>/swarm-state.tar.gz
+
+# Only if you actually need to restore -- replaces the manager's identity:
+./scripts/restore-swarm-manager-state.sh local/backups/swarm-manager/<timestamp>/swarm-state.tar.gz --yes-i-am-sure
+```
+
+The restore script keeps the pre-restore state at `/var/lib/docker/swarm.bak`
+rather than deleting it, but still stops Docker while it runs. Because this
+is currently the only Swarm manager (no fallback to recover from a botched
+restore), treat a live restore test as a deliberate decision, not a routine
+check — a backup plus a `tar -tzf` integrity check is enough validation for
+routine use.
+
+**Both are local-only.** Neither backup copies data off this host — a total
+loss of `/mnt/data` loses these too. Off-host replication isn't built yet
+(see ADR 0016's Consequences).
