@@ -186,6 +186,7 @@ member. Onboarding tooling exists for both the Pi workers and this node
 | Coordination host hardening | Done (ADR 0014): persistent journald, hardware watchdog, Docker log rotation, `vm.swappiness` tuning (`infra/ansible/playbooks/harden.yml`) |
 | Supervised job + ntfy tooling | Added and verified end-to-end: resource-bounded `systemd-run` job wrapper, periodic progress monitor, ntfy.sh push notifications on start/finish |
 | Docker Swarm manager | Active (ADR 0007) |
+| Swarm manager state backup | Built and live-tested 2026-07-02 (ADR 0016); backup + integrity check confirmed, live restore untested by operator choice |
 | Worker join token | Captured locally, unused |
 | Fleet onboarding tooling | Added (ADR 0015, `infra/ansible/playbooks/onboard.yml`); not yet run against physical hardware |
 | Portainer | Running (ADR 0008), Tailscale-bound (ADR 0009) |
@@ -208,6 +209,9 @@ in advance. Don't reorder completed milestones; add follow-up milestones at the 
 of a track if scope grows.
 
 ## Milestone 1: Verify and unblock the coordination host (ROADMAP 1)
+
+**Done as of 2026-07-02** — every task below is complete, including a real,
+live-tested backup/restore round-trip for the coordination stack.
 
 ### Goal
 Resolve the current storage blocker and get a full, passing health check on the
@@ -290,8 +294,23 @@ done until there's evidence for it.
       manager simply by running as a plain `docker compose` container here, not
       a Swarm service — there is no Swarm placement constraint to confirm, since
       this was never designed as a Swarm stack [`infra/swarm`]
-- [ ] Back up manager state (Swarm CA/raft) and locally test its recovery
-      procedure
+- [x] Back up manager state (Swarm CA/raft) and locally test its recovery
+      procedure — done 2026-07-02: `scripts/backup-swarm-manager-state.sh`
+      (stops Docker briefly, tars `/var/lib/docker/swarm`, restarts Docker,
+      automatically re-deploys the coordination stack and Portainer — see
+      [ADR 0016](decisions/0016-state-backup-and-recovery.md)) ran for real
+      on the coordination host: archive produced
+      (`local/backups/swarm-manager/20260702T164441Z/swarm-state.tar.gz`,
+      confirmed via `tar -tzf` to contain `raft/`, `certificates/`
+      (including the real CA cert/key), `worker/`, `docker-state.json`,
+      `state.json`), Docker came back up cleanly, the coordination stack
+      and Portainer re-deployed automatically, and `docker node ls`
+      confirmed the manager stayed healthy (`Leader`, `Active`)
+      post-backup. A live restore test was deliberately **not** run —
+      operator's explicit choice, since this is the only Swarm manager and
+      ADR 0016 already scoped backup + integrity verification as
+      sufficient for routine validation; `scripts/restore-swarm-manager-state.sh`
+      exists and is documented but remains untested against real state
 
 ### Host tooling (this session, folded into this milestone)
 - [x] Deploy Portainer CE as a plain (non-Swarm) container for Swarm visibility,
