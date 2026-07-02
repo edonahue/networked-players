@@ -46,7 +46,7 @@ else
   DC=(docker compose -f docker-compose.coordination.yml)
 fi
 
-running_count="$("${DC[@]}" ps --status running --format '{{.Name}}' 2>/dev/null | wc -l | tr -d ' ')"
+running_count="$("${DC[@]}" ps --status running --services 2>/dev/null | wc -l | tr -d ' ')"
 if [[ "${running_count}" -eq 2 ]]; then
   echo "==> postgres and redis already running; nothing to do."
 else

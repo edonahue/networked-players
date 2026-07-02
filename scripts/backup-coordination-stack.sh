@@ -23,7 +23,7 @@ else
   DC=(docker compose -f docker-compose.coordination.yml)
 fi
 
-running_count="$("${DC[@]}" ps --status running --format '{{.Name}}' 2>/dev/null | wc -l | tr -d ' ')"
+running_count="$("${DC[@]}" ps --status running --services 2>/dev/null | wc -l | tr -d ' ')"
 if [[ "${running_count}" -ne 2 ]]; then
   echo "ABORT: postgres/redis aren't both running. Run ./infra/swarm/deploy-coordination.sh first." >&2
   exit 1
