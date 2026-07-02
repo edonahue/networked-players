@@ -631,7 +631,13 @@ Milestone 10.
 - [ ] Version normalized artist, master, and label schemas as those parsers are
       added [`packages/catalog`, `data/contracts/`]
 - [ ] Define a role taxonomy while preserving original role text
-      [`packages/catalog`, `data/contracts/`]
+      [`packages/catalog`, `data/contracts/`] — real scope evidence now
+      exists: a 2026-07-02 full-dataset profiling pass found 3,345,564
+      distinct `role_text` values across 220,015,758 real credit rows (max
+      length 2,655 chars), confirming this is genuinely free text, not a
+      small enum, and any taxonomy design needs to handle a long tail, not
+      just the common ~15 role strings. See
+      `docs/discogs-data/raw-dump-schema.md`'s "Real full-dataset profiling"
 - [ ] Define snapshot retention, free-space guardrails, and recovery automation
       beyond the manual steps in `docs/OPERATOR_SETUP.md` [`docs/`, `infra/`]
 - [ ] Add repeatable worker jobs over immutable partitions — the first real

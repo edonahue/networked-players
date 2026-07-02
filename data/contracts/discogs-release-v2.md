@@ -25,7 +25,7 @@ so tables remain self-describing once separated from their path.
 | `country` | string | yes | Release country |
 | `released` | string | yes | Release date or year, as given (e.g. `2001`, `2003-04-01`) |
 | `master_id` | int64 | yes | Master id when present |
-| `master_is_main_release` | bool | yes | Whether this release is the master's main release |
+| `master_is_main_release` | bool | no | Whether this release is the master's main release; `false` when `master_id` is absent (real full-dataset check, 2026-07-02: never actually null — see `docs/discogs-data/raw-dump-schema.md`'s "Real full-dataset profiling") |
 | `data_quality` | string | yes | Discogs data-quality label (e.g. `Correct`, `Needs Vote`) |
 | `source_url` | string | no | Provenance: the dump object URL |
 

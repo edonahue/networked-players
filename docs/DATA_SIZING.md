@@ -232,6 +232,12 @@ skews toward more credits/tracks per release than the first 10,000 releases
 suggested. This closes Milestone 3's last open task in `docs/BUILD_PLAN.md` for
 real.
 
+With the dataset complete, `docs/discogs-data/raw-dump-schema.md`'s "Real
+full-dataset profiling (2026-07-02)" section goes further: real column-level
+null rates, distributions, and encoding/outlier spot checks across all 19.19M
+releases, plus query-performance notes for the DuckDB CLI setup used to run
+them.
+
 ## Recommended 1 TB NVMe policy
 
 The planned 1 TB project NVMe is sufficient with explicit retention:

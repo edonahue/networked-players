@@ -94,10 +94,83 @@ Confirmed present in the real inspected sample, not represented in
 | `<identifiers>` | `type="Matrix / Runout" value="..."` | Matrix/runout, barcode, etc. — physical-artifact-level evidence |
 | `<videos>` | `src` (YouTube URL), `duration`, `title`, `description` | Real external links; **not** the same as the API's `images[]` — dump XML has no image data at all |
 | `<companies>` | `id`, `name`, `entity_type`, `entity_type_name` (e.g. "Recorded At", "Pressed By") | A second, distinct credit system alongside `artists`/`extraartists` — companies/roles rather than people |
+| `<series>` | `<series name="Profound Sounds" catno="Vol. 1" id="527772"/>` | A release-to-series graph edge (own `series_id`), same shape as `<label>`. Confirmed present in ~6.8% of releases (3,377 of 49,461 in a 200MB raw sample, 2026-07-02 real profiling pass below) — found late, via full-dataset profiling rather than the initial schema read; recorded here so it isn't missed again |
 
 These are real, deliberate gaps (per `AGENTS.md`: "Artists, labels, and masters
 parsers remain intentionally deferred"), not oversights — listed here so a future
 milestone extending the schema starts from what's actually in the data.
+
+## Real full-dataset profiling (2026-07-02)
+
+The first genuinely complete parse of a real snapshot (`snapshot=20260601`,
+19,192,301 releases / 178,224,810 tracks / 220,015,758 credits — see
+`docs/BUILD_PLAN.md` Milestone 3, `docs/DATA_SIZING.md`'s "Full unbounded run:
+complete") made it possible to profile the actual *output* dataset, not just
+inspect the raw XML by hand. Run with `scripts/profile-discogs-dataset.sh`
+(reusable against any future snapshot: `SNAPSHOT=YYYYMMDD make
+profile-discogs`), using the DuckDB CLI already installed on the coordination
+host (`scripts/install-duckdb-cli.sh`). Full captured output:
+`local/monitoring/profile-20260601.txt` (git-ignored, real derived data).
+
+### Dimensions and referential shape
+
+Average 9.29 tracks and 11.46 credits per release. Only 1 of 19,192,301
+releases has zero tracks; every release has at least one credit (the
+`release_artist` row is never absent).
+
+### Column quality and format findings
+
+| Column | Finding | Verdict |
+| --- | --- | --- |
+| `status` (releases) | `NULL` for all 19,192,301 rows | Not a bug — the raw `<release>` element has no `status` attribute at all in this dump (checked byte-for-byte); the *dump* format simply doesn't carry it, unlike the API |
+| `master_is_main_release` (releases) | Never `NULL` (always a real bool); 41.6% of releases (7,981,915) have `master_id IS NULL` and this field `= false` | Not a parser bug — traced to raw XML: `<master_id>` is present in ~99.999% of releases, and Discogs' own dump encodes "no master" as `<master_id is_main_release="false">0</master_id>` (`_integer()` already treats sentinel `0` as no master). The code's always-boolean output faithfully reflects real signal. **The contract doc's "nullable: yes" was the actual bug** — fixed in `data/contracts/discogs-release-v2.md` |
+| `country` (releases) | 602,395 `NULL` (3.1%); top values US/UK/Germany/Japan/France, all plausible | No issue |
+| `released` (releases) | Shape families: year-only 56.1% (10,777,003), full-date 26.3% (5,057,231), empty/null 13.3% (2,554,491), partial-day `YYYY-MM-00` 4.2% (803,525), other/malformed 0.0003% (51 rows: `1980s`, Arabic-Indic/fullwidth digits, `200?`, no-separator `20061014`, truncated dates) | Expected — field is intentionally kept verbatim, not normalized (see above) |
+| `duration` (tracks) | 84,610,443 empty (47.5%), 93,544,302 match `M:SS` (52.5%), ~70K residual (0.04%): real `H:MM:SS` for long tracks (`1:00:00`, `2:00:00`) and single-digit-second source formatting (`3:5` = 3:05) | Expected — preserved verbatim, not reformatted |
+| `position` (tracks) | 4,116,591 `NULL` (2.3%); top values are plain integers and vinyl side/position codes (`A1`, `B1`, ...) | No issue |
+| Release/credit titles and names | 89 of 19,192,301 titles (0.0005%) contain mojibake (e.g. `Ãvutmã`, replacement characters `�`). Traced release `1417404` byte-for-byte in the raw XML: the corruption is already present in Discogs' own source dump (cross-referenced against the same release's clean matrix/runout text and a repeated-corruption track title) — not introduced by download/decompression/parsing | Not a bug — preserving it verbatim is the correct behavior per this project's evidence-preservation rule |
+| `name` (credits) | Max length 4,159 chars — a single non-linked (`artist_id IS NULL`) credit listing dozens of names as one comma-separated blob (a large ensemble credited as a unit) | Not a bug — genuine free-text source data, correctly retained as evidence without inventing individual playable identities |
+| `role_text` (credits) | 3,345,564 distinct values across 220,015,758 rows; 14,013 rows exceed 200 chars (max 2,655) | Expected — free text by design (`AGENTS.md`: "preserve original role text"), not a small enum. Concrete sizing evidence for a future role-taxonomy milestone (see `docs/BUILD_PLAN.md` Milestone 11) |
+| `is_linked` × `playable_identity` (credits) | Only two combinations exist in 220M rows: `(true, true)` and `(false, false)` | Confirms the "no non-linked identity is ever playable" invariant holds at 100% in real data |
+| `credit_scope` (credits) | `track_credit` 40.7%, `release_credit` 32.0%, `track_artist` 16.7%, `release_artist` 10.6% | No issue |
+| `data_quality` (releases) | 90.6% `Needs Vote`, 8.0% `Correct`, remainder split across `Complete and Correct`/`Needs Minor Changes`/`Needs Major Changes`/`Entirely Incorrect` | No issue — real community-moderation skew, not a parsing artifact |
+| Prolific `artist_id`s (credits) | Top by credit count: `194`/"Various" (1,387,275), `151641`/"Traditional" (521,164), `355`/"Unknown Artist" (420,079), then classical composers (Bach, Mozart, Beethoven) and well-known artists (David Bowie, Bob Dylan) | Sanity-check passed — the ranking is exactly what a real Discogs credit distribution should look like |
+
+### Remediation taken
+
+One small parser fix, evidence-scoped (see findings above): `status`
+(`releases.py`, attribute path) is now stripped and coerced from empty
+string to `None`, matching the convention every element-text field already
+uses (`_text_from_map`). Zero effect on the existing real dataset (0
+releases in this dump have `status=""`) — purely defensive for a future
+dump. No other code changes were made: `<series>`'s gap is a documentation
+fix (above), `master_is_main_release`'s nullability is a contract-doc fix
+(`data/contracts/discogs-release-v2.md`), and every other finding above is
+confirmed genuine source-data behavior, correctly preserved verbatim.
+Nothing here required (or triggered) a re-run of the 6-hour full ingest.
+
+### Query performance and DB setup
+
+Setup: the standalone DuckDB CLI (`v1.5.4`, embedded — no server process),
+reading zstd-compressed Parquet directly off the NVMe-backed
+`local/processed/discogs/snapshot=20260601/` via glob patterns (no load
+step, no persistent `.duckdb` file, no indexes) — the same coordination
+host (ZimaBoard 832, 4 CPUs) that ran the ingest.
+
+The full profiling script (27 queries, most scanning the full 19.19M/
+178.2M/220M-row tables, several with `GROUP BY`/`ORDER BY`/regex on the
+credits table) completed in **229.7 seconds total** (~3m50s), averaging
+8.5s/query (min 0.15s for a view creation, max 77.7s for the heaviest
+query — a `GROUP BY artist_id, name ORDER BY count DESC` over all 220M
+credit rows). Most queries reported `user` time 2.5-3x their `real` time
+(e.g. the 77.7s query: 216.2s user, 20.9s sys) — DuckDB automatically
+parallelizes these Parquet scans across all 4 host cores by default, no
+tuning required. This stands in useful contrast to the ingestion parser
+itself, which is single-threaded by design (`docs/DATA_SIZING.md`'s "Real
+profiling" section) — ad hoc analytical queries over the same or larger
+row volumes finish in seconds to low tens of seconds, not hours, simply
+because DuckDB's columnar engine reads only the referenced columns and
+uses every available core without being asked.
 
 ## `artists.xml.gz`
 

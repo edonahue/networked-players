@@ -35,12 +35,15 @@ def _child_text_map(element: etree._Element) -> dict[str, str | None]:
     return result
 
 
-def _text_from_map(text_map: dict[str, str | None], tag: str) -> str | None:
-    value = text_map.get(tag)
+def _normalize_text(value: str | None) -> str | None:
     if value is None:
         return None
     stripped = value.strip()
     return stripped or None
+
+
+def _text_from_map(text_map: dict[str, str | None], tag: str) -> str | None:
+    return _normalize_text(text_map.get(tag))
 
 
 def _integer(value: str | None) -> int | None:
@@ -192,7 +195,7 @@ def parse_release_element(
     release = {
         "snapshot_date": snapshot_date,
         "release_id": release_id,
-        "status": element.attrib.get("status"),
+        "status": _normalize_text(element.attrib.get("status")),
         "title": _text_from_map(text_map, "title"),
         "country": _text_from_map(text_map, "country"),
         "released": _text_from_map(text_map, "released"),

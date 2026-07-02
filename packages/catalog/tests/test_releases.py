@@ -1,7 +1,9 @@
 import gzip
 from pathlib import Path
 
-from networked_players_catalog.discogs.releases import iter_releases
+from lxml import etree
+
+from networked_players_catalog.discogs.releases import iter_releases, parse_release_element
 
 FIXTURE = Path(__file__).parent / "fixtures" / "releases.xml"
 
@@ -43,6 +45,16 @@ def test_stream_parser_preserves_credit_scope_and_identity(tmp_path: Path) -> No
     nested_credit = next(row for row in first.credits if row["name"] == "Nested Player")
     assert nested_credit["track_path"] == "1.0"
     assert nested_credit["track_position"] == "A2a"
+
+
+def test_empty_status_attribute_normalizes_to_none() -> None:
+    element = etree.fromstring('<release id="999" status=""><title>Untitled</title></release>')
+    parsed = parse_release_element(
+        element,
+        snapshot_date="20260501",
+        source_url="https://example.test/releases.xml.gz",
+    )
+    assert parsed.release["status"] is None
 
 
 def test_stream_parser_can_stop_after_a_bounded_slice() -> None:

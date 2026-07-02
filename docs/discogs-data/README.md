@@ -41,6 +41,13 @@ describes something not independently verified against real data (e.g. a field o
 documented in Discogs' public API spec, never seen in an actual response during this
 project's work), it says so explicitly rather than implying it was observed.
 
+`raw-dump-schema.md`'s "Real full-dataset profiling (2026-07-02)" section goes one
+step further: once the same snapshot's full unbounded parse completed
+(`docs/BUILD_PLAN.md` Milestone 3), it profiles the actual *output* dataset with
+DuckDB (`scripts/profile-discogs-dataset.sh`) — real column-level null rates,
+distributions, and encoding/outlier spot checks across all 19.19M releases, not
+just hand-inspected single examples.
+
 ## For future agent sessions
 
 If you're picking up Milestone 5 (one-hop expansion) or later and need to know what
