@@ -149,3 +149,17 @@ informed by this same real profiling data rather than a fresh guess.
 Revisit if a future incident occurs with the hardening in place — the persistent logs
 and watchdog behavior from that incident are real signal this ADR's assumptions should
 be checked against.
+
+**The multiprocess-parallelism question above is closed for now, with a real result.**
+The full unbounded parse this ADR's hardening was built for ran to completion the same
+night: 2026-07-01 17:59:48 EDT → 2026-07-02 00:02:49 EDT, 6h 3m elapsed, 19,192,301
+releases at ~881 releases/sec average, `validate` clean at full scale (see
+`docs/DATA_SIZING.md`'s "Full unbounded run: complete" and `docs/BUILD_PLAN.md`
+Milestone 3). That's close to the ~5.2 hour profiling-based estimate above (real
+wall-clock runs a bit longer than a pure-CPU extrapolation, since it also carries I/O
+and the monitor unit's own overhead) and confirms the hardened supervised pattern —
+watchdog, persistent journald, resource-bounded `systemd-run`, ntfy notifications —
+held up cleanly for a genuine multi-hour unattended job with no incident. Multiprocess
+parallelism remains undeployed; nothing in this run's real numbers currently makes a
+~6 hour monthly cadence feel too slow to justify that added complexity, so it stays a
+deferred, not urgent, decision.

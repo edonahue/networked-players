@@ -90,7 +90,7 @@ The practical first graph does not need every Discogs release:
 5. Preserve every retained release and credit row needed to prove each edge.
 6. Generate a compact graph snapshot and manually verify at least one path.
 
-The first full sequential parse may still be needed to build a reusable release-to-artist index. Later monthly refreshes should compare snapshot manifests and rebuild immutable artifacts rather than editing Parquet files in place.
+The first full sequential parse completed 2026-07-02 (19,192,301 releases from the June 2026 snapshot, validated clean — see `docs/BUILD_PLAN.md` Milestone 3 and `docs/DATA_SIZING.md`'s "Full unbounded run: complete"), so a reusable release-to-artist index can now be built from it. Later monthly refreshes should compare snapshot manifests and rebuild immutable artifacts rather than editing Parquet files in place.
 
 ## Recovery and reproducibility
 

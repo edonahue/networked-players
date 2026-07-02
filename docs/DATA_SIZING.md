@@ -103,17 +103,20 @@ sample size, not just in a synthetic test.
 **Full-scale projection from this real throughput** (not the earlier untested linear
 guess from Parquet output size alone): 19,113,243 releases ÷ ~428.5/sec ≈ **~12.4
 hours** for a full unbounded parse on this host's single-threaded implementation.
-This is a real, evidence-based estimate, not a claim that a full run has completed —
-no full-scale Parquet output or full-scale `validate` result exists yet. The
-single-core utilization also means there's real unused parallelism headroom on this
-4-core host if a future need justified speeding this up.
+This was a real, evidence-based estimate at the time, later superseded — see "Full
+unbounded run: complete" below for the actual measured result, after the same-day
+performance fixes roughly doubled this throughput. The single-core utilization here
+also means there's real unused parallelism headroom on this 4-core host if a future
+need justified speeding this up further.
 
 A naive linear scale-up from this slice (10,000 of ~19.1M May 2026 releases, per the
-planning envelope above) projects roughly 2.3 MB × 1,911 ≈ **4.3 GB** of Parquet
+planning envelope above) projected roughly 2.3 MB × 1,911 ≈ **4.3 GB** of Parquet
 output for a full unbounded parse — within, but toward the lower half of, the
-existing 10–25 GB planning range. This is a projection from one sample of the dump's
-first N releases, not a new authoritative figure; record complexity may not be
-uniform across the full dataset.
+existing 10–25 GB planning range. This was a projection from one sample of the
+dump's first N releases; the actual full-run output (6.6 GB, see below) came in
+higher, meaning record complexity was not uniform across the full dataset — later
+releases in the June 2026 dump apparently carry more credits/tracks per release on
+average than the first 10,000.
 
 ### Real profiling: where parse time actually goes (2026-07-01)
 
@@ -181,13 +184,17 @@ time, three of four host cores idle throughout) — genuine multiprocess paralle
 there, not attempted in this pass, is where the next big win would come from if the
 now-revised ~5 hour full-parse time still isn't fast enough in practice.
 
-### Full unbounded run: in progress (2026-07-01 evening)
+### Full unbounded run: complete (2026-07-01 evening to 2026-07-02)
 
 With the fixes above landed, a genuine full, unbounded parse of the June 2026
 snapshot was launched the same evening via the hardened supervised pipeline
 (`SNAPSHOT=20260601 OVERWRITE=1 ./scripts/run-ingest-supervised.sh`, started
-17:59:48 EDT). This section records real interim numbers, not a completed run —
-update it once the run finishes or fails.
+17:59:48 EDT) and **ran to completion**, including an automatic full-dataset
+`validate` pass as the pipeline's own step 4/4 — the first genuinely completed
+full run, not a partial or projected one.
+
+Interim progress samples, for reference (the monitor unit logged every 30 minutes
+throughout):
 
 | Sample time (EDT) | Releases so far | Parquet parts | Disk free | Mem available |
 | --- | --- | --- | --- | --- |
@@ -195,18 +202,35 @@ update it once the run finishes or fails.
 | 19:59:50 | ~6,315,000 | 1,263 | 854 G | 5.85 GB |
 | 21:29:51 | ~10,995,000 | 2,199 | 852 G | 5.86 GB |
 | 22:59:53 | ~15,790,000 | 3,158 | 851 G | 5.83 GB |
+| 23:59:53 | ~19,070,000 | 3,814 | 850 G | 5.82 GB |
+| 00:29:55 (next day) | run finished; unit deactivated | — | 850 G | 5.97 GB |
 
-Sustained throughput over the observed window: **~877–886 releases/sec** (5-hour
-run average and the most recent 30-minute interval agree within 1%, i.e. no
-slowdown as the run progresses) — consistent with, slightly under, the ~1,018/sec
-profiled-and-extrapolated figure above (real wall-clock includes the ntfy-driven
-progress monitor's own periodic overhead and full I/O, not just parse CPU time).
-Memory stayed flat around 5.8 GB available (no leak across ~5 hours and 15M+
-releases) and disk consumption was steady at ~1 GB/hour, nowhere near the 851+ GB
-still free. Against the closest known total (May 2026's corroborated 19,113,243
-releases — June's own count is not yet independently confirmed, so this is a
-proxy target, not exact), the revised full-run estimate is **roughly 6 hours**
-total, versus the original pre-fix ~12.4 hour projection.
+**Final measured result:**
+
+| Item | Value |
+| --- | ---: |
+| Elapsed (wall clock) | 6h 3m (17:59:48 → 00:02:49 EDT) |
+| Releases | 19,192,301 |
+| Tracks | 178,224,810 |
+| Credits | 220,015,758 |
+| Average throughput | ~881 releases/sec |
+| Parquet output (total) | 6.6 GB (`credits` 3.9 GB, `tracks` 2.3 GB, `releases` 439 MB) |
+| `validate` result | 0 invalid linked-artist IDs, 0 missing credit scope, 0 orphan credits, 0 orphan tracks |
+| Peak memory | Stayed flat ~5.8 GB available throughout (no leak across ~6 hours / 19M+ releases) |
+| Disk consumed | ~1 GB/hour; 850 GB still free at completion |
+
+The measured 6h 3m lines up almost exactly with the ~6 hour estimate projected
+mid-run from the interim samples, and with ADR 0014's independently-derived ~5.2
+hour profiling-based projection (real wall-clock naturally runs a bit longer than
+a pure-CPU profiling extrapolation, since it also includes I/O and the ntfy
+monitor's own periodic overhead). The 881 releases/sec average is roughly double
+the pre-fix ~428.5 releases/sec partial-run rate, confirming the same-day `_text()`
+fix and write-overlap thread delivered their combined benefit at full scale, not
+just on smaller samples. Actual Parquet output (6.6 GB) landed above the 4.3 GB
+naive linear projection — see the revised note above; June 2026's release mix
+skews toward more credits/tracks per release than the first 10,000 releases
+suggested. This closes Milestone 3's last open task in `docs/BUILD_PLAN.md` for
+real.
 
 ## Recommended 1 TB NVMe policy
 

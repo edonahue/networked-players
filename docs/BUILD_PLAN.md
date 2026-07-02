@@ -33,19 +33,22 @@ credits parsed, `validate` reporting zero invariant violations — see
 hosting behind a Cloudflare proxy (`data.discogs.com`) with a different URL scheme
 than the old direct-S3 path; `manifest.py` was updated accordingly. The operator's
 real private seed was imported ([ADR 0011](decisions/0011-private-seed-contract.md));
-no one-hop expansion and no artist graph exist yet. Later the same day, real
-`cProfile` output on the parser (not the initially assumed "decompression or
-Parquet writing" cause) found the actual bottleneck was `releases.py` re-scanning
-each element's children once per field via repeated `findtext()` calls; fixing it
-(a single child-text map built once per element) cut measured parse time by
-**~1.9x**, and a bounded single-thread write/parse overlap in `parquet.py` measured
-a further **~4.2%** — see `docs/DATA_SIZING.md`'s "Real profiling" and "'Light'
-parallelism" sections. On the strength of that fix, a **full, unbounded parse of
-the June 2026 snapshot was launched the same evening** (2026-07-01 17:59:48 EDT,
-via the hardened supervised pipeline below) and is still running as this section
-is written — see [Milestone 3](#milestone-3-real-ingestion-dry-run-roadmap-3)'s
-last task for the real in-progress numbers. This is progress on that task, not a
-claim that it's complete.
+no one-hop expansion and no artist graph exist yet (Milestone 5 is next). Later
+the same day, real `cProfile` output on the parser (not the initially assumed
+"decompression or Parquet writing" cause) found the actual bottleneck was
+`releases.py` re-scanning each element's children once per field via repeated
+`findtext()` calls; fixing it (a single child-text map built once per element) cut
+measured parse time by **~1.9x**, and a bounded single-thread write/parse overlap
+in `parquet.py` measured a further **~4.2%** — see `docs/DATA_SIZING.md`'s "Real
+profiling" and "'Light' parallelism" sections. On the strength of that fix, a
+**full, unbounded parse of the June 2026 snapshot was launched the same evening**
+(2026-07-01 17:59:48 EDT, via the hardened supervised pipeline below) and **ran to
+completion** (00:02:49 EDT, 2026-07-02, 6h 3m elapsed): **19,192,301 releases /
+178,224,810 tracks / 220,015,758 credits**, 6.6 GB Parquet output, `validate`
+reporting zero invariant violations at full scale — the first genuinely completed
+full run, not a projection. See
+[Milestone 3](#milestone-3-real-ingestion-dry-run-roadmap-3)'s last task and
+`docs/DATA_SIZING.md`'s "Full unbounded run: complete" for the full numbers.
 
 **Graph, game rules, workers, API (`packages/graph-core`, `packages/game-rules`,
 `packages/workers`, `apps/api`).** Placeholders. Each has only a README describing
@@ -156,7 +159,7 @@ member. Onboarding tooling exists for both the Pi workers and this node
 | Area | State |
 | --- | --- |
 | Discogs release ingestion (code) | Working, tested, synthetic-only; parser hot path fixed (~1.9x) and write/parse overlap added (~4.2%), 2026-07-01 |
-| Discogs release ingestion (real run) | Bounded 10,000-release slice done and validated clean (2026-07-01); a full unbounded parse of the June 2026 snapshot is **in progress** as of this writing (launched 17:59:48 EDT), not yet complete — see Milestone 3 |
+| Discogs release ingestion (real run) | **Done at full scale.** Bounded 10,000-release slice (2026-07-01) and full unbounded parse (2026-07-01 17:59:48 → 2026-07-02 00:02:49 EDT, 19,192,301 releases) both validated clean — see Milestone 3 |
 | Private seed import | Implemented (ADR 0011); operator's real seed imported locally |
 | One-hop graph expansion | Not implemented |
 | `graph-core` | Placeholder (README only) |
@@ -296,6 +299,10 @@ done until there's evidence for it.
 
 ## Milestone 3: Real ingestion dry run (ROADMAP 3)
 
+**Done as of 2026-07-02 00:02:49 EDT** — every task below is complete, including a
+genuinely finished full unbounded parse with a clean full-dataset `validate` pass.
+Milestone 5 is unblocked.
+
 ### Goal
 Prove the existing, tested catalog pipeline against a real Discogs snapshot on real
 hardware — the prerequisite for every later graph milestone.
@@ -337,33 +344,32 @@ health playbook).
 - [x] Run `validate` against the resulting dataset and confirm DuckDB invariants
       hold on real (not synthetic) data — confirmed: 0 invalid linked-artist IDs, 0
       missing credit scope, 0 orphan credits, 0 orphan tracks [`packages/catalog`]
-- [ ] Decide, from the measured slice, whether a full unbounded parse is
-      coordination-host-feasible or workstation-only — **real throughput data now
-      exists, but the decision itself is still open — a full run is in progress,
-      not finished.** A partial full-scale run (650,000 real releases, stopped
+- [x] Decide, from the measured slice, whether a full unbounded parse is
+      coordination-host-feasible or workstation-only — **resolved: yes, confirmed
+      by a genuinely completed full run, not just a projection.** A partial
+      full-scale run earlier the same day (650,000 real releases, stopped
       deliberately, not failed) measured ~428.5 releases/sec, ~167.6 MB peak RSS
-      (confirms the streaming design stays memory-bounded at 65x the smoke-test
+      (confirmed the streaming design stays memory-bounded at 65x the smoke-test
       scale), single-core utilization (3 of 4 host cores idle), and projected
-      **~12.4 hours** for a full parse at that rate. That projection is now
-      superseded: after the same-day `_text()`/`findtext()` hot-path fix
-      (~1.9x) and write-overlap thread (~4.2%), a genuine full, unbounded parse
-      of the June 2026 snapshot was launched at 17:59:48 EDT via the hardened
-      supervised pipeline (`SNAPSHOT=20260601 OVERWRITE=1
-      ./scripts/run-ingest-supervised.sh`, [ADR 0014](decisions/0014-coordination-host-hardening.md)).
-      As of the last recorded progress sample (22:59:53 EDT, ~5 hours in): ~15.79M
-      releases processed (3,158 Parquet parts), sustained throughput ~877–886
-      releases/sec (5-hour average and most recent 30-minute interval agree within
-      1%), 851 GB disk free (~1 GB/hour consumed), memory and temperature nominal
-      throughout — roughly **double** the pre-fix rate, revising the full-run
-      projection to **roughly 6 hours** against the closest known total (May 2026's
-      corroborated 19,113,243 releases — June's exact count is not yet
-      independently confirmed, so this is a proxy, not an exact target). The run
-      was still active, not yet complete, non-failed, as of this document's last
-      edit — coordination-host-feasibility looks likely from these numbers but
-      stays an open checkbox until the run actually finishes and a full-dataset
-      `validate` pass confirms it clean. See `docs/DATA_SIZING.md`'s "Partial
-      full-scale run," "Real profiling," and "'Light' parallelism" sections
-      [`packages/catalog`, `docs/DATA_SIZING.md`]
+      ~12.4 hours for a full parse at that rate. After the same-day
+      `_text()`/`findtext()` hot-path fix (~1.9x) and write-overlap thread
+      (~4.2%), a genuine full, unbounded parse of the June 2026 snapshot was
+      launched at 17:59:48 EDT via the hardened supervised pipeline
+      (`SNAPSHOT=20260601 OVERWRITE=1 ./scripts/run-ingest-supervised.sh`,
+      [ADR 0014](decisions/0014-coordination-host-hardening.md)) and **ran to
+      completion at 00:02:49 EDT the next day (6h 3m elapsed)**: 19,192,301
+      releases / 178,224,810 tracks / 220,015,758 credits parsed, ~881
+      releases/sec average (roughly double the pre-fix rate), 6.6 GB Parquet
+      output, memory flat around 5.8 GB available throughout (no leak across 19M+
+      releases), 850 GB disk free at completion. The pipeline's own step 4/4 ran
+      `validate` automatically against the full dataset and reported **0 invalid
+      linked-artist IDs, 0 missing credit scope, 0 orphan credits, 0 orphan
+      tracks** — the coordination host is confirmed feasible for this job
+      unattended, and this closes the milestone's last open task with a real,
+      completed result rather than a projection. See `docs/DATA_SIZING.md`'s
+      "Partial full-scale run," "Real profiling," "'Light' parallelism," and
+      "Full unbounded run: complete" sections [`packages/catalog`,
+      `docs/DATA_SIZING.md`]
 
 ### Host reliability and performance work (this session, folded into this milestone)
 This work exists because the operator asked, ahead of the full run above, to
@@ -467,7 +473,10 @@ one-hop expansion `docs/DISCOGS_INGESTION.md` already describes, producing the
 smallest real graph-ready corpus.
 
 ### Depends on
-Milestone 3 (Milestone 4 is done — the real seed already exists locally).
+Milestone 3 — **satisfied as of 2026-07-02** (Milestone 4 was already done — the
+real seed already exists locally). The full unbounded dataset (19,192,301
+releases, validated clean) now exists at `local/processed/discogs/snapshot=20260601/`,
+so this milestone can start.
 
 ### Tasks
 - [ ] Extract the seed releases' linked credited-artist IDs into an artist-ID
@@ -481,10 +490,12 @@ Milestone 3 (Milestone 4 is done — the real seed already exists locally).
 - [ ] Add a test asserting the expansion is deterministic and bounded given a
       fixed seed and snapshot [`packages/catalog`]
 
-**Caveat, stated plainly rather than resolved in advance:** a bounded slice from
-Milestone 3 may prove insufficient to build the release→artist index this
-expansion needs — the full sequential parse might be required first. Decide once
-Milestone 3's real results are in; see Sequencing notes below.
+**Former caveat, now resolved:** this milestone's tasks originally worried a
+bounded slice from Milestone 3 might prove insufficient to build the
+release→artist index this expansion needs, and that the full sequential parse
+might be required first. That's moot now — Milestone 3's full unbounded parse
+already completed (see above), so the frontier can be built directly from the
+real, complete dataset rather than a bounded slice.
 
 ## Milestone 6: Minimal graph-core (ROADMAP 4, 5)
 
@@ -728,16 +739,14 @@ Milestones 2, 11, 12, 13, and 14, all complete.
 
 ## Sequencing notes
 
-- **Milestone 3 → 5 dependency may bounce back.** `docs/DISCOGS_INGESTION.md`
-  notes the first full sequential parse may still be needed to build a reusable
-  release-to-artist index, even though Milestone 3 only asks for a bounded slice.
-  If Milestone 5 can't build its frontier from a bounded slice, Milestone 3 may
-  need to be redone as a full parse first. Don't treat this as resolved until
-  Milestone 3's real results are in. As of 2026-07-01 evening, a full unbounded
-  parse is running (launched 17:59:48 EDT, ~15.79M/~19.1M releases in by
-  22:59:53 EDT, revised ETA roughly 6 hours total) but has not finished — don't
-  start Milestone 5 or tick Milestone 3's last checkbox until it completes and
-  passes a full-dataset `validate`.
+- **Milestone 3 → 5 dependency bounce-back: resolved, did not occur.**
+  `docs/DISCOGS_INGESTION.md` had noted the first full sequential parse might be
+  needed to build a reusable release-to-artist index, even though Milestone 3
+  only originally asked for a bounded slice. That question is now moot: a full
+  unbounded parse ran to completion 2026-07-01 17:59:48 EDT → 2026-07-02
+  00:02:49 EDT (19,192,301 releases, validated clean — see Milestone 3 and
+  `docs/DATA_SIZING.md`'s "Full unbounded run: complete"), so Milestone 5 can
+  build its frontier from the real, complete dataset directly. No redo needed.
 - **The NVMe relocation is tonight's real critical-path discovery, not a
   hypothetical.** Per [ADR 0007](decisions/0007-zimaboard-swarm-manager.md), the
   coordination host's eMMC was at 97% full with no NVMe attached during the first
