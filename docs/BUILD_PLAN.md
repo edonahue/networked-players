@@ -12,7 +12,7 @@ edit ROADMAP's own checkboxes.
 
 ## Where things stand today
 
-Snapshot as of 2026-07-01. This section is rewritten as work lands; the milestones
+Snapshot as of 2026-07-02. This section is rewritten as work lands; the milestones
 below are the durable structure. Every claim here has a source — do not extend it
 without one, per AGENTS.md: do not claim an application, service, cluster
 deployment, full dump conversion, benchmark, or public dataset exists until the
@@ -49,6 +49,19 @@ reporting zero invariant violations at full scale — the first genuinely comple
 full run, not a projection. See
 [Milestone 3](#milestone-3-real-ingestion-dry-run-roadmap-3)'s last task and
 `docs/DATA_SIZING.md`'s "Full unbounded run: complete" for the full numbers.
+The next day, a real DuckDB profiling pass against the completed dataset
+(`scripts/profile-discogs-dataset.sh`, `make profile-discogs` — reusable
+against future snapshots) found two real bugs, both fixed: a
+contract-documentation error (`master_is_main_release` was marked nullable
+but never actually is — the raw dump always encodes "no master" with an
+explicit `is_main_release="false"` attribute, so the parser's output was
+already correct; only `data/contracts/discogs-release-v2.md` needed fixing)
+and a small parser inconsistency (`status` wasn't empty-string-normalized
+like every other text field — fixed with a test, zero effect on the
+existing dataset). See `docs/discogs-data/raw-dump-schema.md`'s "Real
+full-dataset profiling (2026-07-02)" for the full findings, including
+confirmation that mojibake in 89 titles and other apparent oddities are
+genuine, pre-existing source-data characteristics, not pipeline bugs.
 
 **Graph, game rules, workers, API (`packages/graph-core`, `packages/game-rules`,
 `packages/workers`, `apps/api`).** Placeholders. Each has only a README describing
@@ -160,6 +173,7 @@ member. Onboarding tooling exists for both the Pi workers and this node
 | --- | --- |
 | Discogs release ingestion (code) | Working, tested, synthetic-only; parser hot path fixed (~1.9x) and write/parse overlap added (~4.2%), 2026-07-01 |
 | Discogs release ingestion (real run) | **Done at full scale.** Bounded 10,000-release slice (2026-07-01) and full unbounded parse (2026-07-01 17:59:48 → 2026-07-02 00:02:49 EDT, 19,192,301 releases) both validated clean — see Milestone 3 |
+| Real dataset profiling | Done (2026-07-02): `scripts/profile-discogs-dataset.sh` / `make profile-discogs`; found and fixed 2 real bugs (1 contract-doc, 1 parser) — see `docs/discogs-data/raw-dump-schema.md` |
 | Private seed import | Implemented (ADR 0011); operator's real seed imported locally |
 | One-hop graph expansion | Not implemented |
 | `graph-core` | Placeholder (README only) |
