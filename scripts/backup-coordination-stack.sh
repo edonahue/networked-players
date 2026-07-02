@@ -16,9 +16,11 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 SWARM_DIR="${REPO_ROOT}/infra/swarm"
 cd "${SWARM_DIR}"
 
+USE_SUDO=0
 if ! id -nG "$(whoami)" | tr ' ' '\n' | grep -qx docker; then
   echo "==> Not in the docker group this session; using sudo."
   DC=(sudo docker compose -f docker-compose.coordination.yml)
+  USE_SUDO=1
 else
   DC=(docker compose -f docker-compose.coordination.yml)
 fi
@@ -59,6 +61,13 @@ if [[ "${saved}" -ne 1 ]]; then
   exit 1
 fi
 "${DC[@]}" cp redis:/data/dump.rdb "${BACKUP_DIR}/redis-dump.rdb"
+if [[ "${USE_SUDO}" -eq 1 ]]; then
+  # `docker compose cp`'s host-side file write happens as whatever user ran
+  # the docker CLI -- root, via sudo above -- unlike the pg_dump redirect
+  # above, which the shell (not sudo) opens as the invoking user. Confirmed
+  # live: without this, the chmod below fails with "Operation not permitted".
+  sudo chown "$(id -u):$(id -g)" "${BACKUP_DIR}/redis-dump.rdb"
+fi
 redis_bytes="$(stat -c '%s' "${BACKUP_DIR}/redis-dump.rdb")"
 echo "    wrote ${BACKUP_DIR}/redis-dump.rdb (${redis_bytes} bytes)"
 
