@@ -36,14 +36,9 @@ if ! mountpoint -q "${NVME_ROOT}"; then
   exit 1
 fi
 
-if ! id -nG "$(whoami)" | tr ' ' '\n' | grep -qx docker; then
-  echo "==> Not in the docker group this session; using sudo."
-  DOCKER=(sudo docker)
-  DC=(sudo docker compose -f docker-compose.coordination.yml)
-else
-  DOCKER=(docker)
-  DC=(docker compose -f docker-compose.coordination.yml)
-fi
+# shellcheck disable=SC1091
+source "${SCRIPT_DIR}/../../scripts/lib/docker-compose.sh"
+docker_sudo_setup docker-compose.coordination.yml
 
 sudo mkdir -p "${VOLUMES_ROOT}"
 sudo chown "$(id -u)":"$(id -g)" "${VOLUMES_ROOT}"

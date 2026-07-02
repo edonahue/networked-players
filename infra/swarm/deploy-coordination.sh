@@ -39,19 +39,11 @@ else
   echo "==> Wrote .env (chmod 600)."
 fi
 
-if ! id -nG "$(whoami)" | tr ' ' '\n' | grep -qx docker; then
-  echo "==> Not in the docker group this session; using sudo."
-  DC=(sudo docker compose -f docker-compose.coordination.yml)
-else
-  DC=(docker compose -f docker-compose.coordination.yml)
-fi
+# shellcheck disable=SC1091
+source "${SCRIPT_DIR}/../../scripts/lib/docker-compose.sh"
+docker_sudo_setup docker-compose.coordination.yml
 
-# Not a plain count: docker-compose.coordination.yml and
-# docker-compose.portainer.yml share an inferred project name ("swarm"), so
-# `ps`/`--services` here lists every service in that project -- including
-# portainer -- not just this file's own. Confirmed live. Check by name instead.
-running_services="$("${DC[@]}" ps --status running --services 2>/dev/null || true)"
-if grep -qx postgres <<<"${running_services}" && grep -qx redis <<<"${running_services}"; then
+if coordination_stack_running; then
   echo "==> postgres and redis already running; nothing to do."
 else
   echo "==> Bringing up postgres and redis..."

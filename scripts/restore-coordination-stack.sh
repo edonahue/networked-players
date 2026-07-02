@@ -27,19 +27,11 @@ for f in postgres.sql redis-dump.rdb manifest.json; do
   fi
 done
 
-if ! id -nG "$(whoami)" | tr ' ' '\n' | grep -qx docker; then
-  echo "==> Not in the docker group this session; using sudo."
-  DC=(sudo docker compose -f docker-compose.coordination.yml)
-else
-  DC=(docker compose -f docker-compose.coordination.yml)
-fi
+# shellcheck disable=SC1091
+source "${SCRIPT_DIR}/lib/docker-compose.sh"
+docker_sudo_setup docker-compose.coordination.yml
 
-# Not a plain count: docker-compose.coordination.yml and
-# docker-compose.portainer.yml share an inferred project name ("swarm"), so
-# `ps`/`--services` here lists every service in that project -- including
-# portainer -- not just this file's own. Confirmed live. Check by name instead.
-running_services="$("${DC[@]}" ps --status running --services 2>/dev/null || true)"
-if ! grep -qx postgres <<<"${running_services}" || ! grep -qx redis <<<"${running_services}"; then
+if ! coordination_stack_running; then
   echo "ABORT: postgres/redis aren't both running. Run ./infra/swarm/deploy-coordination.sh first." >&2
   exit 1
 fi

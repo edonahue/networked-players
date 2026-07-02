@@ -28,8 +28,11 @@ else
   echo "    Run ./scripts/install-tailscale.sh first for tailnet access."
 fi
 
-if ! id -nG "$(whoami)" | tr ' ' '\n' | grep -qx docker; then
-  echo "==> Not in the docker group this session; using sudo."
+# shellcheck disable=SC1091
+source "${SCRIPT_DIR}/../../scripts/lib/docker-compose.sh"
+docker_sudo_setup
+
+if [[ "${DC_USE_SUDO}" -eq 1 ]]; then
   sudo env "PORTAINER_BIND_IP=${PORTAINER_BIND_IP}" docker compose -f docker-compose.portainer.yml up -d
 else
   PORTAINER_BIND_IP="${PORTAINER_BIND_IP}" docker compose -f docker-compose.portainer.yml up -d
