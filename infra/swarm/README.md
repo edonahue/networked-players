@@ -46,14 +46,24 @@ The script prints exactly which URL to use. Never bind this to a LAN interface o
 ## Swarm init / join runbook
 
 Initialize the manager on the coordination host and join the workers. Real tokens and
-addresses stay out of Git — capture them locally only.
+addresses stay out of Git — capture them locally only. `./init-swarm-manager.sh`
+automates the manager-side steps below (idempotent) and persists the join token/
+command to `local/swarm/` (git-ignored).
+
+Before joining each Pi, run
+[`infra/ansible/playbooks/onboard.yml`](../ansible/playbooks/onboard.yml)
+([ADR 0015](../../docs/decisions/0015-fleet-onboarding.md)) against it first —
+it installs Docker and prints the real join command (read from
+`local/swarm/worker-join-command.txt`) so you don't have to hunt it down by hand.
+The actual `docker swarm join` below still stays a manual, operator-run step; the
+playbook prepares and verifies, it doesn't run it for you.
 
 ```bash
 # On the coordination host (manager):
 docker swarm init --advertise-addr <coordinator-ip>
 docker swarm join-token worker        # prints the join command + token (keep local)
 
-# On each Raspberry Pi worker:
+# On each Raspberry Pi worker (after onboard.yml has prepared it):
 docker swarm join --token <worker-token> <coordinator-ip>:2377
 
 # Back on the manager — verify, then deploy a harmless multi-arch smoke service:

@@ -1,0 +1,11 @@
+---
+# Example group variables for the optional_build_nodes group. Copy
+# inventories/example/ to a git-ignored inventories/local/ and adjust if needed.
+
+# This group is genuinely optional (docs/HARDWARE.md: "must not become required for
+# public availability") and, per ADR 0015, is not a Swarm member at all -- it's a
+# standalone box the operator uses directly for heavy local work (builds,
+# benchmarks, expensive analysis). No Swarm-related variables apply here. Inherits
+# group_vars/all.yml's defaults (min_free_gb: 1) unless a specific node later
+# justifies a higher floor -- e.g. if it gets its own NVMe for real ingest work,
+# following the same path the first ZimaBoard took (ADR 0013).

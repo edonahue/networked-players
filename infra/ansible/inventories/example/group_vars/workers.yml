@@ -1,0 +1,11 @@
+---
+# Example group variables for the workers group (the four Raspberry Pi 3B nodes).
+# Copy inventories/example/ to a git-ignored inventories/local/ and adjust if needed.
+
+# Deliberately NOT overriding min_free_gb or disk_floor_mount here -- the inherited
+# defaults from group_vars/all.yml (min_free_gb: 1, disk_floor_mount unset -> "/")
+# are already correct for a 1GB-RAM Pi 3B: the ~250 GB bulk-ingest floor
+# (docs/DATA_SIZING.md) is a coordinators-only concern (see
+# host_vars/coordinator.example.internal.yml) and never applies to a worker, which
+# per docs/HARDWARE.md and docs/DISCOGS_INGESTION.md only ever handles bounded,
+# checksummed partitions (normally well under 256 MB), never a raw dump.

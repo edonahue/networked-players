@@ -10,7 +10,7 @@ The hardware is part of the learning story, but the public repository only needs
 | Four Raspberry Pi 3B nodes | Bounded ARM64 workers | 1 GB RAM and 10/100 Ethernet per node |
 | Existing five-port cluster switch | Fan-out to the four workers | Worker links remain limited by Pi hardware |
 | Tenda SM105 five-port 2.5GbE switch | Connect the router, coordination host, and cluster uplink | Unmanaged; improves backbone and placement, not Pi link speed |
-| Optional workstation-class build node | Ingest, builds, benchmarks, and expensive analysis | Must not become required for public availability |
+| Optional workstation-class build node (a second, stock ZimaBoard 832, no NVMe yet) | Ingest, builds, benchmarks, and expensive analysis | Must not become required for public availability; not a Swarm member (ADR 0015) |
 
 ## Public documentation rule
 

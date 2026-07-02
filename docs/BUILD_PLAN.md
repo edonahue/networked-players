@@ -200,6 +200,12 @@ in below as its own block rather than a new milestone, per current decision.
 Nothing outstanding for the tasks below. The compose-stack task no longer depends
 on Milestone 1 (see ADR 0010); Pi provisioning was never gated by it.
 
+Onboarding tooling now exists (`infra/ansible/playbooks/onboard.yml`, see
+[ADR 0015](decisions/0015-fleet-onboarding.md)) to install Docker on each Pi and
+print the real join command, but the tasks below stay unchecked — the tooling
+hasn't been run against physical hardware yet, and this repo doesn't claim a task
+done until there's evidence for it.
+
 ### Tasks
 - [x] Initialize a single-manager Swarm on the coordination host — done, see
       [ADR 0007](decisions/0007-zimaboard-swarm-manager.md)

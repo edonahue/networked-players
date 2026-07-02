@@ -1,0 +1,83 @@
+---
+# Onboarding for new fleet nodes: the four Raspberry Pi 3B workers and any
+# optional build/benchmark node (ADR 0015). Run this after health.yml already
+# confirms a node is reachable and healthy -- this playbook doesn't repeat that
+# playbook's 64-bit/free-space checks.
+#
+# Prepares and verifies only. It does NOT run `docker swarm join` itself -- that
+# stays a manual, operator-run command (this playbook prints the real one, read
+# from local/swarm/worker-join-command.txt, once workers are ready). Continues the
+# standing convention (ADR 0010/0013/0014): Ansible handles safe, reversible host
+# config; anything changing real cluster topology is an explicit operator step.
+#
+# Usage (from infra/ansible/, with a real local inventory):
+#   ansible-playbook -i inventories/local/hosts.yml playbooks/onboard.yml
+#   ansible-playbook -i inventories/local/hosts.yml playbooks/onboard.yml --limit workers
+#   ansible-playbook -i inventories/local/hosts.yml playbooks/onboard.yml --limit optional_build_nodes
+
+- name: Onboard Pi 3B workers
+  hosts: workers
+  gather_facts: true
+  vars:
+    join_command_file: "{{ playbook_dir }}/../../../local/swarm/worker-join-command.txt"
+  tasks:
+    - name: Check whether Docker is already installed
+      ansible.builtin.command: which docker
+      register: docker_present
+      changed_when: false
+      failed_when: false
+
+    - name: Install Docker Engine (official convenience script)
+      # Same vendor convenience-script pattern scripts/install-tailscale.sh already
+      # uses in this repo. Pi 3B workers are genuinely fresh -- confirmed via ADR
+      # 0015's research pass, no prior Docker install exists on them.
+      ansible.builtin.shell: curl -fsSL https://get.docker.com | sh
+      when: docker_present.rc != 0
+      become: true
+
+    - name: Add the Ansible user to the docker group
+      ansible.builtin.user:
+        name: "{{ ansible_user }}"
+        groups: docker
+        append: true
+      become: true
+      register: docker_group_result
+
+    - name: Note if a fresh login is needed
+      ansible.builtin.debug:
+        msg: >-
+          {{ ansible_user }} was just added to the docker group -- this only takes
+          effect on the next login/session, same as on the coordination host.
+      when: docker_group_result.changed
+
+    - name: Report readiness
+      # lookup() always runs on the control node regardless of the task's target
+      # host, so no delegate_to/run_once indirection is needed here -- errors='ignore'
+      # makes a missing join-command file (true for this host today, since no Pi has
+      # triggered token capture yet) a graceful empty result, not a hard playbook error.
+      ansible.builtin.debug:
+        msg:
+          - "host: {{ inventory_hostname }} ({{ ansible_architecture }})"
+          - "docker: {{ 'already present' if docker_present.rc == 0 else 'installed just now' }}"
+          - >-
+            join command:
+            {{ lookup('file', join_command_file, errors='ignore')
+               | default('local/swarm/worker-join-command.txt not found yet -- run infra/swarm/init-swarm-manager.sh on the coordinator first', true) }}
+
+- name: Onboard optional build/benchmark nodes
+  hosts: optional_build_nodes
+  gather_facts: true
+  tasks:
+    - name: Verify Docker is present
+      # Per ADR 0015: this host already runs CasaOS (like the coordinator), which
+      # ships Docker -- verified, not installed, unlike the workers play above.
+      ansible.builtin.command: which docker
+      register: docker_present
+      changed_when: false
+
+    - name: Report readiness
+      ansible.builtin.debug:
+        msg:
+          - "host: {{ inventory_hostname }} ({{ ansible_architecture }})"
+          - "docker: present ({{ docker_present.stdout }})"
+          - "role: optional_build_nodes -- not a Swarm member; no join step applies"
