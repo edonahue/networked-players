@@ -127,7 +127,16 @@ once the eMMC's real headroom recovered (see
 migrated onto the NVMe along with the rest of the local data root (see below). A
 local, git-ignored Ansible inventory now exists; the read-only health playbook
 (`infra/ansible/run-health-local.sh`) has been re-run against the real, mounted NVMe
-and passes cleanly — no longer an unverified outcome.
+and passes cleanly — no longer an unverified outcome. The next day, real
+backup/restore tooling was added and live-tested for both remaining recovery
+gaps ([ADR 0016](decisions/0016-state-backup-and-recovery.md)): the
+coordination stack (`make backup-coordination`/`restore-coordination`, zero-
+downtime `pg_dump`/Redis `BGSAVE`) round-tripped a real marker key through a
+backup and restore, and the Swarm manager's CA/raft state (`make
+backup-swarm-manager`) was backed up for real — Docker stopped, archived,
+restarted, the coordination stack auto-redeployed, the manager confirmed
+still healthy — with the archive's contents verified. This closes Milestone
+1 outright and Milestone 2's last non-hardware-blocked task.
 
 **Storage (`/mnt/data`).** The planned 1TB NVMe is now physically attached, wiped,
 partitioned (ext4, one partition spanning the disk), and mounted at `/mnt/data`

@@ -187,20 +187,29 @@ Both back up to `local/backups/` (already git-ignored; never committed).
 ### Coordination stack (Postgres/Redis)
 
 Low-stakes: a dev-loop database with no real consumers yet. Zero-downtime,
-logical backup via `pg_dump`/Redis `BGSAVE`, no root needed.
+logical backup via `pg_dump`/Redis `BGSAVE`. No root needed *if* your user is
+in the `docker` group; both scripts fall back to `sudo` automatically if not
+(true on this host today — expect a `[sudo] password for ...:` prompt).
 
 ```bash
-./scripts/backup-coordination-stack.sh
+make backup-coordination
 # writes local/backups/coordination/<timestamp>/{postgres.sql,redis-dump.rdb,manifest.json}
 
-./scripts/restore-coordination-stack.sh local/backups/coordination/<timestamp>
+make restore-coordination BACKUP_DIR=local/backups/coordination/<timestamp>
 # requires the stack already up (./infra/swarm/deploy-coordination.sh)
 ```
 
 Run a backup before anything that touches the stack destructively (a schema
-change, a Docker daemon restart, etc.). Worth testing the full round-trip at
-least once: write a marker row/key, back up, restore, confirm the marker
-survives.
+change, a Docker daemon restart, etc.). **Real round-trip test, confirmed
+2026-07-02:**
+
+```bash
+sudo docker compose -f infra/swarm/docker-compose.coordination.yml exec redis redis-cli SET test-marker hello
+make backup-coordination
+make restore-coordination BACKUP_DIR=local/backups/coordination/<the-new-timestamp>
+sudo docker compose -f infra/swarm/docker-compose.coordination.yml exec redis redis-cli GET test-marker
+# -> "hello"
+```
 
 ### Swarm manager state (CA/raft)
 
@@ -211,14 +220,14 @@ finding). The backup script re-deploys the coordination stack automatically
 afterward, but expect a real, brief outage while it runs.
 
 ```bash
-./scripts/backup-swarm-manager-state.sh
+make backup-swarm-manager
 # writes local/backups/swarm-manager/<timestamp>/swarm-state.tar.gz (chmod 600)
 
 # Verify without restoring:
 tar -tzf local/backups/swarm-manager/<timestamp>/swarm-state.tar.gz
 
 # Only if you actually need to restore -- replaces the manager's identity:
-./scripts/restore-swarm-manager-state.sh local/backups/swarm-manager/<timestamp>/swarm-state.tar.gz --yes-i-am-sure
+make restore-swarm-manager BACKUP_FILE=local/backups/swarm-manager/<timestamp>/swarm-state.tar.gz
 ```
 
 The restore script keeps the pre-restore state at `/var/lib/docker/swarm.bak`
@@ -226,7 +235,12 @@ rather than deleting it, but still stops Docker while it runs. Because this
 is currently the only Swarm manager (no fallback to recover from a botched
 restore), treat a live restore test as a deliberate decision, not a routine
 check — a backup plus a `tar -tzf` integrity check is enough validation for
-routine use.
+routine use. **Confirmed 2026-07-02:** a real backup ran cleanly (Docker
+stopped, archive made, Docker restarted, coordination stack and Portainer
+auto-redeployed, `docker node ls` still showed the manager healthy
+afterward), and the archive's `tar -tzf` listing showed the expected
+`raft/`, `certificates/`, `worker/`, `docker-state.json`, `state.json`. A
+live restore was deliberately not tested, per the reasoning above.
 
 **Both are local-only.** Neither backup copies data off this host — a total
 loss of `/mnt/data` loses these too. Off-host replication isn't built yet

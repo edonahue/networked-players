@@ -78,3 +78,12 @@ docker node update --availability drain <worker>
 
 Pin stateful services to the manager with a placement constraint
 (`--constraint 'node.role==manager'`); never schedule Postgres/Redis onto a Pi worker.
+
+## Backup and recovery
+
+Both the coordination stack above and this manager's own Swarm CA/raft state
+have backup/restore tooling (`make backup-coordination`, `make
+backup-swarm-manager`, and their `restore-*` counterparts) — see
+[ADR 0016](../../docs/decisions/0016-state-backup-and-recovery.md) and
+`docs/OPERATOR_SETUP.md`'s "Backup and recovery" section for the full
+runbook, both live-tested on this host 2026-07-02.

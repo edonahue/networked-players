@@ -74,30 +74,61 @@ Confirmed via research before deciding, not assumed:
 ## Consequences
 
 Backup/restore tooling now exists for both the coordination stack and the
-Swarm manager, but no real backup has actually run yet as of this ADR being
-written — `docs/BUILD_PLAN.md`'s Milestone 1 and Milestone 2 checkboxes stay
-unchecked until the operator runs the scripts for real and confirms the
-result, per this project's rule against claiming something exists before
-there's evidence for it. Backups are local-only in this pass — nothing here
-copies a backup off-host, so a total loss of `/mnt/data` (not just Docker
-state) still loses everything; that's a real, stated limitation, not an
-oversight, and is a reasonable candidate for its own future ADR if off-host
-replication becomes a real priority.
+Swarm manager. Backups are local-only in this pass — nothing here copies a
+backup off-host, so a total loss of `/mnt/data` (not just Docker state) still
+loses everything; that's a real, stated limitation, not an oversight, and is
+a reasonable candidate for its own future ADR if off-host replication becomes
+a real priority.
+
+**Both ran for real on 2026-07-02 and both worked.** Coordination stack: set
+a Redis marker key, backed up, backed up again, restored, confirmed the
+marker survived intact. Swarm manager: backed up (Docker stopped, archive
+made, Docker restarted, coordination stack and Portainer auto-redeployed),
+archive contents verified with `tar -tzf` (`raft/`, `certificates/`
+including the real CA cert/key, `worker/`, `docker-state.json`,
+`state.json`), `docker node ls` confirmed the manager stayed healthy
+throughout. A live Swarm-manager *restore* was deliberately not tested —
+the operator's explicit choice, matching Decision 5's asymmetric-caution
+reasoning: this is the only Swarm manager, and a backup plus a passing
+integrity check is sufficient validation for routine use. Both
+`docs/BUILD_PLAN.md`'s Milestone 1 and Milestone 2 backup tasks are now
+checked with real, dated evidence.
+
+Real testing surfaced three bugs in the scripts as written, all fixed the
+same day: (1) the "are postgres/redis running" check counted total running
+containers in `docker compose ps`, but `docker-compose.coordination.yml` and
+`docker-compose.portainer.yml` share an inferred project name ("swarm" —
+already flagged in the compose file's own CAUTION comment), so the count
+always included Portainer too; (2) switching to `--services` didn't fix it
+either, since `--services` turned out to be scoped to the shared *project*,
+not the referenced *file* — confirmed live before assuming it worked; the
+real fix was matching by service name (`postgres`, `redis`) explicitly,
+regardless of whatever else shares the namespace; (3) `docker compose cp`'s
+host-side file write happens as whichever user ran the `docker` CLI (root,
+via the `sudo` prefix used when the caller isn't in the `docker` group), so
+the backup script's own later `chmod 600` on that file failed with
+"Operation not permitted" — fixed by `chown`ing it back to the invoking user
+right after the copy, the same pattern already used (correctly, the first
+time) in the Swarm-manager backup script.
 
 ## Validation
 
-`bash -n` and `shellcheck` (where available) on all four new scripts;
-`make check` (no Python code touched, expected no-op pass). Real execution —
-an actual backup, a live restore round-trip for the coordination stack, and at
-minimum a backup-integrity check for the Swarm manager — is the operator's to
-run and confirm, since the authoring session has neither `docker` group
-membership nor `sudo`.
+`bash -n` and `shellcheck` (where available) on all four scripts; `make
+check` (no Python code touched, no-op pass). Real execution — an actual
+coordination-stack backup, a live restore round-trip proving a real marker
+key survives, an actual Swarm-manager backup, and a `tar -tzf`
+integrity check on its archive — all ran on the coordination host on
+2026-07-02 and all succeeded, after the three fixes above. Live-testing
+`restore-swarm-manager-state.sh` itself remains untested by explicit
+operator choice.
 
 ## Revisit trigger
 
-Revisit once the first real backup and restore actually run — confirm the
-runbook in `docs/OPERATOR_SETUP.md` matches what actually happened, not just
-what was planned. Revisit if the coordination stack stops being a low-stakes
+**The first bullet below already happened and is closed.** The first real
+backup and restore ran 2026-07-02 (see Consequences); the runbook in
+`docs/OPERATOR_SETUP.md` was checked against what actually happened, not just
+what was planned, and needed no changes beyond the three script fixes already
+described above. Revisit if the coordination stack stops being a low-stakes
 empty dev-loop database (once `packages/workers`/`apps/api` start writing real
 state to it) — the "live round-trip test is safe" reasoning in Decision 5
 depends on that being true. Revisit if a second Swarm manager is ever added —
