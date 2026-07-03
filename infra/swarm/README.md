@@ -81,22 +81,55 @@ command to `local/swarm/` (git-ignored).
 ./init-swarm-manager.sh
 ```
 
-For each Pi worker, in order:
+For each Pi worker, in order — this is the full, current sequence (kept in
+sync as of the fourth worker's bring-up; if you're reading an older copy of
+this file, check `infra/ansible/README.md`'s "Mutating playbooks" section
+for anything newer):
 
-1. **Health check** (read-only): `make cluster-health ARGS="--limit workers"`
-2. **Onboard** (installs Docker, adds the SSH user to the `docker` group —
+1. **SSH bootstrap** (one-time key setup): `infra/ansible/bootstrap-worker-ssh.sh`
+2. **Health check** (read-only): `make cluster-health ARGS="--limit workers"`
+3. **Benchmark** (read-only-safe, optional but cheap): `make cluster-benchmark ARGS="--limit workers"`
+4. **Onboard** (installs Docker, adds the SSH user to the `docker` group —
    [ADR 0015](../../docs/decisions/0015-fleet-onboarding.md)):
    `make cluster-onboard ARGS="--limit workers --ask-become-pass"`
-3. **Join** (guarded, one worker at a time —
+5. **Harden** (arms the hardware watchdog, configures Docker log rotation):
+   `make harden-workers ARGS="--ask-become-pass"`
+6. **Equip** (baseline tooling — `uv`, DuckDB CLI, `jq`/`redis-tools`, a
+   `redis`/`rq`/`duckdb` venv): `make equip-workers ARGS="--ask-become-pass"`
+7. **Join** (guarded, one worker at a time —
    [ADR 0017](../../docs/decisions/0017-guarded-swarm-worker-join-automation.md)):
    `CONFIRM=yes ARGS="--limit worker-01 --ask-become-pass" make cluster-swarm-join`
-4. **Verify from the manager**: `sudo docker node ls` — confirm `Ready`/`Active`,
+8. **Verify from the manager**: `sudo docker node ls` — confirm `Ready`/`Active`,
    no unexpected manager promotion.
+9. **Resilience check** (optional but recommended — real proof, not inferred):
+   `infra/ansible/reboot-and-verify-worker.sh <alias>`
+
+Steps 2–6 can run against `--limit workers` (all newly-added workers at once,
+`serial: 1` internally) if every worker shares the same sudo password;
+otherwise scope each to `--limit <one-worker>` individually. Step 7 always
+stays one worker at a time regardless.
+
+No separate step is needed for Portainer Agent visibility — it's deployed as
+a **global** Swarm service, so it automatically starts on any node that joins
+later, including this one, with no redeploy required.
 
 `swarm-join.yml` reads the token from `local/swarm/worker-join-token.txt` and the
 manager address from `local/swarm.env` itself — never hand-type either. It no-ops
 cleanly if a worker already reports an active Swarm state, and never calls `docker
 swarm leave` or promotes a node automatically.
+
+### Optional build node (second ZimaBoard, `optional_build_nodes`)
+
+Not a Swarm member (ADR 0015) — only steps 1, 2, and `onboard.yml --limit
+optional_build_nodes` (verifies Docker is present, installs nothing) apply.
+`harden-workers.yml`/`equip-workers.yml` are Pi-specific by design (real
+constraints: a Pi's hardware watchdog device, a lean venv that deliberately
+excludes `lxml`/`pyarrow` because of the Pi's 1GB RAM) and don't target this
+group. **No equivalent hardening/tooling playbook exists yet for
+`optional_build_nodes`** — a full x86_64 ZimaBoard could reasonably run the
+*full* `packages/catalog` stack (`uv sync --extra dev`) directly rather than
+a lean cross-compiled venv, but that's a real, separate, not-yet-built task,
+not something to assume is covered.
 
 ### Worker-only smoke test
 
