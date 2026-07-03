@@ -39,11 +39,36 @@
           {{ (floor_mount.size_available / 1024 / 1024 / 1024) | round(1) }} GB free on
           {{ disk_floor_mount | default('/') }}, below the {{ min_free_gb }} GB floor.
 
+    - name: Confirm the inventory's connection address is present locally
+      # Catches Docker/Swarm picking the wrong interface before it ever matters --
+      # if ansible_host isn't actually bound on this node, no later Ethernet-explicit
+      # advertise-addr assumption (swarm-join.yml, ADR 0017) would be safe either.
+      # Skipped for ansible_connection: local (the coordinator talks to itself).
+      ansible.builtin.assert:
+        that:
+          - ansible_host in ansible_all_ipv4_addresses
+        fail_msg: >-
+          {{ inventory_hostname }}'s inventory ansible_host ({{ ansible_host }}) is not
+          bound to any local interface ({{ ansible_all_ipv4_addresses }}) -- Swarm/Ansible
+          would be targeting the wrong address.
+      when: ansible_connection | default('') != 'local'
+
     - name: Check time synchronization
       ansible.builtin.command: timedatectl show --property=NTPSynchronized --value
       register: ntp_sync
       changed_when: false
       failed_when: false
+
+    - name: Check NetworkManager vs dhcpcd (reported only, not asserted)
+      # Informational -- confirms which network manager is actually active rather than
+      # guessing from a stale assumption. Never used to change network config here.
+      ansible.builtin.command: "systemctl is-active {{ item }}"
+      register: netmgr_check
+      changed_when: false
+      failed_when: false
+      loop:
+        - NetworkManager
+        - dhcpcd
 
     - name: Read SoC temperature when available (Raspberry Pi)
       ansible.builtin.slurp:
@@ -58,6 +83,12 @@
           - "cpus: {{ ansible_processor_vcpus | default('?') }}  memory_mb: {{ ansible_memtotal_mb }}"
           - "{{ disk_floor_mount | default('/') }} free GB: {{ (floor_mount.size_available / 1024 / 1024 / 1024) | round(1) }}"
           - "ntp synchronized: {{ ntp_sync.stdout | default('unknown') }}"
+          - "connect address: {{ ansible_host | default('n/a (local connection)') }}"
+          - >-
+            network manager:
+            {{ netmgr_check.results | default([])
+               | map(attribute='item') | zip(netmgr_check.results | default([]) | map(attribute='stdout'))
+               | map('join', '=') | join(', ') if netmgr_check.results is defined else 'n/a' }}
           - >-
             soc temp C:
             {{ ((soc_temp_raw.content | b64decode | trim | int) / 1000) | round(1)

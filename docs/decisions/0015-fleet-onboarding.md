@@ -3,6 +3,14 @@
 - **Status:** Accepted
 - **Date:** 2026-07-01
 
+> **Amended by [ADR 0017](0017-guarded-swarm-worker-join-automation.md)
+> (2026-07-02):** the "actual `docker swarm join` stays a manual, printed
+> command" clause in Decision 3 below is narrowed, not reversed — a guarded,
+> explicitly-confirmed, one-worker-at-a-time playbook now runs the join
+> itself, but every safety property this ADR cared about (explicit operator
+> action per node, no automated topology change without confirmation) is
+> preserved. See ADR 0017 for the reasoning.
+
 ## Context
 
 The operator has the four planned Raspberry Pi 3B workers ready to provision, plus a

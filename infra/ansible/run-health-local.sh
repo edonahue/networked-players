@@ -11,7 +11,9 @@
 #   #   ansible_host: <real LAN IP>
 #   #   ansible_connection: local   # this host runs the playbook against itself
 #
-# Usage: ./infra/ansible/run-health-local.sh
+# Usage: ./infra/ansible/run-health-local.sh [extra ansible-playbook args...]
+#   ./infra/ansible/run-health-local.sh --limit workers
+#   ./infra/ansible/run-health-local.sh --limit workers --check --diff
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-exec "${SCRIPT_DIR}/run-playbook-local.sh" health.yml
+exec "${SCRIPT_DIR}/run-playbook-local.sh" health.yml "$@"

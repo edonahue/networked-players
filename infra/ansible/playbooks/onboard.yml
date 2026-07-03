@@ -18,6 +18,9 @@
 - name: Onboard Pi 3B workers
   hosts: workers
   gather_facts: true
+  serial: 1
+  # One host at a time -- these are 1GB-RAM Pi 3Bs; a failed apt/Docker
+  # install on one shouldn't run concurrently with, or obscure, another's.
   vars:
     join_command_file: "{{ playbook_dir }}/../../../local/swarm/worker-join-command.txt"
   tasks:

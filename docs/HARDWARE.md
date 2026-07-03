@@ -34,9 +34,13 @@ reachable; do not extend this table with unmeasured numbers.
 | Node | Arch | CPUs | Iterations | Elapsed | Releases/sec | Peak RSS | Measured |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | Coordination host (ZimaBoard 832) | x86_64 | 4 | 20,000 | ~2.7s | ~14,600 | ~14 MB | 2026-07-02 |
-| Raspberry Pi 3B worker | aarch64 | — | — | — | — | — | not yet reachable |
+| Raspberry Pi 3B worker (n=3) | aarch64 | 4 | 20,000 | ~8.6s | ~4,630–4,650 | ~16.5 MB | 2026-07-02 |
 | Second ZimaBoard 832 (optional build node) | x86_64 | — | — | — | — | — | not yet reachable |
 
-No routing decision follows from this yet — one data point isn't a
-comparison. Update this table for real once the Pi workers and the second
-ZimaBoard are wired up and `make cluster-benchmark` has run against them.
+Pi 3B result is the range across all three joined workers, remarkably
+consistent (within ~0.6% of each other) — roughly 1/3 the coordination
+host's throughput on this probe. One node type pair still isn't enough for
+a routing decision (the second ZimaBoard remains unmeasured, and this is a
+CPU/memory probe, not a claim about network- or I/O-bound worker jobs);
+update this table again once the second ZimaBoard and the fourth Pi are
+reachable.

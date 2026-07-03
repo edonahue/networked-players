@@ -50,31 +50,59 @@ addresses stay out of Git — capture them locally only. `./init-swarm-manager.s
 automates the manager-side steps below (idempotent) and persists the join token/
 command to `local/swarm/` (git-ignored).
 
-Before joining each Pi, run
-[`infra/ansible/playbooks/onboard.yml`](../ansible/playbooks/onboard.yml)
-([ADR 0015](../../docs/decisions/0015-fleet-onboarding.md)) against it first —
-it installs Docker and prints the real join command (read from
-`local/swarm/worker-join-command.txt`) so you don't have to hunt it down by hand.
-The actual `docker swarm join` below still stays a manual, operator-run step; the
-playbook prepares and verifies, it doesn't run it for you.
+```bash
+# On the coordination host (manager), one-time:
+./init-swarm-manager.sh
+```
+
+For each Pi worker, in order:
+
+1. **Health check** (read-only): `make cluster-health ARGS="--limit workers"`
+2. **Onboard** (installs Docker, adds the SSH user to the `docker` group —
+   [ADR 0015](../../docs/decisions/0015-fleet-onboarding.md)):
+   `make cluster-onboard ARGS="--limit workers --ask-become-pass"`
+3. **Join** (guarded, one worker at a time —
+   [ADR 0017](../../docs/decisions/0017-guarded-swarm-worker-join-automation.md)):
+   `CONFIRM=yes ARGS="--limit worker-01 --ask-become-pass" make cluster-swarm-join`
+4. **Verify from the manager**: `sudo docker node ls` — confirm `Ready`/`Active`,
+   no unexpected manager promotion.
+
+`swarm-join.yml` reads the token from `local/swarm/worker-join-token.txt` and the
+manager address from `local/swarm.env` itself — never hand-type either. It no-ops
+cleanly if a worker already reports an active Swarm state, and never calls `docker
+swarm leave` or promotes a node automatically.
+
+### Worker-only smoke test
 
 ```bash
-# On the coordination host (manager):
-docker swarm init --advertise-addr <coordinator-ip>
-docker swarm join-token worker        # prints the join command + token (keep local)
-
-# On each Raspberry Pi worker (after onboard.yml has prepared it):
-docker swarm join --token <worker-token> <coordinator-ip>:2377
-
-# Back on the manager — verify, then deploy a harmless multi-arch smoke service:
-docker node ls
-docker service create --name hello --mode global --replicas 1 traefik/whoami
-docker service ps hello                # confirm placement on each worker
-docker service rm hello
-
-# Recovery drill: drain/remove a worker, then rejoin it with the token above.
-docker node update --availability drain <worker>
+make cluster-smoke-test
 ```
+
+`infra/swarm/run-worker-smoke-test.sh` deploys a uniquely named, global-mode,
+worker-only service (`--constraint node.role==worker`, no published port),
+verifies the image is actually multi-arch first (`docker manifest inspect`),
+waits for one Running task per worker, and removes the service in a cleanup
+trap even on a partial failure.
+
+> **Real audit finding, fixed:** an earlier version of this runbook combined
+> `--mode global` with an explicit `--replicas 1` — invalid/contradictory,
+> since `--replicas` only applies to replicated mode — and had no placement
+> constraint at all, so it would have scheduled onto the manager too. Use the
+> script above, not a hand-typed `docker service create`.
+
+### One-worker recovery drill
+
+Separate, explicit, destructive — not part of onboarding. Run only after the
+fleet is stable and smoke-tested:
+
+```bash
+./infra/swarm/run-worker-recovery-drill.sh --yes-i-am-sure --worker worker-01
+# then, to rejoin cleanly:
+CONFIRM=yes ARGS="--limit worker-01 --ask-become-pass" make cluster-swarm-join
+```
+
+Drains the worker, waits for its tasks to clear, removes it from the Swarm, and
+prints the exact rejoin command — it does not auto-rejoin.
 
 Pin stateful services to the manager with a placement constraint
 (`--constraint 'node.role==manager'`); never schedule Postgres/Redis onto a Pi worker.

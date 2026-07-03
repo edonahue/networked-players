@@ -6,8 +6,9 @@
 # run-health-local.sh first; this assumes nodes are already reachable and
 # healthy.
 #
-# Usage: ./infra/ansible/run-benchmark-local.sh
-# Usage: BENCHMARK_ITERATIONS=50000 ./infra/ansible/run-benchmark-local.sh
+# Usage: ./infra/ansible/run-benchmark-local.sh [extra ansible-playbook args...]
+#   ./infra/ansible/run-benchmark-local.sh --limit workers
+# Usage: BENCHMARK_ITERATIONS=50000 ./infra/ansible/run-benchmark-local.sh --limit workers
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-exec "${SCRIPT_DIR}/run-playbook-local.sh" benchmark.yml
+exec "${SCRIPT_DIR}/run-playbook-local.sh" benchmark.yml "$@"
