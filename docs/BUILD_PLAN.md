@@ -384,6 +384,56 @@ honestly partial progress, not full-fleet completion** — see the Tasks
 above, most now checked with an explicit "3 of 4" caveat rather than
 claiming the full milestone.
 
+### Worker hardening, tooling, and monitoring (this session, folded into this milestone)
+Real, live-verified follow-up the same night, ahead of wiring up the fourth Pi:
+
+- [x] **Resilience: confirmed for real, not inferred from config.** Docker
+      was already `enabled`/`active` on all 3 workers (the `get.docker.com`
+      installer's default) and NetworkManager's `eth0` already had
+      `autoconnect: yes` — but nobody had actually power-cycled a joined
+      worker yet. `infra/ansible/reboot-and-verify-worker.sh` rebooted
+      `worker-01` and confirmed it returned to `Ready`/`Active`
+      with the **identical** Swarm node ID (`665zdixx9qpnlgsk7n0nq1fva`)
+      automatically — zero manual `docker swarm join` needed after a reboot
+      [`infra/ansible`]
+- [x] **Hardware watchdog armed on all 3 workers**
+      (`infra/ansible/playbooks/harden-workers.yml`,
+      `RuntimeWatchdogSec=30`/`RebootWatchdogSec=10min`) — `/dev/watchdog`
+      existed but was unarmed on all 3, confirmed live before fixing. This
+      is the Pi-specific hardening pass ADR 0014's own Revisit trigger named
+      as a future step; narrower than the coordinator's `harden.yml` since
+      journald was already persistent and no swap exists on these Pis
+      (confirmed live, not re-applied as a no-op) [`infra/ansible`]
+- [x] **Docker log rotation configured on all 3 workers**
+      (`max-size: 10m`, `max-file: 3`) — no `/etc/docker/daemon.json` existed
+      before, confirmed live; real risk on SD-card-backed storage with
+      finite write endurance [`infra/ansible`]
+- [x] **Speculative-but-grounded baseline tooling installed on all 3 workers**
+      (`infra/ansible/playbooks/equip-workers.yml`): `jq`/`redis-tools` (via
+      the previously-inert `baseline_packages` var, now actually consumed
+      for the first time), `uv` 0.11.26, DuckDB CLI v1.5.4, and a `uv`-managed
+      venv (`redis` 8.0.1, `rq` 2.10.0, `duckdb` 1.5.4 — no compile step,
+      prebuilt aarch64 wheels) at
+      `~/.local/share/networked-players/worker-venv`, matching
+      `docs/ARCHITECTURE.md`'s stated "Redis and RQ are the default
+      direction." Deliberately excludes `lxml`/`pyarrow`/`packages/catalog`
+      — those remain coordination-host/workstation-only per `AGENTS.md`
+      [`infra/ansible`]
+- [x] **Portainer Agent deployed and confirmed working** — real result,
+      not just placement. First attempt used a guessed image tag
+      (`portainer/agent:2.31.5`) that doesn't exist ("No such image" on all
+      4 nodes); fixed to the verified, published `2.39.4` (matching the
+      already-deployed `portainer-ce:2.39.4`). After the fix, all 4 nodes
+      run the agent (`docker service ps`: `Running` on the manager and all
+      3 workers). The operator added a second Portainer environment
+      (Agent mode, `tasks.agent:9001`) and confirmed it live: dashboard
+      shows "Nodes in the cluster: 4" and container/image/network counts
+      roughly double the local-socket-only view, proving real cluster-wide
+      aggregation, not just node listing. Extends
+      [ADR 0008](decisions/0008-portainer-swarm-visibility.md) (amended
+      2026-07-03) rather than a new tool/ADR; Prometheus/Grafana/cAdvisor
+      remain deliberately deferred [`infra/swarm`]
+
 ### Host tooling (this session, folded into this milestone)
 - [x] Deploy Portainer CE as a plain (non-Swarm) container for Swarm visibility,
       bound to the coordination host's Tailscale IP — see

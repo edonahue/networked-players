@@ -1,0 +1,46 @@
+# Portainer Agent: unlocks live per-node CPU/RAM/disk stats and container
+# management across the whole Swarm from the existing Portainer UI
+# (ADR 0008/0009). This is the one piece deployed as an actual Swarm
+# service (global mode -- one instance per node automatically, including
+# future workers) rather than a plain compose container, since the agent's
+# whole purpose is being reachable cluster-wide over the Swarm overlay
+# network -- unlike Portainer itself, which deliberately stays a plain
+# container so it can bind to a specific interface (see ADR 0008's
+# Swarm-service --publish-always-binds-0.0.0.0 reasoning).
+#
+# No published port here at all -- the agent is only reachable from
+# Portainer over the internal Swarm overlay network (service name "agent",
+# port 9001), never the LAN. Deploy via ./deploy-portainer-agent.sh, which
+# also runs `docker network connect` to join the existing plain Portainer
+# container onto this same overlay network afterward -- Portainer stays a
+# plain, non-Swarm container (ADR 0008's bind-address control, unchanged),
+# but `attachable: true` below lets a plain container join an overlay
+# network imperatively, without becoming a Swarm service itself and
+# without docker-compose.portainer.yml needing any static dependency on a
+# network that might not exist yet (an `external: true` reference in that
+# file would make it fail to start on a fresh clone before the agent is
+# ever deployed -- deliberately avoided).
+#
+# Network name is explicit (not stack-name-prefixed) so the imperative
+# `docker network connect` in deploy-portainer-agent.sh can reference it
+# predictably.
+services:
+  agent:
+    # Matches docker-compose.portainer.yml's portainer-ce:2.39.4 exactly --
+    # confirmed real, published tag (not guessed) via Docker Hub before use.
+    image: portainer/agent:2.39.4
+    environment:
+      AGENT_CLUSTER_ADDR: tasks.agent
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/lib/docker/volumes:/var/lib/docker/volumes
+    networks:
+      - portainer_agent_net
+    deploy:
+      mode: global
+
+networks:
+  portainer_agent_net:
+    name: portainer_agent_net
+    driver: overlay
+    attachable: true

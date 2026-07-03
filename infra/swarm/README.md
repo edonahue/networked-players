@@ -43,6 +43,32 @@ cd infra/swarm
 The script prints exactly which URL to use. Never bind this to a LAN interface or
 `0.0.0.0` directly — only loopback (SSH tunnel) or Tailscale (tailnet-only).
 
+### Portainer Agent (per-node stats)
+
+Portainer's Swarm environment already lists every joined node (role,
+availability) via the manager's own Docker API — no extra deployment
+needed for that. **Live per-node CPU/RAM/disk stats** need the Portainer
+Agent, deployed once real multi-node data exists to look at (per
+[ADR 0008](../../docs/decisions/0008-portainer-swarm-visibility.md)'s own
+revisit trigger — this extends that decision, it isn't a new tool or a new
+ADR).
+
+```bash
+./deploy-portainer-agent.sh
+```
+
+Deploys `portainer/agent` as a global Swarm service (one per node
+automatically, including future workers) with **no published port** —
+reachable only over an internal Swarm overlay network — then connects the
+existing plain Portainer container onto that same network so it can reach
+the agent. In Portainer's UI, switch (or add) the environment to Agent
+mode at `tasks.agent:9001` to unlock the per-node stats; this last step is
+a UI action, not automatable from the CLI.
+
+Prometheus/Grafana/cAdvisor remain deliberately deferred — a bigger,
+separate, ADR-worthy decision if deeper metrics/alerting are ever needed,
+not built alongside this.
+
 ## Swarm init / join runbook
 
 Initialize the manager on the coordination host and join the workers. Real tokens and
