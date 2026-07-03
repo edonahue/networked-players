@@ -8,7 +8,7 @@
 .PHONY: help setup test lint fmt fmt-check typecheck check ingest ingest-check profile-discogs \
 	backup-coordination restore-coordination backup-swarm-manager restore-swarm-manager \
 	cluster-health cluster-benchmark cluster-onboard cluster-swarm-join cluster-smoke-test \
-	cluster-recovery-drill
+	cluster-recovery-drill harden-workers equip-workers
 
 help: ## List available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
@@ -74,3 +74,9 @@ cluster-smoke-test: ## Deploy + verify + remove a harmless worker-only smoke ser
 
 cluster-recovery-drill: ## Destructive one-worker drain/remove drill; needs ARGS="--yes-i-am-sure --worker worker-01"
 	./infra/swarm/run-worker-recovery-drill.sh $(ARGS)
+
+harden-workers: ## Arm watchdog + Docker log rotation on Pi 3B workers; ARGS="--ask-become-pass"
+	./infra/ansible/run-harden-workers-local.sh $(ARGS)
+
+equip-workers: ## Install baseline tooling (uv, duckdb, jq, redis-tools, worker venv) on Pi 3B workers; ARGS="--ask-become-pass"
+	./infra/ansible/run-equip-workers-local.sh $(ARGS)

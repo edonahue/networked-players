@@ -1,0 +1,99 @@
+---
+# Speculative-but-grounded baseline tooling for Pi 3B workers, ahead of any
+# real packages/workers job code existing yet. Scoped deliberately: covers
+# docs/ARCHITECTURE.md's stated "Redis and RQ are the default direction"
+# and ad hoc inspection of bounded Parquet partitions, but does NOT install
+# lxml/pyarrow/the full packages/catalog stack -- those are the release-
+# parsing pipeline's dependencies, which AGENTS.md scopes to the
+# coordination host or optional workstation, never a Pi job ("Pi jobs
+# consume immutable, checksummed, bounded partitions" -- never raw XML).
+#
+# PEP 668 (externally-managed-environment) is enforced on these Pis
+# (confirmed live) -- uv's own isolated venvs sidestep it cleanly, matching
+# how the rest of this project already uses uv everywhere else, rather than
+# reaching for --break-system-packages.
+#
+# Usage (from infra/ansible/, with a real local inventory):
+#   ansible-playbook -i inventories/local/hosts.yml playbooks/equip-workers.yml --ask-become-pass
+- name: Equip Pi 3B workers with a speculative baseline toolset
+  hosts: workers
+  gather_facts: true
+  vars:
+    worker_venv_dir: "{{ ansible_env.HOME }}/.local/share/networked-players/worker-venv"
+  tasks:
+    - name: Install baseline system packages
+      # baseline_packages already existed in group_vars but was documented
+      # as reference-only ("the health playbook does not install anything")
+      # -- this is the first playbook to actually apply it.
+      ansible.builtin.apt:
+        name: "{{ baseline_packages }}"
+        state: present
+        update_cache: true
+        cache_valid_time: 3600
+      become: true
+
+    - name: Check whether uv is already installed
+      ansible.builtin.command: "{{ ansible_env.HOME }}/.local/bin/uv --version"
+      register: uv_check
+      changed_when: false
+      failed_when: false
+
+    - name: Install uv (user-local, no sudo)
+      ansible.builtin.shell: curl -LsSf https://astral.sh/uv/install.sh | sh
+      when: uv_check.rc != 0
+
+    - name: Check whether the DuckDB CLI is already installed
+      ansible.builtin.command: "{{ ansible_env.HOME }}/.local/bin/duckdb --version"
+      register: duckdb_check
+      changed_when: false
+      failed_when: false
+
+    - name: Install the DuckDB CLI (user-local, no sudo)
+      ansible.builtin.shell: curl -LsSf https://install.duckdb.org | sh
+      when: duckdb_check.rc != 0
+
+    - name: Create the worker venv
+      ansible.builtin.command: "{{ ansible_env.HOME }}/.local/bin/uv venv {{ worker_venv_dir }}"
+      args:
+        creates: "{{ worker_venv_dir }}/bin/python3"
+
+    - name: Install redis, rq, and duckdb into the worker venv
+      # No lxml/pyarrow -- see the playbook-level comment above for why.
+      # duckdb publishes prebuilt aarch64 wheels; no compile-from-source risk.
+      ansible.builtin.command: >-
+        {{ ansible_env.HOME }}/.local/bin/uv pip install
+        --python {{ worker_venv_dir }}/bin/python3
+        redis rq duckdb
+      register: venv_install
+      changed_when: "'Installed' in venv_install.stdout or 'Audited' not in venv_install.stdout"
+
+    # Re-checked unconditionally (not reusing the pre-install check's stdout,
+    # which is empty on a fresh install and would otherwise report blank).
+    - name: Confirm uv version post-install
+      ansible.builtin.command: "{{ ansible_env.HOME }}/.local/bin/uv --version"
+      register: uv_version
+      changed_when: false
+
+    - name: Confirm DuckDB CLI version post-install
+      ansible.builtin.command: "{{ ansible_env.HOME }}/.local/bin/duckdb --version"
+      register: duckdb_version
+      changed_when: false
+
+    - name: List installed venv packages
+      # uv venv creates a venv WITHOUT pip bundled (by design -- uv manages
+      # packages itself and doesn't need pip inside the venv), confirmed
+      # live: invoking the venv's own `python3 -m pip` fails with "No
+      # module named pip". Query through uv itself instead.
+      ansible.builtin.command: "{{ ansible_env.HOME }}/.local/bin/uv pip list --python {{ worker_venv_dir }}/bin/python3"
+      register: venv_packages
+      changed_when: false
+
+    - name: Report equip status
+      ansible.builtin.debug:
+        msg:
+          - "host: {{ inventory_hostname }}"
+          - "uv: {{ uv_version.stdout }}"
+          - "duckdb CLI: {{ duckdb_version.stdout }}"
+          - "worker venv: {{ worker_venv_dir }}"
+          - "venv packages: {{ venv_packages.stdout_lines | join(', ') }}"
+          - "baseline packages: {{ baseline_packages | join(', ') }}"

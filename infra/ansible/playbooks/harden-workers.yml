@@ -1,0 +1,85 @@
+---
+# Pi 3B worker hardening -- ADR 0014's own Revisit trigger named this
+# moment: "Revisit once the Raspberry Pi workers are provisioned -- they'll
+# need their own hardening pass... a different harden.yml task set... than
+# this one's coordinators-only scope." This is that pass.
+#
+# Narrower than harden.yml on purpose -- confirmed live before writing this
+# that journald is already persistent on these Pis (unlike the coordinator)
+# and no swap exists (so vm.swappiness tuning would be a no-op). Only the
+# real, confirmed gaps are addressed: an unarmed hardware watchdog and
+# missing Docker log rotation.
+#
+# become is set per-task, NOT at the play level -- same reason harden.yml
+# documents: a blanket play-level become hung on the implicit
+# facts-gathering task on this project before, even with --ask-become-pass
+# already supplied.
+#
+# Usage (from infra/ansible/, with a real local inventory):
+#   ansible-playbook -i inventories/local/hosts.yml playbooks/harden-workers.yml --ask-become-pass
+- name: Pi 3B worker hardening
+  hosts: workers
+  gather_facts: true
+  tasks:
+    - name: Arm the hardware watchdog (RuntimeWatchdogSec)
+      # /dev/watchdog + /dev/watchdog0 are present (Broadcom SoC watchdog,
+      # built into the kernel on this Pi OS -- confirmed live no loadable
+      # module shows in lsmod, unlike the coordinator's wdat_wdt). Unarmed
+      # by default; same mechanism and values as the coordinator (ADR 0014).
+      ansible.builtin.lineinfile:
+        path: /etc/systemd/system.conf
+        regexp: "^#?RuntimeWatchdogSec="
+        line: "RuntimeWatchdogSec=30"
+        insertafter: "^\\[Manager\\]"
+      become: true
+      notify: Reexec systemd manager
+
+    - name: Arm the reboot-time watchdog (RebootWatchdogSec)
+      ansible.builtin.lineinfile:
+        path: /etc/systemd/system.conf
+        regexp: "^#?RebootWatchdogSec="
+        line: "RebootWatchdogSec=10min"
+        insertafter: "^\\[Manager\\]"
+      become: true
+      notify: Reexec systemd manager
+
+    - name: Configure Docker log rotation
+      # No daemon.json existed before this on any worker -- confirmed live.
+      # Real risk on SD-card-backed storage with finite write endurance and
+      # modest free space, not just tidiness. No live-restore key: ADR 0014
+      # found it flatly incompatible with Swarm mode; that's a dockerd-level
+      # constraint, not coordinator-specific, so it stays unset here too.
+      ansible.builtin.copy:
+        dest: /etc/docker/daemon.json
+        mode: "0644"
+        content: |
+          {
+            "log-driver": "json-file",
+            "log-opts": {
+              "max-size": "10m",
+              "max-file": "3"
+            }
+          }
+      become: true
+      notify: Restart docker
+
+    - name: Report hardening status
+      ansible.builtin.debug:
+        msg:
+          - "host: {{ inventory_hostname }}"
+          - "hardware watchdog: RuntimeWatchdogSec=30 configured (reliable confirmation needs a real reboot)"
+          - "docker: log-opts configured (does NOT retroactively apply to already-running containers)"
+          - "journald persistence: already correct on this host, not touched"
+          - "vm.swappiness: no swap configured on this host, not touched"
+
+  handlers:
+    - name: Reexec systemd manager
+      ansible.builtin.command: systemctl daemon-reexec
+      become: true
+      changed_when: true
+
+    - name: Restart docker
+      ansible.builtin.systemd:
+        name: docker
+        state: restarted
+      become: true

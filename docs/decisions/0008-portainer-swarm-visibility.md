@@ -3,6 +3,18 @@
 - **Status:** Accepted
 - **Date:** 2026-07-01
 
+> **Amended 2026-07-03:** this ADR's own Revisit trigger ("once the first
+> Raspberry Pi worker actually joins the Swarm... motivating Prometheus/
+> Grafana/cAdvisor") is now true — 3 of 4 workers joined the same day (see
+> `docs/BUILD_PLAN.md` Milestone 2). Rather than jump straight to a new
+> metrics stack, the Portainer Agent (`infra/swarm/deploy-portainer-agent.sh`)
+> was added first: same tool this ADR already accepted, deployed as a
+> global Swarm service, unlocking live per-node CPU/RAM/disk stats in the
+> existing Portainer UI with no published port and no new persistent
+> component category. Prometheus/Grafana/cAdvisor remain deliberately
+> deferred — still a bigger, separate, ADR-worthy decision if deeper
+> metrics/alerting are ever needed.
+
 ## Context
 
 ADR 0007 bootstrapped the ZimaBoard 832 as the initial Docker Swarm manager but added no visibility tooling — the operator's only view into the cluster is raw `docker`/`docker service`/`docker node` CLI output. No monitoring or observability platform (Portainer, Grafana, Prometheus, cAdvisor) is named anywhere in the repo; a full documentation review confirmed this is a genuinely open decision, not a deferred placeholder. The cluster currently has one manager node and zero workers, so there is no multi-node metrics data yet worth graphing.

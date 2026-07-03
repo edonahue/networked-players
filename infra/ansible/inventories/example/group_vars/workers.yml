@@ -24,3 +24,15 @@ ansible_ssh_private_key_file: ~/.ssh/networked-players-cluster_ed25519
 # SSH/API address, which is not expected on this project's Pi 3B fleet.
 swarm_advertise_addr: "{{ ansible_host }}"
 swarm_data_path_addr: "{{ ansible_host }}"
+
+# Overrides (not merges) group_vars/all.yml's baseline_packages -- Ansible
+# variable precedence replaces the list wholesale for hosts in this group,
+# so the full desired list lives here, not just the additions. jq and
+# redis-tools (redis-cli) are the worker-specific additions; see
+# playbooks/equip-workers.yml, which is the first playbook to actually
+# consume this var.
+baseline_packages:
+  - python3
+  - ca-certificates
+  - jq
+  - redis-tools

@@ -22,6 +22,8 @@ playbooks/benchmark.yml                           read-only-safe CPU/memory prob
 playbooks/harden.yml                               coordinator hardening, state-changing (ADR 0014)
 playbooks/onboard.yml                              Pi worker + build-node onboarding (ADR 0015)
 playbooks/swarm-join.yml                          guarded, one-worker-at-a-time Swarm join (ADR 0017)
+playbooks/harden-workers.yml                      Pi 3B worker hardening: watchdog, Docker log rotation
+playbooks/equip-workers.yml                       Pi 3B worker baseline tooling: uv, duckdb, jq, venv
 files/benchmark_parse.py                          standalone probe copied to each node by benchmark.yml
 run-health-local.sh, run-benchmark-local.sh,      guarded local entry points (share run-playbook-local.sh);
   run-onboard-local.sh, run-swarm-join-local.sh   all forward extra args, e.g. --limit workers --check
@@ -105,6 +107,21 @@ peak RSS. No Pi or second-ZimaBoard numbers exist yet — see
 `docs/HARDWARE.md`'s "Measured capability" section, to be filled in once
 that hardware is reachable.
 
+## Resilience testing
+
+`reboot-and-verify-worker.sh` answers "if a worker loses power, does it
+reconnect to the Swarm automatically?" for real, rather than inferring it
+from config: it records a worker's current Swarm node ID, reboots it,
+waits for SSH to come back, then confirms the manager sees the **same**
+node ID return to `Ready`/`Active` (a different ID would mean it needed a
+fresh join, not an automatic rejoin). Real, brief downtime for that one
+worker — same gating spirit as the recovery drill in
+`infra/swarm/README.md`.
+
+```bash
+./reboot-and-verify-worker.sh worker-01
+```
+
 ## Mutating playbooks
 
 Two playbooks actually change state, each behind its own ADR — treat them as a
@@ -126,6 +143,27 @@ different risk category than the read-only `health.yml`:
   invoke with `--limit` against exactly one worker. No-ops if the target is
   already an active Swarm member; never leaves another Swarm automatically; never
   promotes a node to manager.
+- `playbooks/harden-workers.yml` — narrower, worker-scoped counterpart to
+  `harden.yml`'s coordinator hardening (ADR 0014's own Revisit trigger named this
+  moment). Arms the Pi's hardware watchdog and configures Docker log rotation.
+  Deliberately skips journald-persistence and swappiness tasks — confirmed live
+  that journald is already persistent on these Pis and no swap exists, so those
+  tasks would be no-ops.
+- `playbooks/equip-workers.yml` — speculative-but-grounded baseline tooling:
+  installs `jq`/`redis-tools` (via `baseline_packages`, first playbook to actually
+  consume that var), `uv`, the DuckDB CLI, and a small `uv`-managed venv
+  (`redis`, `rq`, `duckdb`) at `~/.local/share/networked-players/worker-venv`.
+  Deliberately does **not** install `lxml`/`pyarrow`/`packages/catalog` — those
+  are the release-parsing pipeline's dependencies, scoped by `AGENTS.md` to the
+  coordination host or optional workstation, never a Pi job.
+
+```bash
+ansible-playbook -i inventories/local/hosts.yml playbooks/harden-workers.yml --ask-become-pass
+ansible-playbook -i inventories/local/hosts.yml playbooks/equip-workers.yml --ask-become-pass
+```
+
+Or via the guarded Makefile targets: `make harden-workers ARGS="--ask-become-pass"`
+and `make equip-workers ARGS="--ask-become-pass"`.
 
 ```bash
 ansible-playbook -i inventories/local/hosts.yml playbooks/onboard.yml
