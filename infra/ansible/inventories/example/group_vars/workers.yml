@@ -9,3 +9,18 @@
 # host_vars/coordinator.example.internal.yml) and never applies to a worker, which
 # per docs/HARDWARE.md and docs/DISCOGS_INGESTION.md only ever handles bounded,
 # checksummed partitions (normally well under 256 MB), never a raw dump.
+
+# Bootstrap SSH user for initial onboarding. A dedicated `deploy` automation
+# account is a possible later hardening step (see infra/ansible/README.md)
+# but is not required to start -- an existing account with sudo is fine.
+ansible_user: deploy
+ansible_ssh_private_key_file: ~/.ssh/networked-players-cluster_ed25519
+
+# Docker Swarm join uses these explicitly rather than letting Docker pick an
+# interface -- important on any host with more than one active network path
+# (e.g. Ethernet + Wi-Fi both up). Defaults to ansible_host (the address
+# Ansible already connects over); override per-host only if a worker's
+# data-path traffic should use a different interface than its control-plane
+# SSH/API address, which is not expected on this project's Pi 3B fleet.
+swarm_advertise_addr: "{{ ansible_host }}"
+swarm_data_path_addr: "{{ ansible_host }}"

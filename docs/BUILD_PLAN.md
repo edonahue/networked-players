@@ -99,12 +99,16 @@ installed and this host joined to the operator's tailnet
 persistent, tunnel-friendly GitHub authentication (`scripts/install-gh-cli.sh`),
 and a standalone DuckDB CLI was installed for inspecting Parquet/DuckDB output
 directly on the host (`scripts/install-duckdb-cli.sh`, since the `duckdb` Python
-package ships no CLI entry point). However: **the four Raspberry Pi 3B workers are
-not yet provisioned** (not flashed, not joined — the token is just waiting for
-them), nor is the newly identified second ZimaBoard 832 (stock, no NVMe) the
-operator wants as an optional build node. Onboarding tooling for both now exists
-(`infra/ansible/playbooks/onboard.yml`, [ADR 0015](decisions/0015-fleet-onboarding.md))
-but has not yet been run against any physical node. Separately, the coordination
+package ships no CLI entry point). **Update, 2026-07-02:** three of the four
+Raspberry Pi 3B workers (`worker-01`/`worker-02`/`worker-03`) are now
+provisioned, onboarded, and joined to the Swarm for real — see "Fleet
+bring-up" under Milestone 2 below for the full evidence. The fourth remains
+unreachable, and the newly identified second ZimaBoard 832 (stock, no NVMe)
+the operator wants as an optional build node is still not onboarded.
+Onboarding tooling for both (`infra/ansible/playbooks/onboard.yml`,
+[ADR 0015](decisions/0015-fleet-onboarding.md)) has now been run for real
+against the three reachable Pi workers; the second ZimaBoard remains
+untested. Separately, the coordination
 host itself was hardened the same day for safely running long, unattended
 background jobs — persistent journald, a hardware watchdog, Docker log rotation,
 and `vm.swappiness` tuning via `infra/ansible/playbooks/harden.yml`
@@ -196,8 +200,11 @@ member. Onboarding tooling exists for both the Pi workers and this node
 | Supervised job + ntfy tooling | Added and verified end-to-end: resource-bounded `systemd-run` job wrapper, periodic progress monitor, ntfy.sh push notifications on start/finish |
 | Docker Swarm manager | Active (ADR 0007) |
 | Swarm manager state backup | Built and live-tested 2026-07-02 (ADR 0016); backup + integrity check confirmed, live restore untested by operator choice |
-| Worker join token | Captured locally, unused |
-| Fleet onboarding tooling | Added (ADR 0015, `infra/ansible/playbooks/onboard.yml`); not yet run against physical hardware |
+| Worker join token | Captured locally; used for real 2026-07-02 (3 of 4 workers joined) |
+| Fleet onboarding tooling | Added (ADR 0015, `infra/ansible/playbooks/onboard.yml`); run for real 2026-07-02 against 3 Pi 3B workers |
+| Guarded Swarm join automation | Added and used for real 2026-07-02 (ADR 0017, `infra/ansible/playbooks/swarm-join.yml`, `make cluster-swarm-join`) |
+| Worker smoke test | Passed for real 2026-07-02 (`make cluster-smoke-test`), 3/3 currently-joined workers |
+| One-worker recovery drill | Passed for real 2026-07-02 (drain/leave/remove/rejoin on `worker-01`) |
 | Portainer | Running (ADR 0008), Tailscale-bound (ADR 0009) |
 | Tailscale (coordination host) | Installed, connected to operator's tailnet |
 | Coordination compose (Postgres/Redis) | Running (ADR 0010), brought up ahead of NVMe; loopback-bound. Backup/restore built and live-tested 2026-07-02 (ADR 0016) |
@@ -205,7 +212,7 @@ member. Onboarding tooling exists for both the Pi workers and this node
 | GitHub CLI (`gh`, host) | Installed (`scripts/install-gh-cli.sh`) |
 | `apps/web` CI | Added (`.github/workflows/web.yml`): format/check/build/Playwright smoke |
 | Health playbook | Passing (confirmed 2026-07-01: 869.2 GB free on `/mnt/data`) |
-| Raspberry Pi workers | Not yet provisioned; onboarding tooling ready (ADR 0015) |
+| Raspberry Pi workers | **3 of 4 joined and smoke-tested, 2026-07-02** (ADR 0015, ADR 0017); fourth remains unreachable |
 | Second ZimaBoard 832 (optional build node) | Identified, stock, no NVMe yet; not yet onboarded; not a Swarm member by design (ADR 0015) |
 | `networked-players.com` | Registered, not live |
 
@@ -287,14 +294,43 @@ done until there's evidence for it.
 - [x] Capture a worker join token to local, git-ignored storage — done
       (`local/swarm/`)
 - [ ] Flash a 64-bit OS to each of the four Raspberry Pi workers and confirm
-      architecture (they are not yet provisioned)
-- [ ] Join each Pi worker using the saved token as it becomes available
+      architecture — **3 of 4 done as of 2026-07-02**: three Pi 3Bs (aarch64,
+      Debian 12.14, confirmed via `make cluster-health`) are wired, reachable
+      over Ethernet, and onboarded. The fourth (the former "Pi master") remains
+      unreachable and is deliberately excluded from the active inventory rather
+      than blocking the other three — see
+      [ADR 0017](decisions/0017-guarded-swarm-worker-join-automation.md)
+- [x] Join each Pi worker using the saved token as it becomes available —
+      **3 of 4 joined for real, 2026-07-02**, via the new guarded
+      `swarm-join.yml` playbook (ADR 0017), one worker at a time. The fourth
+      awaits reachable hardware; this task stays scoped to "as it becomes
+      available," which is honestly true for 3 of 4 today [`infra/swarm`]
+- [ ] Confirm `docker node ls` shows the manager plus all four workers —
+      **3 of 4 confirmed** (`Ready`/`Active`, none promoted to manager); the
+      full-fleet milestone stays open until the fourth Pi joins
+- [x] Deploy the harmless multi-arch smoke service (`traefik/whoami`, global mode)
+      and confirm placement on each worker via `docker service ps` — **done for
+      real, 2026-07-02**, `make cluster-smoke-test`: 3/3 currently-joined
+      workers reached `Running`, none scheduled on the manager, service
+      self-removed cleanly. Found and fixed a real bug while auditing the
+      previously-documented command first: `--mode global --replicas 1` is
+      invalid (`--replicas` only applies to replicated mode) and had no
+      placement constraint at all, so it would have scheduled onto the manager
+      too — see `infra/swarm/run-worker-smoke-test.sh` [`infra/swarm`]
+- [x] Remove the smoke service; drain, remove, and rejoin one worker as a recovery
+      drill, confirming it rejoins cleanly — **done for real, 2026-07-02**,
+      `infra/swarm/run-worker-recovery-drill.sh` against `worker-01`: drained,
+      waited for tasks to clear (0 remained), left the
+      Swarm on its own side, removed from the manager's record, then rejoined
+      cleanly via `swarm-join.yml` — confirmed via a genuinely new Swarm node
+      ID post-rejoin, not a stale record. Found and fixed a real Docker Swarm
+      behavior along the way: `docker node rm` refuses a node that's still
+      `Ready`/connected even after draining — the node has to actually run
+      `docker swarm leave` itself first, and the manager takes a few seconds
+      (heartbeat timeout) to mark it `down` before removal succeeds; naively
+      removing without this (or forcing it) would have left the worker's own
+      daemon still believing it was joined while the manager forgot it
       [`infra/swarm`]
-- [ ] Confirm `docker node ls` shows the manager plus all four workers
-- [ ] Deploy the harmless multi-arch smoke service (`traefik/whoami`, global mode)
-      and confirm placement on each worker via `docker service ps` [`infra/swarm`]
-- [ ] Remove the smoke service; drain, remove, and rejoin one worker as a recovery
-      drill, confirming it rejoins cleanly [`infra/swarm`]
 - [x] Bring up `docker-compose.coordination.yml` (Postgres 17 + Redis 7-alpine) —
       done ahead of Milestone 1/NVMe, using recovered eMMC headroom, via
       `infra/swarm/deploy-coordination.sh`; see
@@ -320,6 +356,33 @@ done until there's evidence for it.
       ADR 0016 already scoped backup + integrity verification as
       sufficient for routine validation; `scripts/restore-swarm-manager-state.sh`
       exists and is documented but remains untested against real state
+
+### Fleet bring-up (this session, folded into this milestone)
+**Three of the four planned Pi workers joined the Swarm for real, 2026-07-02.**
+`worker-01`/`worker-02`/`worker-03` (the fourth, formerly "Pi master," stayed
+unreachable and was deliberately excluded rather than blocking the other
+three) were wired over Ethernet on the same subnet as the coordinator and
+brought in through a fully guided, phase-gated session run from a phone
+(Termius): passwordless SSH bootstrap with a dedicated keypair
+(`infra/ansible/bootstrap-worker-ssh.sh`), Ansible connectivity, real
+health/benchmark runs, Docker onboarding (ADR 0015, run for the first time
+against physical hardware), a new guarded Swarm-join playbook
+([ADR 0017](decisions/0017-guarded-swarm-worker-join-automation.md), amends
+ADR 0015's manual-join clause without reversing its safety intent), a
+worker-only smoke test, and a full one-worker recovery drill — see the
+Tasks below for each real result. Real cross-node-type benchmark data now
+exists: the Pi 3Bs measured ~4,630–4,650 releases/sec on the CPU/memory
+probe (n=3, within ~0.6% of each other) versus the coordination host's
+~14,600 — see `docs/HARDWARE.md`'s "Measured capability" table. Two real
+bugs were found and fixed in newly-written tooling along the way: the
+previously-documented smoke-test command (`--mode global --replicas 1`)
+was actually invalid and lacked a placement constraint, and `docker node
+rm` was found to refuse a still-`Ready` node even after draining — the
+worker has to run `docker swarm leave` itself first, with the manager
+taking a few seconds to notice, before removal succeeds. **This is
+honestly partial progress, not full-fleet completion** — see the Tasks
+above, most now checked with an explicit "3 of 4" caveat rather than
+claiming the full milestone.
 
 ### Host tooling (this session, folded into this milestone)
 - [x] Deploy Portainer CE as a plain (non-Swarm) container for Swarm visibility,

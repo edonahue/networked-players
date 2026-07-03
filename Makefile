@@ -7,7 +7,8 @@
 .DEFAULT_GOAL := help
 .PHONY: help setup test lint fmt fmt-check typecheck check ingest ingest-check profile-discogs \
 	backup-coordination restore-coordination backup-swarm-manager restore-swarm-manager \
-	cluster-health cluster-benchmark
+	cluster-health cluster-benchmark cluster-onboard cluster-swarm-join cluster-smoke-test \
+	cluster-recovery-drill
 
 help: ## List available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
@@ -55,8 +56,21 @@ backup-swarm-manager: ## Back up Swarm manager CA/raft state (sudo, brief Docker
 restore-swarm-manager: ## Restore Swarm manager state (needs BACKUP_FILE=...swarm-state.tar.gz; DESTRUCTIVE)
 	./scripts/restore-swarm-manager-state.sh "$(BACKUP_FILE)" --yes-i-am-sure
 
-cluster-health: ## Confirm every inventory node is reachable and healthy (read-only)
-	./infra/ansible/run-health-local.sh
+cluster-health: ## Confirm every inventory node is reachable and healthy (read-only); ARGS="--limit workers"
+	./infra/ansible/run-health-local.sh $(ARGS)
 
-cluster-benchmark: ## Benchmark CPU/memory per node type; run cluster-health first
-	./infra/ansible/run-benchmark-local.sh
+cluster-benchmark: ## Benchmark CPU/memory per node type; run cluster-health first; ARGS="--limit workers"
+	./infra/ansible/run-benchmark-local.sh $(ARGS)
+
+cluster-onboard: ## Install Docker + docker-group on fleet nodes (ADR 0015); ARGS="--limit workers --ask-become-pass"
+	./infra/ansible/run-onboard-local.sh $(ARGS)
+
+cluster-swarm-join: ## Guarded, one-worker-at-a-time Swarm join (ADR 0017); needs CONFIRM=yes ARGS="--limit worker-01 --ask-become-pass"
+	@test "$(CONFIRM)" = "yes" || (echo "Set CONFIRM=yes to run the guarded Swarm join (see infra/swarm/README.md)" >&2; exit 1)
+	./infra/ansible/run-swarm-join-local.sh -e confirm_swarm_join=true $(ARGS)
+
+cluster-smoke-test: ## Deploy + verify + remove a harmless worker-only smoke service
+	./infra/swarm/run-worker-smoke-test.sh
+
+cluster-recovery-drill: ## Destructive one-worker drain/remove drill; needs ARGS="--yes-i-am-sure --worker worker-01"
+	./infra/swarm/run-worker-recovery-drill.sh $(ARGS)

@@ -21,11 +21,14 @@ playbooks/health.yml                              read-only facts + health check
 playbooks/benchmark.yml                           read-only-safe CPU/memory probe per node
 playbooks/harden.yml                               coordinator hardening, state-changing (ADR 0014)
 playbooks/onboard.yml                              Pi worker + build-node onboarding (ADR 0015)
+playbooks/swarm-join.yml                          guarded, one-worker-at-a-time Swarm join (ADR 0017)
 files/benchmark_parse.py                          standalone probe copied to each node by benchmark.yml
-run-health-local.sh, run-benchmark-local.sh       guarded local entry points (share run-playbook-local.sh)
+run-health-local.sh, run-benchmark-local.sh,      guarded local entry points (share run-playbook-local.sh);
+  run-onboard-local.sh, run-swarm-join-local.sh   all forward extra args, e.g. --limit workers --check
+bootstrap-worker-ssh.sh                           one-time passwordless SSH setup for the workers group
 inventories/example/hosts.yml                     example hosts (placeholder names)
 inventories/example/group_vars/all.yml            example shared variables
-inventories/example/group_vars/workers.yml        example Pi 3B worker variables
+inventories/example/group_vars/workers.yml        example Pi 3B worker variables (SSH user, key, Swarm addrs)
 inventories/example/group_vars/optional_build_nodes.yml  example build-node variables
 inventories/example/host_vars/*.yml               example per-host variables (RFC 5737 addresses)
 ```
@@ -43,7 +46,35 @@ ansible-playbook -i inventories/local/hosts.yml playbooks/health.yml
 ```
 
 Or use the guarded wrapper (`./run-health-local.sh`), which also installs
-`ansible-core` via `uv tool install` if it isn't already on `PATH`.
+`ansible-core` via `uv tool install` if it isn't already on `PATH`. All the
+`run-*-local.sh` wrappers forward extra arguments to `ansible-playbook`, so
+`./run-health-local.sh --limit workers --check --diff` works as expected.
+
+## Bootstrapping worker SSH access
+
+Before Ansible can manage a fresh Pi worker, the coordinator needs
+passwordless SSH to it. `./bootstrap-worker-ssh.sh` generates a dedicated
+keypair (`~/.ssh/networked-players-cluster_ed25519`, never overwrites an
+existing one), reads the `workers` group straight out of the real local
+inventory (no IP/hostname hardcoded in the script itself, so it's reusable
+unchanged for a later fourth worker), and copies the public key to each
+host with `ssh-copy-id` — prompting for that host's password, stopping
+immediately if any host fails, and independently re-verifying
+non-interactive SSH to every host afterward. Never uses `sshpass`, never
+disables host-key checking.
+
+```bash
+./bootstrap-worker-ssh.sh
+```
+
+**Dedicated automation account (future hardening, not done yet):** this
+first bring-up uses each Pi's existing personal account directly (set via
+`ansible_user` in `group_vars/workers.yml`), not a separate `deploy`
+service account. A dedicated automation account is a reasonable later
+hardening step — smaller blast radius, easier to audit or revoke
+independently of a personal login — but isn't required to start, and
+isn't introduced here to avoid the risk of a lockout on an account the
+operator hasn't administered before. Revisit once the fleet is stable.
 
 ## Benchmarking
 
@@ -84,13 +115,26 @@ different risk category than the read-only `health.yml`:
   rotation, swappiness tuning.
 - `playbooks/onboard.yml` ([ADR 0015](../../docs/decisions/0015-fleet-onboarding.md)):
   onboards the `workers` group (installs Docker, prints the real `docker swarm join`
-  command) and the `optional_build_nodes` group (verifies Docker is present). Run
+  command; `serial: 1` — one Pi 3B at a time, easier to diagnose) and the
+  `optional_build_nodes` group (verifies Docker is present). Run
   *after* `health.yml` confirms a node is reachable and healthy. Prepares and
-  verifies only — the actual Swarm join stays a manual, operator-run command; see
-  `infra/swarm/README.md`'s runbook.
+  verifies only — the actual Swarm join is a separate, more tightly guarded step
+  (below); see `infra/swarm/README.md`'s runbook.
+- `playbooks/swarm-join.yml` ([ADR 0017](../../docs/decisions/0017-guarded-swarm-worker-join-automation.md)):
+  the guarded, one-worker-at-a-time Swarm join that ADR 0015 originally left fully
+  manual. Requires `-e confirm_swarm_join=true` and `--ask-become-pass`; always
+  invoke with `--limit` against exactly one worker. No-ops if the target is
+  already an active Swarm member; never leaves another Swarm automatically; never
+  promotes a node to manager.
 
 ```bash
 ansible-playbook -i inventories/local/hosts.yml playbooks/onboard.yml
-ansible-playbook -i inventories/local/hosts.yml playbooks/onboard.yml --limit workers
+ansible-playbook -i inventories/local/hosts.yml playbooks/onboard.yml --limit workers --ask-become-pass
 ansible-playbook -i inventories/local/hosts.yml playbooks/onboard.yml --limit optional_build_nodes
+
+ansible-playbook -i inventories/local/hosts.yml playbooks/swarm-join.yml \
+  -e confirm_swarm_join=true --ask-become-pass --limit worker-01
 ```
+
+Or via the guarded Makefile targets: `make cluster-onboard ARGS="--limit workers --ask-become-pass"`
+and `CONFIRM=yes ARGS="--limit worker-01 --ask-become-pass" make cluster-swarm-join`.

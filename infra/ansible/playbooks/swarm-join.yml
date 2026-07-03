@@ -1,0 +1,133 @@
+---
+# Guarded, idempotent Docker Swarm worker join (ADR 0017 -- narrows, not
+# reverses, ADR 0015's "the actual join stays manual" decision).
+#
+# Run this AFTER onboard.yml has installed Docker on the target. Always
+# invoke with --limit against exactly ONE worker at a time (serial: 1 below
+# is a second line of defense, not the only one) -- this is the highest
+# blast-radius playbook in this repo: it changes real cluster topology.
+#
+# Requires an explicit confirmation flag; refuses to run without it.
+# Requires --ask-become-pass (the join needs root on the worker).
+# Never leaves another Swarm automatically, never promotes a node to
+# manager, and no-ops cleanly if the target is already an active worker.
+#
+# Usage (from infra/ansible/, with a real local inventory):
+#   ansible-playbook -i inventories/local/hosts.yml playbooks/swarm-join.yml \
+#     -e confirm_swarm_join=true --ask-become-pass --limit worker-01
+#
+# Prefer the guarded wrapper:
+#   CONFIRM=yes ARGS="--limit worker-01" make cluster-swarm-join
+- name: Guarded sequential Swarm worker join
+  hosts: workers
+  gather_facts: false
+  serial: 1
+  vars:
+    confirm_swarm_join: false
+    worker_join_token_file: "{{ playbook_dir }}/../../../local/swarm/worker-join-token.txt"
+    swarm_env_file: "{{ playbook_dir }}/../../../local/swarm.env"
+    # Defaults to the address Ansible already connects over (Ethernet on this
+    # fleet); group_vars/workers.yml can override either independently if a
+    # future node's data-path traffic should use a different interface.
+    swarm_advertise_addr: "{{ ansible_host }}"
+    swarm_data_path_addr: "{{ ansible_host }}"
+  tasks:
+    - name: Refuse to run without explicit confirmation
+      ansible.builtin.assert:
+        that:
+          - confirm_swarm_join | bool
+        fail_msg: >-
+          Refusing to join {{ inventory_hostname }} to the Swarm without
+          confirm_swarm_join=true. Re-run with -e confirm_swarm_join=true
+          (or CONFIRM=yes via `make cluster-swarm-join`) once you intend to
+          change real cluster topology for this one worker.
+        quiet: true
+
+    - name: Load the manager's advertise address
+      ansible.builtin.set_fact:
+        manager_advertise_addr: >-
+          {{ (lookup('file', swarm_env_file, errors='ignore') | default('', true))
+             | regex_search('ADVERTISE_ADDR=(.+)', '\1') | first | default('', true) }}
+
+    - name: Fail clearly if the manager address couldn't be read
+      ansible.builtin.assert:
+        that:
+          - manager_advertise_addr | length > 0
+        fail_msg: >-
+          Could not read ADVERTISE_ADDR from {{ swarm_env_file }}. Run
+          infra/swarm/init-swarm-manager.sh on the coordinator first.
+        quiet: true
+
+    - name: Check this worker's current Swarm state
+      ansible.builtin.command: docker info --format '{{ "{{" }}.Swarm.LocalNodeState{{ "}}" }}'
+      register: swarm_state
+      changed_when: false
+      become: true
+
+    - name: Report already-active no-op
+      ansible.builtin.debug:
+        msg: >-
+          {{ inventory_hostname }} already reports Swarm state
+          '{{ swarm_state.stdout }}' -- not re-joining. If this is the wrong
+          cluster, resolve it manually (this playbook never auto-leaves a
+          Swarm); verify with `docker info` on the worker directly.
+      when: swarm_state.stdout == 'active'
+
+    - name: Read the worker join token
+      ansible.builtin.set_fact:
+        worker_join_token: "{{ lookup('file', worker_join_token_file, errors='ignore') | default('', true) | trim }}"
+      when: swarm_state.stdout != 'active'
+      no_log: true
+
+    - name: Fail clearly if the join token couldn't be read
+      ansible.builtin.assert:
+        that:
+          - worker_join_token | default('') | length > 0
+        fail_msg: >-
+          Could not read a worker join token from {{ worker_join_token_file }}.
+          Run infra/swarm/init-swarm-manager.sh on the coordinator first.
+        quiet: true
+      when: swarm_state.stdout != 'active'
+
+    - name: Join the Swarm over the Ethernet advertise/data-path address
+      ansible.builtin.command:
+        cmd: >-
+          docker swarm join
+          --advertise-addr {{ swarm_advertise_addr }}
+          --data-path-addr {{ swarm_data_path_addr }}
+          --token {{ worker_join_token }}
+          {{ manager_advertise_addr }}:2377
+      become: true
+      no_log: true
+      when: swarm_state.stdout != 'active'
+      register: join_result
+      changed_when: "'This node joined a swarm' in (join_result.stdout | default(''))"
+
+    - name: Re-check Swarm state after joining
+      ansible.builtin.command: docker info --format '{{ "{{" }}.Swarm.LocalNodeState{{ "}}" }}'
+      register: swarm_state_after
+      changed_when: false
+      become: true
+      when: swarm_state.stdout != 'active'
+
+    - name: Confirm the join succeeded
+      ansible.builtin.assert:
+        that:
+          - swarm_state_after.stdout == 'active'
+        fail_msg: >-
+          {{ inventory_hostname }} still reports Swarm state
+          '{{ swarm_state_after.stdout }}' after the join attempt -- something
+          went wrong. Check `docker info` on the worker directly before retrying.
+        quiet: true
+      when: swarm_state.stdout != 'active'
+
+    - name: Report join result
+      ansible.builtin.debug:
+        msg:
+          - "host: {{ inventory_hostname }} ({{ swarm_advertise_addr }})"
+          - "swarm state: active"
+          - >-
+            Next: confirm from the manager with `sudo docker node ls` (Phase 8) --
+            this playbook only verifies the worker's own local state, not the
+            manager's view of it.
+      when: swarm_state.stdout != 'active'
