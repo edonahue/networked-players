@@ -5,7 +5,7 @@
 # target maps to a command documented in README.md / AGENTS.md.
 
 .DEFAULT_GOAL := help
-.PHONY: help setup test lint fmt fmt-check typecheck check ingest ingest-check ingest-recovery-check profile-discogs \
+.PHONY: help setup test lint fmt fmt-check typecheck check ingest ingest-check ingest-recovery-check profile-discogs expand-onehop \
 	backup-coordination restore-coordination backup-swarm-manager restore-swarm-manager \
 	cluster-health cluster-benchmark cluster-onboard cluster-swarm-join cluster-smoke-test \
 	cluster-recovery-drill harden-workers equip-workers equip-x86-workers deploy-jobs-broker cluster-benchmark-distributed \
@@ -47,6 +47,12 @@ ingest-recovery-check: ## Report valid vs. corrupt parts in an interrupted/in-pr
 
 profile-discogs: ## Profile a completed Discogs dataset with DuckDB (needs SNAPSHOT=YYYYMMDD)
 	./scripts/profile-discogs-dataset.sh
+
+expand-onehop: ## One-hop expansion from the private seed over a parsed snapshot (Milestone 5; needs SNAPSHOT=YYYYMMDD)
+	@test -n "$(SNAPSHOT)" || (echo "Set SNAPSHOT=YYYYMMDD (a completed parse under local/processed/discogs/)" >&2; exit 1)
+	uv run networked-players-catalog expand-one-hop \
+		--dataset local/processed/discogs/snapshot=$(SNAPSHOT) \
+		--output-root local/processed/discogs-onehop $(ARGS)
 
 backup-coordination: ## Back up the Postgres/Redis dev-loop stack (pg_dump + Redis BGSAVE, no downtime)
 	./scripts/backup-coordination-stack.sh

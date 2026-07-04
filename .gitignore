@@ -54,6 +54,9 @@ data/collection/
 data/generated/
 *.xml
 *.xml.gz
+# ...but committed synthetic test fixtures are the deliberate exception to the
+# blanket XML ban (which exists to keep raw dumps out, not tiny synthetic files).
+!packages/catalog/tests/fixtures/*.xml
 *.duckdb
 *.sqlite
 *.sqlite3

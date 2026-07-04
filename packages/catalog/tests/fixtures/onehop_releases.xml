@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<releases>
+  <release id="101" status="Accepted">
+    <artists>
+      <artist><id>11</id><name>Alpha Group</name><anv>Alpha</anv><join>&amp;</join></artist>
+      <artist><id>12</id><name>Beta Singer</name><join></join></artist>
+    </artists>
+    <title>Seed Record</title>
+    <country>US</country>
+    <released>2001</released>
+    <master_id is_main_release="true">501</master_id>
+    <extraartists>
+      <artist><id>21</id><name>Pat Producer</name><role>Producer, Engineer</role></artist>
+      <artist><id>0</id><name>Unlinked Orchestra</name><role>Strings</role><tracks>A2</tracks></artist>
+    </extraartists>
+    <tracklist>
+      <track>
+        <position>A1</position><title>First Track</title><duration>3:15</duration>
+        <artists><artist><id>11</id><name>Alpha Group</name></artist></artists>
+        <extraartists><artist><id>31</id><name>Casey Guitar</name><anv>C. Guitar</anv><role>Guitar</role></artist></extraartists>
+      </track>
+      <track>
+        <position>A2</position><title>Second Track</title><duration>4:02</duration>
+        <extraartists><artist><name>Anonymous Choir</name><role>Vocals</role></artist></extraartists>
+        <sub_tracks>
+          <track>
+            <position>A2a</position><title>Nested Part</title><duration>1:02</duration>
+            <extraartists><artist><id>32</id><name>Nested Player</name><role>Keyboards</role></artist></extraartists>
+          </track>
+        </sub_tracks>
+      </track>
+    </tracklist>
+    <data_quality>Correct</data_quality>
+  </release>
+  <release id="103" status="Accepted">
+    <artists>
+      <artist><id>11</id><name>Alpha Group</name></artist>
+      <artist><id>50</id><name>Delta Band</name></artist>
+    </artists>
+    <title>One Hop Away</title>
+    <country>GB</country>
+    <released>2004</released>
+    <tracklist><track><position>1</position><title>Reunion</title></track></tracklist>
+    <data_quality>Correct</data_quality>
+  </release>
+  <release id="104" status="Accepted">
+    <artists><artist><id>99</id><name>Unrelated Act</name></artist></artists>
+    <title>Different Scene</title>
+    <country>DE</country>
+    <released>2005</released>
+    <tracklist><track><position>1</position><title>Elsewhere</title></track></tracklist>
+    <data_quality>Needs Vote</data_quality>
+  </release>
+  <release id="105" status="Accepted">
+    <artists><artist><id>98</id><name>Nearby But Not Linked Here</name></artist></artists>
+    <title>Shared Name Only</title>
+    <country>FR</country>
+    <released>2006</released>
+    <extraartists>
+      <artist><name>Anonymous Choir</name><role>Vocals</role></artist>
+    </extraartists>
+    <tracklist><track><position>1</position><title>Coincidence</title></track></tracklist>
+    <data_quality>Correct</data_quality>
+  </release>
+</releases>
