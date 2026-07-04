@@ -1,9 +1,18 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import SpinningRecord from '../components/SpinningRecord.astro';
+import AlbumCard from '../components/AlbumCard.astro';
 import site from '../data/site.json';
+import type { ChallengeV2 } from '../data/challenge';
+import challengeData from '../../public/data/challenge.v2.json';
 
 const { hero, focus } = site;
+
+const challenge = challengeData as ChallengeV2;
+const connectedAlbumIds = new Set(
+  challenge.paths.flatMap((p) => [p.from_album_id, p.to_album_id]),
+);
+const albums = challenge.albums.filter((album) => connectedAlbumIds.has(album.id));
 ---
 
 <BaseLayout>
@@ -18,6 +27,20 @@ const { hero, focus } = site;
       </div>
     </div>
     <SpinningRecord />
+  </section>
+
+  <section class="section shell" id="albums" aria-labelledby="albums-title">
+    <div class="section-heading">
+      <p class="eyebrow">Start here</p>
+      <h2 id="albums-title">Albums</h2>
+      <p class="lede">
+        Open an album to find who connects it to another — a shared session player, producer, or
+        engineer, documented credit by credit.
+      </p>
+    </div>
+    <div class="album-grid">
+      {albums.map((album) => <AlbumCard album={album} />)}
+    </div>
   </section>
 
   <section class="section shell" aria-labelledby="how-title">
@@ -44,10 +67,11 @@ const { hero, focus } = site;
       <p class="eyebrow">Honest status</p>
       <h2 id="state-title">An early build, not a finished product.</h2>
       <p class="lede">
-        Today the project is scaffolding plus one tested vertical slice: a Discogs
-        release-ingestion pipeline. There is no deployed app, public API, or full catalog yet. The
-        connections demo runs on a small, curated subset of <strong>real</strong> Discogs data,
-        fetched via the Discogs API ahead of the full CC0 dump pipeline.
+        The album grid above and its evidence viewer are real, working code — but the data behind
+        them is currently a small synthetic placeholder, not the real catalog. The connections
+        demo (linked below) runs on a small, curated subset of <strong>real</strong> Discogs data,
+        fetched via the Discogs API ahead of the full CC0 dump pipeline that will eventually
+        replace this placeholder with real albums and real evidence.
       </p>
     </div>
     <div class="hero-actions" style="margin-top:0">

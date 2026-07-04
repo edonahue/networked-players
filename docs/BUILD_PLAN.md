@@ -195,7 +195,7 @@ member. Onboarding tooling exists for both the Pi workers and this node
 | `game-rules` | Placeholder (README only) |
 | `workers` | Placeholder (README only) |
 | `apps/api` | Placeholder (README only) |
-| `apps/web` | Early implementation, real curated demo (ADR 0012); deploys via Cloudflare Git integration on push to `main`; Node 22 + Playwright fixed locally, CI added |
+| `apps/web` | Early implementation; album-centered landing + `/play/<album>/` evidence viewer (real code, synthetic placeholder data pending live gate F), plus the ADR-0012 real curated `/demo/`; deploys via Cloudflare Git integration on push to `main`; Node 22 + Playwright (7 smoke tests) fixed locally, CI added |
 | Coordination host OS + inventory | Done (64-bit confirmed, local inventory created) |
 | Coordination host storage | NVMe attached and mounted at `/mnt/data` (916G ext4, ADR 0013); `local/` and coordination volumes relocated; 250 GB bulk-ingest floor met (869 GB free, confirmed) |
 | Coordination host hardening | Done (ADR 0014): persistent journald, hardware watchdog, Docker log rotation, `vm.swappiness` tuning (`infra/ansible/playbooks/harden.yml`) |

@@ -1,0 +1,34 @@
+---
+import type { AlbumV2 } from '../data/challenge';
+
+interface Props {
+  album: AlbumV2;
+}
+
+const { album } = Astro.props;
+const cover = album.cover_image;
+---
+
+<a class="album-card" href={`/play/${album.id}/`}>
+  {
+    cover ? (
+      <img
+        class="album-card__cover"
+        src={cover.uri150}
+        width="150"
+        height="150"
+        loading="lazy"
+        alt={`Cover art for ${album.title}`}
+      />
+    ) : (
+      <span class="album-card__placeholder" aria-hidden="true">
+        <span class="album-card__placeholder-disc" />
+      </span>
+    )
+  }
+  <span class="album-card__title">{album.title}</span>
+  <span class="album-card__meta">
+    {album.artist}
+    {album.year ? ` · ${album.year}` : ''}
+  </span>
+</a>

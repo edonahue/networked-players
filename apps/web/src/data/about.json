@@ -19,8 +19,8 @@
     {
       "heading": "Where the project actually is",
       "paragraphs": [
-        "This is an early placeholder, not a finished product. Today the project is scaffolding plus one tested vertical slice: a Discogs release-ingestion pipeline that parses monthly data dumps into a normalized, provenance-bearing credits schema. There is no deployed application, public API, or full catalog yet.",
-        "The connections demo on this site now runs on real Discogs data for a small, curated subset of releases and artist connections — fetched via the Discogs API ahead of the full CC0 dump pipeline (see the project's ADR 0012)."
+        "This is an early build, not a finished product. The album-centered browsing and evidence-viewer experience on the home page is real, working code — but the album and path data behind it is currently a small synthetic placeholder, not the real catalog. A Discogs release-ingestion pipeline exists and has run at full scale against the real monthly dump, and the tooling to turn that into a real album-centered artifact is built; swapping the placeholder for real data is a remaining step, not a design question.",
+        "The connections demo on this site runs separately, on real Discogs data for a small, curated subset of releases and artist connections — fetched via the Discogs API ahead of the full CC0 dump pipeline (see the project's ADR 0012)."
       ]
     },
     {
@@ -33,7 +33,7 @@
     {
       "heading": "What's next",
       "paragraphs": [
-        "Replacing this API-sourced demo dataset with one derived from the CC0 monthly dumps (with full provenance and no collection membership) once that pipeline is built; a larger graph; and, eventually, an interactive pick-two-artists mode. A future live-search mode is additive and must fail gracefully — the static-first core always works on its own."
+        "Generating the album grid's real artifact from the actual one-hop dataset and swapping it in for the synthetic placeholder; replacing the connections demo's API-sourced dataset with one derived from the CC0 monthly dumps (with full provenance and no collection membership); and, eventually, producer/engineer-bridge and six-degrees play modes. A future live-search mode is additive and must fail gracefully — the static-first core always works on its own."
       ]
     }
   ]

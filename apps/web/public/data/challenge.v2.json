@@ -1,0 +1,367 @@
+{
+  "schema_version": 2,
+  "provenance": {
+    "source": "Discogs monthly data dump (CC0), one-hop working set",
+    "license": "Derived from the Discogs monthly CC0 data dumps. See docs/DATA_AND_RIGHTS.md.",
+    "snapshot_date": "20260601",
+    "generated_by": "networked-players-catalog build-challenge-from-dump (synthetic-fixture, CI placeholder)",
+    "graph_core_version": "0.1.0",
+    "note": "Derived from a bounded one-hop working set; the private collection seed used to build that working set is never published. The album list is an editorial selection, not a ranking."
+  },
+  "albums": [
+    {
+      "id": "master-901",
+      "master_id": 901,
+      "main_release_id": 1,
+      "title": "First Light",
+      "artist_id": 100,
+      "artist": "Alice",
+      "year": 1993,
+      "cover_image": null
+    },
+    {
+      "id": "master-903",
+      "master_id": 903,
+      "main_release_id": 3,
+      "title": "Third Wave",
+      "artist_id": 300,
+      "artist": "Cara",
+      "year": 1995,
+      "cover_image": null
+    },
+    {
+      "id": "master-906",
+      "master_id": 906,
+      "main_release_id": 6,
+      "title": "Sixth Sense",
+      "artist_id": 500,
+      "artist": "Eve",
+      "year": 1998,
+      "cover_image": null
+    }
+  ],
+  "artists": [
+    {
+      "artist_id": 100,
+      "name": "Alice"
+    },
+    {
+      "artist_id": 200,
+      "name": "Bob"
+    },
+    {
+      "artist_id": 300,
+      "name": "Cara"
+    },
+    {
+      "artist_id": 400,
+      "name": "Dan"
+    },
+    {
+      "artist_id": 500,
+      "name": "Eve"
+    }
+  ],
+  "paths": [
+    {
+      "id": "path-01",
+      "label": "First Light \u2192 Third Wave",
+      "description": "2 documented hops.",
+      "from_album_id": "master-901",
+      "to_album_id": "master-903",
+      "from_artist_id": 100,
+      "to_artist_id": 300,
+      "hops": [
+        {
+          "release_id": 1,
+          "artist_a_id": 100,
+          "artist_b_id": 200
+        },
+        {
+          "release_id": 2,
+          "artist_a_id": 200,
+          "artist_b_id": 300
+        }
+      ]
+    },
+    {
+      "id": "path-02",
+      "label": "First Light \u2192 Sixth Sense",
+      "description": "A single documented co-credit.",
+      "from_album_id": "master-901",
+      "to_album_id": "master-906",
+      "from_artist_id": 100,
+      "to_artist_id": 500,
+      "hops": [
+        {
+          "release_id": 4,
+          "artist_a_id": 100,
+          "artist_b_id": 500
+        }
+      ]
+    },
+    {
+      "id": "path-03",
+      "label": "Third Wave \u2192 Sixth Sense",
+      "description": "2 documented hops.",
+      "from_album_id": "master-903",
+      "to_album_id": "master-906",
+      "from_artist_id": 300,
+      "to_artist_id": 500,
+      "hops": [
+        {
+          "release_id": 3,
+          "artist_a_id": 300,
+          "artist_b_id": 400
+        },
+        {
+          "release_id": 6,
+          "artist_a_id": 400,
+          "artist_b_id": 500
+        }
+      ]
+    }
+  ],
+  "releases": [
+    {
+      "snapshot_date": "20260601",
+      "release_id": 1,
+      "status": "Accepted",
+      "title": "First Light",
+      "country": null,
+      "released": "1993",
+      "master_id": 901,
+      "master_is_main_release": true,
+      "data_quality": null,
+      "source_url": "https://example.invalid/release/1",
+      "credits": [
+        {
+          "snapshot_date": "20260601",
+          "release_id": 1,
+          "track_index": null,
+          "track_path": null,
+          "track_position": null,
+          "track_title": null,
+          "credit_scope": "release_artist",
+          "artist_id": 100,
+          "name": "Alice",
+          "anv": null,
+          "join_text": null,
+          "role_text": "Performer",
+          "credited_tracks_text": null,
+          "is_linked": true,
+          "playable_identity": true
+        },
+        {
+          "snapshot_date": "20260601",
+          "release_id": 1,
+          "track_index": null,
+          "track_path": null,
+          "track_position": null,
+          "track_title": null,
+          "credit_scope": "release_artist",
+          "artist_id": 200,
+          "name": "Bob",
+          "anv": null,
+          "join_text": null,
+          "role_text": "Performer",
+          "credited_tracks_text": null,
+          "is_linked": true,
+          "playable_identity": true
+        }
+      ]
+    },
+    {
+      "snapshot_date": "20260601",
+      "release_id": 2,
+      "status": "Accepted",
+      "title": "Second Set",
+      "country": null,
+      "released": "1994",
+      "master_id": null,
+      "master_is_main_release": null,
+      "data_quality": null,
+      "source_url": "https://example.invalid/release/2",
+      "credits": [
+        {
+          "snapshot_date": "20260601",
+          "release_id": 2,
+          "track_index": null,
+          "track_path": null,
+          "track_position": null,
+          "track_title": null,
+          "credit_scope": "release_artist",
+          "artist_id": 200,
+          "name": "Bob",
+          "anv": null,
+          "join_text": null,
+          "role_text": "Performer",
+          "credited_tracks_text": null,
+          "is_linked": true,
+          "playable_identity": true
+        },
+        {
+          "snapshot_date": "20260601",
+          "release_id": 2,
+          "track_index": null,
+          "track_path": null,
+          "track_position": null,
+          "track_title": null,
+          "credit_scope": "release_artist",
+          "artist_id": 300,
+          "name": "Cara",
+          "anv": null,
+          "join_text": null,
+          "role_text": "Performer",
+          "credited_tracks_text": null,
+          "is_linked": true,
+          "playable_identity": true
+        }
+      ]
+    },
+    {
+      "snapshot_date": "20260601",
+      "release_id": 3,
+      "status": "Accepted",
+      "title": "Third Wave",
+      "country": null,
+      "released": "1995",
+      "master_id": 903,
+      "master_is_main_release": true,
+      "data_quality": null,
+      "source_url": "https://example.invalid/release/3",
+      "credits": [
+        {
+          "snapshot_date": "20260601",
+          "release_id": 3,
+          "track_index": null,
+          "track_path": null,
+          "track_position": null,
+          "track_title": null,
+          "credit_scope": "release_artist",
+          "artist_id": 300,
+          "name": "Cara",
+          "anv": null,
+          "join_text": null,
+          "role_text": "Performer",
+          "credited_tracks_text": null,
+          "is_linked": true,
+          "playable_identity": true
+        },
+        {
+          "snapshot_date": "20260601",
+          "release_id": 3,
+          "track_index": null,
+          "track_path": null,
+          "track_position": null,
+          "track_title": null,
+          "credit_scope": "release_artist",
+          "artist_id": 400,
+          "name": "Dan",
+          "anv": null,
+          "join_text": null,
+          "role_text": "Performer",
+          "credited_tracks_text": null,
+          "is_linked": true,
+          "playable_identity": true
+        }
+      ]
+    },
+    {
+      "snapshot_date": "20260601",
+      "release_id": 4,
+      "status": "Accepted",
+      "title": "Mega Compilation",
+      "country": null,
+      "released": "1996",
+      "master_id": 904,
+      "master_is_main_release": true,
+      "data_quality": null,
+      "source_url": "https://example.invalid/release/4",
+      "credits": [
+        {
+          "snapshot_date": "20260601",
+          "release_id": 4,
+          "track_index": null,
+          "track_path": null,
+          "track_position": null,
+          "track_title": null,
+          "credit_scope": "release_artist",
+          "artist_id": 100,
+          "name": "Alice",
+          "anv": null,
+          "join_text": null,
+          "role_text": "Performer",
+          "credited_tracks_text": null,
+          "is_linked": true,
+          "playable_identity": true
+        },
+        {
+          "snapshot_date": "20260601",
+          "release_id": 4,
+          "track_index": null,
+          "track_path": null,
+          "track_position": null,
+          "track_title": null,
+          "credit_scope": "release_artist",
+          "artist_id": 500,
+          "name": "Eve",
+          "anv": null,
+          "join_text": null,
+          "role_text": "Performer",
+          "credited_tracks_text": null,
+          "is_linked": true,
+          "playable_identity": true
+        }
+      ]
+    },
+    {
+      "snapshot_date": "20260601",
+      "release_id": 6,
+      "status": "Accepted",
+      "title": "Sixth Sense",
+      "country": null,
+      "released": "1998",
+      "master_id": 906,
+      "master_is_main_release": true,
+      "data_quality": null,
+      "source_url": "https://example.invalid/release/6",
+      "credits": [
+        {
+          "snapshot_date": "20260601",
+          "release_id": 6,
+          "track_index": null,
+          "track_path": null,
+          "track_position": null,
+          "track_title": null,
+          "credit_scope": "release_artist",
+          "artist_id": 400,
+          "name": "Dan",
+          "anv": null,
+          "join_text": null,
+          "role_text": "Performer",
+          "credited_tracks_text": null,
+          "is_linked": true,
+          "playable_identity": true
+        },
+        {
+          "snapshot_date": "20260601",
+          "release_id": 6,
+          "track_index": null,
+          "track_path": null,
+          "track_position": null,
+          "track_title": null,
+          "credit_scope": "release_artist",
+          "artist_id": 500,
+          "name": "Eve",
+          "anv": null,
+          "join_text": null,
+          "role_text": "Performer",
+          "credited_tracks_text": null,
+          "is_linked": true,
+          "playable_identity": true
+        }
+      ]
+    }
+  ]
+}
