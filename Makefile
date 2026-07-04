@@ -9,6 +9,7 @@
 	backup-coordination restore-coordination backup-swarm-manager restore-swarm-manager \
 	cluster-health cluster-benchmark cluster-onboard cluster-swarm-join cluster-smoke-test \
 	cluster-recovery-drill harden-workers equip-workers equip-x86-workers replicate-x86 replicate-pi deploy-jobs-broker deploy-catalog-data cluster-benchmark-distributed \
+	deploy-verify-job verify-challenge-distributed \
 	dask-up dask-down
 
 help: ## List available targets
@@ -120,6 +121,12 @@ deploy-catalog-data: ## Serve local/processed read-only over LAN HTTP for remote
 
 cluster-benchmark-distributed: ## Cluster-vs-single-node RQ benchmark; needs deploy-jobs-broker + joined workers; writes local/benchmarks/ only
 	./scripts/cluster-benchmark-distributed.sh $(ARGS)
+
+deploy-verify-job: ## Deploy the challenge-evidence verification job to Pi workers; ARGS="--limit worker-01"
+	./infra/ansible/run-deploy-verify-job-local.sh $(ARGS)
+
+verify-challenge-distributed: ## Re-verify a challenge.v2 artifact's evidence across Pi workers' local caches (ADR 0025); needs deploy-jobs-broker + deploy-verify-job; writes local/jobs/ only
+	./scripts/enqueue-verify-challenge.sh $(ARGS)
 
 dask-up: ## Build the image, start Jupyter, and deploy the Dask scheduler/worker Swarm stack (see infra/dask/README.md)
 	./infra/dask/deploy-dask.sh

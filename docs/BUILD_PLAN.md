@@ -190,6 +190,8 @@ member. Onboarding tooling exists for both the Pi workers and this node
 | Private seed import | Implemented (ADR 0011); operator's real seed imported locally |
 | One-hop graph expansion | Implemented (`expand-one-hop`, Milestone 5); real run pending (live gate B) |
 | `graph-core` | Implemented: DuckDB-backed lazy `CreditGraph`, challenge.v2 builder, proxy-ranking analysis, 32 tests, all synthetic; real-data run pending (live gate F) |
+| Worker-local dataset caching | Implemented (ADR 0025): `dataset_fetch.py` puller/verifier, per-hardware-class ansible playbooks (x86 full/masters/one-hop, Pi one-hop-only + guard), rsync fallback, `resolve_dataset` resolution order; real replication to a worker pending (live gate E) |
+| First real Pi production job | Implemented: challenge-evidence verification (`networked_players_graph_core.verify` + a self-contained RQ job body), sharded via `scripts/enqueue_verify_challenge.py`; real run against a Pi's cache pending (live gate G) |
 | `game-rules` | Placeholder (README only) |
 | `workers` | Placeholder (README only) |
 | `apps/api` | Placeholder (README only) |

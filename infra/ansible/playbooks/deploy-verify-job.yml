@@ -1,0 +1,65 @@
+---
+# Deploys the challenge-evidence verification job body (files/verify_challenge_job.py)
+# AND a small challenge.v2 artifact to Pi workers' persistent RQ jobs
+# directory -- the first production-shaped Pi job (docs/DISCOGS_INGESTION.md's
+# "challenge batches" hardware profile), not another synthetic benchmark
+# probe. Same copy-to-persistent-location pattern as
+# deploy-rq-benchmark-job.yml, deliberately a separate playbook (a real job
+# body plus its input data, not a benchmark probe).
+#
+# hosts: pi_workers, not the flat `workers` group -- this job reads from
+# CATALOG_DATA_DIR (ADR 0025's one-hop-only Pi cache), which x86_workers has
+# no reason to run this specific verification job against today.
+#
+# Usage (from infra/ansible/, with a real local inventory):
+#   ansible-playbook -i inventories/local/hosts.yml playbooks/deploy-verify-job.yml \
+#     --limit worker-01.example.internal
+#   # override the artifact source:
+#   ansible-playbook -i inventories/local/hosts.yml playbooks/deploy-verify-job.yml \
+#     -e challenge_artifact_path=apps/web/public/data/challenge.v2.json
+- name: Deploy the challenge-evidence verification job to Pi workers
+  hosts: pi_workers
+  gather_facts: true
+  vars:
+    rq_jobs_dir: "{{ ansible_env.HOME }}/.local/share/networked-players/rq-jobs"
+    challenge_artifact_path: apps/web/public/data/challenge.v2.json
+  tasks:
+    - name: Require the artifact to exist on the control node
+      ansible.builtin.stat:
+        path: "{{ playbook_dir }}/../../../{{ challenge_artifact_path }}"
+      register: artifact_stat
+      delegate_to: localhost
+      become: false
+
+    - name: Fail loudly if the artifact is missing
+      ansible.builtin.assert:
+        that:
+          - artifact_stat.stat.exists
+        fail_msg: >-
+          No artifact at {{ challenge_artifact_path }}. Build one first (make
+          build-challenge) or pass -e challenge_artifact_path=<path>.
+
+    - name: Create the RQ jobs directory
+      ansible.builtin.file:
+        path: "{{ rq_jobs_dir }}"
+        state: directory
+        mode: "0755"
+
+    - name: Copy the verification job body (same file every worker gets, unmodified)
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../files/verify_challenge_job.py"
+        dest: "{{ rq_jobs_dir }}/verify_challenge_job.py"
+        mode: "0644"
+
+    - name: Copy the challenge artifact
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../../../{{ challenge_artifact_path }}"
+        dest: "{{ rq_jobs_dir }}/challenge.v2.json"
+        mode: "0644"
+      register: artifact_copy
+
+    - name: Report deployment
+      ansible.builtin.debug:
+        msg:
+          - "host: {{ inventory_hostname }}"
+          - "job body + artifact deployed to {{ rq_jobs_dir }}/ (changed={{ artifact_copy.changed }})"
