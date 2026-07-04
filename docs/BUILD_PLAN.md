@@ -724,11 +724,12 @@ one, so this isn't improvised inside `apps/web`.
 Milestone 6.
 
 ### Tasks
-- [ ] Define and document a graph-snapshot contract (version, source dataset
-      snapshot, generation method, evidence fields retained), likely
-      `data/contracts/graph-snapshot-v1.md` [`data/contracts/`] — a separate
-      follow-up PR (graph-snapshot export); not part of the challenge-artifact
-      work below.
+- [x] Define and document a graph-snapshot contract (version, source dataset
+      snapshot, generation method, evidence fields retained):
+      `data/contracts/graph-snapshot-v1.md` [`data/contracts/`], with
+      `export_graph_snapshot`/`export-graph-snapshot` (`packages/graph-core`)
+      producing `artists`/`edges` tables; 7 tests, all synthetic. Real-data
+      export against a real one-hop dataset not yet run.
 - [x] Define and document the static-challenge artifact contract — evolved to
       **album-centered** (v2, not the artist-path-centered de-facto v1) per
       product direction: `data/contracts/challenge-v2.md` [`data/contracts/`]
