@@ -21,7 +21,11 @@ Hardware classes and selected models may be named when they explain a design con
 - Pi jobs must fit comfortably within 1 GB RAM with explicit concurrency limits.
 - Snapshot distribution should be incremental, checksummed, and infrequent enough for 100 Mbps worker links.
 - The 2.5GbE backbone chiefly benefits the coordination host, uplink organization, future endpoints, and large transfers that do not terminate on a Pi 3B.
-- Heavy full-catalog work can run on an optional workstation and publish compact immutable inputs back to the always-on environment.
+- The x86 worker is the fleet's actual joined, higher-capability compute node and is the
+  default target for heavy jobs (parsing, one-hop expansion, RQ/Dask fleet work) that don't
+  need to run directly on the coordination host; an optional workstation remains available
+  for ad hoc or offline full-catalog work, publishing compact immutable inputs back to the
+  always-on environment.
 
 ### Future: coordination spare-worker lane (not implemented)
 

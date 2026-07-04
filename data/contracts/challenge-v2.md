@@ -35,10 +35,13 @@ Integer, always `2` for this contract.
 | `graph_core_version` | `networked_players_graph_core.__version__` at generation time. |
 | `note` | Honest caveats: the private collection seed is never published; the album list is editorial, not a ranking. |
 
-The provenance block must **never** contain seed identifiers, seed counts, seed
-hashes, or any private path. `validate_challenge` rejects a `seed` key anywhere in
-provenance and scans the serialized artifact for `local/`, `data/private`,
-`/home/`, `DISCOGS_TOKEN`, and `.ssh`.
+No part of the artifact may contain seed identifiers, seed counts, seed hashes, or any
+private path. `validate_challenge` rejects a literal `seed` key found anywhere in the
+artifact's object tree — not just inside `provenance` — and separately scans the
+serialized artifact for `local/`, `data/private`, `/home/`, `DISCOGS_TOKEN`, and `.ssh`.
+The `note` field's prose may still say the word "seed" (e.g. "the private collection seed
+is never published") — the check inspects dict *keys*, not free text, so that sentence is
+fine.
 
 ## `albums`
 
