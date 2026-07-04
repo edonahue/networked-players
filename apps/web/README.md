@@ -16,8 +16,10 @@ artists (or albums) with the credit evidence shown at every hop.
   connection. Two modes: **find the connection** (guess the linking artist, then
   reveal) and **reveal every path** (skip straight to the evidence).
 - **About** (`/about/`) — fuller picture, the evidence-vs-influence stance, data & rights.
-- **Demo** (`/demo/`) — 2–3 curated paths rendered from a versioned static artifact
-  (`public/data/challenge.v1.json`). Runs fully client-side; no backend required for this byikd.
+- **Legacy demo** (`/demo/`) — 2–3 curated paths rendered from a versioned static
+  artifact (`public/data/challenge.v1.json`). Predates the album-centered experience
+  above; kept during the transition, labeled "Legacy demo" in the nav. Runs fully
+  client-side; no backend required for this build.
 
 Both artifacts are real Discogs-shaped data, but `challenge.v2.json` (the album grid
 and play pages) is currently a **small synthetic placeholder**, not the real catalog —

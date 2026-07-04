@@ -1,6 +1,7 @@
 ---
-# Onboarding for new fleet nodes: the four Raspberry Pi 3B workers and any
-# optional build/benchmark node (ADR 0015). Run this after health.yml already
+# Onboarding for new fleet nodes: the Raspberry Pi 3B workers (three active,
+# a fourth and a Pi 3B+ planned but not yet revived) and any optional
+# build/benchmark node (ADR 0015). Run this after health.yml already
 # confirms a node is reachable and healthy -- this playbook doesn't repeat that
 # playbook's 64-bit/free-space checks.
 #

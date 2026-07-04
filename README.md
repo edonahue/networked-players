@@ -74,8 +74,8 @@ To run a real Discogs ingestion slice on a workstation or the coordination host,
 
 The current design is intentionally modest and recoverable:
 
-- **Coordination and state:** one SSD-backed x86 host for configuration control, orchestration management, durable services, canonical snapshots, and controlled downloads.
-- **Workers:** four Raspberry Pi 3B nodes for bounded ARM64 jobs against immutable, versioned inputs—not full raw-dump parsing.
+- **Coordination and state:** one SSD-backed x86 host for configuration control, orchestration management, durable services, canonical snapshots, and controlled downloads — never a worker.
+- **Workers:** a dedicated x86_64 Swarm worker plus three active Raspberry Pi 3B nodes (a fourth Pi, and a Pi 3B+, are planned but not yet revived) for bounded jobs against immutable, versioned inputs — not full raw-dump parsing.
 - **Optional heavy compute:** a workstation-class machine for full ingest, compaction, image builds, benchmarks, and expensive analysis without becoming part of the public uptime contract.
 - **Data:** versioned Parquet for analytical records, DuckDB for transforms and validation, PostgreSQL for mutable application state, and Redis/RQ for operational background jobs.
 - **Graph:** an evidence-bearing artist–release bipartite model, with simpler fixtures as correctness oracles and compact representations selected only after measurement.
