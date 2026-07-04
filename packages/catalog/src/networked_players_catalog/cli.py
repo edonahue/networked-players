@@ -153,6 +153,19 @@ def _parser() -> argparse.ArgumentParser:
         "verify-dataset", help="re-verify a local dataset cache against its own manifest.json"
     )
     verify_dataset_parser.add_argument("--dest", type=Path, required=True)
+
+    export_snapshot = subparsers.add_parser(
+        "export-graph-snapshot",
+        help="export a materialized co-credit adjacency snapshot (see graph-snapshot-v1.md)",
+    )
+    export_snapshot.add_argument(
+        "--dataset", type=Path, required=True, help="a parsed dataset root"
+    )
+    export_snapshot.add_argument("--output-root", type=Path, required=True)
+    export_snapshot.add_argument("--max-artists-per-release", type=int, default=50)
+    export_snapshot.add_argument("--memory-limit", default="1GB")
+    export_snapshot.add_argument("--threads", type=int, default=2)
+    export_snapshot.add_argument("--overwrite", action="store_true")
     return parser
 
 
@@ -401,6 +414,20 @@ def main(argv: Sequence[str] | None = None) -> int:
         from .discogs.dataset_fetch import verify_dataset
 
         print(json.dumps(verify_dataset(args.dest), indent=2))
+        return 0
+
+    if args.command == "export-graph-snapshot":
+        from networked_players_graph_core.snapshot import export_graph_snapshot
+
+        snapshot_manifest = export_graph_snapshot(
+            args.dataset,
+            args.output_root,
+            memory_limit=args.memory_limit,
+            threads=args.threads,
+            max_artists_per_release=args.max_artists_per_release,
+            overwrite=args.overwrite,
+        )
+        print(json.dumps(snapshot_manifest, indent=2, sort_keys=True))
         return 0
 
     raise AssertionError(f"unhandled command: {args.command}")
