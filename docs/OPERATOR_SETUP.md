@@ -244,7 +244,11 @@ re-ingest.
 ## Which host runs what
 
 - **Workstation / coordination host:** manifest, download, full parse, validation, canonical
-  artifact retention.
+  artifact retention. The Swarm manager; never a worker.
+- **x86 worker (`x86_workers`, ADR 0022/0023):** a dedicated x86_64 Swarm worker; may hold a
+  replicated dataset cache (see "Worker dataset cache" above) and takes on heavier RQ/Dask
+  fleet work than the Pi's, at a higher-capability tier — never a full raw-dump download of
+  its own, and never promoted to manager.
 - **Raspberry Pi 3B workers:** only bounded, immutable, checksummed partitions — never the
   full raw dump. See [HARDWARE.md](HARDWARE.md) and the catalog package's resource posture.
 

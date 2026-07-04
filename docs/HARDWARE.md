@@ -23,6 +23,19 @@ Hardware classes and selected models may be named when they explain a design con
 - The 2.5GbE backbone chiefly benefits the coordination host, uplink organization, future endpoints, and large transfers that do not terminate on a Pi 3B.
 - Heavy full-catalog work can run on an optional workstation and publish compact immutable inputs back to the always-on environment.
 
+### Future: coordination spare-worker lane (not implemented)
+
+Approved in principle, not yet built: the master/coordination host may later run a small,
+capped, opt-in local-compute lane for bounded jobs that specifically benefit from local
+dataset access (avoiding a network hop to the x86 worker). This is deliberately **not**
+`x86_workers` membership, is **never** a promotion path for the x86 worker, and is **never**
+general Swarm task placement on the coordination host — the coordination host stays
+manager-only and workload-light by design. If built, it would be on-demand only (not a
+standing service), with suggested (not yet configured) resource limits: 1 worker process, 1
+thread, a ~2 GiB Dask memory limit, a systemd `MemoryMax` around 2500M, `CPUQuota` in the
+100–150% range, and `Nice=15` so it never contends with the host's own coordination duties.
+No code, playbook, or Compose service implements this today.
+
 ## Measured capability
 
 Real throughput, elapsed-time, and memory numbers are treated as private and
