@@ -4,7 +4,12 @@
 
 The project begins with a private collection-derived seed, expands through adjacent catalog credits, and produces documented paths between artists and releases. The first public experience will be static-first so it remains useful even when the home lab is offline.
 
-> **Status:** early implementation and repository scaffolding. A tested Discogs release-ingestion slice now exists; no deployed application, public API, full catalog, or cluster deployment is claimed yet.
+> **Status:** early implementation, not a finished product. A tested Discogs
+> release-ingestion pipeline (run to completion against the real monthly
+> dump), a real private Docker Swarm cluster, an early graph layer, and a
+> web experience with placeholder data all exist — but no public
+> application, API, or live game is deployed yet at
+> `networked-players.com`.
 
 ## Project identity
 
@@ -86,11 +91,11 @@ These are selected directions, not completed deployment.
 ## Repository map
 
 ```text
-apps/                Future user-facing web and API applications
+apps/                 apps/web (real, live code); apps/api (future)
 packages/            Catalog, graph, game-rule, and worker packages
 data/                 Public schemas, contracts, and synthetic fixtures
 docs/                 Product, architecture, rights, sizing, and decisions
-infra/                Reproducible Ansible and Docker Swarm scaffolding
+infra/                Ansible and Docker Swarm config for a real, running fleet
 tests/                Future cross-project validation and acceptance tests
 local/                Ignored machine-specific working area
 ```

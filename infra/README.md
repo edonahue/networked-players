@@ -16,18 +16,27 @@ Current roles:
 - one optional workstation-class build and analysis node;
 - a wired local network with a multi-gigabit backbone and a separate worker fan-out switch.
 
-## Phase-1 starter
+## Current state: a real, live cluster
 
-This is early scaffolding, not a running cluster. What exists:
+The Swarm described above is real and running today, not scaffolding — a single-manager
+Swarm with the x86 worker and the three active Pi workers all joined and smoke-tested,
+recovery-drilled (drain/remove/rejoin), and backed up/restored for real. See
+`docs/BUILD_PLAN.md`'s "Where things stand today" section and its status table for the
+full, dated evidence trail. What lives in this directory:
 
-- `ansible/` — an `ansible.cfg`, a read-only facts/health playbook (`playbooks/health.yml`),
-  and example inventory/group_vars/host_vars to copy into a git-ignored local inventory.
-- `swarm/` — a coordination-host `docker-compose.coordination.yml` (Postgres + Redis) for the
-  dev loop, plus a Swarm init/join runbook in `swarm/README.md`.
+- `ansible/` — `ansible.cfg`, the real playbooks (`playbooks/`) this fleet runs
+  (health, onboarding, hardening, RQ/Dask fleet work, dataset replication), and
+  example inventory/group_vars/host_vars to copy into a git-ignored local inventory
+  before pointing any of it at real hosts.
+- `swarm/` — the coordination-host `docker-compose.coordination.yml` (Postgres + Redis),
+  the read-only catalog-data HTTP layer (ADR 0024), a Swarm init/join runbook in
+  `swarm/README.md`, and the jobs-broker/benchmark deployment scripts.
 
-These are verified as configuration only; they have not been run against real hardware.
+## Original bootstrap sequence (historical reference)
 
-## Bootstrap checklist (power-on → cluster up)
+This is how the cluster above was actually brought up from power-on — kept here as a
+reference for re-provisioning a node or bringing up a new one (e.g. the planned fourth
+Pi or Pi 3B+), not as an implication that the cluster still needs bootstrapping.
 
 1. Flash a **64-bit** OS to each node (aarch64 on the Pis); confirm SSH and a non-root
    service account.

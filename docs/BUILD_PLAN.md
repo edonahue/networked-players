@@ -63,25 +63,42 @@ full-dataset profiling (2026-07-02)" for the full findings, including
 confirmation that mojibake in 89 titles and other apparent oddities are
 genuine, pre-existing source-data characteristics, not pipeline bugs.
 
-**Graph, game rules, workers, API (`packages/graph-core`, `packages/game-rules`,
-`packages/workers`, `apps/api`).** Placeholders. Each has only a README describing
-planned responsibility. No source code exists in any of them.
+**Game rules, workers, API (`packages/game-rules`, `packages/workers`,
+`apps/api`).** Placeholders. Each has only a README describing planned
+responsibility. No source code exists in any of them.
+
+**Graph core (`packages/graph-core`).** **Update, 2026-07-04:** no longer a
+placeholder. Implemented: a DuckDB-backed lazy `CreditGraph` (query-per-hop
+BFS, never a materialized in-Python adjacency), the album-centered
+`challenge.v2` artifact builder (`challenge.py`) with a leak-checking
+`validate_challenge`, the medium-term proxy-ranking curation mechanism
+(`analysis.py`), and a materialized co-credit graph-snapshot exporter
+(`snapshot.py`) — 32 tests, all synthetic; no real-data run yet (live gates
+B/F). See the status table below and `data/contracts/challenge-v2.md` /
+`data/contracts/graph-snapshot-v1.md`.
 
 **Web application (`apps/web`).** Early implementation. A static Astro site with
-`/`, `/about/`, and `/demo/` pages, dark/light theme, and SEO basics. As of this
-session the demo runs on **real Discogs data** — a small, curated subset of
-releases and artist connections fetched via the Discogs API against the
-operator's private seed, with cover art hotlinked directly from Discogs' own CDN
-([ADR 0012](decisions/0012-real-discogs-api-demo-challenge.md)) — a deliberate
-detour ahead of Milestone 8's dump-derived pipeline, not a replacement for it.
-Deploy configuration (`wrangler.jsonc`) targets `networked-players.com`; the
-operator deploys via their Cloudflare Git integration on push to `main` rather
-than a manual `npm run deploy`. The coordination host's Node mismatch (Node
-20.20.2 vs. `package.json`'s `>=22` requirement) blocked local dev/test until
-`scripts/setup-node-playwright.sh` installed Node 22 via `nvm` plus Playwright's
-Chromium and Debian system deps; `.github/workflows/web.yml` now runs format
-check, Astro check/build, and the Playwright smoke test on every pull request and
-push to `main`.
+`/`, `/about/`, `/play/<album>/`, and `/demo/` pages, dark/light theme, and SEO
+basics. As of this session the demo runs on **real Discogs data** — a small,
+curated subset of releases and artist connections fetched via the Discogs API
+against the operator's private seed, with cover art hotlinked directly from
+Discogs' own CDN ([ADR 0012](decisions/0012-real-discogs-api-demo-challenge.md))
+— a deliberate detour ahead of Milestone 8's dump-derived pipeline, not a
+replacement for it. Deploy configuration (`wrangler.jsonc`) targets
+`networked-players.com`; the operator deploys via their Cloudflare Git
+integration on push to `main` rather than a manual `npm run deploy`. The
+coordination host's Node mismatch (Node 20.20.2 vs. `package.json`'s `>=22`
+requirement) blocked local dev/test until `scripts/setup-node-playwright.sh`
+installed Node 22 via `nvm` plus Playwright's Chromium and Debian system deps;
+`.github/workflows/web.yml` now runs format check, Astro check/build, and the
+Playwright smoke test on every pull request and push to `main`. **Update,
+2026-07-04:** the landing page was reframed around an album grid, with a new
+`/play/<album>/` evidence-viewer page per album (find-the-connection /
+reveal-the-path modes); this runs on real, working Astro code against a
+**synthetic placeholder artifact** (`challenge.v2.json`, clearly marked as
+such in its own provenance), not yet the real dump-derived data — the
+original `/demo/` page above is unaffected and stays live, relabeled "Legacy
+demo" in the nav.
 
 **Infrastructure and hardware (`infra/`).** Real bring-up began the night of
 2026-06-30/07-01 and has continued since. Per
@@ -104,11 +121,19 @@ Raspberry Pi 3B workers (`worker-01`/`worker-02`/`worker-03`) are now
 provisioned, onboarded, and joined to the Swarm for real — see "Fleet
 bring-up" under Milestone 2 below for the full evidence. The fourth remains
 unreachable, and the newly identified second ZimaBoard 832 (stock, no NVMe)
-the operator wants as an optional build node is still not onboarded.
+was, at the time, an optional build node not yet onboarded.
 Onboarding tooling for both (`infra/ansible/playbooks/onboard.yml`,
 [ADR 0015](decisions/0015-fleet-onboarding.md)) has now been run for real
-against the three reachable Pi workers; the second ZimaBoard remains
-untested. Separately, the coordination
+against the three reachable Pi workers; the second ZimaBoard was still
+untested. **Update, 2026-07-04: this is superseded** — the second
+ZimaBoard has since joined the Swarm for real as a dedicated x86_64 worker
+(`x86_workers`, [ADR 0022](decisions/0022-second-zimaboard-joins-as-x86-swarm-worker.md),
+amending ADR 0015's original "optional build node, not a Swarm member"
+framing) and now participates in the same RQ/Dask fleet work as the Pi
+workers at a higher-capability tier ([ADR 0023](decisions/0023-x86-worker-joins-rq-dask-fleet-work.md)).
+It is a genuine Swarm worker, never a manager, and remains a distinct host
+from the master/coordination ZimaBoard described throughout this section.
+Separately, the coordination
 host itself was hardened the same day for safely running long, unattended
 background jobs — persistent journald, a hardware watchdog, Docker log rotation,
 and `vm.swappiness` tuning via `infra/ansible/playbooks/harden.yml`
@@ -171,16 +196,20 @@ script (`scripts/check-ingest-feasibility.sh`, wired to `make ingest-check`) has
 since been run for real against `SNAPSHOT=20260601` and passed — see
 [Milestone 3](#milestone-3-real-ingestion-dry-run-roadmap-3)'s first task.
 
-**Hardware.** One ZimaBoard 832 coordination host: OS flashed and confirmed
-64-bit; Docker Swarm manager active; 1TB NVMe attached, mounted, and hardened for
-long-running jobs (see "Storage" and "Infrastructure and hardware" above). Four
-Raspberry Pi 3B workers (1 GB RAM, ARM64) are planned per `docs/HARDWARE.md` but not
-yet provisioned. A second ZimaBoard 832 (stock, no NVMe yet) was identified this
-session as an optional workstation-class build node — like the first, it remains
-outside the uptime contract per architecture direction and, per
-[ADR 0015](decisions/0015-fleet-onboarding.md), is deliberately not a Swarm
-member. Onboarding tooling exists for both the Pi workers and this node
-(`infra/ansible/playbooks/onboard.yml`) but neither has been run yet.
+**Hardware, current state (updated 2026-07-04).** One master/coordination
+ZimaBoard 832: OS flashed and confirmed 64-bit; Docker Swarm manager active;
+1TB NVMe attached, mounted, and hardened for long-running jobs (see "Storage"
+and "Infrastructure and hardware" above); authoritative home of
+`local/processed/`; never a worker. A second, distinct ZimaBoard 832
+(the "x86 worker," `x86_workers` group) is a real, joined, dedicated x86_64
+Swarm worker ([ADR 0022](decisions/0022-second-zimaboard-joins-as-x86-swarm-worker.md)/
+[ADR 0023](decisions/0023-x86-worker-joins-rq-dask-fleet-work.md)), worker-only
+and never promoted to manager, participating in RQ/Dask fleet work at a
+higher-capability tier than the Pi's. Three active Raspberry Pi 3B workers
+(1 GB RAM, ARM64, `pi_workers`) are provisioned, onboarded, and joined; a
+fourth original Pi, plus a separate Pi 3B+, are planned but not yet revived
+— both would join `pi_workers` as Pi-class hardware when they are. See
+`docs/HARDWARE.md` for the full table.
 
 | Area | State |
 | --- | --- |
@@ -215,7 +244,7 @@ member. Onboarding tooling exists for both the Pi workers and this node
 | `apps/web` CI | Added (`.github/workflows/web.yml`): format/check/build/Playwright smoke |
 | Health playbook | Passing (confirmed 2026-07-01: 869.2 GB free on `/mnt/data`) |
 | Raspberry Pi workers | **3 of 4 joined and smoke-tested, 2026-07-02** (ADR 0015, ADR 0017); fourth remains unreachable |
-| Second ZimaBoard 832 (optional build node) | Identified, stock, no NVMe yet; not yet onboarded; not a Swarm member by design (ADR 0015) |
+| Second ZimaBoard 832 (the "x86 worker," `x86_workers`) | Joined as a real, dedicated x86_64 Swarm worker (ADR 0022/0023); worker-only, never promoted; participates in RQ/Dask fleet work at a higher-capability tier than the Pi's |
 | `networked-players.com` | Registered, not live |
 
 ## How to use this document
