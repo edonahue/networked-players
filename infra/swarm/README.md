@@ -69,6 +69,21 @@ Prometheus/Grafana/cAdvisor remain deliberately deferred — a bigger,
 separate, ADR-worthy decision if deeper metrics/alerting are ever needed,
 not built alongside this.
 
+## Jobs broker (cluster benchmarking)
+
+`docker-compose.jobs-broker.yml` runs a dedicated Redis for RQ job-queue
+traffic — separate from the coordination stack's loopback-only Redis above,
+which never carries job traffic. This is the **first LAN-reachable service**
+in this repository: bound to the coordination host's real Ethernet address
+(never `0.0.0.0`), password-protected, and deliberately **not** a standing
+service. See [ADR 0019](../../docs/decisions/0019-cluster-benchmark-rq-job-broker.md).
+
+```bash
+./deploy-jobs-broker.sh          # generates local/jobs-broker.env on first run
+# ... run make cluster-benchmark-distributed (see infra/ansible/README.md) ...
+./deploy-jobs-broker.sh --down
+```
+
 ## Swarm init / join runbook
 
 Initialize the manager on the coordination host and join the workers. Real tokens and
@@ -92,10 +107,12 @@ for anything newer):
 4. **Onboard** (installs Docker, adds the SSH user to the `docker` group —
    [ADR 0015](../../docs/decisions/0015-fleet-onboarding.md)):
    `make cluster-onboard ARGS="--limit workers --ask-become-pass"`
-5. **Harden** (arms the hardware watchdog, configures Docker log rotation):
+5. **Harden** (arms the hardware watchdog, configures Docker log rotation —
+   `pi_workers` only, not the broader `workers` group; see ADR 0022):
    `make harden-workers ARGS="--ask-become-pass"`
 6. **Equip** (baseline tooling — `uv`, DuckDB CLI, `jq`/`redis-tools`, a
-   `redis`/`rq`/`duckdb` venv): `make equip-workers ARGS="--ask-become-pass"`
+   `redis`/`rq`/`duckdb` venv — `pi_workers` only, ADR 0022):
+   `make equip-workers ARGS="--ask-become-pass"`
 7. **Join** (guarded, one worker at a time —
    [ADR 0017](../../docs/decisions/0017-guarded-swarm-worker-join-automation.md)):
    `CONFIRM=yes ARGS="--limit worker-01 --ask-become-pass" make cluster-swarm-join`
@@ -103,6 +120,11 @@ for anything newer):
    no unexpected manager promotion.
 9. **Resilience check** (optional but recommended — real proof, not inferred):
    `infra/ansible/reboot-and-verify-worker.sh <alias>`
+10. **Cluster-vs-single-node benchmark** (optional, once joined workers
+    exist): deploy the job body
+    (`infra/ansible/run-deploy-rq-benchmark-job-local.sh --limit workers`),
+    then see infra/ansible/README.md's "Cluster-vs-single-node comparison"
+    section.
 
 Steps 2–6 can run against `--limit workers` (all newly-added workers at once,
 `serial: 1` internally) if every worker shares the same sudo password;
@@ -118,18 +140,30 @@ manager address from `local/swarm.env` itself — never hand-type either. It no-
 cleanly if a worker already reports an active Swarm state, and never calls `docker
 swarm leave` or promotes a node automatically.
 
-### Optional build node (second ZimaBoard, `optional_build_nodes`)
+### x86_64 Swarm worker (ZimaBoard, `x86_workers`)
 
-Not a Swarm member (ADR 0015) — only steps 1, 2, and `onboard.yml --limit
-optional_build_nodes` (verifies Docker is present, installs nothing) apply.
-`harden-workers.yml`/`equip-workers.yml` are Pi-specific by design (real
-constraints: a Pi's hardware watchdog device, a lean venv that deliberately
-excludes `lxml`/`pyarrow` because of the Pi's 1GB RAM) and don't target this
-group. **No equivalent hardening/tooling playbook exists yet for
-`optional_build_nodes`** — a full x86_64 ZimaBoard could reasonably run the
-*full* `packages/catalog` stack (`uv sync --extra dev`) directly rather than
-a lean cross-compiled venv, but that's a real, separate, not-yet-built task,
-not something to assume is covered.
+The second ZimaBoard was originally `optional_build_nodes` (ADR 0015) — a
+standalone, non-Swarm box. It has since joined the Swarm as a dedicated
+worker instead (ADR 0022, amending 0015); `optional_build_nodes` has no
+populated hardware right now.
+
+This host follows the **same runbook steps 1-4 and 7-9** as a Pi worker —
+it's a flat member of the `workers` group, so `health.yml`, `benchmark.yml`,
+`onboard.yml`, and `swarm-join.yml` all reach it unchanged. It deliberately
+**skips steps 5-6**: `harden-workers.yml`/`equip-workers.yml` are now scoped
+to `hosts: pi_workers` specifically (not `workers`), since both encode real
+Pi-specific facts (a Pi's hardware watchdog device, SD-card write-endurance
+log-rotation reasoning, and — critically — a live `apt` install task that
+must never run against this host's fragile package state) that don't hold
+here. **No equivalent hardening/tooling playbook exists yet for
+`x86_workers`** — a full x86_64 ZimaBoard could reasonably run the *full*
+`packages/catalog` stack (`uv sync --extra dev`) directly rather than a lean
+cross-compiled venv, but that's a real, separate, not-yet-built task, not
+something to assume is covered.
+
+`optional_build_nodes` stays defined in the example inventory and in
+`onboard.yml`'s second play (verifies Docker is present, installs nothing)
+for any future hardware that fills that standalone-workstation role again.
 
 ### Worker-only smoke test
 

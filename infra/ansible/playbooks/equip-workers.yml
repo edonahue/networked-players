@@ -13,10 +13,14 @@
 # how the rest of this project already uses uv everywhere else, rather than
 # reaching for --break-system-packages.
 #
+# Scoped to `pi_workers`, NOT the broader `workers` group (ADR 0022) -- this
+# play runs a real `apt: update_cache: true` install, which must never touch
+# a non-Pi worker's package state without a deliberate, separate decision.
+#
 # Usage (from infra/ansible/, with a real local inventory):
 #   ansible-playbook -i inventories/local/hosts.yml playbooks/equip-workers.yml --ask-become-pass
 - name: Equip Pi 3B workers with a speculative baseline toolset
-  hosts: workers
+  hosts: pi_workers
   gather_facts: true
   vars:
     worker_venv_dir: "{{ ansible_env.HOME }}/.local/share/networked-players/worker-venv"

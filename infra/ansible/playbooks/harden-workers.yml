@@ -15,10 +15,14 @@
 # facts-gathering task on this project before, even with --ask-become-pass
 # already supplied.
 #
+# Scoped to `pi_workers`, NOT the broader `workers` group (ADR 0022) --
+# the watchdog-device and SD-card log-rotation reasoning below are real Pi
+# facts that don't hold for a ZimaBoard worker.
+#
 # Usage (from infra/ansible/, with a real local inventory):
 #   ansible-playbook -i inventories/local/hosts.yml playbooks/harden-workers.yml --ask-become-pass
 - name: Pi 3B worker hardening
-  hosts: workers
+  hosts: pi_workers
   gather_facts: true
   tasks:
     - name: Arm the hardware watchdog (RuntimeWatchdogSec)
@@ -63,6 +67,21 @@
       become: true
       notify: Restart docker
 
+    - name: Enable linger for the ansible_user
+      # Required for `systemd-run --user`, invoked non-interactively by
+      # run-rq-burst-worker.yml and run-dask-worker-burst.yml -- without
+      # linger, a --user systemd instance only exists while a real login
+      # session is active, and a bare SSH/Ansible exec has no such session
+      # to keep it alive. This is a one-time, root-required setup step
+      # (paid here, in the already-become:true hardening pass), so those
+      # two per-run playbooks can stay permanently become-free -- one of
+      # them (run-rq-burst-worker.yml) is invoked non-interactively by
+      # scripts/cluster_benchmark_distributed.py, which has no path to
+      # supply a sudo password at all.
+      ansible.builtin.command: "loginctl enable-linger {{ ansible_user }}"
+      become: true
+      changed_when: true
+
     - name: Report hardening status
       ansible.builtin.debug:
         msg:
@@ -71,6 +90,7 @@
           - "docker: log-opts configured (does NOT retroactively apply to already-running containers)"
           - "journald persistence: already correct on this host, not touched"
           - "vm.swappiness: no swap configured on this host, not touched"
+          - "linger enabled for {{ ansible_user }} (required for systemd-run --user)"
 
   handlers:
     - name: Reexec systemd manager

@@ -11,6 +11,14 @@
 > action per node, no automated topology change without confirmation) is
 > preserved. See ADR 0017 for the reasoning.
 
+> **Amended by [ADR 0022](0022-second-zimaboard-joins-as-x86-swarm-worker.md)
+> (2026-07-03):** Decision 1 below is reversed for this specific box — the
+> second ZimaBoard is no longer `optional_build_nodes`; it has joined the
+> Swarm as a dedicated `x86_workers` worker. `optional_build_nodes` stays
+> defined for any future hardware that fills that role, but nothing
+> populates it right now. See ADR 0022 for the reasoning and the inventory
+> restructuring it required.
+
 ## Context
 
 The operator has the four planned Raspberry Pi 3B workers ready to provision, plus a

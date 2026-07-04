@@ -10,7 +10,7 @@ The hardware is part of the learning story, but the public repository only needs
 | Four Raspberry Pi 3B nodes | Bounded ARM64 workers | 1 GB RAM and 10/100 Ethernet per node |
 | Existing five-port cluster switch | Fan-out to the four workers | Worker links remain limited by Pi hardware |
 | Tenda SM105 five-port 2.5GbE switch | Connect the router, coordination host, and cluster uplink | Unmanaged; improves backbone and placement, not Pi link speed |
-| Optional workstation-class build node (a second, stock ZimaBoard 832, no NVMe yet) | Ingest, builds, benchmarks, and expensive analysis | Must not become required for public availability; not a Swarm member (ADR 0015) |
+| Dedicated x86_64 Swarm worker (a ZimaBoard 832) | Fixed compute in the orchestrated Swarm, alongside the Pi workers | Joined as a worker only, never promoted; see ADR 0022 (amends ADR 0015) |
 
 ## Public documentation rule
 
@@ -25,22 +25,18 @@ Hardware classes and selected models may be named when they explain a design con
 
 ## Measured capability
 
-Real numbers from `infra/ansible/playbooks/benchmark.yml`
-(`make cluster-benchmark`, see `infra/ansible/README.md`'s "Benchmarking"
-section) — a small, dependency-free CPU/memory probe run per node, not the
-production Discogs parser. Filled in as each node type actually becomes
-reachable; do not extend this table with unmeasured numbers.
+Real throughput, elapsed-time, and memory numbers are treated as private and
+local (see [ADR 0018](decisions/0018-benchmark-results-local-only.md) and
+`docs/PUBLIC_PRIVATE_BOUNDARY.md`) — this table intentionally does not carry
+them. The benchmark *method* stays public and reproducible:
 
-| Node | Arch | CPUs | Iterations | Elapsed | Releases/sec | Peak RSS | Measured |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| Coordination host (ZimaBoard 832) | x86_64 | 4 | 20,000 | ~2.7s | ~14,600 | ~14 MB | 2026-07-02 |
-| Raspberry Pi 3B worker (n=3) | aarch64 | 4 | 20,000 | ~8.6s | ~4,630–4,650 | ~16.5 MB | 2026-07-02 |
-| Second ZimaBoard 832 (optional build node) | x86_64 | — | — | — | — | — | not yet reachable |
+- `make cluster-benchmark` (`infra/ansible/playbooks/benchmark.yml`): a
+  small, dependency-free CPU/memory probe run independently per node, not the
+  production Discogs parser.
+- `make cluster-benchmark-distributed`: compares that same workload's
+  aggregate throughput fanned out across the joined Pi workers via RQ against
+  a single-node baseline.
 
-Pi 3B result is the range across all three joined workers, remarkably
-consistent (within ~0.6% of each other) — roughly 1/3 the coordination
-host's throughput on this probe. One node type pair still isn't enough for
-a routing decision (the second ZimaBoard remains unmeasured, and this is a
-CPU/memory probe, not a claim about network- or I/O-bound worker jobs);
-update this table again once the second ZimaBoard and the fourth Pi are
-reachable.
+Both write their results to `local/benchmarks/`, never into this file. See
+`infra/ansible/README.md`'s "Benchmarking" section to reproduce a measurement
+against your own hardware.

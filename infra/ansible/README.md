@@ -24,9 +24,15 @@ playbooks/onboard.yml                              Pi worker + build-node onboar
 playbooks/swarm-join.yml                          guarded, one-worker-at-a-time Swarm join (ADR 0017)
 playbooks/harden-workers.yml                      Pi 3B worker hardening: watchdog, Docker log rotation
 playbooks/equip-workers.yml                       Pi 3B worker baseline tooling: uv, duckdb, jq, venv
+playbooks/deploy-rq-benchmark-job.yml             persist benchmark_parse.py as an RQ job body (ADR 0019)
+playbooks/run-rq-burst-worker.yml                 burst `rq worker` against one queue (ADR 0019)
+playbooks/run-dask-worker-burst.yml               manual, on-demand Dask worker for one Pi (ADR 0020)
 files/benchmark_parse.py                          standalone probe copied to each node by benchmark.yml
+  (also reused, unmodified, as the RQ job body above)
 run-health-local.sh, run-benchmark-local.sh,      guarded local entry points (share run-playbook-local.sh);
-  run-onboard-local.sh, run-swarm-join-local.sh   all forward extra args, e.g. --limit workers --check
+  run-onboard-local.sh, run-swarm-join-local.sh,  all forward extra args, e.g. --limit workers --check
+  run-deploy-rq-benchmark-job-local.sh,
+  run-rq-burst-worker-local.sh, run-dask-worker-burst-local.sh
 bootstrap-worker-ssh.sh                           one-time passwordless SSH setup for the workers group
 inventories/example/hosts.yml                     example hosts (placeholder names)
 inventories/example/group_vars/all.yml            example shared variables
@@ -101,11 +107,35 @@ node, annotated with its inventory group for cross-node-type comparison.
 BENCHMARK_ITERATIONS=50000 ./run-benchmark-local.sh   # more iterations for noisy/fast hardware
 ```
 
-Real result on the coordination host (x86_64, 4 CPUs), 2026-07-02: 20,000
-iterations (40,000 releases parsed) in ~2.7s, ~14,600 releases/sec, ~14MB
-peak RSS. No Pi or second-ZimaBoard numbers exist yet — see
-`docs/HARDWARE.md`'s "Measured capability" section, to be filled in once
-that hardware is reachable.
+Per [ADR 0018](../../docs/decisions/0018-benchmark-results-local-only.md),
+real measured numbers are no longer transcribed into a committed doc — run
+the benchmark yourself against your own hardware to see current numbers;
+`docs/HARDWARE.md` only tracks the method now.
+
+### Cluster-vs-single-node comparison
+
+`make cluster-benchmark-distributed` answers a different question than the
+per-node numbers above: how does the same total workload's aggregate
+throughput look distributed across the joined Pi workers versus run on one
+worker alone? It reuses the same probe (`benchmark_parse.py`, deployed
+persistently by `playbooks/deploy-rq-benchmark-job.yml`) as an RQ job body,
+fanned out with `playbooks/run-rq-burst-worker.yml` against a dedicated,
+LAN-reachable jobs-broker Redis (`infra/swarm/docker-compose.jobs-broker.yml`
+— started deliberately, not a standing service). See
+[ADR 0019](../../docs/decisions/0019-cluster-benchmark-rq-job-broker.md) for
+why this needed its own broker rather than reusing the loopback-only
+dev-loop Redis.
+
+```bash
+./infra/swarm/deploy-jobs-broker.sh
+./infra/ansible/run-deploy-rq-benchmark-job-local.sh --limit workers
+make cluster-benchmark-distributed
+./infra/swarm/deploy-jobs-broker.sh --down
+```
+
+Results — full per-node breakdown, aggregate job span, and the
+distributed-vs-baseline speedup ratio — are written to `local/benchmarks/`
+only, per ADR 0018; nothing here is published.
 
 ## Resilience testing
 
@@ -148,14 +178,24 @@ different risk category than the read-only `health.yml`:
   moment). Arms the Pi's hardware watchdog and configures Docker log rotation.
   Deliberately skips journald-persistence and swappiness tasks — confirmed live
   that journald is already persistent on these Pis and no swap exists, so those
-  tasks would be no-ops.
+  tasks would be no-ops. Scoped to `hosts: pi_workers`, not the broader
+  `workers` group (ADR 0022) — this play's reasoning is Pi-specific and must
+  not run against a non-Pi Swarm worker.
 - `playbooks/equip-workers.yml` — speculative-but-grounded baseline tooling:
   installs `jq`/`redis-tools` (via `baseline_packages`, first playbook to actually
   consume that var), `uv`, the DuckDB CLI, and a small `uv`-managed venv
   (`redis`, `rq`, `duckdb`) at `~/.local/share/networked-players/worker-venv`.
   Deliberately does **not** install `lxml`/`pyarrow`/`packages/catalog` — those
   are the release-parsing pipeline's dependencies, scoped by `AGENTS.md` to the
-  coordination host or optional workstation, never a Pi job.
+  coordination host or optional workstation, never a Pi job. Also scoped to
+  `hosts: pi_workers` (ADR 0022) — this play runs a real `apt install`, which
+  must never touch a non-Pi worker's package state without a separate decision.
+
+`workers` is now a mixed-architecture group: the three Pi 3B's (also members
+of `pi_workers`) plus one x86_64 ZimaBoard worker (also a member of
+`x86_workers`) — see ADR 0022. Every generic playbook (`health.yml`,
+`benchmark.yml`, `onboard.yml`, `swarm-join.yml`) reaches all of `workers`
+unchanged; only the two Pi-specific playbooks above are retargeted.
 
 ```bash
 ansible-playbook -i inventories/local/hosts.yml playbooks/harden-workers.yml --ask-become-pass
