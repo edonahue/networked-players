@@ -134,6 +134,25 @@ def _parser() -> argparse.ArgumentParser:
     rank_albums.add_argument("--limit", type=int, default=200)
     rank_albums.add_argument("--memory-limit", default="3GB")
     rank_albums.add_argument("--threads", type=int, default=2)
+
+    fetch_dataset_parser = subparsers.add_parser(
+        "fetch-dataset",
+        help="fetch and verify a served dataset into a local, disposable cache (ADR 0025)",
+    )
+    fetch_dataset_parser.add_argument(
+        "--base-url", help="dataset root URL, e.g. http://host:8791/discogs/snapshot=20260601"
+    )
+    fetch_dataset_parser.add_argument("--dest", type=Path, required=True)
+    fetch_dataset_parser.add_argument("--verify-only", action="store_true")
+    fetch_dataset_parser.add_argument("--max-total-bytes", type=int, default=None)
+    fetch_dataset_parser.add_argument("--headroom-bytes", type=int, default=1_000_000_000)
+    fetch_dataset_parser.add_argument("--timeout", type=float, default=60.0)
+    fetch_dataset_parser.add_argument("--overwrite", action="store_true")
+
+    verify_dataset_parser = subparsers.add_parser(
+        "verify-dataset", help="re-verify a local dataset cache against its own manifest.json"
+    )
+    verify_dataset_parser.add_argument("--dest", type=Path, required=True)
     return parser
 
 
@@ -354,6 +373,34 @@ def main(argv: Sequence[str] | None = None) -> int:
         args.output.write_text(json.dumps(candidates, indent=2) + "\n")
         summary = {"output": str(args.output), "candidate_count": len(candidates)}
         print(json.dumps(summary, indent=2))
+        return 0
+
+    if args.command == "fetch-dataset":
+        import sys
+
+        from .discogs.dataset_fetch import fetch_dataset, verify_dataset
+
+        if args.verify_only:
+            fetch_result = verify_dataset(args.dest)
+        else:
+            if not args.base_url:
+                print("--base-url is required unless --verify-only is set", file=sys.stderr)
+                return 2
+            fetch_result = fetch_dataset(
+                args.base_url,
+                args.dest,
+                max_total_bytes=args.max_total_bytes,
+                headroom_bytes=args.headroom_bytes,
+                timeout_seconds=args.timeout,
+                overwrite=args.overwrite,
+            )
+        print(json.dumps(fetch_result, indent=2))
+        return 0
+
+    if args.command == "verify-dataset":
+        from .discogs.dataset_fetch import verify_dataset
+
+        print(json.dumps(verify_dataset(args.dest), indent=2))
         return 0
 
     raise AssertionError(f"unhandled command: {args.command}")

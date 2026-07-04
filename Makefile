@@ -8,7 +8,7 @@
 .PHONY: help setup test lint fmt fmt-check typecheck check ingest ingest-check ingest-recovery-check profile-discogs expand-onehop build-challenge \
 	backup-coordination restore-coordination backup-swarm-manager restore-swarm-manager \
 	cluster-health cluster-benchmark cluster-onboard cluster-swarm-join cluster-smoke-test \
-	cluster-recovery-drill harden-workers equip-workers equip-x86-workers deploy-jobs-broker deploy-catalog-data cluster-benchmark-distributed \
+	cluster-recovery-drill harden-workers equip-workers equip-x86-workers replicate-x86 replicate-pi deploy-jobs-broker deploy-catalog-data cluster-benchmark-distributed \
 	dask-up dask-down
 
 help: ## List available targets
@@ -100,6 +100,17 @@ equip-workers: ## Install baseline tooling (uv, duckdb, jq, redis-tools, worker 
 
 equip-x86-workers: ## Install baseline RQ/Dask tooling (uv, duckdb, worker venv, no apt) on x86_64 Swarm workers (ADR 0023); ARGS="--limit x86-worker-01 --ask-become-pass"
 	./infra/ansible/run-equip-x86-workers-local.sh $(ARGS)
+
+replicate-x86: ## Replicate a dataset into an x86 worker's local cache (ADR 0025); needs DATASET=, SNAPSHOT=; CATALOG_DATA_URL= unless ARGS contains -e verify_only=true
+	@test -n "$(DATASET)" || (echo "Set DATASET=discogs|discogs-onehop|discogs-masters" >&2; exit 1)
+	@test -n "$(SNAPSHOT)" || (echo "Set SNAPSHOT=YYYYMMDD" >&2; exit 1)
+	./infra/ansible/run-replicate-dataset-x86-local.sh \
+		-e dataset=$(DATASET) -e snapshot=$(SNAPSHOT) $(if $(CATALOG_DATA_URL),-e catalog_data_url=$(CATALOG_DATA_URL)) $(ARGS)
+
+replicate-pi: ## Replicate the one-hop dataset into a Pi worker's bounded cache (ADR 0025); needs SNAPSHOT=; CATALOG_DATA_URL= unless ARGS contains -e verify_only=true; ARGS="--limit worker-01"
+	@test -n "$(SNAPSHOT)" || (echo "Set SNAPSHOT=YYYYMMDD" >&2; exit 1)
+	./infra/ansible/run-replicate-dataset-pi-local.sh \
+		-e snapshot=$(SNAPSHOT) $(if $(CATALOG_DATA_URL),-e catalog_data_url=$(CATALOG_DATA_URL)) $(ARGS)
 
 deploy-jobs-broker: ## Start the LAN-reachable jobs-broker Redis for cluster benchmarking (ADR 0019); "make deploy-jobs-broker ARGS=--down" to stop
 	./infra/swarm/deploy-jobs-broker.sh $(ARGS)

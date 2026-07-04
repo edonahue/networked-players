@@ -20,7 +20,10 @@ deliberately exclude heavy dependencies.
 from __future__ import annotations
 
 import json
+import os
+from collections.abc import Mapping
 from dataclasses import dataclass
+from pathlib import Path
 from urllib.request import urlopen
 
 
@@ -83,3 +86,55 @@ def dataset_file_urls(
             "check the table name against the dataset's contract"
         )
     return sorted(selected, key=lambda item: item.path)
+
+
+@dataclass(frozen=True, slots=True)
+class DatasetSource:
+    """Where a job should read one dataset/snapshot from, per resolve_dataset."""
+
+    kind: str  # "local" or "http"
+    base: str  # a local directory path, or an HTTP dataset root URL
+
+
+def resolve_dataset(
+    dataset: str,
+    snapshot: str,
+    *,
+    env: Mapping[str, str] | None = None,
+    timeout_seconds: float = 10.0,
+) -> DatasetSource:
+    """Pick a data source per ADR 0025's resolution order.
+
+    1. A validated local cache (``CATALOG_DATA_DIR``) -- a dataset directory
+       containing both ``manifest.json`` and a ``.verified.json`` marker
+       (written by ``dataset_fetch.fetch_dataset``/``verify_dataset``). An
+       unverified cache is never preferred over a fresh HTTP read.
+    2. The catalog-data HTTP layer (``CATALOG_DATA_URL``, ADR 0024).
+    3. Otherwise, raise -- naming both env vars and what was checked, so a
+       job fails loudly instead of silently reading nothing.
+    """
+    env = os.environ if env is None else env
+    checked: list[str] = []
+
+    data_dir = env.get("CATALOG_DATA_DIR")
+    if data_dir:
+        local_root = Path(data_dir) / dataset / f"snapshot={snapshot}"
+        if (local_root / "manifest.json").exists() and (local_root / ".verified.json").exists():
+            return DatasetSource(kind="local", base=str(local_root))
+        checked.append(f"CATALOG_DATA_DIR={data_dir} (no validated cache at {local_root})")
+
+    data_url = env.get("CATALOG_DATA_URL")
+    if data_url:
+        base = f"{data_url.rstrip('/')}/{dataset}/snapshot={snapshot}"
+        try:
+            with urlopen(f"{base}/manifest.json", timeout=timeout_seconds):
+                pass
+            return DatasetSource(kind="http", base=base)
+        except OSError as exc:
+            checked.append(f"CATALOG_DATA_URL={data_url} (fetch failed: {exc})")
+
+    if not checked:
+        checked.append("neither CATALOG_DATA_DIR nor CATALOG_DATA_URL is set")
+    raise DatasetLocatorError(
+        f"could not resolve {dataset}/snapshot={snapshot}: " + "; ".join(checked)
+    )
