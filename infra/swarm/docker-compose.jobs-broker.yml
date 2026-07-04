@@ -1,0 +1,29 @@
+# Dedicated Redis for RQ job-queue traffic (cluster-vs-single-node benchmark
+# today; a real packages/workers job body later). Separate from
+# docker-compose.coordination.yml's Redis, which stays loopback-only per ADR
+# 0010 and carries dev-loop application state, not cross-node job traffic.
+#
+# This is the first LAN-reachable service in this repo -- see
+# docs/decisions/0019-cluster-benchmark-rq-job-broker.md. Bound to a specific
+# LAN interface IP (never 0.0.0.0) with a mandatory password; never brought up
+# with an empty/default password. Deliberately NOT `restart: unless-stopped`:
+# start it before a benchmark/job run via deploy-jobs-broker.sh, stop it after
+# with `docker compose -f docker-compose.jobs-broker.yml down`.
+#
+# Own explicit Compose project name so this never shares an inferred project
+# with docker-compose.coordination.yml / docker-compose.portainer.yml (see
+# those files' own CAUTION comments about --remove-orphans and ADR 0013's
+# Consequences section).
+name: jobs-broker
+
+services:
+  jobs-broker:
+    image: redis:7-alpine
+    command: redis-server --requirepass "${JOBS_BROKER_PASSWORD:?set in local/jobs-broker.env}"
+    ports:
+      - "${JOBS_BROKER_BIND_IP:?set in local/jobs-broker.env}:${JOBS_BROKER_PORT:-6380}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${JOBS_BROKER_PASSWORD:?set in local/jobs-broker.env}", "--no-auth-warning", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5

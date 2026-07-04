@@ -7,10 +7,19 @@ Networked Players follows a public-by-default development philosophy without pub
 - source code and reusable configuration;
 - logical architecture and actual hardware models;
 - synthetic inventories and fixtures;
-- algorithms, schemas, tests, benchmarks, and aggregate findings;
+- algorithms, schemas, tests, and benchmark *methodology* (the probes, playbooks, and scripts that produce a measurement);
 - generic recovery principles and failure behavior;
 - derived public challenges with evidence and provenance;
 - documented tradeoffs and architecture decisions.
+
+## Public, but not this instance's numbers
+
+Benchmark *code* is public; a benchmark *result* (real throughput, elapsed
+time, memory, or headroom measured on this specific hardware) is treated as
+private and local (see [ADR 0018](decisions/0018-benchmark-results-local-only.md)).
+Publish the method, not the receipts — a hardware class name (e.g. "Raspberry
+Pi 3B") is fine in public docs; "this Pi measured 4,630 releases/sec on
+2026-07-02" is not.
 
 ## Private and local
 
@@ -25,6 +34,11 @@ Networked Players follows a public-by-default development philosophy without pub
 ## Practical pattern
 
 Public files use placeholders such as `worker-01.example.internal`. A local ignored directory or external secret store supplies real values. Public code should fail clearly when required local configuration is absent; it should never include a convenient insecure default.
+
+Measured benchmark output (cluster or single-node) is written under
+`local/benchmarks/`, never committed and never transcribed into a public doc
+— see `infra/ansible/README.md`'s Benchmarking section for how to reproduce a
+measurement yourself.
 
 ## Before publishing an artifact
 

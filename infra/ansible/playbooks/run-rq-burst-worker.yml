@@ -1,0 +1,116 @@
+---
+# Runs a single `rq worker --burst` against a given queue, using the worker
+# venv equip-workers.yml already created (redis, rq, duckdb -- no
+# lxml/pyarrow) and the benchmark probe deploy-rq-benchmark-job.yml already
+# placed at rq_jobs_dir. `--burst` means the worker process exits on its own
+# once its queue is empty -- no STANDING worker. It does run inside a
+# transient `systemd-run --user` unit (see the task below) for real
+# cgroup-backed CPU/IO priority and a memory ceiling, but `--collect`
+# garbage-collects that unit the moment it exits, so nothing lingers --
+# matching benchmark.yml's own "copy, run, clean up" ethos.
+#
+# Always invoke with --limit against a specific host or the `workers` group
+# -- never a bare run against `hosts: all`, which would also try to burst a
+# worker on the coordination host or build node (those never run RQ jobs).
+#
+# Requires rq_queue_name (a QUEUE PREFIX, not the literal queue name -- see
+# below) and jobs_broker_url (set in group_vars/all.yml -- placeholder in
+# inventories/example, real value in the git-ignored inventories/local/).
+#
+# Each host drains its OWN queue, "<rq_queue_name>-<inventory_hostname>", not
+# a queue shared across the whole --limit selection. Real bug this fixes:
+# multiple burst workers pulling from one shared queue race for jobs with no
+# guaranteed one-job-per-host mapping -- confirmed live during the first real
+# cluster-vs-single-node run, where one Pi's burst worker drained two of the
+# three enqueued chunks while another drained zero. scripts/cluster_benchmark_distributed.py
+# enqueues each worker's chunk onto that worker's own queue for exactly this
+# reason -- per-worker queues, not one shared queue.
+#
+# Usage (from infra/ansible/, with a real local inventory):
+#   ansible-playbook -i inventories/local/hosts.yml playbooks/run-rq-burst-worker.yml \
+#     --limit worker-01.example.internal -e rq_queue_name=cluster-benchmark-baseline
+#     # drains queue "cluster-benchmark-baseline-worker-01.example.internal"
+#   ansible-playbook -i inventories/local/hosts.yml playbooks/run-rq-burst-worker.yml \
+#     --limit workers -e rq_queue_name=cluster-benchmark-distributed
+#     # each host drains its own "cluster-benchmark-distributed-<that-host>"
+- name: Run a burst RQ worker against its own per-host queue
+  hosts: all
+  gather_facts: true
+  vars:
+    worker_venv_dir: "{{ ansible_env.HOME }}/.local/share/networked-players/worker-venv"
+    rq_jobs_dir: "{{ ansible_env.HOME }}/.local/share/networked-players/rq-jobs"
+    rq_queue_full_name: "{{ rq_queue_name | default('') }}-{{ inventory_hostname }}"
+    rq_burst_unit_name: "rq-burst-{{ rq_queue_full_name | regex_replace('[^A-Za-z0-9_-]', '-') }}"
+  tasks:
+    - name: Require rq_queue_name
+      ansible.builtin.assert:
+        that:
+          - rq_queue_name is defined
+        fail_msg: "Set -e rq_queue_name=<queue-prefix>."
+
+    - name: Require jobs_broker_url
+      ansible.builtin.assert:
+        that:
+          - jobs_broker_url is defined
+        fail_msg: >-
+          Set jobs_broker_url in group_vars (see
+          inventories/example/group_vars/all.yml for the placeholder), or
+          pass -e jobs_broker_url=redis://:<password>@<lan-ip>:<port>/0.
+
+    - name: Run the burst worker against this host's own queue, resource-bounded
+      # systemd-run --user (not `sudo systemd-run`, the pattern
+      # scripts/run-ingest-supervised.sh uses for the coordination host): a
+      # system-level transient unit needs root, which would force
+      # --ask-become-pass onto every burst-worker invocation and break
+      # scripts/cluster_benchmark_distributed.py's non-interactive
+      # run_burst_workers() outright (it has no path to supply a sudo
+      # password). --user needs no root at invocation time -- only a
+      # one-time `loginctl enable-linger` (harden-workers.yml) so the
+      # --user systemd instance survives a non-interactive SSH exec with no
+      # login session of its own.
+      #
+      # Nice=5 / IOSchedulingPriority=4: RQ is the project's stated
+      # production job path (docs/DISCOGS_INGESTION.md's hardware table) --
+      # it stays close to normal priority so it wins CPU/IO contention
+      # against the Dask burst worker (run-dask-worker-burst.yml), which is
+      # deliberately niced lower. MemoryMax=512M is a backstop against
+      # pathological input on a 1GB Pi (real jobs are documented to stay
+      # under 128-256MB), not a claim about typical usage.
+      #
+      # --wait --pipe preserve today's synchronous, stdout-capturing
+      # behavior so `register: rq_burst` and the report task below need no
+      # other changes.
+      #
+      # --setenv=PYTHONPATH=... is load-bearing, not redundant with the
+      # `environment:` key below -- confirmed live that systemd-run does
+      # NOT inherit the invoking process's environment into the transient
+      # unit it creates (unlike a plain ansible.builtin.command, which
+      # execs directly and inherits normally). Without --setenv here, `rq
+      # worker` starts with no PYTHONPATH at all and every job fails with
+      # "Invalid attribute name: benchmark_validate.run_benchmark" --
+      # RQ/Python can't find the probe module. The `environment:` key still
+      # sets XDG_RUNTIME_DIR for `systemd-run` ITSELF (needed to reach the
+      # right --user manager socket), which is a separate concern from what
+      # environment the unit it creates then runs with.
+      ansible.builtin.command: >-
+        systemd-run --user --wait --pipe
+        --unit={{ rq_burst_unit_name }}
+        --collect
+        --setenv=PYTHONPATH={{ rq_jobs_dir }}
+        --property="Nice=5"
+        --property="IOSchedulingClass=best-effort"
+        --property="IOSchedulingPriority=4"
+        --property="MemoryMax=512M"
+        {{ worker_venv_dir }}/bin/rq worker --burst
+        --url {{ jobs_broker_url }}
+        {{ rq_queue_full_name }}
+      environment:
+        XDG_RUNTIME_DIR: "/run/user/{{ ansible_user_uid }}"
+      register: rq_burst
+      changed_when: false
+
+    - name: Report burst worker output
+      ansible.builtin.debug:
+        msg:
+          - "host: {{ inventory_hostname }}  queue: {{ rq_queue_full_name }}"
+          - "{{ rq_burst.stdout_lines }}"

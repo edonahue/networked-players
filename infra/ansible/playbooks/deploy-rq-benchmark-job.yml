@@ -1,0 +1,55 @@
+---
+# Copies the benchmark probe(s) (files/*.py -- same files benchmark.yml/
+# cluster_benchmark_distributed.py use, unmodified) to a PERSISTENT location
+# on each worker, so they stay importable by dotted path from a long-running
+# `rq worker` process. Unlike benchmark.yml's copy-run-delete pattern, these
+# files are meant to stay in place between runs -- run-rq-burst-worker.yml
+# expects them to already be there.
+#
+# Deliberately its own playbook, not folded into equip-workers.yml (which
+# scopes itself to "speculative-but-grounded baseline tooling," not a
+# specific job body) or benchmark.yml (which is read-only-safe and cleans up
+# after itself by design).
+#
+# Defaults to all five benchmark probes (the original XML-parse probe plus
+# four modeling the canonical Pi job types in docs/DISCOGS_INGESTION.md's
+# hardware table) PLUS dask_gate_check.py -- not itself a benchmark, but the
+# same "small file, importable/runnable from the worker venv, persistent on
+# the Pi" shape, so it rides along on the same copy loop rather than getting
+# its own near-identical playbook. Override with
+# -e benchmark_probe_files='["benchmark_validate.py"]' to deploy a subset.
+#
+# Usage (from infra/ansible/, with a real local inventory):
+#   ansible-playbook -i inventories/local/hosts.yml playbooks/deploy-rq-benchmark-job.yml
+- name: Deploy the RQ benchmark job body(s) to workers
+  hosts: workers
+  gather_facts: true
+  vars:
+    rq_jobs_dir: "{{ ansible_env.HOME }}/.local/share/networked-players/rq-jobs"
+    benchmark_probe_files:
+      - benchmark_parse.py
+      - benchmark_validate.py
+      - benchmark_role_summary.py
+      - benchmark_graph_challenge.py
+      - dask_gate_check.py
+  tasks:
+    - name: Create the RQ jobs directory
+      ansible.builtin.file:
+        path: "{{ rq_jobs_dir }}"
+        state: directory
+        mode: "0755"
+
+    - name: Copy the benchmark probe(s) (same files benchmark.yml uses, unmodified)
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../files/{{ item }}"
+        dest: "{{ rq_jobs_dir }}/{{ item }}"
+        mode: "0644"
+      loop: "{{ benchmark_probe_files }}"
+      register: probe_copy
+
+    - name: Report deployment
+      ansible.builtin.debug:
+        msg:
+          - "host: {{ inventory_hostname }}"
+          - "probes deployed to {{ rq_jobs_dir }}/:"
+          - "{{ probe_copy.results | map(attribute='item') | zip(probe_copy.results | map(attribute='changed')) | map('join', ' -- changed=') | list }}"

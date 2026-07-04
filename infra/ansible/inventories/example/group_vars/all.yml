@@ -15,3 +15,11 @@ min_free_gb: 1
 baseline_packages:
   - python3
   - ca-certificates
+
+# LAN-reachable jobs-broker Redis URL (infra/swarm/docker-compose.jobs-broker.yml),
+# consumed by playbooks/run-rq-burst-worker.yml. Placeholder password and
+# RFC 5737 address here; real value lives in the git-ignored
+# inventories/local/group_vars/all.yml, matching local/jobs-broker.env
+# (see infra/swarm/deploy-jobs-broker.sh). Only started deliberately for a
+# benchmark run, not a standing service.
+jobs_broker_url: "redis://:CHANGEME@192.0.2.10:6380/0"

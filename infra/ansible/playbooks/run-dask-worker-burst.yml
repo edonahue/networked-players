@@ -1,0 +1,185 @@
+---
+# Manual, explicitly on-demand Dask worker for a SINGLE named Pi 3B worker --
+# never a standing service on a Pi. Joins the standing scheduler from
+# docs/decisions/0020-dask-jupyter-interactive-cluster-compute.md's
+# infra/dask/docker-stack.dask.yml (coordination host). Gated on:
+#   1. local/benchmarks/pi-memory-headroom.md (playbooks/health.yml) shows
+#      real headroom for THIS Pi -- confirm before running with
+#      dask_worker_action=start. Still manual/human-checked for this pass.
+#   2. This Pi has no active/queued RQ job right now -- checked
+#      AUTOMATICALLY below (dask_gate_check.py), not just documented as an
+#      operational rule: refuses to start if busy, and runs an ongoing
+#      watchdog that stops the worker if a real RQ job appears later.
+#   3. OS-level priority: this worker runs niced lower than an RQ burst
+#      worker (run-rq-burst-worker.yml) so RQ wins CPU/IO contention during
+#      the window before the watchdog reacts -- see docs/decisions/0021-....
+#
+# Uses a dedicated venv, deliberately separate from equip-workers.yml's lean
+# worker-venv (redis/rq/duckdb only): dask[distributed]/pandas/pyarrow are a
+# real, heavier footprint, installed here only when an operator explicitly
+# opts in for one Pi at a time, never as part of baseline equipping. The
+# gate-check script itself runs from the LEAN worker-venv (it only needs
+# redis/rq, already there) -- no new dependency added to either venv.
+#
+# Always invoke with --limit against exactly one worker.
+#
+# Usage (from infra/ansible/, with a real local inventory):
+#   ansible-playbook -i inventories/local/hosts.yml playbooks/run-dask-worker-burst.yml \
+#     --limit worker-01.example.internal -e dask_worker_action=start \
+#     -e dask_scheduler_address=<coordination-host-lan-ip>
+#   ansible-playbook -i inventories/local/hosts.yml playbooks/run-dask-worker-burst.yml \
+#     --limit worker-01.example.internal -e dask_worker_action=stop
+- name: Manual on-demand Dask worker for one Pi 3B worker
+  hosts: workers
+  gather_facts: true
+  vars:
+    dask_worker_venv_dir: "{{ ansible_env.HOME }}/.local/share/networked-players/dask-worker-venv"
+    worker_venv_dir: "{{ ansible_env.HOME }}/.local/share/networked-players/worker-venv"
+    rq_jobs_dir: "{{ ansible_env.HOME }}/.local/share/networked-players/rq-jobs"
+    dask_worker_unit_name: "dask-worker-burst"
+    dask_watchdog_unit_name: "dask-worker-watchdog"
+    dask_gate_poll_interval_s: 20
+    dask_worker_action: "status"
+  tasks:
+    - name: Require this to run against exactly one host
+      ansible.builtin.assert:
+        that:
+          - ansible_play_hosts_all | length == 1
+        fail_msg: "Always invoke with --limit against exactly one worker -- never the whole 'workers' group."
+
+    - name: Check whether the dask-worker-burst --user unit is currently active
+      ansible.builtin.command: "systemctl --user is-active {{ dask_worker_unit_name }}"
+      environment:
+        XDG_RUNTIME_DIR: "/run/user/{{ ansible_user_uid }}"
+      register: worker_status
+      changed_when: false
+      failed_when: false
+
+    - name: Stop, if requested
+      when: dask_worker_action == 'stop'
+      block:
+        - name: Stop the worker and watchdog units, if running
+          ansible.builtin.command: "systemctl --user stop {{ dask_worker_unit_name }} {{ dask_watchdog_unit_name }}"
+          environment:
+            XDG_RUNTIME_DIR: "/run/user/{{ ansible_user_uid }}"
+          failed_when: false
+          changed_when: true
+
+    - name: Start, if requested
+      when: dask_worker_action == 'start'
+      block:
+        - name: Refuse to start if one is already running
+          ansible.builtin.assert:
+            that:
+              - worker_status.stdout != 'active'
+            fail_msg: >-
+              {{ dask_worker_unit_name }} is already active on this host.
+              Stop it first (-e dask_worker_action=stop) before starting another.
+
+        - name: Require dask_scheduler_address
+          ansible.builtin.assert:
+            that:
+              - dask_scheduler_address is defined
+            fail_msg: "Set -e dask_scheduler_address=<coordination-host-lan-ip>."
+
+        - name: Require jobs_broker_url
+          ansible.builtin.assert:
+            that:
+              - jobs_broker_url is defined
+            fail_msg: >-
+              Set jobs_broker_url in group_vars (see
+              inventories/example/group_vars/all.yml for the placeholder), or
+              pass -e jobs_broker_url=redis://:<password>@<lan-ip>:<port>/0.
+
+        - name: Refuse to start if this host's own RQ queue(s) are not idle
+          # Automates the previously-manual "check for an active RQ job
+          # first" rule (docs/decisions/0020-...). Fail-open on a
+          # broker-unreachable error (exit 2) is deliberate -- see
+          # dask_gate_check.py's own docstring: the jobs broker is not a
+          # standing service, so it being down means no RQ job can possibly
+          # be running anywhere, and blocking Dask for that reason would
+          # punish the common case for a risk that provably cannot exist.
+          ansible.builtin.command: >-
+            {{ worker_venv_dir }}/bin/python3 {{ rq_jobs_dir }}/dask_gate_check.py
+            check {{ jobs_broker_url }} {{ inventory_hostname }}
+          register: gate_check
+          failed_when: gate_check.rc == 1
+          changed_when: false
+
+        - name: Create the dedicated Dask worker venv (Python 3.12, matching infra/dask/Dockerfile)
+          # --python 3.12 is load-bearing, not cosmetic: without it, uv venv
+          # uses whatever Python happens to be on the Pi's PATH (Debian
+          # 12's system default, 3.11) -- confirmed live that this, combined
+          # with unpinned package versions below, produces a real
+          # dask/distributed protocol version gap serious enough that a
+          # trivial client.submit(add, 2, 3) targeted at the Pi timed out
+          # after 30s. uv downloads a matching aarch64 CPython build if 3.12
+          # isn't already present.
+          ansible.builtin.command: "{{ ansible_env.HOME }}/.local/bin/uv venv --python 3.12 {{ dask_worker_venv_dir }}"
+          args:
+            creates: "{{ dask_worker_venv_dir }}/bin/python3"
+
+        - name: Install dask[distributed]/pandas/numpy/pyarrow, pinned to match infra/dask/requirements.txt exactly
+          # Exact pins, not the loose >=/< bounds infra/dask/requirements.txt
+          # used to have -- those bounds had already been exceeded by real
+          # upstream releases (dask 2026.6.0 against a "<2026" bound) by the
+          # time this playbook ran, which is exactly how the version-mismatch
+          # failure above happened. Pin to the same resolved versions
+          # confirmed running in the coordination host's image today; bump
+          # both together deliberately later, never independently.
+          ansible.builtin.command: >-
+            {{ ansible_env.HOME }}/.local/bin/uv pip install
+            --python {{ dask_worker_venv_dir }}/bin/python3
+            "dask[distributed]==2025.12.0" "pandas==2.3.3" "numpy==2.5.0" "pyarrow>=18,<24"
+
+        - name: Start a bounded, resource-yielding dask-worker as a --user unit
+          # systemd-run --user, not the bare nohup this used to be, and not
+          # `sudo systemd-run` (run-ingest-supervised.sh's pattern) -- see
+          # run-rq-burst-worker.yml's own comment for why --user (no root at
+          # invocation time) is the right choice here too.
+          #
+          # Nice=15 / IOSchedulingPriority=7 deliberately match
+          # run-ingest-supervised.sh's own choice for "yield to everything
+          # else" background work -- Dask is the most optional workload on
+          # a Pi (docs/ARCHITECTURE.md: "an optional experiment"), so it's
+          # the one that backs off under contention, not RQ.
+          #
+          # MemoryMax=600M sits above Dask's own internal --memory-limit
+          # 400MiB soft ceiling (real measurement:
+          # local/benchmarks/pi-dask-real-parquet-test.md) -- giving cgroup
+          # headroom rather than two limits fighting at the same boundary.
+          #
+          # The unit itself is now the process handle: no PID file, no log
+          # file -- `systemctl --user is-active/stop` and
+          # `journalctl --user -u dask-worker-burst` replace both.
+          ansible.builtin.command: >-
+            systemd-run --user
+            --unit={{ dask_worker_unit_name }}
+            --collect
+            --property="Nice=15"
+            --property="IOSchedulingClass=best-effort"
+            --property="IOSchedulingPriority=7"
+            --property="MemoryMax=600M"
+            {{ dask_worker_venv_dir }}/bin/dask worker
+            tcp://{{ dask_scheduler_address }}:8786
+            --nthreads 1 --nworkers 1 --memory-limit 400MiB
+          environment:
+            XDG_RUNTIME_DIR: "/run/user/{{ ansible_user_uid }}"
+
+        - name: Start the watchdog that self-stops the worker if a real RQ job appears
+          ansible.builtin.command: >-
+            systemd-run --user
+            --unit={{ dask_watchdog_unit_name }}
+            --collect
+            {{ worker_venv_dir }}/bin/python3 {{ rq_jobs_dir }}/dask_gate_check.py
+            watch {{ jobs_broker_url }} {{ inventory_hostname }} {{ dask_gate_poll_interval_s }}
+            {{ dask_worker_unit_name }} {{ dask_watchdog_unit_name }}
+          environment:
+            XDG_RUNTIME_DIR: "/run/user/{{ ansible_user_uid }}"
+
+    - name: Report
+      ansible.builtin.debug:
+        msg:
+          - "host: {{ inventory_hostname }}  action: {{ dask_worker_action }}"
+          - "worker unit: {{ dask_worker_unit_name }}  watchdog unit: {{ dask_watchdog_unit_name }}"
+          - "logs: journalctl --user -u {{ dask_worker_unit_name }}"

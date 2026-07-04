@@ -20,6 +20,13 @@ dev = [
   "pytest>=8,<10",
   "ruff>=0.12,<1",
 ]
+# For scripts/cluster_benchmark_distributed.py only (coordination-host side of
+# the cluster-vs-single-node RQ benchmark, ADR 0019). Version bounds match
+# what infra/ansible/playbooks/equip-workers.yml installs into the worker venv.
+jobs = [
+  "redis>=5,<9",
+  "rq>=2,<3",
+]
 
 [project.scripts]
 networked-players-catalog = "networked_players_catalog.cli:main"

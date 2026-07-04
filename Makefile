@@ -5,10 +5,11 @@
 # target maps to a command documented in README.md / AGENTS.md.
 
 .DEFAULT_GOAL := help
-.PHONY: help setup test lint fmt fmt-check typecheck check ingest ingest-check profile-discogs \
+.PHONY: help setup test lint fmt fmt-check typecheck check ingest ingest-check ingest-recovery-check profile-discogs \
 	backup-coordination restore-coordination backup-swarm-manager restore-swarm-manager \
 	cluster-health cluster-benchmark cluster-onboard cluster-swarm-join cluster-smoke-test \
-	cluster-recovery-drill harden-workers equip-workers
+	cluster-recovery-drill harden-workers equip-workers deploy-jobs-broker cluster-benchmark-distributed \
+	dask-up dask-down
 
 help: ## List available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
@@ -40,6 +41,9 @@ ingest: ## Run a Discogs ingestion slice (see scripts/run-ingest.sh and docs/OPE
 
 ingest-check: ## Check disk-space feasibility for a bounded Discogs ingest slice
 	./scripts/check-ingest-feasibility.sh
+
+ingest-recovery-check: ## Report valid vs. corrupt parts in an interrupted/in-progress ingest (needs SNAPSHOT=YYYYMMDD)
+	./scripts/check-ingest-recovery.sh
 
 profile-discogs: ## Profile a completed Discogs dataset with DuckDB (needs SNAPSHOT=YYYYMMDD)
 	./scripts/profile-discogs-dataset.sh
@@ -80,3 +84,15 @@ harden-workers: ## Arm watchdog + Docker log rotation on Pi 3B workers; ARGS="--
 
 equip-workers: ## Install baseline tooling (uv, duckdb, jq, redis-tools, worker venv) on Pi 3B workers; ARGS="--ask-become-pass"
 	./infra/ansible/run-equip-workers-local.sh $(ARGS)
+
+deploy-jobs-broker: ## Start the LAN-reachable jobs-broker Redis for cluster benchmarking (ADR 0019); "make deploy-jobs-broker ARGS=--down" to stop
+	./infra/swarm/deploy-jobs-broker.sh $(ARGS)
+
+cluster-benchmark-distributed: ## Cluster-vs-single-node RQ benchmark; needs deploy-jobs-broker + joined workers; writes local/benchmarks/ only
+	./scripts/cluster-benchmark-distributed.sh $(ARGS)
+
+dask-up: ## Build the image, start Jupyter, and deploy the Dask scheduler/worker Swarm stack (see infra/dask/README.md)
+	./infra/dask/deploy-dask.sh
+
+dask-down: ## Stop Jupyter and remove the Dask Swarm stack
+	./infra/dask/deploy-dask.sh --down
