@@ -93,3 +93,68 @@ def validate_dataset(dataset_root: Path) -> dict[str, Any]:
     if failures:
         raise ValidationError(json.dumps(failures, sort_keys=True))
     return metrics
+
+
+def validate_master_dataset(dataset_root: Path) -> dict[str, Any]:
+    """Invariants for a parsed masters dataset (MASTER_SCHEMA_VERSION).
+
+    ``masters_missing_main_release`` is a reported metric, not a failure --
+    the real dump has always carried ``main_release`` in observation
+    (docs/discogs-data/raw-dump-schema.md), but that's an observed property
+    of one snapshot, not a documented guarantee worth hard-failing on.
+    """
+
+    manifest = json.loads((dataset_root / "manifest.json").read_text())
+    masters_glob = str(dataset_root / "table=masters" / "*.parquet")
+    artists_glob = str(dataset_root / "table=master_artists" / "*.parquet")
+
+    connection = duckdb.connect(database=":memory:")
+    connection.read_parquet(masters_glob).create_view("masters")
+    connection.read_parquet(artists_glob).create_view("master_artists")
+
+    metrics = {
+        "master_rows": _scalar(connection, "SELECT count(*) FROM masters"),
+        "master_artist_rows": _scalar(connection, "SELECT count(*) FROM master_artists"),
+        "distinct_master_ids": _scalar(connection, "SELECT count(DISTINCT master_id) FROM masters"),
+        "orphan_master_artists": _scalar(
+            connection,
+            "SELECT count(*) FROM master_artists a ANTI JOIN masters m USING (master_id)",
+        ),
+        "invalid_linked_artist_ids": _scalar(
+            connection,
+            "SELECT count(*) FROM master_artists "
+            "WHERE is_linked AND (artist_id IS NULL OR artist_id <= 0)",
+        ),
+        "masters_missing_main_release": _scalar(
+            connection, "SELECT count(*) FROM masters WHERE main_release_id IS NULL"
+        ),
+    }
+    failures: dict[str, object] = {
+        key: value
+        for key, value in metrics.items()
+        if key in {"orphan_master_artists", "invalid_linked_artist_ids"} and value
+    }
+    if metrics["master_rows"] != metrics["distinct_master_ids"]:
+        failures["duplicate_master_ids"] = metrics["master_rows"] - metrics["distinct_master_ids"]
+
+    manifest_counts = manifest.get("counts")
+    if not isinstance(manifest_counts, dict):
+        failures["manifest_counts_invalid"] = manifest_counts
+    else:
+        for table_name, metric_name in (
+            ("masters", "master_rows"),
+            ("master_artists", "master_artist_rows"),
+        ):
+            expected = manifest_counts.get(table_name)
+            actual = metrics[metric_name]
+            if not isinstance(expected, int):
+                failures[f"manifest_{table_name}_count_invalid"] = expected
+            elif actual != expected:
+                failures[f"manifest_{table_name}_count_mismatch"] = {
+                    "expected": expected,
+                    "actual": actual,
+                }
+
+    if failures:
+        raise ValidationError(json.dumps(failures, sort_keys=True))
+    return metrics

@@ -1,4 +1,4 @@
-"""Bounded Parquet output for normalized Discogs releases."""
+"""Bounded Parquet output for normalized Discogs releases and masters."""
 
 from __future__ import annotations
 
@@ -10,6 +10,7 @@ from collections.abc import Iterable
 from concurrent.futures import Future, ThreadPoolExecutor
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pyarrow as pa
 import pyarrow.parquet as pq
@@ -18,7 +19,11 @@ from networked_players_catalog import __version__
 
 from .releases import ParsedRelease
 
+if TYPE_CHECKING:
+    from .masters import ParsedMaster
+
 SCHEMA_VERSION = 2
+MASTER_SCHEMA_VERSION = 1
 
 RELEASE_SCHEMA = pa.schema(
     [
@@ -67,6 +72,33 @@ CREDIT_SCHEMA = pa.schema(
 )
 SCHEMAS = {"releases": RELEASE_SCHEMA, "tracks": TRACK_SCHEMA, "credits": CREDIT_SCHEMA}
 
+MASTERS_SCHEMA = pa.schema(
+    [
+        ("snapshot_date", pa.string()),
+        ("master_id", pa.int64()),
+        ("main_release_id", pa.int64()),
+        ("title", pa.string()),
+        ("year", pa.int32()),
+        ("genres", pa.list_(pa.string())),
+        ("styles", pa.list_(pa.string())),
+        ("data_quality", pa.string()),
+        ("source_url", pa.string()),
+    ]
+)
+MASTER_ARTISTS_SCHEMA = pa.schema(
+    [
+        ("snapshot_date", pa.string()),
+        ("master_id", pa.int64()),
+        ("artist_id", pa.int64()),
+        ("name", pa.string()),
+        ("anv", pa.string()),
+        ("join_text", pa.string()),
+        ("is_linked", pa.bool_()),
+        ("playable_identity", pa.bool_()),
+    ]
+)
+MASTER_SCHEMAS = {"masters": MASTERS_SCHEMA, "master_artists": MASTER_ARTISTS_SCHEMA}
+
 
 def _sha256(path: Path) -> str:
     digest = hashlib.sha256()
@@ -83,13 +115,14 @@ def _write_rows(
     rows: list[dict[str, object]],
     *,
     allow_empty: bool = False,
+    schemas: dict[str, pa.Schema] = SCHEMAS,
 ) -> Path | None:
     if not rows and not allow_empty:
         return None
     directory = root / f"table={table_name}"
     directory.mkdir(parents=True, exist_ok=True)
     path = directory / f"part-{part:05d}.parquet"
-    table = pa.Table.from_pylist(rows, schema=SCHEMAS[table_name])
+    table = pa.Table.from_pylist(rows, schema=schemas[table_name])
     pq.write_table(
         table,
         path,
@@ -214,6 +247,125 @@ def write_release_dataset(
         manifest: dict[str, object] = {
             "dataset_manifest_version": 1,
             "schema_version": SCHEMA_VERSION,
+            "parser_version": __version__,
+            "source": "Discogs monthly data dumps",
+            "source_url": source_url,
+            "snapshot_date": snapshot_date,
+            "generated_at": datetime.now(UTC).isoformat(),
+            "compression": "zstd",
+            "counts": counts,
+            "files": files,
+        }
+        (staging_root / "manifest.json").write_text(
+            json.dumps(manifest, indent=2, sort_keys=True) + "\n"
+        )
+        if final_root.exists():
+            shutil.rmtree(final_root)
+        staging_root.replace(final_root)
+        return manifest
+    except Exception:
+        shutil.rmtree(staging_root, ignore_errors=True)
+        raise
+
+
+def write_master_dataset(
+    records: Iterable[ParsedMaster],
+    output_root: Path,
+    *,
+    snapshot_date: str,
+    source_url: str,
+    chunk_masters: int = 10_000,
+    overwrite: bool = False,
+) -> dict[str, object]:
+    """Write a versioned masters dataset -- same staging-dir/atomic-rename/
+    manifest posture as ``write_release_dataset``, two tables (``masters``
+    and ``master_artists``), its own ``MASTER_SCHEMA_VERSION``. Kept as a
+    sibling rather than folded into the release writer: the chunking and
+    background-write machinery is simple enough that sharing it would couple
+    two independently-versioned schemas to one function signature.
+    """
+
+    if chunk_masters <= 0:
+        raise ValueError("chunk_masters must be positive")
+    final_root = output_root / f"snapshot={snapshot_date}"
+    if final_root.exists() and not overwrite:
+        raise FileExistsError(f"dataset already exists: {final_root}")
+
+    staging_root = output_root / f".snapshot={snapshot_date}.tmp-{uuid.uuid4().hex}"
+    staging_root.mkdir(parents=True, exist_ok=False)
+    counts = {"masters": 0, "master_artists": 0}
+    files: list[dict[str, object]] = []
+    master_rows: list[dict[str, object]] = []
+    artist_rows: list[dict[str, object]] = []
+    part = 0
+    pending: Future[list[dict[str, object]]] | None = None
+
+    def _write_master_chunk(
+        chunk_part: int,
+        chunk_masters_rows: list[dict[str, object]],
+        chunk_artist_rows: list[dict[str, object]],
+    ) -> list[dict[str, object]]:
+        chunk_files: list[dict[str, object]] = []
+        for table_name, rows in (
+            ("masters", chunk_masters_rows),
+            ("master_artists", chunk_artist_rows),
+        ):
+            path = _write_rows(staging_root, table_name, chunk_part, rows, schemas=MASTER_SCHEMAS)
+            if path is not None:
+                chunk_files.append(
+                    {
+                        "path": str(path.relative_to(staging_root)),
+                        "size_bytes": path.stat().st_size,
+                        "sha256": _sha256(path),
+                        "rows": len(rows),
+                    }
+                )
+        return chunk_files
+
+    try:
+        with ThreadPoolExecutor(max_workers=1) as executor:
+
+            def start_flush() -> None:
+                nonlocal master_rows, artist_rows, part, pending
+                if pending is not None:
+                    files.extend(pending.result())
+                pending = executor.submit(_write_master_chunk, part, master_rows, artist_rows)
+                master_rows, artist_rows = [], []
+                part += 1
+
+            for record in records:
+                master_rows.append(record.master)
+                artist_rows.extend(record.artists)
+                counts["masters"] += 1
+                counts["master_artists"] += len(record.artists)
+                if len(master_rows) >= chunk_masters:
+                    start_flush()
+            if master_rows or artist_rows:
+                start_flush()
+            if pending is not None:
+                files.extend(pending.result())
+        if counts["masters"] == 0:
+            raise ValueError("no master records were parsed")
+
+        artists_prefix = "table=master_artists/"
+        if not any(str(item["path"]).startswith(artists_prefix) for item in files):
+            path = _write_rows(
+                staging_root, "master_artists", 0, [], allow_empty=True, schemas=MASTER_SCHEMAS
+            )
+            if path is None:
+                raise AssertionError("failed to create empty master_artists table")
+            files.append(
+                {
+                    "path": str(path.relative_to(staging_root)),
+                    "size_bytes": path.stat().st_size,
+                    "sha256": _sha256(path),
+                    "rows": 0,
+                }
+            )
+
+        manifest: dict[str, object] = {
+            "dataset_manifest_version": 1,
+            "schema_version": MASTER_SCHEMA_VERSION,
             "parser_version": __version__,
             "source": "Discogs monthly data dumps",
             "source_url": source_url,
