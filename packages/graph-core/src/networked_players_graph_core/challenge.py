@@ -1,0 +1,275 @@
+"""Build a challenge.v2 artifact: an album-centered, evidence-preserving
+static challenge derived from a real one-hop credit graph.
+
+Albums are matched against a snapshot by exact (case-insensitive) title and
+release-artist name; releases are demoted to evidence beneath the hops that
+justify each connection, per docs/DATA_AND_RIGHTS.md's "derived does not
+mean rights-free" -- the artifact carries only what's needed to understand
+and verify the experience, plus full provenance.
+"""
+
+from __future__ import annotations
+
+import json
+from dataclasses import dataclass
+from typing import Any
+
+from . import __version__
+from .graph import CreditGraph
+
+CHALLENGE_SCHEMA_VERSION = 2
+
+_FORBIDDEN_SUBSTRINGS = ("/home/", "data/private", "local/", "DISCOGS_TOKEN", ".ssh")
+_TOP_LEVEL_KEYS = frozenset(
+    {"schema_version", "provenance", "albums", "artists", "paths", "releases"}
+)
+
+
+class ChallengeValidationError(RuntimeError):
+    """Raised when a challenge.v2 artifact violates its contract."""
+
+
+@dataclass(slots=True)
+class MatchedAlbum:
+    artist_query: str
+    title_query: str
+    master_id: int | None
+    main_release_id: int
+    title: str
+    artist_id: int
+    artist_name: str
+    year: int | None
+    cover_image: dict[str, Any] | None = None
+
+    @property
+    def album_id(self) -> str:
+        return f"master-{self.master_id}" if self.master_id else f"release-{self.main_release_id}"
+
+
+def _year_from_released(released: str | None) -> int | None:
+    if released and len(released) >= 4 and released[:4].isdigit():
+        return int(released[:4])
+    return None
+
+
+def match_albums(
+    graph: CreditGraph, albums: list[dict[str, str]]
+) -> tuple[list[MatchedAlbum], list[dict[str, str]]]:
+    """Match each ``{"artist", "title"}`` query against the graph's releases.
+
+    Returns (matched, missed) -- ``missed`` entries are the original query dicts.
+    """
+    matched: list[MatchedAlbum] = []
+    missed: list[dict[str, str]] = []
+    seen_artist_ids: set[int] = set()
+
+    for album in albums:
+        artist_query = album["artist"]
+        title_query = album["title"]
+        found = graph.find_release_by_title_artist(title_query, artist_query)
+        if found is None or found["artist_id"] in seen_artist_ids:
+            missed.append(album)
+            continue
+        seen_artist_ids.add(found["artist_id"])
+
+        year = _year_from_released(found["released"])
+        resolved_title = found["title"]
+        master = graph.master(found["master_id"]) if found["master_id"] is not None else None
+        if master is not None:
+            resolved_title = master["title"] or resolved_title
+            year = int(master["year"]) if master["year"] else year
+
+        matched.append(
+            MatchedAlbum(
+                artist_query=artist_query,
+                title_query=title_query,
+                master_id=found["master_id"],
+                main_release_id=found["release_id"],
+                title=resolved_title,
+                artist_id=found["artist_id"],
+                artist_name=found["name"],
+                year=year,
+            )
+        )
+    return matched, missed
+
+
+def build_challenge_v2(
+    graph: CreditGraph,
+    albums: list[dict[str, str]],
+    *,
+    snapshot_date: str,
+    generated_by: str,
+    max_paths: int = 12,
+    max_hops: int = 4,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    matched, missed = match_albums(graph, albums)
+    distinct_artist_matches = {m.artist_id: m for m in matched}
+    if len(distinct_artist_matches) < 2:
+        raise ValueError(
+            f"only {len(distinct_artist_matches)} album(s) matched with distinct artists "
+            "(need at least 2); widen the album list or check the snapshot"
+        )
+
+    ordered = sorted(matched, key=lambda m: m.album_id)
+    attempted = 0
+    used_pairs: set[tuple[int, int]] = set()
+    paths_json: list[dict[str, Any]] = []
+    used_release_ids: set[int] = set()
+    used_artist_ids: set[int] = set()
+
+    for i, from_album in enumerate(ordered):
+        for to_album in ordered[i + 1 :]:
+            if len(paths_json) >= max_paths:
+                break
+            pair = (
+                min(from_album.artist_id, to_album.artist_id),
+                max(from_album.artist_id, to_album.artist_id),
+            )
+            if pair in used_pairs:
+                continue
+            used_pairs.add(pair)
+            attempted += 1
+            path = graph.find_path(from_album.artist_id, to_album.artist_id, max_hops=max_hops)
+            if path is None:
+                continue
+
+            hop_ids = {a for h in path.hops for a in (h.artist_a_id, h.artist_b_id)}
+            used_artist_ids.update(hop_ids)
+            for hop in path.hops:
+                used_release_ids.add(hop.release_id)
+
+            paths_json.append(
+                {
+                    "id": f"path-{len(paths_json) + 1:02d}",
+                    "label": f"{from_album.title} → {to_album.title}",
+                    "description": (
+                        "A single documented co-credit."
+                        if len(path.hops) == 1
+                        else f"{len(path.hops)} documented hops."
+                    ),
+                    "from_album_id": from_album.album_id,
+                    "to_album_id": to_album.album_id,
+                    "from_artist_id": from_album.artist_id,
+                    "to_artist_id": to_album.artist_id,
+                    "hops": [
+                        {
+                            "release_id": h.release_id,
+                            "artist_a_id": h.artist_a_id,
+                            "artist_b_id": h.artist_b_id,
+                        }
+                        for h in path.hops
+                    ],
+                }
+            )
+        if len(paths_json) >= max_paths:
+            break
+
+    if not paths_json:
+        raise ValueError("no evidence paths found between any matched albums")
+
+    releases_json = []
+    for release_id in sorted(used_release_ids):
+        release = graph.release(release_id)
+        if release is None:
+            continue
+        hop_artist_ids = {
+            a
+            for p in paths_json
+            for h in p["hops"]
+            if h["release_id"] == release_id
+            for a in (h["artist_a_id"], h["artist_b_id"])
+        }
+        release_json = dict(release)
+        release_json["credits"] = graph.credit_rows(release_id, hop_artist_ids)
+        releases_json.append(release_json)
+
+    artist_names = {aid: graph.artist_name(aid) or f"Artist {aid}" for aid in used_artist_ids}
+    artists_json = [
+        {"artist_id": aid, "name": artist_names[aid]} for aid in sorted(used_artist_ids)
+    ]
+    albums_json = [
+        {
+            "id": album.album_id,
+            "master_id": album.master_id,
+            "main_release_id": album.main_release_id,
+            "title": album.title,
+            "artist_id": album.artist_id,
+            "artist": album.artist_name,
+            "year": album.year,
+            "cover_image": album.cover_image,
+        }
+        for album in ordered
+    ]
+
+    artifact: dict[str, Any] = {
+        "schema_version": CHALLENGE_SCHEMA_VERSION,
+        "provenance": {
+            "source": "Discogs monthly data dump (CC0), one-hop working set",
+            "license": (
+                "Derived from the Discogs monthly CC0 data dumps. See docs/DATA_AND_RIGHTS.md."
+            ),
+            "snapshot_date": snapshot_date,
+            "generated_by": generated_by,
+            "graph_core_version": __version__,
+            "note": (
+                "Derived from a bounded one-hop working set; the private "
+                "collection seed used to build that working set is never "
+                "published. The album list is an editorial selection, not a "
+                "ranking."
+            ),
+        },
+        "albums": albums_json,
+        "artists": artists_json,
+        "paths": paths_json,
+        "releases": releases_json,
+    }
+    report = {
+        "albums_matched": len(matched),
+        "albums_missed": len(missed),
+        "missed_queries": missed,
+        "paths_found": len(paths_json),
+        "paths_attempted": attempted,
+    }
+    return artifact, report
+
+
+def validate_challenge(artifact: dict[str, Any]) -> None:
+    failures: list[str] = []
+
+    if set(artifact.keys()) != _TOP_LEVEL_KEYS:
+        failures.append(f"unexpected top-level keys: {sorted(artifact.keys())}")
+    if artifact.get("schema_version") != CHALLENGE_SCHEMA_VERSION:
+        failures.append(f"schema_version must be {CHALLENGE_SCHEMA_VERSION}")
+
+    provenance = artifact.get("provenance")
+    if not isinstance(provenance, dict):
+        failures.append("provenance must be an object")
+    else:
+        for field in ("source", "license", "snapshot_date", "generated_by", "graph_core_version"):
+            if not provenance.get(field):
+                failures.append(f"provenance.{field} is required")
+        if "seed" in provenance:
+            failures.append("provenance must not mention the seed")
+
+    release_ids = {r.get("release_id") for r in artifact.get("releases", [])}
+    artist_ids = {a.get("artist_id") for a in artifact.get("artists", [])}
+
+    for album in artifact.get("albums", []):
+        if not isinstance(album.get("main_release_id"), int) or album["main_release_id"] <= 0:
+            failures.append(f"album {album.get('id')} has an invalid main_release_id")
+
+    for path in artifact.get("paths", []):
+        for hop in path.get("hops", []):
+            if hop.get("release_id") not in release_ids:
+                failures.append(f"path {path.get('id')} references an unpublished release")
+            if hop.get("artist_a_id") not in artist_ids or hop.get("artist_b_id") not in artist_ids:
+                failures.append(f"path {path.get('id')} references an unpublished artist")
+
+    if failures:
+        raise ChallengeValidationError("; ".join(failures))
+
+    serialized = json.dumps(artifact)
+    for forbidden in _FORBIDDEN_SUBSTRINGS:
+        if forbidden in serialized:
+            raise ChallengeValidationError(f"artifact contains forbidden substring: {forbidden!r}")

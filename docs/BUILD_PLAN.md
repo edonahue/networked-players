@@ -188,8 +188,8 @@ member. Onboarding tooling exists for both the Pi workers and this node
 | Discogs release ingestion (real run) | **Done at full scale.** Bounded 10,000-release slice (2026-07-01) and full unbounded parse (2026-07-01 17:59:48 → 2026-07-02 00:02:49 EDT, 19,192,301 releases) both validated clean — see Milestone 3 |
 | Real dataset profiling | Done (2026-07-02): `scripts/profile-discogs-dataset.sh` / `make profile-discogs`; found and fixed 2 real bugs (1 contract-doc, 1 parser) — see `docs/discogs-data/raw-dump-schema.md` |
 | Private seed import | Implemented (ADR 0011); operator's real seed imported locally |
-| One-hop graph expansion | Not implemented |
-| `graph-core` | Placeholder (README only) |
+| One-hop graph expansion | Implemented (`expand-one-hop`, Milestone 5); real run pending (live gate B) |
+| `graph-core` | Implemented: DuckDB-backed lazy `CreditGraph`, challenge.v2 builder, proxy-ranking analysis, 32 tests, all synthetic; real-data run pending (live gate F) |
 | `game-rules` | Placeholder (README only) |
 | `workers` | Placeholder (README only) |
 | `apps/api` | Placeholder (README only) |
@@ -686,25 +686,31 @@ reconstruction.
 Milestone 5.
 
 ### Tasks
-- [ ] Choose and implement a small readable fixture representation (e.g. NetworkX
-      or an equivalent adjacency structure) as the correctness oracle
-      [`packages/graph-core`]
-- [ ] Load the artist–release bipartite graph from the one-hop Parquet output,
+- [x] Choose and implement a small readable fixture representation as the
+      correctness oracle — a DuckDB-backed lazy `CreditGraph` (query-per-hop BFS
+      over views, not a materialized adjacency or NetworkX; the one-hop corpus can
+      hold hundreds of thousands of credit rows and the coordination host's
+      working budget is ~4GB). Materialization stays the recorded revisit path if
+      a measured need appears. [`packages/graph-core/src/networked_players_graph_core/graph.py`]
+- [x] Load the artist–release bipartite graph from the one-hop Parquet output,
       preserving release/credit evidence on each edge [`packages/graph-core`]
-- [ ] Implement path lookup between two artist nodes that returns the underlying
+- [x] Implement path lookup between two artist nodes that returns the underlying
       release/credit evidence for every hop, not just artist names
       [`packages/graph-core`]
-- [ ] Add tests against small synthetic fixtures under `data/samples/`: a direct
-      one-hop path, a non-linked contributor correctly excluded from playable
-      nodes, and a missing/absent path [`packages/graph-core`, `data/samples`]
+- [x] Add tests against small synthetic fixtures (a direct one-hop path, a
+      non-linked contributor correctly excluded from playable nodes, and a
+      missing/absent path) — `packages/graph-core/tests/` (16 tests in
+      `test_graph.py`, using real Parquet fixtures written via the catalog
+      package's own schemas, not `data/samples/`)
 - [ ] Manually verify at least one real evidence path from the actual one-hop
-      expansion end to end (not just against synthetic fixtures)
+      expansion end to end (not just against synthetic fixtures) — pending live
+      gate F (build a real challenge.v2 artifact from the real one-hop dataset)
 
-### Possible ADR
-A lightweight ADR for the *initial* graph representation choice is worth recording
-now, separate from the later ROADMAP-7 benchmark gate that selects the
-optimized/compact production representation — this keeps "selected only after
-measurement" honest about which decision is provisional.
+### ADR
+Recorded in-code (module docstring of `graph.py`) rather than a standalone ADR:
+the lazy/query-per-hop design and its revisit trigger (materialize only with a
+measured need). No separate ADR file was judged necessary for this internal
+implementation choice.
 
 ## Milestone 7: Static artifact + graph-snapshot contract (ROADMAP 4)
 
@@ -718,13 +724,15 @@ Milestone 6.
 ### Tasks
 - [ ] Define and document a graph-snapshot contract (version, source dataset
       snapshot, generation method, evidence fields retained), likely
-      `data/contracts/graph-snapshot-v1.md` [`data/contracts/`]
-- [ ] Define and document the static-challenge artifact contract, matching the
-      shape `apps/web`'s synthetic `challenge.v1.json` already anticipates
-      [`data/contracts/`]
-- [ ] Confirm the contract records required provenance per
+      `data/contracts/graph-snapshot-v1.md` [`data/contracts/`] — a separate
+      follow-up PR (graph-snapshot export); not part of the challenge-artifact
+      work below.
+- [x] Define and document the static-challenge artifact contract — evolved to
+      **album-centered** (v2, not the artist-path-centered de-facto v1) per
+      product direction: `data/contracts/challenge-v2.md` [`data/contracts/`]
+- [x] Confirm the contract records required provenance per
       `docs/DATA_AND_RIGHTS.md` (source, snapshot date, schema/parser versions,
-      omitted fields)
+      omitted fields) — see the Provenance section of `challenge-v2.md`
 
 ## Milestone 8: Generate and swap in the real challenge (ROADMAP 5)
 
@@ -744,6 +752,17 @@ of the MVP.
 Milestones 6 and 7.
 
 ### Tasks
+- [x] Build the artifact generator itself: `build-challenge-from-dump` CLI
+      (`networked_players_graph_core.challenge.build_challenge_v2` +
+      `validate_challenge`, wired into `networked-players-catalog`), plus the
+      committed editorial album list `data/albums/top-albums-v1.json` and the
+      medium-term proxy-ranking mechanism
+      (`networked_players_graph_core.analysis.rank_album_candidates`,
+      `rank-album-candidates` CLI). Includes a committed leak/contract test
+      suite (`test_challenge_leaks.py`, `validate_challenge`'s scan). **Running
+      it against the real one-hop dataset is the still-open part of this task**
+      (live gate F) — this checkbox covers the tool, not yet a generated real
+      artifact.
 - [ ] Generate one real challenge artifact from the manually verified path
       (Milestone 6) using the contracts from Milestone 7 [`packages/graph-core`,
       `data/`]

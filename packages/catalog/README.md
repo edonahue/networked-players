@@ -58,6 +58,26 @@ uv run networked-players-catalog parse-masters \
   --output-root local/processed/discogs-masters
 uv run networked-players-catalog validate-masters \
   --dataset local/processed/discogs-masters/snapshot=20260501
+
+# Album-centered challenge.v2 artifact (see data/contracts/challenge-v2.md and
+# packages/graph-core -- the same distribution, so `uv sync --extra dev` already
+# installs it). --masters-root is optional (overrides album title/year from
+# parsed masters);
+# --enrich-images is optional (fetches cover art from the Discogs API, rate
+# limited, main-release-only -- see ADR 0012 and docs/DATA_AND_RIGHTS.md).
+uv run networked-players-catalog build-challenge-from-dump \
+  --onehop-root local/processed/discogs-onehop/snapshot=20260501 \
+  --albums data/albums/top-albums-v1.json \
+  --output apps/web/public/data/challenge.v2.json
+
+uv run networked-players-catalog validate-challenge \
+  --input apps/web/public/data/challenge.v2.json
+
+# Medium-term album curation: rank master_ids by release-variant count x credit
+# richness (see data/albums/README.md). Output is a local-only shortlist.
+uv run networked-players-catalog rank-album-candidates \
+  --dataset local/processed/discogs/snapshot=20260501 \
+  --output local/analysis/album-candidates-20260501.json
 ```
 
 The default object URL follows the public monthly naming convention. Discogs or its storage provider may reject listing or direct access from some networks; a manifest can be edited to use an explicitly obtained official URL without changing the parser.

@@ -5,7 +5,7 @@
 # target maps to a command documented in README.md / AGENTS.md.
 
 .DEFAULT_GOAL := help
-.PHONY: help setup test lint fmt fmt-check typecheck check ingest ingest-check ingest-recovery-check profile-discogs expand-onehop \
+.PHONY: help setup test lint fmt fmt-check typecheck check ingest ingest-check ingest-recovery-check profile-discogs expand-onehop build-challenge \
 	backup-coordination restore-coordination backup-swarm-manager restore-swarm-manager \
 	cluster-health cluster-benchmark cluster-onboard cluster-swarm-join cluster-smoke-test \
 	cluster-recovery-drill harden-workers equip-workers equip-x86-workers deploy-jobs-broker deploy-catalog-data cluster-benchmark-distributed \
@@ -53,6 +53,13 @@ expand-onehop: ## One-hop expansion from the private seed over a parsed snapshot
 	uv run networked-players-catalog expand-one-hop \
 		--dataset local/processed/discogs/snapshot=$(SNAPSHOT) \
 		--output-root local/processed/discogs-onehop $(ARGS)
+
+build-challenge: ## Build the album-centered challenge.v2 artifact from a one-hop dataset (needs SNAPSHOT=YYYYMMDD)
+	@test -n "$(SNAPSHOT)" || (echo "Set SNAPSHOT=YYYYMMDD (a completed expand-onehop under local/processed/discogs-onehop/)" >&2; exit 1)
+	uv run networked-players-catalog build-challenge-from-dump \
+		--onehop-root local/processed/discogs-onehop/snapshot=$(SNAPSHOT) \
+		--albums data/albums/top-albums-v1.json \
+		--output apps/web/public/data/challenge.v2.json $(ARGS)
 
 backup-coordination: ## Back up the Postgres/Redis dev-loop stack (pg_dump + Redis BGSAVE, no downtime)
 	./scripts/backup-coordination-stack.sh

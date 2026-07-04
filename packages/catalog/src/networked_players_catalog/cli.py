@@ -94,6 +94,46 @@ def _parser() -> argparse.ArgumentParser:
     build_demo.add_argument("--max-paths", type=int, default=8)
     build_demo.add_argument("--seed-artists", type=int, default=10)
     build_demo.add_argument("--request-delay", type=float, default=1.1)
+
+    build_challenge = subparsers.add_parser(
+        "build-challenge-from-dump",
+        help="build a real, album-centered challenge.v2 artifact from a one-hop dataset",
+    )
+    build_challenge.add_argument(
+        "--onehop-root", type=Path, required=True, help="one-hop snapshot root"
+    )
+    build_challenge.add_argument(
+        "--albums", type=Path, default=Path("data/albums/top-albums-v1.json")
+    )
+    build_challenge.add_argument(
+        "--masters-root", type=Path, default=None, help="optional parsed masters snapshot root"
+    )
+    build_challenge.add_argument("--output", type=Path, required=True)
+    build_challenge.add_argument("--max-paths", type=int, default=12)
+    build_challenge.add_argument("--max-hops", type=int, default=4)
+    build_challenge.add_argument("--max-artists-per-release", type=int, default=50)
+    build_challenge.add_argument("--memory-limit", default="1GB")
+    build_challenge.add_argument("--threads", type=int, default=2)
+    build_challenge.add_argument("--enrich-images", action="store_true")
+    build_challenge.add_argument(
+        "--cache-dir", type=Path, default=Path("data/private/discogs-api-cache")
+    )
+    build_challenge.add_argument("--request-delay", type=float, default=1.1)
+
+    validate_challenge = subparsers.add_parser(
+        "validate-challenge", help="validate a challenge.v2 artifact against its contract"
+    )
+    validate_challenge.add_argument("--input", type=Path, required=True)
+
+    rank_albums = subparsers.add_parser(
+        "rank-album-candidates",
+        help="rank master_ids by release-variant count x credit richness (local-only shortlist)",
+    )
+    rank_albums.add_argument("--dataset", type=Path, required=True)
+    rank_albums.add_argument("--output", type=Path, required=True)
+    rank_albums.add_argument("--limit", type=int, default=200)
+    rank_albums.add_argument("--memory-limit", default="3GB")
+    rank_albums.add_argument("--threads", type=int, default=2)
     return parser
 
 
@@ -248,6 +288,72 @@ def main(argv: Sequence[str] | None = None) -> int:
                 indent=2,
             )
         )
+        return 0
+
+    if args.command == "build-challenge-from-dump":
+        from networked_players_graph_core.challenge import build_challenge_v2, validate_challenge
+        from networked_players_graph_core.graph import CreditGraph
+
+        onehop_manifest_path = args.onehop_root / "manifest.json"
+        onehop_manifest = json.loads(onehop_manifest_path.read_text())
+        snapshot_date = str(onehop_manifest["expansion"]["source_snapshot_date"])
+        albums = json.loads(args.albums.read_text())["albums"]
+
+        with CreditGraph.open(
+            args.onehop_root,
+            memory_limit=args.memory_limit,
+            threads=args.threads,
+            max_artists_per_release=args.max_artists_per_release,
+        ) as graph:
+            if args.masters_root is not None:
+                graph.attach_masters(args.masters_root)
+
+            artifact, report = build_challenge_v2(
+                graph,
+                albums,
+                snapshot_date=snapshot_date,
+                generated_by=f"networked-players-catalog build-challenge-from-dump {__version__}",
+                max_paths=args.max_paths,
+                max_hops=args.max_hops,
+            )
+
+        if args.enrich_images:
+            from .discogs.album_art import enrich_challenge_albums
+            from .discogs.api_client import ApiClient, ReleaseCache, load_token
+
+            client = ApiClient(token=load_token(), request_delay_seconds=args.request_delay)
+            cache = ReleaseCache(args.cache_dir)
+            report["albums_enriched"] = enrich_challenge_albums(
+                artifact, client=client, cache=cache
+            )
+
+        validate_challenge(artifact)
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(json.dumps(artifact, indent=2) + "\n")
+        print(json.dumps(report, indent=2, sort_keys=True))
+        return 0
+
+    if args.command == "validate-challenge":
+        from networked_players_graph_core.challenge import validate_challenge
+
+        challenge_artifact = json.loads(args.input.read_text())
+        validate_challenge(challenge_artifact)
+        print(json.dumps({"ok": True}, indent=2))
+        return 0
+
+    if args.command == "rank-album-candidates":
+        from networked_players_graph_core.analysis import rank_album_candidates
+
+        candidates = rank_album_candidates(
+            args.dataset,
+            limit=args.limit,
+            memory_limit=args.memory_limit,
+            threads=args.threads,
+        )
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(json.dumps(candidates, indent=2) + "\n")
+        summary = {"output": str(args.output), "candidate_count": len(candidates)}
+        print(json.dumps(summary, indent=2))
         return 0
 
     raise AssertionError(f"unhandled command: {args.command}")
