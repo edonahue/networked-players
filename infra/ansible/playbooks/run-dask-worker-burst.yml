@@ -1,12 +1,12 @@
 ---
-# Manual, explicitly on-demand Dask worker for a SINGLE named Pi 3B worker --
-# never a standing service on a Pi. Joins the standing scheduler from
-# docs/decisions/0020-dask-jupyter-interactive-cluster-compute.md's
+# Manual, explicitly on-demand Dask worker for a SINGLE named worker host --
+# never a standing service off the coordination host. Joins the standing
+# scheduler from docs/decisions/0020-dask-jupyter-interactive-cluster-compute.md's
 # infra/dask/docker-stack.dask.yml (coordination host). Gated on:
 #   1. local/benchmarks/pi-memory-headroom.md (playbooks/health.yml) shows
-#      real headroom for THIS Pi -- confirm before running with
+#      real headroom for THIS host -- confirm before running with
 #      dask_worker_action=start. Still manual/human-checked for this pass.
-#   2. This Pi has no active/queued RQ job right now -- checked
+#   2. This host has no active/queued RQ job right now -- checked
 #      AUTOMATICALLY below (dask_gate_check.py), not just documented as an
 #      operational rule: refuses to start if busy, and runs an ongoing
 #      watchdog that stops the worker if a real RQ job appears later.
@@ -14,12 +14,22 @@
 #      worker (run-rq-burst-worker.yml) so RQ wins CPU/IO contention during
 #      the window before the watchdog reacts -- see docs/decisions/0021-....
 #
-# Uses a dedicated venv, deliberately separate from equip-workers.yml's lean
-# worker-venv (redis/rq/duckdb only): dask[distributed]/pandas/pyarrow are a
-# real, heavier footprint, installed here only when an operator explicitly
-# opts in for one Pi at a time, never as part of baseline equipping. The
-# gate-check script itself runs from the LEAN worker-venv (it only needs
-# redis/rq, already there) -- no new dependency added to either venv.
+# Resource limits (dask_worker_*) are group_vars-overridable, not hardcoded
+# constants -- ADR 0023 introduced this so the same playbook correctly
+# serves both hardware classes rather than under- or over-provisioning one
+# of them. Defaults below match the original Pi-sized values exactly, so Pi
+# behavior is unchanged; group_vars/x86_workers.yml overrides them higher
+# for real x86_64 headroom. dask_worker_nice/dask_worker_io_priority are
+# NOT overridden per group -- Dask always yields to RQ regardless of
+# hardware, a fleet-wide contention policy, not a capability question.
+#
+# Uses a dedicated venv, deliberately separate from equip-workers.yml's/
+# equip-x86-workers.yml's lean worker-venv (redis/rq/duckdb only):
+# dask[distributed]/pandas/pyarrow are a real, heavier footprint, installed
+# here only when an operator explicitly opts in for one worker at a time,
+# never as part of baseline equipping. The gate-check script itself runs
+# from the LEAN worker-venv (it only needs redis/rq, already there) -- no
+# new dependency added to either venv.
 #
 # Always invoke with --limit against exactly one worker.
 #
@@ -29,7 +39,7 @@
 #     -e dask_scheduler_address=<coordination-host-lan-ip>
 #   ansible-playbook -i inventories/local/hosts.yml playbooks/run-dask-worker-burst.yml \
 #     --limit worker-01.example.internal -e dask_worker_action=stop
-- name: Manual on-demand Dask worker for one Pi 3B worker
+- name: Manual on-demand Dask worker for one worker host
   hosts: workers
   gather_facts: true
   vars:
@@ -40,6 +50,14 @@
     dask_watchdog_unit_name: "dask-worker-watchdog"
     dask_gate_poll_interval_s: 20
     dask_worker_action: "status"
+    # Pi-sized defaults (ADR 0021) -- override per group in group_vars
+    # (see group_vars/x86_workers.yml) for a more capable host class.
+    dask_worker_nice: 15
+    dask_worker_io_priority: 7
+    dask_worker_systemd_memory_max: "600M"
+    dask_worker_memory_limit: "400MiB"
+    dask_worker_nthreads: 1
+    dask_worker_nworkers: 1
   tasks:
     - name: Require this to run against exactly one host
       ansible.builtin.assert:
@@ -108,13 +126,14 @@
 
         - name: Create the dedicated Dask worker venv (Python 3.12, matching infra/dask/Dockerfile)
           # --python 3.12 is load-bearing, not cosmetic: without it, uv venv
-          # uses whatever Python happens to be on the Pi's PATH (Debian
-          # 12's system default, 3.11) -- confirmed live that this, combined
-          # with unpinned package versions below, produces a real
+          # uses whatever Python happens to be on the host's PATH (Debian
+          # 12's system default is 3.11) -- confirmed live on a Pi that this,
+          # combined with unpinned package versions below, produces a real
           # dask/distributed protocol version gap serious enough that a
-          # trivial client.submit(add, 2, 3) targeted at the Pi timed out
-          # after 30s. uv downloads a matching aarch64 CPython build if 3.12
-          # isn't already present.
+          # trivial client.submit(add, 2, 3) targeted at the worker timed out
+          # after 30s. uv downloads a matching CPython build for whatever
+          # architecture this host is (aarch64 or x86_64) if 3.12 isn't
+          # already present.
           ansible.builtin.command: "{{ ansible_env.HOME }}/.local/bin/uv venv --python 3.12 {{ dask_worker_venv_dir }}"
           args:
             creates: "{{ dask_worker_venv_dir }}/bin/python3"
@@ -138,16 +157,19 @@
           # run-rq-burst-worker.yml's own comment for why --user (no root at
           # invocation time) is the right choice here too.
           #
-          # Nice=15 / IOSchedulingPriority=7 deliberately match
+          # dask_worker_nice/dask_worker_io_priority deliberately match
           # run-ingest-supervised.sh's own choice for "yield to everything
-          # else" background work -- Dask is the most optional workload on
-          # a Pi (docs/ARCHITECTURE.md: "an optional experiment"), so it's
-          # the one that backs off under contention, not RQ.
+          # else" background work -- Dask is the most optional workload
+          # (docs/ARCHITECTURE.md: "an optional experiment"), so it's the
+          # one that backs off under contention, not RQ. Same value on
+          # every host class (ADR 0023) -- this is a contention policy, not
+          # a capability question.
           #
-          # MemoryMax=600M sits above Dask's own internal --memory-limit
-          # 400MiB soft ceiling (real measurement:
+          # dask_worker_systemd_memory_max sits above Dask's own internal
+          # --memory-limit soft ceiling (real Pi measurement:
           # local/benchmarks/pi-dask-real-parquet-test.md) -- giving cgroup
           # headroom rather than two limits fighting at the same boundary.
+          # Both are group_vars-overridable per hardware class (ADR 0023).
           #
           # The unit itself is now the process handle: no PID file, no log
           # file -- `systemctl --user is-active/stop` and
@@ -156,13 +178,14 @@
             systemd-run --user
             --unit={{ dask_worker_unit_name }}
             --collect
-            --property="Nice=15"
+            --property="Nice={{ dask_worker_nice }}"
             --property="IOSchedulingClass=best-effort"
-            --property="IOSchedulingPriority=7"
-            --property="MemoryMax=600M"
+            --property="IOSchedulingPriority={{ dask_worker_io_priority }}"
+            --property="MemoryMax={{ dask_worker_systemd_memory_max }}"
             {{ dask_worker_venv_dir }}/bin/dask worker
             tcp://{{ dask_scheduler_address }}:8786
-            --nthreads 1 --nworkers 1 --memory-limit 400MiB
+            --nthreads {{ dask_worker_nthreads }} --nworkers {{ dask_worker_nworkers }}
+            --memory-limit {{ dask_worker_memory_limit }}
           environment:
             XDG_RUNTIME_DIR: "/run/user/{{ ansible_user_uid }}"
 

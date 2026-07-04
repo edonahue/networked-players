@@ -8,7 +8,7 @@
 .PHONY: help setup test lint fmt fmt-check typecheck check ingest ingest-check ingest-recovery-check profile-discogs \
 	backup-coordination restore-coordination backup-swarm-manager restore-swarm-manager \
 	cluster-health cluster-benchmark cluster-onboard cluster-swarm-join cluster-smoke-test \
-	cluster-recovery-drill harden-workers equip-workers deploy-jobs-broker cluster-benchmark-distributed \
+	cluster-recovery-drill harden-workers equip-workers equip-x86-workers deploy-jobs-broker cluster-benchmark-distributed \
 	dask-up dask-down
 
 help: ## List available targets
@@ -84,6 +84,9 @@ harden-workers: ## Arm watchdog + Docker log rotation on Pi 3B workers; ARGS="--
 
 equip-workers: ## Install baseline tooling (uv, duckdb, jq, redis-tools, worker venv) on Pi 3B workers; ARGS="--ask-become-pass"
 	./infra/ansible/run-equip-workers-local.sh $(ARGS)
+
+equip-x86-workers: ## Install baseline RQ/Dask tooling (uv, duckdb, worker venv, no apt) on x86_64 Swarm workers (ADR 0023); ARGS="--limit x86-worker-01 --ask-become-pass"
+	./infra/ansible/run-equip-x86-workers-local.sh $(ARGS)
 
 deploy-jobs-broker: ## Start the LAN-reachable jobs-broker Redis for cluster benchmarking (ADR 0019); "make deploy-jobs-broker ARGS=--down" to stop
 	./infra/swarm/deploy-jobs-broker.sh $(ARGS)

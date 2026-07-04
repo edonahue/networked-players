@@ -24,19 +24,23 @@ playbooks/onboard.yml                              Pi worker + build-node onboar
 playbooks/swarm-join.yml                          guarded, one-worker-at-a-time Swarm join (ADR 0017)
 playbooks/harden-workers.yml                      Pi 3B worker hardening: watchdog, Docker log rotation
 playbooks/equip-workers.yml                       Pi 3B worker baseline tooling: uv, duckdb, jq, venv
+playbooks/equip-x86-workers.yml                   x86_64 worker baseline tooling: uv, duckdb, venv, no apt (ADR 0023)
 playbooks/deploy-rq-benchmark-job.yml             persist benchmark_parse.py as an RQ job body (ADR 0019)
 playbooks/run-rq-burst-worker.yml                 burst `rq worker` against one queue (ADR 0019)
-playbooks/run-dask-worker-burst.yml               manual, on-demand Dask worker for one Pi (ADR 0020)
+playbooks/run-dask-worker-burst.yml               manual, on-demand Dask worker for one worker host (ADR 0020/0023)
 files/benchmark_parse.py                          standalone probe copied to each node by benchmark.yml
   (also reused, unmodified, as the RQ job body above)
 run-health-local.sh, run-benchmark-local.sh,      guarded local entry points (share run-playbook-local.sh);
   run-onboard-local.sh, run-swarm-join-local.sh,  all forward extra args, e.g. --limit workers --check
   run-deploy-rq-benchmark-job-local.sh,
-  run-rq-burst-worker-local.sh, run-dask-worker-burst-local.sh
+  run-rq-burst-worker-local.sh, run-dask-worker-burst-local.sh,
+  run-equip-x86-workers-local.sh
 bootstrap-worker-ssh.sh                           one-time passwordless SSH setup for the workers group
 inventories/example/hosts.yml                     example hosts (placeholder names)
 inventories/example/group_vars/all.yml            example shared variables
 inventories/example/group_vars/workers.yml        example Pi 3B worker variables (SSH user, key, Swarm addrs)
+inventories/example/group_vars/pi_workers.yml     example pi_workers variables (defaults-only, ADR 0022)
+inventories/example/group_vars/x86_workers.yml    example x86_workers variables (RQ/Dask resource limits, ADR 0023)
 inventories/example/group_vars/optional_build_nodes.yml  example build-node variables
 inventories/example/host_vars/*.yml               example per-host variables (RFC 5737 addresses)
 ```
@@ -197,13 +201,30 @@ of `pi_workers`) plus one x86_64 ZimaBoard worker (also a member of
 `benchmark.yml`, `onboard.yml`, `swarm-join.yml`) reaches all of `workers`
 unchanged; only the two Pi-specific playbooks above are retargeted.
 
+- `playbooks/equip-x86-workers.yml` — the `x86_workers` counterpart to
+  `equip-workers.yml` (ADR 0023), not an extension of it (per ADR 0022's own
+  Revisit trigger). Same lean venv shape (`uv`, DuckDB CLI, a `redis`/`rq`/
+  `duckdb` venv at the same path) but **no `apt` task at all** — this host's
+  package state is fragile, and every tool here has a safe user-local
+  install already. Also enables `systemd-run --user` linger for this group
+  (the one task needing `become: true`), the `x86_workers` equivalent of
+  `harden-workers.yml`'s identical Pi-scoped task.
+
 ```bash
 ansible-playbook -i inventories/local/hosts.yml playbooks/harden-workers.yml --ask-become-pass
 ansible-playbook -i inventories/local/hosts.yml playbooks/equip-workers.yml --ask-become-pass
+ansible-playbook -i inventories/local/hosts.yml playbooks/equip-x86-workers.yml --ask-become-pass
 ```
 
-Or via the guarded Makefile targets: `make harden-workers ARGS="--ask-become-pass"`
-and `make equip-workers ARGS="--ask-become-pass"`.
+Or via the guarded Makefile targets: `make harden-workers ARGS="--ask-become-pass"`,
+`make equip-workers ARGS="--ask-become-pass"`, and
+`make equip-x86-workers ARGS="--limit x86-worker-01 --ask-become-pass"`.
+
+RQ/Dask resource limits (`run-rq-burst-worker.yml`,
+`run-dask-worker-burst.yml`) are group_vars-parameterized per hardware
+class (ADR 0023) rather than hardcoded Pi-sized constants — see
+`inventories/example/group_vars/x86_workers.yml` for the overridable vars
+and their real, higher values for this hardware class.
 
 ```bash
 ansible-playbook -i inventories/local/hosts.yml playbooks/onboard.yml

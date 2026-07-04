@@ -41,6 +41,9 @@
     rq_jobs_dir: "{{ ansible_env.HOME }}/.local/share/networked-players/rq-jobs"
     rq_queue_full_name: "{{ rq_queue_name | default('') }}-{{ inventory_hostname }}"
     rq_burst_unit_name: "rq-burst-{{ rq_queue_full_name | regex_replace('[^A-Za-z0-9_-]', '-') }}"
+    # Pi-sized default (ADR 0021) -- group_vars/x86_workers.yml overrides
+    # this higher for real x86_64 headroom (ADR 0023).
+    rq_worker_systemd_memory_max: "512M"
   tasks:
     - name: Require rq_queue_name
       ansible.builtin.assert:
@@ -73,9 +76,12 @@
       # production job path (docs/DISCOGS_INGESTION.md's hardware table) --
       # it stays close to normal priority so it wins CPU/IO contention
       # against the Dask burst worker (run-dask-worker-burst.yml), which is
-      # deliberately niced lower. MemoryMax=512M is a backstop against
-      # pathological input on a 1GB Pi (real jobs are documented to stay
-      # under 128-256MB), not a claim about typical usage.
+      # deliberately niced lower, on every hardware class alike (ADR 0023 --
+      # this is a contention policy, not a capability question).
+      # rq_worker_systemd_memory_max is a backstop against pathological
+      # input, not a claim about typical usage (real jobs are documented to
+      # stay under 128-256MB) -- group_vars-overridable per hardware class
+      # (ADR 0023) so a more capable host isn't held to a 1GB Pi's ceiling.
       #
       # --wait --pipe preserve today's synchronous, stdout-capturing
       # behavior so `register: rq_burst` and the report task below need no
@@ -100,7 +106,7 @@
         --property="Nice=5"
         --property="IOSchedulingClass=best-effort"
         --property="IOSchedulingPriority=4"
-        --property="MemoryMax=512M"
+        --property="MemoryMax={{ rq_worker_systemd_memory_max }}"
         {{ worker_venv_dir }}/bin/rq worker --burst
         --url {{ jobs_broker_url }}
         {{ rq_queue_full_name }}

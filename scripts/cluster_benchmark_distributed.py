@@ -101,12 +101,10 @@ def require_env(name: str) -> str:
 
 
 def load_workers() -> list[str]:
-    # `pi_workers`, not the broader `workers` group (ADR 0022): every host
-    # here needs the redis/rq venv equip-workers.yml builds, and that
-    # playbook is deliberately scoped to `pi_workers` only -- a non-Pi
-    # Swarm worker in `workers` has no such venv and would fail outright
-    # when run-rq-burst-worker.yml tried to invoke a binary that was never
-    # installed there.
+    # The flat `workers` group -- both pi_workers and x86_workers members
+    # (ADR 0022) now have the redis/rq venv this needs (equip-workers.yml
+    # for pi_workers, equip-x86-workers.yml for x86_workers, ADR 0023), so
+    # no group-specific narrowing is needed here.
     if not LOCAL_INVENTORY.exists():
         print(f"ABORT: no local inventory at {LOCAL_INVENTORY}.", file=sys.stderr)
         print(
@@ -121,9 +119,9 @@ def load_workers() -> list[str]:
         check=True,
     )
     inventory = json.loads(result.stdout)
-    hosts = inventory.get("pi_workers", {}).get("hosts", [])
+    hosts = inventory.get("workers", {}).get("hosts", [])
     if not hosts:
-        print("ABORT: no hosts in the 'pi_workers' inventory group.", file=sys.stderr)
+        print("ABORT: no hosts in the 'workers' inventory group.", file=sys.stderr)
         raise SystemExit(1)
     return sorted(hosts)
 
@@ -298,7 +296,7 @@ def main() -> None:
         distributed_queues[worker].enqueue(job_kind.func, chunk, job_timeout=JOB_TIMEOUT_S)
         for worker, chunk in zip(workers, chunks, strict=True)
     ]
-    run_burst_workers(limit="pi_workers", queue_name=DISTRIBUTED_QUEUE)
+    run_burst_workers(limit="workers", queue_name=DISTRIBUTED_QUEUE)
     distributed_jobs = wait_for_jobs(redis_conn, [job.id for job in distributed_enqueued])
 
     baseline_span = job_span_seconds(baseline_job)

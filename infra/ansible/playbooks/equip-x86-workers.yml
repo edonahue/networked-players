@@ -1,0 +1,102 @@
+---
+# Baseline RQ/Dask tooling for x86_64 Swarm workers (ADR 0023) -- the
+# non-Pi counterpart to equip-workers.yml. A separate file, not a second
+# play in that one, per ADR 0022's own Revisit trigger: "new
+# x86_workers-scoped playbook work, not an extension of
+# harden-workers.yml/equip-workers.yml."
+#
+# Same lean venv shape as equip-workers.yml (redis/rq/duckdb only, no
+# lxml/pyarrow -- these hosts run the same RQ benchmark/job bodies the Pi's
+# do, not the release-parsing pipeline). Deliberately has NO apt task at
+# all, not even a conditional one: this host's package state is fragile
+# (previously tangled with Debian testing, held libc6/libc-bin/locales) and
+# every tool installed here already has a safe, user-local alternative to
+# an apt package (uv/duckdb's own install scripts, jq/redis-tools skipped
+# entirely -- diagnostics only, not needed for redis/rq to function; use
+# Python for JSON if a script needs it).
+#
+# Needs --ask-become-pass for exactly one task (enabling systemd linger) --
+# every other task here is user-local, no root required.
+#
+# Usage (from infra/ansible/, with a real local inventory):
+#   ansible-playbook -i inventories/local/hosts.yml playbooks/equip-x86-workers.yml --ask-become-pass
+- name: Equip x86_64 Swarm workers with baseline RQ/Dask tooling
+  hosts: x86_workers
+  gather_facts: true
+  vars:
+    worker_venv_dir: "{{ ansible_env.HOME }}/.local/share/networked-players/worker-venv"
+  tasks:
+    - name: Check whether uv is already installed
+      ansible.builtin.command: "{{ ansible_env.HOME }}/.local/bin/uv --version"
+      register: uv_check
+      changed_when: false
+      failed_when: false
+
+    - name: Install uv (user-local, no sudo, no apt)
+      ansible.builtin.shell: curl -LsSf https://astral.sh/uv/install.sh | sh
+      when: uv_check.rc != 0
+
+    - name: Check whether the DuckDB CLI is already installed
+      ansible.builtin.command: "{{ ansible_env.HOME }}/.local/bin/duckdb --version"
+      register: duckdb_check
+      changed_when: false
+      failed_when: false
+
+    - name: Install the DuckDB CLI (user-local, no sudo, no apt)
+      ansible.builtin.shell: curl -LsSf https://install.duckdb.org | sh
+      when: duckdb_check.rc != 0
+
+    - name: Create the worker venv
+      ansible.builtin.command: "{{ ansible_env.HOME }}/.local/bin/uv venv {{ worker_venv_dir }}"
+      args:
+        creates: "{{ worker_venv_dir }}/bin/python3"
+
+    - name: Install redis, rq, and duckdb into the worker venv
+      # No lxml/pyarrow -- this host runs the same RQ benchmark/job bodies
+      # the Pi's do (infra/ansible/files/*.py), not the release-parsing
+      # pipeline, which AGENTS.md scopes to the coordination host only.
+      ansible.builtin.command: >-
+        {{ ansible_env.HOME }}/.local/bin/uv pip install
+        --python {{ worker_venv_dir }}/bin/python3
+        redis rq duckdb
+      register: venv_install
+      changed_when: "'Installed' in venv_install.stdout or 'Audited' not in venv_install.stdout"
+
+    - name: Confirm uv version post-install
+      ansible.builtin.command: "{{ ansible_env.HOME }}/.local/bin/uv --version"
+      register: uv_version
+      changed_when: false
+
+    - name: Confirm DuckDB CLI version post-install
+      ansible.builtin.command: "{{ ansible_env.HOME }}/.local/bin/duckdb --version"
+      register: duckdb_version
+      changed_when: false
+
+    - name: List installed venv packages
+      ansible.builtin.command: "{{ ansible_env.HOME }}/.local/bin/uv pip list --python {{ worker_venv_dir }}/bin/python3"
+      register: venv_packages
+      changed_when: false
+
+    - name: Enable linger for the ansible_user
+      # Required for `systemd-run --user`, invoked non-interactively by
+      # run-rq-burst-worker.yml and run-dask-worker-burst.yml -- without
+      # linger, a --user systemd instance only exists while a real login
+      # session is active, and a bare SSH/Ansible exec has no such session
+      # to keep it alive. Same rationale as harden-workers.yml's identical
+      # task for pi_workers -- placed here instead, since harden-workers.yml
+      # is Pi-specific hardening (ADR 0022) and this host needs its own
+      # x86_workers-scoped equivalent, not an extension of that file. The
+      # only task in this whole playbook that needs become: true.
+      ansible.builtin.command: "loginctl enable-linger {{ ansible_user }}"
+      become: true
+      changed_when: true
+
+    - name: Report equip status
+      ansible.builtin.debug:
+        msg:
+          - "host: {{ inventory_hostname }}"
+          - "uv: {{ uv_version.stdout }}"
+          - "duckdb CLI: {{ duckdb_version.stdout }}"
+          - "worker venv: {{ worker_venv_dir }}"
+          - "venv packages: {{ venv_packages.stdout_lines | join(', ') }}"
+          - "linger enabled for {{ ansible_user }} (required for systemd-run --user)"
