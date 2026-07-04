@@ -24,8 +24,19 @@
 # notifications are silently skipped otherwise (scripts/lib/notify.sh degrades
 # gracefully).
 #
+# EXPECTED_TOTAL_RELEASES (optional): gives monitor-heavy-job.sh's ntfy check-ins a
+# real percentage and ETA for a full/unbounded run, where MAX_RELEASES (which already
+# doubles as the expected total for a bounded slice) isn't set. Most useful for a
+# REPEAT run of a snapshot that's already been fully parsed once -- its real total is
+# already known (e.g. EXPECTED_TOTAL_RELEASES=19192301 for a rerun of 20260601, whose
+# real count was recorded in docs/DISCOGS_INGESTION.md). For a brand-new snapshot with
+# no prior run, there's no reliable known total -- omit it and check-ins still report a
+# rate (releases/hour), just without a %/ETA, rather than guessing at a number nothing
+# backs.
+#
 # Usage:  SNAPSHOT=20260601 ./scripts/run-ingest-supervised.sh
 #         SNAPSHOT=20260601 MAX_RELEASES=50000 ./scripts/run-ingest-supervised.sh
+#         SNAPSHOT=20260601 EXPECTED_TOTAL_RELEASES=19192301 ./scripts/run-ingest-supervised.sh
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -82,6 +93,11 @@ notify "Started: ${UNIT_NAME}" \
   "Snapshot ${SNAPSHOT}${MAX_RELEASES:+, max ${MAX_RELEASES} releases}. Check-ins every 30 min." \
   "low" "rocket"
 
+# MAX_RELEASES already IS the expected total for a bounded slice; for a full run,
+# fall back to the operator-supplied EXPECTED_TOTAL_RELEASES (a known prior total),
+# or leave blank (rate-only check-ins, no %/ETA) rather than guess.
+MONITOR_EXPECTED_TOTAL="${MAX_RELEASES:-${EXPECTED_TOTAL_RELEASES:-}}"
+
 echo "==> Starting monitor unit: ${MONITOR_UNIT_NAME} (ntfy check-ins every 30 min)"
 sudo systemd-run \
   --unit="${MONITOR_UNIT_NAME}" \
@@ -94,7 +110,7 @@ sudo systemd-run \
     "HOME=${HOME}" \
     "PATH=${HOME}/.local/bin:${PATH}" \
     "NTFY_URL=${NTFY_URL:-}" \
-    "${REPO_ROOT}/scripts/monitor-heavy-job.sh" "${UNIT_NAME}" 1800 "${MAX_RELEASES:-}"
+    "${REPO_ROOT}/scripts/monitor-heavy-job.sh" "${UNIT_NAME}" 1800 "${MONITOR_EXPECTED_TOTAL}"
 
 echo "==> Started as systemd unit: ${MONITOR_UNIT_NAME}"
 echo "    Follow live:  journalctl -u ${MONITOR_UNIT_NAME} -f"

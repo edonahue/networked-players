@@ -118,6 +118,22 @@ find local/raw/discogs -name '*.part' -delete
 rm -rf local/processed/discogs/snapshot=<snapshot>
 ```
 
+**Before deleting an interrupted parse's staging directory**
+(`local/processed/discogs/.snapshot=<snapshot>.tmp-*`), check how much real,
+valid output survives first — a hard kill (power loss, OOM, `kill -9`,
+Ctrl-C) skips `write_release_dataset()`'s own cleanup (which only runs on a
+catchable Python exception), so the staging directory can survive with
+hours of real, good output in it:
+
+```bash
+SNAPSHOT=<snapshot> ./scripts/check-ingest-recovery.sh
+```
+
+Reports valid vs. corrupt part counts (a torn write can only ever be the
+last part or two — see the script's own docstring) as JSON. There's no
+automated resume yet — this is a status check, not a `--resume` flag — but
+it tells you exactly what you'd be discarding before you `rm -rf` it.
+
 ## Lessons from the first real bring-up (2026-07-01)
 
 Bringing the NVMe online and running the pipeline against real data for the first
