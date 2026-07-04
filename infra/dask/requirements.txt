@@ -1,0 +1,13 @@
+# Exact pins, not loose bounds: a "<2026" bound on dask was already exceeded
+# by a real upstream 2026.6.0 release by the time infra/ansible/playbooks/
+# run-dask-worker-burst.yml (which must match these exactly, not just the
+# same bounds) tried to install a matching Pi-side venv, causing a real
+# dask/distributed protocol mismatch serious enough that a trivial task
+# submitted to that worker timed out after 30s -- confirmed live. Bump these
+# and the playbook's pins together, deliberately, never independently.
+jupyterlab>=4,<5
+dask[distributed]==2025.12.0
+pandas==2.3.3
+numpy==2.5.0
+pyarrow>=18,<24
+duckdb>=1.2,<2
