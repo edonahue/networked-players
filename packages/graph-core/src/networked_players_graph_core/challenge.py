@@ -49,6 +49,27 @@ class ChallengeValidationError(RuntimeError):
     """Raised when a challenge.v2 artifact violates its contract."""
 
 
+def _find_seed_keys(obj: Any, path: str = "") -> list[str]:
+    """Recursively collect dotted paths to any dict key literally named `seed`.
+
+    A substring search over the serialized JSON would also flag the
+    provenance note's deliberate prose use of the word "seed" -- this checks
+    dict keys only, so it catches a real leaked field (e.g. a stray
+    `"seed": [...]`) without tripping on that sentence.
+    """
+    found: list[str] = []
+    if isinstance(obj, dict):
+        for key, value in obj.items():
+            child_path = f"{path}.{key}" if path else str(key)
+            if key == "seed":
+                found.append(child_path)
+            found.extend(_find_seed_keys(value, child_path))
+    elif isinstance(obj, list):
+        for index, item in enumerate(obj):
+            found.extend(_find_seed_keys(item, f"{path}[{index}]"))
+    return found
+
+
 @dataclass(slots=True)
 class MatchedAlbum:
     artist_query: str
@@ -269,8 +290,9 @@ def validate_challenge(artifact: dict[str, Any]) -> None:
         for field in ("source", "license", "snapshot_date", "generated_by", "graph_core_version"):
             if not provenance.get(field):
                 failures.append(f"provenance.{field} is required")
-        if "seed" in provenance:
-            failures.append("provenance must not mention the seed")
+
+    for seed_key_path in _find_seed_keys(artifact):
+        failures.append(f"artifact must not have a 'seed' key ({seed_key_path})")
 
     release_ids = {r.get("release_id") for r in artifact.get("releases", [])}
     artist_ids = {a.get("artist_id") for a in artifact.get("artists", [])}

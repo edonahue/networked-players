@@ -323,6 +323,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 0
 
     if args.command == "build-challenge-from-dump":
+        import sys
+
         from networked_players_graph_core.challenge import build_challenge_v2, validate_challenge
         from networked_players_graph_core.graph import CreditGraph
 
@@ -362,6 +364,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         validate_challenge(artifact)
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(json.dumps(artifact, indent=2) + "\n")
+        print(
+            f"Wrote {args.output}. Before publishing, walk the prepublish checklist in "
+            "docs/PUBLIC_PRIVATE_BOUNDARY.md -- validate_challenge() checks structure and "
+            "known leak patterns, not editorial judgment.",
+            file=sys.stderr,
+        )
         print(json.dumps(report, indent=2, sort_keys=True))
         return 0
 
