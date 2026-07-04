@@ -47,6 +47,24 @@ def _parser() -> argparse.ArgumentParser:
     import_seed.add_argument("--output", type=Path, required=True)
     import_seed.add_argument("--source", default="discogs-collection-export-csv")
 
+    expand = subparsers.add_parser(
+        "expand-one-hop",
+        help="expand the private seed one hop over a parsed snapshot (Milestone 5)",
+    )
+    expand.add_argument("--seed", type=Path, default=Path("data/private/discogs-seed.json"))
+    expand.add_argument("--dataset", type=Path, required=True, help="parsed snapshot root")
+    expand.add_argument("--output-root", type=Path, required=True)
+    expand.add_argument("--memory-limit", default="3GB", help="DuckDB memory ceiling")
+    expand.add_argument("--threads", type=int, default=2)
+    expand.add_argument("--temp-dir", type=Path, default=None, help="DuckDB spill directory")
+    expand.add_argument(
+        "--max-retained-releases",
+        type=int,
+        default=None,
+        help="abort (writing nothing) if the retained release count exceeds this bound",
+    )
+    expand.add_argument("--overwrite", action="store_true")
+
     build_demo = subparsers.add_parser(
         "build-demo-challenge",
         help="fetch curated Discogs API releases and emit a real challenge.v1-shaped artifact",
@@ -129,6 +147,22 @@ def main(argv: Sequence[str] | None = None) -> int:
         seed.write(args.output)
         payload = {"path": str(args.output), "release_id_count": len(seed.release_ids)}
         print(json.dumps(payload, indent=2))
+        return 0
+
+    if args.command == "expand-one-hop":
+        from .discogs.onehop import expand_one_hop
+
+        onehop_manifest = expand_one_hop(
+            args.seed,
+            args.dataset,
+            args.output_root,
+            memory_limit=args.memory_limit,
+            threads=args.threads,
+            temp_dir=args.temp_dir,
+            max_retained_releases=args.max_retained_releases,
+            overwrite=args.overwrite,
+        )
+        print(json.dumps(onehop_manifest, indent=2, sort_keys=True))
         return 0
 
     if args.command == "build-demo-challenge":

@@ -641,16 +641,32 @@ releases, validated clean) now exists at `local/processed/discogs/snapshot=20260
 so this milestone can start.
 
 ### Tasks
-- [ ] Extract the seed releases' linked credited-artist IDs into an artist-ID
-      frontier [`packages/catalog`]
-- [ ] Scan the release table to retain releases containing a frontier artist
+- [x] Extract the seed releases' linked credited-artist IDs into an artist-ID
+      frontier — `expand-one-hop` pass 1 (`onehop.py`), keyed on
+      `playable_identity` so non-linked names never join the frontier
       [`packages/catalog`]
-- [ ] Preserve every retained release and credit row needed to prove each edge —
-      no shortcut that drops evidence [`packages/catalog`]
-- [ ] Write the expanded slice as its own versioned, immutable dataset (do not
-      mutate the snapshot in place) [`packages/catalog`]
-- [ ] Add a test asserting the expansion is deterministic and bounded given a
-      fixed seed and snapshot [`packages/catalog`]
+- [x] Scan the release table to retain releases containing a frontier artist —
+      pass 2, a streaming DuckDB semi-join over the credits table with an
+      explicit memory limit and spill directory [`packages/catalog`]
+- [x] Preserve every retained release and credit row needed to prove each edge —
+      no shortcut that drops evidence: ALL credit rows (including non-linked
+      evidence rows) and all track rows of every retained release survive; a
+      pre-rename self-check proves every output release has playable frontier
+      evidence [`packages/catalog`]
+- [x] Write the expanded slice as its own versioned, immutable dataset (do not
+      mutate the snapshot in place) — staging dir + atomic rename to
+      `local/processed/discogs-onehop/snapshot=<X>/`, five tables, manifest with
+      per-file sha256 and an `expansion` provenance block; contract in
+      `data/contracts/discogs-onehop-v1.md` [`packages/catalog`]
+- [x] Add a test asserting the expansion is deterministic and bounded given a
+      fixed seed and snapshot — `test_onehop.py`: byte-identical parquet across
+      two runs, `--max-retained-releases` guard aborts before writing
+      [`packages/catalog`]
+
+All five tasks landed as code with synthetic-fixture tests. The real-data run
+against `snapshot=20260601` and the real private seed is an operator step (see
+`Makefile`'s `expand-onehop` target); its observed sizing gets recorded in
+`docs/DATA_SIZING.md` when it happens.
 
 **Former caveat, now resolved:** this milestone's tasks originally worried a
 bounded slice from Milestone 3 might prove insufficient to build the

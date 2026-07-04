@@ -38,6 +38,13 @@ uv run networked-players-catalog parse-releases \
 
 uv run networked-players-catalog validate \
   --dataset local/processed/discogs/snapshot=20260501
+
+# Milestone 5: expand the private seed one hop over a parsed snapshot
+# (see data/contracts/discogs-onehop-v1.md; output is seed-derived and
+# stays under git-ignored local/, never committed or published)
+uv run networked-players-catalog expand-one-hop \
+  --dataset local/processed/discogs/snapshot=20260501 \
+  --output-root local/processed/discogs-onehop
 ```
 
 The default object URL follows the public monthly naming convention. Discogs or its storage provider may reject listing or direct access from some networks; a manifest can be edited to use an explicitly obtained official URL without changing the parser.
