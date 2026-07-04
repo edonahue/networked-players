@@ -1,0 +1,38 @@
+# Read-only HTTP serving of the processed catalog datasets (parquet +
+# manifests) so remote workers can read data that physically lives only on
+# the coordination host's NVMe -- see
+# docs/decisions/0024-http-readonly-catalog-data-access.md for why HTTP
+# beat NFS (client mounts need apt on a host where apt is forbidden),
+# MinIO (no measured need for S3 semantics; hundreds of MB RSS), and rsync
+# replication (kept as a documented fallback only).
+#
+# nginx's default static-file range-request support is the load-bearing
+# feature: DuckDB (httpfs) and PyArrow/fsspec use ranged reads for
+# projection/row-group pushdown, so a remote "scan" only transfers the
+# columns and row groups actually read, not whole files.
+#
+# Same posture as docker-compose.jobs-broker.yml: bound to a specific LAN
+# interface IP (never 0.0.0.0), deliberately NOT restart:unless-stopped --
+# started before a remote-worker session via deploy-catalog-data.sh,
+# stopped after. Trust boundary: unauthenticated read of a private dataset,
+# LAN-only -- the same class of surface as the Dask scheduler's port 8786.
+#
+# Own explicit Compose project name so this never shares an inferred
+# project with the other compose files here (see their CAUTION comments
+# about --remove-orphans).
+name: catalog-data
+
+services:
+  catalog-data:
+    image: nginx:1-alpine
+    ports:
+      - "${CATALOG_DATA_BIND_IP:?set in local/catalog-data.env}:${CATALOG_DATA_PORT:-8791}:80"
+    volumes:
+      - "${CATALOG_DATA_DIR:?set in local/catalog-data.env}:/data:ro"
+      - ./catalog-data-nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    mem_limit: 128m
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost/healthz"]
+      interval: 5s
+      timeout: 5s
+      retries: 5

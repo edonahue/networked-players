@@ -174,11 +174,42 @@ def wait_for_jobs(redis_conn: Redis, job_ids: list[str]) -> list[Job]:
     return jobs
 
 
-def split_iterations(total: int, parts: int) -> list[int]:
-    base, remainder = divmod(total, parts)
-    chunks = [base] * parts
-    chunks[0] += remainder
+def split_iterations(total: int, parts: int, weights: list[float] | None = None) -> list[int]:
+    """Split ``total`` across ``parts`` chunks -- evenly by default, or
+    proportionally to per-host ``weights`` (ADR 0024's evidence-driven
+    optimization: set weights from a real observed per-host throughput
+    ratio, never from guessed hardware specs)."""
+
+    if weights is None:
+        base, remainder = divmod(total, parts)
+        chunks = [base] * parts
+        chunks[0] += remainder
+        return chunks
+    if len(weights) != parts or any(weight <= 0 for weight in weights):
+        raise ValueError(f"need {parts} positive weights, got {weights}")
+    total_weight = sum(weights)
+    chunks = [int(total * weight / total_weight) for weight in weights]
+    chunks[0] += total - sum(chunks)  # rounding remainder
     return chunks
+
+
+def parse_worker_weights(spec: str, workers: list[str]) -> list[float]:
+    """Parse ``host=N,host=N`` into a weight list aligned with ``workers``.
+
+    Hosts not named in the spec default to weight 1.0; naming a host that
+    isn't in the inventory is an error (catches typos rather than silently
+    running an even split).
+    """
+
+    parsed: dict[str, float] = {}
+    for item in spec.split(","):
+        host, _, value = item.strip().partition("=")
+        if not host or not value:
+            raise SystemExit(f"ABORT: malformed --worker-weights item {item!r} (want host=N)")
+        if host not in workers:
+            raise SystemExit(f"ABORT: --worker-weights host {host!r} not in workers {workers}")
+        parsed[host] = float(value)
+    return [parsed.get(worker, 1.0) for worker in workers]
 
 
 def job_span_seconds(job: Job) -> float | None:
@@ -246,6 +277,15 @@ def main() -> None:
         "--baseline-worker",
         help="Inventory hostname for the single-node baseline (default: first worker, sorted)",
     )
+    parser.add_argument(
+        "--worker-weights",
+        default=None,
+        help=(
+            "Proportional split as 'host=N,host=N' (unnamed hosts get 1.0). "
+            "Default: even split. Set weights from a real observed per-host "
+            "throughput ratio, not guessed specs (ADR 0024)."
+        ),
+    )
     args = parser.parse_args()
     job_kind = JOB_KINDS[args.kind]
     iterations = args.iterations if args.iterations is not None else job_kind.default_total
@@ -291,7 +331,8 @@ def main() -> None:
     (baseline_job,) = wait_for_jobs(redis_conn, [baseline_enqueued.id])
 
     print(f"==> Distributed: {iterations} iterations split across {workers}.")
-    chunks = split_iterations(iterations, len(workers))
+    weights = parse_worker_weights(args.worker_weights, workers) if args.worker_weights else None
+    chunks = split_iterations(iterations, len(workers), weights)
     distributed_enqueued = [
         distributed_queues[worker].enqueue(job_kind.func, chunk, job_timeout=JOB_TIMEOUT_S)
         for worker, chunk in zip(workers, chunks, strict=True)
@@ -332,6 +373,7 @@ def main() -> None:
         "distributed": {
             "workers": workers,
             "chunks": chunks,
+            "worker_weights": weights,
             "job_spans_s": job_spans,
             "aggregate_job_span_s": aggregate_span,
             "per_job_results": [job.result for job in distributed_jobs],

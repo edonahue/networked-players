@@ -146,10 +146,15 @@
           # failure above happened. Pin to the same resolved versions
           # confirmed running in the coordination host's image today; bump
           # both together deliberately later, never independently.
+          #
+          # aiohttp is fsspec's http:// backend -- what lets dd.read_parquet
+          # accept the catalog-data URLs (ADR 0024) on a worker with no
+          # local copy of the dataset.
           ansible.builtin.command: >-
             {{ ansible_env.HOME }}/.local/bin/uv pip install
             --python {{ dask_worker_venv_dir }}/bin/python3
             "dask[distributed]==2025.12.0" "pandas==2.3.3" "numpy==2.5.0" "pyarrow>=18,<24"
+            "aiohttp>=3.11,<4"
 
         - name: Start a bounded, resource-yielding dask-worker as a --user unit
           # systemd-run --user, not the bare nohup this used to be, and not
@@ -174,6 +179,12 @@
           # The unit itself is now the process handle: no PID file, no log
           # file -- `systemctl --user is-active/stop` and
           # `journalctl --user -u dask-worker-burst` replace both.
+          # The optional catalog_data_url (-e catalog_data_url=http://<coordination-lan-ip>:8791)
+          # reaches tasks running on this worker as CATALOG_DATA_URL --
+          # --setenv, not the task-level environment: key, because systemd-run
+          # does NOT inherit the invoking environment into the unit it
+          # creates (the same confirmed-live gotcha run-rq-burst-worker.yml
+          # documents for PYTHONPATH). See ADR 0024.
           ansible.builtin.command: >-
             systemd-run --user
             --unit={{ dask_worker_unit_name }}
@@ -182,6 +193,7 @@
             --property="IOSchedulingClass=best-effort"
             --property="IOSchedulingPriority={{ dask_worker_io_priority }}"
             --property="MemoryMax={{ dask_worker_systemd_memory_max }}"
+            {% if catalog_data_url is defined %}--setenv=CATALOG_DATA_URL={{ catalog_data_url }}{% endif %}
             {{ dask_worker_venv_dir }}/bin/dask worker
             tcp://{{ dask_scheduler_address }}:8786
             --nthreads {{ dask_worker_nthreads }} --nworkers {{ dask_worker_nworkers }}
