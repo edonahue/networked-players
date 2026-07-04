@@ -78,6 +78,22 @@ def test_build_challenge_v2_produces_a_valid_artifact(dataset_root: Path) -> Non
     assert report["paths_found"] >= 1
 
 
+def test_build_challenge_v2_releases_have_no_extra_columns(dataset_root: Path) -> None:
+    """Regression test: CreditGraph.release() reads via `SELECT *` from a view
+    over a `.../table=releases/*.parquet` glob -- without hive_partitioning=false
+    on that read_parquet() call, DuckDB silently injects `table`/`snapshot`
+    Hive-partition columns into every row, which used to leak straight into
+    the published artifact. validate_challenge now also enforces this."""
+    with CreditGraph.open(dataset_root) as graph:
+        artifact, _ = build_challenge_v2(
+            graph, ALBUMS, snapshot_date="20260601", generated_by="test-suite"
+        )
+
+    for release in artifact["releases"]:
+        assert "table" not in release
+        assert "snapshot" not in release
+
+
 def test_build_challenge_v2_paths_connect_matched_album_artists(dataset_root: Path) -> None:
     with CreditGraph.open(dataset_root) as graph:
         artifact, _ = build_challenge_v2(

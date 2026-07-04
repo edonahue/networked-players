@@ -71,6 +71,18 @@ def _copy_options() -> str:
     return "FORMAT PARQUET, COMPRESSION ZSTD, COMPRESSION_LEVEL 6, ROW_GROUP_SIZE 50000"
 
 
+def _rp(glob: str) -> str:
+    """`read_parquet(...)` with Hive partitioning disabled.
+
+    Every dataset here lives under `.../snapshot=<date>/table=<name>/*.parquet`
+    -- DuckDB's default partition auto-detection reads those directory
+    segments as columns and silently injects `snapshot`/`table` into every
+    row of a `SELECT *`/`r.*`, which would otherwise get written straight
+    into this module's output tables.
+    """
+    return f"read_parquet('{glob}', hive_partitioning = false)"
+
+
 def expand_one_hop(
     seed_path: Path,
     dataset_root: Path,
@@ -129,7 +141,7 @@ def expand_one_hop(
             f"""
             CREATE TEMP TABLE frontier_artists AS
             SELECT DISTINCT artist_id
-            FROM read_parquet('{credits_glob}')
+            FROM {_rp(credits_glob)}
             WHERE playable_identity
               AND release_id IN (SELECT release_id FROM seed_release_ids)
             """
@@ -147,7 +159,7 @@ def expand_one_hop(
             f"""
             CREATE TEMP TABLE retained_releases AS
             SELECT DISTINCT release_id
-            FROM read_parquet('{credits_glob}')
+            FROM {_rp(credits_glob)}
             WHERE playable_identity
               AND artist_id IN (SELECT artist_id FROM frontier_artists)
             """
@@ -165,28 +177,28 @@ def expand_one_hop(
             f"""
             SELECT count(*) FROM seed_release_ids s
             WHERE s.release_id NOT IN (
-                SELECT release_id FROM read_parquet('{releases_glob}')
+                SELECT release_id FROM {_rp(releases_glob)}
             )
             """,
         )
 
         table_sources = {
             "releases": (
-                f"SELECT r.* FROM read_parquet('{releases_glob}') r "
+                f"SELECT r.* FROM {_rp(releases_glob)} r "
                 "WHERE r.release_id IN (SELECT release_id FROM retained_releases)"
             ),
             "tracks": (
-                f"SELECT t.* FROM read_parquet('{tracks_glob}') t "
+                f"SELECT t.* FROM {_rp(tracks_glob)} t "
                 "WHERE t.release_id IN (SELECT release_id FROM retained_releases)"
             ),
             "credits": (
-                f"SELECT c.* FROM read_parquet('{credits_glob}') c "
+                f"SELECT c.* FROM {_rp(credits_glob)} c "
                 "WHERE c.release_id IN (SELECT release_id FROM retained_releases)"
             ),
             "frontier_artists": "SELECT artist_id FROM frontier_artists",
             "seed_releases": (
                 "SELECT s.release_id FROM seed_release_ids s "
-                f"WHERE s.release_id IN (SELECT release_id FROM read_parquet('{releases_glob}'))"
+                f"WHERE s.release_id IN (SELECT release_id FROM {_rp(releases_glob)})"
             ),
         }
 
@@ -271,9 +283,9 @@ def _self_check(
     seed_not_retained = _scalar(
         connection,
         f"""
-        SELECT count(*) FROM read_parquet('{staged["seed_releases"]}') s
+        SELECT count(*) FROM {_rp(staged["seed_releases"])} s
         WHERE s.release_id NOT IN
-            (SELECT release_id FROM read_parquet('{staged["releases"]}'))
+            (SELECT release_id FROM {_rp(staged["releases"])})
         """,
     )
     if seed_not_retained:
@@ -282,12 +294,12 @@ def _self_check(
     unprovable = _scalar(
         connection,
         f"""
-        SELECT count(*) FROM read_parquet('{staged["releases"]}') r
+        SELECT count(*) FROM {_rp(staged["releases"])} r
         WHERE r.release_id NOT IN (
-            SELECT release_id FROM read_parquet('{staged["credits"]}')
+            SELECT release_id FROM {_rp(staged["credits"])}
             WHERE playable_identity
               AND artist_id IN
-                (SELECT artist_id FROM read_parquet('{staged["frontier_artists"]}'))
+                (SELECT artist_id FROM {_rp(staged["frontier_artists"])})
         )
         """,
     )
@@ -298,9 +310,9 @@ def _self_check(
         orphans = _scalar(
             connection,
             f"""
-            SELECT count(*) FROM read_parquet('{staged[child]}') c
+            SELECT count(*) FROM {_rp(staged[child])} c
             WHERE c.release_id NOT IN
-                (SELECT release_id FROM read_parquet('{staged["releases"]}'))
+                (SELECT release_id FROM {_rp(staged["releases"])})
             """,
         )
         if orphans:

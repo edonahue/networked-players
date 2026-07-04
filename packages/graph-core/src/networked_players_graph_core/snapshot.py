@@ -29,7 +29,7 @@ import duckdb
 import pyarrow.parquet as pq
 
 from . import __version__
-from .graph import NON_INDIVIDUAL_ARTIST_IDS
+from .graph import NON_INDIVIDUAL_ARTIST_IDS, read_parquet_sql
 
 GRAPH_SNAPSHOT_SCHEMA_VERSION = 1
 GRAPH_SNAPSHOT_TABLES = ("artists", "edges")
@@ -82,7 +82,7 @@ def export_graph_snapshot(
 
         try:
             connection.execute(
-                f"CREATE VIEW credits AS SELECT * FROM read_parquet('{credits_glob}')"
+                f"CREATE VIEW credits AS SELECT * FROM {read_parquet_sql(credits_glob)}"
             )
         except duckdb.IOException as exc:
             raise SnapshotError(f"could not open dataset at {dataset_root}: {exc}") from exc

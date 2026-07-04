@@ -45,6 +45,17 @@ _CREDIT_COLUMNS = (
 )
 
 
+def read_parquet_sql(glob: str) -> str:
+    """`read_parquet(...)` with Hive partitioning disabled.
+
+    Every dataset in this project stores tables under
+    `.../snapshot=<date>/table=<name>/*.parquet` -- DuckDB's default
+    partition auto-detection reads those directory segments as columns and
+    silently injects `snapshot`/`table` into every row of a `SELECT *`.
+    """
+    return f"read_parquet('{glob}', hive_partitioning = false)"
+
+
 class GraphError(RuntimeError):
     """Raised when a graph can't be opened or queried as requested."""
 
@@ -94,10 +105,10 @@ class CreditGraph:
 
         try:
             connection.execute(
-                f"CREATE VIEW credits AS SELECT * FROM read_parquet('{credits_glob}')"
+                f"CREATE VIEW credits AS SELECT * FROM {read_parquet_sql(credits_glob)}"
             )
             connection.execute(
-                f"CREATE VIEW releases AS SELECT * FROM read_parquet('{releases_glob}')"
+                f"CREATE VIEW releases AS SELECT * FROM {read_parquet_sql(releases_glob)}"
             )
         except duckdb.IOException as exc:
             raise GraphError(f"could not open dataset at {dataset_root}: {exc}") from exc
@@ -125,7 +136,7 @@ class CreditGraph:
         masters_glob = str(masters_root / "table=masters" / "*.parquet")
         try:
             self._connection.execute(
-                f"CREATE VIEW masters AS SELECT * FROM read_parquet('{masters_glob}')"
+                f"CREATE VIEW masters AS SELECT * FROM {read_parquet_sql(masters_glob)}"
             )
         except duckdb.IOException as exc:
             raise GraphError(f"could not open masters dataset at {masters_root}: {exc}") from exc

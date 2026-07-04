@@ -23,6 +23,26 @@ _FORBIDDEN_SUBSTRINGS = ("/home/", "data/private", "local/", "DISCOGS_TOKEN", ".
 _TOP_LEVEL_KEYS = frozenset(
     {"schema_version", "provenance", "albums", "artists", "paths", "releases"}
 )
+# The release-table fields per data/contracts/challenge-v2.md (RELEASE_SCHEMA
+# minus `images`, per that contract) plus the `credits` evidence array this
+# builder adds. Checked exactly in validate_challenge so a leaked column
+# (e.g. a DuckDB read_parquet Hive-partition artifact from a `table=X/`
+# directory name) fails validation instead of silently shipping.
+_RELEASE_KEYS = frozenset(
+    {
+        "snapshot_date",
+        "release_id",
+        "status",
+        "title",
+        "country",
+        "released",
+        "master_id",
+        "master_is_main_release",
+        "data_quality",
+        "source_url",
+        "credits",
+    }
+)
 
 
 class ChallengeValidationError(RuntimeError):
@@ -254,6 +274,12 @@ def validate_challenge(artifact: dict[str, Any]) -> None:
 
     release_ids = {r.get("release_id") for r in artifact.get("releases", [])}
     artist_ids = {a.get("artist_id") for a in artifact.get("artists", [])}
+
+    for release in artifact.get("releases", []):
+        if set(release.keys()) != _RELEASE_KEYS:
+            failures.append(
+                f"release {release.get('release_id')} has unexpected keys: {sorted(release.keys())}"
+            )
 
     for album in artifact.get("albums", []):
         if not isinstance(album.get("main_release_id"), int) or album["main_release_id"] <= 0:
