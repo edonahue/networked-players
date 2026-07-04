@@ -162,3 +162,23 @@ def test_validate_challenge_rejects_tampered_artist_list(dataset_root: Path) -> 
     artifact["artists"] = []
     with pytest.raises(ChallengeValidationError):
         validate_challenge(artifact)
+
+
+def test_validate_challenge_rejects_extra_release_key(dataset_root: Path) -> None:
+    with CreditGraph.open(dataset_root) as graph:
+        artifact, _ = build_challenge_v2(
+            graph, ALBUMS, snapshot_date="20260601", generated_by="test-suite"
+        )
+    artifact["releases"][0]["table"] = "releases"
+    with pytest.raises(ChallengeValidationError):
+        validate_challenge(artifact)
+
+
+def test_validate_challenge_rejects_seed_key_outside_provenance(dataset_root: Path) -> None:
+    with CreditGraph.open(dataset_root) as graph:
+        artifact, _ = build_challenge_v2(
+            graph, ALBUMS, snapshot_date="20260601", generated_by="test-suite"
+        )
+    artifact["albums"][0]["seed"] = "1234"
+    with pytest.raises(ChallengeValidationError):
+        validate_challenge(artifact)
