@@ -98,11 +98,20 @@
       # sets XDG_RUNTIME_DIR for `systemd-run` ITSELF (needed to reach the
       # right --user manager socket), which is a separate concern from what
       # environment the unit it creates then runs with.
+      #
+      # Optional catalog_data_dir/catalog_data_url reach a job body running
+      # inside this unit as CATALOG_DATA_DIR/CATALOG_DATA_URL, for
+      # dataset_locator.resolve_dataset's local-cache-then-HTTP order (ADR
+      # 0025). Same --setenv requirement as run-dask-worker-burst.yml's
+      # identical CATALOG_DATA_URL wiring -- systemd-run does not inherit
+      # the invoking environment.
       ansible.builtin.command: >-
         systemd-run --user --wait --pipe
         --unit={{ rq_burst_unit_name }}
         --collect
         --setenv=PYTHONPATH={{ rq_jobs_dir }}
+        {% if catalog_data_dir is defined %}--setenv=CATALOG_DATA_DIR={{ catalog_data_dir }}{% endif %}
+        {% if catalog_data_url is defined %}--setenv=CATALOG_DATA_URL={{ catalog_data_url }}{% endif %}
         --property="Nice=5"
         --property="IOSchedulingClass=best-effort"
         --property="IOSchedulingPriority=4"

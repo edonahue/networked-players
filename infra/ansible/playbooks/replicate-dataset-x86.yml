@@ -1,0 +1,89 @@
+---
+# Fetches and verifies a dataset from the catalog-data HTTP layer
+# (docker-compose.catalog-data.yml, ADR 0024) into a disposable, read-only,
+# verified local cache on an x86_64 Swarm worker (ADR 0025). The
+# master/coordination host's local/processed/ stays the single authoritative
+# copy -- this cache is a rebuildable replica, never the source of truth.
+#
+# x86 workers may cache ANY of the three catalog datasets in full: the
+# release snapshot, the masters snapshot, or the one-hop working set (ADR
+# 0024's existing hybrid access policy already allows full-dataset reads on
+# this hardware class over its 1GbE link). There is deliberately no
+# max-total-bytes guard here -- see replicate-dataset-pi.yml for the
+# structurally different, one-hop-only Pi counterpart.
+#
+# dataset_fetch.py is copied from the packages/catalog checkout on the
+# control node (the single source of truth for the fetch/verify logic) --
+# not duplicated under infra/ansible/files/. It is self-contained and
+# stdlib-only, so it runs under this host's bare system python3 with no
+# venv required.
+#
+# Usage (from infra/ansible/, with a real local inventory):
+#   ansible-playbook -i inventories/local/hosts.yml playbooks/replicate-dataset-x86.yml \
+#     -e dataset=discogs -e snapshot=20260601 -e catalog_data_url=http://<coordination-lan-ip>:8791
+#   # re-verify an existing cache without re-fetching:
+#   ansible-playbook -i inventories/local/hosts.yml playbooks/replicate-dataset-x86.yml \
+#     -e dataset=discogs -e snapshot=20260601 -e verify_only=true
+- name: Replicate a catalog dataset to an x86_64 Swarm worker's local cache
+  hosts: x86_workers
+  gather_facts: true
+  vars:
+    dataset_fetch_tools_dir: "{{ catalog_cache_root | default('') }}/.tools"
+    verify_only: false
+    allowed_datasets:
+      - discogs
+      - discogs-onehop
+      - discogs-masters
+  tasks:
+    - name: Require catalog_cache_root (set in group_vars, see inventories/example)
+      ansible.builtin.assert:
+        that:
+          - catalog_cache_root is defined
+        fail_msg: "Set catalog_cache_root in group_vars/x86_workers.yml (see inventories/example)."
+
+    - name: Require dataset and confirm it is one of the allowed names
+      ansible.builtin.assert:
+        that:
+          - dataset is defined
+          - dataset in allowed_datasets
+        fail_msg: "Set -e dataset=<{{ allowed_datasets | join('|') }}>."
+
+    - name: Require snapshot as YYYYMMDD
+      ansible.builtin.assert:
+        that:
+          - snapshot is defined
+          - snapshot is match('^[0-9]{8}$')
+        fail_msg: "Set -e snapshot=YYYYMMDD."
+
+    - name: Require catalog_data_url unless verify_only
+      ansible.builtin.assert:
+        that:
+          - catalog_data_url is defined
+        fail_msg: "Set -e catalog_data_url=http://<coordination-lan-ip>:8791."
+      when: not (verify_only | bool)
+
+    - name: Create the cache tools directory
+      ansible.builtin.file:
+        path: "{{ dataset_fetch_tools_dir }}"
+        state: directory
+        mode: "0755"
+
+    - name: Copy dataset_fetch.py from the catalog package (single source of truth)
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../../../packages/catalog/src/networked_players_catalog/discogs/dataset_fetch.py"
+        dest: "{{ dataset_fetch_tools_dir }}/dataset_fetch.py"
+        mode: "0644"
+
+    - name: Fetch and verify the dataset
+      ansible.builtin.command: >-
+        python3 {{ dataset_fetch_tools_dir }}/dataset_fetch.py
+        --dest {{ catalog_cache_root }}/{{ dataset }}/snapshot={{ snapshot }}
+        {% if verify_only | bool %}--verify-only{% else %}--base-url {{ catalog_data_url }}/{{ dataset }}/snapshot={{ snapshot }}{% endif %}
+      register: fetch_result
+      changed_when: true
+
+    - name: Report replication result
+      ansible.builtin.debug:
+        msg:
+          - "host: {{ inventory_hostname }}  dataset: {{ dataset }}  snapshot: {{ snapshot }}"
+          - "{{ fetch_result.stdout }}"

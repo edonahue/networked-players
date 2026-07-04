@@ -187,6 +187,60 @@ ADR with full detail, so this section stays a summary, not the only copy.
   the dump-size gate, while still correctly checking the repo root for `uv sync`'s own
   eMMC-resident `.venv` headroom.
 
+## Replicating datasets to worker caches (ADR 0025)
+
+The master/coordination host's `local/processed/` is always the authoritative
+copy. A worker's local cache is a disposable, verified replica — never
+treated as a source of truth, and safe to delete and re-fetch at any time.
+
+### Replicate to the x86 worker (full dataset, masters, or one-hop)
+
+```bash
+cd ~/networked-players
+make deploy-catalog-data                     # prints the LAN URL to use below
+
+make replicate-x86 DATASET=discogs         SNAPSHOT=20260601 CATALOG_DATA_URL=http://<lan-ip>:8791
+make replicate-x86 DATASET=discogs-masters SNAPSHOT=20260601 CATALOG_DATA_URL=http://<lan-ip>:8791
+make replicate-x86 DATASET=discogs-onehop  SNAPSHOT=20260601 CATALOG_DATA_URL=http://<lan-ip>:8791
+
+make deploy-catalog-data ARGS=--down
+```
+
+### Verify an existing cache without re-fetching
+
+```bash
+make replicate-x86 DATASET=discogs SNAPSHOT=20260601 ARGS='-e verify_only=true'
+```
+
+### rsync fallback (x86 only, for a slow HTTP pull)
+
+```bash
+./scripts/replicate-rsync.sh discogs 20260601 <x86-worker-ssh-target> <remote-cache-root>
+# then verify, per the reminder the script prints:
+make replicate-x86 DATASET=discogs SNAPSHOT=20260601 ARGS='-e verify_only=true --limit <x86-worker-alias>'
+```
+
+### Replicate the one-hop dataset to a Pi (opt-in, always bounded)
+
+Pi workers can only ever cache the one-hop dataset — `replicate-dataset-pi.yml`
+has no `dataset` variable at all, and always enforces a pre-download byte
+guard (2 GiB default) against the served manifest's total size. Trial against
+one Pi first:
+
+```bash
+make deploy-catalog-data
+make replicate-pi SNAPSHOT=20260601 CATALOG_DATA_URL=http://<lan-ip>:8791 ARGS='--limit <one-pi-alias>'
+make deploy-catalog-data ARGS=--down
+```
+
+### Staleness
+
+Datasets are immutable by convention, so a worker cache never goes stale
+*across* snapshots — a new snapshot is just a new directory. **Re-ingesting
+the same snapshot date does invalidate any cache built from it**; nothing
+detects this automatically, so re-run the replication above after any such
+re-ingest.
+
 ## Which host runs what
 
 - **Workstation / coordination host:** manifest, download, full parse, validation, canonical

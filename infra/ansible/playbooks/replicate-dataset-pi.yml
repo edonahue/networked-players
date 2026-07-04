@@ -1,0 +1,78 @@
+---
+# Fetches and verifies the one-hop dataset from the catalog-data HTTP layer
+# (ADR 0024) into a disposable, read-only, verified local cache on a Pi 3B
+# worker (ADR 0025). Opt-in: a Pi has no cache until an operator explicitly
+# runs this. The master/coordination host's local/processed/ stays
+# authoritative; this cache is a rebuildable replica.
+#
+# Structurally Pi-safe, not just documented-safe: unlike
+# replicate-dataset-x86.yml, `dataset` is NOT a variable here -- the path is
+# hardcoded to discogs-onehop, so there is no `-e dataset=discogs` a Pi run
+# could ever honor. A pre-download byte guard (pi_cache_max_bytes, default
+# 2GiB) is always passed to dataset_fetch.py, which refuses to download
+# anything before checking the served manifest's total size against it --
+# see dataset_fetch.fetch_dataset's max_total_bytes guard. Never run this
+# against x86_workers; it targets pi_workers only.
+#
+# Usage (from infra/ansible/, with a real local inventory -- always trial
+# against one Pi first with --limit):
+#   ansible-playbook -i inventories/local/hosts.yml playbooks/replicate-dataset-pi.yml \
+#     --limit worker-01.example.internal \
+#     -e snapshot=20260601 -e catalog_data_url=http://<coordination-lan-ip>:8791
+#   # re-verify an existing cache without re-fetching:
+#   ansible-playbook -i inventories/local/hosts.yml playbooks/replicate-dataset-pi.yml \
+#     --limit worker-01.example.internal -e snapshot=20260601 -e verify_only=true
+- name: Replicate the one-hop dataset to a Pi worker's bounded local cache
+  hosts: pi_workers
+  gather_facts: true
+  vars:
+    dataset_fetch_tools_dir: "{{ catalog_cache_root | default('') }}/.tools"
+    verify_only: false
+    pi_cache_max_bytes: 2147483648
+    pi_dataset_name: discogs-onehop
+  tasks:
+    - name: Require catalog_cache_root (set in group_vars, see inventories/example)
+      ansible.builtin.assert:
+        that:
+          - catalog_cache_root is defined
+        fail_msg: "Set catalog_cache_root in group_vars/pi_workers.yml (see inventories/example)."
+
+    - name: Require snapshot as YYYYMMDD
+      ansible.builtin.assert:
+        that:
+          - snapshot is defined
+          - snapshot is match('^[0-9]{8}$')
+        fail_msg: "Set -e snapshot=YYYYMMDD."
+
+    - name: Require catalog_data_url unless verify_only
+      ansible.builtin.assert:
+        that:
+          - catalog_data_url is defined
+        fail_msg: "Set -e catalog_data_url=http://<coordination-lan-ip>:8791."
+      when: not (verify_only | bool)
+
+    - name: Create the cache tools directory
+      ansible.builtin.file:
+        path: "{{ dataset_fetch_tools_dir }}"
+        state: directory
+        mode: "0755"
+
+    - name: Copy dataset_fetch.py from the catalog package (single source of truth)
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../../../packages/catalog/src/networked_players_catalog/discogs/dataset_fetch.py"
+        dest: "{{ dataset_fetch_tools_dir }}/dataset_fetch.py"
+        mode: "0644"
+
+    - name: Fetch and verify the one-hop dataset (bounded, never the full catalog)
+      ansible.builtin.command: >-
+        python3 {{ dataset_fetch_tools_dir }}/dataset_fetch.py
+        --dest {{ catalog_cache_root }}/{{ pi_dataset_name }}/snapshot={{ snapshot }}
+        {% if verify_only | bool %}--verify-only{% else %}--base-url {{ catalog_data_url }}/{{ pi_dataset_name }}/snapshot={{ snapshot }} --max-total-bytes {{ pi_cache_max_bytes }}{% endif %}
+      register: fetch_result
+      changed_when: true
+
+    - name: Report replication result
+      ansible.builtin.debug:
+        msg:
+          - "host: {{ inventory_hostname }}  dataset: {{ pi_dataset_name }}  snapshot: {{ snapshot }}"
+          - "{{ fetch_result.stdout }}"

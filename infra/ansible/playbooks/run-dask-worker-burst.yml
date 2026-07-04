@@ -184,7 +184,11 @@
           # --setenv, not the task-level environment: key, because systemd-run
           # does NOT inherit the invoking environment into the unit it
           # creates (the same confirmed-live gotcha run-rq-burst-worker.yml
-          # documents for PYTHONPATH). See ADR 0024.
+          # documents for PYTHONPATH). See ADR 0024. catalog_data_dir is the
+          # ADR 0025 counterpart, pointing at a validated local dataset cache
+          # (see replicate-dataset-x86.yml/replicate-dataset-pi.yml) --
+          # dataset_locator.resolve_dataset prefers it over CATALOG_DATA_URL
+          # when both are set and the local cache is actually verified.
           ansible.builtin.command: >-
             systemd-run --user
             --unit={{ dask_worker_unit_name }}
@@ -193,6 +197,7 @@
             --property="IOSchedulingClass=best-effort"
             --property="IOSchedulingPriority={{ dask_worker_io_priority }}"
             --property="MemoryMax={{ dask_worker_systemd_memory_max }}"
+            {% if catalog_data_dir is defined %}--setenv=CATALOG_DATA_DIR={{ catalog_data_dir }}{% endif %}
             {% if catalog_data_url is defined %}--setenv=CATALOG_DATA_URL={{ catalog_data_url }}{% endif %}
             {{ dask_worker_venv_dir }}/bin/dask worker
             tcp://{{ dask_scheduler_address }}:8786

@@ -17,3 +17,10 @@ dask_worker_nworkers: 1
 
 # playbooks/run-rq-burst-worker.yml.
 rq_worker_systemd_memory_max: "1536M"
+
+# playbooks/replicate-dataset-x86.yml (ADR 0025). Root directory for this
+# worker's disposable, read-only, verified dataset cache -- NOT the same as
+# the coordination host's authoritative local/processed/. Set a real
+# absolute path in your git-ignored local inventory; there is no default
+# because a wrong guess could silently cache into the wrong filesystem.
+catalog_cache_root: /CHANGE/ME/networked-players-cache

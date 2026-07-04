@@ -1,9 +1,21 @@
 ---
 # Example group variables for pi_workers (the Raspberry Pi 3B subset of
-# `workers` -- ADR 0022). Empty/defaults-only: every var this group would
-# set already matches the hardcoded Pi-sized defaults baked into
+# `workers` -- ADR 0022). Every RQ/Dask var this group would set already
+# matches the hardcoded Pi-sized defaults baked into
 # harden-workers.yml/equip-workers.yml/run-dask-worker-burst.yml/
-# run-rq-burst-worker.yml (ADR 0021/0023), so nothing needs overriding here
-# today. This file exists to document that the group -- and the split from
-# x86_workers -- exists, and as the place a future Pi-specific override
-# would go.
+# run-rq-burst-worker.yml (ADR 0021/0023), so nothing needs overriding there.
+
+# playbooks/replicate-dataset-pi.yml (ADR 0025). Root directory for this
+# Pi's disposable, read-only, verified ONE-HOP-ONLY dataset cache. Set a
+# real absolute path in your git-ignored local inventory. Unlike
+# x86_workers, this group is never given the full dataset -- the playbook
+# itself hardcodes the one-hop-only restriction, this var only says where
+# that bounded cache lives.
+catalog_cache_root: /CHANGE/ME/networked-players-cache
+
+# Optional: raise the always-on pre-download byte guard in
+# replicate-dataset-pi.yml above its 2GiB default, once a real one-hop
+# dataset size is measured (BUILD_PLAN Milestone 5) and the operator has
+# confirmed the Pi has real free disk headroom for it. Never raised
+# speculatively.
+# pi_cache_max_bytes: 2147483648
