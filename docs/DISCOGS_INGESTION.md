@@ -74,7 +74,7 @@ A documented credit proves participation on a release or track. It does not prov
 | --- | --- | --- |
 | Optional workstation-class build node | Full release parse, full-catalog transforms, Parquet compaction, benchmarks | Preferred full-ingest host when available; local NVMe; bounded process count |
 | SSD-backed coordination host | Manifest/download control, small slices, canonical artifact registry, DuckDB validation, publication | Keep free-space guardrails; no unbounded concurrent full parses |
-| Four Pi 3B workers | Checksummed partition validation, role summaries, challenge batches, graph tests | One worker process each; inputs normally below 128–256 MB; no raw full release dump |
+| Three active Pi 3B workers | Checksummed partition validation, role summaries, challenge batches (see `verify_challenge_job.py`), graph tests | One worker process each; inputs normally below 128–256 MB; no raw full release dump |
 | Static hosting | Versioned challenges and compact public data | No dependency on the home cluster |
 
 The first parser is intentionally single-process. Gzip/XML parsing is sequential and releases vary dramatically in size. Safe parallelism starts after normalization, when independent Parquet partitions can be distributed without repeatedly inflating the same raw object.

@@ -7,8 +7,8 @@ The hardware is part of the learning story, but the public repository only needs
 | Hardware | Intended role | Important constraint |
 | --- | --- | --- |
 | Compact x86 coordination host (currently a ZimaBoard 832) | Always-on coordination, state, storage, and orchestration | Modest compute; state and recovery need care |
-| Four Raspberry Pi 3B nodes | Bounded ARM64 workers | 1 GB RAM and 10/100 Ethernet per node |
-| Existing five-port cluster switch | Fan-out to the four workers | Worker links remain limited by Pi hardware |
+| Three active Raspberry Pi 3B nodes (a fourth, plus a Pi 3B+, are planned but not yet revived) | Bounded ARM64 workers | 1 GB RAM and 10/100 Ethernet per node |
+| Existing five-port cluster switch | Fan-out to the Pi workers | Worker links remain limited by Pi hardware |
 | Tenda SM105 five-port 2.5GbE switch | Connect the router, coordination host, and cluster uplink | Unmanaged; improves backbone and placement, not Pi link speed |
 | Dedicated x86_64 Swarm worker (a ZimaBoard 832) | Fixed compute in the orchestrated Swarm, alongside the Pi workers; participates in the same RQ/Dask fleet work at a higher-capability tier | Joined as a worker only, never promoted; RQ/Dask resource limits scaled to its real headroom, not Pi-sized; see ADR 0022 (amends ADR 0015) and ADR 0023 |
 

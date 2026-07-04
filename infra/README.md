@@ -4,10 +4,15 @@ Infrastructure should be reproducible without publishing the identity of the run
 
 This directory may contain safe Ansible roles, example inventories, generic Swarm stack definitions, health checks, and recovery principles. It must not contain real addresses, hostnames, tunnel configuration, credentials, backup destinations, or production inventories.
 
-Current planned roles:
+Current roles:
 
-- one x86 coordination and state host;
-- four Raspberry Pi 3B ARM64 workers;
+- one x86 master/coordination host (Swarm manager, orchestration, authoritative
+  dataset storage) — never a worker;
+- one dedicated x86_64 Swarm worker (`x86_workers`, ADR 0022/0023) — worker-only,
+  never promoted to manager;
+- three active Raspberry Pi 3B ARM64 workers (`pi_workers`) — bounded, 1 GB RAM
+  each; a fourth Pi and a Pi 3B+ are planned but not yet active (both would join
+  `pi_workers` when revived);
 - one optional workstation-class build and analysis node;
 - a wired local network with a multi-gigabit backbone and a separate worker fan-out switch.
 

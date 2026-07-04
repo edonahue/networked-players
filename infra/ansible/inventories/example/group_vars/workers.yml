@@ -1,5 +1,10 @@
 ---
-# Example group variables for the workers group (the four Raspberry Pi 3B nodes).
+# Example group variables for the flat `workers` group -- the three active
+# Raspberry Pi 3B nodes plus the x86_64 Swarm worker (ADR 0022; a fourth Pi
+# and a Pi 3B+ are planned but not yet active). Vars here are inherited by
+# all of them, but in practice only Pi-specific playbooks (e.g.
+# equip-workers.yml, scoped to `pi_workers`) actually consume the
+# Pi-specific ones below (baseline_packages).
 # Copy inventories/example/ to a git-ignored inventories/local/ and adjust if needed.
 
 # Deliberately NOT overriding min_free_gb or disk_floor_mount here -- the inherited

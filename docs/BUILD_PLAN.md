@@ -739,17 +739,20 @@ Milestone 6.
 
 ## Milestone 8: Generate and swap in the real challenge (ROADMAP 5)
 
-> **Note:** `apps/web`'s demo already runs on real, curated Discogs data as of
-> [ADR 0012](decisions/0012-real-discogs-api-demo-challenge.md) — an API-sourced
-> detour taken ahead of this milestone, not a substitute for it. This milestone's
-> tasks below still apply to the *dump-derived* artifact; when it lands, decide
-> explicitly (per ADR 0012's revisit trigger) whether to replace, keep both
-> alongside, or retire the API-sourced one.
+> **Note:** `apps/web`'s `/demo/` page already runs on real, curated Discogs data as
+> of [ADR 0012](decisions/0012-real-discogs-api-demo-challenge.md) — an API-sourced
+> detour taken ahead of this milestone. The album-centered web experience (landing
+> page + `/play/<album>/`, challenge.v2.json) has since landed as real, working code
+> — this milestone's remaining task is generating *real* data for it, not building
+> the experience itself. The original framing ("swap `challenge.v1.json`'s content
+> in place") is superseded: v2 is a separate artifact and route structure, not an
+> in-place edit of v1. `/demo/` remains, relabeled "Legacy demo" in the nav, pending
+> an explicit decision to retire it.
 
 ### Goal
-Produce one real, privacy-safe, evidence-backed challenge from the actual one-hop
-graph and replace the synthetic demo artifact in `apps/web` — the functional core
-of the MVP.
+Produce one real, privacy-safe, evidence-backed album-centered challenge from the
+actual one-hop graph, and swap it in for the current synthetic placeholder at
+`apps/web/public/data/challenge.v2.json` — the functional core of the MVP.
 
 ### Depends on
 Milestones 6 and 7.
@@ -762,20 +765,22 @@ Milestones 6 and 7.
       medium-term proxy-ranking mechanism
       (`networked_players_graph_core.analysis.rank_album_candidates`,
       `rank-album-candidates` CLI). Includes a committed leak/contract test
-      suite (`test_challenge_leaks.py`, `validate_challenge`'s scan). **Running
-      it against the real one-hop dataset is the still-open part of this task**
-      (live gate F) — this checkbox covers the tool, not yet a generated real
-      artifact.
+      suite (`test_challenge_leaks.py`, `validate_challenge`'s scan).
+- [x] Build the album-centered web experience against a synthetic-but-valid
+      placeholder artifact: landing-page album grid, `/play/<album>/` pages with
+      find-the-connection/reveal-the-path modes, `AlbumCard`/`EvidenceCard`
+      [`apps/web`]. **Running the generator against the real one-hop dataset and
+      swapping in the result is the still-open part of Milestone 8** (live gate F).
 - [ ] Generate one real challenge artifact from the manually verified path
       (Milestone 6) using the contracts from Milestone 7 [`packages/graph-core`,
       `data/`]
 - [ ] Confirm the generated artifact contains no collection-membership signal
       beyond derived public catalog facts, per
       `docs/PUBLIC_PRIVATE_BOUNDARY.md`'s pre-publish checklist
-- [ ] Replace `apps/web/public/data/challenge.v1.json`'s synthetic content with
+- [ ] Replace `apps/web/public/data/challenge.v2.json`'s synthetic placeholder with
       the real generated artifact, keeping the schema unchanged [`apps/web`]
-- [ ] Confirm the demo page renders correctly against the real artifact with no
-      code changes required [`apps/web`]
+- [ ] Confirm the landing page and `/play/<album>/` pages render correctly against
+      the real artifact with no code changes required [`apps/web`]
 - [ ] Update `apps/web/README.md`'s "Next steps" section to reflect the swap
 
 ## Milestone 9: First deploy to networked-players.com (ROADMAP 5)
