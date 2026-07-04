@@ -1,0 +1,97 @@
+# Dask scheduler + worker(s) on the coordination host, as a standing Docker
+# Swarm stack. Scheduler<->worker traffic is cluster-internal, comparable to
+# the existing Portainer Agent global service -- not an admin UI needing a
+# loopback restriction the way Jupyter (docker-compose.jupyter.yml) does.
+# See docs/decisions/0020-dask-jupyter-interactive-cluster-compute.md.
+#
+# IMPORTANT: Swarm stacks ignore any `build:` key. The image referenced below
+# must already exist locally on every node this could be scheduled to (no
+# shared registry in this repo) -- deploy-dask.sh builds it before deploying.
+#
+# Both services are placement-constrained to the manager (the coordination
+# host) only. Pi 3B workers are explicitly excluded -- no real memory-headroom
+# data exists for them yet (see infra/ansible/playbooks/health.yml's memory
+# report and local/benchmarks/pi-memory-headroom.md), and stacking a Dask
+# worker on top of Docker+Swarm+Portainer Agent+RQ+DuckDB on a 1GB Pi is a
+# real OOM risk. The optional build node is NOT a Swarm member (ADR 0015) and
+# so cannot run a Swarm-scheduled service at all -- it joins as a plain
+# `docker compose` worker instead, see docker-compose.dask-worker-remote.yml.
+#
+# Resource limits below are starting values, not measured facts -- confirm
+# with `docker stats` after a real run against the coordination host's real
+# ~5.9GB RAM / 4 CPUs (infra/ansible/playbooks/harden.yml's own comment;
+# docs/HARDWARE.md's public CPU-count figure) and adjust.
+#
+# CAUTION: Dask's scheduler<->worker wire protocol has no built-in
+# authentication. Publishing 8786 makes this trusted-LAN-only, not defended
+# against a malicious LAN peer -- acceptable for a home lab, not for anything
+# beyond it. See the ADR's revisit trigger for TLS if that boundary ever
+# needs to be stronger. (No top-level `name:` here -- unlike a plain compose
+# file, `docker stack deploy` takes the stack name as a CLI argument, e.g.
+# `docker stack deploy -c docker-stack.dask.yml dask`; a `name:` key here
+# would be silently ignored, not a stack-naming mechanism.)
+#
+# Explicit `dask-net` network, attachable: true, on BOTH services below.
+# Real bug this fixes: with no explicit network, Swarm auto-creates its own
+# default network named "<stack-name>_default" -- which collided with
+# docker-compose.jupyter.yml's own implicit default network (same name,
+# "dask_default", since both the stack name and the plain-compose project
+# name default to "dask"), confirmed live ("failed to create network
+# dask_default: ... already exists"). Naming the network explicitly here
+# means Swarm never creates that implicit default at all, so there's nothing
+# left to collide with. `attachable: true` additionally lets deploy-dask.sh
+# join the (non-Swarm) Jupyter container onto this same overlay network
+# after both are up, so `tcp://dask-scheduler:8786` actually resolves from
+# inside Jupyter -- the same pattern infra/swarm/deploy-portainer-agent.sh
+# already uses to let the plain Portainer container reach the Agent service.
+
+services:
+  dask-scheduler:
+    image: ${DASK_IMAGE:-networked-players-dask:local}
+    command: dask scheduler --host 0.0.0.0 --port 8786 --dashboard-address :8787
+    networks:
+      - dask-net
+    ports:
+      - target: 8786
+        published: 8786
+        mode: host
+      - target: 8787
+        published: 8787
+        mode: host
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          memory: 256M
+
+  dask-worker:
+    image: ${DASK_IMAGE:-networked-players-dask:local}
+    # 512MiB was a starting value, untested against real data (see the
+    # module comment above). Real testing against the full completed ingest
+    # (notebooks/02-explore-real-discogs-catalog.ipynb) OOM-killed a worker
+    # doing a releases<->credits join at 512MiB, even after fixing the real
+    # partition-collapse bug that made it worse than necessary (see that
+    # notebook's own comment) -- 1536MiB leaves real margin for a genuine
+    # distributed join over this scale of data while still leaving comfortable
+    # headroom for 2 replicas plus the scheduler on this host's real ~7.6GB.
+    command: dask worker tcp://dask-scheduler:8786 --nthreads 2 --nworkers 1 --memory-limit 1536MiB
+    networks:
+      - dask-net
+    volumes:
+      - ${DISCOGS_PROCESSED_DIR:?set in local/dask.env}:/data/discogs:ro
+    deploy:
+      replicas: 2
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          memory: 1536M
+
+networks:
+  dask-net:
+    driver: overlay
+    attachable: true

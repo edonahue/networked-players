@@ -1,0 +1,30 @@
+# Jupyter stays a plain `docker compose` container on the coordination host
+# (Postgres/Redis/Portainer UI use the same non-Swarm mechanism; only
+# Portainer *Agent*, cluster-internal traffic with no admin surface, is a
+# Swarm service). This IS a sensitive surface (arbitrary code execution via
+# notebooks); the default here was loopback-only + SSH tunnel until the
+# operator explicitly opted into LAN reachability (JUPYTER_BIND_IP,
+# auto-detected by deploy-dask.sh, same mechanism deploy-jobs-broker.sh
+# already uses) -- see docs/decisions/0020-dask-jupyter-interactive-cluster-compute.md's
+# amendment. JUPYTER_TOKEN stays mandatory either way, but note the token
+# now travels over plain HTTP on the LAN, not just SSH's encrypted tunnel --
+# accepted for a home LAN, not a substitute for a real secret if this host
+# is ever reachable beyond it.
+services:
+  jupyter:
+    image: ${DASK_IMAGE:-networked-players-dask:local}
+    command: >-
+      jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root
+      --ServerApp.token=${JUPYTER_TOKEN:?set in local/dask.env}
+      --ServerApp.notebook_dir=/home/notebooks
+    ports:
+      - "${JUPYTER_BIND_IP:-127.0.0.1}:8888:8888"
+    environment:
+      # Optional -- lets notebooks/02-explore-real-discogs-catalog.ipynb pick
+      # up a default snapshot date without editing the notebook. Set it in
+      # local/dask.env; safe to leave unset (the notebook fails with a clear
+      # message telling you to set it).
+      SNAPSHOT: "${SNAPSHOT:-}"
+    volumes:
+      - ./notebooks:/home/notebooks
+      - ${DISCOGS_PROCESSED_DIR:?set in local/dask.env}:/data/discogs:ro

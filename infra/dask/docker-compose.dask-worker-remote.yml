@@ -1,0 +1,29 @@
+# Run this directly on the optional build node (NOT a Swarm member -- ADR
+# 0015 -- so it can't join docker-stack.dask.yml) once that host is
+# reachable, to add a second real Dask worker alongside the coordination
+# host's. Points at the coordination host's LAN address via
+# DASK_SCHEDULER_ADDRESS.
+#
+# Build the shared image first (same Dockerfile, no shared registry between
+# hosts -- each node that runs this builds its own copy):
+#   cd infra/dask && docker build -t networked-players-dask:local .
+#   DASK_SCHEDULER_ADDRESS=<coordination-host-lan-ip> docker compose \
+#     -f docker-compose.dask-worker-remote.yml up -d
+#
+# Known limitation: this worker only has filesystem access to a real Discogs
+# Parquet dataset if one separately exists on THIS host at
+# DISCOGS_PROCESSED_DIR -- the coordination host's local/processed/discogs is
+# not shared storage between hosts. A distributed read (notebook 02) that
+# gets scheduled onto this worker for a partition it can't see will fail.
+# Solving cross-host shared storage is explicitly out of scope for this pass.
+services:
+  dask-worker:
+    image: ${DASK_IMAGE:-networked-players-dask:local}
+    command: >-
+      dask worker tcp://${DASK_SCHEDULER_ADDRESS:?set this or export it}:8786
+      --nthreads 2 --nworkers 1 --memory-limit 512MiB
+    mem_limit: 512m
+    cpus: 1.0
+    restart: unless-stopped
+    volumes:
+      - ${DISCOGS_PROCESSED_DIR:-./no-processed-data-on-this-host}:/data/discogs:ro

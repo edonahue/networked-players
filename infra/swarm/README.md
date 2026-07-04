@@ -149,17 +149,30 @@ populated hardware right now.
 
 This host follows the **same runbook steps 1-4 and 7-9** as a Pi worker —
 it's a flat member of the `workers` group, so `health.yml`, `benchmark.yml`,
-`onboard.yml`, and `swarm-join.yml` all reach it unchanged. It deliberately
-**skips steps 5-6**: `harden-workers.yml`/`equip-workers.yml` are now scoped
-to `hosts: pi_workers` specifically (not `workers`), since both encode real
-Pi-specific facts (a Pi's hardware watchdog device, SD-card write-endurance
-log-rotation reasoning, and — critically — a live `apt` install task that
-must never run against this host's fragile package state) that don't hold
-here. **No equivalent hardening/tooling playbook exists yet for
-`x86_workers`** — a full x86_64 ZimaBoard could reasonably run the *full*
-`packages/catalog` stack (`uv sync --extra dev`) directly rather than a lean
-cross-compiled venv, but that's a real, separate, not-yet-built task, not
+`onboard.yml`, and `swarm-join.yml` all reach it unchanged. It **skips step
+5** (hardening): `harden-workers.yml` stays scoped to `hosts: pi_workers`
+specifically, since it encodes real Pi-specific facts (a Pi's hardware
+watchdog device, SD-card write-endurance log-rotation reasoning) that don't
+hold here.
+
+**Step 6 (equip) uses a different playbook, `equip-x86-workers.yml`, not
+`equip-workers.yml`** (ADR 0023) — same lean venv shape (`uv`, DuckDB CLI, a
+`redis`/`rq`/`duckdb` venv) but **no `apt` task at all**, since this host's
+package state is fragile and every tool here has a safe user-local
+install: `make equip-x86-workers ARGS="--limit x86-worker-01 --ask-become-pass"`.
+This closes the gap this section used to describe as "no equivalent
+playbook exists yet." A full x86_64 ZimaBoard could still reasonably run the
+*full* `packages/catalog` stack (`uv sync --extra dev`) directly rather than
+this lean venv — that remains a real, separate, not-yet-built task, not
 something to assume is covered.
+
+Once equipped, this host participates in the same RQ/Dask fleet work the
+Pi's do — `scripts/cluster_benchmark_distributed.py`, `run-rq-burst-worker.yml`,
+and the on-demand `run-dask-worker-burst.yml` all reach it via the flat
+`workers` group, no separate targeting needed. Its resource limits are
+scaled up for real higher capability via `group_vars/x86_workers.yml`
+(ADR 0023), not held to the Pi's 1GB-sized ceilings — see
+`infra/ansible/README.md`'s equivalent section for the exact vars.
 
 `optional_build_nodes` stays defined in the example inventory and in
 `onboard.yml`'s second play (verifies Docker is present, installs nothing)

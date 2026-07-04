@@ -78,3 +78,6 @@ infra/ansible/host_vars/
 infra/ansible/group_vars/
 **/vault.yml
 **/vault.yaml
+
+# Jupyter autosave artifacts (infra/dask/notebooks)
+.ipynb_checkpoints/

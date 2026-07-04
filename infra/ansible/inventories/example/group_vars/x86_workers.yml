@@ -1,0 +1,19 @@
+---
+# Example group variables for x86_workers (a dedicated x86_64 Swarm worker,
+# e.g. a ZimaBoard 832 -- ADR 0022). Overrides the Pi-sized RQ/Dask
+# resource-limit defaults (ADR 0021) with values sized for real, much
+# higher headroom on this hardware class (ADR 0023) -- adjust to your own
+# host's real measured headroom (playbooks/health.yml's memory report)
+# rather than copying these numbers blindly.
+
+# playbooks/run-dask-worker-burst.yml. dask_worker_nice/
+# dask_worker_io_priority are deliberately NOT overridden here -- Dask
+# always yields to RQ regardless of hardware, a fleet-wide contention
+# policy, not a capability question.
+dask_worker_memory_limit: "4GiB"
+dask_worker_systemd_memory_max: "5G"
+dask_worker_nthreads: 4
+dask_worker_nworkers: 1
+
+# playbooks/run-rq-burst-worker.yml.
+rq_worker_systemd_memory_max: "1536M"

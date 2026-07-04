@@ -1,0 +1,9 @@
+---
+# Example group variables for pi_workers (the Raspberry Pi 3B subset of
+# `workers` -- ADR 0022). Empty/defaults-only: every var this group would
+# set already matches the hardcoded Pi-sized defaults baked into
+# harden-workers.yml/equip-workers.yml/run-dask-worker-burst.yml/
+# run-rq-burst-worker.yml (ADR 0021/0023), so nothing needs overriding here
+# today. This file exists to document that the group -- and the split from
+# x86_workers -- exists, and as the place a future Pi-specific override
+# would go.
