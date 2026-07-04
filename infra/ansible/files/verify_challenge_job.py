@@ -70,7 +70,15 @@ def verify_shard(artifact_path: str, path_ids: list[str]) -> dict[str, Any]:
     connection.execute("SET threads = 1")
     credits_glob = str(dataset_root / "table=credits" / "*.parquet")
     try:
-        connection.execute(f"CREATE VIEW credits AS SELECT * FROM read_parquet('{credits_glob}')")
+        # hive_partitioning=false: without it, DuckDB auto-detects this
+        # dataset's own `snapshot=X/table=Y/` directory names as partition
+        # columns and silently injects `snapshot`/`table` into every row --
+        # see networked_players_graph_core.graph.read_parquet_sql, which
+        # this self-contained mirror can't import.
+        connection.execute(
+            "CREATE VIEW credits AS SELECT * FROM "
+            f"read_parquet('{credits_glob}', hive_partitioning = false)"
+        )
     except duckdb.IOException as exc:
         raise VerifyDatasetError(f"could not open dataset at {dataset_root}: {exc}") from exc
 

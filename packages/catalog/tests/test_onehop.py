@@ -95,6 +95,32 @@ def test_frontier_retention_and_evidence(tmp_path: Path) -> None:
     assert "release_ids" not in json.dumps(manifest)
 
 
+def test_output_columns_are_not_contaminated_by_hive_partition_inference(
+    tmp_path: Path,
+) -> None:
+    """Regression test: the staging path is literally .../snapshot=X/table=Y/,
+    which DuckDB's read_parquet() auto-detects as Hive partition columns
+    unless hive_partitioning=false is passed -- confirmed to silently inject
+    spurious `snapshot`/`table` columns into any `SELECT *`/`r.*` result
+    (and therefore into the written output, since expand_one_hop's COPY
+    statements select r.*/t.*/c.*). This asserts the real on-disk schema
+    (via pq.ParquetFile, which reads the file's own embedded schema with no
+    glob/hive inference of its own) contains exactly the expected columns.
+    """
+    import pyarrow.parquet as pq
+
+    dataset = _write_source_dataset(tmp_path)
+    seed_path = _write_seed(tmp_path, [101])
+    expand_one_hop(seed_path, dataset, tmp_path / "onehop")
+    output = tmp_path / "onehop" / f"snapshot={SNAPSHOT}"
+
+    for table in ("releases", "tracks", "credits"):
+        part = next((output / f"table={table}").glob("*.parquet"))
+        columns = set(pq.ParquetFile(part).schema.names)
+        assert "table" not in columns
+        assert "snapshot" not in columns
+
+
 def test_expansion_is_deterministic(tmp_path: Path) -> None:
     dataset = _write_source_dataset(tmp_path)
     seed_path = _write_seed(tmp_path, [101])

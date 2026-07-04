@@ -13,6 +13,8 @@ from typing import Any
 
 import duckdb
 
+from .graph import read_parquet_sql
+
 
 def rank_album_candidates(
     dataset_root: Path,
@@ -28,8 +30,8 @@ def rank_album_candidates(
     connection = duckdb.connect(database=":memory:")
     connection.execute(f"SET memory_limit = '{memory_limit}'")
     connection.execute(f"SET threads = {int(threads)}")
-    connection.execute(f"CREATE VIEW releases AS SELECT * FROM read_parquet('{releases_glob}')")
-    connection.execute(f"CREATE VIEW credits AS SELECT * FROM read_parquet('{credits_glob}')")
+    connection.execute(f"CREATE VIEW releases AS SELECT * FROM {read_parquet_sql(releases_glob)}")
+    connection.execute(f"CREATE VIEW credits AS SELECT * FROM {read_parquet_sql(credits_glob)}")
 
     rows = connection.execute(
         """

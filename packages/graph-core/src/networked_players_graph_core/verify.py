@@ -18,6 +18,8 @@ from typing import Any
 
 import duckdb
 
+from .graph import read_parquet_sql
+
 _EVIDENCE_MATCH_COLUMNS = ("release_id", "artist_id", "credit_scope", "role_text", "name")
 
 
@@ -49,7 +51,7 @@ def verify_challenge_evidence(
     connection.execute(f"SET threads = {int(threads)}")
     credits_glob = str(dataset_root / "table=credits" / "*.parquet")
     try:
-        connection.execute(f"CREATE VIEW credits AS SELECT * FROM read_parquet('{credits_glob}')")
+        connection.execute(f"CREATE VIEW credits AS SELECT * FROM {read_parquet_sql(credits_glob)}")
     except duckdb.IOException as exc:
         raise VerifyDatasetError(f"could not open dataset at {dataset_root}: {exc}") from exc
 

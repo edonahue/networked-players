@@ -117,3 +117,16 @@ def test_find_release_by_title_artist_matches_case_insensitively(dataset_root: P
 def test_master_returns_none_when_not_attached(dataset_root: Path) -> None:
     with CreditGraph.open(dataset_root) as graph:
         assert graph.master(901) is None
+
+
+def test_release_has_no_hive_partition_artifacts(dataset_root: Path) -> None:
+    """Regression test: the releases view is built via `SELECT * FROM
+    read_parquet('.../table=releases/*.parquet')`. Without
+    hive_partitioning=false, DuckDB auto-detects `table=`/`snapshot=` path
+    segments as Hive partition columns and silently injects `table`/
+    `snapshot` into every row returned by release()'s own `SELECT *`."""
+    with CreditGraph.open(dataset_root) as graph:
+        release = graph.release(1)
+    assert release is not None
+    assert "table" not in release
+    assert "snapshot" not in release
