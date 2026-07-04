@@ -37,8 +37,24 @@ def _parser() -> argparse.ArgumentParser:
     parse.add_argument("--chunk-releases", type=int, default=5_000)
     parse.add_argument("--overwrite", action="store_true")
 
+    parse_masters = subparsers.add_parser(
+        "parse-masters", help="stream a masters dump into Parquet"
+    )
+    parse_masters.add_argument("--input", type=Path, required=True)
+    parse_masters.add_argument("--snapshot", required=True)
+    parse_masters.add_argument("--source-url", required=True)
+    parse_masters.add_argument("--output-root", type=Path, required=True)
+    parse_masters.add_argument("--max-masters", type=int)
+    parse_masters.add_argument("--chunk-masters", type=int, default=10_000)
+    parse_masters.add_argument("--overwrite", action="store_true")
+
     validate = subparsers.add_parser("validate", help="validate a normalized snapshot with DuckDB")
     validate.add_argument("--dataset", type=Path, required=True)
+
+    validate_masters = subparsers.add_parser(
+        "validate-masters", help="validate a parsed masters dataset with DuckDB"
+    )
+    validate_masters.add_argument("--dataset", type=Path, required=True)
 
     import_seed = subparsers.add_parser(
         "import-seed", help="reduce a local Discogs collection export to a release-ID seed"
@@ -134,10 +150,37 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(json.dumps(dataset_manifest, indent=2, sort_keys=True))
         return 0
 
+    if args.command == "parse-masters":
+        from .discogs.masters import iter_masters
+        from .discogs.parquet import write_master_dataset
+
+        master_records = iter_masters(
+            args.input,
+            snapshot_date=args.snapshot,
+            source_url=args.source_url,
+            max_masters=args.max_masters,
+        )
+        masters_manifest = write_master_dataset(
+            master_records,
+            args.output_root,
+            snapshot_date=args.snapshot,
+            source_url=args.source_url,
+            chunk_masters=args.chunk_masters,
+            overwrite=args.overwrite,
+        )
+        print(json.dumps(masters_manifest, indent=2, sort_keys=True))
+        return 0
+
     if args.command == "validate":
         from .discogs.validation import validate_dataset
 
         print(json.dumps(validate_dataset(args.dataset), indent=2, sort_keys=True))
+        return 0
+
+    if args.command == "validate-masters":
+        from .discogs.validation import validate_master_dataset
+
+        print(json.dumps(validate_master_dataset(args.dataset), indent=2, sort_keys=True))
         return 0
 
     if args.command == "import-seed":

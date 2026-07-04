@@ -45,6 +45,19 @@ uv run networked-players-catalog validate \
 uv run networked-players-catalog expand-one-hop \
   --dataset local/processed/discogs/snapshot=20260501 \
   --output-root local/processed/discogs-onehop
+
+# Masters (album identity -- see data/contracts/discogs-master-v1.md)
+uv run networked-players-catalog download \
+  --manifest local/manifests/discogs-20260501.json \
+  --kind masters \
+  --raw-dir local/raw/discogs
+uv run networked-players-catalog parse-masters \
+  --input local/raw/discogs/20260501/discogs_20260501_masters.xml.gz \
+  --snapshot 20260501 \
+  --source-url "https://data.discogs.com/?download=data%2F2026%2Fdiscogs_20260501_masters.xml.gz" \
+  --output-root local/processed/discogs-masters
+uv run networked-players-catalog validate-masters \
+  --dataset local/processed/discogs-masters/snapshot=20260501
 ```
 
 The default object URL follows the public monthly naming convention. Discogs or its storage provider may reject listing or direct access from some networks; a manifest can be edited to use an explicitly obtained official URL without changing the parser.

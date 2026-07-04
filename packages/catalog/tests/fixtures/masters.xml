@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<masters>
+  <master id="501">
+    <main_release>101</main_release>
+    <artists>
+      <artist><id>11</id><name>Alpha Group</name><anv>Alpha</anv><join>&amp;</join></artist>
+      <artist><id>12</id><name>Beta Singer</name></artist>
+      <artist><name>Unlinked Collective</name></artist>
+    </artists>
+    <genres><genre>Rock</genre><genre>Funk / Soul</genre></genres>
+    <styles><style>Psychedelic Rock</style></styles>
+    <year>2001</year>
+    <title>Connected Album</title>
+    <data_quality>Correct</data_quality>
+    <videos><video src="https://example.test/v1" duration="100" embed="true"><title>Clip</title></video></videos>
+  </master>
+  <master id="502">
+    <main_release>102</main_release>
+    <artists><artist><id>40</id><name>Gamma</name></artist></artists>
+    <year>0</year>
+    <title>Sparse Album</title>
+    <data_quality>Needs Vote</data_quality>
+  </master>
+</masters>
