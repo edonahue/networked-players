@@ -33,7 +33,10 @@ credits parsed, `validate` reporting zero invariant violations — see
 hosting behind a Cloudflare proxy (`data.discogs.com`) with a different URL scheme
 than the old direct-S3 path; `manifest.py` was updated accordingly. The operator's
 real private seed was imported ([ADR 0011](decisions/0011-private-seed-contract.md));
-no one-hop expansion and no artist graph exist yet (Milestone 5 is next). Later
+no one-hop expansion and no artist graph exist yet (Milestone 5 is next). **Update,
+2026-07-04: this is superseded** — one-hop expansion and graph-core are now both
+implemented (Milestone 5, `expand-one-hop`; see the status table below); only the
+real run against a full dump remains (live gate B). Later
 the same day, real `cProfile` output on the parser (not the initially assumed
 "decompression or Parquet writing" cause) found the actual bottleneck was
 `releases.py` re-scanning each element's children once per field via repeated
@@ -243,7 +246,7 @@ fourth original Pi, plus a separate Pi 3B+, are planned but not yet revived
 | GitHub CLI (`gh`, host) | Installed (`scripts/install-gh-cli.sh`) |
 | `apps/web` CI | Added (`.github/workflows/web.yml`): format/check/build/Playwright smoke |
 | Health playbook | Passing (confirmed 2026-07-01: 869.2 GB free on `/mnt/data`) |
-| Raspberry Pi workers | **3 of 4 joined and smoke-tested, 2026-07-02** (ADR 0015, ADR 0017); fourth remains unreachable |
+| Raspberry Pi workers | **3 of 4 joined and smoke-tested, 2026-07-02** (ADR 0015, ADR 0017); fourth remains unreachable; a separate Pi 3B+ is also planned but not yet active |
 | Second ZimaBoard 832 (the "x86 worker," `x86_workers`) | Joined as a real, dedicated x86_64 Swarm worker (ADR 0022/0023); worker-only, never promoted; participates in RQ/Dask fleet work at a higher-capability tier than the Pi's |
 | `networked-players.com` | Registered, not live |
 
@@ -317,7 +320,10 @@ Onboarding tooling now exists (`infra/ansible/playbooks/onboard.yml`, see
 [ADR 0015](decisions/0015-fleet-onboarding.md)) to install Docker on each Pi and
 print the real join command, but the tasks below stay unchecked — the tooling
 hasn't been run against physical hardware yet, and this repo doesn't claim a task
-done until there's evidence for it.
+done until there's evidence for it. **Update, 2026-07-04:** since run for real
+against all three reachable Pi workers and, later, the second ZimaBoard (x86
+worker) — see "Fleet bring-up" below, [ADR 0022](decisions/0022-second-zimaboard-joins-as-x86-swarm-worker.md),
+and the status table.
 
 ### Tasks
 - [x] Initialize a single-manager Swarm on the coordination host — done, see
@@ -488,7 +494,9 @@ Real, live-verified follow-up the same night, ahead of wiring up the fourth Pi:
       `optional_build_nodes` without installing or joining anything) and
       [ADR 0015](decisions/0015-fleet-onboarding.md) — the tooling exists and
       passed `--syntax-check`, but has not been run against any physical Pi or the
-      second ZimaBoard yet [`infra/ansible`]
+      second ZimaBoard yet [`infra/ansible`]. **Update, 2026-07-04:** since run for
+      real against all three reachable Pi workers (ADR 0015/0017) and the second
+      ZimaBoard, which joined as the x86 worker (ADR 0022/0023)
 
 ## Milestone 3: Real ingestion dry run (ROADMAP 3)
 

@@ -187,6 +187,149 @@ ADR with full detail, so this section stays a summary, not the only copy.
   the dump-size gate, while still correctly checking the repo root for `uv sync`'s own
   eMMC-resident `.venv` headroom.
 
+## Real one-hop expansion (Gate B)
+
+**Host: master/coordination only.** Do not run any of this on the x86 worker or a Pi —
+those only ever receive a *replicated* one-hop dataset (see "Replicating datasets to
+worker caches" below), never produce one themselves.
+
+### Preconditions
+
+- Clean tree, latest `main` pulled.
+- `make check` green — your call whether to run it first; not required to proceed.
+- A completed parsed dataset exists at `local/processed/discogs/snapshot=<SNAPSHOT>`
+  (from a prior full ingest — see "End-to-end run" above) and its own `validate` already
+  passed.
+- The private seed file exists at `data/private/discogs-seed.json` (produced by
+  `import-seed`; never committed — `data/private/` is git-ignored).
+- Free space checked (see "Free space and sizing" above).
+- No conflicting job currently running against `local/` (no ingest, no `catalog-data`
+  server, no backup/restore).
+
+### 1. Preflight (read-only, safe to run any time)
+
+```bash
+cd ~/networked-players
+git status
+git pull
+make check   # optional -- skip if you've already confirmed it's green
+ls -d local/processed/discogs/snapshot=*      # confirm the parsed dataset exists
+ls data/private/discogs-seed.json             # confirm the seed file exists
+df -h local
+```
+
+Stop if the tree isn't clean, `make check` fails (if you chose to run it), the snapshot
+directory or seed file is missing, or free space looks thin against `docs/DATA_SIZING.md`.
+
+### 2. Run the real expansion
+
+```bash
+SNAPSHOT=20260601 make expand-onehop ARGS='--max-retained-releases 500000'
+```
+
+Substitute your real completed snapshot date. `--max-retained-releases` is a built-in
+abort guard — if the expansion would retain more releases than this, it aborts and
+writes nothing rather than silently producing an oversized dataset; pick a number
+comfortably above what you expect, and tighten it once you've seen a real count. Add
+`--overwrite` only if `local/processed/discogs-onehop/snapshot=<date>` already exists and
+you mean to replace it.
+
+Expected: a manifest-shaped JSON printed to stdout, ending in an `expansion` object with
+non-zero `frontier_artist_count` and `retained_release_count`. That object also includes
+`seed_release_count` and `seed_sha256` — expected fields, not a leak (see "What must
+never be committed" below).
+
+### 3. Validate it
+
+```bash
+uv run networked-players-catalog validate --dataset local/processed/discogs-onehop/snapshot=20260601
+```
+
+Expected: JSON with zero `orphan_*` / `invalid_linked_artist_ids` counts, same shape as
+validating the raw parse.
+
+### 4. Inspect size and manifest (local-only, read-only)
+
+```bash
+du -h -d 2 local/processed/discogs-onehop/snapshot=20260601
+find local/processed/discogs-onehop/snapshot=20260601 -name '*.parquet' -printf '%s %p\n' | sort -n
+python3 -m json.tool < local/processed/discogs-onehop/snapshot=20260601/manifest.json | head -40
+```
+
+### 5. Capture notes (local-only; never commit)
+
+```bash
+mkdir -p local/notes
+{
+  echo "date: $(date -Is)"
+  echo "snapshot: 20260601"
+  echo "wall clock: <fill in>"
+} >> local/notes/gate-b-onehop-runs.md
+```
+
+### Stop conditions
+
+- `data/private/discogs-seed.json` is missing — re-run `import-seed` first; don't
+  fabricate one.
+- The source `snapshot=<date>` dataset is missing, or its own `validate` previously
+  failed.
+- `df -h local` shows low headroom against `docs/DATA_SIZING.md`.
+- `expand-one-hop` aborts on `--max-retained-releases` — this is a safety stop, not a
+  bug; investigate why the retained count is so high before raising the bound.
+- `validate` on the one-hop output reports any `orphan_*` or `invalid_linked_artist_ids`
+  count above zero.
+- The one-hop output size is wildly larger than expected relative to the source parse.
+- Any command prints a real IP, hostname, or path you don't recognize — stop and check
+  `--dataset`/`--output-root` before continuing.
+- The host is under memory/CPU/thermal stress (`make cluster-health` or the benchmark
+  tooling) — lower `--memory-limit`/`--threads`, or stop.
+
+### Safe-to-stop checkpoints
+
+- Before step 2 — nothing has changed yet.
+- After step 2, before step 3 — the one-hop dataset exists on disk but is unvalidated;
+  safe to leave indefinitely, just don't treat it as trustworthy yet.
+- After step 3 validates clean — **this is Gate B, done.** Safe to stop here
+  indefinitely; nothing later is time-sensitive.
+- Before any replication (below) or real challenge-artifact generation — both are
+  separate, later, opt-in steps.
+
+### Expected outputs
+
+- `local/processed/discogs-onehop/snapshot=<date>/manifest.json`
+- `local/processed/discogs-onehop/snapshot=<date>/table={releases,tracks,credits,frontier_artists,seed_releases}/`
+- A clean `validate` result
+- Your own notes under `local/notes/` (git-ignored)
+
+### Recovery guidance
+
+`expand-one-hop` stages into `.snapshot=<date>.tmp-<uuid>` and only atomically renames it
+into place at the very end, so an interrupted run (kill, power loss, Ctrl-C) never leaves
+a partial `snapshot=<date>` directory. If interrupted: remove any lingering
+`local/processed/discogs-onehop/.snapshot=<date>.tmp-*` directory and just re-run the same
+command (no `--overwrite` needed, since no complete output exists yet). Use `--overwrite`
+only when a complete `snapshot=<date>` directory already exists and you deliberately want
+to replace it (seed changed, or you're widening `--max-retained-releases`). Safe to
+delete: any lingering `.tmp-*` staging directory, or the whole `snapshot=<date>` output —
+it's fully reproducible from the source parse plus the seed.
+
+**What must never be committed:** anything under `local/` or `data/private/` (both
+already git-ignored) — including the manifest's `seed_sha256` and `seed_release_count`
+fields, which are expected to exist locally but must never be pasted into a commit,
+issue, or shared chat log.
+
+### Explicit non-goals for this runbook
+
+Do not do any of the following as part of Gate B — each is a separate, later, opt-in
+step already documented elsewhere:
+
+- Replicate the resulting one-hop dataset to the x86 worker or a Pi (see "Replicating
+  datasets to worker caches" immediately below).
+- Run a Pi cache trial.
+- Generate a real `challenge.v2.json` (`build-challenge-from-dump`).
+- Retire `/demo/`.
+- Deploy.
+
 ## Replicating datasets to worker caches (ADR 0025)
 
 The master/coordination host's `local/processed/` is always the authoritative
