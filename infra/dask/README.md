@@ -136,6 +136,17 @@ all (ADR 0023) — a Pi gets the original 2025-era conservative values, an
 headroom. See `infra/ansible/inventories/example/group_vars/x86_workers.yml`
 for the exact vars.
 
+**Real-data reads from a remote worker** need the catalog-data HTTP server
+([ADR 0024](../../docs/decisions/0024-http-readonly-catalog-data-access.md)):
+a remote worker has no bind mount, so a scheduler task that opens
+`/data/discogs/...` on it fails (a real, reproduced `FileNotFoundError`).
+Start `infra/swarm/deploy-catalog-data.sh` on the coordination host, pass
+`-e catalog_data_url=http://<coordination-host-lan-ip>:8791` when starting
+the burst worker, and read via manifest-derived URLs
+(`networked_players_catalog.discogs.dataset_locator.dataset_file_urls`)
+instead of local paths. Access policy: x86 workers may read full-dataset
+partitions; Pi 3Bs only the one-hop dataset or bounded partitions.
+
 ## Non-Swarm build-node worker (if one exists)
 
 `docker-compose.dask-worker-remote.yml` remains for a hypothetical *future*
@@ -152,9 +163,9 @@ DASK_SCHEDULER_ADDRESS=<coordination-host-lan-ip> \
   docker compose -f docker-compose.dask-worker-remote.yml up -d
 ```
 
-**Known limitation:** this worker only sees a real Discogs dataset if one
-separately exists on that host — the coordination host's `local/processed/discogs`
-is not shared storage between hosts. A distributed read
-(`02-explore-real-discogs-catalog.ipynb`) that gets scheduled onto this
-worker for a partition it can't see will fail. Solving cross-host shared
-storage is explicitly out of scope for this pass.
+**Former known limitation, now resolved by ADR 0024:** a remote worker has
+no local copy of the coordination host's `local/processed/discogs`, so a
+distributed read that scheduled a *filesystem* partition read onto it used
+to fail. The catalog-data HTTP server (`infra/swarm/deploy-catalog-data.sh`)
+plus manifest-derived URLs (`dataset_locator.py`) close that gap — see the
+"Real-data reads from a remote worker" note above.

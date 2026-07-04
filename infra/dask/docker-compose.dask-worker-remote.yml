@@ -10,12 +10,13 @@
 #   DASK_SCHEDULER_ADDRESS=<coordination-host-lan-ip> docker compose \
 #     -f docker-compose.dask-worker-remote.yml up -d
 #
-# Known limitation: this worker only has filesystem access to a real Discogs
-# Parquet dataset if one separately exists on THIS host at
-# DISCOGS_PROCESSED_DIR -- the coordination host's local/processed/discogs is
-# not shared storage between hosts. A distributed read (notebook 02) that
-# gets scheduled onto this worker for a partition it can't see will fail.
-# Solving cross-host shared storage is explicitly out of scope for this pass.
+# Data access: the DISCOGS_PROCESSED_DIR bind mount only works for data
+# present on THIS host -- the coordination host's local/processed is not
+# shared storage between hosts. For remote reads of the coordination host's
+# datasets, use the catalog-data HTTP server plus manifest-derived URLs
+# instead (ADR 0024, infra/swarm/deploy-catalog-data.sh) -- that closed the
+# former "a distributed read scheduled onto this worker will fail"
+# limitation this comment used to document.
 services:
   dask-worker:
     image: ${DASK_IMAGE:-networked-players-dask:local}

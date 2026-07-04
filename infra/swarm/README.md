@@ -84,6 +84,29 @@ service. See [ADR 0019](../../docs/decisions/0019-cluster-benchmark-rq-job-broke
 ./deploy-jobs-broker.sh --down
 ```
 
+## Catalog-data server (remote dataset access)
+
+`docker-compose.catalog-data.yml` serves the processed dataset tree
+(`local/processed/`) **read-only over LAN HTTP** so remote workers can read
+data that physically lives only on this host's NVMe — see
+[ADR 0024](../../docs/decisions/0024-http-readonly-catalog-data-access.md)
+for why HTTP beat NFS (client mounts need apt, forbidden on the x86 worker),
+MinIO (no measured need for S3 semantics), and rsync replication. Range
+requests make remote DuckDB/PyArrow parquet reads fetch only the columns and
+row groups a query touches; clients enumerate files from each dataset's own
+`manifest.json` (`dataset_locator.py` in `packages/catalog`), never by
+globbing. Same posture as the jobs broker: LAN-interface-bound (never
+`0.0.0.0`), not a standing service.
+
+Access policy per ADR 0024: the x86 worker may read full-dataset partitions;
+Pi 3Bs only ever read the one-hop dataset or bounded partitions.
+
+```bash
+./deploy-catalog-data.sh         # generates local/catalog-data.env on first run
+# ... remote-worker session (see infra/dask/README.md) ...
+./deploy-catalog-data.sh --down
+```
+
 ## Swarm init / join runbook
 
 Initialize the manager on the coordination host and join the workers. Real tokens and

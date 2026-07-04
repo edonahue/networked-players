@@ -8,7 +8,7 @@
 .PHONY: help setup test lint fmt fmt-check typecheck check ingest ingest-check ingest-recovery-check profile-discogs expand-onehop \
 	backup-coordination restore-coordination backup-swarm-manager restore-swarm-manager \
 	cluster-health cluster-benchmark cluster-onboard cluster-swarm-join cluster-smoke-test \
-	cluster-recovery-drill harden-workers equip-workers equip-x86-workers deploy-jobs-broker cluster-benchmark-distributed \
+	cluster-recovery-drill harden-workers equip-workers equip-x86-workers deploy-jobs-broker deploy-catalog-data cluster-benchmark-distributed \
 	dask-up dask-down
 
 help: ## List available targets
@@ -96,6 +96,9 @@ equip-x86-workers: ## Install baseline RQ/Dask tooling (uv, duckdb, worker venv,
 
 deploy-jobs-broker: ## Start the LAN-reachable jobs-broker Redis for cluster benchmarking (ADR 0019); "make deploy-jobs-broker ARGS=--down" to stop
 	./infra/swarm/deploy-jobs-broker.sh $(ARGS)
+
+deploy-catalog-data: ## Serve local/processed read-only over LAN HTTP for remote workers (ADR 0024); "make deploy-catalog-data ARGS=--down" to stop
+	./infra/swarm/deploy-catalog-data.sh $(ARGS)
 
 cluster-benchmark-distributed: ## Cluster-vs-single-node RQ benchmark; needs deploy-jobs-broker + joined workers; writes local/benchmarks/ only
 	./scripts/cluster-benchmark-distributed.sh $(ARGS)
