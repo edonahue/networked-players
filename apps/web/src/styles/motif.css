@@ -1,6 +1,151 @@
 /* Light record-store motif: a spinning vinyl accent + groove framing.
    Kept intentionally small and self-contained — easy to expand or redesign. */
 
+/* Album grid -------------------------------------------------------------- */
+.album-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 18px;
+}
+.album-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-decoration: none;
+  color: inherit;
+  border-radius: var(--radius-lg);
+  padding: 10px;
+  transition: background-color 150ms ease;
+}
+.album-card:hover,
+.album-card:focus-visible {
+  background: var(--surface);
+}
+.album-card__cover,
+.album-card__placeholder {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+}
+.album-card__cover {
+  object-fit: cover;
+}
+.album-card__placeholder {
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle at center, #1a1a18 0 60%, #0c0c0b 100%);
+}
+.album-card__placeholder-disc {
+  width: 55%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background:
+    radial-gradient(
+      circle at center,
+      var(--surface-strong) 0 14%,
+      transparent 14.5%
+    ),
+    repeating-radial-gradient(
+      circle at center,
+      rgba(0, 0, 0, 0.55) 0 1px,
+      transparent 1px 4px
+    ),
+    radial-gradient(circle at 30% 30%, var(--accent-strong), var(--accent) 70%);
+  border: 1px solid var(--line);
+}
+.album-card__title {
+  font-family: var(--display);
+  font-size: 1.02rem;
+  color: var(--ink-strong);
+  line-height: 1.2;
+}
+.album-card__meta {
+  font-family: var(--mono);
+  font-size: 0.76rem;
+  color: var(--muted);
+}
+
+/* Evidence card (album-centered path) ------------------------------------- */
+.evidence-card {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  padding: clamp(18px, 3vw, 28px);
+}
+.evidence-card__summary {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+.evidence-card__endpoint {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--display);
+  font-size: 1.15rem;
+  color: var(--ink-strong);
+}
+.evidence-card__summary .arrow {
+  color: var(--accent-strong);
+}
+
+/* Play view (find the connection / reveal the path) ----------------------- */
+.play-header {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 28px;
+}
+.play-header__cover,
+.play-header__placeholder {
+  width: 96px;
+  height: 96px;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+  flex: 0 0 auto;
+}
+.play-header__cover {
+  object-fit: cover;
+}
+.mode-toggle {
+  display: inline-flex;
+  gap: 8px;
+  margin-bottom: 22px;
+}
+.mode-toggle button {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 8px 16px;
+  font: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+.mode-toggle button[aria-pressed="true"] {
+  border-color: var(--accent);
+  color: var(--ink-strong);
+  background: color-mix(in srgb, var(--accent) 16%, var(--surface));
+}
+.guess-target {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 6px;
+  background: var(--surface-strong);
+  color: var(--surface-strong);
+  user-select: none;
+}
+.guess-target[data-revealed="true"] {
+  background: transparent;
+  color: inherit;
+}
+
 /* Spinning record ------------------------------------------------------- */
 .spinning-record {
   --size: clamp(180px, 26vw, 280px);

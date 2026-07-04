@@ -17,11 +17,11 @@ Networked Players makes the hidden human network behind recorded music visible a
 
 ## Core promise
 
-Given two artists or releases, Networked Players can present a documented route through credited work and explain each step without confusing collaboration with artistic influence.
+Given two albums, Networked Players can present a documented route through the credited work connecting them and explain each step without confusing collaboration with artistic influence. Albums are the entry point — the visual, recognizable anchor a listener already has an intuition for — but every connection resolves down to the same evidence unit as always: two artists sharing a documented credit.
 
 ## First useful release
 
-A small browser experience loads a versioned static challenge, lets a player reveal or construct a path, and displays release-level evidence. It remains functional when all home-hosted services are offline and is deployed as the core experience at `networked-players.com`.
+A small browser experience presents a grid of albums, each an entry point into the credit graph. Opening an album offers two ways in: **find the connection** (guess which artist links it to another album before revealing the answer) and **reveal the path** (step through the evidence — release, role, credit scope — hop by hop). The experience loads a versioned static challenge and remains functional when all home-hosted services are offline; it is deployed as the core experience at `networked-players.com`.
 
 ## Not yet promised
 
@@ -34,10 +34,11 @@ A small browser experience loads a versioned static challenge, lets a player rev
 
 ## Potential later modes
 
+- producer/engineer-bridge mode: find the behind-the-scenes credit that links two albums, not just a performing artist;
+- six-degrees mode: shortest documented route between two albums, with a hop budget;
 - daily or curated paths;
 - hidden contributor;
 - role-restricted paths;
-- shortest documented route;
 - manual relay between players;
 - collection-inspired challenges using derived public facts;
 - bounded live search and visual exploration.
