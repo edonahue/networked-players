@@ -286,28 +286,22 @@ worker and, per its own bounded-cache policy, a Pi.
 
 ## Worker-local dataset cache, first real run (2026-07-05)
 
-Observed, replicating real datasets from the coordination host to the x86 worker (ADR
-0025, gate E) for the first time — previously only tested against a synthetic loopback
-server:
-
-| Dataset | Size | Files | Method | Elapsed | Result |
-| --- | --- | ---: | --- | --- | --- |
-| `discogs` (full parse) | 6.6 GB | 11,517 | rsync (HTTP was expected to be impractical at this file count, per the existing operator guidance) | ~4m54s (~24 MB/s over 1GbE) | Verified, 11,517/11,517 files |
-| `discogs-onehop` | 868 MB | 5 | HTTP (`catalog-data`, ADR 0024) | Not separately timed | Verified, 5/5 files |
+The coordination host successfully replicated real datasets to the x86 worker (ADR 0025,
+gate E) for the first time — previously only tested against a synthetic loopback server.
+`discogs` (full parse, 6.6 GB across >11k small files, same profile documented in
+`docs/OPERATOR_SETUP.md`) went via the rsync fallback; `discogs-onehop` (868 MB, five
+files) went via the HTTP path (`catalog-data`, ADR 0024). Both verified clean
+(`files_verified` matched `files_total`, `.verified.json` written). Per
+[ADR 0018](decisions/0018-benchmark-results-local-only.md)'s existing convention, real
+elapsed-time/throughput figures and real per-host disk-capacity/free-space numbers stay
+local and unpublished — only the dataset sizes and method are recorded here.
 
 **Lesson:** neither the coordination host nor the x86 worker had `rsync` installed —
 the rsync-fallback path assumed it was already present. Installed via `apt` on both
 (a small, standard package, no other side effects). Worth checking for on a fresh
 host before relying on the rsync fallback.
 
-x86 worker disk after both caches: 7.47 GB used of 28 GB total, 6.3 GB free on its single
-root filesystem (no separate data mount on this hardware class) — comfortable for these
-two datasets, but not a lot of headroom for a third (e.g. a future `discogs-masters`
-cache) without checking free space again first.
-
-**Real Pi free-space measurement**, via `make cluster-health` (2026-07-04, same session):
-each of the three active Pi 3B workers reported roughly **46–47 GB free** on `/`
-(worker-01 46.8 GB, worker-02 47.1 GB, worker-03 47.2 GB) — see
-`docs/HARDWARE.md`'s "Future: reconsider Pi dataset-caching scope" for why this matters
-now that the real one-hop dataset (868 MB) is known to be far smaller than that headroom,
-and even the full `discogs` dataset (6.6 GB) would fit multiple times over.
+The two cached datasets together are ~7.5 GB — see `docs/HARDWARE.md`'s "Future:
+reconsider Pi dataset-caching scope" for why real free-space headroom on the Pi fleet
+(confirmed comfortably sufficient for this size class, exact figures kept local per ADR
+0018) is relevant background for a future revisit.

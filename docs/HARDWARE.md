@@ -49,12 +49,14 @@ caching only the bounded one-hop dataset (a 2 GiB guard in
 alone wouldn't stop them" (ADR 0025), because at the time neither the Pi's real free
 space nor the one-hop dataset's real size had been measured. Both are now known:
 
-- Real Pi free space (`make cluster-health`, 2026-07-04): each of the three active Pi
-  workers has roughly **46–47 GB free** on `/` — see `docs/DATA_SIZING.md`'s "Worker-local
-  dataset cache, first real run" for the per-worker figures.
+- Real Pi free space (`make cluster-health`, confirmed this session): each of the three
+  active Pi workers has real free disk well in excess of what either catalog dataset
+  needs — exact per-host figures are real hardware measurements and stay local, per
+  [ADR 0018](decisions/0018-benchmark-results-local-only.md)'s existing convention (same
+  as this file's own "Measured capability" section below).
 - The real one-hop dataset (`docs/DATA_SIZING.md`'s "One-hop expansion, first real run"):
   **868 MB** — comfortably small even against the Pi's 1 GB RAM class, let alone its disk.
-  Even the full `discogs` dataset (6.6 GB) is a small fraction of a Pi's real headroom.
+  Even the full `discogs` dataset (6.6 GB) is a small fraction of a Pi's confirmed headroom.
 
 This is exactly the kind of "measured evidence from a real Pi workload" ADR 0025's own
 Revisit trigger asks for before reconsidering the one-hop-only rule and its 2 GiB guard —
