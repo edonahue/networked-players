@@ -204,6 +204,34 @@ def _parser() -> argparse.ArgumentParser:
     resolve_cohort.add_argument("--memory-limit", default="1GB")
     resolve_cohort.add_argument("--threads", type=int, default=2)
     resolve_cohort.add_argument("--max-artists-per-release", type=int, default=50)
+
+    score_connectivity = subparsers.add_parser(
+        "score-cohort-connectivity",
+        help="compute real graph paths between every pair of resolved cohort albums",
+    )
+    score_connectivity.add_argument(
+        "--resolved", type=Path, required=True, help="album-cohort-resolved-v1.json"
+    )
+    score_connectivity.add_argument(
+        "--dataset", type=Path, required=True, help="a one-hop dataset root"
+    )
+    score_connectivity.add_argument(
+        "--output-dir",
+        type=Path,
+        required=True,
+        help="writes connectivity.json, playable-pairs.json, review-report.md here",
+    )
+    score_connectivity.add_argument("--max-hops", type=int, default=3)
+    score_connectivity.add_argument(
+        "--max-pairs",
+        type=int,
+        default=1000,
+        help="abort with a clear message rather than silently sampling/truncating "
+        "if the cohort's pair count would exceed this",
+    )
+    score_connectivity.add_argument("--memory-limit", default="1GB")
+    score_connectivity.add_argument("--threads", type=int, default=2)
+    score_connectivity.add_argument("--max-artists-per-release", type=int, default=50)
     return parser
 
 
@@ -537,6 +565,67 @@ def main(argv: Sequence[str] | None = None) -> int:
                     "unresolved_count": len(resolved_artifact["unresolved"]),
                 },
                 indent=2,
+            )
+        )
+        return 0
+
+    if args.command == "score-cohort-connectivity":
+        from networked_players_graph_core.cohort_connectivity import (
+            build_connectivity_cohort,
+            summarize_connectivity,
+            validate_connectivity,
+            write_connectivity_cohort,
+        )
+        from networked_players_graph_core.graph import CreditGraph
+
+        resolved = json.loads(args.resolved.read_text())
+        dataset_manifest = json.loads((args.dataset / "manifest.json").read_text())
+
+        with CreditGraph.open(
+            args.dataset,
+            memory_limit=args.memory_limit,
+            threads=args.threads,
+            max_artists_per_release=args.max_artists_per_release,
+        ) as graph:
+            connectivity_artifact = build_connectivity_cohort(
+                graph,
+                resolved,
+                dataset_snapshot_date=str(dataset_manifest["snapshot_date"]),
+                max_hops=args.max_hops,
+                max_pairs=args.max_pairs,
+            )
+
+        validate_connectivity(connectivity_artifact)
+        playable_pairs, report_markdown = summarize_connectivity(connectivity_artifact)
+
+        args.output_dir.mkdir(parents=True, exist_ok=True)
+        write_connectivity_cohort(connectivity_artifact, args.output_dir / "connectivity.json")
+        (args.output_dir / "playable-pairs.json").write_text(
+            json.dumps(playable_pairs, indent=2, sort_keys=True) + "\n"
+        )
+        (args.output_dir / "review-report.md").write_text(report_markdown)
+
+        by_status = {"found": 0, "no_path": 0}
+        by_difficulty = {"easy": 0, "medium": 0, "hard": 0, "very_hard": 0}
+        flagged_pair_count = 0
+        for pair in connectivity_artifact["pairs"]:
+            by_status[pair["status"]] += 1
+            if pair["status"] == "found":
+                by_difficulty[pair["difficulty"]] += 1
+            if pair["warnings"]:
+                flagged_pair_count += 1
+
+        print(
+            json.dumps(
+                {
+                    "output_dir": str(args.output_dir),
+                    "pair_count": len(connectivity_artifact["pairs"]),
+                    "by_status": by_status,
+                    "by_difficulty": by_difficulty,
+                    "flagged_pair_count": flagged_pair_count,
+                },
+                indent=2,
+                sort_keys=True,
             )
         )
         return 0
