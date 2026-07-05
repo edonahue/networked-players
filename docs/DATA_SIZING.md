@@ -262,3 +262,24 @@ find local/processed/discogs/snapshot=20260501 -name '*.parquet' -printf '%s %p\
 ```
 
 A later benchmark issue should capture elapsed time, peak RSS, CPU, input bytes, output bytes, row counts, DuckDB spill, and hardware class for both the optional workstation and coordination host. The Pi workers should be benchmarked only on bounded partitions, not on the full raw dump.
+
+## One-hop expansion, first real run (2026-07-05, coordination host)
+
+Observed, against the real `snapshot=20260601` dataset (19,192,301 releases) and the
+operator's real private seed via `expand-one-hop` (Milestone 5). Two exclusions were
+added mid-investigation after the first two attempts aborted on their own
+`--max-retained-releases` guard — see [ADR 0026](decisions/0026-exclude-placeholder-artists-from-one-hop-frontier.md),
+[ADR 0027](decisions/0027-exclude-non-performer-roles-from-one-hop-frontier.md), and
+`docs/discogs-data/one-hop-hub-artists.md` for the full investigation. Per
+`AGENTS.md`'s rule that seed aggregates (release count, hash) never get committed, only
+the non-seed-identifying figures are recorded here:
+
+| Metric | Value |
+| --- | --- |
+| Retained releases (final, after both exclusions) | 1,410,106 (7.3% of the full catalog) |
+| Frontier artists (final) | 1,762 |
+| Output size | 868 MB total — releases 21 MB, tracks 190 MB, credits 657 MB |
+| `validate` result | Clean: zero orphan/invalid counts |
+
+This is small enough to comfortably fit worker-local caches (ADR 0025) on both the x86
+worker and, per its own bounded-cache policy, a Pi.
