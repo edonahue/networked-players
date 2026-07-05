@@ -34,9 +34,9 @@ hosting behind a Cloudflare proxy (`data.discogs.com`) with a different URL sche
 than the old direct-S3 path; `manifest.py` was updated accordingly. The operator's
 real private seed was imported ([ADR 0011](decisions/0011-private-seed-contract.md));
 no one-hop expansion and no artist graph exist yet (Milestone 5 is next). **Update,
-2026-07-04: this is superseded** — one-hop expansion and graph-core are now both
-implemented (Milestone 5, `expand-one-hop`; see the status table below); only the
-real run against a full dump remains (live gate B). Later
+2026-07-05: this is superseded** — one-hop expansion and graph-core are now both
+implemented (Milestone 5, `expand-one-hop`) and the real run against the full dump
+has completed (see the status table below and Milestone 5's own update). Later
 the same day, real `cProfile` output on the parser (not the initially assumed
 "decompression or Parquet writing" cause) found the actual bottleneck was
 `releases.py` re-scanning each element's children once per field via repeated
@@ -220,7 +220,7 @@ fourth original Pi, plus a separate Pi 3B+, are planned but not yet revived
 | Discogs release ingestion (real run) | **Done at full scale.** Bounded 10,000-release slice (2026-07-01) and full unbounded parse (2026-07-01 17:59:48 → 2026-07-02 00:02:49 EDT, 19,192,301 releases) both validated clean — see Milestone 3 |
 | Real dataset profiling | Done (2026-07-02): `scripts/profile-discogs-dataset.sh` / `make profile-discogs`; found and fixed 2 real bugs (1 contract-doc, 1 parser) — see `docs/discogs-data/raw-dump-schema.md` |
 | Private seed import | Implemented (ADR 0011); operator's real seed imported locally |
-| One-hop graph expansion | Implemented (`expand-one-hop`, Milestone 5); real run pending (live gate B) |
+| One-hop graph expansion | Implemented (`expand-one-hop`, Milestone 5); **real run done 2026-07-05** (gate B) — 1,410,106 releases, 868 MB, validated clean, after ADR 0026/0027's hub exclusions |
 | `graph-core` | Implemented: DuckDB-backed lazy `CreditGraph`, challenge.v2 builder, proxy-ranking analysis, 32 tests, all synthetic; real-data run pending (live gate F) |
 | Worker-local dataset caching | Implemented (ADR 0025): `dataset_fetch.py` puller/verifier, per-hardware-class ansible playbooks (x86 full/masters/one-hop, Pi one-hop-only + guard), rsync fallback, `resolve_dataset` resolution order; real replication to a worker pending (live gate E) |
 | First real Pi production job | Implemented: challenge-evidence verification (`networked_players_graph_core.verify` + a self-contained RQ job body), sharded via `scripts/enqueue_verify_challenge.py`; real run against a Pi's cache pending (live gate G) |
@@ -706,6 +706,21 @@ All five tasks landed as code with synthetic-fixture tests. The real-data run
 against `snapshot=20260601` and the real private seed is an operator step (see
 `Makefile`'s `expand-onehop` target); its observed sizing gets recorded in
 `docs/DATA_SIZING.md` when it happens.
+
+**Update, 2026-07-05: the real run happened, and it found a real problem.** The
+first attempt aborted on its own `--max-retained-releases` guard: one hop from
+the real seed would have retained ~21% of the entire catalog. Investigation
+(`docs/discogs-data/one-hop-hub-artists.md`) found this was dominated by a
+handful of extremely prolific credited identities — two Discogs placeholders
+("Various Artists," "Trad.") and a long tail of real, legitimately prolific
+songwriters and mastering engineers, mostly via non-performer roles
+(Written-By, Mastered By, Producer, etc.). Two narrow, documented exclusions
+were added to `expand_one_hop`'s frontier/retention logic — placeholder
+identities ([ADR 0026](decisions/0026-exclude-placeholder-artists-from-one-hop-frontier.md))
+and pure non-performer role credits ([ADR 0027](decisions/0027-exclude-non-performer-roles-from-one-hop-frontier.md))
+— after which the real run succeeded: 1,410,106 retained releases (7.3% of
+the catalog), 868 MB total, `validate` clean. See `docs/DATA_SIZING.md` for
+the full observed numbers.
 
 **Former caveat, now resolved:** this milestone's tasks originally worried a
 bounded slice from Milestone 3 might prove insufficient to build the

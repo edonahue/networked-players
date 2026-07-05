@@ -62,4 +62,53 @@
     <tracklist><track><position>1</position><title>Coincidence</title></track></tracklist>
     <data_quality>Correct</data_quality>
   </release>
+  <release id="110" status="Accepted">
+    <artists>
+      <artist><id>40</id><name>Echo Player</name></artist>
+    </artists>
+    <title>Hub Placeholder Compilation</title>
+    <country>US</country>
+    <released>2007</released>
+    <extraartists>
+      <artist><id>194</id><name>Various</name><role>Compilation</role></artist>
+    </extraartists>
+    <tracklist><track><position>1</position><title>Comp Track</title></track></tracklist>
+    <data_quality>Correct</data_quality>
+  </release>
+  <release id="111" status="Accepted">
+    <artists>
+      <artist><id>194</id><name>Various</name></artist>
+    </artists>
+    <title>Various Artists Only Comp</title>
+    <country>US</country>
+    <released>2008</released>
+    <tracklist><track><position>1</position><title>Other Comp Track</title></track></tracklist>
+    <data_quality>Correct</data_quality>
+  </release>
+  <release id="112" status="Accepted">
+    <artists>
+      <artist><id>41</id><name>Fresh Artist</name></artist>
+    </artists>
+    <title>Role Filter Seed</title>
+    <country>US</country>
+    <released>2009</released>
+    <extraartists>
+      <artist><id>42</id><name>Master Ray</name><role>Mastered By</role></artist>
+    </extraartists>
+    <tracklist><track><position>1</position><title>Fresh Track</title></track></tracklist>
+    <data_quality>Correct</data_quality>
+  </release>
+  <release id="113" status="Accepted">
+    <artists>
+      <artist><id>99</id><name>Unrelated Act</name></artist>
+    </artists>
+    <title>Only Mastered By 42</title>
+    <country>US</country>
+    <released>2010</released>
+    <extraartists>
+      <artist><id>42</id><name>Master Ray</name><role>Mastered By</role></artist>
+    </extraartists>
+    <tracklist><track><position>1</position><title>Other Track</title></track></tracklist>
+    <data_quality>Correct</data_quality>
+  </release>
 </releases>

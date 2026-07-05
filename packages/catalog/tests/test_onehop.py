@@ -60,9 +60,11 @@ def test_frontier_retention_and_evidence(tmp_path: Path) -> None:
     manifest = expand_one_hop(seed_path, dataset, tmp_path / "onehop")
     output = tmp_path / "onehop" / f"snapshot={SNAPSHOT}"
 
-    # Frontier: every playable credited artist on the seed release -- and
-    # nothing from the unlinked names (Unlinked Orchestra, Anonymous Choir).
-    assert _column(output, "frontier_artists", "artist_id") == [11, 12, 21, 31, 32]
+    # Frontier: every playable credited artist on the seed release with a
+    # performer-caliber credit -- nothing from the unlinked names (Unlinked
+    # Orchestra, Anonymous Choir), and not artist 21 (Pat Producer), whose
+    # only credit is "Producer, Engineer" -- a pure non-performer role.
+    assert _column(output, "frontier_artists", "artist_id") == [11, 12, 31, 32]
 
     # Retention: the seed release plus the one-hop release sharing artist 11.
     # 104 (unrelated artist) and 105 (only a *non-linked* name overlaps the
@@ -71,28 +73,76 @@ def test_frontier_retention_and_evidence(tmp_path: Path) -> None:
     assert _column(output, "seed_releases", "release_id") == [101]
 
     # Evidence: ALL credit rows of retained releases survive, including the
-    # non-linked evidence rows on the seed release.
+    # non-linked evidence rows on the seed release AND artist 21's
+    # non-performer credit -- excluded from the frontier, not from evidence.
     credit_names = _column(output, "credits", "name")
     assert "Unlinked Orchestra" in credit_names
     assert "Anonymous Choir" in credit_names
+    assert "Pat Producer" in credit_names
     counts = manifest["counts"]
     assert counts == {
         "releases": 2,
         "tracks": 4,
         "credits": 10,
-        "frontier_artists": 5,
+        "frontier_artists": 4,
         "seed_releases": 1,
     }
 
     expansion = manifest["expansion"]
     assert isinstance(expansion, dict)
     assert expansion["kind"] == "one-hop"
-    assert expansion["frontier_artist_count"] == 5
+    assert expansion["frontier_artist_count"] == 4
     assert expansion["retained_release_count"] == 2
     assert expansion["seed_release_count"] == 1
     assert expansion["seed_releases_missing_from_snapshot"] == 0
     # The manifest carries seed aggregates only -- never the ID list itself.
     assert "release_ids" not in json.dumps(manifest)
+
+
+def test_placeholder_hub_artists_excluded_from_frontier(tmp_path: Path) -> None:
+    dataset = _write_source_dataset(tmp_path)
+    seed_path = _write_seed(tmp_path, [110])
+
+    manifest = expand_one_hop(seed_path, dataset, tmp_path / "onehop")
+    output = tmp_path / "onehop" / f"snapshot={SNAPSHOT}"
+
+    # Release 110 is credited to both artist 40 (real) and artist 194
+    # ("Various Artists", a Discogs placeholder) -- only 40 should join the
+    # frontier.
+    assert _column(output, "frontier_artists", "artist_id") == [40]
+
+    # Release 111 is credited ONLY to artist 194. If the placeholder weren't
+    # excluded, it would join the frontier and retain 111 too -- it must not.
+    assert _column(output, "releases", "release_id") == [110]
+
+    expansion = manifest["expansion"]
+    assert isinstance(expansion, dict)
+    assert expansion["frontier_artist_count"] == 1
+
+
+def test_pure_non_performer_role_excluded_from_frontier(tmp_path: Path) -> None:
+    dataset = _write_source_dataset(tmp_path)
+    seed_path = _write_seed(tmp_path, [112])
+
+    manifest = expand_one_hop(seed_path, dataset, tmp_path / "onehop")
+    output = tmp_path / "onehop" / f"snapshot={SNAPSHOT}"
+
+    # Release 112 credits artist 41 (main artist, real) and artist 42 (Master
+    # Ray, "Mastered By" only -- a pure non-performer role). Only 41 joins
+    # the frontier.
+    assert _column(output, "frontier_artists", "artist_id") == [41]
+
+    # Release 113 is credited ONLY to artist 42 via "Mastered By" (plus an
+    # unrelated artist 99). If the role filter weren't applied, artist 42
+    # would join the frontier and retain 113 too -- it must not.
+    assert _column(output, "releases", "release_id") == [112]
+
+    # Evidence: artist 42's credit still survives on the retained release.
+    assert "Master Ray" in _column(output, "credits", "name")
+
+    expansion = manifest["expansion"]
+    assert isinstance(expansion, dict)
+    assert expansion["frontier_artist_count"] == 1
 
 
 def test_output_columns_are_not_contaminated_by_hive_partition_inference(

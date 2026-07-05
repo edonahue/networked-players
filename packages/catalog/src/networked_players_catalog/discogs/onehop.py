@@ -28,7 +28,21 @@ never the IDs themselves and never a private filesystem path.
 
 Non-playable credits never create frontier membership or drive retention
 (the standing evidence rule: non-linked names are evidence, not playable
-identities).
+identities). Two further, narrower exclusions apply to frontier/retention
+eligibility only (never to evidence -- a retained release still keeps every
+credit row regardless of these exclusions):
+
+- A small, fixed set of Discogs *placeholder* identities (real, linked
+  artist IDs that are not actual performers -- "Various Artists", "Trad.")
+  are excluded: see `_NON_PLAYABLE_HUB_ARTIST_IDS` and ADR 0026.
+- Credits whose role is *purely* production/writing/business (every
+  comma-separated role component is a known non-performer token -- "Written-By",
+  "Mastered By", "Producer", etc.) are excluded: see
+  `_NON_PERFORMER_ROLE_TOKENS` and ADR 0027. A main-artist credit (no role
+  text at all) is always eligible.
+
+Both are documented in full, with the real-data investigation behind them,
+in `docs/discogs-data/one-hop-hub-artists.md`.
 """
 
 from __future__ import annotations
@@ -65,6 +79,83 @@ _TABLE_ORDER = {
 
 class OneHopError(RuntimeError):
     """Raised when the one-hop expansion cannot produce a valid corpus."""
+
+
+# Discogs canonical placeholder identities: each carries a real, linked
+# artist_id (playable_identity=True per parquet.py's PAN-linkage rule) but is
+# not an actual performer. Left eligible for frontier membership, a single
+# compilation LP or heavily-covered traditional-song release in the seed
+# would pull in a huge, musically meaningless slice of the whole catalog --
+# "Various Artists" (194) alone is credited on 1.3M+ of 19.2M releases in the
+# 2026-06-01 snapshot (~7% of the entire catalog from one identity). Real,
+# individually prolific human contributors (mastering engineers, heavily
+# covered songwriters) are deliberately NOT excluded here -- those are
+# legitimate, if broad, connections. See
+# docs/discogs-data/one-hop-hub-artists.md for the full investigation and
+# ADR 0026 for the decision.
+_NON_PLAYABLE_HUB_ARTIST_IDS = frozenset(
+    {
+        194,  # "Various Artists" -- Discogs' compilation-album placeholder
+        151641,  # "Trad." -- Discogs' placeholder for traditional/anonymous composers
+    }
+)
+
+# Role-text tokens treated as pure production/writing/business credits, not a
+# performance -- excluded from frontier/retention eligibility (but never from
+# evidence: a retained release still keeps every credit row). role_text is
+# freeform and comma-combined (e.g. "Producer, Mixed By, Arranged By"), so a
+# credit only counts as "non-performer" when EVERY comma-separated component
+# matches this list; a single unlisted or performer-type component (Vocals,
+# Guitar, Featuring, ...) keeps the whole credit eligible. A NULL role_text is
+# a main-artist credit (from a release's own <artists> block) and is always
+# eligible -- it is never filtered by this list. "Producer" is deliberately
+# included here even though it's a debatable case (arguably more personal
+# than a mastering credit) -- see docs/discogs-data/one-hop-hub-artists.md and
+# ADR 0027 for the investigation and reasoning. An unlisted role always
+# defaults to "keep" (eligible), never "exclude" -- an incomplete list can
+# only under-filter, never silently over-filter.
+_NON_PERFORMER_ROLE_TOKENS = frozenset(
+    {
+        "written-by",
+        "written by",
+        "mastered by",
+        "mixed by",
+        "recorded by",
+        "lacquer cut by",
+        "arranged by",
+        "liner notes",
+        "composed by",
+        "lyrics by",
+        "music by",
+        "words by",
+        "engineer",
+        "producer",
+        "co-producer",
+        "design",
+        "design concept",
+        "photography by",
+    }
+)
+
+
+def _performer_credit_sql(role_column: str) -> str:
+    """SQL boolean expression: true when a credit counts as performer-caliber.
+
+    True when `role_column` is NULL (a main-artist credit) or contains at
+    least one comma-separated component that is not a known
+    `_NON_PERFORMER_ROLE_TOKENS` entry. False only when every component of a
+    non-null role is a known non-performer token.
+    """
+    tokens = ", ".join(f"'{token}'" for token in sorted(_NON_PERFORMER_ROLE_TOKENS))
+    return f"""(
+        {role_column} IS NULL
+        OR list_bool_or(
+            list_transform(
+                str_split({role_column}, ','),
+                x -> NOT (lower(trim(regexp_replace(x, '\\[.*\\]', ''))) IN ({tokens}))
+            )
+        )
+    )"""
 
 
 def _copy_options() -> str:
@@ -136,13 +227,20 @@ def expand_one_hop(
         )
 
         # Pass 1 over credits: the artist frontier. Projection pushdown means
-        # only release_id/artist_id/playable_identity are read from disk.
+        # only release_id/artist_id/playable_identity/role_text are read from
+        # disk. Placeholder identities (_NON_PLAYABLE_HUB_ARTIST_IDS) and
+        # pure non-performer role credits (_NON_PERFORMER_ROLE_TOKENS) are
+        # excluded here so neither drives retention in pass 2 below.
+        hub_id_list = ", ".join(str(i) for i in sorted(_NON_PLAYABLE_HUB_ARTIST_IDS))
+        performer_sql = _performer_credit_sql("role_text")
         connection.execute(
             f"""
             CREATE TEMP TABLE frontier_artists AS
             SELECT DISTINCT artist_id
             FROM {_rp(credits_glob)}
             WHERE playable_identity
+              AND artist_id NOT IN ({hub_id_list})
+              AND {performer_sql}
               AND release_id IN (SELECT release_id FROM seed_release_ids)
             """
         )
@@ -154,13 +252,17 @@ def expand_one_hop(
             )
 
         # Pass 2 over credits: retention. The frontier is the tiny hash-build
-        # side; the 220M-row scan streams row-group by row-group.
+        # side; the 220M-row scan streams row-group by row-group. The same
+        # performer-credit filter applies here -- a frontier artist's own
+        # pure non-performer credit elsewhere should not retain that release
+        # either, matching pass 1's standard.
         connection.execute(
             f"""
             CREATE TEMP TABLE retained_releases AS
             SELECT DISTINCT release_id
             FROM {_rp(credits_glob)}
             WHERE playable_identity
+              AND {performer_sql}
               AND artist_id IN (SELECT artist_id FROM frontier_artists)
             """
         )

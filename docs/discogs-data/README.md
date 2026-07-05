@@ -23,6 +23,11 @@ them. This is distinct from two things it might be confused with:
   either the dump or the API) map to this project's own normalized schema
   (`data/contracts/discogs-release-v2.md`), and why specific mapping decisions were
   made (PAN/ANV, credit scope, playable identity).
+- [`one-hop-hub-artists.md`](one-hop-hub-artists.md) — a real-data investigation into
+  which credited identities dominate one-hop expansion (Milestone 5), grounded in a
+  purely public, seed-independent query against the full credits table; see
+  [ADR 0026](../decisions/0026-exclude-placeholder-artists-from-one-hop-frontier.md)
+  for the resulting decision.
 
 Real benchmark numbers (dump sizes, record counts, parse throughput, memory) live in
 [`docs/DATA_SIZING.md`](../DATA_SIZING.md) rather than being duplicated here — that
