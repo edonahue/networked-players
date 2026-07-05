@@ -286,6 +286,16 @@ def _parser() -> argparse.ArgumentParser:
         "validate-playable-cohort", help="validate a playable-cohort-v1 artifact"
     )
     validate_playable.add_argument("--input", type=Path, required=True)
+
+    draft_review = subparsers.add_parser(
+        "draft-cohort-review",
+        help="draft a private selection-file template from connectivity.json for human "
+        "review (never pre-approves anything)",
+    )
+    draft_review.add_argument(
+        "--connectivity", type=Path, required=True, help="album-cohort-connectivity-v1.json"
+    )
+    draft_review.add_argument("--output", type=Path, required=True)
     return parser
 
 
@@ -730,6 +740,29 @@ def main(argv: Sequence[str] | None = None) -> int:
         playable_artifact = json.loads(args.input.read_text())
         validate_playable_cohort(playable_artifact)
         print(json.dumps({"ok": True}, indent=2))
+        return 0
+
+    if args.command == "draft-cohort-review":
+        from networked_players_graph_core.cohort_promote import draft_selection_template
+
+        connectivity = json.loads(args.connectivity.read_text())
+        template = draft_selection_template(connectivity)
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(json.dumps(template, indent=2, sort_keys=True) + "\n")
+
+        clean_count = sum(1 for c in template["candidate_pairs"] if not c["warnings"])
+        print(
+            json.dumps(
+                {
+                    "output": str(args.output),
+                    "candidate_count": len(template["candidate_pairs"]),
+                    "clean_count": clean_count,
+                    "flagged_count": len(template["candidate_pairs"]) - clean_count,
+                },
+                indent=2,
+                sort_keys=True,
+            )
+        )
         return 0
 
     raise AssertionError(f"unhandled command: {args.command}")

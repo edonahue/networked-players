@@ -160,3 +160,29 @@ def test_validate_playable_cohort_cli_wiring(tmp_path: Path, capsys) -> None:
     exit_code = main(["validate-playable-cohort", "--input", str(output_path)])
     assert exit_code == 0
     assert json.loads(capsys.readouterr().out) == {"ok": True}
+
+
+def test_draft_cohort_review_cli_wiring(tmp_path: Path, capsys) -> None:
+    connectivity_path = tmp_path / "connectivity.json"
+    output_path = tmp_path / "selection.template.json"
+    connectivity_path.write_text(json.dumps(CONNECTIVITY))
+
+    exit_code = main(
+        [
+            "draft-cohort-review",
+            "--connectivity",
+            str(connectivity_path),
+            "--output",
+            str(output_path),
+        ]
+    )
+    assert exit_code == 0
+
+    summary = json.loads(capsys.readouterr().out)
+    assert summary["candidate_count"] == 1
+    assert summary["clean_count"] == 1
+    assert summary["flagged_count"] == 0
+
+    template = json.loads(output_path.read_text())
+    assert template["approved_pairs"] == []
+    assert len(template["candidate_pairs"]) == 1

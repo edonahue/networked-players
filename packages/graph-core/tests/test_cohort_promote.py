@@ -12,6 +12,7 @@ import pytest
 
 from networked_players_graph_core.cohort_promote import (
     CohortPromoteError,
+    draft_selection_template,
     promote_playable_cohort,
     validate_playable_cohort,
     validate_selection_file,
@@ -204,6 +205,113 @@ def test_validate_selection_file_rejects_non_bool_allow_flagged_pairs() -> None:
 def test_validate_selection_file_rejects_malformed_pair_entry() -> None:
     with pytest.raises(CohortPromoteError):
         validate_selection_file(_selection([{"album_a_id": "release-1"}]))
+
+
+# --- draft_selection_template ---
+
+
+def test_draft_excludes_no_path_and_skipped_pairs() -> None:
+    no_path = _pair(
+        album_a_id="release-1",
+        album_b_id="release-2",
+        artist_a_id=100,
+        artist_b_id=300,
+        status="no_path",
+        hop_count=None,
+        difficulty=None,
+        hops=[],
+    )
+    skipped = _pair(
+        album_a_id="release-2",
+        album_b_id="release-3",
+        artist_a_id=300,
+        artist_b_id=400,
+        status="skipped",
+        hop_count=None,
+        difficulty=None,
+        hops=[],
+    )
+    skipped["skip_reason"] = "frontier_too_large"
+    connectivity = _connectivity([no_path, skipped, _clean_pair()])
+
+    template = draft_selection_template(connectivity)
+    assert len(template["candidate_pairs"]) == 1
+    assert template["candidate_pairs"][0]["album_a_id"] == "release-1"
+
+
+def test_draft_never_pre_approves() -> None:
+    connectivity = _connectivity([_clean_pair()])
+    template = draft_selection_template(connectivity)
+    assert template["approved_pairs"] == []
+    assert template["schema_version"] == 1
+    assert template["allow_flagged_pairs"] is False
+
+
+def test_draft_sorts_clean_before_flagged_then_by_difficulty_and_hops() -> None:
+    hard_clean = _pair(
+        album_a_id="release-5",
+        album_b_id="release-6",
+        artist_a_id=500,
+        artist_b_id=600,
+        difficulty="hard",
+        hop_count=3,
+    )
+    easy_flagged = _pair(
+        album_a_id="release-1",
+        album_b_id="release-2",
+        artist_a_id=100,
+        artist_b_id=300,
+        difficulty="easy",
+        hop_count=1,
+        warnings=["hop 1 flagged"],
+    )
+    easy_clean = _pair(
+        album_a_id="release-3",
+        album_b_id="release-4",
+        artist_a_id=400,
+        artist_b_id=500,
+        difficulty="easy",
+        hop_count=1,
+    )
+    connectivity = _connectivity([hard_clean, easy_flagged, easy_clean])
+
+    template = draft_selection_template(connectivity)
+    ordered_ids = [(c["album_a_id"], c["album_b_id"]) for c in template["candidate_pairs"]]
+    # Clean pairs (regardless of difficulty) sort before any flagged pair.
+    assert ordered_ids == [
+        ("release-3", "release-4"),  # easy, clean
+        ("release-5", "release-6"),  # hard, clean
+        ("release-1", "release-2"),  # easy, flagged -- last despite being easy
+    ]
+
+
+def test_hand_edited_draft_promotes_successfully_through_unmodified_functions() -> None:
+    """Proves draft_selection_template needs zero changes to
+    promote_playable_cohort/validate_selection_file -- an operator moving one
+    candidate into approved_pairs is all that's required."""
+    resolved = _resolved([ALICE, CARA])
+    connectivity = _connectivity([_clean_pair()])
+    template = draft_selection_template(connectivity)
+
+    assert len(template["candidate_pairs"]) == 1
+    candidate = template["candidate_pairs"][0]
+    template["approved_pairs"].append(
+        {"album_a_id": candidate["album_a_id"], "album_b_id": candidate["album_b_id"]}
+    )
+    template["reviewed_by"] = "Erich"
+    template["reviewed_at"] = "2026-07-05T12:00:00+00:00"
+
+    artifact = promote_playable_cohort(resolved, connectivity, template, cohort_id="test-cohort")
+    assert len(artifact["pairs"]) == 1
+
+
+def test_unedited_draft_raises_no_pairs_promoted() -> None:
+    resolved = _resolved([ALICE, CARA])
+    connectivity = _connectivity([_clean_pair()])
+    template = draft_selection_template(connectivity)
+
+    with pytest.raises(CohortPromoteError, match="no pairs were promoted"):
+        promote_playable_cohort(resolved, connectivity, template, cohort_id="test-cohort")
 
 
 # --- promote_playable_cohort: core rules ---

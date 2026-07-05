@@ -330,6 +330,171 @@ step already documented elsewhere:
 - Retire `/demo/`.
 - Deploy.
 
+## Real cohort rehearsal (first source)
+
+**Host: developer machine or master/coordination for steps 1-2 and 5-7 (no dataset
+needed); whichever host has the relevant dataset locally for steps 3-4 — prefer the x86
+worker for a real one-hop dataset (see "Replicating datasets to worker caches" below).
+Never a Pi for steps 3-4.**
+
+This walks through `docs/COHORT_SOURCE_INGESTION.md`'s pipeline against a real,
+operator-saved source for the first time. See `data/contracts/album-cohort-extracted-v1.md`
+/ `-resolved-v1.md` / `-connectivity-v1.md` / `playable-cohort-v1.md` for what each step
+actually produces; this section is the operational sequence, not the schema reference.
+
+### Preconditions
+
+- A source page manually saved by the operator (however they choose) — **no command in
+  this pipeline fetches anything live, ever, by design**, per
+  [ADR 0028](decisions/0028-curated-cohort-source-ingestion.md).
+- The saved page placed at `data/private/source-html/<source-id>.html`. There is no
+  separate "source notes" file any command reads — jot down the source URL/title yourself
+  however you like; they're just the values you'll pass to step 2's flags directly.
+- A completed, `validate`-clean parsed dataset for resolution (step 3), and a completed,
+  `validate`-clean one-hop dataset for scoring (step 4) — see "Real one-hop expansion
+  (Gate B)" above if the one-hop dataset doesn't exist yet.
+- `make check` green — your call whether to run it first; not required to proceed.
+
+### 1. Preflight (read-only, safe to run any time)
+
+```bash
+cd ~/networked-players
+ls data/private/source-html/<source-id>.html      # confirm the saved page exists
+ls -d local/processed/discogs/snapshot=*          # confirm a parsed dataset exists
+ls -d local/processed/discogs-onehop/snapshot=*   # confirm a one-hop dataset exists
+```
+
+Stop if the saved page or either dataset is missing.
+
+### 2. Import
+
+```bash
+uv run networked-players-catalog import-cohort-source \
+  --input data/private/source-html/<source-id>.html \
+  --output local/analysis/cohorts/<source-id>/extracted.json \
+  --source-url "<the real URL you saved it from>" \
+  --source-title "<the page's own title>"
+```
+
+Expected: `album-cohort-extracted-v1.json`-shaped output with a non-zero `candidate_count`.
+A `low_confidence_count`/`missing_link_count` above zero isn't an error — it's real,
+honest signal for review later, never silently fixed up.
+
+### 3. Resolve (needs the parsed dataset)
+
+```bash
+uv run networked-players-catalog resolve-cohort \
+  --extracted local/analysis/cohorts/<source-id>/extracted.json \
+  --dataset local/processed/discogs/snapshot=<SNAPSHOT> \
+  --output local/analysis/cohorts/<source-id>/resolved.json
+```
+
+Run on whichever host has `local/processed/discogs/snapshot=<SNAPSHOT>` — the
+master/coordination host for its own authoritative copy, or SSH to
+`<x86-worker-ssh-target>` if resolving against its replicated cache instead.
+
+### 4. Score (needs the one-hop dataset)
+
+```bash
+uv run networked-players-catalog score-cohort-connectivity \
+  --resolved local/analysis/cohorts/<source-id>/resolved.json \
+  --dataset local/processed/discogs-onehop/snapshot=<SNAPSHOT> \
+  --output-dir local/analysis/cohorts/<source-id>/
+```
+
+Prefer `<x86-worker-ssh-target>` for a real one-hop dataset — this is real `CreditGraph`
+traversal work, the same dataset-locality preference Gate B's own expansion follows. The
+default `--pair-timeout-seconds`/`--max-frontier-expansion` guardrails
+([ADR 0030](decisions/0030-cohort-scoped-connectivity-substrate.md)) apply; a real cohort
+touching a genuine hub artist may produce `status: "skipped"` pairs — that's honest,
+expected output, not a bug to work around.
+
+### 5. Draft a review template
+
+```bash
+uv run networked-players-catalog draft-cohort-review \
+  --connectivity local/analysis/cohorts/<source-id>/connectivity.json \
+  --output data/private/cohort-review/<source-id>-selection.template.json
+```
+
+Produces a private file with an always-empty `approved_pairs[]` and a `candidate_pairs[]`
+listing every `status: "found"` pair (clean pairs first), ready for step 6. Never
+pre-approves anything.
+
+### 6. Human review (manual — no command does this step)
+
+Open `<source-id>-selection.template.json`, read `review-report.md` (from step 4) and
+`candidate_pairs[]` alongside each other, and for every pair you're genuinely satisfied
+with, move its `{album_a_id, album_b_id}` from `candidate_pairs[]` into `approved_pairs[]`.
+Set `reviewed_by`/`reviewed_at`, and a `review_note` if you want one published. Save as
+`data/private/cohort-review/<source-id>-selection.json` — **not** the `.template.json`
+file itself; promoting the raw template produces zero promoted pairs by construction (its
+`approved_pairs[]` starts empty), so there's no way to accidentally publish an unreviewed
+cohort this way, but keep the two files distinct regardless.
+
+### 7. Promote (only after step 6)
+
+```bash
+uv run networked-players-catalog promote-playable-cohort \
+  --resolved local/analysis/cohorts/<source-id>/resolved.json \
+  --connectivity local/analysis/cohorts/<source-id>/connectivity.json \
+  --selection data/private/cohort-review/<source-id>-selection.json \
+  --cohort-id <source-id> \
+  --output data/albums/cohorts/<source-id>-playable-v1.json
+```
+
+Writes `data/albums/cohorts/<source-id>-playable-v1.json` — see
+`data/contracts/playable-cohort-v1.md`. **This file is the only output of this whole
+rehearsal meant to ever be committed, and only after you've actually reviewed it and
+decided to.** Nothing in this runbook commits it for you.
+
+### Stop conditions
+
+- The saved source page or either dataset is missing.
+- `resolve-cohort` reports a high `unresolved_count` relative to `candidate_count` — check
+  `warnings[]` in `resolved.json` before proceeding; a systematically bad extraction won't
+  fix itself downstream.
+- `score-cohort-connectivity` reports many `"skipped"` pairs — real, honest output, but
+  worth investigating (a larger `--pair-timeout-seconds`/`--max-frontier-expansion`) before
+  treating the review report as complete.
+- Any command prints a real IP, hostname, or path you don't recognize — stop and check
+  `--dataset`/`--output`/`--output-dir` before continuing.
+
+### Safe-to-stop checkpoints
+
+- After any of steps 2-5 — each writes one plain JSON file and can be re-run idempotently;
+  nothing is time-sensitive.
+- Before step 7 — this is the only step whose output might ever leave `local/`/
+  `data/private/`. Perfectly safe to stop indefinitely at step 6 and come back to review
+  later.
+
+### Expected outputs
+
+- `local/analysis/cohorts/<source-id>/{extracted.json, resolved.json, connectivity.json,
+  playable-pairs.json, review-report.md}` — all local-only, git-ignored, never committed.
+- `data/private/cohort-review/<source-id>-selection.template.json` and
+  `-selection.json` — private, git-ignored, never committed.
+- `data/albums/cohorts/<source-id>-playable-v1.json` — **only after step 7, and only if
+  you decide to commit it.**
+
+### Recovery guidance
+
+Every step's output is a single plain JSON file (or, for step 4, a small directory of
+them) — if a step's output looks wrong, delete just that file/directory and re-run that
+one step; there's no staged/atomic-rename machinery to worry about here the way Gate B's
+expansion has, since none of these steps run long enough to need it.
+
+### Explicit non-goals for this runbook
+
+- Fetching the source page live, at any point, under any flag — it doesn't exist in this
+  pipeline, by design, not by omission (ADR 0028).
+- Automatically promoting anything — step 7 always requires a selection file with at least
+  one entry a human put there themselves.
+- Pi ambient jobs (validating or summarizing these artifacts) — a separate, later,
+  deferred PR.
+- Swapping the web app's `/cohorts/` page from its synthetic fixture to a real reviewed
+  cohort — a separate, later step, not part of generating and reviewing the cohort itself.
+
 ## Replicating datasets to worker caches (ADR 0025)
 
 The master/coordination host's `local/processed/` is always the authoritative
@@ -394,6 +559,12 @@ re-ingest.
   its own, and never promoted to manager.
 - **Raspberry Pi 3B workers:** only bounded, immutable, checksummed partitions — never the
   full raw dump. See [HARDWARE.md](HARDWARE.md) and the catalog package's resource posture.
+- **Cohort resolution/scoring** ("Real cohort rehearsal" above) follows the same
+  dataset-locality rule as one-hop expansion: run on whichever host has the relevant
+  dataset locally, preferring the x86 worker for a real one-hop dataset.
+  `draft-cohort-review`/`promote-playable-cohort` need no dataset at all (pure Python,
+  JSON-in/JSON-out) and can run anywhere, including a developer machine. Pi workers run
+  neither step.
 
 ## Backup and recovery
 

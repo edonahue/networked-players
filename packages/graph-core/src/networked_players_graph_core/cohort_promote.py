@@ -102,6 +102,53 @@ def validate_selection_file(selection: dict[str, Any]) -> None:
         raise CohortPromoteError("; ".join(failures))
 
 
+_DIFFICULTY_ORDER = {"easy": 0, "medium": 1, "hard": 2, "very_hard": 3}
+
+
+def draft_selection_template(connectivity: dict[str, Any]) -> dict[str, Any]:
+    """A safe starting point for the private selection file a human edits by
+    hand -- never a substitute for review. `approved_pairs` is always empty;
+    an operator must move an entry from `candidate_pairs` into it themselves.
+    Promoting this template unedited raises via `promote_playable_cohort`'s
+    existing "no pairs were promoted" guard, not a silent leak.
+
+    Only `status: "found"` pairs are candidates (never `no_path`/`skipped`).
+    Clean pairs (no `warnings`) sort before flagged ones, then by
+    `difficulty` (easy before very_hard), then `hop_count`, then album IDs
+    for determinism -- so a reviewer sees the easiest, cleanest connections
+    first.
+    """
+    found = [pair for pair in connectivity.get("pairs", []) if pair["status"] == "found"]
+    ordered = sorted(
+        found,
+        key=lambda p: (
+            bool(p["warnings"]),
+            _DIFFICULTY_ORDER.get(p["difficulty"], len(_DIFFICULTY_ORDER)),
+            p["hop_count"],
+            p["album_a_id"],
+            p["album_b_id"],
+        ),
+    )
+    return {
+        "schema_version": 1,
+        "reviewed_by": "",
+        "reviewed_at": "",
+        "review_note": None,
+        "allow_flagged_pairs": False,
+        "approved_pairs": [],
+        "candidate_pairs": [
+            {
+                "album_a_id": pair["album_a_id"],
+                "album_b_id": pair["album_b_id"],
+                "difficulty": pair["difficulty"],
+                "hop_count": pair["hop_count"],
+                "warnings": pair["warnings"],
+            }
+            for pair in ordered
+        ],
+    }
+
+
 def _pair_lookup(connectivity: dict[str, Any]) -> dict[frozenset[str], dict[str, Any]]:
     return {
         frozenset({pair["album_a_id"], pair["album_b_id"]}): pair
