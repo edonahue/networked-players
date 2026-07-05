@@ -4,9 +4,10 @@
 
 Turn an operator-saved third-party curated page (e.g. a "best albums" editorial post)
 into a small, reviewed gameplay cohort — a second, curated album pool alongside the
-hand-typed `data/albums/top-albums-v1.json`. This document covers the ingestion stage
-only (extracting candidates from a saved page); resolving those candidates against the
-real Discogs dataset and scoring graph connectivity are later pipeline stages.
+hand-typed `data/albums/top-albums-v1.json`. This document covers the ingestion and
+resolution stages (extracting candidates from a saved page, then resolving them against
+the real Discogs dataset); scoring graph connectivity between resolved albums and any
+eventual publication are later pipeline stages.
 
 ## Non-negotiable posture
 
@@ -28,7 +29,8 @@ not build.
 | Source | Project use | Retention | Publication posture |
 | --- | --- | --- | --- |
 | Operator-saved HTML page | Extract album candidates (rank, artist, title, year, Discogs master/release link when visible) | Raw HTML: local only, `data/private/source-html/`, never committed | Never publish the page's own prose or selection; only minimal factual metadata, and only after a later human-reviewed promotion step |
-| Extracted-candidates JSON | Local-only intermediate for a later resolver stage | `local/analysis/cohorts/<source-id>/`, git-ignored | Not published by this stage |
+| Extracted-candidates JSON | Local-only intermediate for the resolver stage | `local/analysis/cohorts/<source-id>/`, git-ignored | Not published by this stage |
+| Resolved-candidates JSON | Local-only intermediate for a later connectivity-scoring stage | `local/analysis/cohorts/<source-id>/`, git-ignored | Not published by this stage |
 
 ## Pipeline (this document's scope)
 
@@ -44,11 +46,30 @@ networked-players-catalog import-cohort-source
         ▼
 local/analysis/cohorts/<source-id>/extracted.json
   (data/contracts/album-cohort-extracted-v1.md)
+        │
+        ▼
+networked-players-catalog resolve-cohort  (against a real parsed dataset)
+        │
+        ▼
+local/analysis/cohorts/<source-id>/resolved.json
+  (data/contracts/album-cohort-resolved-v1.md)
 ```
 
-Later stages (not built yet): resolve candidates against the real parsed dataset, score
-1–3 hop graph connectivity between resolved albums, human review, and — only after
-explicit review — publication of a reviewed cohort.
+Later stages (not built yet): score 1–3 hop graph connectivity between resolved albums,
+human review, and — only after explicit review — publication of a reviewed cohort.
+
+## Resolution (summary)
+
+`packages/graph-core/src/networked_players_graph_core/cohort_resolve.py` resolves each
+extracted candidate against a real parsed dataset opened via `CreditGraph`. An explicit
+`master_id`/`release_id` hint is tried first (via `CreditGraph.find_release_by_id_hint`,
+which redirects a non-main pressing to its master's actual main release rather than
+overfitting to a specific reissue); when no hint is present or it doesn't resolve in this
+dataset, resolution falls back to `find_release_by_title_artist`'s exact text match. A
+candidate whose resolved artist is already claimed by an earlier candidate in the same
+cohort is reported unresolved, not silently duplicated — one artist per album is required
+for a later connectivity-scoring stage to compare pairs meaningfully. See
+`data/contracts/album-cohort-resolved-v1.md` for the full schema and dedup rule.
 
 ## Extraction heuristic (summary)
 

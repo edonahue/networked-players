@@ -280,6 +280,83 @@ class CreditGraph:
             "name": row[5],
         }
 
+    def find_release_by_id_hint(
+        self,
+        *,
+        release_id: int | None = None,
+        master_id: int | None = None,
+        artist_hint: str | None = None,
+    ) -> dict[str, Any] | None:
+        """Resolve a release from an explicit Discogs release_id or master_id,
+        as opposed to `find_release_by_title_artist`'s text match. Exactly one
+        of `release_id`/`master_id` should be given; `release_id` takes
+        precedence if both are.
+
+        A `release_id` that turns out to be a non-main pressing of a master is
+        redirected to that master's actual main release, matching
+        `find_release_by_title_artist`'s own main-release preference -- an
+        explicit release_id hint should not overfit to a particular reissue.
+        Returns None if the hint doesn't resolve to anything in this dataset
+        (never guessed).
+        """
+        if release_id is not None:
+            anchor = self._connection.execute(
+                "SELECT master_id, master_is_main_release FROM releases WHERE release_id = ?",
+                [release_id],
+            ).fetchone()
+            if anchor is None:
+                return None
+            anchor_master_id, is_main = anchor
+            if anchor_master_id is None or is_main:
+                return self._release_with_artist(release_id, artist_hint)
+            master_id = int(anchor_master_id)
+
+        if master_id is None:
+            raise GraphError("find_release_by_id_hint needs release_id or master_id")
+
+        main = self._connection.execute(
+            "SELECT release_id FROM releases WHERE master_id = ? "
+            "ORDER BY (master_is_main_release IS NOT TRUE), release_id LIMIT 1",
+            [master_id],
+        ).fetchone()
+        if main is None:
+            return None
+        return self._release_with_artist(int(main[0]), artist_hint)
+
+    def _release_with_artist(
+        self, release_id: int, artist_hint: str | None
+    ) -> dict[str, Any] | None:
+        rows = self._connection.execute(
+            "SELECT r.release_id, r.title, r.released, r.master_id, "
+            "c.artist_id, c.name, c.anv "
+            "FROM releases r JOIN credits c USING (release_id) "
+            "WHERE r.release_id = ? AND c.credit_scope = 'release_artist' "
+            "AND c.playable_identity "
+            "ORDER BY c.artist_id",
+            [release_id],
+        ).fetchall()
+        if not rows:
+            return None
+
+        chosen = rows[0]
+        if artist_hint:
+            lowered_hint = artist_hint.lower()
+            for row in rows:
+                if (row[5] and row[5].lower() == lowered_hint) or (
+                    row[6] and row[6].lower() == lowered_hint
+                ):
+                    chosen = row
+                    break
+
+        return {
+            "release_id": int(chosen[0]),
+            "title": chosen[1],
+            "released": chosen[2],
+            "master_id": int(chosen[3]) if chosen[3] is not None else None,
+            "artist_id": int(chosen[4]),
+            "name": chosen[5],
+        }
+
     def master(self, master_id: int) -> dict[str, Any] | None:
         """Row from the attached masters table, or None if not attached/found."""
         if not self._masters_attached:
