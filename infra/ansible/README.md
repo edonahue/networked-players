@@ -26,13 +26,17 @@ playbooks/harden-workers.yml                      Pi 3B worker hardening: watchd
 playbooks/equip-workers.yml                       Pi 3B worker baseline tooling: uv, duckdb, jq, venv
 playbooks/equip-x86-workers.yml                   x86_64 worker baseline tooling: uv, duckdb, venv, no apt (ADR 0023)
 playbooks/deploy-rq-benchmark-job.yml             persist benchmark_parse.py as an RQ job body (ADR 0019)
+playbooks/deploy-cohort-check-job.yml             persist cohort_artifact_check_job.py as an RQ job body
 playbooks/run-rq-burst-worker.yml                 burst `rq worker` against one queue (ADR 0019)
 playbooks/run-dask-worker-burst.yml               manual, on-demand Dask worker for one worker host (ADR 0020/0023)
 files/benchmark_parse.py                          standalone probe copied to each node by benchmark.yml
   (also reused, unmodified, as the RQ job body above)
+files/cohort_artifact_check_job.py                hand-maintained mirror of two graph-core cohort
+  validators; copied to each Pi as an RQ job body by deploy-cohort-check-job.yml above
 run-health-local.sh, run-benchmark-local.sh,      guarded local entry points (share run-playbook-local.sh);
   run-onboard-local.sh, run-swarm-join-local.sh,  all forward extra args, e.g. --limit workers --check
   run-deploy-rq-benchmark-job-local.sh,
+  run-deploy-cohort-check-job-local.sh,
   run-rq-burst-worker-local.sh, run-dask-worker-burst-local.sh,
   run-equip-x86-workers-local.sh
 bootstrap-worker-ssh.sh                           one-time passwordless SSH setup for the workers group

@@ -490,10 +490,37 @@ expansion has, since none of these steps run long enough to need it.
   pipeline, by design, not by omission (ADR 0028).
 - Automatically promoting anything — step 7 always requires a selection file with at least
   one entry a human put there themselves.
-- Pi ambient jobs (validating or summarizing these artifacts) — a separate, later,
-  deferred PR.
+- Running the Pi ambient validation job as part of this rehearsal — see "Pi ambient
+  cohort-artifact checks" below; it's a separate, optional, later re-check, not a step in
+  producing or reviewing a cohort.
 - Swapping the web app's `/cohorts/` page from its synthetic fixture to a real reviewed
   cohort — a separate, later step, not part of generating and reviewing the cohort itself.
+
+## Pi ambient cohort-artifact checks
+
+A bounded, validation-only ambient job re-checks an already-produced
+`connectivity.json` or `playable-cohort-v1.json` on the Pi fleet — no dataset, no
+`CreditGraph`, no network, safe to run at any time regardless of when the artifact was
+produced. This is purely a second, independent safety check (the same structural and
+leak/tone checks `validate-connectivity`/`validate-playable-cohort` already run locally);
+it is never required, and nothing in the rehearsal above depends on it.
+
+```bash
+# One-time: deploy the job body to the Pi fleet.
+./infra/ansible/run-deploy-cohort-check-job-local.sh --limit pi_workers
+
+# Check an already-produced artifact (paths resolve on the targeted worker, not here):
+./infra/swarm/deploy-jobs-broker.sh                     # if not already running
+./scripts/enqueue-cohort-check.sh --kind connectivity \
+  --artifact local/analysis/cohorts/<source-id>/connectivity.json
+./scripts/enqueue-cohort-check.sh --kind playable-cohort \
+  --artifact data/albums/cohorts/<source-id>-playable-v1.json
+```
+
+Results are written to `local/jobs/cohort-check-<timestamp>.json` (never committed). This
+mirrors the existing challenge-evidence verification job's exact deploy/enqueue pattern —
+see `infra/ansible/files/cohort_artifact_check_job.py`'s own header comment for why it's a
+hand-maintained mirror rather than a direct import of `networked_players_graph_core`.
 
 ## Replicating datasets to worker caches (ADR 0025)
 

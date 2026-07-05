@@ -129,7 +129,11 @@ narrower than any local intermediate — only `attribution_label`/`source_url` s
 the source's own metadata, no prose, no raw HTML, no reviewer identity, no per-pair private
 notes. See `data/contracts/playable-cohort-v1.md` and
 [ADR 0031](decisions/0031-human-reviewed-cohort-promotion.md) for the full design and why a
-selection file was chosen over CLI-flag pair selection.
+selection file was chosen over CLI-flag pair selection. `connectivity.json` and
+`playable-cohort-v1.json` can each be independently re-validated later — locally via
+`validate-connectivity`/`validate-playable-cohort`, or as a bounded Pi ambient job (see
+`docs/OPERATOR_SETUP.md`'s "Pi ambient cohort-artifact checks") — without re-running the
+pipeline that produced them.
 
 ## Resolution (summary)
 

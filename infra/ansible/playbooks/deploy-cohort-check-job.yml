@@ -1,0 +1,39 @@
+---
+# Deploys the cohort-artifact-check job body (files/cohort_artifact_check_job.py)
+# to Pi workers' persistent RQ jobs directory. Same
+# copy-to-persistent-location pattern as deploy-verify-job.yml, but simpler:
+# this job takes its artifact path as a per-invocation RQ argument, not a
+# fixed evidence corpus baked in at deploy time, so there's no artifact to
+# bundle here -- only the job body itself.
+#
+# hosts: pi_workers, not the flat `workers` group -- matching
+# deploy-verify-job.yml's own scoping (this is Pi-ambient work, not
+# x86-worker work).
+#
+# Usage (from infra/ansible/, with a real local inventory):
+#   ansible-playbook -i inventories/local/hosts.yml playbooks/deploy-cohort-check-job.yml \
+#     --limit worker-01.example.internal
+- name: Deploy the cohort-artifact-check job to Pi workers
+  hosts: pi_workers
+  gather_facts: true
+  vars:
+    rq_jobs_dir: "{{ ansible_env.HOME }}/.local/share/networked-players/rq-jobs"
+  tasks:
+    - name: Create the RQ jobs directory
+      ansible.builtin.file:
+        path: "{{ rq_jobs_dir }}"
+        state: directory
+        mode: "0755"
+
+    - name: Copy the cohort-artifact-check job body (same file every worker gets, unmodified)
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../files/cohort_artifact_check_job.py"
+        dest: "{{ rq_jobs_dir }}/cohort_artifact_check_job.py"
+        mode: "0644"
+      register: job_copy
+
+    - name: Report deployment
+      ansible.builtin.debug:
+        msg:
+          - "host: {{ inventory_hostname }}"
+          - "job body deployed to {{ rq_jobs_dir }}/ (changed={{ job_copy.changed }})"

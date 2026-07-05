@@ -287,6 +287,11 @@ def _parser() -> argparse.ArgumentParser:
     )
     validate_playable.add_argument("--input", type=Path, required=True)
 
+    validate_connectivity_parser = subparsers.add_parser(
+        "validate-connectivity", help="validate an album-cohort-connectivity-v1 artifact"
+    )
+    validate_connectivity_parser.add_argument("--input", type=Path, required=True)
+
     draft_review = subparsers.add_parser(
         "draft-cohort-review",
         help="draft a private selection-file template from connectivity.json for human "
@@ -739,6 +744,14 @@ def main(argv: Sequence[str] | None = None) -> int:
 
         playable_artifact = json.loads(args.input.read_text())
         validate_playable_cohort(playable_artifact)
+        print(json.dumps({"ok": True}, indent=2))
+        return 0
+
+    if args.command == "validate-connectivity":
+        from networked_players_graph_core.cohort_connectivity import validate_connectivity
+
+        connectivity_artifact = json.loads(args.input.read_text())
+        validate_connectivity(connectivity_artifact)
         print(json.dumps({"ok": True}, indent=2))
         return 0
 

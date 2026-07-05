@@ -18,7 +18,9 @@ Hardware classes and selected models may be named when they explain a design con
 
 ## Design implications
 
-- Pi jobs must fit comfortably within 1 GB RAM with explicit concurrency limits.
+- Pi jobs must fit comfortably within 1 GB RAM with explicit concurrency limits. The
+  cohort pipeline's own Pi job is bounded ambient artifact validation (JSON-in, JSON-out,
+  no dataset) — never graph traversal, scoring, or full-catalog work.
 - Snapshot distribution should be incremental, checksummed, and infrequent enough for 100 Mbps worker links.
 - The 2.5GbE backbone chiefly benefits the coordination host, uplink organization, future endpoints, and large transfers that do not terminate on a Pi 3B.
 - The x86 worker is the fleet's actual joined, higher-capability compute node and is the
