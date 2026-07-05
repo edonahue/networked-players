@@ -79,8 +79,15 @@ data/albums/cohorts/<source-id>-playable-v1.json
   (data/contracts/playable-cohort-v1.md)
 ```
 
-Later stage (not built yet): a web loader that consumes a promoted playable-cohort
-artifact for gameplay.
+The pipeline now runs end-to-end through a web shell: `apps/web/src/pages/cohorts.astro`
+(`apps/web/src/data/cohort.ts`) renders a promoted `playable-cohort-v1` artifact with the
+same guess/reveal framing `play/[album].astro` already established. It currently serves
+only a bundled, clearly-marked synthetic fixture
+(`apps/web/public/data/cohort-sample.playable-v1.json`) — no real cohort exists yet.
+Generating and reviewing a real cohort from an operator-saved source is the next actual
+step, gated by explicit human review through `promote-playable-cohort`'s selection file
+exactly as [ADR 0031](decisions/0031-human-reviewed-cohort-promotion.md) specifies; nothing
+publishes a real cohort automatically.
 
 ## Connectivity scoring (summary)
 

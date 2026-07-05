@@ -1,0 +1,57 @@
+---
+import type { CohortAlbum, CohortPair } from '../data/cohort';
+
+interface Props {
+  pair: CohortPair;
+  albums: CohortAlbum[];
+}
+
+const { pair, albums } = Astro.props;
+const albumById = new Map(albums.map((a) => [a.id, a]));
+const albumA = albumById.get(pair.album_a_id);
+const albumB = albumById.get(pair.album_b_id);
+
+const FLAG_LABELS: Record<string, string> = {
+  co_billed_release_artists: 'co-billed release artists',
+  performer_credit: 'performer credit',
+  non_performer_only: 'non-performer credit only (flagged)',
+  placeholder_artist_hop: 'involves a placeholder identity',
+};
+
+const flagLabels = (flags: string[]) =>
+  flags.map((f) => FLAG_LABELS[f] ?? f).join(', ');
+---
+
+<article class="cohort-pair" data-cohort-pair>
+  <div class="evidence-card__summary">
+    <div class="evidence-card__endpoint">
+      <span class="album-card__placeholder" aria-hidden="true">
+        <span class="album-card__placeholder-disc" />
+      </span>
+      <span>{albumA?.title ?? pair.album_a_id}</span>
+    </div>
+    <span class="arrow" aria-hidden="true">→</span>
+    <div class="evidence-card__endpoint">
+      <span class="album-card__placeholder" aria-hidden="true">
+        <span class="album-card__placeholder-disc" />
+      </span>
+      <span>{albumB?.title ?? pair.album_b_id}</span>
+    </div>
+  </div>
+  <p class="path-card__sub">
+    Difficulty: {pair.difficulty} ({pair.hop_count} hop{pair.hop_count === 1 ? '' : 's'}) ·{' '}
+    <button type="button" data-reveal-button>Reveal</button>
+  </p>
+
+  <div class="cohort-pair__hops" data-guess-target data-revealed="false" hidden>
+    {
+      pair.hops.map((hop, index) => (
+        <p class="hop__release">
+          Hop {index + 1}: artists {hop.artist_a_id} and {hop.artist_b_id} are{' '}
+          connected via a shared release credit on release {hop.release_id} (
+          {flagLabels(hop.quality_flags)}).
+        </p>
+      ))
+    }
+  </div>
+</article>

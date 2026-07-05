@@ -1,0 +1,74 @@
+{
+  "schema_version": 1,
+  "cohort_id": "synthetic-example",
+  "attribution_label": "Synthetic Example Cohort (not real data)",
+  "source_url": "https://example.invalid/synthetic-cohort",
+  "generated_from_scorer_version": 2,
+  "reviewed_at": "2026-07-05T12:00:00+00:00",
+  "review_note": "Synthetic fixture for the web shell -- not a real reviewed cohort.",
+  "albums": [
+    {
+      "id": "release-9001",
+      "artist_id": 9001,
+      "artist": "Example Artist One",
+      "title": "Fictional Session Vol. 1",
+      "year": 1991
+    },
+    {
+      "id": "release-9002",
+      "artist_id": 9002,
+      "artist": "Example Artist Two",
+      "title": "Imaginary Sketches",
+      "year": 1994
+    },
+    {
+      "id": "release-9003",
+      "artist_id": 9003,
+      "artist": "Example Artist Three",
+      "title": "Placeholder Suite",
+      "year": 1997
+    }
+  ],
+  "pairs": [
+    {
+      "album_a_id": "release-9001",
+      "album_b_id": "release-9002",
+      "artist_a_id": 9001,
+      "artist_b_id": 9002,
+      "difficulty": "easy",
+      "hop_count": 1,
+      "hops": [
+        {
+          "release_id": 9001,
+          "artist_a_id": 9001,
+          "artist_b_id": 9002,
+          "quality_flags": ["co_billed_release_artists"]
+        }
+      ],
+      "warnings": []
+    },
+    {
+      "album_a_id": "release-9002",
+      "album_b_id": "release-9003",
+      "artist_a_id": 9002,
+      "artist_b_id": 9003,
+      "difficulty": "medium",
+      "hop_count": 2,
+      "hops": [
+        {
+          "release_id": 9002,
+          "artist_a_id": 9002,
+          "artist_b_id": 9099,
+          "quality_flags": ["performer_credit"]
+        },
+        {
+          "release_id": 9003,
+          "artist_a_id": 9099,
+          "artist_b_id": 9003,
+          "quality_flags": ["co_billed_release_artists"]
+        }
+      ],
+      "warnings": []
+    }
+  ]
+}

@@ -1,0 +1,53 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import CohortPairCard from '../components/CohortPairCard.astro';
+import type { PlayableCohort } from '../data/cohort';
+import cohortData from '../../public/data/cohort-sample.playable-v1.json';
+
+const cohort = cohortData as PlayableCohort;
+
+const description =
+  'A reviewed playable cohort: guess the documented connection between two albums, then reveal the credit evidence.';
+---
+
+<BaseLayout title="Reviewed cohorts" description={description}>
+  <section class="shell" style="padding-top:40px">
+    <p class="eyebrow" style="margin-bottom:6px">Reviewed cohorts</p>
+    <h1 style="font-size:clamp(1.8rem,4vw,2.6rem)">Guess the connection</h1>
+    <p class="lede" style="margin-top:6px">
+      {description}
+    </p>
+
+    <p class="notice" data-synthetic-notice style="margin-top:16px">
+      <strong>Synthetic example — not a real reviewed cohort yet.</strong> This page currently
+      serves a made-up fixture ({cohort.attribution_label}) to prove the web shell works. A real
+      cohort is only published after explicit human review.
+    </p>
+
+    <div style="margin-top:24px">
+      {cohort.pairs.map((pair) => <CohortPairCard pair={pair} albums={cohort.albums} />)}
+    </div>
+  </section>
+</BaseLayout>
+
+<script is:inline>
+  (() => {
+    const cards = Array.from(document.querySelectorAll('[data-cohort-pair]'));
+    if (!cards.length) return;
+
+    const reveal = (card) => {
+      const target = card.querySelector('[data-guess-target]');
+      if (target) {
+        target.setAttribute('data-revealed', 'true');
+        target.removeAttribute('hidden');
+      }
+    };
+
+    document.querySelectorAll('[data-reveal-button]').forEach((button) => {
+      button.addEventListener('click', () => {
+        const card = button.closest('[data-cohort-pair]');
+        if (card) reveal(card);
+      });
+    });
+  })();
+</script>

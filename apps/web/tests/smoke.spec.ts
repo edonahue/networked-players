@@ -108,3 +108,27 @@ test("a play page renders mode controls and reveals evidence", async ({
     totalPaths,
   );
 });
+
+test("cohorts page loads, shows the synthetic notice, and reveals a pair", async ({
+  page,
+}) => {
+  await page.goto("/cohorts/");
+  await expect(page.getByRole("heading", { level: 1 })).toContainText(
+    "Guess the connection",
+  );
+  await expect(page.locator("[data-synthetic-notice]")).toBeVisible();
+  await expect(page.locator("[data-cohort-pair]").first()).toBeVisible();
+
+  await expect(page.locator("[data-guess-target]:not([hidden])")).toHaveCount(
+    0,
+  );
+  await page.getByRole("button", { name: "Reveal" }).first().click();
+  await expect(
+    page.locator("[data-guess-target]:not([hidden])").first(),
+  ).toBeVisible();
+
+  const bodyText = (await page.textContent("body"))?.toLowerCase() ?? "";
+  expect(bodyText).not.toContain("worked with");
+  expect(bodyText).not.toContain("collaborated with");
+  expect(bodyText).not.toContain("influenced");
+});
