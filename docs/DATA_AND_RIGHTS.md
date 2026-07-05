@@ -26,6 +26,20 @@ asset would be); see ADR 0012. Artist images, preview audio, and marketplace ass
 remain out of scope. A playable release must still work from textual evidence first --
 cover art is presentation, not load-bearing evidence.
 
+### Curated third-party source pages
+
+An operator may manually save a third-party editorial page (e.g. a "best albums" blog
+post) as a starting point for a curated gameplay cohort — see
+[ADR 0028](decisions/0028-curated-cohort-source-ingestion.md). The raw saved page is
+never committed and never republished: its selection, ranking, and prose are the
+original author's own editorial work, not this project's to redistribute. Only small
+factual metadata that Discogs itself would also expose for the same release — artist,
+title, year, and a Discogs master/release identifier, and only when visibly linked in
+the saved source — is ever extracted, and even that minimal metadata stays a local-only
+intermediate until a separate, explicit, human-reviewed promotion step (never the
+extraction pipeline itself) moves anything toward a committed cohort file. There is no
+live fetching anywhere in this pipeline, by design, not merely by current omission.
+
 ### Derived artifacts
 
 Paths, aggregate findings, graph statistics, and challenges should retain enough provenance to show the source release and credit behind each step. Derived does not mean rights-free. Public artifacts should contain only fields needed to understand and verify the experience.

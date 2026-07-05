@@ -29,7 +29,11 @@ Pi 3B") is fine in public docs; "this Pi measured 4,630 releases/sec on
 - production inventories and machine-specific variables;
 - private collection membership, exports, and account-linked responses;
 - database dumps, production snapshots that are not cleared for publication, and raw logs;
-- backup destinations, restore credentials, and sensitive incident notes.
+- backup destinations, restore credentials, and sensitive incident notes;
+- raw saved third-party web pages/HTML and any operator notes describing them (see
+  [ADR 0028](decisions/0028-curated-cohort-source-ingestion.md)) — the article's own
+  editorial selection and prose are the source author's work, not this project's to
+  redistribute.
 
 ## Practical pattern
 
@@ -47,3 +51,7 @@ measurement yourself.
 3. Inspect files and metadata for addresses, usernames, paths, tokens, and account identifiers.
 4. Verify that example configuration cannot reach the real environment.
 5. Record provenance, schema, and snapshot versions.
+
+A curated cohort source's extracted-candidates JSON (`data/contracts/album-cohort-extracted-v1.md`)
+is a reviewed local intermediate, not yet subject to this checklist — nothing in that
+pipeline stage publishes anything.
