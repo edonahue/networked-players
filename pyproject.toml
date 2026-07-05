@@ -35,6 +35,7 @@ networked-players-catalog = "networked_players_catalog.cli:main"
 packages = [
   "networked_players_catalog",
   "networked_players_catalog.discogs",
+  "networked_players_catalog.cohort_source",
   "networked_players_graph_core",
 ]
 

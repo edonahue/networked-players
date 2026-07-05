@@ -166,6 +166,29 @@ def _parser() -> argparse.ArgumentParser:
     export_snapshot.add_argument("--memory-limit", default="1GB")
     export_snapshot.add_argument("--threads", type=int, default=2)
     export_snapshot.add_argument("--overwrite", action="store_true")
+
+    import_cohort = subparsers.add_parser(
+        "import-cohort-source",
+        help=(
+            "extract album candidates from a saved cohort-source HTML page "
+            "(curated source ingestion; no live fetching)"
+        ),
+    )
+    import_cohort.add_argument(
+        "--input",
+        type=Path,
+        required=True,
+        help="saved HTML file (never committed; keep under data/private/source-html/)",
+    )
+    import_cohort.add_argument("--output", type=Path, required=True)
+    import_cohort.add_argument(
+        "--source-url",
+        required=True,
+        help="URL the page was saved from; recorded as provenance only, never re-fetched",
+    )
+    import_cohort.add_argument("--source-title", required=True)
+    import_cohort.add_argument("--saved-at", default=date.today().isoformat())
+    import_cohort.add_argument("--operator-note", default="")
     return parser
 
 
@@ -436,6 +459,36 @@ def main(argv: Sequence[str] | None = None) -> int:
             overwrite=args.overwrite,
         )
         print(json.dumps(snapshot_manifest, indent=2, sort_keys=True))
+        return 0
+
+    if args.command == "import-cohort-source":
+        from .cohort_source.extract import extract_candidates_from_file
+        from .cohort_source.source import build_cohort_source_meta
+
+        source = build_cohort_source_meta(
+            source_url=args.source_url,
+            page_title=args.source_title,
+            saved_at=args.saved_at,
+            operator_note=args.operator_note,
+            raw_html_path=args.input,
+        )
+        extracted = extract_candidates_from_file(args.input, source=source)
+        extracted.write(args.output)
+        print(
+            json.dumps(
+                {
+                    "output": str(args.output),
+                    "candidate_count": len(extracted.candidates),
+                    "low_confidence_count": sum(
+                        c.confidence == "low" for c in extracted.candidates
+                    ),
+                    "missing_link_count": sum(
+                        c.master_id is None and c.release_id is None for c in extracted.candidates
+                    ),
+                },
+                indent=2,
+            )
+        )
         return 0
 
     raise AssertionError(f"unhandled command: {args.command}")
