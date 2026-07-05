@@ -46,3 +46,29 @@ export interface PlayableCohort {
   albums: CohortAlbum[];
   pairs: CohortPair[];
 }
+
+// --- Web cohort manifest (apps/web/public/data/cohorts/index.json) ---
+// A presentation-layer concept, not part of the playable-cohort-v1 contract:
+// "is this ready to show real players" is a publishing decision, not a
+// property of the connectivity data itself. `status` is deliberately just
+// these two values -- an unreviewed artifact is never committed at all, so
+// there's nothing here to mark as a third "draft" state.
+
+export type PlayableCohortStatus = "synthetic" | "reviewed";
+
+/** Manifest-owned editorial text, deliberately separate from the artifact's
+ * own `attribution_label` (the source page's title, not necessarily good
+ * cohort-listing copy) -- the same separation top-albums-v1.json keeps
+ * between its own curation metadata and what Discogs provides. */
+export interface PlayableCohortManifestEntry {
+  cohort_id: string;
+  title: string;
+  description: string;
+  artifact_path: string;
+  status: PlayableCohortStatus;
+}
+
+export interface PlayableCohortManifest {
+  schema_version: number;
+  cohorts: PlayableCohortManifestEntry[];
+}

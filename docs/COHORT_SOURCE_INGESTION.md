@@ -81,13 +81,22 @@ data/albums/cohorts/<source-id>-playable-v1.json
 
 The pipeline now runs end-to-end through a web shell: `apps/web/src/pages/cohorts.astro`
 (`apps/web/src/data/cohort.ts`) renders a promoted `playable-cohort-v1` artifact with the
-same guess/reveal framing `play/[album].astro` already established. It currently serves
-only a bundled, clearly-marked synthetic fixture
-(`apps/web/public/data/cohort-sample.playable-v1.json`) — no real cohort exists yet.
-Generating and reviewing a real cohort from an operator-saved source is the next actual
-step, gated by explicit human review through `promote-playable-cohort`'s selection file
-exactly as [ADR 0031](decisions/0031-human-reviewed-cohort-promotion.md) specifies; nothing
-publishes a real cohort automatically.
+same guess/reveal framing `play/[album].astro` already established, sourced from a small
+manifest (`apps/web/public/data/cohorts/index.json`) rather than a single hardcoded
+import. It currently lists only one entry, a bundled, clearly-marked synthetic fixture
+(`apps/web/public/data/cohorts/synthetic-example.playable-v1.json`, `status:
+"synthetic"`) — no real cohort exists yet. Generating and reviewing a real cohort from an
+operator-saved source is the next actual step, gated by explicit human review through
+`promote-playable-cohort`'s selection file exactly as
+[ADR 0031](decisions/0031-human-reviewed-cohort-promotion.md) specifies; nothing publishes
+a real cohort automatically.
+
+**A committed `playable-cohort-v1.json` is not automatically web-visible.** Promotion
+(below) only writes `data/albums/cohorts/<source-id>-playable-v1.json`; making it
+appear on `/cohorts/` is a separate, later, explicit step: an operator adds an entry with
+`status: "reviewed"` to `apps/web/public/data/cohorts/index.json` plus a matching static
+import in `cohorts.astro` (Vite needs a statically analyzable import path, not a router),
+done only after the artifact is already committed via the review gate above.
 
 ## Connectivity scoring (summary)
 

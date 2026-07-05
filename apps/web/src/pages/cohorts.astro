@@ -1,10 +1,30 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import CohortPairCard from '../components/CohortPairCard.astro';
-import type { PlayableCohort } from '../data/cohort';
-import cohortData from '../../public/data/cohort-sample.playable-v1.json';
+import type { PlayableCohort, PlayableCohortManifest } from '../data/cohort';
+import manifestData from '../../public/data/cohorts/index.json';
+import syntheticExampleArtifact from '../../public/data/cohorts/synthetic-example.playable-v1.json';
 
-const cohort = cohortData as PlayableCohort;
+const manifest = manifestData as PlayableCohortManifest;
+
+// Vite needs statically analyzable import paths, and this page deliberately
+// has no router or dynamic-import machinery -- so this map is hand-maintained,
+// not generated. Adding a second cohort later means adding one import line
+// and one map entry here, alongside its manifest entry above.
+const artifactsByCohortId: Record<string, PlayableCohort> = {
+  'synthetic-example': syntheticExampleArtifact as PlayableCohort,
+};
+
+const activeEntry = manifest.cohorts[0];
+if (!activeEntry) {
+  throw new Error('apps/web/public/data/cohorts/index.json has no cohorts listed');
+}
+const cohort = artifactsByCohortId[activeEntry.cohort_id];
+if (!cohort) {
+  throw new Error(
+    `Manifest entry ${activeEntry.cohort_id} has no matching static import in cohorts.astro`,
+  );
+}
 
 const description =
   'A reviewed playable cohort: guess the documented connection between two albums, then reveal the credit evidence.';
@@ -18,11 +38,25 @@ const description =
       {description}
     </p>
 
-    <p class="notice" data-synthetic-notice style="margin-top:16px">
-      <strong>Synthetic example — not a real reviewed cohort yet.</strong> This page currently
-      serves a made-up fixture ({cohort.attribution_label}) to prove the web shell works. A real
-      cohort is only published after explicit human review.
-    </p>
+    <ul style="margin-top:16px">
+      {
+        manifest.cohorts.map((entry) => (
+          <li>
+            {entry.title} <span class="tag">{entry.status}</span>
+          </li>
+        ))
+      }
+    </ul>
+
+    {
+      activeEntry.status === 'synthetic' && (
+        <p class="notice" data-synthetic-notice style="margin-top:16px">
+          <strong>Synthetic example — not a real reviewed cohort yet.</strong> This page
+          currently serves a made-up fixture ({activeEntry.title}) to prove the web shell
+          works. A real cohort is only published after explicit human review.
+        </p>
+      )
+    }
 
     <div style="margin-top:24px">
       {cohort.pairs.map((pair) => <CohortPairCard pair={pair} albums={cohort.albums} />)}

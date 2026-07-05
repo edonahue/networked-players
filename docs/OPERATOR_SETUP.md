@@ -493,8 +493,10 @@ expansion has, since none of these steps run long enough to need it.
 - Running the Pi ambient validation job as part of this rehearsal — see "Pi ambient
   cohort-artifact checks" below; it's a separate, optional, later re-check, not a step in
   producing or reviewing a cohort.
-- Swapping the web app's `/cohorts/` page from its synthetic fixture to a real reviewed
-  cohort — a separate, later step, not part of generating and reviewing the cohort itself.
+- Making the promoted artifact web-visible — a separate, later step, not part of
+  generating and reviewing the cohort itself: adding a `status: "reviewed"` entry to
+  `apps/web/public/data/cohorts/index.json` plus a matching static import in
+  `cohorts.astro` (see `docs/COHORT_SOURCE_INGESTION.md`).
 
 ## Pi ambient cohort-artifact checks
 

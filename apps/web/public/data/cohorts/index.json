@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "cohorts": [
+    {
+      "cohort_id": "synthetic-example",
+      "title": "Synthetic Example Cohort",
+      "description": "A made-up fixture proving the web shell works -- not a real reviewed cohort.",
+      "artifact_path": "/data/cohorts/synthetic-example.playable-v1.json",
+      "status": "synthetic"
+    }
+  ]
+}

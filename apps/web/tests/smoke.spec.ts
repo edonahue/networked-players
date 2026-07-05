@@ -116,6 +116,7 @@ test("cohorts page loads, shows the synthetic notice, and reveals a pair", async
   await expect(page.getByRole("heading", { level: 1 })).toContainText(
     "Guess the connection",
   );
+  await expect(page.getByText("Synthetic Example Cohort").first()).toBeVisible();
   await expect(page.locator("[data-synthetic-notice]")).toBeVisible();
   await expect(page.locator("[data-cohort-pair]").first()).toBeVisible();
 
