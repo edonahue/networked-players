@@ -4,9 +4,9 @@
 
 Turn an operator-saved third-party curated page (e.g. a "best albums" editorial post)
 into a small, reviewed gameplay cohort — a second, curated album pool alongside the
-hand-typed `data/albums/top-albums-v1.json`. This document covers the ingestion and
-resolution stages (extracting candidates from a saved page, then resolving them against
-the real Discogs dataset); scoring graph connectivity between resolved albums and any
+hand-typed `data/albums/top-albums-v1.json`. This document covers ingestion, resolution,
+and connectivity scoring (extracting candidates, resolving them against the real Discogs
+dataset, then scoring real graph paths between resolved albums); human review and any
 eventual publication are later pipeline stages.
 
 ## Non-negotiable posture
@@ -30,7 +30,8 @@ not build.
 | --- | --- | --- | --- |
 | Operator-saved HTML page | Extract album candidates (rank, artist, title, year, Discogs master/release link when visible) | Raw HTML: local only, `data/private/source-html/`, never committed | Never publish the page's own prose or selection; only minimal factual metadata, and only after a later human-reviewed promotion step |
 | Extracted-candidates JSON | Local-only intermediate for the resolver stage | `local/analysis/cohorts/<source-id>/`, git-ignored | Not published by this stage |
-| Resolved-candidates JSON | Local-only intermediate for a later connectivity-scoring stage | `local/analysis/cohorts/<source-id>/`, git-ignored | Not published by this stage |
+| Resolved-candidates JSON | Local-only intermediate for the connectivity-scoring stage | `local/analysis/cohorts/<source-id>/`, git-ignored | Not published by this stage |
+| Connectivity/playable-pairs JSON, review report | Local-only intermediates for human review | `local/analysis/cohorts/<source-id>/`, git-ignored | Not published by this stage |
 
 ## Pipeline (this document's scope)
 
@@ -53,10 +54,30 @@ networked-players-catalog resolve-cohort  (against a real parsed dataset)
         ▼
 local/analysis/cohorts/<source-id>/resolved.json
   (data/contracts/album-cohort-resolved-v1.md)
+        │
+        ▼
+networked-players-catalog score-cohort-connectivity  (against a one-hop dataset)
+        │
+        ▼
+local/analysis/cohorts/<source-id>/{connectivity.json, playable-pairs.json, review-report.md}
+  (data/contracts/album-cohort-connectivity-v1.md)
 ```
 
-Later stages (not built yet): score 1–3 hop graph connectivity between resolved albums,
-human review, and — only after explicit review — publication of a reviewed cohort.
+Later stages (not built yet): human review of the review report, and — only after
+explicit review — publication of a reviewed cohort to the web.
+
+## Connectivity scoring (summary)
+
+`packages/graph-core/src/networked_players_graph_core/cohort_connectivity.py` computes a
+real `CreditGraph.find_path` between every pair of resolved albums (never dropping an
+unreachable pair — it's reported as `status: "no_path"`), bucketing difficulty by hop
+count. It also catches a real gap: `CreditGraph`'s own traversal does not re-apply
+ADR 0026/0027's placeholder-artist and non-performer-role exclusions from one-hop dataset
+construction, so a hop can still run through a "Trad." credit or a Mastered-By-only
+credit if it survives as evidence on an already-retained release. Every hop gets a
+`quality_flags` entry so this is visible for human review, never silently hidden or
+auto-excluded — see [ADR 0029](decisions/0029-connectivity-scorer-flags-dont-fix-traversal-gap.md)
+and `data/contracts/album-cohort-connectivity-v1.md` for the full flag taxonomy.
 
 ## Resolution (summary)
 
