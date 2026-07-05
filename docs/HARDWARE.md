@@ -40,6 +40,32 @@ thread, a ~2 GiB Dask memory limit, a systemd `MemoryMax` around 2500M, `CPUQuot
 100–150% range, and `Nice=15` so it never contends with the host's own coordination duties.
 No code, playbook, or Compose service implements this today.
 
+### Future: reconsider Pi dataset-caching scope (not decided)
+
+Background, not a decision: [ADR 0024](decisions/0024-http-readonly-catalog-data-access.md)
+and [ADR 0025](decisions/0025-worker-local-dataset-cache.md) restrict Pi workers to
+caching only the bounded one-hop dataset (a 2 GiB guard in
+`replicate-dataset-pi.yml`), never the full catalog — explicitly "even though disk space
+alone wouldn't stop them" (ADR 0025), because at the time neither the Pi's real free
+space nor the one-hop dataset's real size had been measured. Both are now known:
+
+- Real Pi free space (`make cluster-health`, 2026-07-04): each of the three active Pi
+  workers has roughly **46–47 GB free** on `/` — see `docs/DATA_SIZING.md`'s "Worker-local
+  dataset cache, first real run" for the per-worker figures.
+- The real one-hop dataset (`docs/DATA_SIZING.md`'s "One-hop expansion, first real run"):
+  **868 MB** — comfortably small even against the Pi's 1 GB RAM class, let alone its disk.
+  Even the full `discogs` dataset (6.6 GB) is a small fraction of a Pi's real headroom.
+
+This is exactly the kind of "measured evidence from a real Pi workload" ADR 0025's own
+Revisit trigger asks for before reconsidering the one-hop-only rule and its 2 GiB guard —
+disk space specifically is no longer the constraint it looked like on paper. It is not
+the only constraint, though: the Pi's 100 Mbps link (not disk) is what ADR 0024's
+bounded-only policy was really protecting against, and 1 GB RAM still bounds what a Pi
+can usefully *do* with a larger cached dataset, not just store. Any future change here
+should weigh transfer time and RAM-bounded usefulness, not disk headroom alone. No code,
+playbook, or guard value changes as a result of this note — it only records the
+background for whoever revisits ADR 0025's trigger next.
+
 ## Measured capability
 
 Real throughput, elapsed-time, and memory numbers are treated as private and
