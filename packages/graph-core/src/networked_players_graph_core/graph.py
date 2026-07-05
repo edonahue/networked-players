@@ -60,6 +60,21 @@ class GraphError(RuntimeError):
     """Raised when a graph can't be opened or queried as requested."""
 
 
+class FrontierTooLargeError(GraphError):
+    """Raised when `find_path`'s BFS hits an artist whose fan-out exceeds
+    `max_frontier_expansion` and the target was never reached without
+    expanding it. The result is inconclusive, not a confirmed absence of a
+    path -- callers must not treat this the same as a `None` return."""
+
+    def __init__(self, capped_artist_ids: frozenset[int]):
+        self.capped_artist_ids = capped_artist_ids
+        super().__init__(
+            f"search hit artist(s) {sorted(capped_artist_ids)} exceeding "
+            "max_frontier_expansion before reaching the target; result is "
+            "inconclusive, not a confirmed no-path"
+        )
+
+
 @dataclass(frozen=True, slots=True)
 class Hop:
     release_id: int
@@ -90,6 +105,7 @@ class CreditGraph:
         memory_limit: str = "1GB",
         threads: int = 2,
         max_artists_per_release: int = 50,
+        temp_dir: Path | None = None,
     ) -> CreditGraph:
         dataset_root = Path(dataset_root)
         manifest_path = dataset_root / "manifest.json"
@@ -99,9 +115,19 @@ class CreditGraph:
         credits_glob = str(dataset_root / "table=credits" / "*.parquet")
         releases_glob = str(dataset_root / "table=releases" / "*.parquet")
 
+        # Without an explicit temp_directory, DuckDB spills to `.tmp/`
+        # relative to the process's CWD -- on a host where CWD sits on a
+        # small boot disk and the real dataset lives on a larger separate
+        # volume, that silently risks a disk-full crash on a query that
+        # spills. Default alongside the dataset itself, which is already
+        # known to have room for a dataset this size.
+        spill_dir = temp_dir if temp_dir is not None else dataset_root / ".graph-core-tmp"
+        spill_dir.mkdir(parents=True, exist_ok=True)
+
         connection = duckdb.connect(database=":memory:")
         connection.execute(f"SET memory_limit = '{memory_limit}'")
         connection.execute(f"SET threads = {int(threads)}")
+        connection.execute(f"SET temp_directory = '{spill_dir}'")
 
         try:
             connection.execute(
@@ -146,6 +172,24 @@ class CreditGraph:
     def masters_attached(self) -> bool:
         return self._masters_attached
 
+    def interrupt(self) -> None:
+        """Cancel the currently running query on this graph's connection, if
+        any. DuckDB's own supported cancellation primitive -- lets a caller
+        enforce a wall-clock timeout around a single expensive call (e.g.
+        `neighbors()`/`find_path()`) without corrupting the connection for
+        subsequent calls."""
+        self._connection.interrupt()
+
+    def credit_row_count(self, artist_id: int) -> int:
+        """A cheap upper-bound proxy for `artist_id`'s traversal fan-out:
+        its own linked-credit row count, without the self-join `neighbors()`
+        needs. Used to detect a likely hub before paying for that join."""
+        row = self._connection.execute(
+            "SELECT count(*) FROM linked_credits WHERE artist_id = ?", [artist_id]
+        ).fetchone()
+        assert row is not None
+        return int(row[0])
+
     def neighbors(self, artist_id: int) -> dict[int, tuple[int, ...]]:
         rows = self._connection.execute(
             "SELECT b.artist_id, list(DISTINCT a.release_id ORDER BY a.release_id) "
@@ -159,8 +203,21 @@ class CreditGraph:
         return {int(row[0]): tuple(int(r) for r in row[1]) for row in rows}
 
     def find_path(
-        self, from_artist_id: int, to_artist_id: int, *, max_hops: int = 4
+        self,
+        from_artist_id: int,
+        to_artist_id: int,
+        *,
+        max_hops: int = 4,
+        max_frontier_expansion: int | None = None,
     ) -> EvidencePath | None:
+        """Bounded BFS. `max_frontier_expansion`, when given, is a cheap
+        release-count proxy threshold (see `credit_row_count`): a frontier
+        artist above it is excluded from *expansion* this call (its own
+        edges are never explored), though it can still be *reached* as a
+        target via another artist's edges. If the target is never reached
+        and any artist was excluded this way, raises `FrontierTooLargeError`
+        instead of returning None -- the search result is inconclusive, not
+        a confirmed no-path, and must never be reported as one."""
         if from_artist_id == to_artist_id:
             raise GraphError("from_artist_id and to_artist_id must differ")
 
@@ -173,21 +230,50 @@ class CreditGraph:
         self._connection.execute(f"INSERT INTO {visited_table} VALUES (?)", [from_artist_id])
 
         parent: dict[int, tuple[int, int]] = {}  # artist_id -> (parent_artist_id, release_id)
+        capped_artist_ids: set[int] = set()
         try:
             for _ in range(max_hops):
+                expand_from_table = frontier_table
+                safe_table = f"safe_frontier_{suffix}"
+                if max_frontier_expansion is not None:
+                    degrees = self._connection.execute(
+                        "SELECT artist_id, count(*) FROM linked_credits "
+                        f"WHERE artist_id IN (SELECT artist_id FROM {frontier_table}) "
+                        "GROUP BY artist_id"
+                    ).fetchall()
+                    newly_capped = {
+                        int(artist_id)
+                        for artist_id, release_count in degrees
+                        if release_count > max_frontier_expansion
+                    }
+                    if newly_capped:
+                        capped_artist_ids |= newly_capped
+                        placeholders = ", ".join(str(a) for a in sorted(newly_capped))
+                        self._connection.execute(
+                            f"CREATE TEMP TABLE {safe_table} AS "
+                            f"SELECT artist_id FROM {frontier_table} "
+                            f"WHERE artist_id NOT IN ({placeholders})"
+                        )
+                        expand_from_table = safe_table
+
                 level = self._connection.execute(
                     "SELECT a.artist_id, b.artist_id, min(b.release_id) "
                     "FROM linked_credits a "
                     "JOIN linked_credits b USING (release_id) "
                     "JOIN traversal_releases USING (release_id) "
-                    f"JOIN {frontier_table} f ON f.artist_id = a.artist_id "
+                    f"JOIN {expand_from_table} f ON f.artist_id = a.artist_id "
                     "WHERE b.artist_id != a.artist_id "
                     f"AND b.artist_id NOT IN (SELECT artist_id FROM {visited_table}) "
                     "GROUP BY a.artist_id, b.artist_id "
                     "ORDER BY a.artist_id, b.artist_id"
                 ).fetchall()
 
+                if expand_from_table != frontier_table:
+                    self._connection.execute(f"DROP TABLE {expand_from_table}")
+
                 if not level:
+                    if capped_artist_ids:
+                        raise FrontierTooLargeError(frozenset(capped_artist_ids))
                     return None
 
                 next_frontier: list[int] = []
@@ -212,6 +298,8 @@ class CreditGraph:
                     [[a] for a in next_frontier],
                 )
 
+            if capped_artist_ids:
+                raise FrontierTooLargeError(frozenset(capped_artist_ids))
             return None
         finally:
             self._connection.execute(f"DROP TABLE {frontier_table}")

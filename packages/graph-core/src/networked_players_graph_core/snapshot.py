@@ -54,6 +54,7 @@ def export_graph_snapshot(
     memory_limit: str = "1GB",
     threads: int = 2,
     max_artists_per_release: int = 50,
+    temp_dir: Path | None = None,
     overwrite: bool = False,
 ) -> dict[str, Any]:
     """Export the artists/edges tables; returns the written manifest."""
@@ -74,11 +75,18 @@ def export_graph_snapshot(
 
     staging_root = output_root / f".snapshot={snapshot_date}.tmp-{uuid.uuid4().hex}"
     staging_root.mkdir(parents=True, exist_ok=False)
+    # Without an explicit temp_directory, DuckDB spills to `.tmp/` relative
+    # to the process's CWD -- confirmed this to crash with "No space left on
+    # device" on a host where CWD sits on a small boot disk. Default under
+    # this export's own staging area, following expand_one_hop's pattern.
+    spill_dir = temp_dir if temp_dir is not None else staging_root / ".duckdb-tmp"
+    spill_dir.mkdir(parents=True, exist_ok=True)
 
     try:
         connection = duckdb.connect(database=":memory:")
         connection.execute(f"SET memory_limit = '{memory_limit}'")
         connection.execute(f"SET threads = {int(threads)}")
+        connection.execute(f"SET temp_directory = '{spill_dir}'")
 
         try:
             connection.execute(
@@ -148,6 +156,13 @@ def export_graph_snapshot(
             raise SnapshotError("no playable artists found -- refusing to write an empty snapshot")
 
         connection.close()
+        if temp_dir is None:
+            # The default spill dir lives inside staging_root, which is
+            # about to become the published snapshot directory -- DuckDB
+            # cleans up its own spill files on close, but not the (now
+            # empty) directory itself. An operator-supplied temp_dir is
+            # left alone; it's the operator's own directory to manage.
+            shutil.rmtree(spill_dir, ignore_errors=True)
 
         manifest: dict[str, Any] = {
             "dataset_manifest_version": 1,

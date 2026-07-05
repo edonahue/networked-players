@@ -70,7 +70,7 @@ def test_score_cohort_connectivity_cli_wiring(dataset_root: Path, tmp_path: Path
 
     summary = json.loads(capsys.readouterr().out)
     assert summary["pair_count"] == 1
-    assert summary["by_status"]["found"] == 1
+    assert summary["by_status"] == {"found": 1, "no_path": 0, "skipped": 0}
     assert summary["by_difficulty"]["easy"] == 1
 
     assert (output_dir / "connectivity.json").exists()
@@ -82,3 +82,32 @@ def test_score_cohort_connectivity_cli_wiring(dataset_root: Path, tmp_path: Path
 
     playable_pairs = json.loads((output_dir / "playable-pairs.json").read_text())
     assert len(playable_pairs) == 1
+
+
+def test_score_cohort_connectivity_cli_accepts_guardrail_flags(
+    dataset_root: Path, tmp_path: Path, capsys
+) -> None:
+    resolved_path = tmp_path / "resolved.json"
+    resolved_path.write_text(json.dumps(RESOLVED))
+    output_dir = tmp_path / "out"
+
+    exit_code = main(
+        [
+            "score-cohort-connectivity",
+            "--resolved",
+            str(resolved_path),
+            "--dataset",
+            str(dataset_root),
+            "--output-dir",
+            str(output_dir),
+            "--max-frontier-expansion",
+            "5",
+            "--pair-timeout-seconds",
+            "10",
+            "--temp-dir",
+            str(tmp_path / "spill"),
+        ]
+    )
+    assert exit_code == 0
+    summary = json.loads(capsys.readouterr().out)
+    assert summary["by_status"]["found"] == 1

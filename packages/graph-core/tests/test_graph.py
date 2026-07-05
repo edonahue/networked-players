@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from networked_players_graph_core.graph import CreditGraph, GraphError
+from networked_players_graph_core.graph import CreditGraph, FrontierTooLargeError, GraphError
 
 
 def test_neighbors_finds_co_credited_playable_artists(dataset_root: Path) -> None:
@@ -227,3 +227,137 @@ def test_release_has_no_hive_partition_artifacts(dataset_root: Path) -> None:
     assert release is not None
     assert "table" not in release
     assert "snapshot" not in release
+
+
+def test_open_sets_temp_directory_under_dataset_root_by_default(dataset_root: Path) -> None:
+    """Regression test: previously neither open() nor export_graph_snapshot()
+    set temp_directory, so DuckDB spilled to CWD-relative `.tmp/` -- a real
+    crash on a host where CWD sits on a smaller disk than the dataset."""
+    with CreditGraph.open(dataset_root) as graph:
+        setting = graph._connection.execute("SELECT current_setting('temp_directory')").fetchone()
+    assert setting is not None
+    assert str(dataset_root / ".graph-core-tmp") in setting[0]
+    assert (dataset_root / ".graph-core-tmp").is_dir()
+
+
+def test_open_honors_explicit_temp_dir(dataset_root: Path, tmp_path: Path) -> None:
+    custom = tmp_path / "custom-spill"
+    with CreditGraph.open(dataset_root, temp_dir=custom) as graph:
+        setting = graph._connection.execute("SELECT current_setting('temp_directory')").fetchone()
+    assert setting is not None
+    assert str(custom) in setting[0]
+    assert custom.is_dir()
+
+
+def test_interrupt_is_a_safe_no_op_when_no_query_is_running(dataset_root: Path) -> None:
+    with CreditGraph.open(dataset_root) as graph:
+        graph.interrupt()
+        # Connection must still be usable afterward.
+        assert graph.neighbors(200) == {100: (1,), 300: (2,)}
+
+
+def test_credit_row_count_counts_linked_credit_rows(dataset_root: Path) -> None:
+    with CreditGraph.open(dataset_root) as graph:
+        # Alice (100): R1, R4, R5.
+        assert graph.credit_row_count(100) == 3
+        assert graph.credit_row_count(999_999) == 0
+
+
+def _hub_release(release_id: int, *, master_id: int) -> dict[str, object]:
+    return {
+        "snapshot_date": "20260601",
+        "release_id": release_id,
+        "status": "Accepted",
+        "title": f"Hub Release {release_id}",
+        "country": None,
+        "released": "2001",
+        "master_id": master_id,
+        "master_is_main_release": True,
+        "data_quality": None,
+        "source_url": f"https://example.invalid/release/{release_id}",
+    }
+
+
+def _hub_credit(release_id: int, *, artist_id: int, name: str) -> dict[str, object]:
+    return {
+        "snapshot_date": "20260601",
+        "release_id": release_id,
+        "track_index": None,
+        "track_path": None,
+        "track_position": None,
+        "track_title": None,
+        "credit_scope": "release_artist",
+        "artist_id": artist_id,
+        "name": name,
+        "anv": None,
+        "join_text": None,
+        "role_text": "Performer",
+        "credited_tracks_text": None,
+        "is_linked": True,
+        "playable_identity": True,
+    }
+
+
+def test_find_path_raises_frontier_too_large_when_only_route_needs_the_hub(
+    tmp_path: Path,
+) -> None:
+    from conftest import write_synthetic_dataset
+
+    # S(1000) -> H(2000) at hop 1; H is the *only* route to T(4000) at hop 2.
+    # H appears on 4 releases -- above a cap of 2, so it's excluded from
+    # expansion and T is never reached.
+    root = write_synthetic_dataset(
+        tmp_path / "snapshot=20260601",
+        release_rows=[_hub_release(i, master_id=900 + i) for i in range(1, 5)],
+        credit_rows=[
+            _hub_credit(1, artist_id=1000, name="S"),
+            _hub_credit(1, artist_id=2000, name="H"),
+            _hub_credit(2, artist_id=2000, name="H"),
+            _hub_credit(2, artist_id=3001, name="P1"),
+            _hub_credit(3, artist_id=2000, name="H"),
+            _hub_credit(3, artist_id=3002, name="P2"),
+            _hub_credit(4, artist_id=2000, name="H"),
+            _hub_credit(4, artist_id=4000, name="T"),
+        ],
+    )
+    with CreditGraph.open(root) as graph:
+        with pytest.raises(FrontierTooLargeError) as exc_info:
+            graph.find_path(1000, 4000, max_hops=3, max_frontier_expansion=2)
+    assert exc_info.value.capped_artist_ids == frozenset({2000})
+
+
+def test_find_path_still_succeeds_via_an_uncapped_alternate_route(tmp_path: Path) -> None:
+    from conftest import write_synthetic_dataset
+
+    # S(1000) reaches both H(2000, a hub) and N(5000, not a hub) at hop 1.
+    # T(4000) is only reachable via N at hop 2 -- capping H must not prevent
+    # finding T through N in the same level.
+    root = write_synthetic_dataset(
+        tmp_path / "snapshot=20260601",
+        release_rows=[_hub_release(i, master_id=900 + i) for i in range(1, 6)],
+        credit_rows=[
+            _hub_credit(1, artist_id=1000, name="S"),
+            _hub_credit(1, artist_id=2000, name="H"),
+            _hub_credit(2, artist_id=2000, name="H"),
+            _hub_credit(2, artist_id=3001, name="P1"),
+            _hub_credit(3, artist_id=2000, name="H"),
+            _hub_credit(3, artist_id=3002, name="P2"),
+            _hub_credit(4, artist_id=1000, name="S"),
+            _hub_credit(4, artist_id=5000, name="N"),
+            _hub_credit(5, artist_id=5000, name="N"),
+            _hub_credit(5, artist_id=4000, name="T"),
+        ],
+    )
+    with CreditGraph.open(root) as graph:
+        path = graph.find_path(1000, 4000, max_hops=3, max_frontier_expansion=2)
+    assert path is not None
+    assert [h.release_id for h in path.hops] == [4, 5]
+
+
+def test_find_path_uncapped_by_default_matches_prior_behavior(dataset_root: Path) -> None:
+    """max_frontier_expansion defaults to None -- behavior for any existing
+    caller (challenge.py included) must be exactly unchanged."""
+    with CreditGraph.open(dataset_root) as graph:
+        path = graph.find_path(100, 500)  # Alice -> Eve, same as the default-cap test above
+    assert path is not None
+    assert len(path.hops) == 1

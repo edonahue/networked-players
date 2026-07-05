@@ -69,15 +69,28 @@ explicit review — publication of a reviewed cohort to the web.
 ## Connectivity scoring (summary)
 
 `packages/graph-core/src/networked_players_graph_core/cohort_connectivity.py` computes a
-real `CreditGraph.find_path` between every pair of resolved albums (never dropping an
-unreachable pair — it's reported as `status: "no_path"`), bucketing difficulty by hop
-count. It also catches a real gap: `CreditGraph`'s own traversal does not re-apply
-ADR 0026/0027's placeholder-artist and non-performer-role exclusions from one-hop dataset
-construction, so a hop can still run through a "Trad." credit or a Mastered-By-only
-credit if it survives as evidence on an already-retained release. Every hop gets a
-`quality_flags` entry so this is visible for human review, never silently hidden or
-auto-excluded — see [ADR 0029](decisions/0029-connectivity-scorer-flags-dont-fix-traversal-gap.md)
-and `data/contracts/album-cohort-connectivity-v1.md` for the full flag taxonomy.
+real graph path between every pair of resolved albums (never dropping an unreachable pair
+— it's reported as `status: "no_path"`), bucketing difficulty by hop count. It also
+catches a real gap: `CreditGraph`'s own traversal does not re-apply ADR 0026/0027's
+placeholder-artist and non-performer-role exclusions from one-hop dataset construction, so
+a hop can still run through a "Trad." credit or a Mastered-By-only credit if it survives as
+evidence on an already-retained release. Every hop gets a `quality_flags` entry so this is
+visible for human review, never silently hidden or auto-excluded — see
+[ADR 0029](decisions/0029-connectivity-scorer-flags-dont-fix-traversal-gap.md) and
+`data/contracts/album-cohort-connectivity-v1.md` for the full flag taxonomy.
+
+**Performance.** A real hub artist (a legitimately prolific person, thousands of
+co-credits) can make naive per-pair path-finding hang. `score_pairs` instead runs one
+bounded search per unique cohort artist, sharing a cache so a hub is queried at most once
+per run regardless of how many pairs it sits on, with `--max-frontier-expansion` and
+`--pair-timeout-seconds` as operator-tunable guardrails — see
+[ADR 0030](decisions/0030-cohort-scoped-connectivity-substrate.md). A pair whose
+reachability couldn't be confirmed within those guardrails is reported as
+`status: "skipped"` with a `skip_reason`, never conflated with a confirmed `"no_path"`.
+Re-run with a larger `--max-frontier-expansion`/`--pair-timeout-seconds` to resolve a
+skipped pair. Heavy real-dataset runs (the real one-hop dataset, not a synthetic fixture)
+belong on whichever host has that dataset locally — for real work, that's the fleet's
+dedicated x86 worker, not the coordination host and never a Pi.
 
 ## Resolution (summary)
 

@@ -165,6 +165,9 @@ def _parser() -> argparse.ArgumentParser:
     export_snapshot.add_argument("--max-artists-per-release", type=int, default=50)
     export_snapshot.add_argument("--memory-limit", default="1GB")
     export_snapshot.add_argument("--threads", type=int, default=2)
+    export_snapshot.add_argument(
+        "--temp-dir", type=Path, default=None, help="DuckDB spill directory"
+    )
     export_snapshot.add_argument("--overwrite", action="store_true")
 
     import_cohort = subparsers.add_parser(
@@ -204,6 +207,9 @@ def _parser() -> argparse.ArgumentParser:
     resolve_cohort.add_argument("--memory-limit", default="1GB")
     resolve_cohort.add_argument("--threads", type=int, default=2)
     resolve_cohort.add_argument("--max-artists-per-release", type=int, default=50)
+    resolve_cohort.add_argument(
+        "--temp-dir", type=Path, default=None, help="DuckDB spill directory"
+    )
 
     score_connectivity = subparsers.add_parser(
         "score-cohort-connectivity",
@@ -232,6 +238,26 @@ def _parser() -> argparse.ArgumentParser:
     score_connectivity.add_argument("--memory-limit", default="1GB")
     score_connectivity.add_argument("--threads", type=int, default=2)
     score_connectivity.add_argument("--max-artists-per-release", type=int, default=50)
+    score_connectivity.add_argument(
+        "--temp-dir", type=Path, default=None, help="DuckDB spill directory"
+    )
+    score_connectivity.add_argument(
+        "--max-frontier-expansion",
+        type=int,
+        default=300,
+        help="release-count proxy threshold above which an artist is excluded from BFS "
+        "expansion (still reachable as a target); a real hub in production has been "
+        "measured with 500-1900+, this default is a conservative heuristic, not a "
+        "precise percentile -- tune per cohort/dataset",
+    )
+    score_connectivity.add_argument(
+        "--pair-timeout-seconds",
+        type=float,
+        default=30.0,
+        help="wall-clock budget for each cohort artist's own BFS expansion; on timeout "
+        "every pair needing that artist's search is reported status=skipped rather "
+        "than hanging or guessing",
+    )
     return parser
 
 
@@ -499,6 +525,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             memory_limit=args.memory_limit,
             threads=args.threads,
             max_artists_per_release=args.max_artists_per_release,
+            temp_dir=args.temp_dir,
             overwrite=args.overwrite,
         )
         print(json.dumps(snapshot_manifest, indent=2, sort_keys=True))
@@ -549,6 +576,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             memory_limit=args.memory_limit,
             threads=args.threads,
             max_artists_per_release=args.max_artists_per_release,
+            temp_dir=args.temp_dir,
         ) as graph:
             resolved_artifact = build_resolved_cohort(
                 graph,
@@ -586,6 +614,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             memory_limit=args.memory_limit,
             threads=args.threads,
             max_artists_per_release=args.max_artists_per_release,
+            temp_dir=args.temp_dir,
         ) as graph:
             connectivity_artifact = build_connectivity_cohort(
                 graph,
@@ -593,6 +622,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                 dataset_snapshot_date=str(dataset_manifest["snapshot_date"]),
                 max_hops=args.max_hops,
                 max_pairs=args.max_pairs,
+                max_frontier_expansion=args.max_frontier_expansion,
+                pair_timeout_seconds=args.pair_timeout_seconds,
             )
 
         validate_connectivity(connectivity_artifact)
@@ -605,7 +636,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
         (args.output_dir / "review-report.md").write_text(report_markdown)
 
-        by_status = {"found": 0, "no_path": 0}
+        by_status = {"found": 0, "no_path": 0, "skipped": 0}
         by_difficulty = {"easy": 0, "medium": 0, "hard": 0, "very_hard": 0}
         flagged_pair_count = 0
         for pair in connectivity_artifact["pairs"]:

@@ -90,6 +90,27 @@ def test_export_raises_on_missing_manifest(tmp_path: Path) -> None:
         export_graph_snapshot(tmp_path / "does-not-exist", tmp_path / "graph")
 
 
+def test_export_uses_explicit_temp_dir_and_does_not_delete_it(
+    dataset_root: Path, tmp_path: Path
+) -> None:
+    """Regression test: export_graph_snapshot previously never set
+    temp_directory, so DuckDB spilled to CWD-relative `.tmp/` -- a real
+    crash on a host where CWD sits on a smaller disk than the dataset."""
+    custom_temp_dir = tmp_path / "custom-spill"
+    export_graph_snapshot(dataset_root, tmp_path / "graph", temp_dir=custom_temp_dir)
+    # An operator-supplied temp_dir is the operator's own directory to keep.
+    assert custom_temp_dir.is_dir()
+
+
+def test_export_default_temp_dir_does_not_leak_into_the_published_snapshot(
+    dataset_root: Path, tmp_path: Path
+) -> None:
+    output_root = tmp_path / "graph"
+    export_graph_snapshot(dataset_root, output_root)
+    final_root = output_root / "snapshot=20260601"
+    assert not (final_root / ".duckdb-tmp").exists()
+
+
 def test_export_cli_wiring(dataset_root: Path, tmp_path: Path, capsys) -> None:
     from networked_players_catalog.cli import main
 
