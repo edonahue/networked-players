@@ -114,6 +114,103 @@ def test_find_release_by_title_artist_matches_case_insensitively(dataset_root: P
     assert found["artist_id"] == 100
 
 
+def test_find_release_by_id_hint_resolves_release_id(dataset_root: Path) -> None:
+    with CreditGraph.open(dataset_root) as graph:
+        found = graph.find_release_by_id_hint(release_id=1)
+    assert found is not None
+    assert found["release_id"] == 1
+    assert found["master_id"] == 901
+    assert found["artist_id"] == 100  # Alice: first release-artist credit by artist_id
+
+
+def test_find_release_by_id_hint_resolves_master_id(dataset_root: Path) -> None:
+    with CreditGraph.open(dataset_root) as graph:
+        found = graph.find_release_by_id_hint(master_id=901)
+    assert found is not None
+    assert found["release_id"] == 1
+    assert found["artist_id"] == 100
+
+
+def test_find_release_by_id_hint_prefers_artist_hint_among_multiple_credits(
+    dataset_root: Path,
+) -> None:
+    # Release 1 has two release-artist credits: Alice (100) and Bob (200).
+    with CreditGraph.open(dataset_root) as graph:
+        found = graph.find_release_by_id_hint(release_id=1, artist_hint="Bob")
+    assert found is not None
+    assert found["artist_id"] == 200
+
+
+def test_find_release_by_id_hint_returns_none_for_unknown_id(dataset_root: Path) -> None:
+    with CreditGraph.open(dataset_root) as graph:
+        assert graph.find_release_by_id_hint(release_id=999_999) is None
+        assert graph.find_release_by_id_hint(master_id=999_999) is None
+
+
+def test_find_release_by_id_hint_requires_an_id(dataset_root: Path) -> None:
+    with CreditGraph.open(dataset_root) as graph, pytest.raises(GraphError):
+        graph.find_release_by_id_hint()
+
+
+def _bare_release(release_id: int, title: str, *, master_id: int, master_is_main_release: bool):
+    return {
+        "snapshot_date": "20260601",
+        "release_id": release_id,
+        "status": "Accepted",
+        "title": title,
+        "country": None,
+        "released": "2001",
+        "master_id": master_id,
+        "master_is_main_release": master_is_main_release,
+        "data_quality": None,
+        "source_url": f"https://example.invalid/release/{release_id}",
+    }
+
+
+def _bare_credit(release_id: int, *, artist_id: int, name: str):
+    return {
+        "snapshot_date": "20260601",
+        "release_id": release_id,
+        "track_index": None,
+        "track_path": None,
+        "track_position": None,
+        "track_title": None,
+        "credit_scope": "release_artist",
+        "artist_id": artist_id,
+        "name": name,
+        "anv": None,
+        "join_text": None,
+        "role_text": "Performer",
+        "credited_tracks_text": None,
+        "is_linked": True,
+        "playable_identity": True,
+    }
+
+
+def test_find_release_by_id_hint_redirects_non_main_pressing_to_master_main(
+    tmp_path: Path,
+) -> None:
+    from conftest import write_synthetic_dataset
+
+    root = write_synthetic_dataset(
+        tmp_path / "snapshot=20260601",
+        release_rows=[
+            _bare_release(10, "Reissue Edition", master_id=950, master_is_main_release=False),
+            _bare_release(11, "Original Pressing", master_id=950, master_is_main_release=True),
+        ],
+        credit_rows=[
+            _bare_credit(10, artist_id=700, name="Gina"),
+            _bare_credit(11, artist_id=700, name="Gina"),
+        ],
+    )
+    with CreditGraph.open(root) as graph:
+        # Hinted at the non-main reissue (10) -- should resolve to the
+        # master's real main release (11), not overfit to the reissue.
+        found = graph.find_release_by_id_hint(release_id=10)
+    assert found is not None
+    assert found["release_id"] == 11
+
+
 def test_master_returns_none_when_not_attached(dataset_root: Path) -> None:
     with CreditGraph.open(dataset_root) as graph:
         assert graph.master(901) is None

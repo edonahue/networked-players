@@ -189,6 +189,21 @@ def _parser() -> argparse.ArgumentParser:
     import_cohort.add_argument("--source-title", required=True)
     import_cohort.add_argument("--saved-at", default=date.today().isoformat())
     import_cohort.add_argument("--operator-note", default="")
+
+    resolve_cohort = subparsers.add_parser(
+        "resolve-cohort",
+        help="resolve extracted cohort candidates against a real parsed Discogs dataset",
+    )
+    resolve_cohort.add_argument(
+        "--extracted", type=Path, required=True, help="album-cohort-extracted-v1.json"
+    )
+    resolve_cohort.add_argument(
+        "--dataset", type=Path, required=True, help="a parsed dataset root (not one-hop)"
+    )
+    resolve_cohort.add_argument("--output", type=Path, required=True)
+    resolve_cohort.add_argument("--memory-limit", default="1GB")
+    resolve_cohort.add_argument("--threads", type=int, default=2)
+    resolve_cohort.add_argument("--max-artists-per-release", type=int, default=50)
     return parser
 
 
@@ -485,6 +500,41 @@ def main(argv: Sequence[str] | None = None) -> int:
                     "missing_link_count": sum(
                         c.master_id is None and c.release_id is None for c in extracted.candidates
                     ),
+                },
+                indent=2,
+            )
+        )
+        return 0
+
+    if args.command == "resolve-cohort":
+        from networked_players_graph_core.cohort_resolve import (
+            build_resolved_cohort,
+            write_resolved_cohort,
+        )
+        from networked_players_graph_core.graph import CreditGraph
+
+        extracted = json.loads(args.extracted.read_text())
+        dataset_manifest = json.loads((args.dataset / "manifest.json").read_text())
+
+        with CreditGraph.open(
+            args.dataset,
+            memory_limit=args.memory_limit,
+            threads=args.threads,
+            max_artists_per_release=args.max_artists_per_release,
+        ) as graph:
+            resolved_artifact = build_resolved_cohort(
+                graph,
+                extracted,
+                dataset_snapshot_date=str(dataset_manifest["snapshot_date"]),
+            )
+
+        write_resolved_cohort(resolved_artifact, args.output)
+        print(
+            json.dumps(
+                {
+                    "output": str(args.output),
+                    "resolved_count": len(resolved_artifact["resolved"]),
+                    "unresolved_count": len(resolved_artifact["unresolved"]),
                 },
                 indent=2,
             )
