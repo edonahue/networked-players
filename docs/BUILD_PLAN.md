@@ -222,7 +222,7 @@ fourth original Pi, plus a separate Pi 3B+, are planned but not yet revived
 | Private seed import | Implemented (ADR 0011); operator's real seed imported locally |
 | One-hop graph expansion | Implemented (`expand-one-hop`, Milestone 5); **real run done 2026-07-05** (gate B) — 1,410,106 releases, 868 MB, validated clean, after ADR 0026/0027's hub exclusions |
 | `graph-core` | Implemented: DuckDB-backed lazy `CreditGraph`, challenge.v2 builder, proxy-ranking analysis, 32 tests, all synthetic; real-data run pending (live gate F) |
-| Worker-local dataset caching | Implemented (ADR 0025): `dataset_fetch.py` puller/verifier, per-hardware-class ansible playbooks (x86 full/masters/one-hop, Pi one-hop-only + guard), rsync fallback, `resolve_dataset` resolution order; real replication to a worker pending (live gate E) |
+| Worker-local dataset caching | Implemented (ADR 0025): `dataset_fetch.py` puller/verifier, per-hardware-class ansible playbooks (x86 full/masters/one-hop, Pi one-hop-only + guard), rsync fallback, `resolve_dataset` resolution order. **Real run done 2026-07-05** (gate E): `discogs` (6.6GB, >11k files) rsync'd and `discogs-onehop` (868MB) HTTP-replicated to the x86 worker, both verified. Pi replication not yet attempted — see `docs/HARDWARE.md`'s "Future: reconsider Pi dataset-caching scope" |
 | First real Pi production job | Implemented: challenge-evidence verification (`networked_players_graph_core.verify` + a self-contained RQ job body), sharded via `scripts/enqueue_verify_challenge.py`; real run against a Pi's cache pending (live gate G) |
 | `game-rules` | Placeholder (README only) |
 | `workers` | Placeholder (README only) |

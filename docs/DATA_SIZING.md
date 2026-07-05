@@ -283,3 +283,25 @@ the non-seed-identifying figures are recorded here:
 
 This is small enough to comfortably fit worker-local caches (ADR 0025) on both the x86
 worker and, per its own bounded-cache policy, a Pi.
+
+## Worker-local dataset cache, first real run (2026-07-05)
+
+The coordination host successfully replicated real datasets to the x86 worker (ADR 0025,
+gate E) for the first time — previously only tested against a synthetic loopback server.
+`discogs` (full parse, 6.6 GB across >11k small files, same profile documented in
+`docs/OPERATOR_SETUP.md`) went via the rsync fallback; `discogs-onehop` (868 MB, five
+files) went via the HTTP path (`catalog-data`, ADR 0024). Both verified clean
+(`files_verified` matched `files_total`, `.verified.json` written). Per
+[ADR 0018](decisions/0018-benchmark-results-local-only.md)'s existing convention, real
+elapsed-time/throughput figures and real per-host disk-capacity/free-space numbers stay
+local and unpublished — only the dataset sizes and method are recorded here.
+
+**Lesson:** neither the coordination host nor the x86 worker had `rsync` installed —
+the rsync-fallback path assumed it was already present. Installed via `apt` on both
+(a small, standard package, no other side effects). Worth checking for on a fresh
+host before relying on the rsync fallback.
+
+The two cached datasets together are ~7.5 GB — see `docs/HARDWARE.md`'s "Future:
+reconsider Pi dataset-caching scope" for why real free-space headroom on the Pi fleet
+(confirmed comfortably sufficient for this size class, exact figures kept local per ADR
+0018) is relevant background for a future revisit.
