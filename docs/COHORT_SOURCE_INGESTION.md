@@ -4,10 +4,11 @@
 
 Turn an operator-saved third-party curated page (e.g. a "best albums" editorial post)
 into a small, reviewed gameplay cohort — a second, curated album pool alongside the
-hand-typed `data/albums/top-albums-v1.json`. This document covers ingestion, resolution,
-and connectivity scoring (extracting candidates, resolving them against the real Discogs
-dataset, then scoring real graph paths between resolved albums); human review and any
-eventual publication are later pipeline stages.
+hand-typed `data/albums/top-albums-v1.json`. This document covers the whole pipeline:
+extracting candidates, resolving them against the real Discogs dataset, scoring real graph
+paths between resolved albums, and — after explicit human review — promoting a small,
+public playable-cohort artifact. Web integration that consumes a promoted artifact is a
+later stage, not covered here.
 
 ## Non-negotiable posture
 
@@ -32,6 +33,8 @@ not build.
 | Extracted-candidates JSON | Local-only intermediate for the resolver stage | `local/analysis/cohorts/<source-id>/`, git-ignored | Not published by this stage |
 | Resolved-candidates JSON | Local-only intermediate for the connectivity-scoring stage | `local/analysis/cohorts/<source-id>/`, git-ignored | Not published by this stage |
 | Connectivity/playable-pairs JSON, review report | Local-only intermediates for human review | `local/analysis/cohorts/<source-id>/`, git-ignored | Not published by this stage |
+| Selection file (human review decisions) | Private input to the promotion stage | `data/private/cohort-review/`, git-ignored | Never published — reviewer identity and per-pair notes stay local |
+| Playable-cohort JSON | The one artifact meant to be committed | `data/albums/cohorts/<source-id>-playable-v1.json` | Published only after explicit human review names specific approved pairs |
 
 ## Pipeline (this document's scope)
 
@@ -61,10 +64,23 @@ networked-players-catalog score-cohort-connectivity  (against a one-hop dataset)
         ▼
 local/analysis/cohorts/<source-id>/{connectivity.json, playable-pairs.json, review-report.md}
   (data/contracts/album-cohort-connectivity-v1.md)
+        │
+        ▼
+human review of review-report.md
+        │
+        ▼
+data/private/cohort-review/<source-id>-selection.json  (hand-authored, never committed)
+        │
+        ▼
+networked-players-catalog promote-playable-cohort
+        │
+        ▼
+data/albums/cohorts/<source-id>-playable-v1.json
+  (data/contracts/playable-cohort-v1.md)
 ```
 
-Later stages (not built yet): human review of the review report, and — only after
-explicit review — publication of a reviewed cohort to the web.
+Later stage (not built yet): a web loader that consumes a promoted playable-cohort
+artifact for gameplay.
 
 ## Connectivity scoring (summary)
 
@@ -91,6 +107,22 @@ Re-run with a larger `--max-frontier-expansion`/`--pair-timeout-seconds` to reso
 skipped pair. Heavy real-dataset runs (the real one-hop dataset, not a synthetic fixture)
 belong on whichever host has that dataset locally — for real work, that's the fleet's
 dedicated x86 worker, not the coordination host and never a Pi.
+
+## Promotion (summary)
+
+`packages/graph-core/src/networked_players_graph_core/cohort_promote.py` is the explicit,
+human-reviewed step `docs/DATA_AND_RIGHTS.md`/`docs/PUBLIC_PRIVATE_BOUNDARY.md` already
+anticipated — deliberately pure Python (no `CreditGraph`/DuckDB), since it only reads
+already-computed JSON. An operator hand-authors a small selection file naming which
+`connectivity.json` pairs to approve; `promote_playable_cohort` refuses (never silently
+skips) an approved pair that's absent from `connectivity.json`, not `status: "found"`, or
+flagged (`warnings[]` non-empty) without an explicit `allow_flagged_pairs` opt-in
+(cohort-wide or per-pair). The resulting `playable-cohort-v1.json` is deliberately
+narrower than any local intermediate — only `attribution_label`/`source_url` survive from
+the source's own metadata, no prose, no raw HTML, no reviewer identity, no per-pair private
+notes. See `data/contracts/playable-cohort-v1.md` and
+[ADR 0031](decisions/0031-human-reviewed-cohort-promotion.md) for the full design and why a
+selection file was chosen over CLI-flag pair selection.
 
 ## Resolution (summary)
 
@@ -121,4 +153,5 @@ missing year, link, or artist/title split leaves that field `null` and appends a
 See `docs/DATA_AND_RIGHTS.md`'s "Curated third-party source pages" section and
 `docs/PUBLIC_PRIVATE_BOUNDARY.md`. In short: the source author's editorial selection and
 prose are never republished; only Discogs-shaped factual metadata is ever extracted, and
-even that stays local until an explicit, separate review step.
+even that stays local until the explicit `promote-playable-cohort` review step names
+specific approved pairs.

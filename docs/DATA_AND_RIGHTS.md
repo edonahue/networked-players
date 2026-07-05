@@ -37,8 +37,13 @@ factual metadata that Discogs itself would also expose for the same release — 
 title, year, and a Discogs master/release identifier, and only when visibly linked in
 the saved source — is ever extracted, and even that minimal metadata stays a local-only
 intermediate until a separate, explicit, human-reviewed promotion step (never the
-extraction pipeline itself) moves anything toward a committed cohort file. There is no
-live fetching anywhere in this pipeline, by design, not merely by current omission.
+extraction pipeline itself) moves anything toward a committed cohort file. That step is
+`networked-players-catalog promote-playable-cohort`
+(`data/contracts/playable-cohort-v1.md`, [ADR 0031](decisions/0031-human-reviewed-cohort-promotion.md)):
+only an `attribution_label` (the source page's own title) and its `source_url` survive from
+the source's own metadata into a promoted artifact — never the article's prose, never the
+raw saved HTML. There is no live fetching anywhere in this pipeline, by design, not merely
+by current omission.
 
 ### Derived artifacts
 

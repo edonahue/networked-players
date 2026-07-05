@@ -52,6 +52,12 @@ measurement yourself.
 4. Verify that example configuration cannot reach the real environment.
 5. Record provenance, schema, and snapshot versions.
 
-A curated cohort source's extracted-candidates JSON (`data/contracts/album-cohort-extracted-v1.md`)
-is a reviewed local intermediate, not yet subject to this checklist — nothing in that
-pipeline stage publishes anything.
+A curated cohort source's extracted-candidates, resolved, and connectivity JSON
+(`data/contracts/album-cohort-extracted-v1.md`, `album-cohort-resolved-v1.md`,
+`album-cohort-connectivity-v1.md`) are reviewed local intermediates, not yet subject to
+this checklist — nothing in those pipeline stages publishes anything. The explicit
+promotion step this document anticipated is `networked-players-catalog
+promote-playable-cohort` (`data/contracts/playable-cohort-v1.md`,
+[ADR 0031](decisions/0031-human-reviewed-cohort-promotion.md)) — its output is the one
+artifact in this pipeline meant to be committed, and should still be walked through this
+same checklist before that commit happens.

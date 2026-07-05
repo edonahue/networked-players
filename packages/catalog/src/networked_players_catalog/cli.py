@@ -258,6 +258,34 @@ def _parser() -> argparse.ArgumentParser:
         "every pair needing that artist's search is reported status=skipped rather "
         "than hanging or guessing",
     )
+
+    promote_cohort = subparsers.add_parser(
+        "promote-playable-cohort",
+        help="promote a human-reviewed selection of connectivity pairs into a small, "
+        "public playable-cohort artifact",
+    )
+    promote_cohort.add_argument(
+        "--resolved", type=Path, required=True, help="album-cohort-resolved-v1.json"
+    )
+    promote_cohort.add_argument(
+        "--connectivity", type=Path, required=True, help="album-cohort-connectivity-v1.json"
+    )
+    promote_cohort.add_argument(
+        "--selection",
+        type=Path,
+        required=True,
+        help="operator-authored selection file naming approved pairs (private-only, "
+        "conventionally under data/private/cohort-review/)",
+    )
+    promote_cohort.add_argument(
+        "--cohort-id", required=True, help="stable identifier for this cohort"
+    )
+    promote_cohort.add_argument("--output", type=Path, required=True)
+
+    validate_playable = subparsers.add_parser(
+        "validate-playable-cohort", help="validate a playable-cohort-v1 artifact"
+    )
+    validate_playable.add_argument("--input", type=Path, required=True)
     return parser
 
 
@@ -659,6 +687,49 @@ def main(argv: Sequence[str] | None = None) -> int:
                 sort_keys=True,
             )
         )
+        return 0
+
+    if args.command == "promote-playable-cohort":
+        import sys
+
+        from networked_players_graph_core.cohort_promote import (
+            promote_playable_cohort,
+            write_playable_cohort,
+        )
+
+        resolved = json.loads(args.resolved.read_text())
+        connectivity = json.loads(args.connectivity.read_text())
+        selection = json.loads(args.selection.read_text())
+
+        playable_artifact = promote_playable_cohort(
+            resolved, connectivity, selection, cohort_id=args.cohort_id
+        )
+        write_playable_cohort(playable_artifact, args.output)
+        print(
+            f"Wrote {args.output}. Before committing, walk the prepublish checklist in "
+            "docs/PUBLIC_PRIVATE_BOUNDARY.md -- validate_playable_cohort() checks structure "
+            "and known leak patterns, not editorial judgment.",
+            file=sys.stderr,
+        )
+        print(
+            json.dumps(
+                {
+                    "output": str(args.output),
+                    "album_count": len(playable_artifact["albums"]),
+                    "pair_count": len(playable_artifact["pairs"]),
+                },
+                indent=2,
+                sort_keys=True,
+            )
+        )
+        return 0
+
+    if args.command == "validate-playable-cohort":
+        from networked_players_graph_core.cohort_promote import validate_playable_cohort
+
+        playable_artifact = json.loads(args.input.read_text())
+        validate_playable_cohort(playable_artifact)
+        print(json.dumps({"ok": True}, indent=2))
         return 0
 
     raise AssertionError(f"unhandled command: {args.command}")
