@@ -92,11 +92,18 @@ operator-saved source is the next actual step, gated by explicit human review th
 a real cohort automatically.
 
 **A committed `playable-cohort-v1.json` is not automatically web-visible.** Promotion
-(below) only writes `data/albums/cohorts/<source-id>-playable-v1.json`; making it
-appear on `/cohorts/` is a separate, later, explicit step: an operator adds an entry with
-`status: "reviewed"` to `apps/web/public/data/cohorts/index.json` plus a matching static
-import in `cohorts.astro` (Vite needs a statically analyzable import path, not a router),
-done only after the artifact is already committed via the review gate above.
+(below) only writes `data/albums/cohorts/<source-id>-playable-v1.json`; making it appear
+on `/cohorts/` is a separate, later, explicit step requiring three coordinated changes,
+done only after the artifact is already committed via the review gate above:
+
+1. Commit the reviewed `playable-cohort-v1.json` (already done by promotion above).
+2. Add an entry with `status: "reviewed"` to `apps/web/public/data/cohorts/index.json`.
+3. Add a matching static import to `apps/web/src/data/cohortArtifacts.ts` (Vite needs a
+   statically analyzable import path, not a router).
+
+`apps/web/tests/cohort-manifest.spec.ts` exists specifically to catch these three drifting
+out of sync — a manifest entry with no matching import (or vice versa), a missing artifact
+file, a malformed `status`, or a forbidden string/phrase in a fixture all fail that test.
 
 ## Connectivity scoring (summary)
 

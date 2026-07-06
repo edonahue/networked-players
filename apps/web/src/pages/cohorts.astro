@@ -1,30 +1,32 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import CohortPairCard from '../components/CohortPairCard.astro';
-import type { PlayableCohort, PlayableCohortManifest } from '../data/cohort';
+import type { PlayableCohortManifest } from '../data/cohort';
+import { cohortArtifacts } from '../data/cohortArtifacts';
 import manifestData from '../../public/data/cohorts/index.json';
-import syntheticExampleArtifact from '../../public/data/cohorts/synthetic-example.playable-v1.json';
 
 const manifest = manifestData as PlayableCohortManifest;
 
-// Vite needs statically analyzable import paths, and this page deliberately
-// has no router or dynamic-import machinery -- so this map is hand-maintained,
-// not generated. Adding a second cohort later means adding one import line
-// and one map entry here, alongside its manifest entry above.
-const artifactsByCohortId: Record<string, PlayableCohort> = {
-  'synthetic-example': syntheticExampleArtifact as PlayableCohort,
-};
+// Every manifest entry must have a matching static import in
+// cohortArtifacts.ts, not just the one this page actually renders below --
+// a broken link in the cohort list (once it becomes clickable) would
+// otherwise go unnoticed until someone follows it. The reverse direction
+// (an orphaned cohortArtifacts entry with no manifest listing) has no
+// runtime consequence for this page, so it's covered by
+// apps/web/tests/cohort-manifest.spec.ts instead, not here.
+for (const entry of manifest.cohorts) {
+  if (!cohortArtifacts[entry.cohort_id]) {
+    throw new Error(
+      `Manifest entry ${entry.cohort_id} has no matching static import in cohortArtifacts.ts`,
+    );
+  }
+}
 
 const activeEntry = manifest.cohorts[0];
 if (!activeEntry) {
   throw new Error('apps/web/public/data/cohorts/index.json has no cohorts listed');
 }
-const cohort = artifactsByCohortId[activeEntry.cohort_id];
-if (!cohort) {
-  throw new Error(
-    `Manifest entry ${activeEntry.cohort_id} has no matching static import in cohorts.astro`,
-  );
-}
+const cohort = cohortArtifacts[activeEntry.cohort_id];
 
 const description =
   'A reviewed playable cohort: guess the documented connection between two albums, then reveal the credit evidence.';
