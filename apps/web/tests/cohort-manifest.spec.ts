@@ -2,7 +2,10 @@ import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { expect, test } from "@playwright/test";
 import { cohortArtifacts } from "../src/data/cohortArtifacts";
-import type { PlayableCohort, PlayableCohortManifest } from "../src/data/cohort";
+import type {
+  PlayableCohort,
+  PlayableCohortManifest,
+} from "../src/data/cohort";
 
 // Validates apps/web/public/data/cohorts/index.json and every artifact it
 // references, plus two-way correspondence with the hand-maintained static
@@ -72,7 +75,10 @@ test("every artifact_path starts with /data/cohorts/ and resolves to a real file
   for (const entry of manifest.cohorts) {
     expect(entry.artifact_path.startsWith("/data/cohorts/")).toBe(true);
     const diskPath = `${PUBLIC_ROOT}${entry.artifact_path}`;
-    expect(existsSync(diskPath), `${entry.artifact_path} does not exist on disk`).toBe(true);
+    expect(
+      existsSync(diskPath),
+      `${entry.artifact_path} does not exist on disk`,
+    ).toBe(true);
   }
 });
 
@@ -108,9 +114,10 @@ test("synthetic entries stay self-documenting", () => {
   for (const entry of manifest.cohorts) {
     if (entry.status !== "synthetic") continue;
     const text = `${entry.title} ${entry.description}`.toLowerCase();
-    expect(text, `synthetic entry ${entry.cohort_id} should say so in its own text`).toMatch(
-      /synthetic|not a real|not real/,
-    );
+    expect(
+      text,
+      `synthetic entry ${entry.cohort_id} should say so in its own text`,
+    ).toMatch(/synthetic|not a real|not real/);
   }
 });
 
@@ -118,7 +125,9 @@ test("reviewed entries never use the placeholder example.invalid domain", () => 
   for (const entry of manifest.cohorts) {
     if (entry.status !== "reviewed") continue;
     const artifactPath = `${PUBLIC_ROOT}${entry.artifact_path}`;
-    const artifact: PlayableCohort = JSON.parse(readFileSync(artifactPath, "utf-8"));
+    const artifact: PlayableCohort = JSON.parse(
+      readFileSync(artifactPath, "utf-8"),
+    );
     expect(artifact.source_url).not.toContain("example.invalid");
   }
 });
@@ -138,16 +147,27 @@ test("every artifact has the minimum shape needed for web use", () => {
 
   for (const entry of manifest.cohorts) {
     const artifactPath = `${PUBLIC_ROOT}${entry.artifact_path}`;
-    const artifact: PlayableCohort = JSON.parse(readFileSync(artifactPath, "utf-8"));
+    const artifact: PlayableCohort = JSON.parse(
+      readFileSync(artifactPath, "utf-8"),
+    );
 
     for (const key of requiredKeys) {
-      expect(artifact, `${entry.artifact_path} is missing "${key}"`).toHaveProperty(key);
+      expect(
+        artifact,
+        `${entry.artifact_path} is missing "${key}"`,
+      ).toHaveProperty(key);
     }
 
     const albumIds = new Set(artifact.albums.map((album) => album.id));
     for (const pair of artifact.pairs) {
-      expect(albumIds.has(pair.album_a_id), `${pair.album_a_id} is not a real album`).toBe(true);
-      expect(albumIds.has(pair.album_b_id), `${pair.album_b_id} is not a real album`).toBe(true);
+      expect(
+        albumIds.has(pair.album_a_id),
+        `${pair.album_a_id} is not a real album`,
+      ).toBe(true);
+      expect(
+        albumIds.has(pair.album_b_id),
+        `${pair.album_b_id} is not a real album`,
+      ).toBe(true);
       for (const hop of pair.hops) {
         expect(Array.isArray(hop.quality_flags)).toBe(true);
         expect(hop.quality_flags.length).toBeGreaterThan(0);

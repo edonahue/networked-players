@@ -128,9 +128,10 @@ test("a play page renders mode controls and reveals evidence", async ({
 
   await page.getByRole("button", { name: "Find the connection" }).click();
   await expect(page.locator(".evidence-card:not([hidden])")).toHaveCount(0);
-  await expect(
-    page.getByRole("button", { name: "Reveal" }).first(),
-  ).toHaveAttribute("aria-expanded", "false");
+  await expect(page.locator("[data-reveal-button]").first()).toHaveAttribute(
+    "aria-expanded",
+    "false",
+  );
 });
 
 test("cohorts index lists cohorts and links to a detail page", async ({
@@ -140,9 +141,13 @@ test("cohorts index lists cohorts and links to a detail page", async ({
   await expect(page.getByRole("heading", { level: 1 })).toContainText(
     "Browse reviewed cohorts",
   );
-  await expect(page.getByText("Synthetic Example Cohort").first()).toBeVisible();
+  await expect(
+    page.getByText("Synthetic Example Cohort").first(),
+  ).toBeVisible();
 
-  const openCohortLink = page.getByRole("link", { name: "Open cohort" }).first();
+  const openCohortLink = page
+    .getByRole("link", { name: "Open cohort" })
+    .first();
   await expect(openCohortLink).toHaveAttribute(
     "href",
     "/cohorts/synthetic-example/",

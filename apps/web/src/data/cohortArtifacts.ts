@@ -18,9 +18,7 @@ import type { PlayableCohort } from "./cohort";
 // imports this file directly, outside Vite's bundler, which is more lenient
 // about bare JSON imports). Astro's own Vite-based build accepts this same
 // syntax, so one import statement works in both contexts.
-import syntheticExampleArtifact from "../../public/data/cohorts/synthetic-example.playable-v1.json" with {
-  type: "json",
-};
+import syntheticExampleArtifact from "../../public/data/cohorts/synthetic-example.playable-v1.json" with { type: "json" };
 
 export const cohortArtifacts: Record<string, PlayableCohort> = {
   "synthetic-example": syntheticExampleArtifact as PlayableCohort,
