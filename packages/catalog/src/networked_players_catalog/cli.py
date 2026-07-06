@@ -301,6 +301,29 @@ def _parser() -> argparse.ArgumentParser:
         "--connectivity", type=Path, required=True, help="album-cohort-connectivity-v1.json"
     )
     draft_review.add_argument("--output", type=Path, required=True)
+
+    preflight = subparsers.add_parser(
+        "cohort-pipeline-preflight",
+        help="read-only readiness check for a real cohort rehearsal; prints the exact "
+        "next commands, runs nothing",
+    )
+    preflight.add_argument("--source-id", required=True)
+    preflight.add_argument(
+        "--source-html", type=Path, required=True, help="the operator's manually saved page"
+    )
+    preflight.add_argument(
+        "--parsed-dataset", type=Path, required=True, help="a parsed dataset root (not one-hop)"
+    )
+    preflight.add_argument(
+        "--onehop-dataset", type=Path, required=True, help="a one-hop dataset root"
+    )
+    preflight.add_argument(
+        "--source-url", required=True, help="URL the page was saved from; provenance only"
+    )
+    preflight.add_argument("--source-title", required=True)
+    preflight.add_argument(
+        "--json", action="store_true", help="print the machine-readable report instead of text"
+    )
     return parser
 
 
@@ -777,5 +800,22 @@ def main(argv: Sequence[str] | None = None) -> int:
             )
         )
         return 0
+
+    if args.command == "cohort-pipeline-preflight":
+        from .cohort_preflight import build_preflight_report, format_preflight_report
+
+        report = build_preflight_report(
+            source_id=args.source_id,
+            source_html=args.source_html,
+            parsed_dataset=args.parsed_dataset,
+            onehop_dataset=args.onehop_dataset,
+            source_url=args.source_url,
+            source_title=args.source_title,
+        )
+        if args.json:
+            print(json.dumps(report, indent=2, sort_keys=True))
+        else:
+            print(format_preflight_report(report))
+        return 0 if report["ready"] else 1
 
     raise AssertionError(f"unhandled command: {args.command}")

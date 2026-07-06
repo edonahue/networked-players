@@ -38,6 +38,12 @@ not build.
 
 ## Pipeline (this document's scope)
 
+Before running any of the commands below against a real source for the first time, `uv run
+networked-players-catalog cohort-pipeline-preflight` (see `docs/OPERATOR_SETUP.md`'s "Real
+cohort rehearsal" runbook, step 0) is a read-only sanity check that the saved page and both
+dataset roots exist and prints the exact next commands — it doesn't run any pipeline stage
+itself, and reduces operator mistakes rather than adding one.
+
 ```text
 operator saves a page as HTML (manual, out of band)
         │

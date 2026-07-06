@@ -355,7 +355,28 @@ actually produces; this section is the operational sequence, not the schema refe
   (Gate B)" above if the one-hop dataset doesn't exist yet.
 - `make check` green — your call whether to run it first; not required to proceed.
 
-### 1. Preflight (read-only, safe to run any time)
+### 0. Automated preflight (read-only, safe to run any time)
+
+```bash
+uv run networked-players-catalog cohort-pipeline-preflight \
+  --source-id <source-id> \
+  --source-html data/private/source-html/<source-id>.html \
+  --parsed-dataset local/processed/discogs/snapshot=<SNAPSHOT> \
+  --onehop-dataset local/processed/discogs-onehop/snapshot=<SNAPSHOT> \
+  --source-url "<the real URL you saved it from>" \
+  --source-title "<the page's own title>"
+```
+
+This is read-only: it checks that the saved page and both dataset roots exist (a dataset
+root check means the directory plus its `manifest.json`, not that the dataset's contents
+are valid — `validate`/`verify-dataset` are still what confirms that), warns about any
+step's output file that already exists and would be overwritten by a re-run, and prints
+the exact commands for steps 2-7 below with `--source-url`/`--source-title` already
+shell-quoted. It runs none of those commands itself. Exit code is `0` when every required
+input is present, `1` otherwise — useful in a script, but reading the printed report is the
+point. Pass `--json` for machine-readable output instead.
+
+### 1. Manual preflight (read-only, safe to run any time)
 
 ```bash
 cd ~/networked-players
@@ -364,7 +385,8 @@ ls -d local/processed/discogs/snapshot=*          # confirm a parsed dataset exi
 ls -d local/processed/discogs-onehop/snapshot=*   # confirm a one-hop dataset exists
 ```
 
-Stop if the saved page or either dataset is missing.
+Stop if the saved page or either dataset is missing. Step 0's automated check above covers
+the same ground; this is here for a quick manual look without picking snapshot flags.
 
 ### 2. Import
 
