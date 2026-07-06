@@ -66,6 +66,16 @@ test("every artifact_path starts with /data/cohorts/ and resolves to a real file
   }
 });
 
+test("every manifest entry has a generated static detail route", () => {
+  for (const entry of manifest.cohorts) {
+    const routePath = `${WEB_ROOT}dist/cohorts/${entry.cohort_id}/index.html`;
+    expect(
+      existsSync(routePath),
+      `${routePath} does not exist -- run \`npm run build\` before this test`,
+    ).toBe(true);
+  }
+});
+
 test("manifest and cohortArtifacts map correspond exactly in both directions", () => {
   const manifestIds = new Set(manifest.cohorts.map((entry) => entry.cohort_id));
   const mapIds = new Set(Object.keys(cohortArtifacts));

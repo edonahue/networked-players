@@ -109,14 +109,29 @@ test("a play page renders mode controls and reveals evidence", async ({
   );
 });
 
-test("cohorts page loads, shows the synthetic notice, and reveals a pair", async ({
+test("cohorts index lists cohorts and links to a detail page", async ({
   page,
 }) => {
   await page.goto("/cohorts/");
   await expect(page.getByRole("heading", { level: 1 })).toContainText(
-    "Guess the connection",
+    "Browse reviewed cohorts",
   );
   await expect(page.getByText("Synthetic Example Cohort").first()).toBeVisible();
+
+  const openCohortLink = page.getByRole("link", { name: "Open cohort" }).first();
+  await expect(openCohortLink).toHaveAttribute(
+    "href",
+    "/cohorts/synthetic-example/",
+  );
+});
+
+test("cohort detail page shows the synthetic notice and reveals a pair", async ({
+  page,
+}) => {
+  await page.goto("/cohorts/synthetic-example/");
+  await expect(page.getByRole("heading", { level: 1 })).toContainText(
+    "Synthetic Example Cohort",
+  );
   await expect(page.locator("[data-synthetic-notice]")).toBeVisible();
   await expect(page.locator("[data-cohort-pair]").first()).toBeVisible();
 

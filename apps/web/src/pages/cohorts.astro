@@ -1,6 +1,5 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
-import CohortPairCard from '../components/CohortPairCard.astro';
 import type { PlayableCohortManifest } from '../data/cohort';
 import { cohortArtifacts } from '../data/cohortArtifacts';
 import manifestData from '../../public/data/cohorts/index.json';
@@ -8,82 +7,45 @@ import manifestData from '../../public/data/cohorts/index.json';
 const manifest = manifestData as PlayableCohortManifest;
 
 // Every manifest entry must have a matching static import in
-// cohortArtifacts.ts, not just the one this page actually renders below --
-// a broken link in the cohort list (once it becomes clickable) would
-// otherwise go unnoticed until someone follows it. The reverse direction
-// (an orphaned cohortArtifacts entry with no manifest listing) has no
-// runtime consequence for this page, so it's covered by
-// apps/web/tests/cohort-manifest.spec.ts instead, not here.
-for (const entry of manifest.cohorts) {
-  if (!cohortArtifacts[entry.cohort_id]) {
+// cohortArtifacts.ts -- a broken link in the list below would otherwise go
+// unnoticed until someone opened it. The reverse direction (an orphaned
+// cohortArtifacts entry with no manifest listing) has no runtime consequence
+// for this page, so it's covered by apps/web/tests/cohort-manifest.spec.ts
+// instead, not here.
+const entries = manifest.cohorts.map((entry) => {
+  const cohort = cohortArtifacts[entry.cohort_id];
+  if (!cohort) {
     throw new Error(
       `Manifest entry ${entry.cohort_id} has no matching static import in cohortArtifacts.ts`,
     );
   }
-}
-
-const activeEntry = manifest.cohorts[0];
-if (!activeEntry) {
-  throw new Error('apps/web/public/data/cohorts/index.json has no cohorts listed');
-}
-const cohort = cohortArtifacts[activeEntry.cohort_id];
+  return { entry, pairCount: cohort.pairs.length };
+});
 
 const description =
-  'A reviewed playable cohort: guess the documented connection between two albums, then reveal the credit evidence.';
+  'Reviewed playable cohorts: open one to guess the documented connection between two albums, then reveal the credit evidence.';
 ---
 
 <BaseLayout title="Reviewed cohorts" description={description}>
   <section class="shell" style="padding-top:40px">
     <p class="eyebrow" style="margin-bottom:6px">Reviewed cohorts</p>
-    <h1 style="font-size:clamp(1.8rem,4vw,2.6rem)">Guess the connection</h1>
+    <h1 style="font-size:clamp(1.8rem,4vw,2.6rem)">Browse reviewed cohorts</h1>
     <p class="lede" style="margin-top:6px">
       {description}
     </p>
 
     <ul style="margin-top:16px">
       {
-        manifest.cohorts.map((entry) => (
-          <li>
-            {entry.title} <span class="tag">{entry.status}</span>
+        entries.map(({ entry, pairCount }) => (
+          <li style="margin-bottom:12px">
+            <strong>{entry.title}</strong> <span class="tag">{entry.status}</span>
+            <p class="path-card__sub">
+              {entry.description} · {pairCount} pair{pairCount === 1 ? '' : 's'}
+            </p>
+            <a href={`/cohorts/${entry.cohort_id}/`}>Open cohort</a>
           </li>
         ))
       }
     </ul>
-
-    {
-      activeEntry.status === 'synthetic' && (
-        <p class="notice" data-synthetic-notice style="margin-top:16px">
-          <strong>Synthetic example — not a real reviewed cohort yet.</strong> This page
-          currently serves a made-up fixture ({activeEntry.title}) to prove the web shell
-          works. A real cohort is only published after explicit human review.
-        </p>
-      )
-    }
-
-    <div style="margin-top:24px">
-      {cohort.pairs.map((pair) => <CohortPairCard pair={pair} albums={cohort.albums} />)}
-    </div>
   </section>
 </BaseLayout>
-
-<script is:inline>
-  (() => {
-    const cards = Array.from(document.querySelectorAll('[data-cohort-pair]'));
-    if (!cards.length) return;
-
-    const reveal = (card) => {
-      const target = card.querySelector('[data-guess-target]');
-      if (target) {
-        target.setAttribute('data-revealed', 'true');
-        target.removeAttribute('hidden');
-      }
-    };
-
-    document.querySelectorAll('[data-reveal-button]').forEach((button) => {
-      button.addEventListener('click', () => {
-        const card = button.closest('[data-cohort-pair]');
-        if (card) reveal(card);
-      });
-    });
-  })();
-</script>

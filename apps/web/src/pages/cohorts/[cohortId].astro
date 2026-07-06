@@ -1,0 +1,76 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import CohortPairCard from '../../components/CohortPairCard.astro';
+import type { PlayableCohort, PlayableCohortManifest, PlayableCohortManifestEntry } from '../../data/cohort';
+import { cohortArtifacts } from '../../data/cohortArtifacts';
+import manifestData from '../../../public/data/cohorts/index.json';
+
+export function getStaticPaths() {
+  const manifest = manifestData as PlayableCohortManifest;
+
+  return manifest.cohorts.map((entry) => {
+    const cohort = cohortArtifacts[entry.cohort_id];
+    if (!cohort) {
+      throw new Error(
+        `Manifest entry ${entry.cohort_id} has no matching static import in cohortArtifacts.ts`,
+      );
+    }
+    return { params: { cohortId: entry.cohort_id }, props: { entry, cohort } };
+  });
+}
+
+interface Props {
+  entry: PlayableCohortManifestEntry;
+  cohort: PlayableCohort;
+}
+
+const { entry, cohort } = Astro.props;
+
+const description = entry.description;
+---
+
+<BaseLayout title={entry.title} description={description}>
+  <section class="shell" style="padding-top:40px">
+    <p class="eyebrow" style="margin-bottom:6px">Guess the connection</p>
+    <h1 style="font-size:clamp(1.8rem,4vw,2.6rem)">{entry.title}</h1>
+    <p class="lede" style="margin-top:6px">
+      {description}
+    </p>
+
+    {
+      entry.status === 'synthetic' && (
+        <p class="notice" data-synthetic-notice style="margin-top:16px">
+          <strong>Synthetic example — not a real reviewed cohort yet.</strong> This page
+          currently serves a made-up fixture ({entry.title}) to prove the web shell works. A
+          real cohort is only published after explicit human review.
+        </p>
+      )
+    }
+
+    <div style="margin-top:24px">
+      {cohort.pairs.map((pair) => <CohortPairCard pair={pair} albums={cohort.albums} />)}
+    </div>
+  </section>
+</BaseLayout>
+
+<script is:inline>
+  (() => {
+    const cards = Array.from(document.querySelectorAll('[data-cohort-pair]'));
+    if (!cards.length) return;
+
+    const reveal = (card) => {
+      const target = card.querySelector('[data-guess-target]');
+      if (target) {
+        target.setAttribute('data-revealed', 'true');
+        target.removeAttribute('hidden');
+      }
+    };
+
+    document.querySelectorAll('[data-reveal-button]').forEach((button) => {
+      button.addEventListener('click', () => {
+        const card = button.closest('[data-cohort-pair]');
+        if (card) reveal(card);
+      });
+    });
+  })();
+</script>

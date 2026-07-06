@@ -518,7 +518,9 @@ expansion has, since none of these steps run long enough to need it.
 - Making the promoted artifact web-visible — a separate, later step, not part of
   generating and reviewing the cohort itself: adding a `status: "reviewed"` entry to
   `apps/web/public/data/cohorts/index.json` plus a matching static import in
-  `cohorts.astro` (see `docs/COHORT_SOURCE_INGESTION.md`).
+  `apps/web/src/data/cohortArtifacts.ts` (see `docs/COHORT_SOURCE_INGESTION.md`). The
+  cohort's `/cohorts/<cohort_id>/` detail page is generated automatically from the
+  manifest — there is no separate routing step.
 
 ## Pi ambient cohort-artifact checks
 

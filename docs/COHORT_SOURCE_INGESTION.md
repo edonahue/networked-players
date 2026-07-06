@@ -86,10 +86,12 @@ data/albums/cohorts/<source-id>-playable-v1.json
 ```
 
 The pipeline now runs end-to-end through a web shell: `apps/web/src/pages/cohorts.astro`
-(`apps/web/src/data/cohort.ts`) renders a promoted `playable-cohort-v1` artifact with the
-same guess/reveal framing `play/[album].astro` already established, sourced from a small
-manifest (`apps/web/public/data/cohorts/index.json`) rather than a single hardcoded
-import. It currently lists only one entry, a bundled, clearly-marked synthetic fixture
+is a static index listing every entry in a small manifest
+(`apps/web/public/data/cohorts/index.json`), and `apps/web/src/pages/cohorts/[cohortId].astro`
+renders one promoted `playable-cohort-v1` artifact per entry as its own static detail page
+(`/cohorts/<cohort_id>/`), with the same guess/reveal framing `play/[album].astro` already
+established for albums. The manifest currently lists only one entry, a bundled,
+clearly-marked synthetic fixture
 (`apps/web/public/data/cohorts/synthetic-example.playable-v1.json`, `status:
 "synthetic"`) — no real cohort exists yet. Generating and reviewing a real cohort from an
 operator-saved source is the next actual step, gated by explicit human review through
@@ -98,18 +100,24 @@ operator-saved source is the next actual step, gated by explicit human review th
 a real cohort automatically.
 
 **A committed `playable-cohort-v1.json` is not automatically web-visible.** Promotion
-(below) only writes `data/albums/cohorts/<source-id>-playable-v1.json`; making it appear
-on `/cohorts/` is a separate, later, explicit step requiring three coordinated changes,
-done only after the artifact is already committed via the review gate above:
+(below) only writes `data/albums/cohorts/<source-id>-playable-v1.json`; making it appear on
+the site is a separate, later, explicit step requiring three coordinated changes, done only
+after the artifact is already committed via the review gate above:
 
 1. Commit the reviewed `playable-cohort-v1.json` (already done by promotion above).
 2. Add an entry with `status: "reviewed"` to `apps/web/public/data/cohorts/index.json`.
 3. Add a matching static import to `apps/web/src/data/cohortArtifacts.ts` (Vite needs a
    statically analyzable import path, not a router).
 
-`apps/web/tests/cohort-manifest.spec.ts` exists specifically to catch these three drifting
-out of sync — a manifest entry with no matching import (or vice versa), a missing artifact
-file, a malformed `status`, or a forbidden string/phrase in a fixture all fail that test.
+That's the whole list: the new entry's detail page at `/cohorts/<cohort_id>/` is generated
+automatically from the manifest via `getStaticPaths()` in `cohorts/[cohortId].astro` — there
+is no separate, fourth "add a route" step. `/cohorts/` itself is only the index; the actual
+playable pairs render on each cohort's own `/cohorts/<cohort_id>/` detail page.
+
+`apps/web/tests/cohort-manifest.spec.ts` exists specifically to catch these drifting out of
+sync — a manifest entry with no matching import (or vice versa), a missing artifact file, a
+missing generated `/cohorts/<cohort_id>/` route, a malformed `status`, or a forbidden
+string/phrase in a fixture all fail that test.
 
 ## Connectivity scoring (summary)
 
