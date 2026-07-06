@@ -7,9 +7,10 @@ interface Props {
   artists: Artist[];
   albums: AlbumV2[];
   hidden?: boolean;
+  id?: string;
 }
 
-const { path, releases, artists, albums, hidden = false } = Astro.props;
+const { path, releases, artists, albums, hidden = false, id } = Astro.props;
 
 const releaseById = new Map(releases.map((r) => [r.release_id, r]));
 const nameById = new Map(artists.map((a) => [a.artist_id, a.name]));
@@ -27,7 +28,7 @@ const fromAlbum = albumById.get(path.from_album_id);
 const toAlbum = albumById.get(path.to_album_id);
 ---
 
-<article class="evidence-card" data-path-id={path.id} hidden={hidden}>
+<article class="evidence-card" id={id} data-path-id={path.id} hidden={hidden}>
   <div class="evidence-card__summary">
     <div class="evidence-card__endpoint">
       {

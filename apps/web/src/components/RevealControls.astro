@@ -1,0 +1,43 @@
+<script is:inline>
+  (() => {
+    const scopes = Array.from(document.querySelectorAll('[data-reveal-scope]'));
+    if (!scopes.length) return;
+
+    const setScope = (scope, revealed) => {
+      scope.querySelectorAll('[data-guess-target]').forEach((target) => {
+        target.setAttribute('data-revealed', String(revealed));
+      });
+
+      scope.querySelectorAll('[data-reveal-button]').forEach((button) => {
+        button.setAttribute('aria-expanded', String(revealed));
+        button.textContent = revealed
+          ? (button.getAttribute('data-hide-label') ?? 'Hide')
+          : (button.getAttribute('data-reveal-label') ?? 'Reveal');
+
+        const targetId = button.getAttribute('aria-controls');
+        if (targetId) {
+          document.getElementById(targetId)?.toggleAttribute('hidden', !revealed);
+        }
+      });
+    };
+
+    document.querySelectorAll('[data-reveal-button]').forEach((button) => {
+      button.addEventListener('click', () => {
+        const scope = button.closest('[data-reveal-scope]');
+        if (!scope) return;
+        setScope(scope, button.getAttribute('aria-expanded') !== 'true');
+      });
+    });
+
+    const modeButtons = Array.from(document.querySelectorAll('[data-reveal-mode]'));
+    modeButtons.forEach((button) => {
+      button.addEventListener('click', () => {
+        const mode = button.getAttribute('data-reveal-mode');
+        modeButtons.forEach((b) => {
+          b.setAttribute('aria-pressed', String(b === button));
+        });
+        scopes.forEach((scope) => setScope(scope, mode === 'show'));
+      });
+    });
+  })();
+</script>

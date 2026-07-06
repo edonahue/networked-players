@@ -4,12 +4,14 @@ import type { CohortAlbum, CohortPair } from '../data/cohort';
 interface Props {
   pair: CohortPair;
   albums: CohortAlbum[];
+  revealId: string;
 }
 
-const { pair, albums } = Astro.props;
+const { pair, albums, revealId } = Astro.props;
 const albumById = new Map(albums.map((a) => [a.id, a]));
 const albumA = albumById.get(pair.album_a_id);
 const albumB = albumById.get(pair.album_b_id);
+const hasWarnings = pair.warnings.length > 0;
 
 const FLAG_LABELS: Record<string, string> = {
   co_billed_release_artists: 'co-billed release artists',
@@ -22,28 +24,75 @@ const flagLabels = (flags: string[]) =>
   flags.map((f) => FLAG_LABELS[f] ?? f).join(', ');
 ---
 
-<article class="cohort-pair" data-cohort-pair>
-  <div class="evidence-card__summary">
-    <div class="evidence-card__endpoint">
-      <span class="album-card__placeholder" aria-hidden="true">
+<article class="cohort-pair" data-cohort-pair data-reveal-scope>
+  <div class="cohort-pair__albums">
+    <div class="cohort-album">
+      <span class="cohort-album__placeholder album-card__placeholder" aria-hidden="true">
         <span class="album-card__placeholder-disc" />
       </span>
-      <span>{albumA?.title ?? pair.album_a_id}</span>
+      <div class="cohort-album__text">
+        <p class="cohort-album__title">{albumA?.title ?? pair.album_a_id}</p>
+        {
+          albumA && (
+            <p class="cohort-album__meta">
+              {albumA.artist}
+              {albumA.year ? ` · ${albumA.year}` : ''}
+            </p>
+          )
+        }
+      </div>
     </div>
-    <span class="arrow" aria-hidden="true">→</span>
-    <div class="evidence-card__endpoint">
-      <span class="album-card__placeholder" aria-hidden="true">
+    <span class="cohort-pair__arrow" aria-hidden="true">→</span>
+    <div class="cohort-album">
+      <span class="cohort-album__placeholder album-card__placeholder" aria-hidden="true">
         <span class="album-card__placeholder-disc" />
       </span>
-      <span>{albumB?.title ?? pair.album_b_id}</span>
+      <div class="cohort-album__text">
+        <p class="cohort-album__title">{albumB?.title ?? pair.album_b_id}</p>
+        {
+          albumB && (
+            <p class="cohort-album__meta">
+              {albumB.artist}
+              {albumB.year ? ` · ${albumB.year}` : ''}
+            </p>
+          )
+        }
+      </div>
     </div>
   </div>
-  <p class="path-card__sub">
-    Difficulty: {pair.difficulty} ({pair.hop_count} hop{pair.hop_count === 1 ? '' : 's'}) ·{' '}
-    <button type="button" data-reveal-button>Reveal</button>
-  </p>
 
-  <div class="cohort-pair__hops" data-guess-target data-revealed="false" hidden>
+  <div class="cohort-pair__meta">
+    <span class="tag tag--difficulty">{pair.difficulty}</span>
+    <span class="tag">{pair.hop_count} hop{pair.hop_count === 1 ? '' : 's'}</span>
+    {
+      hasWarnings ? (
+        <span class="tag tag--warning">
+          {pair.warnings.length} warning{pair.warnings.length === 1 ? '' : 's'}
+        </span>
+      ) : (
+        <span class="tag tag--clean">reviewed clean</span>
+      )
+    }
+    <button
+      type="button"
+      class="cohort-pair__reveal"
+      data-reveal-button
+      data-reveal-label="Reveal"
+      data-hide-label="Hide"
+      aria-expanded="false"
+      aria-controls={revealId}
+    >
+      Reveal
+    </button>
+  </div>
+
+  <div
+    id={revealId}
+    class="cohort-pair__hops"
+    data-guess-target
+    data-revealed="false"
+    hidden
+  >
     {
       pair.hops.map((hop, index) => (
         <p class="hop__release">

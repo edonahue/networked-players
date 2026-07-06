@@ -12,14 +12,16 @@
 // here, plus a matching entry in apps/web/public/data/cohorts/index.json --
 // see docs/COHORT_SOURCE_INGESTION.md for the full three-step process.
 
-import type { PlayableCohort } from './cohort';
+import type { PlayableCohort } from "./cohort";
 // The `with { type: 'json' }` import attribute is required for this module
 // to load under Node's own ESM loader (apps/web/tests/cohort-manifest.spec.ts
 // imports this file directly, outside Vite's bundler, which is more lenient
 // about bare JSON imports). Astro's own Vite-based build accepts this same
 // syntax, so one import statement works in both contexts.
-import syntheticExampleArtifact from '../../public/data/cohorts/synthetic-example.playable-v1.json' with { type: 'json' };
+import syntheticExampleArtifact from "../../public/data/cohorts/synthetic-example.playable-v1.json" with {
+  type: "json",
+};
 
 export const cohortArtifacts: Record<string, PlayableCohort> = {
-  'synthetic-example': syntheticExampleArtifact as PlayableCohort,
+  "synthetic-example": syntheticExampleArtifact as PlayableCohort,
 };

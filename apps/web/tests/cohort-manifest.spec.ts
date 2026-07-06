@@ -18,18 +18,28 @@ const WEB_ROOT = fileURLToPath(new URL("..", import.meta.url));
 const PUBLIC_ROOT = `${WEB_ROOT}public`;
 const MANIFEST_PATH = `${PUBLIC_ROOT}/data/cohorts/index.json`;
 
-const FORBIDDEN_SUBSTRINGS = ["/home/", "data/private", "local/", ".ssh", "DISCOGS_TOKEN"];
+const FORBIDDEN_SUBSTRINGS = [
+  "/home/",
+  "data/private",
+  "local/",
+  ".ssh",
+  "DISCOGS_TOKEN",
+];
 const FORBIDDEN_PHRASES = ["worked with", "collaborated with", "influenced"];
 
 function assertNoForbiddenContent(label: string, rawText: string) {
   const lowered = rawText.toLowerCase();
   for (const substring of FORBIDDEN_SUBSTRINGS) {
-    expect(lowered, `${label} must not contain ${JSON.stringify(substring)}`).not.toContain(
-      substring.toLowerCase(),
-    );
+    expect(
+      lowered,
+      `${label} must not contain ${JSON.stringify(substring)}`,
+    ).not.toContain(substring.toLowerCase());
   }
   for (const phrase of FORBIDDEN_PHRASES) {
-    expect(lowered, `${label} must not contain ${JSON.stringify(phrase)}`).not.toContain(phrase);
+    expect(
+      lowered,
+      `${label} must not contain ${JSON.stringify(phrase)}`,
+    ).not.toContain(phrase);
   }
 }
 
@@ -81,9 +91,10 @@ test("manifest and cohortArtifacts map correspond exactly in both directions", (
   const mapIds = new Set(Object.keys(cohortArtifacts));
 
   for (const id of manifestIds) {
-    expect(mapIds.has(id), `manifest lists ${id} but cohortArtifacts.ts has no matching import`).toBe(
-      true,
-    );
+    expect(
+      mapIds.has(id),
+      `manifest lists ${id} but cohortArtifacts.ts has no matching import`,
+    ).toBe(true);
   }
   for (const id of mapIds) {
     expect(

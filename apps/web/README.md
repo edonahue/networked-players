@@ -15,6 +15,10 @@ artists (or albums) with the credit evidence shown at every hop.
 - **Play** (`/play/<album-id>/`) — one static page per album with a documented
   connection. Two modes: **find the connection** (guess the linking artist, then
   reveal) and **reveal every path** (skip straight to the evidence).
+- **Cohorts** (`/cohorts/`, `/cohorts/<cohort-id>/`) — a static manifest-driven index
+  and detail pages for reviewed playable cohorts. The committed cohort fixture is
+  synthetic and clearly labeled until a real, human-reviewed `playable-cohort-v1`
+  artifact is explicitly added to the manifest and static import map.
 - **About** (`/about/`) — fuller picture, the evidence-vs-influence stance, data & rights.
 - **Legacy demo** (`/demo/`) — 2–3 curated paths rendered from a versioned static
   artifact (`public/data/challenge.v1.json`). Predates the album-centered experience

@@ -96,10 +96,25 @@ test("a play page renders mode controls and reveals evidence", async ({
 
   // Evidence starts hidden (guess mode); revealing one path shows its evidence table.
   await expect(page.locator(".evidence-card:not([hidden])")).toHaveCount(0);
-  await page.getByRole("button", { name: "Reveal" }).first().click();
+  const firstReveal = page.locator("[data-reveal-button]").first();
+  await expect(firstReveal).toHaveText("Reveal");
+  await expect(firstReveal).toHaveAttribute("aria-expanded", "false");
+  const controls = await firstReveal.getAttribute("aria-controls");
+  if (!controls) throw new Error("Reveal button is missing aria-controls");
+  await expect(page.locator(`#${controls}`)).toBeHidden();
+
+  await firstReveal.click();
+  await expect(firstReveal).toHaveText("Hide");
+  await expect(firstReveal).toHaveAttribute("aria-expanded", "true");
   await expect(
     page.locator(".evidence-card:not([hidden]) .evidence table").first(),
   ).toBeVisible();
+  await expect(page.locator(`#${controls}`)).toBeVisible();
+
+  await firstReveal.click();
+  await expect(firstReveal).toHaveText("Reveal");
+  await expect(firstReveal).toHaveAttribute("aria-expanded", "false");
+  await expect(page.locator(`#${controls}`)).toBeHidden();
 
   // "Reveal every path" unhides every evidence card on the page.
   await page.getByRole("button", { name: "Reveal every path" }).click();
@@ -107,6 +122,15 @@ test("a play page renders mode controls and reveals evidence", async ({
   await expect(page.locator(".evidence-card:not([hidden])")).toHaveCount(
     totalPaths,
   );
+  await expect(
+    page.getByRole("button", { name: "Hide" }).first(),
+  ).toHaveAttribute("aria-expanded", "true");
+
+  await page.getByRole("button", { name: "Find the connection" }).click();
+  await expect(page.locator(".evidence-card:not([hidden])")).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Reveal" }).first(),
+  ).toHaveAttribute("aria-expanded", "false");
 });
 
 test("cohorts index lists cohorts and links to a detail page", async ({
@@ -134,14 +158,31 @@ test("cohort detail page shows the synthetic notice and reveals a pair", async (
   );
   await expect(page.locator("[data-synthetic-notice]")).toBeVisible();
   await expect(page.locator("[data-cohort-pair]").first()).toBeVisible();
+  await expect(page.locator(".tag--status-synthetic")).toBeVisible();
+  await expect(page.locator(".tag--difficulty").first()).toBeVisible();
 
   await expect(page.locator("[data-guess-target]:not([hidden])")).toHaveCount(
     0,
   );
-  await page.getByRole("button", { name: "Reveal" }).first().click();
+  const firstReveal = page.locator("[data-reveal-button]").first();
+  await expect(firstReveal).toHaveText("Reveal");
+  await expect(firstReveal).toHaveAttribute("aria-expanded", "false");
+  const controls = await firstReveal.getAttribute("aria-controls");
+  if (!controls) throw new Error("Reveal button is missing aria-controls");
+  await expect(page.locator(`#${controls}`)).toBeHidden();
+
+  await firstReveal.click();
+  await expect(firstReveal).toHaveText("Hide");
+  await expect(firstReveal).toHaveAttribute("aria-expanded", "true");
   await expect(
     page.locator("[data-guess-target]:not([hidden])").first(),
   ).toBeVisible();
+  await expect(page.locator(`#${controls}`)).toBeVisible();
+
+  await firstReveal.click();
+  await expect(firstReveal).toHaveText("Reveal");
+  await expect(firstReveal).toHaveAttribute("aria-expanded", "false");
+  await expect(page.locator(`#${controls}`)).toBeHidden();
 
   const bodyText = (await page.textContent("body"))?.toLowerCase() ?? "";
   expect(bodyText).not.toContain("worked with");

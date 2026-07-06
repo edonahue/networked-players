@@ -146,6 +146,88 @@
   color: inherit;
 }
 
+/* Cohort detail cards ----------------------------------------------------- */
+.cohort-status {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+.cohort-pair {
+  display: grid;
+  gap: 16px;
+  margin-bottom: 18px;
+  padding: clamp(18px, 3vw, 28px);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+.cohort-pair__albums {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 14px;
+}
+.cohort-album {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+}
+.cohort-album__placeholder {
+  width: 64px;
+}
+.cohort-album__text {
+  min-width: 0;
+}
+.cohort-album__title {
+  margin: 0;
+  color: var(--ink-strong);
+  font-family: var(--display);
+  font-size: 1.15rem;
+  line-height: 1.2;
+}
+.cohort-album__meta {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+.cohort-pair__arrow {
+  color: var(--accent-strong);
+  font-size: 1.3rem;
+}
+.cohort-pair__meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.cohort-pair__reveal {
+  min-height: 32px;
+  margin-left: auto;
+  padding: 5px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface-soft);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.cohort-pair__reveal:hover,
+.cohort-pair__reveal:focus-visible,
+.cohort-pair__reveal[aria-expanded="true"] {
+  border-color: var(--accent);
+}
+.cohort-pair__hops {
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
 /* Spinning record ------------------------------------------------------- */
 .spinning-record {
   --size: clamp(180px, 26vw, 280px);
@@ -419,6 +501,17 @@
   color: var(--warm);
   border-color: color-mix(in srgb, var(--warm) 45%, var(--line));
 }
+.tag--difficulty,
+.tag--clean,
+.tag--status-reviewed {
+  color: var(--accent-strong);
+  border-color: color-mix(in srgb, var(--accent) 50%, var(--line));
+}
+.tag--warning,
+.tag--status-synthetic {
+  color: var(--gold);
+  border-color: color-mix(in srgb, var(--gold) 55%, var(--line));
+}
 
 .provenance {
   margin-top: 26px;
@@ -445,6 +538,17 @@
 }
 
 @media (max-width: 560px) {
+  .cohort-pair__albums {
+    grid-template-columns: 1fr;
+  }
+  .cohort-pair__arrow {
+    transform: rotate(90deg);
+    justify-self: start;
+  }
+  .cohort-pair__reveal {
+    width: 100%;
+    margin-left: 0;
+  }
   .evidence {
     overflow-x: auto;
   }

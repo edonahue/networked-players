@@ -1,7 +1,12 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import CohortPairCard from '../../components/CohortPairCard.astro';
-import type { PlayableCohort, PlayableCohortManifest, PlayableCohortManifestEntry } from '../../data/cohort';
+import RevealControls from '../../components/RevealControls.astro';
+import type {
+  PlayableCohort,
+  PlayableCohortManifest,
+  PlayableCohortManifestEntry,
+} from '../../data/cohort';
 import { cohortArtifacts } from '../../data/cohortArtifacts';
 import manifestData from '../../../public/data/cohorts/index.json';
 
@@ -33,6 +38,10 @@ const description = entry.description;
   <section class="shell" style="padding-top:40px">
     <p class="eyebrow" style="margin-bottom:6px">Guess the connection</p>
     <h1 style="font-size:clamp(1.8rem,4vw,2.6rem)">{entry.title}</h1>
+    <p class="cohort-status" style="margin-top:10px">
+      <span class={`tag tag--status-${entry.status}`}>{entry.status}</span>
+      <span>{cohort.pairs.length} pair{cohort.pairs.length === 1 ? '' : 's'}</span>
+    </p>
     <p class="lede" style="margin-top:6px">
       {description}
     </p>
@@ -48,29 +57,17 @@ const description = entry.description;
     }
 
     <div style="margin-top:24px">
-      {cohort.pairs.map((pair) => <CohortPairCard pair={pair} albums={cohort.albums} />)}
+      {
+        cohort.pairs.map((pair, index) => (
+          <CohortPairCard
+            pair={pair}
+            albums={cohort.albums}
+            revealId={`cohort-${entry.cohort_id}-pair-${index + 1}-hops`}
+          />
+        ))
+      }
     </div>
   </section>
 </BaseLayout>
 
-<script is:inline>
-  (() => {
-    const cards = Array.from(document.querySelectorAll('[data-cohort-pair]'));
-    if (!cards.length) return;
-
-    const reveal = (card) => {
-      const target = card.querySelector('[data-guess-target]');
-      if (target) {
-        target.setAttribute('data-revealed', 'true');
-        target.removeAttribute('hidden');
-      }
-    };
-
-    document.querySelectorAll('[data-reveal-button]').forEach((button) => {
-      button.addEventListener('click', () => {
-        const card = button.closest('[data-cohort-pair]');
-        if (card) reveal(card);
-      });
-    });
-  })();
-</script>
+<RevealControls />
