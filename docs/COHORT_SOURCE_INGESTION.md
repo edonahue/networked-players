@@ -42,7 +42,10 @@ Before running any of the commands below against a real source for the first tim
 networked-players-catalog cohort-pipeline-preflight` (see `docs/OPERATOR_SETUP.md`'s "Real
 cohort rehearsal" runbook, step 0) is a read-only sanity check that the saved page and both
 dataset roots exist and prints the exact next commands — it doesn't run any pipeline stage
-itself, and reduces operator mistakes rather than adding one.
+itself, and reduces operator mistakes rather than adding one. Once a rehearsal is already
+underway, `uv run networked-players-catalog cohort-pipeline-status --source-id <source-id>`
+is the matching read-only resume command: it reports what exists, what is missing, and the
+next step without validating or writing anything.
 
 ```text
 operator saves a page as HTML (manual, out of band)
@@ -98,6 +101,10 @@ operator-saved source is the next actual step, gated by explicit human review th
 `promote-playable-cohort`'s selection file exactly as
 [ADR 0031](decisions/0031-human-reviewed-cohort-promotion.md) specifies; nothing publishes
 a real cohort automatically.
+
+`cohort-pipeline-status` sits between that preflight check and the pipeline itself. It does
+not replace the pipeline, and it does not validate contracts; it just inspects the expected
+local artifacts and tells the operator where the rehearsal stands now.
 
 **A committed `playable-cohort-v1.json` is not automatically web-visible.** Promotion
 (below) only writes `data/albums/cohorts/<source-id>-playable-v1.json`; making it appear on

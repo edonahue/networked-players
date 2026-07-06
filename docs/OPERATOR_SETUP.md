@@ -221,6 +221,11 @@ df -h local
 Stop if the tree isn't clean, `make check` fails (if you chose to run it), the snapshot
 directory or seed file is missing, or free space looks thin against `docs/DATA_SIZING.md`.
 
+If you're resuming a cohort rehearsal that already started, `uv run networked-players-catalog
+cohort-pipeline-status --source-id <source-id>` is the companion read-only command. Use
+preflight before the first run; use status when you need the current checkpoint, the missing
+artifacts, and the next step without mentally re-checking every path.
+
 ### 2. Run the real expansion
 
 ```bash

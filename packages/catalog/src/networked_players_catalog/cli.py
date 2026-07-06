@@ -302,6 +302,53 @@ def _parser() -> argparse.ArgumentParser:
     )
     draft_review.add_argument("--output", type=Path, required=True)
 
+    status = subparsers.add_parser(
+        "cohort-pipeline-status",
+        help=(
+            "read-only status summary for a cohort rehearsal; prints the next action, runs nothing"
+        ),
+    )
+    status.add_argument("--source-id", required=True)
+    status.add_argument(
+        "--analysis-dir",
+        type=Path,
+        default=None,
+        help="analysis root (default: local/analysis/cohorts/<source-id>)",
+    )
+    status.add_argument(
+        "--review-dir",
+        type=Path,
+        default=Path("data/private/cohort-review"),
+        help="private review directory (default: data/private/cohort-review)",
+    )
+    status.add_argument(
+        "--promoted-artifact",
+        type=Path,
+        default=None,
+        help="promoted cohort artifact (default: data/albums/cohorts/<source-id>-playable-v1.json)",
+    )
+    status.add_argument(
+        "--web-manifest",
+        type=Path,
+        default=Path("apps/web/public/data/cohorts/index.json"),
+        help="web manifest (default: apps/web/public/data/cohorts/index.json)",
+    )
+    status.add_argument(
+        "--web-import-map",
+        type=Path,
+        default=Path("apps/web/src/data/cohortArtifacts.ts"),
+        help="static web import map (default: apps/web/src/data/cohortArtifacts.ts)",
+    )
+    status.add_argument(
+        "--jobs-dir",
+        type=Path,
+        default=Path("local/jobs"),
+        help="optional Pi job-record directory (default: local/jobs)",
+    )
+    status.add_argument(
+        "--json", action="store_true", help="print the machine-readable report instead of text"
+    )
+
     preflight = subparsers.add_parser(
         "cohort-pipeline-preflight",
         help="read-only readiness check for a real cohort rehearsal; prints the exact "
@@ -799,6 +846,24 @@ def main(argv: Sequence[str] | None = None) -> int:
                 sort_keys=True,
             )
         )
+        return 0
+
+    if args.command == "cohort-pipeline-status":
+        from .cohort_status import build_status_report, format_status_report
+
+        report = build_status_report(
+            source_id=args.source_id,
+            analysis_dir=args.analysis_dir,
+            review_dir=args.review_dir,
+            promoted_artifact=args.promoted_artifact,
+            web_manifest=args.web_manifest,
+            web_import_map=args.web_import_map,
+            jobs_dir=args.jobs_dir,
+        )
+        if args.json:
+            print(json.dumps(report, indent=2, sort_keys=True))
+        else:
+            print(format_status_report(report))
         return 0
 
     if args.command == "cohort-pipeline-preflight":
