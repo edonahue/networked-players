@@ -106,6 +106,12 @@ a real cohort automatically.
 not replace the pipeline, and it does not validate contracts; it just inspects the expected
 local artifacts and tells the operator where the rehearsal stands now.
 
+The automated test suite also includes a synthetic end-to-end cohort rehearsal. It runs the
+same saved-source import, resolve, score, draft-review, selection, promote, validate, and
+status stages against fabricated HTML and a tiny synthetic graph fixture. That test is a
+confidence check before the first real source; it does not replace human review and does not
+publish a real cohort.
+
 **A committed `playable-cohort-v1.json` is not automatically web-visible.** Promotion
 (below) only writes `data/albums/cohorts/<source-id>-playable-v1.json`; making it appear on
 the site is a separate, later, explicit step requiring three coordinated changes, done only
