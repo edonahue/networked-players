@@ -286,6 +286,22 @@ def test_neighbors_batch_matches_individual_calls(dataset_root: Path) -> None:
     assert graph.neighbors_batch([]) == {}
 
 
+def test_batched_queries_handle_large_id_lists(dataset_root: Path) -> None:
+    """A real hub frontier hands these methods tens of thousands of ids at
+    once (measured: 17,612 on the worst production seed's hop-1, and its
+    hop-2 reaches 445k) -- the scratch-table population must survive id lists
+    far larger than any fixture, including spanning multiple insert chunks."""
+    many_ids = [100, 200, 300, *range(1_000_000, 1_000_000 + 120_000)]
+    with CreditGraph.open(dataset_root) as graph:
+        counts = graph.credit_row_counts(many_ids)
+        assert counts == graph.credit_row_counts([100, 200, 300])
+
+        neighbors = graph.neighbors_batch([*many_ids[:3], *range(2_000_000, 2_000_100)])
+        assert neighbors[100] == graph.neighbors(100)
+        # Unknown ids are present-but-empty, never silently missing.
+        assert neighbors[2_000_000] == {}
+
+
 def _hub_release(release_id: int, *, master_id: int) -> dict[str, object]:
     return {
         "snapshot_date": "20260601",

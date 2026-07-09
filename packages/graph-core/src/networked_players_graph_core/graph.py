@@ -215,16 +215,32 @@ class CreditGraph:
         assert row is not None
         return int(row[0])
 
+    # One INSERT statement's worth of ids for `_scratch_id_table`. Bounds the
+    # generated SQL text (~7 bytes/id -> ~350KB/statement) without giving up
+    # the bulk win; scaling stays linear well past this size.
+    _SCRATCH_INSERT_CHUNK = 50_000
+
     def _scratch_id_table(self, artist_ids: Sequence[int]) -> str:
         """A uniquely-named TEMP TABLE holding `artist_ids`, for a batched
         query's `JOIN`/`IN (SELECT ...)` -- callers are responsible for
         dropping it. TEMP TABLEs are cursor-local (not shared database-wide,
         unlike `linked_credits`/`traversal_releases`), which is exactly what
         we want here: pure per-call scratch state, never meant to be visible
-        to another cursor."""
+        to another cursor.
+
+        Population is one inline-literal `unnest` INSERT per chunk, not
+        per-row `executemany`: measured on a real hub frontier, 17,612 ids
+        took 54.3s to insert row-by-row while the batched query they fed took
+        1.06s -- the insert, not the query, was blowing per-seed timeout
+        budgets. Inline int literals measured ~170x faster than executemany
+        and ~20x faster than a parameterized list bind at that size; `int()`
+        coercion below keeps the inlining injection-safe."""
         table = f"scratch_ids_{uuid.uuid4().hex}"
         self._connection.execute(f"CREATE TEMP TABLE {table} (artist_id BIGINT)")
-        self._connection.executemany(f"INSERT INTO {table} VALUES (?)", [[a] for a in artist_ids])
+        for start in range(0, len(artist_ids), self._SCRATCH_INSERT_CHUNK):
+            chunk = artist_ids[start : start + self._SCRATCH_INSERT_CHUNK]
+            literals = ",".join(str(int(a)) for a in chunk)
+            self._connection.execute(f"INSERT INTO {table} SELECT unnest([{literals}]::BIGINT[])")
         return table
 
     def credit_row_counts(self, artist_ids: Sequence[int]) -> dict[int, int]:
