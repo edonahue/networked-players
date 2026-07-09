@@ -41,7 +41,7 @@ below.
 | `master_id` | int | yes | Populated **only** when a literal `/master/<id>` link was visible for this entry. Never inferred. |
 | `release_id` | int | yes | Same rule, for a literal `/release/<id>` link. |
 | `confidence` | string enum: `"high"` / `"medium"` / `"low"` | no | Confidence in the *extraction itself* — never a claim about the album's merit or the ranking's validity. |
-| `warnings` | array of string | no | Empty when nothing to flag; otherwise explains uncertainty (no link found, no year found, could not separate artist from title, detected via the non-list fallback heuristic). |
+| `warnings` | array of string | no | Empty when nothing to flag; otherwise explains uncertainty (no link found, no year found, could not separate artist from title, detected via the non-list fallback heuristic, no rank/title/artist element found in a release-card block). |
 
 ## Rules
 

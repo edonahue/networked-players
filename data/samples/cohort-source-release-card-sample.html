@@ -1,0 +1,45 @@
+<!--
+Fully fabricated fixture for the release-card extraction tier
+(packages/catalog/tests/test_cohort_source_extract.py). Structurally similar to
+Discogs's own "Digs" release-card grid layout (title/artist/year in separate
+classed divs, a direct /release/<id> link, no inline rank text), but every
+artist name, title, and Discogs ID below is invented -- none of this
+corresponds to a real Discogs entity or any real saved page's content.
+-->
+<html>
+<body>
+<h1>Sample release-card grid (fabricated fixture, not a real Discogs page)</h1>
+<div class="release-grid">
+  <div class="release-block-info p-5">
+    <div class="release-block-text">
+      <a href="https://www.discogs.com/release/7770001-Fake-Band-Alpha-First-Signal">
+        <div class="release-block-title">First Signal</div>
+      </a>
+      <a href="https://www.discogs.com/artist/10001-Fake-Band-Alpha">
+        <div class="release-block-artist">Fake Band Alpha</div>
+      </a>
+      <div class="release-block-year">1979</div>
+    </div>
+  </div>
+  <div class="release-block-info p-5">
+    <div class="release-block-text">
+      <a href="https://www.discogs.com/release/7770002-Fake-Band-Beta-Second-Signal">
+        <div class="release-block-title">Second Signal</div>
+      </a>
+      <a href="https://www.discogs.com/artist/10002-Fake-Band-Beta">
+        <div class="release-block-artist">Fake Band Beta</div>
+      </a>
+    </div>
+  </div>
+  <div class="release-block-info p-5">
+    <div class="release-block-text">
+      <div class="release-block-title">Untitled Signal</div>
+      <a href="https://www.discogs.com/artist/10003-Fake-Band-Gamma">
+        <div class="release-block-artist">Fake Band Gamma</div>
+      </a>
+      <div class="release-block-year">1983</div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

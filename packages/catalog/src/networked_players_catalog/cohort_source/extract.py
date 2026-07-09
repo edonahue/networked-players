@@ -38,10 +38,21 @@ _MASTER_LINK_RE = re.compile(r"/master/(\d+)")
 _RELEASE_LINK_RE = re.compile(r"/release/(\d+)")
 _FALLBACK_TAGS = ("h1", "h2", "h3", "h4", "p", "li", "div")
 
+# A second, structural block layout seen on Discogs's own "Digs" listicle pages: each
+# entry is a card with title/artist/year in separate classed elements (no inline rank
+# text, no artist/title separator to split) rather than one text blob per list item.
+_RELEASE_CARD_CONTAINER_CLASS = "release-block-info"
+_RELEASE_CARD_TITLE_CLASS = "release-block-title"
+_RELEASE_CARD_ARTIST_CLASS = "release-block-artist"
+_RELEASE_CARD_YEAR_CLASS = "release-block-year"
+
 WARN_NO_LINK = "no discogs master/release link found in source HTML"
 WARN_NO_YEAR = "no year found"
 WARN_NO_SEPARATOR = "could not separate artist from title"
 WARN_FALLBACK_TIER = "detected via fallback heuristic (non-list block)"
+WARN_NO_RANK = "no rank text found in source HTML"
+WARN_NO_TITLE = "no title element found in release card"
+WARN_NO_ARTIST = "no artist element found in release card"
 
 
 class CohortSourceExtractionError(RuntimeError):
@@ -102,29 +113,45 @@ def _matches_rank_prefix(element: lxml.html.HtmlElement) -> bool:
     return bool(_RANK_PREFIX_RE.match(element.text_content().strip()))
 
 
+def _release_card_elements(tree: lxml.html.HtmlElement) -> list[lxml.html.HtmlElement]:
+    elements: list[lxml.html.HtmlElement] = tree.xpath(
+        f".//*[contains(@class, '{_RELEASE_CARD_CONTAINER_CLASS}')]"
+    )
+    return elements
+
+
 def _candidate_elements(
     tree: lxml.html.HtmlElement,
-) -> tuple[list[lxml.html.HtmlElement], bool]:
-    """Return (candidate block elements, is_fallback_tier).
+) -> tuple[list[lxml.html.HtmlElement], str]:
+    """Return (candidate block elements, tier), tier one of "release_card",
+    "list", "fallback", or "none".
 
-    Prefers `<li>` elements: if at least `_MIN_LIST_ITEMS_TO_TRUST` of them
-    match a leading-rank prefix, every `<li>` in the document is treated as a
-    candidate block (not just the matching ones), so a non-conforming entry
-    in an otherwise-numbered list still becomes a low-confidence candidate
-    rather than being silently dropped. Otherwise falls back to scanning
-    headings/paragraphs/divs for the same rank-prefix pattern.
+    Tries, in order:
+    1. Release-card blocks (structural: title/artist/year in separate classed
+       elements, no inline rank or artist/title separator to parse) -- see
+       `_extract_release_card_candidate`.
+    2. `<li>` elements: if at least `_MIN_LIST_ITEMS_TO_TRUST` of them match a
+       leading-rank prefix, every `<li>` in the document is treated as a
+       candidate block (not just the matching ones), so a non-conforming
+       entry in an otherwise-numbered list still becomes a low-confidence
+       candidate rather than being silently dropped.
+    3. Headings/paragraphs/divs matching the same rank-prefix pattern.
     """
+    release_cards = _release_card_elements(tree)
+    if len(release_cards) >= _MIN_LIST_ITEMS_TO_TRUST:
+        return release_cards, "release_card"
+
     list_items = tree.xpath(".//li")
     if sum(_matches_rank_prefix(li) for li in list_items) >= _MIN_LIST_ITEMS_TO_TRUST:
-        return list_items, False
+        return list_items, "list"
 
     fallback_elements = [
         el for tag in _FALLBACK_TAGS for el in tree.xpath(f".//{tag}") if _matches_rank_prefix(el)
     ]
     if len(fallback_elements) >= _MIN_LIST_ITEMS_TO_TRUST:
-        return fallback_elements, True
+        return fallback_elements, "fallback"
 
-    return [], False
+    return [], "none"
 
 
 def _split_rank(text: str) -> tuple[int | None, str]:
@@ -237,6 +264,60 @@ def _extract_candidate(
     )
 
 
+def _first_by_class(
+    element: lxml.html.HtmlElement, class_name: str
+) -> lxml.html.HtmlElement | None:
+    matches = element.xpath(f".//*[contains(@class, '{class_name}')]")
+    return matches[0] if matches else None
+
+
+def _extract_release_card_candidate(element: lxml.html.HtmlElement) -> ExtractedCandidate:
+    """Extract a candidate from a release-card block: title/artist/year live
+    in separate classed descendants (no inline rank, nothing to split), so
+    this reads them directly rather than reusing `_extract_candidate`'s
+    text-blob parsing. Rank is never inferred from card position -- it's left
+    null with `WARN_NO_RANK` when the page doesn't show one, the same
+    evidence-preservation rule as every other missing field here.
+    """
+    warnings: list[str] = [WARN_NO_RANK]
+
+    title_el = _first_by_class(element, _RELEASE_CARD_TITLE_CLASS)
+    title = title_el.text_content().strip() if title_el is not None else None
+    if title is None:
+        warnings.append(WARN_NO_TITLE)
+
+    artist_el = _first_by_class(element, _RELEASE_CARD_ARTIST_CLASS)
+    artist = artist_el.text_content().strip() if artist_el is not None else None
+    if artist is None:
+        warnings.append(WARN_NO_ARTIST)
+
+    year_el = _first_by_class(element, _RELEASE_CARD_YEAR_CLASS)
+    year: int | None = None
+    if year_el is not None:
+        year_match = _YEAR_RE.search(year_el.text_content())
+        if year_match:
+            year = int(year_match.group(1))
+    if year is None:
+        warnings.append(WARN_NO_YEAR)
+
+    hrefs = list(element.xpath(".//a/@href"))
+    master_id, release_id, link_warnings = _extract_links(hrefs)
+    warnings.extend(link_warnings)
+
+    confidence = _confidence(warnings, is_fallback_tier=False, artist=artist)
+
+    return ExtractedCandidate(
+        rank=None,
+        artist=artist,
+        title=title,
+        year=year,
+        master_id=master_id,
+        release_id=release_id,
+        confidence=confidence,
+        warnings=warnings,
+    )
+
+
 def extract_candidates_from_html(
     html_text: str, *, source: CohortSourceMeta
 ) -> ExtractedCandidatesArtifact:
@@ -248,11 +329,15 @@ def extract_candidates_from_html(
     except (ParserError, ValueError) as exc:
         raise CohortSourceExtractionError("saved source HTML is empty or unparseable") from exc
 
-    elements, is_fallback_tier = _candidate_elements(tree)
+    elements, tier = _candidate_elements(tree)
     notes = [] if elements else ["no candidate entries detected"]
-    candidates = [
-        _extract_candidate(element, is_fallback_tier=is_fallback_tier) for element in elements
-    ]
+    if tier == "release_card":
+        candidates = [_extract_release_card_candidate(element) for element in elements]
+    else:
+        candidates = [
+            _extract_candidate(element, is_fallback_tier=(tier == "fallback"))
+            for element in elements
+        ]
 
     return ExtractedCandidatesArtifact(
         schema_version=CANDIDATE_SCHEMA_VERSION,

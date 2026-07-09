@@ -8,6 +8,7 @@ import pytest
 
 from networked_players_catalog.cohort_source.extract import (
     WARN_NO_LINK,
+    WARN_NO_RANK,
     WARN_NO_SEPARATOR,
     WARN_NO_YEAR,
     CohortSourceExtractionError,
@@ -17,6 +18,9 @@ from networked_players_catalog.cohort_source.extract import (
 from networked_players_catalog.cohort_source.source import build_cohort_source_meta
 
 FIXTURE = Path(__file__).parents[3] / "data" / "samples" / "cohort-source-sample.html"
+RELEASE_CARD_FIXTURE = (
+    Path(__file__).parents[3] / "data" / "samples" / "cohort-source-release-card-sample.html"
+)
 
 
 def _source():
@@ -97,3 +101,47 @@ def test_extract_ambiguous_year_kept_with_warning() -> None:
     for candidate in artifact.candidates:
         assert candidate.year is None
         assert WARN_NO_YEAR in candidate.warnings
+
+
+def test_extract_release_card_tier_from_sample_fixture() -> None:
+    artifact = extract_candidates_from_file(RELEASE_CARD_FIXTURE, source=_source())
+
+    assert artifact.notes == []
+    assert len(artifact.candidates) == 3
+
+    entry1 = artifact.candidates[0]
+    assert entry1.rank is None
+    assert WARN_NO_RANK in entry1.warnings
+    assert entry1.artist == "Fake Band Alpha"
+    assert entry1.title == "First Signal"
+    assert entry1.year == 1979
+    assert entry1.release_id == 7770001
+    assert entry1.master_id is None
+    assert entry1.confidence == "medium"
+
+    entry2 = artifact.candidates[1]
+    assert entry2.year is None
+    assert WARN_NO_YEAR in entry2.warnings
+    assert entry2.release_id == 7770002
+    assert entry2.confidence == "low"
+
+    entry3 = artifact.candidates[2]
+    assert entry3.title == "Untitled Signal"
+    assert entry3.artist == "Fake Band Gamma"
+    assert entry3.year == 1983
+    assert entry3.master_id is None
+    assert entry3.release_id is None
+    assert WARN_NO_LINK in entry3.warnings
+    assert entry3.confidence == "low"
+
+
+def test_extract_release_card_tier_below_trust_threshold_falls_back() -> None:
+    html = (
+        '<div class="release-block-info">'
+        '<div class="release-block-title">Solo Title</div>'
+        '<div class="release-block-artist">Solo Artist</div>'
+        "</div>"
+    )
+    artifact = extract_candidates_from_html(html, source=_source())
+    assert artifact.candidates == []
+    assert "no candidate entries detected" in artifact.notes
