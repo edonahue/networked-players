@@ -44,9 +44,10 @@ import re
 import threading
 import time
 from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Protocol
 
 import duckdb
 
@@ -246,13 +247,48 @@ def _run_with_timeout[T](
         timer.cancel()
 
 
+class _NeighborCacheLike(Protocol):
+    """Structural type satisfied by both a plain dict (sequential path,
+    existing tests) and `_NeighborCache` (concurrent path) -- `_bfs_from_seed`
+    only ever needs these three operations."""
+
+    def __contains__(self, key: int) -> bool: ...
+    def __getitem__(self, key: int) -> dict[int, tuple[int, ...]]: ...
+    def __setitem__(self, key: int, value: dict[int, tuple[int, ...]]) -> None: ...
+
+
+class _NeighborCache:
+    """Thread-safe wrapper around the shared `neighbor_cache` dict, with the
+    same `in`/`[]`/`[]=` interface `_bfs_from_seed` already uses (so it needs
+    no changes). The lock only ever guards a dict read/write, never the
+    `CreditGraph.neighbors()` call itself -- two workers racing on the same
+    uncached artist may both query it once, which is wasted work, never a
+    correctness problem, since `neighbors()` is a pure read."""
+
+    def __init__(self) -> None:
+        self._data: dict[int, dict[int, tuple[int, ...]]] = {}
+        self._lock = threading.Lock()
+
+    def __contains__(self, key: int) -> bool:
+        with self._lock:
+            return key in self._data
+
+    def __getitem__(self, key: int) -> dict[int, tuple[int, ...]]:
+        with self._lock:
+            return self._data[key]
+
+    def __setitem__(self, key: int, value: dict[int, tuple[int, ...]]) -> None:
+        with self._lock:
+            self._data[key] = value
+
+
 def _bfs_from_seed(
     graph: CreditGraph,
     seed_artist_id: int,
     *,
     max_hops: int,
     max_frontier_expansion: int | None,
-    neighbor_cache: dict[int, dict[int, tuple[int, ...]]],
+    neighbor_cache: _NeighborCacheLike,
     deadline: float | None,
 ) -> tuple[dict[int, tuple[int, int]], frozenset[int]]:
     """BFS from seed_artist_id out to max_hops, returning parent pointers
@@ -264,31 +300,50 @@ def _bfs_from_seed(
 
     `neighbor_cache` is shared across every seed artist in one
     `score_pairs` run: a hub reached from more than one seed's frontier is
-    queried via `CreditGraph.neighbors()` at most once, which is the actual
-    fix for the confirmed cost of repeating a hub's expensive fan-out query
-    once per pair that happens to route through it.
+    queried via `CreditGraph.neighbors_batch()` at most once, which is the
+    actual fix for the confirmed cost of repeating a hub's expensive fan-out
+    query once per pair that happens to route through it.
 
-    Raises TimeoutError (cooperatively, checked once per frontier artist)
-    if `deadline` (a `time.monotonic()` value) passes before the search
-    completes.
+    Both the frontier-size check and the neighbor fetch are batched into one
+    query per hop for the *whole* frontier (`CreditGraph.credit_row_counts`/
+    `neighbors_batch`), not one query per frontier artist -- a hub's own
+    hop-1 frontier can be thousands of artists, and checking each
+    individually (the original shape here, still how `CreditGraph.find_path`
+    -- a different, older BFS -- happened NOT to need fixing, since it
+    already batched its own frontier check) was the dominant real cost a
+    real hub-heavy cohort hit: even after the credits data materialization
+    fix, one seed's own hop-2 expansion could still run well past a
+    120-second budget purely from thousands of sequential round-trips.
+
+    Raises TimeoutError (cooperatively, checked once per hop -- each hop is
+    now one batched query, not a per-artist loop, so per-artist checking is
+    no longer meaningful) if `deadline` (a `time.monotonic()` value) passes
+    before the search completes. A single hop's own query running long is
+    still caught by the caller's `_run_with_timeout`/`graph.interrupt()`,
+    independent of this cooperative check.
     """
     visited = {seed_artist_id}
     parent: dict[int, tuple[int, int]] = {}
     capped_artist_ids: set[int] = set()
     frontier = [seed_artist_id]
     for _ in range(max_hops):
+        if deadline is not None and time.monotonic() > deadline:
+            raise TimeoutError(f"seed {seed_artist_id} expansion exceeded its deadline")
+
+        if max_frontier_expansion is not None:
+            counts = graph.credit_row_counts(frontier)
+            safe_frontier = [a for a in frontier if counts.get(a, 0) <= max_frontier_expansion]
+            capped_artist_ids.update(a for a in frontier if a not in safe_frontier)
+        else:
+            safe_frontier = frontier
+
+        uncached = [a for a in safe_frontier if a not in neighbor_cache]
+        if uncached:
+            for artist_id, neighbors in graph.neighbors_batch(uncached).items():
+                neighbor_cache[artist_id] = neighbors
+
         next_frontier: list[int] = []
-        for artist_id in frontier:
-            if deadline is not None and time.monotonic() > deadline:
-                raise TimeoutError(f"seed {seed_artist_id} expansion exceeded its deadline")
-            if (
-                max_frontier_expansion is not None
-                and graph.credit_row_count(artist_id) > max_frontier_expansion
-            ):
-                capped_artist_ids.add(artist_id)
-                continue
-            if artist_id not in neighbor_cache:
-                neighbor_cache[artist_id] = graph.neighbors(artist_id)
+        for artist_id in safe_frontier:
             for neighbor_id, release_ids in neighbor_cache[artist_id].items():
                 if neighbor_id in visited:
                     continue
@@ -339,6 +394,66 @@ def _pair_path(
     return None, reason
 
 
+_SeedResult = tuple[int, dict[int, tuple[int, int]] | None, frozenset[int], str | None]
+
+
+def _score_one_seed(
+    worker_graph: CreditGraph,
+    artist_id: int,
+    *,
+    max_hops: int,
+    max_frontier_expansion: int | None,
+    neighbor_cache: _NeighborCacheLike,
+    pair_timeout_seconds: float | None,
+) -> _SeedResult:
+    """Runs one seed's bounded BFS on `worker_graph` (its own cursor when
+    called concurrently, or the shared connection in the sequential path)
+    and returns a plain result tuple rather than mutating shared state --
+    callers merge results themselves, so nothing here needs a lock beyond
+    `neighbor_cache` itself."""
+    deadline = time.monotonic() + pair_timeout_seconds if pair_timeout_seconds else None
+
+    def _do_bfs() -> tuple[dict[int, tuple[int, int]], frozenset[int]]:
+        return _bfs_from_seed(
+            worker_graph,
+            artist_id,
+            max_hops=max_hops,
+            max_frontier_expansion=max_frontier_expansion,
+            neighbor_cache=neighbor_cache,
+            deadline=deadline,
+        )
+
+    try:
+        parent, capped = _run_with_timeout(
+            worker_graph.interrupt, _do_bfs, timeout_seconds=pair_timeout_seconds
+        )
+    except TimeoutError:
+        return artist_id, None, frozenset(), "seed_expansion_timeout"
+    return artist_id, parent, capped, None
+
+
+def seed_results_from_job_output(raw: dict[str, dict[str, Any]]) -> dict[int, _SeedResult]:
+    """Converts a fleet-dispatched job's JSON-safe per-seed output --
+    `infra/ansible/files/cohort_seed_bfs_job.py`'s own return shape, or
+    `scripts/enqueue_cohort_seed_bfs.py`'s merged `per_seed_results` -- into
+    the plain `_SeedResult` tuples `score_pairs`'s merge loop already
+    expects. This is the one place a fleet-computed result and a
+    locally-computed one become indistinguishable to the rest of this
+    module -- see ADR 0032. JSON can't have int dict keys, so the job body
+    encodes `parent` as a list of `[artist_id, parent_artist_id,
+    release_id]` triples rather than a dict; this reverses that."""
+    results: dict[int, _SeedResult] = {}
+    for seed_key, entry in raw.items():
+        artist_id = int(seed_key)
+        if entry.get("status") == "timeout":
+            results[artist_id] = (artist_id, None, frozenset(), "seed_expansion_timeout")
+            continue
+        parent = {int(a): (int(p), int(r)) for a, p, r in entry["parent"]}
+        capped = frozenset(int(a) for a in entry["capped"])
+        results[artist_id] = (artist_id, parent, capped, None)
+    return results
+
+
 def score_pairs(
     graph: CreditGraph,
     resolved_albums: list[dict[str, Any]],
@@ -346,6 +461,8 @@ def score_pairs(
     max_hops: int = 3,
     max_frontier_expansion: int | None = 300,
     pair_timeout_seconds: float | None = 30.0,
+    max_workers: int = 1,
+    precomputed_seed_results: dict[int, _SeedResult] | None = None,
 ) -> list[dict[str, Any]]:
     """Every unordered pair of resolved albums, sorted by album_id (mirrors
     challenge.py's `ordered = sorted(matched, key=lambda m: m.album_id)` +
@@ -362,37 +479,81 @@ def score_pairs(
     against the production one-hop dataset, not a precise percentile --
     operators should tune it per cohort/dataset. `pair_timeout_seconds`
     bounds each seed's own BFS, not each pair.
+
+    `max_workers > 1` dispatches each unique artist's own BFS concurrently,
+    each on its own `graph.cursor()` (an independent DuckDB cursor sharing
+    the same already-materialized tables) -- safe because each seed's search
+    is otherwise independent, and `neighbor_cache` is the one piece of state
+    genuinely shared across workers (see `_NeighborCache`). Results are
+    merged into `parent_by_seed`/`capped_by_seed`/`failed_seeds` back on the
+    calling thread as each seed finishes, so those dicts never need a lock.
+
+    `precomputed_seed_results`, when given, skips local BFS computation
+    entirely (both the sequential and `max_workers` paths) and uses these
+    already-computed per-artist results instead -- the fleet-dispatch path
+    (see `seed_results_from_job_output`, ADR 0032). `graph` is still used for
+    everything downstream of this (hop quality classification via
+    `credit_rows`), so a live connection to the same dataset is still
+    required; only the expensive traversal itself is skipped. Every unique
+    cohort artist must be present in `precomputed_seed_results` -- a fleet
+    dispatch that dropped a seed is a bug in that dispatch, not something
+    this function should silently paper over.
     """
     ordered = sorted(resolved_albums, key=_album_id)
     artist_ids = sorted({album["artist_id"] for album in ordered})
 
-    neighbor_cache: dict[int, dict[int, tuple[int, ...]]] = {}
+    neighbor_cache: _NeighborCacheLike = _NeighborCache() if max_workers > 1 else {}
     parent_by_seed: dict[int, dict[int, tuple[int, int]]] = {}
     capped_by_seed: dict[int, frozenset[int]] = {}
     failed_seeds: dict[int, str] = {}
 
-    for artist_id in artist_ids:
-        deadline = time.monotonic() + pair_timeout_seconds if pair_timeout_seconds else None
+    def _run(worker_graph: CreditGraph, artist_id: int) -> _SeedResult:
+        return _score_one_seed(
+            worker_graph,
+            artist_id,
+            max_hops=max_hops,
+            max_frontier_expansion=max_frontier_expansion,
+            neighbor_cache=neighbor_cache,
+            pair_timeout_seconds=pair_timeout_seconds,
+        )
 
-        def _do_bfs(
-            aid: int = artist_id, dl: float | None = deadline
-        ) -> tuple[dict[int, tuple[int, int]], frozenset[int]]:
-            return _bfs_from_seed(
-                graph,
-                aid,
-                max_hops=max_hops,
-                max_frontier_expansion=max_frontier_expansion,
-                neighbor_cache=neighbor_cache,
-                deadline=dl,
+    results: list[_SeedResult]
+    if precomputed_seed_results is not None:
+        missing = [aid for aid in artist_ids if aid not in precomputed_seed_results]
+        if missing:
+            raise CohortConnectivityError(
+                f"precomputed_seed_results is missing artist_id(s) {missing} -- "
+                "a fleet dispatch must cover every unique cohort artist"
             )
+        results = [precomputed_seed_results[aid] for aid in artist_ids]
+    elif max_workers > 1:
+        # Cursors are created here, sequentially, on this thread -- never
+        # inside a worker, since concurrent `graph.cursor()` calls on the
+        # same source connection aren't a documented-safe DuckDB operation.
+        # Each of the `max_workers` cursors is then owned by exactly one
+        # pool thread for its entire chunk of artist_ids (one task per
+        # worker, not one task per artist) -- a cursor is never touched by
+        # more than one thread, which `ThreadPoolExecutor.map` alone
+        # wouldn't guarantee if tasks outnumbered workers.
+        worker_graphs = [graph.cursor() for _ in range(max_workers)]
+        chunks: list[list[int]] = [[] for _ in range(max_workers)]
+        for index, artist_id in enumerate(artist_ids):
+            chunks[index % max_workers].append(artist_id)
 
-        try:
-            parent, capped = _run_with_timeout(
-                graph.interrupt, _do_bfs, timeout_seconds=pair_timeout_seconds
-            )
-        except TimeoutError:
-            failed_seeds[artist_id] = "seed_expansion_timeout"
+        def _run_chunk(worker_index: int) -> list[_SeedResult]:
+            return [_run(worker_graphs[worker_index], aid) for aid in chunks[worker_index]]
+
+        with ThreadPoolExecutor(max_workers=max_workers) as pool:
+            chunk_results = list(pool.map(_run_chunk, range(max_workers)))
+        results = [result for chunk in chunk_results for result in chunk]
+    else:
+        results = [_run(graph, artist_id) for artist_id in artist_ids]
+
+    for artist_id, parent, capped, failure in results:
+        if failure is not None:
+            failed_seeds[artist_id] = failure
             continue
+        assert parent is not None
         parent_by_seed[artist_id] = parent
         capped_by_seed[artist_id] = capped
 
@@ -492,6 +653,8 @@ def build_connectivity_cohort(
     max_pairs: int = 1000,
     max_frontier_expansion: int | None = 300,
     pair_timeout_seconds: float | None = 30.0,
+    max_workers: int = 1,
+    precomputed_seed_results: dict[int, _SeedResult] | None = None,
 ) -> dict[str, Any]:
     if resolved.get("dataset_snapshot_date") != dataset_snapshot_date:
         raise CohortConnectivityError(
@@ -517,6 +680,8 @@ def build_connectivity_cohort(
         max_hops=max_hops,
         max_frontier_expansion=max_frontier_expansion,
         pair_timeout_seconds=pair_timeout_seconds,
+        max_workers=max_workers,
+        precomputed_seed_results=precomputed_seed_results,
     )
 
     return {

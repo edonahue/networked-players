@@ -129,6 +129,26 @@ def test_resolve_deduplicates_by_artist_id(dataset_root: Path) -> None:
     assert "already resolved" in unresolved[0]["reason"]
 
 
+def test_resolve_candidates_concurrent_matches_sequential(dataset_root: Path) -> None:
+    """max_workers > 1 must produce byte-for-byte the same (resolved,
+    unresolved) as the sequential path -- including the order-dependent
+    used_artist_ids dedup (release_id=4 duplicates Alice from release_id=1),
+    a missing-hint case, and a title/artist fallback, so the merge pass
+    genuinely exercises every branch, not just the happy path."""
+    candidates = [
+        _candidate(rank=1, release_id=1),
+        _candidate(rank=2, release_id=4),  # dedup: same artist as rank 1
+        _candidate(rank=3, artist="Cara", title="Third Wave"),
+        _candidate(rank=4),  # no hint, no text -> unresolved
+        _candidate(rank=5, master_id=999_999),  # unknown hint -> unresolved
+    ]
+    with CreditGraph.open(dataset_root) as graph:
+        sequential = resolve_candidates(graph, candidates)
+        concurrent = resolve_candidates(graph, candidates, max_workers=4)
+
+    assert concurrent == sequential
+
+
 def test_build_resolved_cohort_round_trips_through_validation(dataset_root: Path) -> None:
     extracted = _extracted(
         [

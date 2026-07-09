@@ -114,6 +114,13 @@ def _parser() -> argparse.ArgumentParser:
     build_challenge.add_argument("--max-artists-per-release", type=int, default=50)
     build_challenge.add_argument("--memory-limit", default="1GB")
     build_challenge.add_argument("--threads", type=int, default=2)
+    build_challenge.add_argument(
+        "--max-workers",
+        type=int,
+        default=1,
+        help="find_path() candidate pairs concurrently across this many DuckDB cursors; "
+        "default 1 preserves the original sequential, early-stopping behavior",
+    )
     build_challenge.add_argument("--enrich-images", action="store_true")
     build_challenge.add_argument(
         "--cache-dir", type=Path, default=Path("data/private/discogs-api-cache")
@@ -210,6 +217,13 @@ def _parser() -> argparse.ArgumentParser:
     resolve_cohort.add_argument(
         "--temp-dir", type=Path, default=None, help="DuckDB spill directory"
     )
+    resolve_cohort.add_argument(
+        "--max-workers",
+        type=int,
+        default=1,
+        help="resolve candidates concurrently across this many DuckDB cursors; default 1 "
+        "preserves the original sequential behavior",
+    )
 
     score_connectivity = subparsers.add_parser(
         "score-cohort-connectivity",
@@ -257,6 +271,14 @@ def _parser() -> argparse.ArgumentParser:
         help="wall-clock budget for each cohort artist's own BFS expansion; on timeout "
         "every pair needing that artist's search is reported status=skipped rather "
         "than hanging or guessing",
+    )
+    score_connectivity.add_argument(
+        "--max-workers",
+        type=int,
+        default=1,
+        help="run this many cohort artists' own BFS expansions concurrently, each on its "
+        "own DuckDB cursor sharing the same materialized tables (see CreditGraph.cursor()); "
+        "default 1 preserves the original sequential behavior",
     )
 
     promote_cohort = subparsers.add_parser(
@@ -554,6 +576,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 generated_by=f"networked-players-catalog build-challenge-from-dump {__version__}",
                 max_paths=args.max_paths,
                 max_hops=args.max_hops,
+                max_workers=args.max_workers,
             )
 
         if args.enrich_images:
@@ -695,6 +718,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 graph,
                 extracted,
                 dataset_snapshot_date=str(dataset_manifest["snapshot_date"]),
+                max_workers=args.max_workers,
             )
 
         write_resolved_cohort(resolved_artifact, args.output)
@@ -737,6 +761,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 max_pairs=args.max_pairs,
                 max_frontier_expansion=args.max_frontier_expansion,
                 pair_timeout_seconds=args.pair_timeout_seconds,
+                max_workers=args.max_workers,
             )
 
         validate_connectivity(connectivity_artifact)

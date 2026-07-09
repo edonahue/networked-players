@@ -11,11 +11,12 @@ and verify the experience, plus full provenance.
 from __future__ import annotations
 
 import json
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from typing import Any
 
 from . import __version__
-from .graph import CreditGraph
+from .graph import CreditGraph, EvidencePath
 
 CHALLENGE_SCHEMA_VERSION = 2
 
@@ -135,6 +136,65 @@ def match_albums(
     return matched, missed
 
 
+def _candidate_album_pairs(
+    ordered: list[MatchedAlbum],
+) -> list[tuple[MatchedAlbum, MatchedAlbum]]:
+    """Every distinct-artist-pair candidate, in the same `i, i+1:` order the
+    original sequential loop used -- shared by both the sequential and
+    concurrent paths so output ordering/determinism never depends on
+    `max_workers`."""
+    used_pairs: set[tuple[int, int]] = set()
+    candidates: list[tuple[MatchedAlbum, MatchedAlbum]] = []
+    for i, from_album in enumerate(ordered):
+        for to_album in ordered[i + 1 :]:
+            pair = (
+                min(from_album.artist_id, to_album.artist_id),
+                max(from_album.artist_id, to_album.artist_id),
+            )
+            if pair in used_pairs:
+                continue
+            used_pairs.add(pair)
+            candidates.append((from_album, to_album))
+    return candidates
+
+
+def _find_paths_concurrently(
+    graph: CreditGraph,
+    candidate_pairs: list[tuple[MatchedAlbum, MatchedAlbum]],
+    *,
+    max_hops: int,
+    max_workers: int,
+) -> dict[tuple[int, int], EvidencePath | None]:
+    """Precomputes every candidate pair's `find_path` result up front, spread
+    across `max_workers` cursors -- unlike the sequential path (which can
+    stop calling `find_path` once `max_paths` is satisfied), this always
+    computes every candidate. Album lists here are small (tens, not
+    hundreds) so that's a bounded, acceptable cost for real concurrency;
+    output building afterward still stops at `max_paths`, so report/ordering
+    semantics are unchanged from the sequential path."""
+    worker_graphs = [graph.cursor() for _ in range(max_workers)]
+    chunks: list[list[tuple[MatchedAlbum, MatchedAlbum]]] = [[] for _ in range(max_workers)]
+    for index, pair in enumerate(candidate_pairs):
+        chunks[index % max_workers].append(pair)
+
+    def _run_chunk(
+        worker_index: int,
+    ) -> list[tuple[int, int, EvidencePath | None]]:
+        worker_graph = worker_graphs[worker_index]
+        return [
+            (
+                from_album.artist_id,
+                to_album.artist_id,
+                worker_graph.find_path(from_album.artist_id, to_album.artist_id, max_hops=max_hops),
+            )
+            for from_album, to_album in chunks[worker_index]
+        ]
+
+    with ThreadPoolExecutor(max_workers=max_workers) as pool:
+        chunk_results = list(pool.map(_run_chunk, range(max_workers)))
+    return {(from_id, to_id): path for chunk in chunk_results for from_id, to_id, path in chunk}
+
+
 def build_challenge_v2(
     graph: CreditGraph,
     albums: list[dict[str, str]],
@@ -143,6 +203,7 @@ def build_challenge_v2(
     generated_by: str,
     max_paths: int = 12,
     max_hops: int = 4,
+    max_workers: int = 1,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     matched, missed = match_albums(graph, albums)
     distinct_artist_matches = {m.artist_id: m for m in matched}
@@ -153,58 +214,57 @@ def build_challenge_v2(
         )
 
     ordered = sorted(matched, key=lambda m: m.album_id)
+    candidate_pairs = _candidate_album_pairs(ordered)
+    precomputed_paths = (
+        _find_paths_concurrently(graph, candidate_pairs, max_hops=max_hops, max_workers=max_workers)
+        if max_workers > 1
+        else None
+    )
+
     attempted = 0
-    used_pairs: set[tuple[int, int]] = set()
     paths_json: list[dict[str, Any]] = []
     used_release_ids: set[int] = set()
     used_artist_ids: set[int] = set()
 
-    for i, from_album in enumerate(ordered):
-        for to_album in ordered[i + 1 :]:
-            if len(paths_json) >= max_paths:
-                break
-            pair = (
-                min(from_album.artist_id, to_album.artist_id),
-                max(from_album.artist_id, to_album.artist_id),
-            )
-            if pair in used_pairs:
-                continue
-            used_pairs.add(pair)
-            attempted += 1
-            path = graph.find_path(from_album.artist_id, to_album.artist_id, max_hops=max_hops)
-            if path is None:
-                continue
-
-            hop_ids = {a for h in path.hops for a in (h.artist_a_id, h.artist_b_id)}
-            used_artist_ids.update(hop_ids)
-            for hop in path.hops:
-                used_release_ids.add(hop.release_id)
-
-            paths_json.append(
-                {
-                    "id": f"path-{len(paths_json) + 1:02d}",
-                    "label": f"{from_album.title} → {to_album.title}",
-                    "description": (
-                        "A single documented co-credit."
-                        if len(path.hops) == 1
-                        else f"{len(path.hops)} documented hops."
-                    ),
-                    "from_album_id": from_album.album_id,
-                    "to_album_id": to_album.album_id,
-                    "from_artist_id": from_album.artist_id,
-                    "to_artist_id": to_album.artist_id,
-                    "hops": [
-                        {
-                            "release_id": h.release_id,
-                            "artist_a_id": h.artist_a_id,
-                            "artist_b_id": h.artist_b_id,
-                        }
-                        for h in path.hops
-                    ],
-                }
-            )
+    for from_album, to_album in candidate_pairs:
         if len(paths_json) >= max_paths:
             break
+        attempted += 1
+        if precomputed_paths is not None:
+            path = precomputed_paths[(from_album.artist_id, to_album.artist_id)]
+        else:
+            path = graph.find_path(from_album.artist_id, to_album.artist_id, max_hops=max_hops)
+        if path is None:
+            continue
+
+        hop_ids = {a for h in path.hops for a in (h.artist_a_id, h.artist_b_id)}
+        used_artist_ids.update(hop_ids)
+        for hop in path.hops:
+            used_release_ids.add(hop.release_id)
+
+        paths_json.append(
+            {
+                "id": f"path-{len(paths_json) + 1:02d}",
+                "label": f"{from_album.title} → {to_album.title}",
+                "description": (
+                    "A single documented co-credit."
+                    if len(path.hops) == 1
+                    else f"{len(path.hops)} documented hops."
+                ),
+                "from_album_id": from_album.album_id,
+                "to_album_id": to_album.album_id,
+                "from_artist_id": from_album.artist_id,
+                "to_artist_id": to_album.artist_id,
+                "hops": [
+                    {
+                        "release_id": h.release_id,
+                        "artist_a_id": h.artist_a_id,
+                        "artist_b_id": h.artist_b_id,
+                    }
+                    for h in path.hops
+                ],
+            }
+        )
 
     if not paths_json:
         raise ValueError("no evidence paths found between any matched albums")

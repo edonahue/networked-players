@@ -14,6 +14,7 @@ dependency direction is catalog CLI -> graph-core only, never the reverse.
 from __future__ import annotations
 
 import uuid
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -143,15 +144,28 @@ class CreditGraph:
         if credit_count is None or credit_count[0] == 0:
             raise GraphError(f"no credit rows found under {dataset_root}")
 
+        # A materialized TABLE, not a VIEW: every BFS hop re-queries this
+        # relation with a fresh WHERE/JOIN, and `linked_credits` has no
+        # per-artist filter on its unfiltered join side (`neighbors()`'s `b`
+        # side) -- left as a view, each of those queries re-scans and
+        # re-filters the full underlying credits Parquet data from scratch.
+        # Paying that scan once here (a hub artist's own neighbor lookup
+        # measured at 1-2s materialized vs. not completing in 120s as a view)
+        # is the same tradeoff `traversal_releases` below already makes.
+        # Plain TABLE, not TEMP TABLE: DuckDB's TEMP schema is connection/
+        # cursor-local, so a `cursor()` (see below) can't see a TEMP TABLE
+        # created on its parent connection -- a plain table in an in-memory
+        # database is exactly as ephemeral (gone when the connection closes)
+        # but lives in the shared `main` schema every cursor can read.
         non_individual = ", ".join(str(i) for i in sorted(NON_INDIVIDUAL_ARTIST_IDS))
         connection.execute(
-            "CREATE VIEW linked_credits AS "
+            "CREATE TABLE linked_credits AS "
             "SELECT release_id, artist_id, name FROM credits "
             "WHERE playable_identity AND artist_id IS NOT NULL AND artist_id > 0 "
             f"AND artist_id NOT IN ({non_individual})"
         )
         connection.execute(
-            "CREATE TEMP TABLE traversal_releases AS "
+            "CREATE TABLE traversal_releases AS "
             "SELECT release_id FROM linked_credits GROUP BY release_id "
             f"HAVING count(DISTINCT artist_id) BETWEEN 2 AND {int(max_artists_per_release)}"
         )
@@ -172,6 +186,17 @@ class CreditGraph:
     def masters_attached(self) -> bool:
         return self._masters_attached
 
+    def cursor(self) -> CreditGraph:
+        """A new `CreditGraph` sharing this one's underlying database --
+        same materialized `linked_credits`/`traversal_releases` tables, same
+        `credits`/`releases` views -- via an independent DuckDB cursor. Safe
+        to use concurrently from another thread: each cursor has its own
+        query/interrupt state, per DuckDB's own concurrency model, while
+        reading the same already-materialized data with no re-scan cost."""
+        return CreditGraph(
+            self._connection.cursor(), max_artists_per_release=self._max_artists_per_release
+        )
+
     def interrupt(self) -> None:
         """Cancel the currently running query on this graph's connection, if
         any. DuckDB's own supported cancellation primitive -- lets a caller
@@ -190,6 +215,37 @@ class CreditGraph:
         assert row is not None
         return int(row[0])
 
+    def _scratch_id_table(self, artist_ids: Sequence[int]) -> str:
+        """A uniquely-named TEMP TABLE holding `artist_ids`, for a batched
+        query's `JOIN`/`IN (SELECT ...)` -- callers are responsible for
+        dropping it. TEMP TABLEs are cursor-local (not shared database-wide,
+        unlike `linked_credits`/`traversal_releases`), which is exactly what
+        we want here: pure per-call scratch state, never meant to be visible
+        to another cursor."""
+        table = f"scratch_ids_{uuid.uuid4().hex}"
+        self._connection.execute(f"CREATE TEMP TABLE {table} (artist_id BIGINT)")
+        self._connection.executemany(f"INSERT INTO {table} VALUES (?)", [[a] for a in artist_ids])
+        return table
+
+    def credit_row_counts(self, artist_ids: Sequence[int]) -> dict[int, int]:
+        """Batched `credit_row_count`: one query for the whole list instead
+        of one per artist -- the same batching `find_path` already does for
+        its own frontier-size check (see its `degrees` query below). An
+        artist_id with zero linked credits is simply absent from the
+        result -- callers should treat a missing key as 0, not an error."""
+        if not artist_ids:
+            return {}
+        table = self._scratch_id_table(artist_ids)
+        try:
+            rows = self._connection.execute(
+                "SELECT artist_id, count(*) FROM linked_credits "
+                f"WHERE artist_id IN (SELECT artist_id FROM {table}) "
+                "GROUP BY artist_id"
+            ).fetchall()
+        finally:
+            self._connection.execute(f"DROP TABLE {table}")
+        return {int(artist_id): int(count) for artist_id, count in rows}
+
     def neighbors(self, artist_id: int) -> dict[int, tuple[int, ...]]:
         rows = self._connection.execute(
             "SELECT b.artist_id, list(DISTINCT a.release_id ORDER BY a.release_id) "
@@ -201,6 +257,34 @@ class CreditGraph:
             [artist_id],
         ).fetchall()
         return {int(row[0]): tuple(int(r) for r in row[1]) for row in rows}
+
+    def neighbors_batch(self, artist_ids: Sequence[int]) -> dict[int, dict[int, tuple[int, ...]]]:
+        """Batched `neighbors`: one self-join for every requested artist_id's
+        fan-out instead of one query each -- the actual fix for a hub's
+        hop-1 frontier (thousands of artists) each needing hop 2's own
+        neighbor lookup. Every requested artist_id is a key in the result,
+        even with an empty dict value, so callers can't mistake "not yet
+        queried" for "queried, no neighbors"."""
+        if not artist_ids:
+            return {}
+        table = self._scratch_id_table(artist_ids)
+        try:
+            rows = self._connection.execute(
+                "SELECT a.artist_id, b.artist_id, "
+                "list(DISTINCT a.release_id ORDER BY a.release_id) "
+                "FROM linked_credits a "
+                "JOIN linked_credits b USING (release_id) "
+                "JOIN traversal_releases USING (release_id) "
+                f"JOIN {table} f ON f.artist_id = a.artist_id "
+                "WHERE b.artist_id != a.artist_id "
+                "GROUP BY a.artist_id, b.artist_id ORDER BY a.artist_id, b.artist_id"
+            ).fetchall()
+        finally:
+            self._connection.execute(f"DROP TABLE {table}")
+        result: dict[int, dict[int, tuple[int, ...]]] = {int(a): {} for a in artist_ids}
+        for a_id, b_id, release_ids in rows:
+            result[int(a_id)][int(b_id)] = tuple(int(r) for r in release_ids)
+        return result
 
     def find_path(
         self,

@@ -263,6 +263,29 @@ def test_credit_row_count_counts_linked_credit_rows(dataset_root: Path) -> None:
         assert graph.credit_row_count(999_999) == 0
 
 
+def test_credit_row_counts_matches_individual_calls(dataset_root: Path) -> None:
+    with CreditGraph.open(dataset_root) as graph:
+        individual = {
+            artist_id: graph.credit_row_count(artist_id) for artist_id in (100, 200, 300, 999_999)
+        }
+        batched = graph.credit_row_counts([100, 200, 300, 999_999])
+
+    # An artist with zero credits is simply absent -- callers use .get(id, 0).
+    assert batched == {aid: count for aid, count in individual.items() if count > 0}
+    assert graph.credit_row_counts([]) == {}
+
+
+def test_neighbors_batch_matches_individual_calls(dataset_root: Path) -> None:
+    with CreditGraph.open(dataset_root) as graph:
+        individual = {
+            artist_id: graph.neighbors(artist_id) for artist_id in (100, 200, 300, 999_999)
+        }
+        batched = graph.neighbors_batch([100, 200, 300, 999_999])
+
+    assert batched == individual
+    assert graph.neighbors_batch([]) == {}
+
+
 def _hub_release(release_id: int, *, master_id: int) -> dict[str, object]:
     return {
         "snapshot_date": "20260601",

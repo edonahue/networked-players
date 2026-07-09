@@ -29,6 +29,7 @@ This file is the canonical, tool-agnostic guidance. Both supported CLI agents lo
 - Add an architecture decision record when changing a settled direction.
 - Preserve static-first failure behavior: a home-hosted service must not become a requirement for the core public experience.
 - Treat Raspberry Pi 3B workers as constrained 1 GB ARM64 nodes; bound memory, payload size, concurrency, and job duration.
+- Prefer parallel/concurrent execution across available cores and worker nodes for batchable or repeated work (e.g. batch a per-item DuckDB loop into one query, or fan work out across `CreditGraph.cursor()`/worker nodes), unless it compromises safety, correctness, or measurably regresses performance.
 - Keep personal collection membership local even when the import mechanism is public.
 
 ## Discogs-specific rules

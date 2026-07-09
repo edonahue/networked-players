@@ -10,6 +10,7 @@
 	cluster-health cluster-benchmark cluster-onboard cluster-swarm-join cluster-smoke-test \
 	cluster-recovery-drill harden-workers equip-workers equip-x86-workers replicate-x86 replicate-pi deploy-jobs-broker deploy-catalog-data cluster-benchmark-distributed \
 	deploy-verify-job verify-challenge-distributed \
+	deploy-cohort-seed-bfs-job cohort-seed-bfs-distributed \
 	dask-up dask-down
 
 help: ## List available targets
@@ -133,6 +134,12 @@ deploy-verify-job: ## Deploy the challenge-evidence verification job to Pi worke
 
 verify-challenge-distributed: ## Re-verify a challenge.v2 artifact's evidence across Pi workers' local caches (ADR 0025); needs deploy-jobs-broker + deploy-verify-job; writes local/jobs/ only
 	./scripts/enqueue-verify-challenge.sh $(ARGS)
+
+deploy-cohort-seed-bfs-job: ## Deploy the cohort seed-BFS job to workers (x86_workers + pi_workers); ARGS="--limit worker-01" (ADR 0032)
+	./infra/ansible/run-deploy-cohort-seed-bfs-job-local.sh $(ARGS)
+
+cohort-seed-bfs-distributed: ## Dispatch a resolved cohort's seed-BFS across workers' local one-hop caches (ADR 0025/0032); needs deploy-jobs-broker + deploy-cohort-seed-bfs-job; writes local/jobs/ only; ARGS="--resolved <path> --snapshot-date <date>"
+	./scripts/enqueue-cohort-seed-bfs.sh $(ARGS)
 
 dask-up: ## Build the image, start Jupyter, and deploy the Dask scheduler/worker Swarm stack (see infra/dask/README.md)
 	./infra/dask/deploy-dask.sh

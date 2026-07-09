@@ -15,6 +15,7 @@ from networked_players_graph_core.cohort_connectivity import (
     build_connectivity_cohort,
     classify_hop_quality,
     score_pairs,
+    seed_results_from_job_output,
     summarize_connectivity,
     validate_connectivity,
 )
@@ -235,6 +236,87 @@ def test_score_pairs_matches_find_path_on_shared_fixture(dataset_root: Path) -> 
                 assert [h["release_id"] for h in pair["hops"]] == [
                     h.release_id for h in expected.hops
                 ]
+
+
+def test_score_pairs_concurrent_matches_sequential(dataset_root: Path) -> None:
+    """max_workers > 1 must produce byte-for-byte the same pairs as the
+    default sequential path -- concurrency is purely a performance lever
+    (each seed's own cursor shares the same materialized tables), never a
+    source of different results."""
+    albums = [
+        _resolved_album(artist_id=100, release_id=1),  # Alice
+        _resolved_album(artist_id=300, release_id=2),  # Cara
+        _resolved_album(artist_id=500, release_id=4),  # Eve
+        _resolved_album(artist_id=400, release_id=3),  # Dan
+        _resolved_album(artist_id=600, release_id=7),  # Frank
+    ]
+    with CreditGraph.open(dataset_root) as graph:
+        sequential = score_pairs(graph, albums, max_hops=4, max_workers=1)
+        concurrent = score_pairs(graph, albums, max_hops=4, max_workers=4)
+
+    assert concurrent == sequential
+
+
+def test_score_pairs_with_precomputed_seed_results_matches_local(dataset_root: Path) -> None:
+    """Simulates a fleet dispatch (ADR 0032): compute each unique artist's
+    BFS independently (as a job body would), package it into the same
+    JSON-safe shape cohort_seed_bfs_job.py produces, and confirm
+    score_pairs's precomputed_seed_results path returns pairs identical to
+    local computation -- proving seed_results_from_job_output's round trip
+    and the new dispatch branch, not just that it doesn't crash."""
+    albums = [
+        _resolved_album(artist_id=100, release_id=1),  # Alice
+        _resolved_album(artist_id=300, release_id=2),  # Cara
+        _resolved_album(artist_id=500, release_id=4),  # Eve
+        _resolved_album(artist_id=400, release_id=3),  # Dan
+    ]
+    artist_ids = sorted({a["artist_id"] for a in albums})
+
+    with CreditGraph.open(dataset_root) as graph:
+        local = score_pairs(graph, albums, max_hops=4)
+
+        neighbor_cache: dict[int, dict[int, tuple[int, ...]]] = {}
+        raw_job_output = {}
+        for artist_id in artist_ids:
+            parent, capped = _bfs_from_seed(
+                graph,
+                artist_id,
+                max_hops=4,
+                max_frontier_expansion=300,
+                neighbor_cache=neighbor_cache,
+                deadline=None,
+            )
+            raw_job_output[str(artist_id)] = {
+                "status": "ok",
+                "parent": [[a, p, r] for a, (p, r) in parent.items()],
+                "capped": sorted(capped),
+            }
+
+        precomputed = seed_results_from_job_output(raw_job_output)
+        via_fleet = score_pairs(graph, albums, max_hops=4, precomputed_seed_results=precomputed)
+
+    assert via_fleet == local
+
+
+def test_score_pairs_rejects_precomputed_seed_results_missing_an_artist(
+    dataset_root: Path,
+) -> None:
+    albums = [
+        _resolved_album(artist_id=100, release_id=1),
+        _resolved_album(artist_id=300, release_id=2),
+    ]
+    with CreditGraph.open(dataset_root) as graph:
+        with pytest.raises(CohortConnectivityError, match="missing artist_id"):
+            score_pairs(graph, albums, precomputed_seed_results={100: (100, {}, frozenset(), None)})
+
+
+def test_credit_graph_cursor_shares_materialized_tables(dataset_root: Path) -> None:
+    """A cursor must see the same data as the graph it was made from,
+    including tables materialized at open() time (not just views)."""
+    with CreditGraph.open(dataset_root) as graph:
+        cursor_graph = graph.cursor()
+        assert cursor_graph.credit_row_count(100) == graph.credit_row_count(100)
+        assert cursor_graph.neighbors(100) == graph.neighbors(100)
 
 
 def _skip_release(release_id: int, *, master_id: int) -> dict[str, object]:

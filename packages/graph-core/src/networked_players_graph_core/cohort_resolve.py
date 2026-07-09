@@ -11,6 +11,7 @@ for its editorial album list.
 from __future__ import annotations
 
 import json
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -107,8 +108,82 @@ def _text_mismatch_warnings(
     return warnings
 
 
+@dataclass(slots=True)
+class _CandidateLookup:
+    """The pure-lookup outcome for one candidate -- everything that depends
+    only on that candidate's own data, never on another candidate or on
+    processing order. `used_artist_ids` dedup is deliberately NOT here: it's
+    inherently sequential/order-dependent (first candidate wins), applied in
+    a second pass over these results, which is what makes the lookup itself
+    safe to run concurrently."""
+
+    row: dict[str, Any] | None
+    method: str | None
+    artist_name: str | None
+    reason: str | None  # only set when row is None
+
+
+def _lookup_candidate(graph: CreditGraph, candidate: dict[str, Any]) -> _CandidateLookup:
+    artist_query = candidate.get("artist")
+    title_query = candidate.get("title")
+    master_id = candidate.get("master_id")
+    release_id = candidate.get("release_id")
+
+    row: dict[str, Any] | None = None
+    method: str | None = None
+    if release_id is not None:
+        row = graph.find_release_by_id_hint(release_id=release_id, artist_hint=artist_query)
+        method = "release_id_hint"
+    elif master_id is not None:
+        row = graph.find_release_by_id_hint(master_id=master_id, artist_hint=artist_query)
+        method = "master_id_hint"
+
+    if row is None:
+        if artist_query and title_query:
+            row = graph.find_release_by_title_artist(title_query, artist_query)
+            method = "title_artist_match"
+        elif master_id is None and release_id is None:
+            return _CandidateLookup(None, None, None, "missing artist/title text and no id hint")
+        else:
+            reason = "id hint not found in dataset; no artist/title text to fall back on"
+            return _CandidateLookup(None, None, None, reason)
+
+    if row is None:
+        return _CandidateLookup(None, None, None, "no id hint and no title/artist match")
+
+    assert method is not None
+    artist_name = graph.artist_name(row["artist_id"]) or row["name"]
+    return _CandidateLookup(row, method, artist_name, None)
+
+
+def _lookup_candidates_concurrently(
+    graph: CreditGraph, candidates: list[dict[str, Any]], *, max_workers: int
+) -> list[_CandidateLookup]:
+    """Spreads each candidate's independent lookup across `max_workers`
+    cursors -- same chunk-per-worker shape as `cohort_connectivity.score_pairs`
+    and `challenge._find_paths_concurrently`. Returns results in the same
+    order as `candidates`, so the caller's sequential dedup pass doesn't need
+    to know concurrency happened at all."""
+    worker_graphs = [graph.cursor() for _ in range(max_workers)]
+    chunks: list[list[int]] = [[] for _ in range(max_workers)]
+    for index in range(len(candidates)):
+        chunks[index % max_workers].append(index)
+
+    def _run_chunk(worker_index: int) -> list[tuple[int, _CandidateLookup]]:
+        worker_graph = worker_graphs[worker_index]
+        return [
+            (index, _lookup_candidate(worker_graph, candidates[index]))
+            for index in chunks[worker_index]
+        ]
+
+    with ThreadPoolExecutor(max_workers=max_workers) as pool:
+        chunk_results = list(pool.map(_run_chunk, range(max_workers)))
+    by_index = dict(result for chunk in chunk_results for result in chunk)
+    return [by_index[i] for i in range(len(candidates))]
+
+
 def resolve_candidates(
-    graph: CreditGraph, candidates: list[dict[str, Any]]
+    graph: CreditGraph, candidates: list[dict[str, Any]], *, max_workers: int = 1
 ) -> tuple[list[ResolvedAlbum], list[dict[str, Any]]]:
     """Resolve each extracted candidate against the real dataset.
 
@@ -121,44 +196,29 @@ def resolve_candidates(
     artist per album). Returns `(resolved, unresolved)`; `unresolved` entries
     are the original candidate dict plus a `reason` string -- an ambiguity
     report for human review, nothing is ever silently dropped.
+
+    `max_workers > 1` runs each candidate's own lookup concurrently (see
+    `_lookup_candidates_concurrently`); the `used_artist_ids` dedup below
+    still applies sequentially afterward in candidate order, so results are
+    identical to the `max_workers=1` path regardless of concurrency.
     """
+    lookups = (
+        _lookup_candidates_concurrently(graph, candidates, max_workers=max_workers)
+        if max_workers > 1
+        else [_lookup_candidate(graph, candidate) for candidate in candidates]
+    )
+
     resolved: list[ResolvedAlbum] = []
     unresolved: list[dict[str, Any]] = []
     used_artist_ids: set[int] = set()
 
-    for candidate in candidates:
-        artist_query = candidate.get("artist")
-        title_query = candidate.get("title")
-        master_id = candidate.get("master_id")
-        release_id = candidate.get("release_id")
-
-        row: dict[str, Any] | None = None
-        method: str | None = None
-        if release_id is not None:
-            row = graph.find_release_by_id_hint(release_id=release_id, artist_hint=artist_query)
-            method = "release_id_hint"
-        elif master_id is not None:
-            row = graph.find_release_by_id_hint(master_id=master_id, artist_hint=artist_query)
-            method = "master_id_hint"
-
-        if row is None:
-            if artist_query and title_query:
-                row = graph.find_release_by_title_artist(title_query, artist_query)
-                method = "title_artist_match"
-            elif master_id is None and release_id is None:
-                unresolved.append(
-                    {**candidate, "reason": "missing artist/title text and no id hint"}
-                )
-                continue
-            else:
-                reason = "id hint not found in dataset; no artist/title text to fall back on"
-                unresolved.append({**candidate, "reason": reason})
-                continue
-
-        if row is None:
-            unresolved.append({**candidate, "reason": "no id hint and no title/artist match"})
+    for candidate, lookup in zip(candidates, lookups, strict=True):
+        if lookup.row is None:
+            assert lookup.reason is not None
+            unresolved.append({**candidate, "reason": lookup.reason})
             continue
 
+        row = lookup.row
         if row["artist_id"] in used_artist_ids:
             unresolved.append(
                 {
@@ -172,8 +232,10 @@ def resolve_candidates(
             continue
         used_artist_ids.add(row["artist_id"])
 
-        assert method is not None
-        artist_name = graph.artist_name(row["artist_id"]) or row["name"]
+        assert lookup.method is not None
+        artist_query = candidate.get("artist")
+        title_query = candidate.get("title")
+        artist_name = lookup.artist_name or row["name"]
         warnings = (
             _text_mismatch_warnings(
                 title=row["title"],
@@ -181,7 +243,7 @@ def resolve_candidates(
                 title_query=title_query,
                 artist_query=artist_query,
             )
-            if method != "title_artist_match"
+            if lookup.method != "title_artist_match"
             else []
         )
         resolved.append(
@@ -189,7 +251,7 @@ def resolve_candidates(
                 rank=candidate.get("rank"),
                 artist_query=artist_query,
                 title_query=title_query,
-                resolution_method=method,
+                resolution_method=lookup.method,
                 master_id=row["master_id"],
                 release_id=row["release_id"],
                 title=row["title"],
@@ -209,8 +271,11 @@ def build_resolved_cohort(
     extracted: dict[str, Any],
     *,
     dataset_snapshot_date: str,
+    max_workers: int = 1,
 ) -> dict[str, Any]:
-    resolved, unresolved = resolve_candidates(graph, extracted.get("candidates", []))
+    resolved, unresolved = resolve_candidates(
+        graph, extracted.get("candidates", []), max_workers=max_workers
+    )
     return {
         "schema_version": RESOLVED_SCHEMA_VERSION,
         "source": extracted.get("source", {}),

@@ -78,6 +78,22 @@ def test_build_challenge_v2_produces_a_valid_artifact(dataset_root: Path) -> Non
     assert report["paths_found"] >= 1
 
 
+def test_build_challenge_v2_concurrent_matches_sequential(dataset_root: Path) -> None:
+    """max_workers > 1 must produce byte-for-byte the same artifact/report as
+    the default sequential path -- concurrency here (each candidate pair's
+    find_path spread across cursors) is purely a performance lever."""
+    with CreditGraph.open(dataset_root) as graph:
+        sequential_artifact, sequential_report = build_challenge_v2(
+            graph, ALBUMS, snapshot_date="20260601", generated_by="test-suite"
+        )
+        concurrent_artifact, concurrent_report = build_challenge_v2(
+            graph, ALBUMS, snapshot_date="20260601", generated_by="test-suite", max_workers=4
+        )
+
+    assert concurrent_artifact == sequential_artifact
+    assert concurrent_report == sequential_report
+
+
 def test_build_challenge_v2_releases_have_no_extra_columns(dataset_root: Path) -> None:
     """Regression test: CreditGraph.release() reads via `SELECT *` from a view
     over a `.../table=releases/*.parquet` glob -- without hive_partitioning=false
