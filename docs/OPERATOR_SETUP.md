@@ -426,15 +426,32 @@ master/coordination host for its own authoritative copy, or SSH to
 uv run networked-players-catalog score-cohort-connectivity \
   --resolved local/analysis/cohorts/<source-id>/resolved.json \
   --dataset local/processed/discogs-onehop/snapshot=<SNAPSHOT> \
-  --output-dir local/analysis/cohorts/<source-id>/
+  --output-dir local/analysis/cohorts/<source-id>/ \
+  --memory-limit 3GB --threads 3 --pair-timeout-seconds 180
 ```
 
 Prefer `<x86-worker-ssh-target>` for a real one-hop dataset — this is real `CreditGraph`
-traversal work, the same dataset-locality preference Gate B's own expansion follows. The
-default `--pair-timeout-seconds`/`--max-frontier-expansion` guardrails
-([ADR 0030](decisions/0030-cohort-scoped-connectivity-substrate.md)) apply; a real cohort
-touching a genuine hub artist may produce `status: "skipped"` pairs — that's honest,
-expected output, not a bug to work around.
+traversal work, the same dataset-locality preference Gate B's own expansion follows.
+
+**Settings for a real, hub-heavy cohort on a 7.6 GB ZimaBoard.** Scoring is now
+memory-bounded — all search state lives in DuckDB, so `--memory-limit` genuinely caps the
+whole computation ([ADR 0033](decisions/0033-memory-bounded-cohort-scoring.md)). On the
+ZimaBoards use `--memory-limit 3GB --threads 3` and, because a real cohort's seeds are all
+hubs, raise `--pair-timeout-seconds` to `180` (the 30 s default is for tests/tiny cohorts
+and will skip every hub seed). Keep `--temp-dir` on the volume the dataset lives on if
+that differs from the process CWD. A preflight refuses a `--memory-limit` above half of
+the host's available RAM — the measured swap-death mode of the first real run; pass
+`--skip-preflight` only if you mean to. **Never raise `--memory-limit` to "make it pass"
+without reading `scoring-diagnostics.json` first** (written next to `connectivity.json`):
+it shows per-seed reach sizes, timings, and peak RSS, so you can see *where* memory or
+time went rather than guessing.
+
+Guardrails ([ADR 0033](decisions/0033-memory-bounded-cohort-scoring.md)): a hub seed that
+still can't finish in the budget produces `status: "skipped"` pairs
+(`seed_expansion_timeout`, `frontier_too_large`, or `reach_too_large`) — honest, expected
+output, not a bug to work around. Because the frontier cap is now a *time* knob rather than
+a memory one, raising `--max-frontier-expansion` (e.g. toward ~2000) is a safe way to
+convert `frontier_too_large` skips into results if the diagnostics show headroom.
 
 ### 5. Draft a review template
 
@@ -482,8 +499,9 @@ decided to.** Nothing in this runbook commits it for you.
   `warnings[]` in `resolved.json` before proceeding; a systematically bad extraction won't
   fix itself downstream.
 - `score-cohort-connectivity` reports many `"skipped"` pairs — real, honest output, but
-  worth investigating (a larger `--pair-timeout-seconds`/`--max-frontier-expansion`) before
-  treating the review report as complete.
+  worth investigating (read `scoring-diagnostics.json`, then try a larger
+  `--pair-timeout-seconds`/`--max-frontier-expansion`/`--max-reach-rows`) before treating
+  the review report as complete.
 - Any command prints a real IP, hostname, or path you don't recognize — stop and check
   `--dataset`/`--output`/`--output-dir` before continuing.
 

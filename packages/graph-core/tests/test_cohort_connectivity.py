@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import itertools
 import time
 from pathlib import Path
 
 import duckdb
 import pytest
 
+from networked_players_graph_core import cohort_connectivity
 from networked_players_graph_core.cohort_connectivity import (
     CohortConnectivityError,
     _bfs_from_seed,
@@ -354,11 +356,13 @@ def _skip_credit(release_id: int, *, artist_id: int, name: str) -> dict[str, obj
     }
 
 
-def test_score_pairs_reports_frontier_too_large_not_no_path(tmp_path: Path) -> None:
-    """S and T are only connected via Hub at hop 2. Hub's release count (4)
-    exceeds max_frontier_expansion (2), so neither S's nor T's own BFS can
-    confirm reachability -- this must never be reported as a confirmed
-    no_path."""
+def test_pair_meeting_at_a_capped_hub_is_found(tmp_path: Path) -> None:
+    """S and T are only connected via Hub at hop 2, and Hub's release count
+    (4) exceeds max_frontier_expansion (2). Under the single-direction BFS
+    this was unprovable (skipped/frontier_too_large: finding T required
+    *expanding* Hub). Bidirectional reach scoring finds it: both sides reach
+    Hub as a *target* -- which the cap has always explicitly allowed -- and
+    the pair meets there with real shared-credit evidence on both hops."""
     from conftest import write_synthetic_dataset
 
     root = write_synthetic_dataset(
@@ -388,6 +392,55 @@ def test_score_pairs_reports_frontier_too_large_not_no_path(tmp_path: Path) -> N
         )
     assert len(pairs) == 1
     pair = pairs[0]
+    assert pair["status"] == "found"
+    assert pair["hop_count"] == 2
+    assert [(h["artist_a_id"], h["artist_b_id"]) for h in pair["hops"]] == [
+        (1000, 2000),
+        (2000, 4000),
+    ]
+    assert [h["release_id"] for h in pair["hops"]] == [1, 4]
+
+
+def test_score_pairs_reports_frontier_too_large_not_no_path(tmp_path: Path) -> None:
+    """S and T are only connected through TWO consecutive capped hubs
+    (S - HubA - HubB - T): the HubA-HubB edge can only be discovered by
+    expanding a capped artist, which neither side may do, so even the
+    bidirectional meet cannot prove reachability -- and an unprovable pair
+    must never be reported as a confirmed no_path."""
+    from conftest import write_synthetic_dataset
+
+    hub_a, hub_b = 2000, 2500
+    credit_rows = [
+        _skip_credit(1, artist_id=1000, name="S"),
+        _skip_credit(1, artist_id=hub_a, name="HubA"),
+        _skip_credit(2, artist_id=hub_a, name="HubA"),
+        _skip_credit(2, artist_id=hub_b, name="HubB"),
+        _skip_credit(3, artist_id=hub_b, name="HubB"),
+        _skip_credit(3, artist_id=4000, name="T"),
+    ]
+    # Pad both hubs past the cap with filler releases.
+    for i, hub in enumerate((hub_a, hub_a, hub_b, hub_b)):
+        release_id = 10 + i
+        credit_rows.append(_skip_credit(release_id, artist_id=hub, name="Hub"))
+        credit_rows.append(_skip_credit(release_id, artist_id=5000 + i, name=f"F{i}"))
+    release_rows = [_skip_release(i, master_id=900 + i) for i in (1, 2, 3, 10, 11, 12, 13)]
+
+    root = write_synthetic_dataset(
+        tmp_path / "snapshot=20260601", release_rows=release_rows, credit_rows=credit_rows
+    )
+    with CreditGraph.open(root) as graph:
+        pairs = score_pairs(
+            graph,
+            [
+                _resolved_album(artist_id=1000, release_id=1),
+                _resolved_album(artist_id=4000, release_id=3),
+            ],
+            max_hops=3,
+            max_frontier_expansion=2,
+            pair_timeout_seconds=None,
+        )
+    assert len(pairs) == 1
+    pair = pairs[0]
     assert pair["status"] == "skipped"
     assert pair["skip_reason"] == "frontier_too_large"
     assert pair["hop_count"] is None
@@ -398,18 +451,21 @@ def test_score_pairs_reports_frontier_too_large_not_no_path(tmp_path: Path) -> N
 def test_score_pairs_reports_seed_expansion_timeout(
     dataset_root: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    # _bfs_from_seed calls neighbors_batch (not the single-artist neighbors)
-    # since the frontier-check/neighbor-fetch batching fix -- mock the method
-    # actually on the hot path, or this deterministically-slow mock silently
-    # stops applying and the test's 50ms budget becomes a real-timing race
-    # against unmocked DuckDB overhead instead of a reliable timeout trigger.
-    original_neighbors_batch = CreditGraph.neighbors_batch
+    # Local scoring's hot path is _ReachScorer._expand_hop (one DuckDB
+    # statement per hop) -- mock the method actually on the hot path, or this
+    # deterministically-slow mock silently stops applying and the test's 50ms
+    # budget becomes a real-timing race against unmocked DuckDB overhead
+    # instead of a reliable timeout trigger. The timeout fires via
+    # expand_seed's cooperative deadline check between hops, the same
+    # mechanism a real run relies on when a hop finishes but the budget is
+    # already spent.
+    original_expand_hop = cohort_connectivity._ReachScorer._expand_hop
 
-    def slow_neighbors_batch(self: CreditGraph, artist_ids: list[int]):
+    def slow_expand_hop(self: cohort_connectivity._ReachScorer, seed_artist_id: int, dist: int):
         time.sleep(0.2)
-        return original_neighbors_batch(self, artist_ids)
+        return original_expand_hop(self, seed_artist_id, dist)
 
-    monkeypatch.setattr(CreditGraph, "neighbors_batch", slow_neighbors_batch)
+    monkeypatch.setattr(cohort_connectivity._ReachScorer, "_expand_hop", slow_expand_hop)
 
     with CreditGraph.open(dataset_root) as graph:
         pairs = score_pairs(
@@ -703,3 +759,173 @@ def test_summarize_connectivity_reports_skipped_pairs_with_reason() -> None:
     assert "Skipped (reachability not confirmed): 1" in report
     assert "frontier_too_large" in report
     assert "release-5" in report and "release-6" in report
+
+
+# --- ADR 0033: bidirectional reach scoring behaviors ---
+
+
+def _chain_dataset(tmp_path: Path) -> Path:
+    """A 4-hop chain 1000 - 2000 - 3000 - 4000 - 5000, one release per edge."""
+    from conftest import write_synthetic_dataset
+
+    artists = [1000, 2000, 3000, 4000, 5000]
+    credit_rows = []
+    for edge_index, (left, right) in enumerate(itertools.pairwise(artists)):
+        release_id = edge_index + 1
+        credit_rows.append(_skip_credit(release_id, artist_id=left, name=f"A{left}"))
+        credit_rows.append(_skip_credit(release_id, artist_id=right, name=f"A{right}"))
+    release_rows = [_skip_release(i, master_id=900 + i) for i in range(1, 5)]
+    return write_synthetic_dataset(
+        tmp_path / "snapshot=20260601", release_rows=release_rows, credit_rows=credit_rows
+    )
+
+
+def test_three_hop_pair_found_by_meeting_in_the_middle(tmp_path: Path) -> None:
+    """At max_hops=3 each seed only expands 2 hops (expansion_depth) -- a
+    3-hop pair is only discoverable where the two reaches meet (2+1), never
+    by either side alone. Also proves a 1-hop pair and a genuinely-too-far
+    pair (4 hops) resolve correctly in the same run."""
+    root = _chain_dataset(tmp_path)
+    with CreditGraph.open(root) as graph:
+        pairs = score_pairs(
+            graph,
+            [
+                _resolved_album(artist_id=1000, release_id=1),
+                _resolved_album(artist_id=4000, release_id=3),
+                _resolved_album(artist_id=5000, release_id=4),
+            ],
+            max_hops=3,
+            pair_timeout_seconds=None,
+        )
+    by_artists = {(p["artist_a_id"], p["artist_b_id"]): p for p in pairs}
+
+    three_hop = by_artists[(1000, 4000)]
+    assert three_hop["status"] == "found"
+    assert three_hop["hop_count"] == 3
+    assert [h["release_id"] for h in three_hop["hops"]] == [1, 2, 3]
+
+    one_hop = by_artists[(4000, 5000)]
+    assert one_hop["status"] == "found"
+    assert one_hop["hop_count"] == 1
+
+    # 4 hops apart, nothing capped, nothing failed: a trusted no_path within
+    # max_hops -- both sides' complete depth-2 reaches prove any path would
+    # have produced a meeting artist at combined distance <= 4 > 3 is the
+    # minimum, so no <=3-hop path exists.
+    four_hop = by_artists[(1000, 5000)]
+    assert four_hop["status"] == "no_path"
+    assert four_hop["skip_reason"] is None
+
+
+def test_seed_over_the_frontier_cap_still_expands(tmp_path: Path) -> None:
+    """Every real cohort seed measured is a hub by the release-count proxy
+    (min 712 vs the default cap of 300) -- the cap must never apply to the
+    seed itself at dist 0, or no cohort BFS can ever start."""
+    from conftest import write_synthetic_dataset
+
+    credit_rows = [
+        _skip_credit(1, artist_id=1000, name="S"),
+        _skip_credit(1, artist_id=4000, name="T"),
+    ]
+    # Pad S past the cap of 2 with filler releases.
+    for i in range(4):
+        release_id = 10 + i
+        credit_rows.append(_skip_credit(release_id, artist_id=1000, name="S"))
+        credit_rows.append(_skip_credit(release_id, artist_id=5000 + i, name=f"F{i}"))
+    release_rows = [_skip_release(i, master_id=900 + i) for i in (1, 10, 11, 12, 13)]
+    root = write_synthetic_dataset(
+        tmp_path / "snapshot=20260601", release_rows=release_rows, credit_rows=credit_rows
+    )
+    with CreditGraph.open(root) as graph:
+        assert graph.credit_row_count(1000) == 5  # would be capped at 2 as a non-seed
+        pairs = score_pairs(
+            graph,
+            [
+                _resolved_album(artist_id=1000, release_id=1),
+                _resolved_album(artist_id=4000, release_id=1),
+            ],
+            max_hops=2,
+            max_frontier_expansion=2,
+            pair_timeout_seconds=None,
+        )
+    assert pairs[0]["status"] == "found"
+    assert pairs[0]["hop_count"] == 1
+
+
+def test_score_pairs_reports_reach_too_large(dataset_root: Path) -> None:
+    """A seed whose materialized reach exceeds max_reach_rows is reported
+    skipped/reach_too_large -- refused, never ground on or truncated."""
+    with CreditGraph.open(dataset_root) as graph:
+        pairs = score_pairs(
+            graph,
+            [
+                _resolved_album(artist_id=100, release_id=1),
+                _resolved_album(artist_id=300, release_id=2),
+            ],
+            max_hops=3,
+            max_reach_rows=1,
+            pair_timeout_seconds=None,
+        )
+    assert pairs[0]["status"] == "skipped"
+    assert pairs[0]["skip_reason"] == "reach_too_large"
+
+
+def test_validate_accepts_reach_too_large_skip_reason() -> None:
+    artifact = _valid_artifact()
+    artifact["pairs"][0]["status"] = "skipped"
+    artifact["pairs"][0]["hop_count"] = None
+    artifact["pairs"][0]["difficulty"] = None
+    artifact["pairs"][0]["hops"] = []
+    artifact["pairs"][0]["skip_reason"] = "reach_too_large"
+    validate_connectivity(artifact)  # must not raise
+
+
+def test_validate_rejects_non_dict_scoring_params() -> None:
+    artifact = _valid_artifact()
+    artifact["scoring_params"] = "max_hops=3"
+    with pytest.raises(CohortConnectivityError, match="scoring_params"):
+        validate_connectivity(artifact)
+
+
+def test_artifact_records_scoring_params_and_fills_diagnostics(dataset_root: Path) -> None:
+    """A run's parameters must be recoverable from the artifact itself (the
+    crashed real run's settings were not), and the diagnostics side-channel
+    must carry the per-seed telemetry the artifact deliberately omits."""
+    resolved = _resolved(
+        [
+            _resolved_album(artist_id=100, release_id=1),
+            _resolved_album(artist_id=300, release_id=2),
+        ]
+    )
+    diagnostics: dict = {}
+    with CreditGraph.open(dataset_root) as graph:
+        artifact = build_connectivity_cohort(
+            graph,
+            resolved,
+            dataset_snapshot_date="20260601",
+            max_hops=3,
+            duckdb_settings={"memory_limit": "1GB", "threads": 2},
+            diagnostics=diagnostics,
+        )
+    validate_connectivity(artifact)
+
+    params = artifact["scoring_params"]
+    assert params["strategy"] == "bidirectional_reach"
+    assert params["expansion_depth"] == 2
+    assert params["max_frontier_expansion"] == 300
+    assert params["memory_limit"] == "1GB"
+    assert params["threads"] == 2
+
+    assert diagnostics["strategy"] == "bidirectional_reach"
+    assert diagnostics["seed_count"] == 2
+    assert {entry["artist_id"] for entry in diagnostics["seeds"]} == {100, 300}
+    for entry in diagnostics["seeds"]:
+        assert entry["status"] == "ok"
+        assert entry["reach_rows_by_dist"]["0"] == 1
+    assert diagnostics["reach_total_rows"] >= 2
+    assert diagnostics["wall_s"] >= 0
+
+    # The params line must surface in the operator-facing review report too.
+    _, report = summarize_connectivity(artifact)
+    assert "- Scoring params: " in report
+    assert "strategy=bidirectional_reach" in report

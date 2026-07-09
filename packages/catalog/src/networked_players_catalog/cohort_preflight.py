@@ -12,6 +12,7 @@ string formatting only.
 
 from __future__ import annotations
 
+import re
 import shlex
 from dataclasses import dataclass
 from pathlib import Path
@@ -188,3 +189,52 @@ def format_preflight_report(report: dict[str, Any]) -> str:
         lines.append("NOT READY: fix the missing required input(s) above before continuing.")
 
     return "\n".join(lines) + "\n"
+
+
+_MEMORY_LIMIT_RE = re.compile(r"\s*([0-9]+(?:\.[0-9]+)?)\s*([KMGT])i?B\s*", re.IGNORECASE)
+_MEMORY_UNIT_POWERS = {"K": 1, "M": 2, "G": 3, "T": 4}
+
+
+def _memory_limit_bytes(memory_limit: str) -> int | None:
+    """DuckDB-style memory limit ("1GB", "512MiB") in bytes, or None when the
+    syntax isn't one this check understands -- unknown syntax must never
+    block a run DuckDB itself would accept."""
+    match = _MEMORY_LIMIT_RE.fullmatch(memory_limit)
+    if match is None:
+        return None
+    power = _MEMORY_UNIT_POWERS[match.group(2).upper()]
+    return int(float(match.group(1)) * (1024**power))
+
+
+def memory_limit_preflight_failure(
+    memory_limit: str, *, meminfo_path: Path = Path("/proc/meminfo")
+) -> str | None:
+    """Refuses a DuckDB memory_limit above half of the host's MemAvailable,
+    returning the failure message (or None to proceed). A limit near
+    available RAM is exactly how the last real scoring run swap-killed its
+    host: DuckDB budgets to its limit while the OS, page cache, and the
+    Python process still need the rest. Missing or unparseable inputs never
+    block (non-Linux hosts, unknown limit syntax) -- this guards the one
+    measured failure mode, it is not a portability gate."""
+    limit = _memory_limit_bytes(memory_limit)
+    if limit is None:
+        return None
+    try:
+        meminfo = meminfo_path.read_text()
+    except OSError:
+        return None
+    for line in meminfo.splitlines():
+        if line.startswith("MemAvailable:"):
+            available = int(line.split()[1]) * 1024
+            break
+    else:
+        return None
+    if limit > available // 2:
+        return (
+            f"--memory-limit {memory_limit.strip()} exceeds half of this host's "
+            f"MemAvailable ({available // (1024 * 1024)} MB). A DuckDB limit near "
+            "available RAM is how the last real scoring run swap-killed its host. "
+            "Lower the limit, free memory, or pass --skip-preflight to proceed "
+            "deliberately."
+        )
+    return None

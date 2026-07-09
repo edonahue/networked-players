@@ -7,6 +7,7 @@ import json
 from collections.abc import Sequence
 from datetime import UTC, date, datetime
 from pathlib import Path
+from typing import Any
 
 from . import __version__
 from .discogs.download import download_file
@@ -260,25 +261,40 @@ def _parser() -> argparse.ArgumentParser:
         type=int,
         default=300,
         help="release-count proxy threshold above which an artist is excluded from BFS "
-        "expansion (still reachable as a target); a real hub in production has been "
-        "measured with 500-1900+, this default is a conservative heuristic, not a "
-        "precise percentile -- tune per cohort/dataset",
+        "expansion (still reachable as a target, and never applied to a cohort seed "
+        "itself -- every real cohort seed measured exceeds it); with reach scoring "
+        "(ADR 0033) this bounds time, not memory, so it can be raised per "
+        "cohort/dataset -- real hop-1 frontier degrees measured p90~2100",
     )
     score_connectivity.add_argument(
         "--pair-timeout-seconds",
         type=float,
         default=30.0,
-        help="wall-clock budget for each cohort artist's own BFS expansion; on timeout "
+        help="wall-clock budget for each cohort artist's own reach expansion; on timeout "
         "every pair needing that artist's search is reported status=skipped rather "
-        "than hanging or guessing",
+        "than hanging or guessing; real hub-heavy cohorts need 120-180 (see "
+        "docs/OPERATOR_SETUP.md)",
     )
     score_connectivity.add_argument(
         "--max-workers",
         type=int,
         default=1,
-        help="run this many cohort artists' own BFS expansions concurrently, each on its "
-        "own DuckDB cursor sharing the same materialized tables (see CreditGraph.cursor()); "
-        "default 1 preserves the original sequential behavior",
+        help="accepted for compatibility; local scoring now runs inside DuckDB where "
+        "--threads is the effective parallelism lever (ADR 0033)",
+    )
+    score_connectivity.add_argument(
+        "--max-reach-rows",
+        type=int,
+        default=2_000_000,
+        help="per-seed bound on materialized reach rows; a seed exceeding it is reported "
+        "skipped/reach_too_large rather than ground on (worst real seed measured "
+        "445k rows at depth 2)",
+    )
+    score_connectivity.add_argument(
+        "--skip-preflight",
+        action="store_true",
+        help="skip the MemAvailable check that refuses a --memory-limit above half of "
+        "this host's available RAM (the measured swap-death mode of a real run)",
     )
 
     promote_cohort = subparsers.add_parser(
@@ -735,6 +751,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 0
 
     if args.command == "score-cohort-connectivity":
+        import sys
+
         from networked_players_graph_core.cohort_connectivity import (
             build_connectivity_cohort,
             summarize_connectivity,
@@ -743,9 +761,18 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
         from networked_players_graph_core.graph import CreditGraph
 
+        from .cohort_preflight import memory_limit_preflight_failure
+
+        if not args.skip_preflight:
+            preflight_failure = memory_limit_preflight_failure(args.memory_limit)
+            if preflight_failure is not None:
+                print(preflight_failure, file=sys.stderr)
+                return 1
+
         resolved = json.loads(args.resolved.read_text())
         dataset_manifest = json.loads((args.dataset / "manifest.json").read_text())
 
+        diagnostics: dict[str, Any] = {}
         with CreditGraph.open(
             args.dataset,
             memory_limit=args.memory_limit,
@@ -762,7 +789,18 @@ def main(argv: Sequence[str] | None = None) -> int:
                 max_frontier_expansion=args.max_frontier_expansion,
                 pair_timeout_seconds=args.pair_timeout_seconds,
                 max_workers=args.max_workers,
+                max_reach_rows=args.max_reach_rows,
+                # Recorded into the artifact -- settings only, never paths
+                # (a temp-dir path would trip the artifact's own
+                # forbidden-substring validation, by design).
+                duckdb_settings={
+                    "memory_limit": args.memory_limit,
+                    "threads": args.threads,
+                    "custom_temp_dir": args.temp_dir is not None,
+                },
+                diagnostics=diagnostics,
             )
+        diagnostics["params"] = connectivity_artifact["scoring_params"]
 
         validate_connectivity(connectivity_artifact)
         playable_pairs, report_markdown = summarize_connectivity(connectivity_artifact)
@@ -773,6 +811,11 @@ def main(argv: Sequence[str] | None = None) -> int:
             json.dumps(playable_pairs, indent=2, sort_keys=True) + "\n"
         )
         (args.output_dir / "review-report.md").write_text(report_markdown)
+        # Local-only scoring telemetry (per-seed reach sizes/timings, RSS)
+        # next to the artifact it describes -- see ADR 0033.
+        (args.output_dir / "scoring-diagnostics.json").write_text(
+            json.dumps(diagnostics, indent=2, sort_keys=True) + "\n"
+        )
 
         by_status = {"found": 0, "no_path": 0, "skipped": 0}
         by_difficulty = {"easy": 0, "medium": 0, "hard": 0, "very_hard": 0}
@@ -792,6 +835,9 @@ def main(argv: Sequence[str] | None = None) -> int:
                     "by_status": by_status,
                     "by_difficulty": by_difficulty,
                     "flagged_pair_count": flagged_pair_count,
+                    "wall_s": diagnostics.get("wall_s"),
+                    "reach_total_rows": diagnostics.get("reach_total_rows"),
+                    "peak_rss_mb": (diagnostics.get("rss_mb") or {}).get("after_expansion"),
                 },
                 indent=2,
                 sort_keys=True,

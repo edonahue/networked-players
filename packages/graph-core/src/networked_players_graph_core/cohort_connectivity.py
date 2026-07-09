@@ -23,40 +23,61 @@ placeholder-artist-ID set and non-performer role tokens below are kept as
 our own copy, the same precedent `graph.py`'s own `NON_INDIVIDUAL_ARTIST_IDS`
 already uses.
 
-Performance note (see docs/decisions/0030-cohort-scoped-connectivity-substrate.md):
-`score_pairs` does not call `CreditGraph.find_path` per pair. A real smoke
-test found that hung indefinitely once a cohort touched a real, legitimately
-prolific hub artist (thousands of co-credits) -- `find_path` has no caching
-across the O(pairs) BFS calls a cohort needs, so a hub's expensive fan-out
-query was repeated for every pair that happened to route through it. Instead,
-`score_pairs` runs one BFS per *unique cohort artist* (not per pair), sharing
-a single memoized `CreditGraph.neighbors()` cache across all of them, so a
-hub touched from multiple directions is queried at most once. `find_path`
-remains graph-core's public single-pair API and this module's tests assert
-the two produce identical results on small synthetic graphs -- it's kept as
-the reference implementation, not deleted.
+Performance note, two generations deep:
+
+1. ADR 0030: `score_pairs` stopped calling `CreditGraph.find_path` per pair
+   (a hub's expensive fan-out query was repeated for every pair routing
+   through it) and instead ran one Python-resident BFS per *unique cohort
+   artist* with a shared memoized neighbor cache.
+2. ADR 0033 (current): the Python-resident BFS itself was the next measured
+   failure. On the real 47M-row one-hop dataset, ONE hub seed's hop-2
+   neighbor payload is ~5.4M edges reaching 445k artists (~1-2GB of Python
+   dicts), and the shared cache plus retained parent maps kept all of it for
+   every seed -- a real scoring run swap-killed a 7.6GB host. `score_pairs`
+   now scores through `_ReachScorer`: all search state lives in a DuckDB
+   TEMP table, each hop is one INSERT..SELECT (so `memory_limit` +
+   `temp_directory` spill genuinely bound the computation), each seed only
+   expands to `ceil(max_hops/2)` hops, and pair distances are resolved
+   bidirectionally where two seeds' reaches meet.
+
+`find_path` remains graph-core's public single-pair API and this module's
+tests assert the two produce identical results on small synthetic graphs.
+`_bfs_from_seed` (the ADR 0030 implementation) is retained solely as the
+reference the fleet-dispatch job body mirror is cross-checked against (ADR
+0032) -- it is no longer on `score_pairs`'s local scoring path, and its
+unbounded-cache design is why; do not re-adopt it for local scoring.
 """
 
 from __future__ import annotations
 
 import json
+import math
 import re
 import threading
 import time
+import uuid
 from collections.abc import Callable
-from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Protocol
 
 import duckdb
 
-from .graph import CreditGraph, EvidencePath
+from .graph import CreditGraph, EvidencePath, Hop
 
 CONNECTIVITY_SCHEMA_VERSION = 1
-# Bumped for the "skipped" status/skip_reason field added alongside the
-# cohort-scoped BFS substrate -- see docs/decisions/0030-cohort-scoped-connectivity-substrate.md.
-SCORER_VERSION = 2
+# 2: "skipped" status/skip_reason added alongside the cohort-scoped BFS
+#    substrate (ADR 0030).
+# 3: memory-bounded bidirectional reach scoring + recorded scoring_params
+#    (ADR 0033) -- earlier artifacts recorded no parameters at all, which
+#    made a crashed real run's settings unrecoverable.
+SCORER_VERSION = 3
+
+# Default per-seed bound on materialized reach rows: a seed exceeding it is
+# reported skipped/reach_too_large rather than ground on. The worst real seed
+# measured 445,161 rows at depth 2 (local memory profile, 2026-07-09); 2M
+# leaves headroom for denser cohorts while still refusing runaway expansion.
+DEFAULT_MAX_REACH_ROWS = 2_000_000
 
 _TOP_LEVEL_KEYS = frozenset(
     {
@@ -70,6 +91,9 @@ _TOP_LEVEL_KEYS = frozenset(
         "unresolved",
     }
 )
+# Written by every scorer_version >= 3 artifact, but optional when validating
+# so artifacts produced before parameters were recorded still validate.
+_OPTIONAL_TOP_LEVEL_KEYS = frozenset({"scoring_params"})
 _PAIR_KEYS = frozenset(
     {
         "album_a_id",
@@ -89,7 +113,7 @@ _STATUSES = frozenset({"found", "no_path", "skipped"})
 # "skipped" means the absence of a path could not be confirmed -- never
 # reported as "no_path", which is reserved for a search that completed
 # without any capping or timeout and genuinely found nothing.
-_SKIP_REASONS = frozenset({"seed_expansion_timeout", "frontier_too_large"})
+_SKIP_REASONS = frozenset({"seed_expansion_timeout", "frontier_too_large", "reach_too_large"})
 _DIFFICULTIES = frozenset({"easy", "medium", "hard", "very_hard"})
 _STRENGTH_FLAGS = frozenset({"co_billed_release_artists", "performer_credit", "non_performer_only"})
 _FORBIDDEN_SUBSTRINGS = ("/home/", "data/private", "local/", "DISCOGS_TOKEN", ".ssh")
@@ -248,38 +272,15 @@ def _run_with_timeout[T](
 
 
 class _NeighborCacheLike(Protocol):
-    """Structural type satisfied by both a plain dict (sequential path,
-    existing tests) and `_NeighborCache` (concurrent path) -- `_bfs_from_seed`
-    only ever needs these three operations."""
+    """Structural type for `_bfs_from_seed`'s memoized neighbor cache (a
+    plain dict in every remaining caller -- the fleet-mirror cross-check test
+    and this module's own reference tests). Retained with `_bfs_from_seed`
+    itself; see the module docstring for why local scoring no longer uses
+    either."""
 
     def __contains__(self, key: int) -> bool: ...
     def __getitem__(self, key: int) -> dict[int, tuple[int, ...]]: ...
     def __setitem__(self, key: int, value: dict[int, tuple[int, ...]]) -> None: ...
-
-
-class _NeighborCache:
-    """Thread-safe wrapper around the shared `neighbor_cache` dict, with the
-    same `in`/`[]`/`[]=` interface `_bfs_from_seed` already uses (so it needs
-    no changes). The lock only ever guards a dict read/write, never the
-    `CreditGraph.neighbors()` call itself -- two workers racing on the same
-    uncached artist may both query it once, which is wasted work, never a
-    correctness problem, since `neighbors()` is a pure read."""
-
-    def __init__(self) -> None:
-        self._data: dict[int, dict[int, tuple[int, ...]]] = {}
-        self._lock = threading.Lock()
-
-    def __contains__(self, key: int) -> bool:
-        with self._lock:
-            return key in self._data
-
-    def __getitem__(self, key: int) -> dict[int, tuple[int, ...]]:
-        with self._lock:
-            return self._data[key]
-
-    def __setitem__(self, key: int, value: dict[int, tuple[int, ...]]) -> None:
-        with self._lock:
-            self._data[key] = value
 
 
 def _bfs_from_seed(
@@ -356,6 +357,231 @@ def _bfs_from_seed(
     return parent, frozenset(capped_artist_ids)
 
 
+def expansion_depth(max_hops: int) -> int:
+    """Per-seed reach depth for bidirectional scoring: each seed expands to
+    ceil(max_hops/2) and a pair's distance is the minimum of dist_a + dist_b
+    over artists both reaches contain. Halving the depth is what makes real
+    cohorts tractable at all: hop 3 of the worst measured production seed
+    would expand from a 445k-artist frontier -- effectively the whole graph.
+    """
+    return max(1, math.ceil(max_hops / 2))
+
+
+def _rss_mb() -> float | None:
+    """This process's resident set size, or None off-Linux. Diagnostics
+    only -- never behavior."""
+    try:
+        for line in Path("/proc/self/status").read_text().splitlines():
+            if line.startswith("VmRSS:"):
+                return round(int(line.split()[1]) / 1024, 1)
+    except OSError:
+        return None
+    return None
+
+
+class _ReachTooLargeError(Exception):
+    """A seed's materialized reach exceeded max_reach_rows. The seed's pairs
+    are reported skipped/reach_too_large -- never silently truncated."""
+
+
+class _ReachScorer:
+    """DuckDB-resident bidirectional BFS over a whole cohort (ADR 0033).
+
+    All search state lives in one TEMP table
+    `(seed_id, artist_id, parent_id, release_id, dist)`; each hop is a single
+    INSERT..SELECT, so DuckDB's `memory_limit` + `temp_directory` spill bound
+    the entire computation and Python never materializes edge payloads. The
+    frontier cap (`max_frontier_expansion`) never applies to the seed itself
+    (dist 0): every real cohort seed measured is a hub by the release-count
+    proxy (minimum 712 against the default cap of 300), so capping at dist 0
+    means no cohort BFS can ever start. Because the cap no longer protects
+    Python memory, it is purely a time knob here.
+
+    A capped artist is still *reachable as a target* (ADR 0029/0030 wording)
+    -- and bidirectionally that now includes pairs meeting AT a capped hub,
+    since neither side needs to expand it to reach it. Only paths requiring
+    travel *through* two consecutive capped artists stay unprovable.
+
+    Uses `graph._connection` directly -- the same private-access precedent as
+    this module's existing `CreditGraph._reconstruct_path` use: this class is
+    the SQL half of the scoring path, which the public per-artist API can't
+    express without hauling row payloads back into Python.
+    """
+
+    def __init__(
+        self,
+        graph: CreditGraph,
+        *,
+        max_hops: int,
+        max_frontier_expansion: int | None,
+        max_reach_rows: int,
+    ):
+        self._connection = graph._connection
+        self._depth = expansion_depth(max_hops)
+        self._cap = max_frontier_expansion
+        self._max_reach_rows = max_reach_rows
+        self._table = f"reach_{uuid.uuid4().hex}"
+        self._connection.execute(
+            f"CREATE TEMP TABLE {self._table} (seed_id BIGINT, artist_id BIGINT, "
+            "parent_id BIGINT, release_id BIGINT, dist INTEGER)"
+        )
+
+    def close(self) -> None:
+        self._connection.execute(f"DROP TABLE IF EXISTS {self._table}")
+
+    def expand_seed(self, seed_artist_id: int, *, deadline: float | None) -> dict[str, Any]:
+        """Populates this seed's reach rows out to the scorer's depth and
+        returns per-seed stats for diagnostics. Raises TimeoutError
+        (cooperatively, checked before each hop; an in-flight hop's own query
+        is additionally interruptible via `CreditGraph.interrupt()`) or
+        `_ReachTooLargeError` -- on either, the caller must `delete_seed()`
+        so pair resolution never meets against a half-expanded reach."""
+        self._connection.execute(
+            f"INSERT INTO {self._table} VALUES (?, ?, NULL, NULL, 0)",
+            [seed_artist_id, seed_artist_id],
+        )
+        reach_by_dist: dict[int, int] = {0: 1}
+        capped_total = 0
+        for dist in range(1, self._depth + 1):
+            if deadline is not None and time.monotonic() > deadline:
+                raise TimeoutError(f"seed {seed_artist_id} expansion exceeded its deadline")
+            new_rows, capped = self._expand_hop(seed_artist_id, dist)
+            reach_by_dist[dist] = new_rows
+            capped_total += capped
+            total = sum(reach_by_dist.values())
+            if total > self._max_reach_rows:
+                raise _ReachTooLargeError(
+                    f"seed {seed_artist_id} reached {total} rows at dist {dist}, "
+                    f"exceeding max_reach_rows={self._max_reach_rows}"
+                )
+            if new_rows == 0:
+                break
+        return {"reach_by_dist": reach_by_dist, "capped": capped_total}
+
+    def _expand_hop(self, seed_artist_id: int, dist: int) -> tuple[int, int]:
+        """One hop: everything reachable at `dist` from this seed's `dist - 1`
+        frontier, excluding capped frontier artists' edges and
+        already-reached artists. Parent/release choice is deterministic:
+        min shared release per (parent, child), then min (release, parent)
+        per child -- the same min-release rule `find_path`'s level query uses.
+        """
+        suffix = uuid.uuid4().hex
+        frontier = f"reach_frontier_{suffix}"
+        capped = f"reach_capped_{suffix}"
+        connection = self._connection
+        try:
+            connection.execute(
+                f"CREATE TEMP TABLE {frontier} AS SELECT artist_id FROM {self._table} "
+                "WHERE seed_id = ? AND dist = ?",
+                [seed_artist_id, dist - 1],
+            )
+            if dist == 1 or self._cap is None:
+                # dist 1 expands the seed itself -- exempt from the cap, per
+                # the class docstring.
+                connection.execute(f"CREATE TEMP TABLE {capped} (artist_id BIGINT)")
+            else:
+                connection.execute(
+                    f"CREATE TEMP TABLE {capped} AS SELECT artist_id FROM linked_credits "
+                    f"WHERE artist_id IN (SELECT artist_id FROM {frontier}) "
+                    f"GROUP BY artist_id HAVING count(*) > {int(self._cap)}"
+                )
+            connection.execute(
+                f"INSERT INTO {self._table} "
+                f"SELECT {int(seed_artist_id)}, artist_id, parent_id, release_id, {int(dist)} "
+                "FROM ("
+                "  SELECT b.artist_id AS artist_id, a.artist_id AS parent_id, "
+                "         min(b.release_id) AS release_id, "
+                "         row_number() OVER (PARTITION BY b.artist_id "
+                "                            ORDER BY min(b.release_id), a.artist_id) AS rn "
+                "  FROM linked_credits a "
+                "  JOIN linked_credits b USING (release_id) "
+                "  JOIN traversal_releases USING (release_id) "
+                f"  JOIN {frontier} f ON f.artist_id = a.artist_id "
+                "  WHERE b.artist_id != a.artist_id "
+                f"    AND a.artist_id NOT IN (SELECT artist_id FROM {capped}) "
+                f"    AND b.artist_id NOT IN (SELECT artist_id FROM {self._table} "
+                f"                            WHERE seed_id = {int(seed_artist_id)}) "
+                "  GROUP BY b.artist_id, a.artist_id "
+                ") ranked WHERE rn = 1"
+            )
+            new_row = connection.execute(
+                f"SELECT count(*) FROM {self._table} WHERE seed_id = ? AND dist = ?",
+                [seed_artist_id, dist],
+            ).fetchone()
+            capped_row = connection.execute(f"SELECT count(*) FROM {capped}").fetchone()
+            assert new_row is not None and capped_row is not None
+            return int(new_row[0]), int(capped_row[0])
+        finally:
+            connection.execute(f"DROP TABLE IF EXISTS {frontier}")
+            connection.execute(f"DROP TABLE IF EXISTS {capped}")
+
+    def delete_seed(self, seed_artist_id: int) -> None:
+        self._connection.execute(f"DELETE FROM {self._table} WHERE seed_id = ?", [seed_artist_id])
+
+    def total_rows(self) -> int:
+        row = self._connection.execute(f"SELECT count(*) FROM {self._table}").fetchone()
+        assert row is not None
+        return int(row[0])
+
+    def pair_distances(self) -> dict[tuple[int, int], int]:
+        """Every seed pair's minimum combined distance, from one self-join --
+        the bidirectional meet. A pair with no shared reached artist is
+        simply absent."""
+        rows = self._connection.execute(
+            f"SELECT r1.seed_id, r2.seed_id, min(r1.dist + r2.dist) "
+            f"FROM {self._table} r1 JOIN {self._table} r2 USING (artist_id) "
+            "WHERE r1.seed_id < r2.seed_id GROUP BY r1.seed_id, r2.seed_id"
+        ).fetchall()
+        return {(int(a), int(b)): int(d) for a, b, d in rows}
+
+    def pair_path(self, from_artist_id: int, to_artist_id: int) -> EvidencePath:
+        """The evidence path behind `pair_distances`'s minimum for this pair:
+        pick the deterministic best meeting artist, then walk both sides'
+        parent chains with point lookups. The minimal combined walk is always
+        a simple path -- any repeated artist would itself be a meeting point
+        with a strictly smaller combined distance, contradicting minimality.
+        """
+        row = self._connection.execute(
+            f"SELECT r1.artist_id FROM {self._table} r1 "
+            f"JOIN {self._table} r2 USING (artist_id) "
+            "WHERE r1.seed_id = ? AND r2.seed_id = ? "
+            "ORDER BY r1.dist + r2.dist, artist_id LIMIT 1",
+            [from_artist_id, to_artist_id],
+        ).fetchone()
+        assert row is not None, "pair_path called for a pair with no meeting artist"
+        meet = int(row[0])
+        from_side = self._chain(from_artist_id, meet)
+        to_side = self._chain(to_artist_id, meet)
+        hops = from_side + [
+            Hop(release_id=h.release_id, artist_a_id=h.artist_b_id, artist_b_id=h.artist_a_id)
+            for h in reversed(to_side)
+        ]
+        return EvidencePath(
+            from_artist_id=from_artist_id, to_artist_id=to_artist_id, hops=tuple(hops)
+        )
+
+    def _chain(self, seed_artist_id: int, artist_id: int) -> list[Hop]:
+        """Hops from the seed out to `artist_id`, walking parent pointers."""
+        hops: list[Hop] = []
+        current = artist_id
+        while True:
+            row = self._connection.execute(
+                f"SELECT parent_id, release_id, dist FROM {self._table} "
+                "WHERE seed_id = ? AND artist_id = ?",
+                [seed_artist_id, current],
+            ).fetchone()
+            assert row is not None, f"reach chain broken at artist {current}"
+            parent_id, release_id, dist = row
+            if int(dist) == 0:
+                break
+            hops.append(
+                Hop(release_id=int(release_id), artist_a_id=int(parent_id), artist_b_id=current)
+            )
+            current = int(parent_id)
+        hops.reverse()
+        return hops
+
+
 def _reverse_evidence_path(path: EvidencePath) -> EvidencePath:
     return EvidencePath(
         from_artist_id=path.to_artist_id,
@@ -397,41 +623,6 @@ def _pair_path(
 _SeedResult = tuple[int, dict[int, tuple[int, int]] | None, frozenset[int], str | None]
 
 
-def _score_one_seed(
-    worker_graph: CreditGraph,
-    artist_id: int,
-    *,
-    max_hops: int,
-    max_frontier_expansion: int | None,
-    neighbor_cache: _NeighborCacheLike,
-    pair_timeout_seconds: float | None,
-) -> _SeedResult:
-    """Runs one seed's bounded BFS on `worker_graph` (its own cursor when
-    called concurrently, or the shared connection in the sequential path)
-    and returns a plain result tuple rather than mutating shared state --
-    callers merge results themselves, so nothing here needs a lock beyond
-    `neighbor_cache` itself."""
-    deadline = time.monotonic() + pair_timeout_seconds if pair_timeout_seconds else None
-
-    def _do_bfs() -> tuple[dict[int, tuple[int, int]], frozenset[int]]:
-        return _bfs_from_seed(
-            worker_graph,
-            artist_id,
-            max_hops=max_hops,
-            max_frontier_expansion=max_frontier_expansion,
-            neighbor_cache=neighbor_cache,
-            deadline=deadline,
-        )
-
-    try:
-        parent, capped = _run_with_timeout(
-            worker_graph.interrupt, _do_bfs, timeout_seconds=pair_timeout_seconds
-        )
-    except TimeoutError:
-        return artist_id, None, frozenset(), "seed_expansion_timeout"
-    return artist_id, parent, capped, None
-
-
 def seed_results_from_job_output(raw: dict[str, dict[str, Any]]) -> dict[int, _SeedResult]:
     """Converts a fleet-dispatched job's JSON-safe per-seed output --
     `infra/ansible/files/cohort_seed_bfs_job.py`'s own return shape, or
@@ -454,6 +645,70 @@ def seed_results_from_job_output(raw: dict[str, dict[str, Any]]) -> dict[int, _S
     return results
 
 
+def _pair_record(
+    graph: CreditGraph,
+    album_a: dict[str, Any],
+    album_b: dict[str, Any],
+    path: EvidencePath | None,
+    skip_reason: str | None,
+) -> dict[str, Any]:
+    """One pair's artifact record: skipped (reason given), no_path (no path,
+    no reason -- a trusted absence), or found with per-hop evidence quality
+    classified from the real credit rows."""
+    base = {
+        "album_a_id": _album_id(album_a),
+        "album_b_id": _album_id(album_b),
+        "artist_a_id": album_a["artist_id"],
+        "artist_b_id": album_b["artist_id"],
+    }
+    if skip_reason is not None:
+        return {
+            **base,
+            "status": "skipped",
+            "hop_count": None,
+            "difficulty": None,
+            "hops": [],
+            "warnings": [],
+            "skip_reason": skip_reason,
+        }
+    if path is None:
+        return {
+            **base,
+            "status": "no_path",
+            "hop_count": None,
+            "difficulty": None,
+            "hops": [],
+            "warnings": [],
+            "skip_reason": None,
+        }
+
+    hops: list[dict[str, Any]] = []
+    for hop in path.hops:
+        rows = graph.credit_rows(hop.release_id, {hop.artist_a_id, hop.artist_b_id})
+        rows_a = [r for r in rows if r["artist_id"] == hop.artist_a_id]
+        rows_b = [r for r in rows if r["artist_id"] == hop.artist_b_id]
+        quality_flags = classify_hop_quality(
+            rows_a, rows_b, artist_a_id=hop.artist_a_id, artist_b_id=hop.artist_b_id
+        )
+        hops.append(
+            {
+                "release_id": hop.release_id,
+                "artist_a_id": hop.artist_a_id,
+                "artist_b_id": hop.artist_b_id,
+                "quality_flags": quality_flags,
+            }
+        )
+    return {
+        **base,
+        "status": "found",
+        "hop_count": len(hops),
+        "difficulty": _difficulty_for_hop_count(len(hops)),
+        "hops": hops,
+        "warnings": _pair_warnings(hops),
+        "skip_reason": None,
+    }
+
+
 def score_pairs(
     graph: CreditGraph,
     resolved_albums: list[dict[str, Any]],
@@ -463,6 +718,8 @@ def score_pairs(
     pair_timeout_seconds: float | None = 30.0,
     max_workers: int = 1,
     precomputed_seed_results: dict[int, _SeedResult] | None = None,
+    max_reach_rows: int = DEFAULT_MAX_REACH_ROWS,
+    diagnostics: dict[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
     """Every unordered pair of resolved albums, sorted by album_id (mirrors
     challenge.py's `ordered = sorted(matched, key=lambda m: m.album_id)` +
@@ -471,85 +728,73 @@ def score_pairs(
     within the guardrails get `status="skipped"` with a `skip_reason` --
     neither is silently omitted.
 
-    Runs one BFS per unique cohort artist (not per pair) via `_bfs_from_seed`,
-    sharing a single neighbor cache across all of them -- see this module's
-    docstring for why `CreditGraph.find_path` is not called here directly.
-    `max_frontier_expansion` is a release-count proxy threshold (see
-    `CreditGraph.credit_row_count`) seeded from real hub fan-out observed
-    against the production one-hop dataset, not a precise percentile --
-    operators should tune it per cohort/dataset. `pair_timeout_seconds`
-    bounds each seed's own BFS, not each pair.
+    Local scoring runs through `_ReachScorer` (see its docstring and ADR
+    0033): each unique cohort artist expands to `expansion_depth(max_hops)`
+    hops entirely inside DuckDB, and pair distances resolve where two seeds'
+    reaches meet. `max_frontier_expansion` is a release-count proxy threshold
+    (see `CreditGraph.credit_row_count`) that never applies to a seed itself;
+    `pair_timeout_seconds` bounds each seed's own expansion, not each pair;
+    `max_reach_rows` bounds each seed's materialized reach rows.
 
-    `max_workers > 1` dispatches each unique artist's own BFS concurrently,
-    each on its own `graph.cursor()` (an independent DuckDB cursor sharing
-    the same already-materialized tables) -- safe because each seed's search
-    is otherwise independent, and `neighbor_cache` is the one piece of state
-    genuinely shared across workers (see `_NeighborCache`). Results are
-    merged into `parent_by_seed`/`capped_by_seed`/`failed_seeds` back on the
-    calling thread as each seed finishes, so those dicts never need a lock.
+    `max_workers` is accepted for API compatibility but no longer fans local
+    scoring out across cursors: with each hop running as a single DuckDB
+    statement, intra-query parallelism (`CreditGraph.open(threads=...)`) is
+    the effective lever, and the retained payloads that made Python-side
+    fan-out attractive no longer exist.
 
-    `precomputed_seed_results`, when given, skips local BFS computation
-    entirely (both the sequential and `max_workers` paths) and uses these
-    already-computed per-artist results instead -- the fleet-dispatch path
-    (see `seed_results_from_job_output`, ADR 0032). `graph` is still used for
-    everything downstream of this (hop quality classification via
-    `credit_rows`), so a live connection to the same dataset is still
-    required; only the expensive traversal itself is skipped. Every unique
-    cohort artist must be present in `precomputed_seed_results` -- a fleet
+    `precomputed_seed_results`, when given, skips local expansion entirely
+    and reconstructs pairs from these already-computed per-artist results
+    instead -- the fleet-dispatch path (see `seed_results_from_job_output`,
+    ADR 0032), which still ships full-depth single-direction parent maps.
+    `graph` is still used downstream for hop quality classification via
+    `credit_rows`. Every unique cohort artist must be present -- a fleet
     dispatch that dropped a seed is a bug in that dispatch, not something
     this function should silently paper over.
+
+    `diagnostics`, when given, is filled in place with local-only scoring
+    telemetry (per-seed reach sizes and timings, RSS checkpoints) -- the
+    CLI writes it as scoring-diagnostics.json next to connectivity.json.
     """
+    del max_workers  # accepted for compatibility; see docstring
     ordered = sorted(resolved_albums, key=_album_id)
     artist_ids = sorted({album["artist_id"] for album in ordered})
 
-    neighbor_cache: _NeighborCacheLike = _NeighborCache() if max_workers > 1 else {}
+    if precomputed_seed_results is not None:
+        return _score_pairs_precomputed(graph, ordered, artist_ids, precomputed_seed_results)
+    return _score_pairs_via_reach(
+        graph,
+        ordered,
+        artist_ids,
+        max_hops=max_hops,
+        max_frontier_expansion=max_frontier_expansion,
+        pair_timeout_seconds=pair_timeout_seconds,
+        max_reach_rows=max_reach_rows,
+        diagnostics=diagnostics,
+    )
+
+
+def _score_pairs_precomputed(
+    graph: CreditGraph,
+    ordered: list[dict[str, Any]],
+    artist_ids: list[int],
+    precomputed_seed_results: dict[int, _SeedResult],
+) -> list[dict[str, Any]]:
+    """Pair reconstruction from fleet-computed parent maps -- ADR 0032's
+    dispatch path, deliberately unchanged by the local reach redesign (ADR
+    0033): the job body and its cross-check test stay stable until the
+    fleet unit itself is redesigned."""
+    missing = [aid for aid in artist_ids if aid not in precomputed_seed_results]
+    if missing:
+        raise CohortConnectivityError(
+            f"precomputed_seed_results is missing artist_id(s) {missing} -- "
+            "a fleet dispatch must cover every unique cohort artist"
+        )
+
     parent_by_seed: dict[int, dict[int, tuple[int, int]]] = {}
     capped_by_seed: dict[int, frozenset[int]] = {}
     failed_seeds: dict[int, str] = {}
-
-    def _run(worker_graph: CreditGraph, artist_id: int) -> _SeedResult:
-        return _score_one_seed(
-            worker_graph,
-            artist_id,
-            max_hops=max_hops,
-            max_frontier_expansion=max_frontier_expansion,
-            neighbor_cache=neighbor_cache,
-            pair_timeout_seconds=pair_timeout_seconds,
-        )
-
-    results: list[_SeedResult]
-    if precomputed_seed_results is not None:
-        missing = [aid for aid in artist_ids if aid not in precomputed_seed_results]
-        if missing:
-            raise CohortConnectivityError(
-                f"precomputed_seed_results is missing artist_id(s) {missing} -- "
-                "a fleet dispatch must cover every unique cohort artist"
-            )
-        results = [precomputed_seed_results[aid] for aid in artist_ids]
-    elif max_workers > 1:
-        # Cursors are created here, sequentially, on this thread -- never
-        # inside a worker, since concurrent `graph.cursor()` calls on the
-        # same source connection aren't a documented-safe DuckDB operation.
-        # Each of the `max_workers` cursors is then owned by exactly one
-        # pool thread for its entire chunk of artist_ids (one task per
-        # worker, not one task per artist) -- a cursor is never touched by
-        # more than one thread, which `ThreadPoolExecutor.map` alone
-        # wouldn't guarantee if tasks outnumbered workers.
-        worker_graphs = [graph.cursor() for _ in range(max_workers)]
-        chunks: list[list[int]] = [[] for _ in range(max_workers)]
-        for index, artist_id in enumerate(artist_ids):
-            chunks[index % max_workers].append(artist_id)
-
-        def _run_chunk(worker_index: int) -> list[_SeedResult]:
-            return [_run(worker_graphs[worker_index], aid) for aid in chunks[worker_index]]
-
-        with ThreadPoolExecutor(max_workers=max_workers) as pool:
-            chunk_results = list(pool.map(_run_chunk, range(max_workers)))
-        results = [result for chunk in chunk_results for result in chunk]
-    else:
-        results = [_run(graph, artist_id) for artist_id in artist_ids]
-
-    for artist_id, parent, capped, failure in results:
+    for artist_id in artist_ids:
+        _, parent, capped, failure = precomputed_seed_results[artist_id]
         if failure is not None:
             failed_seeds[artist_id] = failure
             continue
@@ -558,89 +803,142 @@ def score_pairs(
         capped_by_seed[artist_id] = capped
 
     pairs: list[dict[str, Any]] = []
-
     for i, album_a in enumerate(ordered):
         for album_b in ordered[i + 1 :]:
-            artist_a_id = album_a["artist_id"]
-            artist_b_id = album_b["artist_id"]
             # PR 2 already guarantees unique artist_id across resolved[] --
             # documented here as a relied-upon invariant, not trusted silently.
-            assert artist_a_id != artist_b_id, "resolved albums must have distinct artist_id"
-
+            assert album_a["artist_id"] != album_b["artist_id"], (
+                "resolved albums must have distinct artist_id"
+            )
             path, skip_reason = _pair_path(
-                artist_a_id,
-                artist_b_id,
+                album_a["artist_id"],
+                album_b["artist_id"],
                 parent_by_seed=parent_by_seed,
                 capped_by_seed=capped_by_seed,
                 failed_seeds=failed_seeds,
             )
+            pairs.append(_pair_record(graph, album_a, album_b, path, skip_reason))
+    return pairs
 
-            if skip_reason is not None:
-                pairs.append(
-                    {
-                        "album_a_id": _album_id(album_a),
-                        "album_b_id": _album_id(album_b),
-                        "artist_a_id": artist_a_id,
-                        "artist_b_id": artist_b_id,
-                        "status": "skipped",
-                        "hop_count": None,
-                        "difficulty": None,
-                        "hops": [],
-                        "warnings": [],
-                        "skip_reason": skip_reason,
-                    }
-                )
-                continue
 
-            if path is None:
-                pairs.append(
-                    {
-                        "album_a_id": _album_id(album_a),
-                        "album_b_id": _album_id(album_b),
-                        "artist_a_id": artist_a_id,
-                        "artist_b_id": artist_b_id,
-                        "status": "no_path",
-                        "hop_count": None,
-                        "difficulty": None,
-                        "hops": [],
-                        "warnings": [],
-                        "skip_reason": None,
-                    }
-                )
-                continue
+def _score_pairs_via_reach(
+    graph: CreditGraph,
+    ordered: list[dict[str, Any]],
+    artist_ids: list[int],
+    *,
+    max_hops: int,
+    max_frontier_expansion: int | None,
+    pair_timeout_seconds: float | None,
+    max_reach_rows: int,
+    diagnostics: dict[str, Any] | None,
+) -> list[dict[str, Any]]:
+    """The local scoring path (ADR 0033): expand every seed's reach in
+    DuckDB, resolve all pair distances with one bidirectional meet query,
+    then reconstruct evidence paths for found pairs via point lookups.
 
-            hops: list[dict[str, Any]] = []
-            for hop in path.hops:
-                rows = graph.credit_rows(hop.release_id, {hop.artist_a_id, hop.artist_b_id})
-                rows_a = [r for r in rows if r["artist_id"] == hop.artist_a_id]
-                rows_b = [r for r in rows if r["artist_id"] == hop.artist_b_id]
-                quality_flags = classify_hop_quality(
-                    rows_a, rows_b, artist_a_id=hop.artist_a_id, artist_b_id=hop.artist_b_id
-                )
-                hops.append(
-                    {
-                        "release_id": hop.release_id,
-                        "artist_a_id": hop.artist_a_id,
-                        "artist_b_id": hop.artist_b_id,
-                        "quality_flags": quality_flags,
-                    }
-                )
+    Honesty rules, matching `_pair_path`'s single-direction originals: a
+    found path is always trustworthy evidence regardless of capping
+    elsewhere; `no_path` is only reported when both sides expanded completely
+    (no failure, nothing capped) -- any other unmet pair is `skipped` with
+    the most specific reason available."""
+    wall_start = time.monotonic()
+    rss_start = _rss_mb()
+    scorer = _ReachScorer(
+        graph,
+        max_hops=max_hops,
+        max_frontier_expansion=max_frontier_expansion,
+        max_reach_rows=max_reach_rows,
+    )
+    failed_seeds: dict[int, str] = {}
+    capped_any: dict[int, bool] = {}
+    seed_entries: list[dict[str, Any]] = []
+    try:
+        seed_degrees = graph.credit_row_counts(artist_ids)
+        for seed in artist_ids:
+            deadline = time.monotonic() + pair_timeout_seconds if pair_timeout_seconds else None
+            seed_start = time.monotonic()
+            stats: dict[str, Any] = {"reach_by_dist": {}, "capped": 0}
 
-            pairs.append(
+            def _expand(seed: int = seed, deadline: float | None = deadline) -> dict[str, Any]:
+                return scorer.expand_seed(seed, deadline=deadline)
+
+            try:
+                stats = _run_with_timeout(
+                    graph.interrupt, _expand, timeout_seconds=pair_timeout_seconds
+                )
+            except TimeoutError:
+                scorer.delete_seed(seed)
+                failed_seeds[seed] = "seed_expansion_timeout"
+            except _ReachTooLargeError:
+                scorer.delete_seed(seed)
+                failed_seeds[seed] = "reach_too_large"
+            else:
+                capped_any[seed] = stats["capped"] > 0
+            seed_entries.append(
                 {
-                    "album_a_id": _album_id(album_a),
-                    "album_b_id": _album_id(album_b),
-                    "artist_a_id": artist_a_id,
-                    "artist_b_id": artist_b_id,
-                    "status": "found",
-                    "hop_count": len(hops),
-                    "difficulty": _difficulty_for_hop_count(len(hops)),
-                    "hops": hops,
-                    "warnings": _pair_warnings(hops),
-                    "skip_reason": None,
+                    "artist_id": seed,
+                    "status": failed_seeds.get(seed, "ok"),
+                    "seed_degree": seed_degrees.get(seed, 0),
+                    "capped_count": stats["capped"],
+                    "reach_rows_by_dist": {
+                        str(dist): count for dist, count in stats["reach_by_dist"].items()
+                    },
+                    "elapsed_s": round(time.monotonic() - seed_start, 2),
                 }
             )
 
+        rss_after_expansion = _rss_mb()
+        distance_start = time.monotonic()
+        distances = scorer.pair_distances()
+        distance_query_s = round(time.monotonic() - distance_start, 2)
+        reach_total_rows = scorer.total_rows()
+
+        pairs: list[dict[str, Any]] = []
+        for i, album_a in enumerate(ordered):
+            for album_b in ordered[i + 1 :]:
+                artist_a_id = album_a["artist_id"]
+                artist_b_id = album_b["artist_id"]
+                # PR 2 already guarantees unique artist_id across resolved[]
+                # -- documented as a relied-upon invariant, not trusted
+                # silently.
+                assert artist_a_id != artist_b_id, "resolved albums must have distinct artist_id"
+
+                key = (min(artist_a_id, artist_b_id), max(artist_a_id, artist_b_id))
+                distance = distances.get(key)
+                if distance is not None and distance <= max_hops:
+                    path = scorer.pair_path(artist_a_id, artist_b_id)
+                    assert len(path.hops) == distance
+                    record = _pair_record(graph, album_a, album_b, path, None)
+                elif artist_a_id in failed_seeds or artist_b_id in failed_seeds:
+                    reason = failed_seeds.get(artist_a_id) or failed_seeds.get(artist_b_id)
+                    record = _pair_record(graph, album_a, album_b, None, reason)
+                elif capped_any.get(artist_a_id) or capped_any.get(artist_b_id):
+                    record = _pair_record(graph, album_a, album_b, None, "frontier_too_large")
+                else:
+                    record = _pair_record(graph, album_a, album_b, None, None)
+                pairs.append(record)
+    finally:
+        scorer.close()
+
+    if diagnostics is not None:
+        diagnostics.update(
+            {
+                "diagnostics_version": 1,
+                "strategy": "bidirectional_reach",
+                "generated_at": datetime.now(UTC).isoformat(),
+                "expansion_depth": expansion_depth(max_hops),
+                "seed_count": len(artist_ids),
+                "seeds": seed_entries,
+                "reach_total_rows": reach_total_rows,
+                "pair_distance_query_s": distance_query_s,
+                "rss_mb": {
+                    "start": rss_start,
+                    "after_expansion": rss_after_expansion,
+                    "end": _rss_mb(),
+                },
+                "wall_s": round(time.monotonic() - wall_start, 2),
+            }
+        )
     return pairs
 
 
@@ -655,7 +953,15 @@ def build_connectivity_cohort(
     pair_timeout_seconds: float | None = 30.0,
     max_workers: int = 1,
     precomputed_seed_results: dict[int, _SeedResult] | None = None,
+    max_reach_rows: int = DEFAULT_MAX_REACH_ROWS,
+    duckdb_settings: dict[str, Any] | None = None,
+    diagnostics: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    """`duckdb_settings` (e.g. {"memory_limit": "1GB", "threads": 2}) is
+    recorded verbatim into the artifact's scoring_params so a run's settings
+    are never unrecoverable again -- it must not contain filesystem paths
+    (validate_connectivity's forbidden-substring check will reject them;
+    pass the *fact* of a custom temp dir, never its location)."""
     if resolved.get("dataset_snapshot_date") != dataset_snapshot_date:
         raise CohortConnectivityError(
             f"resolved.json was resolved against snapshot "
@@ -682,7 +988,21 @@ def build_connectivity_cohort(
         pair_timeout_seconds=pair_timeout_seconds,
         max_workers=max_workers,
         precomputed_seed_results=precomputed_seed_results,
+        max_reach_rows=max_reach_rows,
+        diagnostics=diagnostics,
     )
+
+    local_scoring = precomputed_seed_results is None
+    scoring_params: dict[str, Any] = {
+        "strategy": "bidirectional_reach" if local_scoring else "precomputed_seed_results",
+        "max_hops": max_hops,
+        "expansion_depth": expansion_depth(max_hops) if local_scoring else None,
+        "max_frontier_expansion": max_frontier_expansion,
+        "pair_timeout_seconds": pair_timeout_seconds,
+        "max_reach_rows": max_reach_rows,
+        "max_workers": max_workers,
+        **(duckdb_settings or {}),
+    }
 
     return {
         "schema_version": CONNECTIVITY_SCHEMA_VERSION,
@@ -691,6 +1011,7 @@ def build_connectivity_cohort(
         "generated_at": datetime.now(UTC).isoformat(),
         "dataset_snapshot_date": dataset_snapshot_date,
         "max_hops": max_hops,
+        "scoring_params": scoring_params,
         "pairs": pairs,
         "unresolved": resolved.get("unresolved", []),
     }
@@ -704,10 +1025,13 @@ def write_connectivity_cohort(artifact: dict[str, Any], path: Path) -> None:
 def validate_connectivity(artifact: dict[str, Any]) -> None:
     failures: list[str] = []
 
-    if set(artifact.keys()) != _TOP_LEVEL_KEYS:
+    keys = set(artifact.keys())
+    if not (_TOP_LEVEL_KEYS <= keys <= _TOP_LEVEL_KEYS | _OPTIONAL_TOP_LEVEL_KEYS):
         failures.append(f"unexpected top-level keys: {sorted(artifact.keys())}")
     if artifact.get("schema_version") != CONNECTIVITY_SCHEMA_VERSION:
         failures.append(f"schema_version must be {CONNECTIVITY_SCHEMA_VERSION}")
+    if "scoring_params" in artifact and not isinstance(artifact["scoring_params"], dict):
+        failures.append("scoring_params must be an object when present")
 
     for pair in artifact.get("pairs", []):
         if set(pair.keys()) != _PAIR_KEYS:
@@ -781,6 +1105,14 @@ def summarize_connectivity(artifact: dict[str, Any]) -> tuple[list[dict[str, Any
         f"- Dataset snapshot: {artifact['dataset_snapshot_date']}",
         f"- Scorer version: {artifact['scorer_version']}",
         f"- Max hops: {artifact['max_hops']}",
+        *(
+            [
+                "- Scoring params: "
+                + ", ".join(f"{k}={v}" for k, v in sorted(artifact["scoring_params"].items()))
+            ]
+            if artifact.get("scoring_params")
+            else []
+        ),
         "",
         "## Summary counts",
         "",

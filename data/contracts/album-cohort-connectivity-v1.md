@@ -30,12 +30,17 @@ same directory — neither is a separate schema.
 | --- | --- | --- |
 | `schema_version` | int | Always 1. |
 | `source` | object | Carried forward unchanged from `resolved.json`'s own `source`. |
-| `scorer_version` | int | Version of the scoring/quality-flag logic (`SCORER_VERSION`), bumped on any material change. |
+| `scorer_version` | int | Version of the scoring/quality-flag logic (`SCORER_VERSION`), bumped on any material change. Currently 3 ([ADR 0033](../../docs/decisions/0033-memory-bounded-cohort-scoring.md), memory-bounded bidirectional reach scoring + recorded `scoring_params`). |
 | `generated_at` | string (UTC ISO 8601) | When scoring ran. |
 | `dataset_snapshot_date` | string (`YYYYMMDD`) | The **one-hop** dataset's own snapshot date. Must equal `resolved.json`'s own `dataset_snapshot_date` — `build_connectivity_cohort` refuses to score against a mismatched vintage rather than silently doing so. |
 | `max_hops` | int | The bound actually used for every pair's search in this run (operator-settable via `--max-hops`, default 3). |
+| `scoring_params` | object | The parameters this run actually used (`strategy`, `max_hops`, `expansion_depth`, `max_frontier_expansion`, `pair_timeout_seconds`, `max_reach_rows`, `max_workers`, plus recorded DuckDB settings like `memory_limit`/`threads`). Written by scorer_version ≥ 3; earlier artifacts recorded no parameters, which made a crashed real run's settings unrecoverable. Optional for validation so pre-v3 artifacts still validate. Must contain settings only, never filesystem paths (the artifact's own forbidden-substring check rejects them). |
 | `pairs` | array | One entry per unordered pair of resolved albums. Never filtered — a pair with no path is kept as `status: "no_path"`, and a pair whose reachability couldn't be confirmed within the performance guardrails is kept as `status: "skipped"`; neither is omitted. |
 | `unresolved` | array | Carried forward **unchanged** from `resolved.json`'s own `unresolved[]`, so one file has the complete resolution-and-connectivity picture. |
+
+A sibling `scoring-diagnostics.json` (per-seed reach sizes/timings, RSS checkpoints,
+total wall time) is written next to this artifact for local review. It is telemetry, not
+part of this contract, and is never published.
 
 ## `pairs[]` fields
 
@@ -48,7 +53,7 @@ same directory — neither is a separate schema.
 | `difficulty` | string enum: `"easy"` (1 hop) / `"medium"` (2) / `"hard"` (3) / `"very_hard"` (4+) | yes (null unless `found`) | The 4th bucket exists because `--max-hops` is operator-settable, not hardcoded at 3. |
 | `hops` | array | `[]` unless `found` | See below. |
 | `warnings` | array of string | no (`[]` when clean) | Human-readable strings surfacing any hop with a concerning `quality_flags` entry, for quick scanning without inspecting every hop. |
-| `skip_reason` | string enum: `"seed_expansion_timeout"` / `"frontier_too_large"` | yes (null unless `skipped`) | Why reachability wasn't confirmed — see "Performance guardrails" below. |
+| `skip_reason` | string enum: `"seed_expansion_timeout"` / `"frontier_too_large"` / `"reach_too_large"` | yes (null unless `skipped`) | Why reachability wasn't confirmed — see "Performance guardrails" below. |
 
 ## `hops[]` fields
 
@@ -68,22 +73,28 @@ strength flags, plus an optional stackable fourth:
 
 ## Performance guardrails and `"skipped"`
 
-A real smoke test found that scoring can hang indefinitely once a cohort touches a real,
-legitimately prolific hub artist (see
-[ADR 0030](../../docs/decisions/0030-cohort-scoped-connectivity-substrate.md)). Two
-operator-tunable guardrails bound this, and either can produce a `"skipped"` pair rather
-than a hang or a falsely-confident `"no_path"`:
+Real scoring first hung on prolific hub artists (see
+[ADR 0030](../../docs/decisions/0030-cohort-scoped-connectivity-substrate.md)), then
+swap-killed its host once the per-hop payloads were batched into Python
+([ADR 0033](../../docs/decisions/0033-memory-bounded-cohort-scoring.md)). Scoring now runs
+**bidirectionally, entirely inside DuckDB**: each cohort artist expands to
+`ceil(max_hops / 2)` hops as reach rows in a DuckDB table (so `memory_limit`/spill bound
+the whole computation), and a pair's distance is the minimum where the two artists' reaches
+meet. Three operator-tunable guardrails bound cost, and each can produce a `"skipped"` pair
+rather than a hang, a swap-death, or a falsely-confident `"no_path"`:
 
 | `skip_reason` | Meaning | CLI flag |
 | --- | --- | --- |
-| `frontier_too_large` | An artist needed to answer this pair has a linked-credit row count (a cheap upper-bound proxy, not an exact neighbor count) above `--max-frontier-expansion`, and was excluded from search expansion. | `--max-frontier-expansion` (default 300) |
-| `seed_expansion_timeout` | An artist needed to answer this pair didn't finish its own bounded search within the wall-clock budget. | `--pair-timeout-seconds` (default 30.0) |
+| `frontier_too_large` | An artist needed to answer this pair has a linked-credit row count (a cheap upper-bound proxy, not an exact neighbor count) above `--max-frontier-expansion`, and was excluded from expansion. The cap **never applies to a cohort seed itself** — every real cohort seed measured exceeds it — only to artists reached mid-search. Because a capped artist is still reachable *as a target*, a pair meeting *at* a capped hub is now `found`; only a path requiring travel *through* two consecutive capped artists stays unprovable. | `--max-frontier-expansion` (default 300) |
+| `seed_expansion_timeout` | An artist needed to answer this pair didn't finish its own bounded reach expansion within the wall-clock budget. | `--pair-timeout-seconds` (default 30.0) |
+| `reach_too_large` | An artist's materialized reach exceeded the per-seed row cap and was refused rather than ground on or truncated. | `--max-reach-rows` (default 2,000,000) |
 
-A pair is `"skipped"` only when reachability genuinely couldn't be confirmed from either
-endpoint's search; if the *other* endpoint's search completed cleanly and found (or ruled
-out) a path, that result is used instead. A `"skipped"` pair is a request to re-run with a
-larger guardrail, or is otherwise real information for the human reviewer — it is never
-silently reported as `"no_path"`.
+Because scoring is bidirectional, `expansion_depth = ceil(max_hops / 2)`: a pair up to
+`max_hops` apart is discoverable where the two half-searches meet, without either side
+expanding the full distance alone. A pair is `"skipped"` only when reachability genuinely
+couldn't be confirmed; a `"skipped"` pair is a request to re-run with a larger guardrail,
+never silently reported as `"no_path"`. A `"no_path"` is emitted only when both endpoints
+expanded completely with nothing capped and no meeting artist within `max_hops`.
 
 ## Derived views (not separate schemas)
 
@@ -108,9 +119,9 @@ silently reported as `"no_path"`.
 - **Never implies a relationship beyond a documented credit.** No generated text may say
   a pair of artists "worked with," "collaborated with," or otherwise imply intent,
   friendship, or influence — only that a shared release credit connects them.
-- **Validation:** `validate_connectivity()` checks the exact top-level and per-pair/per-hop
-  key sets, that `status`/`difficulty`/`skip_reason` are valid enum values (and that
-  `no_path`/`skipped` pairs have null `hop_count`/`difficulty`, and that `skip_reason` is
-  null iff `status` isn't `skipped`), that every hop has exactly one strength flag, and
-  scans the serialized artifact for the same forbidden substrings prior cohort-pipeline
-  contracts check.
+- **Validation:** `validate_connectivity()` checks the top-level key set (allowing the
+  optional `scoring_params`), that `status`/`difficulty`/`skip_reason` are valid enum
+  values (and that `no_path`/`skipped` pairs have null `hop_count`/`difficulty`, and that
+  `skip_reason` is null iff `status` isn't `skipped`), that every hop has exactly one
+  strength flag, that `scoring_params` is an object when present, and scans the serialized
+  artifact for the same forbidden substrings prior cohort-pipeline contracts check.

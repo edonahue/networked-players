@@ -247,3 +247,51 @@ def test_cli_json_output(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> 
     assert exit_code == 0
     parsed = json.loads(capsys.readouterr().out)
     assert parsed["ready"] is True
+
+
+# --- memory_limit_preflight_failure (ADR 0033) ---
+
+
+def _meminfo(tmp_path: Path, mem_available_kb: int) -> Path:
+    path = tmp_path / "meminfo"
+    path.write_text(
+        f"MemTotal:       8000000 kB\nMemFree:        1000000 kB\n"
+        f"MemAvailable:   {mem_available_kb} kB\n"
+    )
+    return path
+
+
+def test_memory_preflight_refuses_limit_above_half_available(tmp_path: Path) -> None:
+    from networked_players_catalog.cohort_preflight import memory_limit_preflight_failure
+
+    # 6 GB available -> half is 3 GB; a 4 GB limit must be refused.
+    meminfo = _meminfo(tmp_path, 6 * 1024 * 1024)
+    failure = memory_limit_preflight_failure("4GB", meminfo_path=meminfo)
+    assert failure is not None
+    assert "4GB" in failure
+    assert "swap-killed" in failure
+
+
+def test_memory_preflight_allows_limit_within_half_available(tmp_path: Path) -> None:
+    from networked_players_catalog.cohort_preflight import memory_limit_preflight_failure
+
+    meminfo = _meminfo(tmp_path, 6 * 1024 * 1024)
+    assert memory_limit_preflight_failure("3GB", meminfo_path=meminfo) is None
+    assert memory_limit_preflight_failure("1GB", meminfo_path=meminfo) is None
+
+
+def test_memory_preflight_never_blocks_on_unparseable_or_missing(tmp_path: Path) -> None:
+    from networked_players_catalog.cohort_preflight import memory_limit_preflight_failure
+
+    meminfo = _meminfo(tmp_path, 1 * 1024 * 1024)  # tiny, but limit syntax is unknown
+    assert memory_limit_preflight_failure("lots", meminfo_path=meminfo) is None
+    # Missing meminfo (e.g. non-Linux) never blocks.
+    assert memory_limit_preflight_failure("4GB", meminfo_path=tmp_path / "nope") is None
+
+
+def test_memory_preflight_parses_mib_and_gib(tmp_path: Path) -> None:
+    from networked_players_catalog.cohort_preflight import memory_limit_preflight_failure
+
+    meminfo = _meminfo(tmp_path, 2 * 1024 * 1024)  # 2 GB available, half = 1 GB
+    assert memory_limit_preflight_failure("512MiB", meminfo_path=meminfo) is None
+    assert memory_limit_preflight_failure("2GiB", meminfo_path=meminfo) is not None
