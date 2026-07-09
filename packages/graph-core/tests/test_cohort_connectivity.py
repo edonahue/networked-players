@@ -398,13 +398,18 @@ def test_score_pairs_reports_frontier_too_large_not_no_path(tmp_path: Path) -> N
 def test_score_pairs_reports_seed_expansion_timeout(
     dataset_root: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    original_neighbors = CreditGraph.neighbors
+    # _bfs_from_seed calls neighbors_batch (not the single-artist neighbors)
+    # since the frontier-check/neighbor-fetch batching fix -- mock the method
+    # actually on the hot path, or this deterministically-slow mock silently
+    # stops applying and the test's 50ms budget becomes a real-timing race
+    # against unmocked DuckDB overhead instead of a reliable timeout trigger.
+    original_neighbors_batch = CreditGraph.neighbors_batch
 
-    def slow_neighbors(self: CreditGraph, artist_id: int):
+    def slow_neighbors_batch(self: CreditGraph, artist_ids: list[int]):
         time.sleep(0.2)
-        return original_neighbors(self, artist_id)
+        return original_neighbors_batch(self, artist_ids)
 
-    monkeypatch.setattr(CreditGraph, "neighbors", slow_neighbors)
+    monkeypatch.setattr(CreditGraph, "neighbors_batch", slow_neighbors_batch)
 
     with CreditGraph.open(dataset_root) as graph:
         pairs = score_pairs(
