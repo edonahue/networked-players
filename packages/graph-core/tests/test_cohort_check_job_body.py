@@ -1,11 +1,7 @@
-"""Cross-checks the self-contained Pi job body against the reference
-implementations on identical inputs, to catch the two drifting apart --
-infra/ansible/files/cohort_artifact_check_job.py is a hand-maintained mirror
-of cohort_connectivity.validate_connectivity and
-cohort_promote.validate_playable_cohort (see that job body's own header
-comment) because a Pi's lean venv can't import networked_players_graph_core
-(this repo is one monorepo pyproject.toml with a single shared
-dependencies=[duckdb, lxml, pyarrow] list).
+"""Cross-checks the constrained-worker adapter against graph-core's public
+validation wrappers on identical inputs. Both delegate to the independently
+installable `networked_players_contracts` package; this test protects the adapter's
+file-I/O and serializable-result behavior without maintaining validator logic twice.
 
 Comparison is behavioral (does the reference function raise vs. does the
 mirror report invalid), not exact failure-string equality: the reference

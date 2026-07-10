@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "networked-players-platform"
+version = "0.1.0"
+description = "Capability and run contracts for the Networked Players home compute platform"
+requires-python = ">=3.12"
+dependencies = ["networked-players-contracts"]
+
+[project.scripts]
+networked-players-platform = "networked_players_platform.cli:main"
+
+[tool.uv.sources]
+networked-players-contracts = { workspace = true }
+
+[tool.setuptools.packages.find]
+where = ["src"]

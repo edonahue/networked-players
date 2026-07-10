@@ -6,6 +6,13 @@ resolution-markers = [
     "python_full_version < '3.15'",
 ]
 
+[manifest]
+members = [
+    "networked-players-catalog",
+    "networked-players-contracts",
+    "networked-players-platform",
+]
+
 [[package]]
 name = "click"
 version = "8.4.2"
@@ -285,6 +292,8 @@ source = { editable = "." }
 dependencies = [
     { name = "duckdb" },
     { name = "lxml" },
+    { name = "networked-players-contracts" },
+    { name = "networked-players-platform" },
     { name = "pyarrow" },
 ]
 
@@ -306,6 +315,8 @@ requires-dist = [
     { name = "lxml", specifier = ">=5.3,<7" },
     { name = "lxml-stubs", marker = "extra == 'dev'", specifier = ">=0.5,<1" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.15,<2" },
+    { name = "networked-players-contracts", editable = "packages/contracts" },
+    { name = "networked-players-platform", editable = "packages/platform" },
     { name = "pyarrow", specifier = ">=18,<24" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8,<10" },
     { name = "redis", marker = "extra == 'jobs'", specifier = ">=5,<9" },
@@ -313,6 +324,22 @@ requires-dist = [
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.12,<1" },
 ]
 provides-extras = ["dev", "jobs"]
+
+[[package]]
+name = "networked-players-contracts"
+version = "0.1.0"
+source = { editable = "packages/contracts" }
+
+[[package]]
+name = "networked-players-platform"
+version = "0.1.0"
+source = { editable = "packages/platform" }
+dependencies = [
+    { name = "networked-players-contracts" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "networked-players-contracts", editable = "packages/contracts" }]
 
 [[package]]
 name = "packaging"

@@ -10,6 +10,8 @@ requires-python = ">=3.12"
 dependencies = [
   "duckdb>=1.2,<2",
   "lxml>=5.3,<7",
+  "networked-players-contracts",
+  "networked-players-platform",
   "pyarrow>=18,<24",
 ]
 
@@ -31,6 +33,13 @@ jobs = [
 [project.scripts]
 networked-players-catalog = "networked_players_catalog.cli:main"
 
+[tool.uv.workspace]
+members = ["packages/contracts", "packages/platform"]
+
+[tool.uv.sources]
+networked-players-contracts = { workspace = true }
+networked-players-platform = { workspace = true }
+
 [tool.setuptools]
 packages = [
   "networked_players_catalog",
@@ -44,7 +53,12 @@ networked_players_catalog = "packages/catalog/src/networked_players_catalog"
 networked_players_graph_core = "packages/graph-core/src/networked_players_graph_core"
 
 [tool.pytest.ini_options]
-testpaths = ["packages/catalog/tests", "packages/graph-core/tests"]
+testpaths = [
+  "packages/catalog/tests",
+  "packages/contracts/tests",
+  "packages/graph-core/tests",
+  "packages/platform/tests",
+]
 addopts = "-ra"
 
 [tool.ruff]
@@ -53,8 +67,12 @@ line-length = 100
 src = [
   "packages/catalog/src",
   "packages/catalog/tests",
+  "packages/contracts/src",
+  "packages/contracts/tests",
   "packages/graph-core/src",
   "packages/graph-core/tests",
+  "packages/platform/src",
+  "packages/platform/tests",
 ]
 
 [tool.ruff.lint]
@@ -66,8 +84,18 @@ quote-style = "double"
 [tool.mypy]
 python_version = "3.12"
 strict = true
-packages = ["networked_players_catalog", "networked_players_graph_core"]
-mypy_path = ["packages/catalog/src", "packages/graph-core/src"]
+packages = [
+  "networked_players_catalog",
+  "networked_players_contracts",
+  "networked_players_graph_core",
+  "networked_players_platform",
+]
+mypy_path = [
+  "packages/catalog/src",
+  "packages/contracts/src",
+  "packages/graph-core/src",
+  "packages/platform/src",
+]
 warn_unused_ignores = true
 
 [[tool.mypy.overrides]]

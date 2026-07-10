@@ -8,8 +8,10 @@ cohort albums (`album-cohort-resolved-v1.md`), produced by
 [ADR 0029](../../docs/decisions/0029-connectivity-scorer-flags-dont-fix-traversal-gap.md)
 for the traversal-gap finding this artifact's quality flags exist to catch.
 
-> **Source of truth.** The functions in `cohort_connectivity.py` are authoritative. If
-> this document and the code disagree, the code wins and this file should be updated.
+> **Source of truth.** `cohort_connectivity.py` owns generation and
+> `packages/contracts/src/networked_players_contracts/cohort.py` owns the dependency-free
+> validator used by graph-core and constrained workers. If this document and the code
+> disagree, the code wins and this file should be updated.
 
 > **This is a local-only intermediate.** Nothing in this pipeline stage publishes this
 > artifact anywhere, and it does not write to `data/albums/`. A later, separate,

@@ -63,9 +63,10 @@ from typing import Any, Protocol
 
 import duckdb
 
+from networked_players_contracts import CONNECTIVITY_SCHEMA_VERSION, connectivity_failures
+
 from .graph import CreditGraph, EvidencePath, Hop
 
-CONNECTIVITY_SCHEMA_VERSION = 1
 # 2: "skipped" status/skip_reason added alongside the cohort-scoped BFS
 #    substrate (ADR 0030).
 # 3: memory-bounded bidirectional reach scoring + recorded scoring_params
@@ -79,44 +80,7 @@ SCORER_VERSION = 3
 # leaves headroom for denser cohorts while still refusing runaway expansion.
 DEFAULT_MAX_REACH_ROWS = 2_000_000
 
-_TOP_LEVEL_KEYS = frozenset(
-    {
-        "schema_version",
-        "source",
-        "scorer_version",
-        "generated_at",
-        "dataset_snapshot_date",
-        "max_hops",
-        "pairs",
-        "unresolved",
-    }
-)
-# Written by every scorer_version >= 3 artifact, but optional when validating
-# so artifacts produced before parameters were recorded still validate.
-_OPTIONAL_TOP_LEVEL_KEYS = frozenset({"scoring_params"})
-_PAIR_KEYS = frozenset(
-    {
-        "album_a_id",
-        "album_b_id",
-        "artist_a_id",
-        "artist_b_id",
-        "status",
-        "hop_count",
-        "difficulty",
-        "hops",
-        "warnings",
-        "skip_reason",
-    }
-)
-_HOP_KEYS = frozenset({"release_id", "artist_a_id", "artist_b_id", "quality_flags"})
-_STATUSES = frozenset({"found", "no_path", "skipped"})
-# "skipped" means the absence of a path could not be confirmed -- never
-# reported as "no_path", which is reserved for a search that completed
-# without any capping or timeout and genuinely found nothing.
-_SKIP_REASONS = frozenset({"seed_expansion_timeout", "frontier_too_large", "reach_too_large"})
-_DIFFICULTIES = frozenset({"easy", "medium", "hard", "very_hard"})
 _STRENGTH_FLAGS = frozenset({"co_billed_release_artists", "performer_credit", "non_performer_only"})
-_FORBIDDEN_SUBSTRINGS = ("/home/", "data/private", "local/", "DISCOGS_TOKEN", ".ssh")
 
 # Discogs canonical placeholder identities -- kept as our own copy of
 # onehop.py's _NON_PLAYABLE_HUB_ARTIST_IDS (not imported, per the
@@ -1023,56 +987,9 @@ def write_connectivity_cohort(artifact: dict[str, Any], path: Path) -> None:
 
 
 def validate_connectivity(artifact: dict[str, Any]) -> None:
-    failures: list[str] = []
-
-    keys = set(artifact.keys())
-    if not (_TOP_LEVEL_KEYS <= keys <= _TOP_LEVEL_KEYS | _OPTIONAL_TOP_LEVEL_KEYS):
-        failures.append(f"unexpected top-level keys: {sorted(artifact.keys())}")
-    if artifact.get("schema_version") != CONNECTIVITY_SCHEMA_VERSION:
-        failures.append(f"schema_version must be {CONNECTIVITY_SCHEMA_VERSION}")
-    if "scoring_params" in artifact and not isinstance(artifact["scoring_params"], dict):
-        failures.append("scoring_params must be an object when present")
-
-    for pair in artifact.get("pairs", []):
-        if set(pair.keys()) != _PAIR_KEYS:
-            failures.append(f"pair has unexpected keys: {sorted(pair.keys())}")
-            continue
-        if pair.get("status") not in _STATUSES:
-            failures.append(f"invalid status: {pair.get('status')!r}")
-            continue
-        if pair["status"] == "no_path":
-            if pair.get("difficulty") is not None or pair.get("hop_count") is not None:
-                failures.append("no_path pair must have null hop_count/difficulty")
-            if pair.get("skip_reason") is not None:
-                failures.append("no_path pair must have null skip_reason")
-        elif pair["status"] == "skipped":
-            if pair.get("difficulty") is not None or pair.get("hop_count") is not None:
-                failures.append("skipped pair must have null hop_count/difficulty")
-            if pair.get("skip_reason") not in _SKIP_REASONS:
-                failures.append(f"invalid skip_reason: {pair.get('skip_reason')!r}")
-        else:
-            if pair.get("skip_reason") is not None:
-                failures.append("found pair must have null skip_reason")
-            if pair.get("difficulty") not in _DIFFICULTIES:
-                failures.append(f"invalid difficulty: {pair.get('difficulty')!r}")
-            for hop in pair.get("hops", []):
-                if set(hop.keys()) != _HOP_KEYS:
-                    failures.append(f"hop has unexpected keys: {sorted(hop.keys())}")
-                    continue
-                strength_flags = [f for f in hop["quality_flags"] if f in _STRENGTH_FLAGS]
-                if len(strength_flags) != 1:
-                    failures.append(
-                        f"hop on release {hop.get('release_id')} must have exactly one "
-                        f"strength flag, got {strength_flags}"
-                    )
-
+    failures = connectivity_failures(artifact)
     if failures:
         raise CohortConnectivityError("; ".join(failures))
-
-    serialized = json.dumps(artifact)
-    for forbidden in _FORBIDDEN_SUBSTRINGS:
-        if forbidden in serialized:
-            raise CohortConnectivityError(f"artifact contains forbidden substring: {forbidden!r}")
 
 
 def summarize_connectivity(artifact: dict[str, Any]) -> tuple[list[dict[str, Any]], str]:

@@ -8,8 +8,10 @@ cohort pipeline meant to leave `local/`/`data/private/` and be committed. Define
 [ADR 0031](../../docs/decisions/0031-human-reviewed-cohort-promotion.md) for why promotion
 requires an explicit, human-authored selection file rather than any automatic threshold.
 
-> **Source of truth.** The functions in `cohort_promote.py` are authoritative. If this
-> document and the code disagree, the code wins and this file should be updated.
+> **Source of truth.** `cohort_promote.py` owns promotion and
+> `packages/contracts/src/networked_players_contracts/cohort.py` owns the dependency-free
+> validator used by graph-core and constrained workers. If this document and the code
+> disagree, the code wins and this file should be updated.
 
 > **This is the one artifact in this pipeline meant to be committed.** Everything upstream
 > (`extracted.json`, `resolved.json`, `connectivity.json`, `playable-pairs.json`,

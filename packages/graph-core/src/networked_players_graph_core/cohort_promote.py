@@ -26,42 +26,12 @@ import json
 from pathlib import Path
 from typing import Any
 
-from .cohort_connectivity import _STRENGTH_FLAGS, _album_id
-
-PLAYABLE_COHORT_SCHEMA_VERSION = 1
-
-_TOP_LEVEL_KEYS = frozenset(
-    {
-        "schema_version",
-        "cohort_id",
-        "attribution_label",
-        "source_url",
-        "generated_from_scorer_version",
-        "reviewed_at",
-        "review_note",
-        "albums",
-        "pairs",
-    }
+from networked_players_contracts import (
+    PLAYABLE_COHORT_SCHEMA_VERSION,
+    playable_cohort_failures,
 )
-_ALBUM_KEYS = frozenset({"id", "artist_id", "artist", "title", "year"})
-_PAIR_KEYS = frozenset(
-    {
-        "album_a_id",
-        "album_b_id",
-        "artist_a_id",
-        "artist_b_id",
-        "difficulty",
-        "hop_count",
-        "hops",
-        "warnings",
-    }
-)
-_HOP_KEYS = frozenset({"release_id", "artist_a_id", "artist_b_id", "quality_flags"})
-_DIFFICULTIES = frozenset({"easy", "medium", "hard", "very_hard"})
-_FORBIDDEN_SUBSTRINGS = ("/home/", "data/private", "local/", "DISCOGS_TOKEN", ".ssh")
-# Extends the existing "connected via a shared release credit" tone rule
-# (docs/DATA_AND_RIGHTS.md) to this artifact's free-text review_note field.
-_FORBIDDEN_PHRASES = ("worked with", "collaborated with", "influenced")
+
+from .cohort_connectivity import _album_id
 
 
 class CohortPromoteError(RuntimeError):
@@ -275,51 +245,6 @@ def write_playable_cohort(artifact: dict[str, Any], path: Path) -> None:
 
 
 def validate_playable_cohort(artifact: dict[str, Any]) -> None:
-    failures: list[str] = []
-
-    if set(artifact.keys()) != _TOP_LEVEL_KEYS:
-        failures.append(f"unexpected top-level keys: {sorted(artifact.keys())}")
-    if artifact.get("schema_version") != PLAYABLE_COHORT_SCHEMA_VERSION:
-        failures.append(f"schema_version must be {PLAYABLE_COHORT_SCHEMA_VERSION}")
-
-    album_ids: set[Any] = set()
-    for album in artifact.get("albums", []):
-        if set(album.keys()) != _ALBUM_KEYS:
-            failures.append(f"album {album.get('id')} has unexpected keys: {sorted(album.keys())}")
-            continue
-        album_ids.add(album.get("id"))
-
-    for pair in artifact.get("pairs", []):
-        if set(pair.keys()) != _PAIR_KEYS:
-            failures.append(f"pair has unexpected keys: {sorted(pair.keys())}")
-            continue
-        if pair.get("album_a_id") not in album_ids or pair.get("album_b_id") not in album_ids:
-            failures.append(
-                f"pair {pair.get('album_a_id')} <-> {pair.get('album_b_id')} references an "
-                "unpublished album"
-            )
-        if pair.get("difficulty") not in _DIFFICULTIES:
-            failures.append(f"invalid difficulty: {pair.get('difficulty')!r}")
-        for hop in pair.get("hops", []):
-            if set(hop.keys()) != _HOP_KEYS:
-                failures.append(f"hop has unexpected keys: {sorted(hop.keys())}")
-                continue
-            strength_flags = [f for f in hop["quality_flags"] if f in _STRENGTH_FLAGS]
-            if len(strength_flags) != 1:
-                failures.append(
-                    f"hop on release {hop.get('release_id')} must have exactly one strength "
-                    f"flag, got {strength_flags}"
-                )
-
+    failures = playable_cohort_failures(artifact)
     if failures:
         raise CohortPromoteError("; ".join(failures))
-
-    serialized = json.dumps(artifact)
-    for forbidden in _FORBIDDEN_SUBSTRINGS:
-        if forbidden in serialized:
-            raise CohortPromoteError(f"artifact contains forbidden substring: {forbidden!r}")
-
-    lowered = serialized.lower()
-    for phrase in _FORBIDDEN_PHRASES:
-        if phrase in lowered:
-            raise CohortPromoteError(f"artifact contains forbidden phrase: {phrase!r}")
