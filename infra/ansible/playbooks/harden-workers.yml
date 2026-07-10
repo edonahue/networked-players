@@ -67,6 +67,38 @@
       become: true
       notify: Restart docker
 
+    - name: Ensure the docker.service drop-in directory exists
+      ansible.builtin.file:
+        path: /etc/systemd/system/docker.service.d
+        state: directory
+        mode: "0755"
+      become: true
+
+    - name: Install docker.service restart-limit drop-in (survive power-outage boot races)
+      # After the 2026-07-08 site power outage, dockerd on all three Pi workers
+      # started before the LAN route to the Swarm manager (:2377) was up, its
+      # cluster component failed with "network is unreachable", and systemd
+      # gave up after the default start-limit (3 quick retries) -- leaving
+      # Docker `failed` for ~27h even though the network recovered seconds
+      # later. A Pi worker cannot guarantee the manager/switch is up before it
+      # boots, so the robust fix is retry-until-reachable, not just boot
+      # ordering: disable the start-rate limit and retry every 10s. Default
+      # RestartSec (~2s) is what burned through the 3-retry burst in seconds.
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/docker.service.d/restart-limit.conf
+        mode: "0644"
+        content: |
+          [Unit]
+          StartLimitIntervalSec=0
+          Wants=network-online.target
+          After=network-online.target
+
+          [Service]
+          Restart=always
+          RestartSec=10s
+      become: true
+      notify: Reload and recover docker
+
     - name: Enable linger for the ansible_user
       # Required for `systemd-run --user`, invoked non-interactively by
       # run-rq-burst-worker.yml and run-dask-worker-burst.yml -- without
@@ -88,6 +120,7 @@
           - "host: {{ inventory_hostname }}"
           - "hardware watchdog: RuntimeWatchdogSec=30 configured (reliable confirmation needs a real reboot)"
           - "docker: log-opts configured (does NOT retroactively apply to already-running containers)"
+          - "docker restart-limit drop-in installed (retries until the Swarm manager is reachable after a boot race)"
           - "journald persistence: already correct on this host, not touched"
           - "vm.swappiness: no swap configured on this host, not touched"
           - "linger enabled for {{ ansible_user }} (required for systemd-run --user)"
@@ -103,3 +136,14 @@
         name: docker
         state: restarted
       become: true
+
+    - name: Reload and recover docker
+      # daemon-reload picks up the new drop-in; reset-failed clears any
+      # start-limit failure counter left from a boot race; start brings a
+      # currently-failed daemon back (no-op if already running).
+      ansible.builtin.shell: >-
+        systemctl daemon-reload
+        && systemctl reset-failed docker
+        && systemctl start docker
+      become: true
+      changed_when: true
