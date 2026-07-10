@@ -339,6 +339,15 @@ def _parser() -> argparse.ArgumentParser:
     )
     draft_review.add_argument("--output", type=Path, required=True)
 
+    editorial_review = subparsers.add_parser(
+        "draft-cohort-editorial-review",
+        help="write a local suggestions-only editorial packet from scored cohort artifacts",
+    )
+    editorial_review.add_argument("--resolved", type=Path, required=True)
+    editorial_review.add_argument("--connectivity", type=Path, required=True)
+    editorial_review.add_argument("--output-json", type=Path, required=True)
+    editorial_review.add_argument("--output-markdown", type=Path, required=True)
+
     status = subparsers.add_parser(
         "cohort-pipeline-status",
         help=(
@@ -847,6 +856,27 @@ def main(argv: Sequence[str] | None = None) -> int:
                     "candidate_count": len(template["candidate_pairs"]),
                     "clean_count": clean_count,
                     "flagged_count": len(template["candidate_pairs"]) - clean_count,
+                },
+                indent=2,
+                sort_keys=True,
+            )
+        )
+        return 0
+
+    if args.command == "draft-cohort-editorial-review":
+        from .cohort_editorial import build_editorial_packet, write_editorial_packet
+
+        packet = build_editorial_packet(
+            json.loads(args.resolved.read_text()), json.loads(args.connectivity.read_text())
+        )
+        write_editorial_packet(packet, args.output_json, args.output_markdown)
+        print(
+            json.dumps(
+                {
+                    "output_json": str(args.output_json),
+                    "output_markdown": str(args.output_markdown),
+                    "suggested_count": len(packet["suggested_pairs"]),
+                    "review_required_count": packet["review_required_count"],
                 },
                 indent=2,
                 sort_keys=True,

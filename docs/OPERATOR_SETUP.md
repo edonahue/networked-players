@@ -482,6 +482,22 @@ Produces a private file with an always-empty `approved_pairs[]` and a `candidate
 listing every `status: "found"` pair (clean pairs first), ready for step 6. Never
 pre-approves anything.
 
+For a more compact, diversity-aware shortlist, optionally generate a local-only editorial
+packet before manual review:
+
+```bash
+uv run networked-players-catalog draft-cohort-editorial-review \
+  --resolved local/analysis/cohorts/<source-id>/resolved.json \
+  --connectivity local/analysis/cohorts/<source-id>/connectivity.json \
+  --output-json local/analysis/cohorts/<source-id>/editorial-review.json \
+  --output-markdown local/analysis/cohorts/<source-id>/editorial-review.md
+```
+
+This ranks suggestions using transparent difficulty, credit-quality, warning, and
+repetition signals, and caps endpoint repetition in the suggested shortlist. It is a
+curation aid only: it does not approve pairs, replace the selection template, or publish
+anything. Keep both outputs under `local/`, never in public or private committed data.
+
 ### 6. Human review (manual — no command does this step)
 
 Open `<source-id>-selection.template.json`, read `review-report.md` (from step 4) and

@@ -78,6 +78,9 @@ local/analysis/cohorts/<source-id>/{connectivity.json, playable-pairs.json, revi
 human review of review-report.md
         │
         ▼
+local suggestions-only editorial packet (optional; never approval)
+        │
+        ▼
 data/private/cohort-review/<source-id>-selection.json  (hand-authored, never committed)
         │
         ▼
