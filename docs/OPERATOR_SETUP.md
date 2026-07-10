@@ -431,7 +431,22 @@ uv run networked-players-catalog score-cohort-connectivity \
 ```
 
 Prefer `<x86-worker-ssh-target>` for a real one-hop dataset — this is real `CreditGraph`
-traversal work, the same dataset-locality preference Gate B's own expansion follows.
+traversal work, the same dataset-locality preference Gate B's own expansion follows. To
+keep the memory-heavy reach expansion off the Swarm manager entirely, run it on an x86
+worker that already holds a verified one-hop cache (`make replicate-x86`) and is current
+on the scorer code:
+
+```bash
+make score-cohort-on-worker ARGS="--source-id <source-id> --snapshot-date <SNAPSHOT>"
+# ... optional: --worker <inventory-host> --memory-limit 2GB --threads 3
+```
+
+This copies the cohort's `resolved.json` up, scores against the worker's own local cache,
+and fetches `connectivity.json`/`playable-pairs.json`/`review-report.md`/
+`scoring-diagnostics.json` back into `local/analysis/cohorts/<source-id>/` — the same
+place the on-host command writes, so every step after this is identical. The worker keeps
+`--memory-limit` at or below half its available RAM (the on-host preflight applies there
+too); on a 7.6 GB ZimaBoard `2GB` is the safe default.
 
 **Settings for a real, hub-heavy cohort on a 7.6 GB ZimaBoard.** Scoring is now
 memory-bounded — all search state lives in DuckDB, so `--memory-limit` genuinely caps the
