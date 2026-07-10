@@ -1,6 +1,6 @@
 # ADR 0020: Adopt Dask + Jupyter for interactive cluster compute
 
-- **Status:** Accepted
+- **Status:** Amended by ADR 0034
 - **Date:** 2026-07-03
 
 > **Amended 2026-07-03.** After the initial deploy and real end-to-end
@@ -45,6 +45,10 @@
 > untouched. See ADR 0023 for the reasoning.
 
 ## Context
+
+> **Amended:** Dask remains available for optional interactive analysis, but ADR 0034
+> makes RQ the production bounded-job path and removes standing compute work from the
+> coordination host. Dask does not participate in production capability scheduling.
 
 `docs/ARCHITECTURE.md` has named Dask as "an optional experiment for a
 workload with real task dependencies or distributed analytical collections"

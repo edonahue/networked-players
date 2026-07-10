@@ -1,6 +1,6 @@
 # ADR 0023: The x86_64 Swarm worker joins RQ/Dask fleet work, at a higher-capability tier
 
-- **Status:** Accepted
+- **Status:** Amended by ADR 0034
 - **Date:** 2026-07-04
 
 ## Context

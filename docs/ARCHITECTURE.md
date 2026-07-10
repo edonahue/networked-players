@@ -2,7 +2,9 @@
 
 ## Guiding shape
 
-Networked Players is a static-first data product backed by a rebuildable home-lab pipeline. The public application should not require the home environment to be available.
+Networked Players is a static-first data product backed by a rebuildable home-compute
+platform. Cloudflare serves the public application from this repository; the public
+experience does not require the home environment to be available.
 
 ## Logical roles
 
@@ -10,11 +12,13 @@ Networked Players is a static-first data product backed by a rebuildable home-la
 | --- | --- | --- |
 | Configuration control | Repeatable host setup and verification | Ansible from the coordination host |
 | Acquisition control | Snapshot manifests, controlled downloads, checksums, terms review | SSD-backed coordination host |
-| Orchestration control | Schedule and reconcile services | Single Docker Swarm manager initially |
-| Durable state | PostgreSQL, Redis, manifests, canonical snapshots | Pinned to SSD-backed x86 host |
-| Bounded workers | Independent jobs over immutable inputs | Four ARM64 Raspberry Pi 3B nodes |
-| Heavy build and analysis | Full dump parse, compaction, image builds, benchmarks | Optional workstation, not required for uptime |
-| Public delivery | Game, findings, static challenges | Static hosting first |
+| Service orchestration | Reconcile durable containers and cluster membership | Single Docker Swarm manager |
+| Job orchestration | Match bounded jobs to advertised capabilities | Persistent Redis/RQ control plane on the coordination host |
+| Durable state | PostgreSQL, Redis, manifests, canonical snapshots, local run records | Pinned to SSD-backed x86 coordination host |
+| Bounded ARM workers | Validation, cache audits, evidence shards, metadata preparation | Three active Raspberry Pi 3B nodes, one job each |
+| Heavy x86 worker | Whole-cohort scoring and reusable data-processing jobs | Dedicated x86 worker with verified local caches |
+| Interactive analysis | Optional notebooks and distributed collections | Dask on demand, outside the production job path |
+| Public delivery | Game, findings, static challenges | Cloudflare static assets built from `main` |
 | Optional live delivery | Bounded path and challenge requests | Later API with graceful failure |
 
 One machine may perform several logical roles, but the documentation should preserve the distinction.
@@ -50,8 +54,13 @@ The parser itself is initially single-process. The optional workstation is prefe
 ## State and jobs
 
 - PostgreSQL is reserved for mutable application state and searchable registries, not as the only analytical archive.
-- Redis and RQ are the default direction for simple retryable operational jobs.
-- Dask remains an optional experiment for a workload with real task dependencies or distributed analytical collections.
+- Redis and RQ are the bounded production job path. Workloads declare capabilities,
+  resource limits, immutable inputs, timeout/retry posture, and output contracts.
+- Workers advertise installed workload/runtime versions and verified dataset locality.
+  The scheduler rejects stale advertisements and code or snapshot mismatches.
+- Each run uses a unique staging directory and publishes a result manifest only after
+  output validation. The controller fetches and verifies hashes before local promotion.
+- Dask remains an optional interactive experiment, not an alternate production queue.
 - Workers consume immutable, checksummed snapshots and reject jobs for a different version.
 - Canonical datasets publish only after manifest, row-count, identity, and evidence validation.
 
@@ -65,4 +74,4 @@ The source graph preserves artist → release → artist evidence. An artist-onl
 - A single Swarm manager is intentionally simple and not highly available.
 - Reproducible configuration, versioned artifacts, state backups, and tested recovery mitigate—not erase—that limitation.
 - A failed download remains a `.part` file; a failed dataset remains staging and cannot replace the prior canonical snapshot.
-- No live endpoint is part of the initial release contract.
+- The deployed public site contains no required live endpoint; future APIs remain additive.

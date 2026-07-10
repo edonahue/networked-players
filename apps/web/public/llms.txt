@@ -6,7 +6,7 @@ Networked Players (networked-players.com) is an early, evidence-first project by
 
 ## Current state (honest)
 
-This site is an early placeholder, not a finished product. Today the project is scaffolding plus one tested vertical slice: a Discogs release-ingestion pipeline (`packages/catalog`). There is no deployed application, public API, or full catalog yet. The connections demo on this site runs entirely client-side from a small, versioned, **synthetic** static dataset — it is a proof of concept of the shape, not real catalog data.
+This deployed static site is an early application, not a finished product. The repository contains a tested Discogs release-ingestion pipeline, graph and cohort tooling, and a real home compute cluster. There is no public API or full public catalog. The album-centered cohort experience still uses a small, versioned, **synthetic** static dataset until a real cohort completes human review; the legacy demo contains a separately curated real Discogs-shaped slice.
 
 ## Data & rights stance
 

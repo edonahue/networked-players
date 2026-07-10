@@ -6,7 +6,9 @@ Networked Players makes the hidden human network behind recorded music visible a
 
 ## Public identity
 
-`networked-players.com` is registered and reserved as the eventual production host for the public game. The GitHub repository remains the source and development record, while the Music-Credit Graph Study Lab remains the learning companion. No application is deployed at the domain yet.
+`networked-players.com` hosts the current static public application. Cloudflare builds it
+from this GitHub repository's `main` branch. The Music-Credit Graph Study Lab remains the
+learning companion; the home cluster is not required for the public experience.
 
 ## Audience
 

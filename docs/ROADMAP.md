@@ -62,13 +62,12 @@ See [docs/BUILD_PLAN.md](BUILD_PLAN.md) for the granular, code-level task breakd
 - [x] Build a small accessible browser experience
 - [x] Show release-level evidence for every step
 - [ ] Confirm full use with all home services disabled (pending live gate H)
-- [ ] Deploy the game to `networked-players.com` (pending live gate H, Milestone 9)
+- [x] Deploy the static game shell to `networked-players.com` through Cloudflare's Git integration
 
 ## 6. Medium graph and measured expansion
 
-- [x] Add repeatable RQ worker jobs over immutable partitions (challenge-evidence
-      verification job, `infra/ansible/files/verify_challenge_job.py`; real run
-      against a Pi's cache pending live gate G)
+- [x] Add repeatable RQ worker jobs over immutable partitions
+- [ ] Consolidate those jobs behind the ADR 0034 capability and provenance runtime
 - [ ] Measure snapshot size, transfer, memory, and execution limits on each hardware class
 - [ ] Expand challenge generation and public findings
 - [ ] Verify repeated publication and rollback

@@ -12,7 +12,7 @@ edit ROADMAP's own checkboxes.
 
 ## Where things stand today
 
-Snapshot as of 2026-07-02. This section is rewritten as work lands; the milestones
+Snapshot updated through 2026-07-10. This section is rewritten as work lands; the milestones
 below are the durable structure. Every claim here has a source — do not extend it
 without one, per AGENTS.md: do not claim an application, service, cluster
 deployment, full dump conversion, benchmark, or public dataset exists until the
@@ -66,9 +66,10 @@ full-dataset profiling (2026-07-02)" for the full findings, including
 confirmation that mojibake in 89 titles and other apparent oddities are
 genuine, pre-existing source-data characteristics, not pipeline bugs.
 
-**Game rules, workers, API (`packages/game-rules`, `packages/workers`,
-`apps/api`).** Placeholders. Each has only a README describing planned
-responsibility. No source code exists in any of them.
+**Game rules, platform workers, API (`packages/game-rules`, `packages/workers`,
+`apps/api`).** Game rules and API remain placeholders. RQ worker jobs and real cluster
+dispatch exist, but ADR 0034 now consolidates their one-off deployment paths into a
+capability-routed platform runtime.
 
 **Graph core (`packages/graph-core`).** **Update, 2026-07-04:** no longer a
 placeholder. Implemented: a DuckDB-backed lazy `CreditGraph` (query-per-hop
@@ -88,8 +89,8 @@ against the operator's private seed, with cover art hotlinked directly from
 Discogs' own CDN ([ADR 0012](decisions/0012-real-discogs-api-demo-challenge.md))
 — a deliberate detour ahead of Milestone 8's dump-derived pipeline, not a
 replacement for it. Deploy configuration (`wrangler.jsonc`) targets
-`networked-players.com`; the operator deploys via their Cloudflare Git
-integration on push to `main` rather than a manual `npm run deploy`. The
+`networked-players.com`; the live site deploys via Cloudflare's Git integration on push
+to `main` rather than the manual `npm run deploy` fallback. The
 coordination host's Node mismatch (Node 20.20.2 vs. `package.json`'s `>=22`
 requirement) blocked local dev/test until `scripts/setup-node-playwright.sh`
 installed Node 22 via `nvm` plus Playwright's Chromium and Debian system deps;

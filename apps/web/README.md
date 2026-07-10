@@ -47,6 +47,10 @@ npm run test:smoke   # Playwright smoke tests
 
 ## Deploy
 
+Production is connected to this GitHub repository through Cloudflare's Git integration.
+A push to `main` builds and deploys the site automatically. The command below is an
+explicit emergency/manual path, not the normal release workflow:
+
 ```bash
 npm run deploy       # astro build && wrangler deploy
 ```

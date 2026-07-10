@@ -7,18 +7,19 @@ The project begins with a private collection-derived seed, expands through adjac
 > **Status:** early implementation, not a finished product. A tested Discogs
 > release-ingestion pipeline (run to completion against the real monthly
 > dump), a real private Docker Swarm cluster, an early graph layer, and a
-> web experience with placeholder data all exist — but no public
-> application, API, or live game is deployed yet at
-> `networked-players.com`.
+> static web experience with placeholder cohort data all exist. The web app
+> is live at `networked-players.com`; no public API or full catalog is deployed.
 
 ## Project identity
 
 - **Project and product name:** Networked Players
-- **Eventual production game host:** `networked-players.com` — registered and reserved for the public game
+- **Production game host:** `networked-players.com` — static Astro output deployed by Cloudflare from `main`
 - **Source and project history:** this repository
 - **Learning companion:** the Music-Credit Graph Study Lab
 
-No application is deployed at the domain yet. When the first public game is ready, `networked-players.com` will host the player-facing experience rather than merely redirecting to GitHub or the study lab.
+The current static application is deployed at the domain and remains useful without the
+home cluster. Its cohort data is still synthetic until a real reviewed artifact passes
+the explicit publication gate.
 
 ## Study companion
 
@@ -79,12 +80,12 @@ To run a real Discogs ingestion slice on a workstation or the coordination host,
 
 The current design is intentionally modest and recoverable:
 
-- **Coordination and state:** one SSD-backed x86 host for configuration control, orchestration management, durable services, canonical snapshots, and controlled downloads — never a worker.
-- **Workers:** a dedicated x86_64 Swarm worker plus three active Raspberry Pi 3B nodes (a fourth Pi, and a Pi 3B+, are planned but not yet revived) for bounded jobs against immutable, versioned inputs — not full raw-dump parsing.
+- **Coordination and state:** one SSD-backed x86 host for configuration control, capability scheduling, durable services, canonical snapshots, and controlled downloads — not a normal compute worker.
+- **Workers:** a dedicated x86_64 compute worker plus three active Raspberry Pi 3B nodes. Jobs target declared capabilities and immutable inputs rather than hostnames; full raw-dump parsing remains outside the Pi lane.
 - **Optional heavy compute:** a workstation-class machine for full ingest, compaction, image builds, benchmarks, and expensive analysis without becoming part of the public uptime contract.
 - **Data:** versioned Parquet for analytical records, DuckDB for transforms and validation, PostgreSQL for mutable application state, and Redis/RQ for operational background jobs.
 - **Graph:** an evidence-bearing artist–release bipartite model, with simpler fixtures as correctness oracles and compact representations selected only after measurement.
-- **Delivery:** static challenges and findings first; a bounded live API later.
+- **Delivery:** the deployed Cloudflare site consumes versioned static assets from `apps/web/public/`; a bounded live API remains optional and later.
 
 These are selected directions, not completed deployment.
 

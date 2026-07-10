@@ -1,9 +1,13 @@
 # ADR 0019: Cluster-vs-single-node RQ benchmark, and its LAN-reachable job broker
 
-- **Status:** Accepted
+- **Status:** Amended by ADR 0034
 - **Date:** 2026-07-03
 
 ## Context
+
+> **Amended:** ADR 0034 promotes the proven RQ broker mechanism into the standing
+> capability-routed job control plane. This ADR's benchmark implementation history
+> remains valid; its temporary-broker and production-mechanism deferrals do not.
 
 `docs/ARCHITECTURE.md` names "Redis and RQ are the default direction for
 simple retryable operational jobs," and `infra/ansible/playbooks/equip-workers.yml`

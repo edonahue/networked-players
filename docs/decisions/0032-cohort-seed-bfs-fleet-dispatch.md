@@ -1,9 +1,14 @@
 # ADR 0032: Cohort connectivity's fleet-distribution dispatch unit is a chunk of unique seed artists, mirroring `verify_challenge_job.py`
 
-- **Status:** Accepted
+- **Status:** Superseded by ADR 0034
 - **Date:** 2026-07-09
 
 ## Context
+
+> **Superseded:** ADR 0033 made whole-cohort bidirectional DuckDB reach scoring the
+> safe reference path, and ADR 0034 removes this unbounded seed-BFS design from the
+> platform critical path. This record remains as history; its deploy/enqueue lane is
+> retired rather than redesigned.
 
 A real cohort rehearsal (source `discogs-community-best-albums`, 25 canonical/prolific
 artists) exposed two distinct problems this session, fixed in order:
