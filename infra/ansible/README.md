@@ -20,6 +20,11 @@ a 30-second capability heartbeat through user systemd. It contains no `become` t
 Linger must already be enabled; the playbook fails rather than silently escalating if it
 is not.
 
+Every platform worker also advertises the built-in `artifact.validate@1` workload. It is a
+small, dependency-light contract check for ARM or x86 validation jobs and consumes only
+explicit run inputs. The older copied `cohort_artifact_check_job.py` lane remains for
+compatibility until its controller is migrated and exercised against a real Pi.
+
 Real inventories define an opaque `platform_worker_id` and policy tags per host. X86
 workers also define `platform_datasets_json` from verified local cache manifests; an empty
 list deliberately makes dataset-dependent workloads ineligible. Job requests use those

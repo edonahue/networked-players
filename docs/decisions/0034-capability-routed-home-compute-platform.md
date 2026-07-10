@@ -69,9 +69,11 @@ by declaring capabilities and installing workload plugins; scheduler code does n
 a new hostname branch.
 
 The Pi fleet performs bounded validation, cache auditing, evidence checking, and later
-explicitly contracted enrichment work. Whole-cohort graph scoring stays on x86. The
-cluster need not maximize utilization: unchanged content is not repeatedly processed
-merely to keep workers busy.
+explicitly contracted enrichment work. The platform's built-in `artifact.validate@1`
+workload is the first reusable ARM-safe capability; the older copied cohort-check lane is
+kept temporarily while its controller is migrated. Whole-cohort graph scoring stays on
+x86. The cluster need not maximize utilization: unchanged content is not repeatedly
+processed merely to keep workers busy.
 
 ## Validation
 

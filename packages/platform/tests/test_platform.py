@@ -186,3 +186,42 @@ def test_executor_records_runtime_mismatch_without_completed_output(
         execute_run(str(run_dir))
     assert (run_dir / "failed.json").exists()
     assert not (run_dir / "completed").exists()
+
+
+def test_executor_runs_dependency_free_artifact_validation(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    run_dir = tmp_path / "validation-run"
+    input_dir = run_dir / "input"
+    input_dir.mkdir(parents=True)
+    (input_dir / "artifact.json").write_text('{"schema_version": 99}\n')
+    descriptor = describe_artifact(
+        input_dir,
+        "artifact.json",
+        name="artifact",
+        contract="synthetic-json-v1",
+    )
+    request = RunRequest(
+        schema_version=1,
+        run_id="validation-001",
+        workload_id="artifact.validate",
+        workload_version="1",
+        submitted_at="2026-07-10T00:00:00+00:00",
+        runtime_commit=COMMIT,
+        timeout_seconds=120,
+        max_retries=1,
+        capabilities=CapabilityRequirement(),
+        inputs=(descriptor,),
+        expected_outputs=("validation-report",),
+        parameters={"validator": "connectivity"},
+    )
+    (run_dir / "request.json").write_text(json.dumps(request.to_dict()))
+    monkeypatch.setenv("PLATFORM_RUNTIME_COMMIT", COMMIT)
+    monkeypatch.setenv("PLATFORM_WORKER_ID", "worker-1")
+
+    result = execute_run(str(run_dir))
+
+    assert result["status"] == "succeeded"
+    report = json.loads((run_dir / "completed" / "validation-report.json").read_text())
+    assert report["valid"] is False
+    assert report["validator"] == "connectivity"
