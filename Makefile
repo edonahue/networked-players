@@ -11,7 +11,7 @@
 	cluster-recovery-drill harden-workers equip-workers equip-x86-workers replicate-x86 replicate-pi deploy-jobs-broker deploy-catalog-data cluster-benchmark-distributed \
 	deploy-verify-job verify-challenge-distributed \
 	score-cohort-on-worker \
-	platform-build platform-deploy platform-status \
+	platform-build platform-deploy platform-status curator \
 	dask-up dask-down
 
 help: ## List available targets
@@ -147,6 +147,10 @@ platform-deploy: ## Deploy the built platform runtime to capability workers; ARG
 
 platform-status: ## Read standing worker advertisements from the private jobs broker
 	./scripts/platform-status.sh $(ARGS)
+
+curator: ## Serve a local-only cohort curator; needs SOURCE_ID=; ARGS="--host 0.0.0.0" enables trusted-LAN access
+	@test -n "$(SOURCE_ID)" || (echo "Set SOURCE_ID=<source-id>" >&2; exit 1)
+	uv run python apps/review/review_server.py --source-id "$(SOURCE_ID)" $(ARGS)
 
 dask-up: ## Build the image, start Jupyter, and deploy the Dask scheduler/worker Swarm stack (see infra/dask/README.md)
 	./infra/dask/deploy-dask.sh

@@ -12,9 +12,9 @@ from networked_players_catalog.cohort_editorial import (
 def _inputs() -> tuple[dict, dict]:
     resolved = {
         "resolved": [
-            {"master_id": 1, "artist_name": "Alice", "title": "One"},
-            {"master_id": 2, "artist_name": "Bob", "title": "Two"},
-            {"master_id": 3, "artist_name": "Cara", "title": "Three"},
+            {"master_id": 1, "release_id": 11, "artist_name": "Alice", "title": "One"},
+            {"master_id": 2, "release_id": 12, "artist_name": "Bob", "title": "Two"},
+            {"master_id": 3, "release_id": 13, "artist_name": "Cara", "title": "Three"},
         ]
     }
     connectivity = {
@@ -58,3 +58,11 @@ def test_editorial_packet_writes_local_json_and_markdown(tmp_path: Path) -> None
     write_editorial_packet(packet, output_json, output_markdown)
     assert json.loads(output_json.read_text())["status"] == "suggestions-only"
     assert "does not approve" in output_markdown.read_text()
+
+
+def test_editorial_packet_uses_cached_discogs_thumbnail(tmp_path: Path) -> None:
+    (tmp_path / "11.json").write_text(
+        json.dumps({"images": [{"type": "primary", "uri150": "https://img.example/11.jpg"}]})
+    )
+    packet = build_editorial_packet(*_inputs(), cache_dir=tmp_path)
+    assert packet["ranked_pairs"][0]["cover_image_a"] == "https://img.example/11.jpg"

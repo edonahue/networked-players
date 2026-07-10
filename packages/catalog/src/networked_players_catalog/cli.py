@@ -347,6 +347,18 @@ def _parser() -> argparse.ArgumentParser:
     editorial_review.add_argument("--connectivity", type=Path, required=True)
     editorial_review.add_argument("--output-json", type=Path, required=True)
     editorial_review.add_argument("--output-markdown", type=Path, required=True)
+    editorial_review.add_argument(
+        "--api-cache-dir", type=Path, default=Path("data/private/discogs-api-cache")
+    )
+    editorial_review.add_argument(
+        "--enrich-images",
+        action="store_true",
+        help=(
+            "explicitly fetch missing release metadata into the private API cache "
+            "before writing hotlinks"
+        ),
+    )
+    editorial_review.add_argument("--request-delay", type=float, default=1.1)
 
     status = subparsers.add_parser(
         "cohort-pipeline-status",
@@ -866,8 +878,23 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.command == "draft-cohort-editorial-review":
         from .cohort_editorial import build_editorial_packet, write_editorial_packet
 
+        resolved = json.loads(args.resolved.read_text())
+        connectivity = json.loads(args.connectivity.read_text())
+        if args.enrich_images:
+            from .discogs.api_client import ApiClient, ReleaseCache, fetch_releases, load_token
+
+            release_ids = sorted(
+                {int(album["release_id"]) for album in resolved.get("resolved", [])}
+            )
+            fetch_releases(
+                release_ids,
+                client=ApiClient(token=load_token(), request_delay_seconds=args.request_delay),
+                cache=ReleaseCache(args.api_cache_dir),
+            )
         packet = build_editorial_packet(
-            json.loads(args.resolved.read_text()), json.loads(args.connectivity.read_text())
+            resolved,
+            connectivity,
+            args.api_cache_dir,
         )
         write_editorial_packet(packet, args.output_json, args.output_markdown)
         print(

@@ -498,6 +498,29 @@ repetition signals, and caps endpoint repetition in the suggested shortlist. It 
 curation aid only: it does not approve pairs, replace the selection template, or publish
 anything. Keep both outputs under `local/`, never in public or private committed data.
 
+### 5a. Local curator UI (optional, private only)
+
+After the editorial packet exists, use the small local curator to browse all ranked pairs,
+view cached Discogs cover thumbnails, select/reject pairs, and leave private notes:
+
+```bash
+make curator SOURCE_ID=<source-id>
+```
+
+Dark mode is the default; the browser remembers the light/dark choice locally. The server
+binds to loopback by default. For a trusted LAN device, make exposure explicit:
+
+```bash
+make curator SOURCE_ID=<source-id> ARGS="--host 0.0.0.0 --reviewed-by <your-name>"
+```
+
+It writes only `data/private/cohort-review/<source-id>-selection.json` in the same
+promotion-compatible format used by step 6. It is not part of `apps/web`, Cloudflare, or
+the public static build. Cover thumbnails are hotlinked from Discogs only when their saved
+release metadata is present in the private API cache. To explicitly fetch missing metadata
+into that cache, rerun `draft-cohort-editorial-review` with `--enrich-images`; that is a
+rate-limited, token-gated coordination-host action, never a Pi or browser action.
+
 ### 6. Human review (manual — no command does this step)
 
 Open `<source-id>-selection.template.json`, read `review-report.md` (from step 4) and

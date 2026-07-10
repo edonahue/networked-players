@@ -1,0 +1,1 @@
+"""Private local curator application."""

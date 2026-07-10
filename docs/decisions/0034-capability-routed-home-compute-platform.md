@@ -75,6 +75,12 @@ kept temporarily while its controller is migrated. Whole-cohort graph scoring st
 x86. The cluster need not maximize utilization: unchanged content is not repeatedly
 processed merely to keep workers busy.
 
+One planned ARM-safe enrichment lane is release-image metadata preparation: the
+coordination host alone uses the token-gated Discogs API to fill its private release cache;
+Pi workers can later validate an explicit, bounded manifest of cached `uri150` hotlinks
+and report failures. They never receive API credentials, download image bytes, or perform
+unbounded crawling.
+
 ## Validation
 
 The implementation is complete only when synthetic tests cover capability selection,

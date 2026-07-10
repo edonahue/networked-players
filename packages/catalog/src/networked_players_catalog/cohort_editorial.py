@@ -46,11 +46,33 @@ def _pair_score(
     return score, reasons
 
 
+def _cover_map(resolved: dict[str, Any], cache_dir: Path | None) -> dict[str, str]:
+    if cache_dir is None:
+        return {}
+    covers: dict[str, str] = {}
+    for album in resolved.get("resolved", []):
+        cache_path = cache_dir / f"{album.get('release_id')}.json"
+        if not cache_path.is_file():
+            continue
+        try:
+            payload = json.loads(cache_path.read_text())
+            images = payload.get("images") or []
+            primary = sorted(images, key=lambda image: 0 if image.get("type") == "primary" else 1)[
+                0
+            ]
+            if primary.get("uri150"):
+                covers[f"master-{album['master_id']}"] = str(primary["uri150"])
+        except (IndexError, KeyError, TypeError, json.JSONDecodeError):
+            continue
+    return covers
+
+
 def build_editorial_packet(
-    resolved: dict[str, Any], connectivity: dict[str, Any]
+    resolved: dict[str, Any], connectivity: dict[str, Any], cache_dir: Path | None = None
 ) -> dict[str, Any]:
     """Rank found pairs as suggestions; no result is an approval."""
     albums = _album_map(resolved)
+    covers = _cover_map(resolved, cache_dir)
     pairs = [pair for pair in connectivity.get("pairs", []) if pair.get("status") == "found"]
     release_counts = Counter(
         str(hop["release_id"])
@@ -72,8 +94,11 @@ def build_editorial_packet(
                 "artist_b": albums.get(pair["album_b_id"], {}).get("artist_name"),
                 "title_a": albums.get(pair["album_a_id"], {}).get("title"),
                 "title_b": albums.get(pair["album_b_id"], {}).get("title"),
+                "cover_image_a": covers.get(pair["album_a_id"]),
+                "cover_image_b": covers.get(pair["album_b_id"]),
                 "difficulty": pair["difficulty"],
                 "hop_count": pair["hop_count"],
+                "hops": pair.get("hops", []),
                 "warnings": pair.get("warnings", []),
                 "review_required": bool(pair.get("warnings")),
                 "editorial_score": score,
