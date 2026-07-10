@@ -22,6 +22,7 @@ def test_review_server_defaults_to_dark_with_a_persisted_theme_toggle() -> None:
     assert "networked-players-curator-theme" in PAGE
     assert "t==='light'?'light':'dark'" in PAGE
     assert 'class="theme-toggle"' in PAGE
+    assert "evidence_hops" in PAGE
 
 
 def test_review_server_loads_packet_and_selection(tmp_path: Path) -> None:

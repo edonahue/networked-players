@@ -49,6 +49,7 @@ def test_editorial_packet_is_suggestions_only_and_flags_warnings() -> None:
     assert packet["status"] == "suggestions-only"
     assert packet["suggested_pairs"][0]["album_a_id"] == "master-1"
     assert packet["review_required_count"] == 1
+    assert packet["ranked_pairs"][0]["evidence_hops"][0]["release_url"].endswith("/7")
 
 
 def test_editorial_packet_writes_local_json_and_markdown(tmp_path: Path) -> None:

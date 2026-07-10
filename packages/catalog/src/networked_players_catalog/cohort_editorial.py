@@ -99,6 +99,14 @@ def build_editorial_packet(
                 "difficulty": pair["difficulty"],
                 "hop_count": pair["hop_count"],
                 "hops": pair.get("hops", []),
+                "evidence_hops": [
+                    {
+                        "release_id": hop["release_id"],
+                        "release_url": f"https://www.discogs.com/release/{hop['release_id']}",
+                        "quality_flags": hop.get("quality_flags", []),
+                    }
+                    for hop in pair.get("hops", [])
+                ],
                 "warnings": pair.get("warnings", []),
                 "review_required": bool(pair.get("warnings")),
                 "editorial_score": score,
