@@ -69,20 +69,24 @@ Prometheus/Grafana/cAdvisor remain deliberately deferred — a bigger,
 separate, ADR-worthy decision if deeper metrics/alerting are ever needed,
 not built alongside this.
 
-## Jobs broker (cluster benchmarking)
+## Jobs broker (standing bounded-job control plane)
 
-`docker-compose.jobs-broker.yml` runs a dedicated Redis for RQ job-queue
-traffic — separate from the coordination stack's loopback-only Redis above,
-which never carries job traffic. This is the **first LAN-reachable service**
-in this repository: bound to the coordination host's real Ethernet address
-(never `0.0.0.0`), password-protected, and deliberately **not** a standing
-service. See [ADR 0019](../../docs/decisions/0019-cluster-benchmark-rq-job-broker.md).
+`docker-compose.jobs-broker.yml` runs the dedicated Redis/RQ control plane,
+separate from the coordination stack's loopback-only application Redis. ADR
+0034 promotes the original ADR 0019 benchmark broker to a standing service:
+it is still bound to one private interface (never `0.0.0.0`) and password
+protected, but now uses AOF, bounded memory, restart policy, and an explicit
+durable data directory.
 
 ```bash
-./deploy-jobs-broker.sh          # generates local/jobs-broker.env on first run
-# ... run make cluster-benchmark-distributed (see infra/ansible/README.md) ...
-./deploy-jobs-broker.sh --down
+./deploy-jobs-broker.sh          # standing service; generates private env on first run
+./deploy-jobs-broker.sh --down   # maintenance only
 ```
+
+Existing `local/jobs-broker.env` files must gain `JOBS_BROKER_DATA_DIR` before
+the standing conversion. The deploy script refuses to guess or create a
+privileged path. Create the intended NVMe-backed directory with the correct
+owner first, then deploy.
 
 ## Catalog-data server (remote dataset access)
 

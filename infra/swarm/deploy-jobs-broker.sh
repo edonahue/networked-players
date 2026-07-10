@@ -43,6 +43,12 @@ mkdir -p "${REPO_ROOT}/local"
 
 if [[ -f "${ENV_FILE}" ]]; then
   echo "==> ${ENV_FILE} already exists; leaving it as-is."
+  if ! grep -q '^JOBS_BROKER_DATA_DIR=' "${ENV_FILE}"; then
+    echo "ABORT: ${ENV_FILE} predates persistent broker storage." >&2
+    echo "       Add JOBS_BROKER_DATA_DIR=<private durable directory>, create it," >&2
+    echo "       and rerun. This script will not guess or create a privileged path." >&2
+    exit 1
+  fi
 else
   echo "==> No ${ENV_FILE} found; generating one."
   lan_ip="$(ip -4 route get 1.1.1.1 2>/dev/null | awk '{for (i=1;i<=NF;i++) if ($i=="src") print $(i+1)}')"
@@ -64,12 +70,20 @@ else
     echo "JOBS_BROKER_BIND_IP=${lan_ip}"
     echo "JOBS_BROKER_PORT=6380"
     echo "JOBS_BROKER_PASSWORD=${gen_pw}"
+    echo "JOBS_BROKER_DATA_DIR=/mnt/data/networked-players/jobs-broker"
   } > "${ENV_FILE}"
   chmod 600 "${ENV_FILE}"
   echo "==> Wrote ${ENV_FILE} (chmod 600), binding to detected LAN IP ${lan_ip}."
 fi
 
-echo "==> Bringing up the jobs broker..."
+source "${ENV_FILE}"
+if [[ ! -d "${JOBS_BROKER_DATA_DIR}" ]]; then
+  echo "ABORT: JOBS_BROKER_DATA_DIR does not exist: ${JOBS_BROKER_DATA_DIR}" >&2
+  echo "       Create it with the intended owner/mount before deployment." >&2
+  exit 1
+fi
+
+echo "==> Bringing up the persistent jobs broker..."
 "${DC[@]}" --env-file "${ENV_FILE}" up -d
 
 echo "==> Waiting for it to report healthy (up to 30s)..."
@@ -92,4 +106,4 @@ fi
 
 echo "==> Verify LAN-only (not 0.0.0.0) binding: ss -tln | grep 6380"
 echo "==> Verify local/jobs-broker.env is git-ignored: git check-ignore -v local/jobs-broker.env"
-echo "==> Stop it when done benchmarking: ./infra/swarm/deploy-jobs-broker.sh --down"
+echo "==> This is a standing ADR 0034 control-plane service; use --down only for maintenance."

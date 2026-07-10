@@ -17,6 +17,15 @@
 
 # Bootstrap SSH user for initial onboarding. A dedicated `deploy` automation
 # account is a possible later hardening step (see infra/ansible/README.md)
+
+# ADR 0034 capability runtime. Per-host worker IDs are opaque scheduling
+# identities, not hostnames; define them in host_vars. These policy values are
+# intentionally overridden for x86 workers.
+platform_tags:
+  - bounded
+  - validation
+platform_max_job_memory_mb: 384
+platform_systemd_memory_max: 512M
 # but is not required to start -- an existing account with sudo is fine.
 ansible_user: deploy
 ansible_ssh_private_key_file: ~/.ssh/networked-players-cluster_ed25519

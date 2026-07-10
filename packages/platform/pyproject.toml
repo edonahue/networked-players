@@ -7,7 +7,11 @@ name = "networked-players-platform"
 version = "0.1.0"
 description = "Capability and run contracts for the Networked Players home compute platform"
 requires-python = ">=3.12"
-dependencies = ["networked-players-contracts"]
+dependencies = [
+  "networked-players-contracts",
+  "redis>=5,<9",
+  "rq>=2,<3",
+]
 
 [project.scripts]
 networked-players-platform = "networked_players_platform.cli:main"

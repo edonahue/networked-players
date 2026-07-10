@@ -2,6 +2,28 @@
 
 Ansible is planned to provide repeatable baseline configuration for the coordination host and four worker nodes.
 
+## Capability runtime
+
+ADR 0034 adds an independently packaged worker runtime. Build it only from a clean
+commit, then deploy the exact commit-addressed bundle:
+
+```bash
+make platform-build
+make platform-deploy ARGS="--limit pi_workers"
+make platform-status
+```
+
+`deploy-platform-runtime.yml` installs the contracts/platform wheels into a versioned
+user-local virtual environment, verifies imports, switches the `current` symlink, and
+manages one standing RQ worker plus a 30-second capability heartbeat through user
+systemd. It contains no `become` task. Linger must already be enabled; the playbook
+fails rather than silently escalating if it is not.
+
+Real inventories define an opaque `platform_worker_id` and policy tags per host. Job
+requests use those advertised capabilities, never inventory hostnames. The broker URL
+remains private and is written to a mode-0600 worker environment file with Ansible
+`no_log` enabled.
+
 Early playbooks should remain narrow:
 
 1. verify supported operating system and architecture;

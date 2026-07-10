@@ -18,6 +18,14 @@ dask_worker_nworkers: 1
 # playbooks/run-rq-burst-worker.yml.
 rq_worker_systemd_memory_max: "1536M"
 
+platform_tags:
+  - bounded
+  - validation
+  - x86-heavy
+  - graph
+platform_max_job_memory_mb: 4096
+platform_systemd_memory_max: 5G
+
 # playbooks/replicate-dataset-x86.yml (ADR 0025). Root directory for this
 # worker's disposable, read-only, verified dataset cache -- NOT the same as
 # the coordination host's authoritative local/processed/. Set a real

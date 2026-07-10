@@ -1,0 +1,176 @@
+---
+# Deploy one immutable platform release and standing user-level RQ worker per
+# capability-bearing worker. This play intentionally contains no become task.
+# Enabling linger and creating privileged storage are separate, explicit gates.
+- name: Deploy capability worker runtime
+  hosts: workers
+  gather_facts: true
+  vars:
+    platform_runtime_root: "{{ ansible_env.HOME }}/.local/share/networked-players/platform"
+    platform_release_root: "{{ platform_runtime_root }}/releases/{{ platform_runtime_commit }}"
+    platform_venv: "{{ platform_release_root }}/venv"
+    platform_user_unit_dir: "{{ ansible_env.HOME }}/.config/systemd/user"
+  tasks:
+    - name: Require private platform deployment variables
+      ansible.builtin.assert:
+        that:
+          - platform_release_dir_local is defined
+          - platform_runtime_commit is match('^[0-9a-f]{40}$')
+          - platform_worker_id is defined
+          - platform_worker_id is match('^[a-z0-9][a-z0-9._-]{0,127}$')
+          - platform_tags | length > 0
+          - platform_max_job_memory_mb | int > 0
+          - platform_systemd_memory_max is defined
+          - jobs_broker_url is defined
+        fail_msg: >-
+          Define the release path/commit and private worker capability variables;
+          see inventories/example for non-routable examples.
+
+    - name: Confirm user systemd linger is already enabled
+      ansible.builtin.command: "loginctl show-user {{ ansible_user }} --property=Linger --value"
+      register: platform_linger
+      changed_when: false
+      failed_when: platform_linger.stdout | trim != 'yes'
+
+    - name: Create versioned runtime and user unit directories
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        mode: "0755"
+      loop:
+        - "{{ platform_release_root }}"
+        - "{{ platform_user_unit_dir }}"
+
+    - name: Copy immutable release bundle
+      ansible.builtin.copy:
+        src: "{{ platform_release_dir_local }}/"
+        dest: "{{ platform_release_root }}/"
+        mode: preserve
+      register: platform_release_copy
+
+    - name: Create release virtual environment
+      ansible.builtin.command:
+        argv:
+          - "{{ ansible_env.HOME }}/.local/bin/uv"
+          - venv
+          - --python
+          - "3.12"
+          - "{{ platform_venv }}"
+      args:
+        creates: "{{ platform_venv }}/bin/python"
+
+    - name: Install exact local platform release and bounded queue dependencies
+      ansible.builtin.command:
+        argv:
+          - "{{ ansible_env.HOME }}/.local/bin/uv"
+          - pip
+          - install
+          - --python
+          - "{{ platform_venv }}/bin/python"
+          - --find-links
+          - "{{ platform_release_root }}/wheels"
+          - networked-players-platform==0.1.0
+          - redis>=5,<9
+          - rq>=2,<3
+      register: platform_install
+      changed_when: "'Installed' in platform_install.stdout"
+
+    - name: Verify deployed imports and CLI
+      ansible.builtin.command:
+        argv:
+          - "{{ platform_venv }}/bin/python"
+          - -c
+          - >-
+            import networked_players_contracts, networked_players_platform;
+            assert networked_players_platform.__version__ == '0.1.0'
+      changed_when: false
+
+    - name: Write private worker environment
+      ansible.builtin.copy:
+        dest: "{{ platform_runtime_root }}/worker.env"
+        mode: "0600"
+        content: |
+          JOBS_BROKER_URL={{ jobs_broker_url }}
+          PLATFORM_WORKER_ID={{ platform_worker_id }}
+          PLATFORM_TAGS={{ platform_tags | join(',') }}
+          PLATFORM_MAX_JOB_MEMORY_MB={{ platform_max_job_memory_mb }}
+          PLATFORM_RUNTIME_COMMIT={{ platform_runtime_commit }}
+          PLATFORM_DATASETS_JSON=[]
+      no_log: true
+
+    - name: Write standing platform worker unit
+      ansible.builtin.copy:
+        dest: "{{ platform_user_unit_dir }}/networked-players-platform-worker.service"
+        mode: "0644"
+        content: |
+          [Unit]
+          Description=Networked Players bounded capability worker
+          After=network-online.target
+
+          [Service]
+          Type=simple
+          EnvironmentFile={{ platform_runtime_root }}/worker.env
+          ExecStart={{ platform_runtime_root }}/current/venv/bin/networked-players-platform worker
+          Restart=on-failure
+          RestartSec=10s
+          Nice=5
+          IOSchedulingClass=best-effort
+          IOSchedulingPriority=4
+          MemoryMax={{ platform_systemd_memory_max }}
+
+          [Install]
+          WantedBy=default.target
+
+    - name: Write platform heartbeat service and timer
+      ansible.builtin.copy:
+        dest: "{{ platform_user_unit_dir }}/{{ item.name }}"
+        mode: "0644"
+        content: "{{ item.content }}"
+      loop:
+        - name: networked-players-platform-heartbeat.service
+          content: |
+            [Unit]
+            Description=Publish Networked Players worker capabilities
+            After=network-online.target
+
+            [Service]
+            Type=oneshot
+            EnvironmentFile={{ platform_runtime_root }}/worker.env
+            ExecStart={{ platform_runtime_root }}/current/venv/bin/networked-players-platform heartbeat
+        - name: networked-players-platform-heartbeat.timer
+          content: |
+            [Unit]
+            Description=Refresh Networked Players worker capabilities
+
+            [Timer]
+            OnBootSec=20s
+            OnUnitActiveSec=30s
+            AccuracySec=5s
+
+            [Install]
+            WantedBy=timers.target
+
+    - name: Point current at the verified release
+      ansible.builtin.file:
+        src: "{{ platform_release_root }}"
+        dest: "{{ platform_runtime_root }}/current"
+        state: link
+        force: true
+
+    - name: Reload and enable standing user services
+      ansible.builtin.systemd_service:
+        scope: user
+        daemon_reload: true
+        name: "{{ item }}"
+        enabled: true
+        state: restarted
+      loop:
+        - networked-players-platform-worker.service
+        - networked-players-platform-heartbeat.timer
+
+    - name: Report deployed runtime without private connection data
+      ansible.builtin.debug:
+        msg:
+          - "worker_id: {{ platform_worker_id }}"
+          - "runtime_commit: {{ platform_runtime_commit }}"
+          - "release changed: {{ platform_release_copy.changed }}"

@@ -4,9 +4,12 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from pathlib import Path
 
+from .broker import read_advertisements, redis_from_url
 from .models import WorkerAdvertisement
+from .runtime import heartbeat, run_worker
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -14,16 +17,22 @@ def _parser() -> argparse.ArgumentParser:
     subparsers = parser.add_subparsers(dest="command", required=True)
     status = subparsers.add_parser("cluster-status", help="read worker advertisements")
     status.add_argument("--state-dir", type=Path, default=Path("local/platform"))
+    status.add_argument("--broker-url")
     status.add_argument("--json", action="store_true")
+    subparsers.add_parser("heartbeat", help="publish this worker's observed capabilities")
+    subparsers.add_parser("worker", help="run the standing RQ worker")
     return parser
 
 
-def _cluster_status(state_dir: Path, *, as_json: bool) -> int:
-    workers_dir = state_dir / "workers"
-    workers = []
-    if workers_dir.is_dir():
-        for path in sorted(workers_dir.glob("*.json")):
-            workers.append(WorkerAdvertisement.from_dict(json.loads(path.read_text())))
+def _cluster_status(state_dir: Path, *, broker_url: str | None, as_json: bool) -> int:
+    if broker_url:
+        workers = read_advertisements(redis_from_url(broker_url))
+    else:
+        workers_dir = state_dir / "workers"
+        workers = []
+        if workers_dir.is_dir():
+            for path in sorted(workers_dir.glob("*.json")):
+                workers.append(WorkerAdvertisement.from_dict(json.loads(path.read_text())))
     payload = {
         "schema_version": 1,
         "worker_count": len(workers),
@@ -46,5 +55,12 @@ def _cluster_status(state_dir: Path, *, as_json: bool) -> int:
 def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     if args.command == "cluster-status":
-        return _cluster_status(args.state_dir, as_json=args.json)
+        broker_url = args.broker_url or os.environ.get("JOBS_BROKER_URL")
+        return _cluster_status(args.state_dir, broker_url=broker_url, as_json=args.json)
+    if args.command == "heartbeat":
+        advertisement = heartbeat()
+        print(json.dumps(advertisement.to_dict(), indent=2, sort_keys=True))
+        return 0
+    if args.command == "worker":
+        return 0 if run_worker() else 1
     raise AssertionError(f"unhandled command: {args.command}")

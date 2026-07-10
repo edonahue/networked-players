@@ -1,5 +1,6 @@
 """Capability-routed bounded job platform."""
 
+from .broker import publish_advertisement, queue_name, read_advertisements
 from .models import (
     ArtifactDescriptor,
     CapabilityRequirement,
@@ -20,6 +21,9 @@ __all__ = [
     "RunResult",
     "WorkerAdvertisement",
     "WorkloadSpec",
+    "publish_advertisement",
+    "queue_name",
+    "read_advertisements",
     "select_worker",
 ]
 

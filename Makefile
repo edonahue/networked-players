@@ -11,6 +11,7 @@
 	cluster-recovery-drill harden-workers equip-workers equip-x86-workers replicate-x86 replicate-pi deploy-jobs-broker deploy-catalog-data cluster-benchmark-distributed \
 	deploy-verify-job verify-challenge-distributed \
 	deploy-cohort-seed-bfs-job cohort-seed-bfs-distributed score-cohort-on-worker \
+	platform-build platform-deploy platform-status \
 	dask-up dask-down
 
 help: ## List available targets
@@ -143,6 +144,15 @@ cohort-seed-bfs-distributed: ## Dispatch a resolved cohort's seed-BFS across wor
 
 score-cohort-on-worker: ## Run cohort connectivity scoring ON a worker (ADR 0033) to keep it off the Swarm manager; needs a verified cache there (make replicate-x86) + current code; ARGS="--source-id <id> --snapshot-date <date>"
 	./scripts/score-cohort-on-worker.sh $(ARGS)
+
+platform-build: ## Build immutable contracts/platform wheels under local/platform/releases/<commit>
+	./scripts/build-platform-release.sh
+
+platform-deploy: ## Deploy the built platform runtime to capability workers; ARGS="--limit pi_workers"
+	./infra/ansible/run-deploy-platform-runtime-local.sh $(ARGS)
+
+platform-status: ## Read standing worker advertisements from the private jobs broker
+	./scripts/platform-status.sh $(ARGS)
 
 dask-up: ## Build the image, start Jupyter, and deploy the Dask scheduler/worker Swarm stack (see infra/dask/README.md)
 	./infra/dask/deploy-dask.sh

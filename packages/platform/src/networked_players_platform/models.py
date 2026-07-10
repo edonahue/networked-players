@@ -8,6 +8,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
+_COMMIT_RE = re.compile(r"^[0-9a-f]{40}$")
 _IDENTIFIER_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{0,127}$")
 
 
@@ -112,6 +113,8 @@ class WorkerAdvertisement:
             raise ValueError("max_job_memory_mb cannot exceed total_memory_mb")
         if self.active_jobs < 0:
             raise ValueError("active_jobs must be non-negative")
+        if not _COMMIT_RE.fullmatch(self.runtime_commit):
+            raise ValueError("runtime_commit must be a lowercase 40-character Git SHA")
         _parse_datetime(self.observed_at, "observed_at")
         if self.last_assigned_at is not None:
             _parse_datetime(self.last_assigned_at, "last_assigned_at")
@@ -149,6 +152,8 @@ class RunRequest:
         _identifier(self.workload_id, "workload_id")
         _identifier(self.workload_version, "workload_version")
         _parse_datetime(self.submitted_at, "submitted_at")
+        if not _COMMIT_RE.fullmatch(self.runtime_commit):
+            raise ValueError("runtime_commit must be a lowercase 40-character Git SHA")
         if self.timeout_seconds <= 0 or self.max_retries < 0:
             raise ValueError("run timeout/retry policy is invalid")
         for output in self.expected_outputs:
@@ -176,6 +181,8 @@ class RunResult:
             raise ValueError("run result status must be succeeded or failed")
         _parse_datetime(self.started_at, "started_at")
         _parse_datetime(self.ended_at, "ended_at")
+        if not _COMMIT_RE.fullmatch(self.runtime_commit):
+            raise ValueError("runtime_commit must be a lowercase 40-character Git SHA")
         if self.status == "succeeded" and self.error is not None:
             raise ValueError("a succeeded run cannot carry an error")
 

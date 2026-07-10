@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+from networked_players_platform.broker import publish_advertisement, read_advertisements
 from networked_players_platform.cli import main
 from networked_players_platform.models import (
     CapabilityRequirement,
@@ -17,6 +18,23 @@ from networked_players_platform.staging import describe_artifact, publish_comple
 
 COMMIT = "a" * 40
 MANIFEST_HASH = "b" * 64
+
+
+class _FakeStore:
+    def __init__(self) -> None:
+        self.values: dict[str, str] = {}
+
+    def setex(self, name: str, time: int, value: str) -> None:
+        assert time > 0
+        self.values[name] = value
+
+    def scan_iter(self, match: str):
+        prefix = match.removesuffix("*")
+        return (key for key in self.values if key.startswith(prefix))
+
+    def get(self, name: bytes | str) -> bytes | str | None:
+        key = name.decode() if isinstance(name, bytes) else name
+        return self.values.get(key)
 
 
 def _worker(
@@ -93,3 +111,10 @@ def test_cluster_status_reads_local_advertisements(tmp_path: Path, capsys) -> No
     (workers / "worker-1.json").write_text(json.dumps(worker.to_dict()))
     assert main(["cluster-status", "--state-dir", str(tmp_path), "--json"]) == 0
     assert json.loads(capsys.readouterr().out)["worker_count"] == 1
+
+
+def test_broker_round_trips_advertisements() -> None:
+    store = _FakeStore()
+    worker = _worker("worker-1", observed_at=datetime(2026, 7, 10, tzinfo=UTC))
+    publish_advertisement(store, worker)
+    assert read_advertisements(store) == [worker]

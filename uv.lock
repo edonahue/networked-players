@@ -336,10 +336,16 @@ version = "0.1.0"
 source = { editable = "packages/platform" }
 dependencies = [
     { name = "networked-players-contracts" },
+    { name = "redis" },
+    { name = "rq" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "networked-players-contracts", editable = "packages/contracts" }]
+requires-dist = [
+    { name = "networked-players-contracts", editable = "packages/contracts" },
+    { name = "redis", specifier = ">=5,<9" },
+    { name = "rq", specifier = ">=2,<3" },
+]
 
 [[package]]
 name = "packaging"
