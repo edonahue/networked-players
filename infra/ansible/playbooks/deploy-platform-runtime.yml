@@ -75,6 +75,21 @@
       register: platform_install
       changed_when: "'Installed' in platform_install.stdout"
 
+    - name: Install catalog and graph workloads on capable x86 workers
+      ansible.builtin.command:
+        argv:
+          - "{{ ansible_env.HOME }}/.local/bin/uv"
+          - pip
+          - install
+          - --python
+          - "{{ platform_venv }}/bin/python"
+          - --find-links
+          - "{{ platform_release_root }}/wheels"
+          - networked-players-catalog==0.1.0
+      register: platform_catalog_install
+      changed_when: "'Installed' in platform_catalog_install.stdout"
+      when: platform_install_catalog | default(false) | bool
+
     - name: Verify deployed imports and CLI
       ansible.builtin.command:
         argv:
@@ -95,7 +110,10 @@
           PLATFORM_TAGS={{ platform_tags | join(',') }}
           PLATFORM_MAX_JOB_MEMORY_MB={{ platform_max_job_memory_mb }}
           PLATFORM_RUNTIME_COMMIT={{ platform_runtime_commit }}
-          PLATFORM_DATASETS_JSON=[]
+          PLATFORM_DATASETS_JSON={{ platform_datasets_json | default([]) | to_json }}
+          {% if catalog_cache_root is defined %}
+          CATALOG_DATA_DIR={{ catalog_cache_root }}
+          {% endif %}
       no_log: true
 
     - name: Write standing platform worker unit
@@ -173,4 +191,5 @@
         msg:
           - "worker_id: {{ platform_worker_id }}"
           - "runtime_commit: {{ platform_runtime_commit }}"
+          - "catalog workload installed: {{ platform_install_catalog | default(false) }}"
           - "release changed: {{ platform_release_copy.changed }}"

@@ -159,6 +159,23 @@ class RunRequest:
         for output in self.expected_outputs:
             _identifier(output, "expected output")
 
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, value: dict[str, Any]) -> RunRequest:
+        payload = dict(value)
+        capabilities = dict(payload["capabilities"])
+        capabilities["architectures"] = tuple(capabilities.get("architectures", ()))
+        capabilities["tags"] = tuple(capabilities.get("tags", ()))
+        capabilities["datasets"] = tuple(
+            DatasetIdentity(**item) for item in capabilities.get("datasets", ())
+        )
+        payload["capabilities"] = CapabilityRequirement(**capabilities)
+        payload["inputs"] = tuple(ArtifactDescriptor(**item) for item in payload.get("inputs", ()))
+        payload["expected_outputs"] = tuple(payload.get("expected_outputs", ()))
+        return cls(**payload)
+
 
 @dataclass(frozen=True, slots=True)
 class RunResult:
@@ -185,6 +202,9 @@ class RunResult:
             raise ValueError("runtime_commit must be a lowercase 40-character Git SHA")
         if self.status == "succeeded" and self.error is not None:
             raise ValueError("a succeeded run cannot carry an error")
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
 
 
 def _parse_datetime(value: str, field_name: str) -> datetime:

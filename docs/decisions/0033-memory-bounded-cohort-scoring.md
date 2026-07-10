@@ -81,19 +81,15 @@ side needs to expand it). Only a path requiring travel *through* two consecutive
 artists stays unprovable — a strictly smaller unprovable set than the single-direction
 BFS, never larger.
 
-## What this deliberately does not touch
+## Superseded fleet path
 
-`_bfs_from_seed`, the fleet job body (`infra/ansible/files/cohort_seed_bfs_job.py`), and
-its cross-check test are left exactly as they are. `_bfs_from_seed` is retained solely as
-the reference the fleet mirror is cross-checked against (ADR 0032); it is no longer on the
-local scoring path. The fleet unit still ships full-depth single-direction parent maps and
-carries the same unbounded-cache design — redesigning it (per-target chains, bidirectional
-dispatch) is deferred to a later phase so the reference path stabilizes first, per the
-plan this ADR implements. `precomputed_seed_results` (the fleet ingestion path) keeps its
-prior pair-reconstruction logic unchanged. `challenge.py` and `cohort_resolve.py` are
-unaffected. `max_workers` remains on the signature for compatibility but no longer fans
-local scoring across cursors — with each hop a single DuckDB statement, `--threads` is the
-effective parallelism lever.
+ADR 0034 removed the deployed seed-BFS mirror and its host-targeted enqueue lane. Whole
+cohorts now run through the same bounded `_ReachScorer` implementation on a
+capability-matched x86 worker. `_bfs_from_seed` and `precomputed_seed_results` remain only
+as internal correctness references; they are not installed or dispatched by the platform.
+`challenge.py` and `cohort_resolve.py` are unaffected. `max_workers` remains on the
+signature for compatibility but no longer fans local scoring across cursors — with each
+hop a single DuckDB statement, `--threads` is the effective parallelism lever.
 
 ## Consequences
 
@@ -118,10 +114,9 @@ numbers stay local per ADR 0018.
 
 ## Revisit triggers
 
-Revisit the fleet job body's design (per-target chains, bidirectional dispatch) once the
-local reach path is confirmed on real hardware and a worker holds a verified cache — the
-current single-direction parent-map return is unworkable for hub seeds over Redis
-(445k entries/seed). Revisit `--max-frontier-expansion`'s default now that it is a pure
+Revisit distributed scoring only if whole-cohort x86 execution misses a measured wall-time
+or throughput target; do not revive per-seed parent-map transfer (445k entries/seed in the
+measured worst case). Revisit `--max-frontier-expansion`'s default now that it is a pure
 time knob and a real degree distribution is measurable. Revisit `expansion_depth` if a
 cohort needs `max_hops > 4` routinely (the split stays balanced, but the meet self-join
 grows with each side's reach).

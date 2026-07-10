@@ -26,6 +26,8 @@ platform_tags:
   - validation
 platform_max_job_memory_mb: 384
 platform_systemd_memory_max: 512M
+platform_install_catalog: false
+platform_datasets_json: []
 # but is not required to start -- an existing account with sudo is fine.
 ansible_user: deploy
 ansible_ssh_private_key_file: ~/.ssh/networked-players-cluster_ed25519

@@ -588,15 +588,11 @@ _SeedResult = tuple[int, dict[int, tuple[int, int]] | None, frozenset[int], str 
 
 
 def seed_results_from_job_output(raw: dict[str, dict[str, Any]]) -> dict[int, _SeedResult]:
-    """Converts a fleet-dispatched job's JSON-safe per-seed output --
-    `infra/ansible/files/cohort_seed_bfs_job.py`'s own return shape, or
-    `scripts/enqueue_cohort_seed_bfs.py`'s merged `per_seed_results` -- into
-    the plain `_SeedResult` tuples `score_pairs`'s merge loop already
-    expects. This is the one place a fleet-computed result and a
-    locally-computed one become indistinguishable to the rest of this
-    module -- see ADR 0032. JSON can't have int dict keys, so the job body
-    encodes `parent` as a list of `[artist_id, parent_artist_id,
-    release_id]` triples rather than a dict; this reverses that."""
+    """Convert the legacy JSON-safe per-seed representation to `_SeedResult` tuples.
+
+    This remains an internal correctness reference for the original single-direction
+    search. ADR 0034 removed its remote deployment path from the platform.
+    """
     results: dict[int, _SeedResult] = {}
     for seed_key, entry in raw.items():
         artist_id = int(seed_key)

@@ -7,7 +7,6 @@ import json
 from collections.abc import Sequence
 from datetime import UTC, date, datetime
 from pathlib import Path
-from typing import Any
 
 from . import __version__
 from .discogs.download import download_file
@@ -753,13 +752,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.command == "score-cohort-connectivity":
         import sys
 
-        from networked_players_graph_core.cohort_connectivity import (
-            build_connectivity_cohort,
-            summarize_connectivity,
-            validate_connectivity,
-            write_connectivity_cohort,
-        )
-        from networked_players_graph_core.graph import CreditGraph
+        from networked_players_graph_core.cohort_scoring import score_cohort_to_directory
 
         from .cohort_preflight import memory_limit_preflight_failure
 
@@ -769,80 +762,22 @@ def main(argv: Sequence[str] | None = None) -> int:
                 print(preflight_failure, file=sys.stderr)
                 return 1
 
-        resolved = json.loads(args.resolved.read_text())
-        dataset_manifest = json.loads((args.dataset / "manifest.json").read_text())
-
-        diagnostics: dict[str, Any] = {}
-        with CreditGraph.open(
-            args.dataset,
+        summary = score_cohort_to_directory(
+            resolved_path=args.resolved,
+            dataset_path=args.dataset,
+            output_dir=args.output_dir,
             memory_limit=args.memory_limit,
             threads=args.threads,
             max_artists_per_release=args.max_artists_per_release,
             temp_dir=args.temp_dir,
-        ) as graph:
-            connectivity_artifact = build_connectivity_cohort(
-                graph,
-                resolved,
-                dataset_snapshot_date=str(dataset_manifest["snapshot_date"]),
-                max_hops=args.max_hops,
-                max_pairs=args.max_pairs,
-                max_frontier_expansion=args.max_frontier_expansion,
-                pair_timeout_seconds=args.pair_timeout_seconds,
-                max_workers=args.max_workers,
-                max_reach_rows=args.max_reach_rows,
-                # Recorded into the artifact -- settings only, never paths
-                # (a temp-dir path would trip the artifact's own
-                # forbidden-substring validation, by design).
-                duckdb_settings={
-                    "memory_limit": args.memory_limit,
-                    "threads": args.threads,
-                    "custom_temp_dir": args.temp_dir is not None,
-                },
-                diagnostics=diagnostics,
-            )
-        diagnostics["params"] = connectivity_artifact["scoring_params"]
-
-        validate_connectivity(connectivity_artifact)
-        playable_pairs, report_markdown = summarize_connectivity(connectivity_artifact)
-
-        args.output_dir.mkdir(parents=True, exist_ok=True)
-        write_connectivity_cohort(connectivity_artifact, args.output_dir / "connectivity.json")
-        (args.output_dir / "playable-pairs.json").write_text(
-            json.dumps(playable_pairs, indent=2, sort_keys=True) + "\n"
+            max_hops=args.max_hops,
+            max_pairs=args.max_pairs,
+            max_frontier_expansion=args.max_frontier_expansion,
+            pair_timeout_seconds=args.pair_timeout_seconds,
+            max_workers=args.max_workers,
+            max_reach_rows=args.max_reach_rows,
         )
-        (args.output_dir / "review-report.md").write_text(report_markdown)
-        # Local-only scoring telemetry (per-seed reach sizes/timings, RSS)
-        # next to the artifact it describes -- see ADR 0033.
-        (args.output_dir / "scoring-diagnostics.json").write_text(
-            json.dumps(diagnostics, indent=2, sort_keys=True) + "\n"
-        )
-
-        by_status = {"found": 0, "no_path": 0, "skipped": 0}
-        by_difficulty = {"easy": 0, "medium": 0, "hard": 0, "very_hard": 0}
-        flagged_pair_count = 0
-        for pair in connectivity_artifact["pairs"]:
-            by_status[pair["status"]] += 1
-            if pair["status"] == "found":
-                by_difficulty[pair["difficulty"]] += 1
-            if pair["warnings"]:
-                flagged_pair_count += 1
-
-        print(
-            json.dumps(
-                {
-                    "output_dir": str(args.output_dir),
-                    "pair_count": len(connectivity_artifact["pairs"]),
-                    "by_status": by_status,
-                    "by_difficulty": by_difficulty,
-                    "flagged_pair_count": flagged_pair_count,
-                    "wall_s": diagnostics.get("wall_s"),
-                    "reach_total_rows": diagnostics.get("reach_total_rows"),
-                    "peak_rss_mb": (diagnostics.get("rss_mb") or {}).get("after_expansion"),
-                },
-                indent=2,
-                sort_keys=True,
-            )
-        )
+        print(json.dumps(summary, indent=2, sort_keys=True))
         return 0
 
     if args.command == "promote-playable-cohort":

@@ -10,7 +10,7 @@
 	cluster-health cluster-benchmark cluster-onboard cluster-swarm-join cluster-smoke-test \
 	cluster-recovery-drill harden-workers equip-workers equip-x86-workers replicate-x86 replicate-pi deploy-jobs-broker deploy-catalog-data cluster-benchmark-distributed \
 	deploy-verify-job verify-challenge-distributed \
-	deploy-cohort-seed-bfs-job cohort-seed-bfs-distributed score-cohort-on-worker \
+	score-cohort-on-worker \
 	platform-build platform-deploy platform-status \
 	dask-up dask-down
 
@@ -136,13 +136,7 @@ deploy-verify-job: ## Deploy the challenge-evidence verification job to Pi worke
 verify-challenge-distributed: ## Re-verify a challenge.v2 artifact's evidence across Pi workers' local caches (ADR 0025); needs deploy-jobs-broker + deploy-verify-job; writes local/jobs/ only
 	./scripts/enqueue-verify-challenge.sh $(ARGS)
 
-deploy-cohort-seed-bfs-job: ## Deploy the cohort seed-BFS job to workers (x86_workers + pi_workers); ARGS="--limit worker-01" (ADR 0032)
-	./infra/ansible/run-deploy-cohort-seed-bfs-job-local.sh $(ARGS)
-
-cohort-seed-bfs-distributed: ## Dispatch a resolved cohort's seed-BFS across workers' local one-hop caches (ADR 0025/0032); needs deploy-jobs-broker + deploy-cohort-seed-bfs-job; writes local/jobs/ only; ARGS="--resolved <path> --snapshot-date <date>"
-	./scripts/enqueue-cohort-seed-bfs.sh $(ARGS)
-
-score-cohort-on-worker: ## Run cohort connectivity scoring ON a worker (ADR 0033) to keep it off the Swarm manager; needs a verified cache there (make replicate-x86) + current code; ARGS="--source-id <id> --snapshot-date <date>"
+score-cohort-on-worker: ## Submit whole-cohort scoring to a matching platform worker; needs platform runtime + verified x86 cache; ARGS="--source-id <id> --snapshot-date <date>"
 	./scripts/score-cohort-on-worker.sh $(ARGS)
 
 platform-build: ## Build immutable contracts/platform wheels under local/platform/releases/<commit>

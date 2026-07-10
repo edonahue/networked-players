@@ -11,12 +11,14 @@ from .models import (
     WorkloadSpec,
 )
 from .scheduler import NoEligibleWorkerError, select_worker
+from .workloads import RegisteredWorkload
 
 __all__ = [
     "ArtifactDescriptor",
     "CapabilityRequirement",
     "DatasetIdentity",
     "NoEligibleWorkerError",
+    "RegisteredWorkload",
     "RunRequest",
     "RunResult",
     "WorkerAdvertisement",

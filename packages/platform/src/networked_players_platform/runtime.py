@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import importlib.metadata
 import json
 import os
 import platform
@@ -13,6 +12,7 @@ from rq.registry import StartedJobRegistry
 
 from .broker import publish_advertisement, queue_name, redis_from_url
 from .models import WorkerAdvertisement
+from .workloads import discover_workloads
 
 
 class RuntimeConfigurationError(RuntimeError):
@@ -37,11 +37,7 @@ def _memory_total_mb() -> int:
 
 
 def _workloads() -> dict[str, str]:
-    found = {"platform.self-test": "1"}
-    for entry_point in importlib.metadata.entry_points(group="networked_players.workloads"):
-        version = entry_point.dist.version if entry_point.dist is not None else "unknown"
-        found[entry_point.name] = version
-    return found
+    return {name: registered.spec.version for name, registered in discover_workloads().items()}
 
 
 def build_advertisement(*, active_jobs: int = 0) -> WorkerAdvertisement:

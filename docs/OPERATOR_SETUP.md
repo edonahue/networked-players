@@ -430,33 +430,35 @@ uv run networked-players-catalog score-cohort-connectivity \
   --memory-limit 3GB --threads 3 --pair-timeout-seconds 180
 ```
 
-Prefer `<x86-worker-ssh-target>` for a real one-hop dataset — this is real `CreditGraph`
-traversal work, the same dataset-locality preference Gate B's own expansion follows. To
-keep the memory-heavy reach expansion off the Swarm manager entirely, run it on an x86
-worker that already holds a verified one-hop cache (`make replicate-x86`) and is current
-on the scorer code:
+Prefer the capability platform for a real one-hop dataset. The selected x86 worker must
+advertise the exact scorer commit, `cohort.score` workload version, memory policy, tags,
+and verified dataset manifest. Build and deploy the clean commit first (see
+`infra/ansible/README.md`), then submit from the coordination host:
 
 ```bash
 make score-cohort-on-worker ARGS="--source-id <source-id> --snapshot-date <SNAPSHOT>"
-# ... optional: --worker <inventory-host> --memory-limit 2GB --threads 3
+# Optional policy pin: --worker-id <opaque-worker-id> --memory-limit 2GB --threads 3
 ```
 
-This copies the cohort's `resolved.json` up, scores against the worker's own local cache,
-and fetches `connectivity.json`/`playable-pairs.json`/`review-report.md`/
-`scoring-diagnostics.json` back into `local/analysis/cohorts/<source-id>/` — the same
-place the on-host command writes, so every step after this is identical. The worker keeps
-`--memory-limit` at or below half its available RAM (the on-host preflight applies there
-too); on a 7.6 GB ZimaBoard `2GB` is the safe default.
+The controller creates a unique local and remote run directory, hashes `resolved.json`,
+requires the worker's exact dataset-manifest identity, and enqueues only to a fresh matching
+advertisement. The worker checks the runtime commit and input hashes, writes to staging,
+and publishes a completed result atomically. The controller fetches and verifies every
+output hash before promoting `connectivity.json`, `playable-pairs.json`,
+`review-report.md`, and `scoring-diagnostics.json` into the usual analysis directory.
+Existing analysis outputs are preserved unless `--replace` is explicit.
 
-**Settings for a real, hub-heavy cohort on a 7.6 GB ZimaBoard.** Scoring is now
+The direct `score-cohort-connectivity` command remains an emergency/local development
+path. Normal real scoring should not run on the coordination host.
+
+**Settings for a real, hub-heavy cohort on a dedicated x86 worker.** Scoring is now
 memory-bounded — all search state lives in DuckDB, so `--memory-limit` genuinely caps the
 whole computation ([ADR 0033](decisions/0033-memory-bounded-cohort-scoring.md)). On the
-ZimaBoards use `--memory-limit 3GB --threads 3` and, because a real cohort's seeds are all
+dedicated worker use `--memory-limit 2GB --threads 3` and, because a real cohort's seeds are all
 hubs, raise `--pair-timeout-seconds` to `180` (the 30 s default is for tests/tiny cohorts
 and will skip every hub seed). Keep `--temp-dir` on the volume the dataset lives on if
 that differs from the process CWD. A preflight refuses a `--memory-limit` above half of
-the host's available RAM — the measured swap-death mode of the first real run; pass
-`--skip-preflight` only if you mean to. **Never raise `--memory-limit` to "make it pass"
+the host's available RAM — the measured swap-death mode of the first real run. **Never raise `--memory-limit` to "make it pass"
 without reading `scoring-diagnostics.json` first** (written next to `connectivity.json`):
 it shows per-seed reach sizes, timings, and peak RSS, so you can see *where* memory or
 time went rather than guessing.

@@ -14,15 +14,17 @@ make platform-status
 ```
 
 `deploy-platform-runtime.yml` installs the contracts/platform wheels into a versioned
-user-local virtual environment, verifies imports, switches the `current` symlink, and
-manages one standing RQ worker plus a 30-second capability heartbeat through user
-systemd. It contains no `become` task. Linger must already be enabled; the playbook
-fails rather than silently escalating if it is not.
+user-local virtual environment, installs catalog workloads only on configured x86 workers,
+verifies imports, switches the `current` symlink, and manages one standing RQ worker plus
+a 30-second capability heartbeat through user systemd. It contains no `become` task.
+Linger must already be enabled; the playbook fails rather than silently escalating if it
+is not.
 
-Real inventories define an opaque `platform_worker_id` and policy tags per host. Job
-requests use those advertised capabilities, never inventory hostnames. The broker URL
-remains private and is written to a mode-0600 worker environment file with Ansible
-`no_log` enabled.
+Real inventories define an opaque `platform_worker_id` and policy tags per host. X86
+workers also define `platform_datasets_json` from verified local cache manifests; an empty
+list deliberately makes dataset-dependent workloads ineligible. Job requests use those
+advertised capabilities, never inventory hostnames. The broker URL remains private and is
+written to a mode-0600 worker environment file with Ansible `no_log` enabled.
 
 Early playbooks should remain narrow:
 

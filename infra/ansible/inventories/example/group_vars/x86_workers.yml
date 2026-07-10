@@ -25,6 +25,7 @@ platform_tags:
   - graph
 platform_max_job_memory_mb: 4096
 platform_systemd_memory_max: 5G
+platform_install_catalog: true
 
 # playbooks/replicate-dataset-x86.yml (ADR 0025). Root directory for this
 # worker's disposable, read-only, verified dataset cache -- NOT the same as

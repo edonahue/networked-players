@@ -260,12 +260,7 @@ def test_score_pairs_concurrent_matches_sequential(dataset_root: Path) -> None:
 
 
 def test_score_pairs_with_precomputed_seed_results_matches_local(dataset_root: Path) -> None:
-    """Simulates a fleet dispatch (ADR 0032): compute each unique artist's
-    BFS independently (as a job body would), package it into the same
-    JSON-safe shape cohort_seed_bfs_job.py produces, and confirm
-    score_pairs's precomputed_seed_results path returns pairs identical to
-    local computation -- proving seed_results_from_job_output's round trip
-    and the new dispatch branch, not just that it doesn't crash."""
+    """Keep the legacy precomputed seed representation as a correctness reference."""
     albums = [
         _resolved_album(artist_id=100, release_id=1),  # Alice
         _resolved_album(artist_id=300, release_id=2),  # Cara

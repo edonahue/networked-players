@@ -33,6 +33,9 @@ jobs = [
 [project.scripts]
 networked-players-catalog = "networked_players_catalog.cli:main"
 
+[project.entry-points."networked_players.workloads"]
+cohort-score = "networked_players_catalog.platform_jobs:cohort_score_workload"
+
 [tool.uv.workspace]
 members = ["packages/contracts", "packages/platform"]
 
