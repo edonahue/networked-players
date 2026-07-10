@@ -50,7 +50,13 @@ def test_seed_never_captures_other_columns(tmp_path: Path) -> None:
         ],
     )
     seed = import_seed_csv(csv_path)
-    payload = json.dumps(seed.to_dict())
+    seed_payload = seed.to_dict()
+    assert set(seed_payload) == {"seed_version", "source", "imported_at", "release_ids"}
+    # imported_at is generated metadata and can coincidentally contain a numeric
+    # substring from a discarded private column (for example "500" in microseconds).
+    # Scan only the source-derived fields when asserting that columns were not retained.
+    source_derived = {key: value for key, value in seed_payload.items() if key != "imported_at"}
+    payload = json.dumps(source_derived)
     assert seed.release_ids == [123456]
     for forbidden in (
         "SECRET",
