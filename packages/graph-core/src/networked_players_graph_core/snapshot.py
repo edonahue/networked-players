@@ -72,6 +72,7 @@ def export_graph_snapshot(
         raise FileExistsError(f"snapshot already exists: {final_root}")
 
     credits_glob = str(dataset_root / "table=credits" / "*.parquet")
+    releases_glob = str(dataset_root / "table=releases" / "*.parquet")
 
     staging_root = output_root / f".snapshot={snapshot_date}.tmp-{uuid.uuid4().hex}"
     staging_root.mkdir(parents=True, exist_ok=False)
@@ -91,6 +92,9 @@ def export_graph_snapshot(
         try:
             connection.execute(
                 f"CREATE VIEW credits AS SELECT * FROM {read_parquet_sql(credits_glob)}"
+            )
+            connection.execute(
+                f"CREATE VIEW releases AS SELECT * FROM {read_parquet_sql(releases_glob)}"
             )
         except duckdb.IOException as exc:
             raise SnapshotError(f"could not open dataset at {dataset_root}: {exc}") from exc
