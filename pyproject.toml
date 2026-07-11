@@ -55,6 +55,11 @@ packages = [
 networked_players_catalog = "packages/catalog/src/networked_players_catalog"
 networked_players_graph_core = "packages/graph-core/src/networked_players_graph_core"
 
+[tool.setuptools.package-data]
+# The reviewable placeholder-artist exclusion list (ADR 0035); graph.py loads
+# it with importlib.resources, so it must ship inside the package.
+networked_players_graph_core = ["placeholder_artists.json"]
+
 [tool.pytest.ini_options]
 testpaths = [
   "packages/catalog/tests",

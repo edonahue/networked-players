@@ -65,13 +65,21 @@ def _resolved(albums: list[dict[str, Any]], *, snapshot_date: str = "20260601") 
 
 
 def _hop(
-    *, release_id: int, artist_a_id: int, artist_b_id: int, flags: list[str]
+    *,
+    release_id: int,
+    artist_a_id: int,
+    artist_b_id: int,
+    flags: list[str],
+    scope: str = "same_recording",
 ) -> dict[str, Any]:
+    """A hop carries exactly one strength flag and exactly one scope flag
+    (ADR 0035); `scope` defaults to the strongest so callers testing strength
+    semantics don't have to restate it."""
     return {
         "release_id": release_id,
         "artist_a_id": artist_a_id,
         "artist_b_id": artist_b_id,
-        "quality_flags": flags,
+        "quality_flags": [*flags, scope] if scope else list(flags),
     }
 
 
@@ -522,7 +530,20 @@ def test_validate_rejects_pair_referencing_unpublished_album() -> None:
 
 def test_validate_rejects_hop_without_strength_flag() -> None:
     artifact = _valid_playable_artifact()
-    artifact["pairs"][0]["hops"][0]["quality_flags"] = ["placeholder_artist_hop"]
+    artifact["pairs"][0]["hops"][0]["quality_flags"] = [
+        "placeholder_artist_hop",
+        "same_recording",
+    ]
+    with pytest.raises(CohortPromoteError):
+        validate_playable_cohort(artifact)
+
+
+def test_validate_rejects_hop_without_scope_flag() -> None:
+    """A hop must say which `credit_edges` rule admitted it. An artifact from
+    scorer_version <= 3 carries no scope flag at all and must not validate --
+    its edges came from the release-container graph ADR 0035 removed."""
+    artifact = _valid_playable_artifact()
+    artifact["pairs"][0]["hops"][0]["quality_flags"] = ["performer_credit"]
     with pytest.raises(CohortPromoteError):
         validate_playable_cohort(artifact)
 

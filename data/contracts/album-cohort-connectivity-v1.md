@@ -32,7 +32,7 @@ same directory — neither is a separate schema.
 | --- | --- | --- |
 | `schema_version` | int | Always 1. |
 | `source` | object | Carried forward unchanged from `resolved.json`'s own `source`. |
-| `scorer_version` | int | Version of the scoring/quality-flag logic (`SCORER_VERSION`), bumped on any material change. Currently 3 ([ADR 0033](../../docs/decisions/0033-memory-bounded-cohort-scoring.md), memory-bounded bidirectional reach scoring + recorded `scoring_params`). |
+| `scorer_version` | int | Version of the scoring/quality-flag logic (`SCORER_VERSION`), bumped on any material change. Currently 4 ([ADR 0035](../../docs/decisions/0035-track-scoped-credit-edges.md), track-scoped `credit_edges` traversal). Artifacts from version ≤ 3 came from a release-container graph in which any two artists on one compilation were one hop apart; their hop counts are **not comparable** to version 4's. |
 | `generated_at` | string (UTC ISO 8601) | When scoring ran. |
 | `dataset_snapshot_date` | string (`YYYYMMDD`) | The **one-hop** dataset's own snapshot date. Must equal `resolved.json`'s own `dataset_snapshot_date` — `build_connectivity_cohort` refuses to score against a mismatched vintage rather than silently doing so. |
 | `max_hops` | int | The bound actually used for every pair's search in this run (operator-settable via `--max-hops`, default 3). |
@@ -63,15 +63,34 @@ part of this contract, and is never published.
 field names as `challenge.py`'s existing `paths[].hops[]` shape, for consistency across
 artifacts.
 
-**`quality_flags`** always contains exactly one of these three mutually-exclusive
-strength flags, plus an optional stackable fourth:
+**`quality_flags`** always contains exactly one **strength** flag and exactly one
+**scope** flag, plus an optional stackable placeholder flag. Both are enforced by
+`networked_players_contracts.connectivity_failures`.
+
+Strength — how strong the credits behind the hop are:
 
 | Flag | Meaning |
 | --- | --- |
-| `co_billed_release_artists` | Both endpoints have a `credit_scope="release_artist"` credit on this release — a true split/collaboration release. The strongest connection type. |
-| `performer_credit` | At least one endpoint has a performer-caliber credit (main-artist or a non-"non-performer-role" credit), but not both are release-artists. The normal expected connection type. |
-| `non_performer_only` | Every credit connecting the two endpoints on this release is a non-performer role token (Written-By, Mastered By, Producer, etc.) — the same category [ADR 0026](../../docs/decisions/0026-exclude-placeholder-artists-from-one-hop-frontier.md)/[ADR 0027](../../docs/decisions/0027-exclude-non-performer-roles-from-one-hop-frontier.md) exclude from *retention*, but which can still survive as *evidence* on an already-retained release (evidence completeness is never compromised). Weak, noisy — surfaced for human review, never auto-excluded. |
-| `placeholder_artist_hop` (stackable) | Either endpoint's artist ID is a known Discogs placeholder (194 "Various Artists", 151641 "Trad."). `CreditGraph`'s own traversal only excludes 194 from ever appearing as a hop endpoint; 151641 can still appear. Should be rare — seeing it at all warrants real attention. |
+| `co_billed_release_artists` | Both endpoints have a `credit_scope="release_artist"` credit on this release. |
+| `performer_credit` | At least one endpoint has a performer-caliber credit (main-artist, or a role that is not purely a non-performer token), but not both are release-artists. The normal expected connection type. |
+| `non_performer_only` | Every credit connecting the two endpoints on this release is a non-performer role token (Producer, Engineer, Mastered By, …). Since [ADR 0035](../../docs/decisions/0035-track-scoped-credit-edges.md) this means a *studio-only* link — real, but weaker than a performance. Composition credits (Written-By, Composed By) and packaging credits (Design, Photography By) no longer create edges at all, so they can never produce this flag. |
+
+Scope — which `credit_edges` rule admitted the hop ([ADR 0035](../../docs/decisions/0035-track-scoped-credit-edges.md)):
+
+| Flag | Meaning |
+| --- | --- |
+| `same_recording` | Both endpoints hold a credit on the same `track_index` of the evidence release: they contributed to the same recording. The strongest form of evidence. |
+| `release_scope_credit` | The endpoints share the release but not a track — an album-wide contributor (producer, engineer, mixer) starred off the release's billed artist. |
+
+Stackable:
+
+| Flag | Meaning |
+| --- | --- |
+| `placeholder_artist_hop` (stackable) | Either endpoint's artist ID is a known Discogs placeholder (194 "Various Artists", 151641 "Trad."). Since ADR 0035 `CreditGraph` excludes **both** from `credit_edges`, so this should now be unreachable; the flag stays armed as a regression alarm. Seeing it at all is a bug. |
+
+Role text alone can never establish `same_recording`: a compilation's track artists
+carry `role_text = NULL` and so grade as `performer_credit` even though they never met.
+That conflation is what ADR 0035 exists to correct.
 
 ## Performance guardrails and `"skipped"`
 

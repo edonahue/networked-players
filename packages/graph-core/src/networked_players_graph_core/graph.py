@@ -13,19 +13,409 @@ dependency direction is catalog CLI -> graph-core only, never the reverse.
 
 from __future__ import annotations
 
+import json
+import re
 import uuid
 from collections.abc import Sequence
 from dataclasses import dataclass
+from importlib import resources
 from pathlib import Path
 from typing import Any
 
 import duckdb
 
-# Discogs reserves artist ID 194 for "Various" -- a compilation placeholder,
-# not an individual. Excluded from the graph so a path never reads as a
-# "connection" to a non-person. Kept as our own copy (not imported from
-# catalog) per the no-reverse-dependency rule above.
-NON_INDIVIDUAL_ARTIST_IDS = frozenset({194})
+# Discogs placeholder identities -- IDs that stand in for "we don't know who"
+# or "many people", not for a person. Defined in `placeholder_artists.json`
+# beside this module so the list is reviewable and editable without touching
+# code; see ADR 0035 for the audit that produced it.
+#
+# Filtering is ALWAYS by numeric artist_id. The `name` in that file documents
+# the ID, it never selects it -- a real band can be called "Anonymous".
+#
+# Two policies, per entry:
+#   exclude -- the identity never enters `credit_edges`, so it cannot be a hop
+#              endpoint, a curator suggestion, or a site path node.
+#   flag    -- the identity stays traversable; `cohort_connectivity` tags every
+#              hop through it `placeholder_artist_hop` for human review.
+PLACEHOLDER_ARTISTS_CONFIG = "placeholder_artists.json"
+
+
+def _load_placeholder_artists() -> tuple[dict[int, str], frozenset[int], frozenset[int]]:
+    raw = json.loads(
+        resources.files(__package__).joinpath(PLACEHOLDER_ARTISTS_CONFIG).read_text("utf-8")
+    )
+    default = str(raw.get("default_policy", "exclude"))
+    policies: dict[int, str] = {}
+    names: dict[int, str] = {}
+    for entry in raw["artists"]:
+        artist_id = int(entry["artist_id"])
+        policy = str(entry.get("policy", default))
+        if policy not in ("exclude", "flag"):
+            raise ValueError(
+                f"{PLACEHOLDER_ARTISTS_CONFIG}: artist_id {artist_id} has unknown "
+                f"policy {policy!r}; expected 'exclude' or 'flag'"
+            )
+        policies[artist_id] = policy
+        names[artist_id] = str(entry["name"])
+    excluded = frozenset(a for a, p in policies.items() if p == "exclude")
+    flagged = frozenset(a for a, p in policies.items() if p == "flag")
+    return names, excluded, flagged
+
+
+PLACEHOLDER_ARTIST_NAMES, NON_INDIVIDUAL_ARTIST_IDS, FLAGGED_PLACEHOLDER_ARTIST_IDS = (
+    _load_placeholder_artists()
+)
+
+# Every placeholder identity, whatever its policy -- what `cohort_connectivity`
+# arms its `placeholder_artist_hop` alarm on.
+PLACEHOLDER_ARTIST_IDS = NON_INDIVIDUAL_ARTIST_IDS | FLAGGED_PLACEHOLDER_ARTIST_IDS
+
+# Names that mark an identity as a placeholder rather than a person. Used ONLY
+# by `placeholder_artist_candidates()` to *propose* additions to the config for
+# human review -- never to exclude an artist at query time, and never as a join
+# key. Deliberately anchored and conservative: "Untitled" and "None" are
+# omitted because both are plausible band names.
+PLACEHOLDER_NAME_PATTERN = (
+    r"^(various|various artists|unknown|unknown artist|no artist|not on label|"
+    r"traditional|trad\.?|anonymous|uncredited|n/a|artist unknown|no artist listed)"
+    r"( \([0-9]+\))?$"
+)
+
+# --- Two independent compilation guards (ADR 0035). ---
+#
+# A release with at least this many distinct `track_artist` identities is a
+# compilation/sampler/mashup container rather than one artist's record. Its
+# billed "artist" is a DJ, a label, or "Various" -- never a party to the
+# music -- so its tracks must not be treated as that artist's performances.
+COMPILATION_TRACK_ARTIST_THRESHOLD = 5
+
+# ...but a documentary or video compilation has NO `track_artist` rows at all:
+# it names its acts with `Featuring` track credits, so the guard above reads it
+# as a one-artist album and lets its billed director inherit every track. The
+# second guard is the track itself: a `track_index` naming more than this many
+# distinct edge-eligible artists is a container (a DVD chapter, a festival
+# film, a mixed set), not a recording.
+#
+# Measured over the 2026-06-01 one-hop corpus, distinct edge-eligible artists
+# per track: p50=1, p90=5, p99=14, p99.9=27, max=576. The containers this
+# guard exists to catch sit at 19 ("Glastonbury" DVD), 25 (its reissue) and
+# 314 ("The Work Of Director Spike Jonze"); every collaboration verified by
+# hand during the audit sits at <= 5 ("Man Next Door" is the widest, at 5).
+# 16 clears p99 while still excluding all three containers. A large orchestral
+# or big-band session can legitimately exceed it; that is an accepted false
+# negative, and the recorded revisit path is to gate on release format instead
+# (which this dataset does not currently parse).
+MAX_ARTISTS_PER_TRACK = 16
+
+# The one-hop snapshot does not retain Discogs' format descriptions, so it
+# cannot prove that an evidence release is a studio album. It *does* retain
+# track titles. A track explicitly labelled as a live, demo, remix, edit, or
+# acoustic version is a poor basis for the first curated cohort: it commonly
+# represents a B-side, reissue bonus track, or later reworking rather than the
+# album session the player expects. Keep these out of track-scoped edges. This
+# is deliberately narrow and title-based; it is not a claim to classify every
+# single or every studio album.
+_NON_STUDIO_TRACK_VARIANT_PATTERN = r"\b(live|demo|remix|re-?edit|acoustic|radio edit)\b"
+
+# Roles whose credit records a *quotation* of an artist, not a contribution
+# by them: a sample, an interpolation, an excerpt. Discogs writes these as a
+# bracketed qualifier ("Performer [Sample]", "Featuring [Samples From]",
+# "Written-By [Interpolation]") or as the bare role "Samples". The bracket is
+# load-bearing and must NOT be stripped before matching: "Sampler [Fairlight]"
+# is an *instrument* credit -- a real performance -- and has to survive.
+_QUOTATION_ROLE_PATTERN = r"\[[^\]]*(sample|interpolat|excerpt|contains)"
+_BARE_QUOTATION_ROLES = ("samples", "sampled by")
+
+# Roles that never justify an edge because they are not collaboration on a
+# recording: authorship of an underlying composition (which links a cover to
+# a songwriter, not two collaborators -- this is what made "Lennon-McCartney"
+# a 36,857-release hub) and packaging/business credits. Studio roles
+# (Producer, Engineer, Mixed By, Mastered By, Recorded By, Arranged By) are
+# deliberately NOT here: those people were in the room. A role only counts as
+# non-collaborative when EVERY comma-separated component matches, so
+# "Written-By, Producer" (Butch Vig on Nevermind) stays edge-eligible; an
+# unlisted component always means "keep", so this list can only under-filter.
+_NON_COLLABORATIVE_ROLE_TOKENS = frozenset(
+    {
+        "written-by",
+        "written by",
+        "composed by",
+        "music by",
+        "lyrics by",
+        "words by",
+        "songwriter",
+        "song by",
+        "libretto by",
+        "design",
+        "design concept",
+        "art direction",
+        "artwork",
+        "artwork by",
+        "layout",
+        "illustration",
+        "photography by",
+        "photography",
+        "liner notes",
+        "sleeve notes",
+        "a&r",
+        "management",
+        "translation",
+        "lacquer cut by",
+        # Business/logistics credits. "Executive-Producer" (181,979 rows) and
+        # "Coordinator" (143,312) are the two largest; a photo coordinator on
+        # both Nevermind and a Coltrane reissue is what put Nirvana two hops
+        # from John Coltrane in the first post-ADR-0035 rescore. Note these are
+        # distinct from "Producer", which stays edge-eligible.
+        "executive-producer",
+        "executive producer",
+        "coordinator",
+        "supervised by",
+        "authoring",
+        "other",
+        # Rework credits. A remixer, re-editor or mix DJ takes a finished
+        # recording and reworks it; they were never in the room with the artist.
+        # "Remix" alone holds 188,152 rows across 24,519 artists, and one
+        # remixer working on two compilations bridges every artist on them --
+        # Aaron Scofield ("Remix" on a Strokes track, "Edited By" on a Cure
+        # track) was a top-10 curator suggestion before this.
+        #
+        # NOT to be confused with "Mixed By" (733,088 rows), which is studio
+        # mixing of the original session and stays edge-eligible: that is Andy
+        # Wallace on Nevermind. A compound role like "Remix, Producer" also
+        # stays eligible, per the every-component rule -- this list can only
+        # under-filter.
+        "remix",
+        "remixed by",
+        "re-edit",
+        "re-edited by",
+        "edit",
+        "edited by",
+        "dj mix",
+        "mashup",
+    }
+)
+
+
+def _not_placeholder_sql(artist_column: str = "artist_id") -> str:
+    """SQL predicate excluding hard-`exclude` placeholder identities.
+
+    Every entry in `placeholder_artists.json` may be softened to `flag`, in
+    which case the exclusion set is empty and `NOT IN ()` would be a syntax
+    error -- so an empty set means "exclude nobody", not "exclude everybody".
+    """
+    if not NON_INDIVIDUAL_ARTIST_IDS:
+        return "TRUE"
+    ids = ", ".join(str(i) for i in sorted(NON_INDIVIDUAL_ARTIST_IDS))
+    return f"{artist_column} NOT IN ({ids})"
+
+
+def _non_studio_track_variant_sql(track_title_column: str = "track_title") -> str:
+    """SQL predicate for a plainly non-studio track-title variant."""
+    return (
+        "NOT regexp_matches(lower(coalesce("
+        f"{track_title_column}, '')), '{_NON_STUDIO_TRACK_VARIANT_PATTERN}')"
+    )
+
+
+def edge_ineligible_role(role_text: str | None) -> bool:
+    """Python mirror of `_edge_ineligible_role_sql`: True when a credit's role
+    means it cannot create an edge.
+
+    Kept in step with the SQL by `test_edge_ineligible_role_matches_the_sql`,
+    which runs both over the same role strings. Used to tell a curator which of
+    a release's credits actually justify a hop, versus which merely sit on the
+    same record (a `Written-By` on the same track is evidence of nothing).
+    """
+    if role_text is None:
+        return False
+    lowered = role_text.lower()
+    if re.search(_QUOTATION_ROLE_PATTERN, lowered):
+        return True
+    if lowered.strip() in _BARE_QUOTATION_ROLES:
+        return True
+    for component in role_text.split(","):
+        stripped = re.sub(r"\[.*\]", "", component).strip().lower()
+        if stripped not in _NON_COLLABORATIVE_ROLE_TOKENS:
+            return False
+    return True
+
+
+def _edge_ineligible_role_sql(role_column: str) -> str:
+    """SQL boolean: true when a credit's role means it must not create an edge.
+
+    False for a NULL role (a main artist/track artist credit). True when the
+    role is a quotation (see `_QUOTATION_ROLE_PATTERN`) or when *every*
+    comma-separated component is a known `_NON_COLLABORATIVE_ROLE_TOKENS`
+    entry.
+    """
+    tokens = ", ".join(f"'{token}'" for token in sorted(_NON_COLLABORATIVE_ROLE_TOKENS))
+    return f"""(
+        {role_column} IS NOT NULL
+        AND (
+            regexp_matches(lower({role_column}), '{_QUOTATION_ROLE_PATTERN}')
+            OR lower(trim({role_column})) IN {_BARE_QUOTATION_ROLES!r}
+            OR NOT list_bool_or(
+                list_transform(
+                    str_split({role_column}, ','),
+                    x -> NOT (lower(trim(regexp_replace(x, '\\[.*\\]', ''))) IN ({tokens}))
+                )
+            )
+        )
+    )"""
+
+
+def credit_edges_sql(
+    *,
+    max_artists_per_release: int,
+    compilation_track_artist_threshold: int = COMPILATION_TRACK_ARTIST_THRESHOLD,
+    max_artists_per_track: int = MAX_ARTISTS_PER_TRACK,
+    credits_relation: str = "credits",
+) -> str:
+    """A SELECT producing the directed, deduplicated co-credit edge relation
+    `(artist_a_id, artist_b_id, release_id)` over `credits_relation`.
+
+    An edge means "these two artists contributed to the same recording", not
+    "these two artists appear somewhere on the same disc". Sharing a
+    `release_id` is emphatically NOT enough: a 46-track DJ compilation would
+    otherwise make a 46-artist clique, which is exactly how a 2026-07-10 audit
+    found Pink Floyd one hop from Nas. Three rules, all keyed on numeric
+    `artist_id` (see ADR 0035):
+
+    * `same_recording` -- a track's performers (its `track_artist` rows; or,
+      when a track has none and the release is billed to exactly one artist,
+      that artist) are joined to every other edge-eligible credit on that same
+      `track_index`, PROVIDED one endpoint is a billed artist on the release.
+      This is a star from the performers outward, not a clique (two `Featuring`
+      guests on one DVD chapter never touch each other), and the billed-anchor
+      keeps a DJ sampler's track from connecting the two unrelated artists it
+      samples ("2 Worlds Collide", billed to DJ KO).
+    * `co_performers` -- performers of one track are joined to each other, but
+      only on an album-shaped release. On a mashup ("New Dress / The Robots")
+      or a bootleg split, the co-billed "performers" of a track never played
+      together.
+    * `release_scope` -- an album-shaped release's billed artist is joined to
+      its release-scope contributors (an album-wide producer, engineer, or
+      mixer). Track-scope credits are excluded here: they belong to their own
+      track's performers, not to whoever is billed on the sleeve.
+
+    Two compilation guards apply throughout. `compilation_track_artist_threshold`
+    catches releases that bill many artists per track; `max_artists_per_track`
+    catches the container tracks a documentary or video compilation uses instead
+    (a single DVD chapter naming 314 acts with `Featuring` credits). No rule may
+    read a track above the second cap, including the single-billed fallback --
+    otherwise a festival film's director inherits every act on the bill.
+    """
+    ineligible = _edge_ineligible_role_sql("role_text")
+    not_placeholder = _not_placeholder_sql()
+    studio_track = _non_studio_track_variant_sql()
+    cap = int(max_artists_per_release)
+    track_cap = int(max_artists_per_track)
+    return f"""
+    WITH edge_credits AS (
+        SELECT release_id, track_index, track_title, credit_scope, artist_id
+        FROM {credits_relation}
+        WHERE playable_identity AND artist_id IS NOT NULL AND artist_id > 0
+          AND {not_placeholder}
+          AND NOT {ineligible}
+    ), release_shape AS (
+        SELECT release_id,
+               count(DISTINCT CASE WHEN credit_scope = 'track_artist'
+                                   THEN artist_id END) AS track_artist_count,
+               count(DISTINCT CASE WHEN credit_scope = 'release_artist'
+                                   THEN artist_id END) AS billed_artist_count,
+               count(DISTINCT artist_id) AS artist_count
+        FROM edge_credits GROUP BY release_id
+    ), album_shaped AS (
+        SELECT release_id FROM release_shape
+        WHERE track_artist_count < {int(compilation_track_artist_threshold)}
+          AND artist_count BETWEEN 2 AND {cap}
+    ), single_billed AS (
+        SELECT release_id FROM release_shape WHERE billed_artist_count = 1
+    ), track_groups AS (
+        SELECT release_id, track_index, min(track_title) AS track_title FROM edge_credits
+        WHERE track_index IS NOT NULL
+        GROUP BY release_id, track_index
+        HAVING count(DISTINCT artist_id) <= {track_cap}
+    ), billed_artists AS (
+        SELECT DISTINCT release_id, artist_id FROM edge_credits
+        WHERE credit_scope = 'release_artist'
+    ), track_performers AS (
+        SELECT release_id, track_index, artist_id FROM edge_credits
+        WHERE credit_scope = 'track_artist' AND track_index IS NOT NULL
+        UNION
+        SELECT t.release_id, t.track_index, billed.artist_id
+        FROM (SELECT DISTINCT release_id, track_index FROM edge_credits
+              WHERE track_index IS NOT NULL) t
+        JOIN track_groups tg USING (release_id, track_index)
+        JOIN single_billed USING (release_id)
+        -- `album_shaped` as well as `single_billed`: without it a documentary
+        -- or festival film billed to one director (Julien Temple on the
+        -- "Glastonbury" DVD, 21 track artists) inherits every track and stars
+        -- out to each featured band.
+        JOIN album_shaped USING (release_id)
+        JOIN edge_credits billed USING (release_id)
+        WHERE billed.credit_scope = 'release_artist'
+          AND NOT EXISTS (
+              SELECT 1 FROM edge_credits x
+              WHERE x.release_id = t.release_id AND x.track_index = t.track_index
+                AND x.credit_scope = 'track_artist')
+    ), same_recording AS (
+        -- One endpoint must be the artist the record is actually BY. A real
+        -- feature connects a billed artist to a guest (Wu-Tang billed on "The
+        -- W" ↔ Nas "Featuring"; Lauryn Hill billed on her comp ↔ A Tribe
+        -- Called Quest). A mashup or DJ sampler connects two artists NEITHER of
+        -- whom is billed -- the billed act is the bootlegger ("2 Worlds
+        -- Collide" is billed to DJ KO; its track co-credits Nas and Red Hot
+        -- Chili Peppers, who never met). Without this anchor every mashup track
+        -- is a false collaboration. Real features lost here (a guest spot that
+        -- exists only on a various-artists compilation in this corpus) survive
+        -- via the same feature on the lead artist's own, billed release.
+        SELECT p.artist_id AS artist_a_id, c.artist_id AS artist_b_id, c.release_id
+        FROM track_performers p
+        JOIN edge_credits c USING (release_id, track_index)
+        JOIN track_groups USING (release_id, track_index)
+        WHERE p.artist_id <> c.artist_id AND c.credit_scope <> 'track_artist'
+          AND {studio_track.replace("track_title", "c.track_title")}
+          AND (
+              EXISTS (SELECT 1 FROM billed_artists b
+                      WHERE b.release_id = p.release_id AND b.artist_id = p.artist_id)
+              OR EXISTS (SELECT 1 FROM billed_artists b
+                         WHERE b.release_id = c.release_id AND b.artist_id = c.artist_id)
+          )
+    ), co_performers AS (
+        -- Both performers must be BILLED on the release. A duet or a split
+        -- single bills both acts; a mashup bootleg bills the bootlegger
+        -- ("Satanik Mashups Vol I" is billed to "Inhumanz", and its track
+        -- "Shoot The War Pigs" co-credits Nas and Black Sabbath, who never
+        -- met). Without this, every mashup track is a false collaboration.
+        SELECT p.artist_id AS artist_a_id, q.artist_id AS artist_b_id, p.release_id
+        FROM track_performers p
+        JOIN track_performers q USING (release_id, track_index)
+        JOIN album_shaped USING (release_id)
+        JOIN track_groups tg USING (release_id, track_index)
+        JOIN billed_artists bp ON bp.release_id = p.release_id AND bp.artist_id = p.artist_id
+        JOIN billed_artists bq ON bq.release_id = q.release_id AND bq.artist_id = q.artist_id
+        WHERE p.artist_id <> q.artist_id
+          AND {studio_track.replace("track_title", "tg.track_title")}
+    ), release_scope AS (
+        SELECT billed.artist_id AS artist_a_id, c.artist_id AS artist_b_id, billed.release_id
+        FROM edge_credits billed
+        JOIN edge_credits c USING (release_id)
+        JOIN album_shaped USING (release_id)
+        WHERE billed.credit_scope = 'release_artist'
+          AND c.credit_scope = 'release_credit'
+          AND billed.artist_id <> c.artist_id
+    ), directed AS (
+        SELECT artist_a_id, artist_b_id, release_id FROM same_recording
+        UNION ALL SELECT artist_b_id, artist_a_id, release_id FROM same_recording
+        UNION ALL SELECT artist_a_id, artist_b_id, release_id FROM co_performers
+        UNION ALL SELECT artist_a_id, artist_b_id, release_id FROM release_scope
+        UNION ALL SELECT artist_b_id, artist_a_id, release_id FROM release_scope
+    )
+    SELECT artist_a_id, artist_b_id, min(release_id) AS release_id
+    FROM directed GROUP BY artist_a_id, artist_b_id
+    """
+
 
 _CREDIT_COLUMNS = (
     "snapshot_date",
@@ -93,10 +483,24 @@ class EvidencePath:
 class CreditGraph:
     """A lazy, DuckDB-backed view over one dataset's playable-identity credits."""
 
-    def __init__(self, connection: duckdb.DuckDBPyConnection, *, max_artists_per_release: int):
+    def __init__(
+        self,
+        connection: duckdb.DuckDBPyConnection,
+        *,
+        max_artists_per_release: int,
+        edges_built: bool = True,
+    ):
         self._connection = connection
         self._max_artists_per_release = max_artists_per_release
         self._masters_attached = False
+        self._edges_built = edges_built
+
+    def _require_edges(self) -> None:
+        if not self._edges_built:
+            raise GraphError(
+                "this CreditGraph was opened with build_edges=False -- it can read "
+                "evidence (credit_rows, release, artist_name) but cannot traverse"
+            )
 
     @classmethod
     def open(
@@ -107,7 +511,13 @@ class CreditGraph:
         threads: int = 2,
         max_artists_per_release: int = 50,
         temp_dir: Path | None = None,
+        build_edges: bool = True,
     ) -> CreditGraph:
+        """`build_edges=False` skips materializing `credit_edges` -- the ~2.5
+        minute step on the real corpus. The result can read evidence rows
+        (`credit_rows`, `release`, `artist_name`) but raises on any traversal
+        call. Used by the editorial packet, which explains hops that were
+        already found rather than searching for new ones."""
         dataset_root = Path(dataset_root)
         manifest_path = dataset_root / "manifest.json"
         if not manifest_path.exists():
@@ -144,32 +554,37 @@ class CreditGraph:
         if credit_count is None or credit_count[0] == 0:
             raise GraphError(f"no credit rows found under {dataset_root}")
 
-        # A materialized TABLE, not a VIEW: every BFS hop re-queries this
-        # relation with a fresh WHERE/JOIN, and `linked_credits` has no
-        # per-artist filter on its unfiltered join side (`neighbors()`'s `b`
-        # side) -- left as a view, each of those queries re-scans and
-        # re-filters the full underlying credits Parquet data from scratch.
-        # Paying that scan once here (a hub artist's own neighbor lookup
-        # measured at 1-2s materialized vs. not completing in 120s as a view)
-        # is the same tradeoff `traversal_releases` below already makes.
-        # Plain TABLE, not TEMP TABLE: DuckDB's TEMP schema is connection/
-        # cursor-local, so a `cursor()` (see below) can't see a TEMP TABLE
-        # created on its parent connection -- a plain table in an in-memory
-        # database is exactly as ephemeral (gone when the connection closes)
-        # but lives in the shared `main` schema every cursor can read.
-        non_individual = ", ".join(str(i) for i in sorted(NON_INDIVIDUAL_ARTIST_IDS))
+        # Materialized TABLEs, not VIEWs: every BFS hop re-queries these
+        # relations with a fresh WHERE/JOIN, and left as views each of those
+        # queries would re-scan and re-filter the full underlying credits
+        # Parquet data from scratch. Plain TABLE, not TEMP TABLE: DuckDB's
+        # TEMP schema is connection/cursor-local, so a `cursor()` (see below)
+        # can't see a TEMP TABLE created on its parent connection -- a plain
+        # table in an in-memory database is exactly as ephemeral (gone when
+        # the connection closes) but lives in the shared `main` schema every
+        # cursor can read.
+        #
+        # `linked_credits` is NOT the traversal relation -- `credit_edges` is.
+        # It survives only to answer "what is this artist_id's display name"
+        # and to report corpus size; joining it to itself on `release_id` is
+        # what produced the compilation cliques ADR 0035 removes.
         connection.execute(
             "CREATE TABLE linked_credits AS "
             "SELECT release_id, artist_id, name FROM credits "
             "WHERE playable_identity AND artist_id IS NOT NULL AND artist_id > 0 "
-            f"AND artist_id NOT IN ({non_individual})"
+            f"AND {_not_placeholder_sql()}"
         )
-        connection.execute(
-            "CREATE TABLE traversal_releases AS "
-            "SELECT release_id FROM linked_credits GROUP BY release_id "
-            f"HAVING count(DISTINCT artist_id) BETWEEN 2 AND {int(max_artists_per_release)}"
+        if build_edges:
+            connection.execute(
+                "CREATE TABLE credit_edges AS "
+                + credit_edges_sql(max_artists_per_release=max_artists_per_release)
+            )
+            connection.execute("CREATE INDEX credit_edges_a ON credit_edges (artist_a_id)")
+        return cls(
+            connection,
+            max_artists_per_release=max_artists_per_release,
+            edges_built=build_edges,
         )
-        return cls(connection, max_artists_per_release=max_artists_per_release)
 
     def attach_masters(self, masters_root: Path) -> None:
         masters_root = Path(masters_root)
@@ -188,13 +603,15 @@ class CreditGraph:
 
     def cursor(self) -> CreditGraph:
         """A new `CreditGraph` sharing this one's underlying database --
-        same materialized `linked_credits`/`traversal_releases` tables, same
+        same materialized `linked_credits`/`credit_edges` tables, same
         `credits`/`releases` views -- via an independent DuckDB cursor. Safe
         to use concurrently from another thread: each cursor has its own
         query/interrupt state, per DuckDB's own concurrency model, while
         reading the same already-materialized data with no re-scan cost."""
         return CreditGraph(
-            self._connection.cursor(), max_artists_per_release=self._max_artists_per_release
+            self._connection.cursor(),
+            max_artists_per_release=self._max_artists_per_release,
+            edges_built=self._edges_built,
         )
 
     def interrupt(self) -> None:
@@ -205,12 +622,14 @@ class CreditGraph:
         subsequent calls."""
         self._connection.interrupt()
 
-    def credit_row_count(self, artist_id: int) -> int:
-        """A cheap upper-bound proxy for `artist_id`'s traversal fan-out:
-        its own linked-credit row count, without the self-join `neighbors()`
-        needs. Used to detect a likely hub before paying for that join."""
+    def degree(self, artist_id: int) -> int:
+        """`artist_id`'s exact traversal fan-out: how many artists it has an
+        edge to. Now that `credit_edges` is materialized this is a direct
+        count, not the credit-row-count proxy the old release-container
+        traversal had to estimate with."""
+        self._require_edges()
         row = self._connection.execute(
-            "SELECT count(*) FROM linked_credits WHERE artist_id = ?", [artist_id]
+            "SELECT count(*) FROM credit_edges WHERE artist_a_id = ?", [artist_id]
         ).fetchone()
         assert row is not None
         return int(row[0])
@@ -224,7 +643,7 @@ class CreditGraph:
         """A uniquely-named TEMP TABLE holding `artist_ids`, for a batched
         query's `JOIN`/`IN (SELECT ...)` -- callers are responsible for
         dropping it. TEMP TABLEs are cursor-local (not shared database-wide,
-        unlike `linked_credits`/`traversal_releases`), which is exactly what
+        unlike `linked_credits`/`credit_edges`), which is exactly what
         we want here: pure per-call scratch state, never meant to be visible
         to another cursor.
 
@@ -243,63 +662,58 @@ class CreditGraph:
             self._connection.execute(f"INSERT INTO {table} SELECT unnest([{literals}]::BIGINT[])")
         return table
 
-    def credit_row_counts(self, artist_ids: Sequence[int]) -> dict[int, int]:
-        """Batched `credit_row_count`: one query for the whole list instead
-        of one per artist -- the same batching `find_path` already does for
-        its own frontier-size check (see its `degrees` query below). An
-        artist_id with zero linked credits is simply absent from the
-        result -- callers should treat a missing key as 0, not an error."""
+    def degrees(self, artist_ids: Sequence[int]) -> dict[int, int]:
+        """Batched `degree`: one query for the whole list instead of one per
+        artist. An artist_id with no edges is simply absent from the result --
+        callers should treat a missing key as 0, not an error."""
+        self._require_edges()
         if not artist_ids:
             return {}
         table = self._scratch_id_table(artist_ids)
         try:
             rows = self._connection.execute(
-                "SELECT artist_id, count(*) FROM linked_credits "
-                f"WHERE artist_id IN (SELECT artist_id FROM {table}) "
-                "GROUP BY artist_id"
+                "SELECT artist_a_id, count(*) FROM credit_edges "
+                f"WHERE artist_a_id IN (SELECT artist_id FROM {table}) "
+                "GROUP BY artist_a_id"
             ).fetchall()
         finally:
             self._connection.execute(f"DROP TABLE {table}")
         return {int(artist_id): int(count) for artist_id, count in rows}
 
     def neighbors(self, artist_id: int) -> dict[int, tuple[int, ...]]:
+        """`artist_id`'s neighbors, each mapped to the single deterministic
+        release that evidences the edge (the lowest `release_id` among the
+        releases that justify it, per `credit_edges_sql`). The value stays a
+        tuple for callers that already index `[0]`."""
+        self._require_edges()
         rows = self._connection.execute(
-            "SELECT b.artist_id, list(DISTINCT a.release_id ORDER BY a.release_id) "
-            "FROM linked_credits a "
-            "JOIN linked_credits b USING (release_id) "
-            "JOIN traversal_releases USING (release_id) "
-            "WHERE a.artist_id = ? AND b.artist_id != a.artist_id "
-            "GROUP BY b.artist_id ORDER BY b.artist_id",
+            "SELECT artist_b_id, release_id FROM credit_edges "
+            "WHERE artist_a_id = ? ORDER BY artist_b_id",
             [artist_id],
         ).fetchall()
-        return {int(row[0]): tuple(int(r) for r in row[1]) for row in rows}
+        return {int(row[0]): (int(row[1]),) for row in rows}
 
     def neighbors_batch(self, artist_ids: Sequence[int]) -> dict[int, dict[int, tuple[int, ...]]]:
-        """Batched `neighbors`: one self-join for every requested artist_id's
-        fan-out instead of one query each -- the actual fix for a hub's
-        hop-1 frontier (thousands of artists) each needing hop 2's own
-        neighbor lookup. Every requested artist_id is a key in the result,
-        even with an empty dict value, so callers can't mistake "not yet
-        queried" for "queried, no neighbors"."""
+        """Batched `neighbors`: one scan for every requested artist_id's
+        fan-out instead of one query each. Every requested artist_id is a key
+        in the result, even with an empty dict value, so callers can't mistake
+        "not yet queried" for "queried, no neighbors"."""
+        self._require_edges()
         if not artist_ids:
             return {}
         table = self._scratch_id_table(artist_ids)
         try:
             rows = self._connection.execute(
-                "SELECT a.artist_id, b.artist_id, "
-                "list(DISTINCT a.release_id ORDER BY a.release_id) "
-                "FROM linked_credits a "
-                "JOIN linked_credits b USING (release_id) "
-                "JOIN traversal_releases USING (release_id) "
-                f"JOIN {table} f ON f.artist_id = a.artist_id "
-                "WHERE b.artist_id != a.artist_id "
-                "GROUP BY a.artist_id, b.artist_id ORDER BY a.artist_id, b.artist_id"
+                "SELECT e.artist_a_id, e.artist_b_id, e.release_id "
+                "FROM credit_edges e "
+                f"JOIN {table} f ON f.artist_id = e.artist_a_id "
+                "ORDER BY e.artist_a_id, e.artist_b_id"
             ).fetchall()
         finally:
             self._connection.execute(f"DROP TABLE {table}")
         result: dict[int, dict[int, tuple[int, ...]]] = {int(a): {} for a in artist_ids}
-        for a_id, b_id, release_ids in rows:
-            result[int(a_id)][int(b_id)] = tuple(int(r) for r in release_ids)
+        for a_id, b_id, release_id in rows:
+            result[int(a_id)][int(b_id)] = (int(release_id),)
         return result
 
     def find_path(
@@ -310,14 +724,15 @@ class CreditGraph:
         max_hops: int = 4,
         max_frontier_expansion: int | None = None,
     ) -> EvidencePath | None:
-        """Bounded BFS. `max_frontier_expansion`, when given, is a cheap
-        release-count proxy threshold (see `credit_row_count`): a frontier
-        artist above it is excluded from *expansion* this call (its own
-        edges are never explored), though it can still be *reached* as a
-        target via another artist's edges. If the target is never reached
-        and any artist was excluded this way, raises `FrontierTooLargeError`
-        instead of returning None -- the search result is inconclusive, not
-        a confirmed no-path, and must never be reported as one."""
+        """Bounded BFS. `max_frontier_expansion`, when given, is a degree
+        threshold (see `degree`): a frontier artist above it is excluded from
+        *expansion* this call (its own edges are never explored), though it
+        can still be *reached* as a target via another artist's edges. If the
+        target is never reached and any artist was excluded this way, raises
+        `FrontierTooLargeError` instead of returning None -- the search result
+        is inconclusive, not a confirmed no-path, and must never be reported
+        as one."""
+        self._require_edges()
         if from_artist_id == to_artist_id:
             raise GraphError("from_artist_id and to_artist_id must differ")
 
@@ -337,14 +752,14 @@ class CreditGraph:
                 safe_table = f"safe_frontier_{suffix}"
                 if max_frontier_expansion is not None:
                     degrees = self._connection.execute(
-                        "SELECT artist_id, count(*) FROM linked_credits "
-                        f"WHERE artist_id IN (SELECT artist_id FROM {frontier_table}) "
-                        "GROUP BY artist_id"
+                        "SELECT artist_a_id, count(*) FROM credit_edges "
+                        f"WHERE artist_a_id IN (SELECT artist_id FROM {frontier_table}) "
+                        "GROUP BY artist_a_id"
                     ).fetchall()
                     newly_capped = {
                         int(artist_id)
-                        for artist_id, release_count in degrees
-                        if release_count > max_frontier_expansion
+                        for artist_id, edge_count in degrees
+                        if edge_count > max_frontier_expansion
                     }
                     if newly_capped:
                         capped_artist_ids |= newly_capped
@@ -357,15 +772,11 @@ class CreditGraph:
                         expand_from_table = safe_table
 
                 level = self._connection.execute(
-                    "SELECT a.artist_id, b.artist_id, min(b.release_id) "
-                    "FROM linked_credits a "
-                    "JOIN linked_credits b USING (release_id) "
-                    "JOIN traversal_releases USING (release_id) "
-                    f"JOIN {expand_from_table} f ON f.artist_id = a.artist_id "
-                    "WHERE b.artist_id != a.artist_id "
-                    f"AND b.artist_id NOT IN (SELECT artist_id FROM {visited_table}) "
-                    "GROUP BY a.artist_id, b.artist_id "
-                    "ORDER BY a.artist_id, b.artist_id"
+                    "SELECT e.artist_a_id, e.artist_b_id, e.release_id "
+                    "FROM credit_edges e "
+                    f"JOIN {expand_from_table} f ON f.artist_id = e.artist_a_id "
+                    f"WHERE e.artist_b_id NOT IN (SELECT artist_id FROM {visited_table}) "
+                    "ORDER BY e.artist_a_id, e.artist_b_id"
                 ).fetchall()
 
                 if expand_from_table != frontier_table:
@@ -554,6 +965,36 @@ class CreditGraph:
         ).fetchone()
         return None if row is None else {"title": row[0], "year": row[1]}
 
+    def placeholder_artist_candidates(self) -> list[dict[str, Any]]:
+        """Playable identities whose name looks like a placeholder ("Various",
+        "Unknown Artist", "Anonymous", "Trad.", …), with their release counts.
+
+        A maintenance aid, not a filter: `credit_edges` excludes placeholders by
+        the numeric `NON_INDIVIDUAL_ARTIST_IDS` list, and nothing here changes
+        that. Run this against a new snapshot and review anything it reports
+        that the list does not already contain -- a real band can be named
+        "Anonymous", so the promotion from candidate to exclusion is a human
+        decision. Reads `credits`, not `credit_edges`, so already-excluded
+        identities still show up (that is the point: it should re-find the
+        whole list).
+        """
+        rows = self._connection.execute(
+            "SELECT artist_id, any_value(name), count(DISTINCT release_id) "
+            "FROM credits "
+            "WHERE playable_identity AND artist_id IS NOT NULL AND artist_id > 0 "
+            f"AND regexp_matches(lower(name), '{PLACEHOLDER_NAME_PATTERN}') "
+            "GROUP BY artist_id ORDER BY count(DISTINCT release_id) DESC, artist_id"
+        ).fetchall()
+        return [
+            {
+                "artist_id": int(artist_id),
+                "name": str(name),
+                "release_count": int(release_count),
+                "already_excluded": int(artist_id) in NON_INDIVIDUAL_ARTIST_IDS,
+            }
+            for artist_id, name, release_count in rows
+        ]
+
     def artist_name(self, artist_id: int) -> str | None:
         row = self._connection.execute(
             "SELECT name FROM linked_credits WHERE artist_id = ? "
@@ -563,24 +1004,36 @@ class CreditGraph:
         return None if row is None else str(row[0])
 
     def stats(self) -> dict[str, int]:
+        """Corpus size (`linked_credits`) alongside traversable graph size
+        (`credit_edges`). The gap between `artist_count` and
+        `connected_artist_count` is artists who hold a playable credit but
+        contributed to no recording alongside anyone else."""
+        self._require_edges()
         artist_count = self._connection.execute(
             "SELECT count(DISTINCT artist_id) FROM linked_credits"
-        ).fetchone()
-        traversal_release_count = self._connection.execute(
-            "SELECT count(*) FROM traversal_releases"
         ).fetchone()
         release_count = self._connection.execute(
             "SELECT count(DISTINCT release_id) FROM linked_credits"
         ).fetchone()
+        connected = self._connection.execute(
+            "SELECT count(DISTINCT artist_a_id) FROM credit_edges"
+        ).fetchone()
+        edge_count = self._connection.execute("SELECT count(*) FROM credit_edges").fetchone()
+        evidence_releases = self._connection.execute(
+            "SELECT count(DISTINCT release_id) FROM credit_edges"
+        ).fetchone()
         assert artist_count is not None
-        assert traversal_release_count is not None
         assert release_count is not None
+        assert connected is not None
+        assert edge_count is not None
+        assert evidence_releases is not None
         return {
             "artist_count": int(artist_count[0]),
-            "traversal_release_count": int(traversal_release_count[0]),
-            # Releases with a linked credit that don't drive traversal -- either
-            # fewer than 2 distinct linked artists, or more than the cap.
-            "non_traversal_release_count": int(release_count[0] - traversal_release_count[0]),
+            "release_count": int(release_count[0]),
+            "connected_artist_count": int(connected[0]),
+            # `credit_edges` holds both directions of every edge.
+            "edge_count": int(edge_count[0]) // 2,
+            "evidence_release_count": int(evidence_releases[0]),
         }
 
     def close(self) -> None:

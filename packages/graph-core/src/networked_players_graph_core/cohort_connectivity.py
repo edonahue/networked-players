@@ -3,19 +3,16 @@
 data/contracts/album-cohort-connectivity-v1.md and
 docs/decisions/0029-connectivity-scorer-flags-dont-fix-traversal-gap.md.
 
-Important gap this module exists to catch: `CreditGraph`'s own traversal
-(`NON_INDIVIDUAL_ARTIST_IDS`, `graph.py`) only excludes artist_id 194
-("Various Artists") -- it is NOT the same exclusion set
-`networked_players_catalog.discogs.onehop`'s `_NON_PLAYABLE_HUB_ARTIST_IDS`
-(also excludes 151641, "Trad.") and `_NON_PERFORMER_ROLE_TOKENS` apply when
-building the one-hop dataset itself. Those exclusions only control which
-releases get *retained*; once a release is retained, ALL its credit rows
-survive as evidence (by design -- evidence completeness), so a hop can still
-traverse through a placeholder identity or a purely non-performer credit if
-it happens to sit on an already-retained release. This module does not
-change `CreditGraph`'s traversal (that would silently alter `challenge.py`'s
-already-live behavior) -- it flags this class of connection post-hoc for
-human review instead. See ADR 0029 for the full reasoning.
+ADR 0029 used to describe this module's job as flagging, post-hoc, the gap
+between `CreditGraph`'s traversal filters and the stricter exclusions
+`onehop.py` applies when building the dataset. ADR 0035 closed that gap at
+the source: `CreditGraph` now traverses `credit_edges`, a track-scoped
+relation in which an edge means "contributed to the same recording" rather
+than "appears on the same disc". The flags below therefore no longer paper
+over a known-permissive graph; they *grade* an edge that is already sound.
+`same_recording` vs `release_scope_credit` records which rule admitted the
+hop, and `placeholder_artist_hop` stays armed purely as a regression alarm
+(ADR 0035 excludes 194/151641 from `credit_edges` outright).
 
 This module never imports from `networked_players_catalog` (graph-core's
 standing rule: catalog -> graph-core only, never the reverse) -- the
@@ -65,14 +62,17 @@ import duckdb
 
 from networked_players_contracts import CONNECTIVITY_SCHEMA_VERSION, connectivity_failures
 
-from .graph import CreditGraph, EvidencePath, Hop
+from .graph import PLACEHOLDER_ARTIST_IDS, CreditGraph, EvidencePath, Hop
 
 # 2: "skipped" status/skip_reason added alongside the cohort-scoped BFS
 #    substrate (ADR 0030).
 # 3: memory-bounded bidirectional reach scoring + recorded scoring_params
 #    (ADR 0033) -- earlier artifacts recorded no parameters at all, which
 #    made a crashed real run's settings unrecoverable.
-SCORER_VERSION = 3
+# 4: track-scoped `credit_edges` traversal (ADR 0035). Scores from versions
+#    <= 3 came from a release-container graph in which any two artists on one
+#    compilation were one hop apart; they are not comparable to these.
+SCORER_VERSION = 4
 
 # Default per-seed bound on materialized reach rows: a seed exceeding it is
 # reported skipped/reach_too_large rather than ground on. The worst real seed
@@ -82,18 +82,33 @@ DEFAULT_MAX_REACH_ROWS = 2_000_000
 
 _STRENGTH_FLAGS = frozenset({"co_billed_release_artists", "performer_credit", "non_performer_only"})
 
-# Discogs canonical placeholder identities -- kept as our own copy of
-# onehop.py's _NON_PLAYABLE_HUB_ARTIST_IDS (not imported, per the
-# no-reverse-dependency rule above). CreditGraph's own NON_INDIVIDUAL_ARTIST_IDS
-# only excludes 194, so 151641 can still appear as a live hop endpoint.
-_PLACEHOLDER_ARTIST_IDS = frozenset({194, 151641})
+# Independent of the strength flags: does the hop's evidence put both artists
+# on the same *recording*, or only on the same release? `credit_edges` (ADR
+# 0035) admits both -- a `same_recording` hop (shared track_index) is the
+# strongest form; a `release_scope_credit` hop is an album-wide contributor
+# (a producer, engineer, or mixer credited to the record, not to one track).
+_SCOPE_FLAGS = frozenset({"same_recording", "release_scope_credit"})
 
-# Exact copy of onehop.py's _NON_PERFORMER_ROLE_TOKENS.
+# Discogs placeholder identities, from `placeholder_artists.json` via graph.py
+# rather than re-typed: this module and the graph must agree, and there is no
+# dependency-direction problem within graph-core. Covers BOTH policies -- an
+# `exclude` identity never reaches `credit_edges` (so the flag below is a
+# regression alarm), while a `flag` identity stays traversable and this is
+# what surfaces it for human review.
+_PLACEHOLDER_ARTIST_IDS = PLACEHOLDER_ARTIST_IDS
+
+# onehop.py's _NON_PERFORMER_ROLE_TOKENS, plus "remastered by": a reissue's
+# mastering engineer was never in the room with the band, and grading such a
+# hop `performer_credit` is how Bernie Grundman (who remastered The Wall and
+# mastered DAMN.) came back as a two-hop bridge worth +10. This list only
+# *grades* a hop; which credits create an edge at all is graph.py's
+# `_NON_COLLABORATIVE_ROLE_TOKENS`.
 _NON_PERFORMER_ROLE_TOKENS = frozenset(
     {
         "written-by",
         "written by",
         "mastered by",
+        "remastered by",
         "mixed by",
         "recorded by",
         "lacquer cut by",
@@ -155,6 +170,59 @@ def _artist_credit_tier(rows: list[dict[str, Any]], artist_id: int) -> str:
     return "non_performer"
 
 
+def _shares_a_track(
+    rows_a: list[dict[str, Any]],
+    rows_b: list[dict[str, Any]],
+    *,
+    artist_a_id: int,
+    artist_b_id: int,
+) -> bool:
+    """True when both artists hold a credit on the same `track_index` of the
+    hop's evidence release -- i.e. they contributed to the same recording,
+    not merely to the same disc. Role text alone cannot answer this: a
+    compilation's track artists carry `role_text = NULL` and so classify as
+    "performer" even though they never met (the 2026-07-10 audit's finding)."""
+    tracks_a = {
+        row["track_index"]
+        for row in rows_a
+        if row["artist_id"] == artist_a_id and row["track_index"] is not None
+    }
+    tracks_b = {
+        row["track_index"]
+        for row in rows_b
+        if row["artist_id"] == artist_b_id and row["track_index"] is not None
+    }
+    return bool(tracks_a & tracks_b)
+
+
+def _billed_artist_inherits_track(
+    rows_a: list[dict[str, Any]],
+    rows_b: list[dict[str, Any]],
+    *,
+    artist_a_id: int,
+    artist_b_id: int,
+) -> bool:
+    """Whether a single-billed release supplies the implicit track performer.
+
+    `credit_edges` may connect a release artist to a track-specific guest even
+    when Discogs has no duplicate `track_artist` row for the billed act. This
+    is still same-recording evidence, not a release-scope credit.
+    """
+
+    def has_billed(rows: list[dict[str, Any]], artist_id: int) -> bool:
+        return any(
+            row["artist_id"] == artist_id and row["credit_scope"] == "release_artist"
+            for row in rows
+        )
+
+    def has_track_credit(rows: list[dict[str, Any]], artist_id: int) -> bool:
+        return any(row["artist_id"] == artist_id and row["track_index"] is not None for row in rows)
+
+    return (has_billed(rows_a, artist_a_id) and has_track_credit(rows_b, artist_b_id)) or (
+        has_billed(rows_b, artist_b_id) and has_track_credit(rows_a, artist_a_id)
+    )
+
+
 def classify_hop_quality(
     rows_a: list[dict[str, Any]],
     rows_b: list[dict[str, Any]],
@@ -162,7 +230,8 @@ def classify_hop_quality(
     artist_a_id: int,
     artist_b_id: int,
 ) -> list[str]:
-    """Exactly one strength flag, plus an independent stackable placeholder flag."""
+    """Exactly one strength flag and exactly one scope flag, plus an
+    independent stackable placeholder flag."""
     tier_a = _artist_credit_tier(rows_a, artist_a_id)
     tier_b = _artist_credit_tier(rows_b, artist_b_id)
 
@@ -172,6 +241,15 @@ def classify_hop_quality(
         flags = ["performer_credit"]
     else:
         flags = ["non_performer_only"]
+
+    if _shares_a_track(
+        rows_a, rows_b, artist_a_id=artist_a_id, artist_b_id=artist_b_id
+    ) or _billed_artist_inherits_track(
+        rows_a, rows_b, artist_a_id=artist_a_id, artist_b_id=artist_b_id
+    ):
+        flags.append("same_recording")
+    else:
+        flags.append("release_scope_credit")
 
     if artist_a_id in _PLACEHOLDER_ARTIST_IDS or artist_b_id in _PLACEHOLDER_ARTIST_IDS:
         flags.append("placeholder_artist_hop")
@@ -259,7 +337,7 @@ def _bfs_from_seed(
     """BFS from seed_artist_id out to max_hops, returning parent pointers
     {artist_id: (parent_artist_id, release_id)} for every artist reached,
     plus the set of artists excluded from expansion for exceeding
-    `max_frontier_expansion` (see `CreditGraph.credit_row_count`) -- a
+    `max_frontier_expansion` (see `CreditGraph.degree`) -- a
     non-empty set means an unreached target's absence here is inconclusive,
     not a confirmed no-path.
 
@@ -270,7 +348,7 @@ def _bfs_from_seed(
     query once per pair that happens to route through it.
 
     Both the frontier-size check and the neighbor fetch are batched into one
-    query per hop for the *whole* frontier (`CreditGraph.credit_row_counts`/
+    query per hop for the *whole* frontier (`CreditGraph.degrees`/
     `neighbors_batch`), not one query per frontier artist -- a hub's own
     hop-1 frontier can be thousands of artists, and checking each
     individually (the original shape here, still how `CreditGraph.find_path`
@@ -296,7 +374,7 @@ def _bfs_from_seed(
             raise TimeoutError(f"seed {seed_artist_id} expansion exceeded its deadline")
 
         if max_frontier_expansion is not None:
-            counts = graph.credit_row_counts(frontier)
+            counts = graph.degrees(frontier)
             safe_frontier = [a for a in frontier if counts.get(a, 0) <= max_frontier_expansion]
             capped_artist_ids.update(a for a in frontier if a not in safe_frontier)
         else:
@@ -445,27 +523,25 @@ class _ReachScorer:
                 connection.execute(f"CREATE TEMP TABLE {capped} (artist_id BIGINT)")
             else:
                 connection.execute(
-                    f"CREATE TEMP TABLE {capped} AS SELECT artist_id FROM linked_credits "
-                    f"WHERE artist_id IN (SELECT artist_id FROM {frontier}) "
-                    f"GROUP BY artist_id HAVING count(*) > {int(self._cap)}"
+                    f"CREATE TEMP TABLE {capped} AS SELECT artist_a_id AS artist_id "
+                    "FROM credit_edges "
+                    f"WHERE artist_a_id IN (SELECT artist_id FROM {frontier}) "
+                    f"GROUP BY artist_a_id HAVING count(*) > {int(self._cap)}"
                 )
             connection.execute(
                 f"INSERT INTO {self._table} "
                 f"SELECT {int(seed_artist_id)}, artist_id, parent_id, release_id, {int(dist)} "
                 "FROM ("
-                "  SELECT b.artist_id AS artist_id, a.artist_id AS parent_id, "
-                "         min(b.release_id) AS release_id, "
-                "         row_number() OVER (PARTITION BY b.artist_id "
-                "                            ORDER BY min(b.release_id), a.artist_id) AS rn "
-                "  FROM linked_credits a "
-                "  JOIN linked_credits b USING (release_id) "
-                "  JOIN traversal_releases USING (release_id) "
-                f"  JOIN {frontier} f ON f.artist_id = a.artist_id "
-                "  WHERE b.artist_id != a.artist_id "
-                f"    AND a.artist_id NOT IN (SELECT artist_id FROM {capped}) "
-                f"    AND b.artist_id NOT IN (SELECT artist_id FROM {self._table} "
-                f"                            WHERE seed_id = {int(seed_artist_id)}) "
-                "  GROUP BY b.artist_id, a.artist_id "
+                "  SELECT e.artist_b_id AS artist_id, e.artist_a_id AS parent_id, "
+                "         min(e.release_id) AS release_id, "
+                "         row_number() OVER (PARTITION BY e.artist_b_id "
+                "                            ORDER BY min(e.release_id), e.artist_a_id) AS rn "
+                "  FROM credit_edges e "
+                f"  JOIN {frontier} f ON f.artist_id = e.artist_a_id "
+                f"  WHERE e.artist_a_id NOT IN (SELECT artist_id FROM {capped}) "
+                f"    AND e.artist_b_id NOT IN (SELECT artist_id FROM {self._table} "
+                f"                              WHERE seed_id = {int(seed_artist_id)}) "
+                "  GROUP BY e.artist_b_id, e.artist_a_id "
                 ") ranked WHERE rn = 1"
             )
             new_row = connection.execute(
@@ -692,7 +768,7 @@ def score_pairs(
     0033): each unique cohort artist expands to `expansion_depth(max_hops)`
     hops entirely inside DuckDB, and pair distances resolve where two seeds'
     reaches meet. `max_frontier_expansion` is a release-count proxy threshold
-    (see `CreditGraph.credit_row_count`) that never applies to a seed itself;
+    (see `CreditGraph.degree`) that never applies to a seed itself;
     `pair_timeout_seconds` bounds each seed's own expansion, not each pair;
     `max_reach_rows` bounds each seed's materialized reach rows.
 
@@ -813,7 +889,7 @@ def _score_pairs_via_reach(
     capped_any: dict[int, bool] = {}
     seed_entries: list[dict[str, Any]] = []
     try:
-        seed_degrees = graph.credit_row_counts(artist_ids)
+        seed_degrees = graph.degrees(artist_ids)
         for seed in artist_ids:
             deadline = time.monotonic() + pair_timeout_seconds if pair_timeout_seconds else None
             seed_start = time.monotonic()

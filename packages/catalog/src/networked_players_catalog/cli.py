@@ -259,11 +259,12 @@ def _parser() -> argparse.ArgumentParser:
         "--max-frontier-expansion",
         type=int,
         default=300,
-        help="release-count proxy threshold above which an artist is excluded from BFS "
-        "expansion (still reachable as a target, and never applied to a cohort seed "
-        "itself -- every real cohort seed measured exceeds it); with reach scoring "
-        "(ADR 0033) this bounds time, not memory, so it can be raised per "
-        "cohort/dataset -- real hop-1 frontier degrees measured p90~2100",
+        help="degree threshold above which an artist is excluded from BFS expansion "
+        "(still reachable as a target, and never applied to a cohort seed itself); "
+        "with reach scoring (ADR 0033) this bounds time, not memory, so it can be "
+        "raised per cohort/dataset. Since ADR 0035 this is an artist's exact "
+        "credit_edges degree, not the old credit-row proxy, so equivalent caps are "
+        "much smaller -- Pink Floyd's degree is 540, Stevie Wonder's 4,844",
     )
     score_connectivity.add_argument(
         "--pair-timeout-seconds",
@@ -359,6 +360,15 @@ def _parser() -> argparse.ArgumentParser:
         ),
     )
     editorial_review.add_argument("--request-delay", type=float, default=1.1)
+    editorial_review.add_argument(
+        "--dataset",
+        type=Path,
+        help=(
+            "one-hop dataset root; when given, every hop is explained with its "
+            "release title, the shared recording, and each artist's credited role, "
+            "so a curator can judge a connection without opening Discogs"
+        ),
+    )
 
     status = subparsers.add_parser(
         "cohort-pipeline-status",
@@ -891,11 +901,35 @@ def main(argv: Sequence[str] | None = None) -> int:
                 client=ApiClient(token=load_token(), request_delay_seconds=args.request_delay),
                 cache=ReleaseCache(args.api_cache_dir),
             )
-        packet = build_editorial_packet(
-            resolved,
-            connectivity,
-            args.api_cache_dir,
-        )
+        from networked_players_graph_core.graph import CreditGraph
+
+        from .cohort_editorial import EvidenceLookup
+
+        evidence_graph: CreditGraph | None = None
+        lookup: EvidenceLookup | None = None
+        if args.dataset is not None:
+            # `build_edges=False`: explaining hops that were already found needs
+            # evidence rows, not traversal, and skips the ~2.5 minute
+            # credit_edges materialization.
+            evidence_graph = CreditGraph.open(args.dataset, build_edges=False)
+            opened = evidence_graph
+
+            def lookup_evidence(
+                release_id: int, artist_ids: set[int]
+            ) -> tuple[dict[str, object] | None, list[dict[str, object]]]:
+                return opened.release(release_id), opened.credit_rows(release_id, artist_ids)
+
+            lookup = lookup_evidence
+        try:
+            packet = build_editorial_packet(
+                resolved,
+                connectivity,
+                args.api_cache_dir,
+                evidence_lookup=lookup,
+            )
+        finally:
+            if evidence_graph is not None:
+                evidence_graph.close()
         write_editorial_packet(packet, args.output_json, args.output_markdown)
         print(
             json.dumps(

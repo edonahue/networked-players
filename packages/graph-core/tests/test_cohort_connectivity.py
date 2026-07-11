@@ -60,8 +60,15 @@ def _resolved(albums, unresolved=None):
     }
 
 
-def _row(*, artist_id: int, credit_scope: str, role_text: str | None):
-    return {"artist_id": artist_id, "credit_scope": credit_scope, "role_text": role_text}
+def _row(*, artist_id: int, credit_scope: str, role_text: str | None, track_index: int | None = 0):
+    """A `CreditGraph.credit_rows` row. `track_index` decides the scope flag
+    (ADR 0035): shared -> `same_recording`, otherwise `release_scope_credit`."""
+    return {
+        "artist_id": artist_id,
+        "credit_scope": credit_scope,
+        "role_text": role_text,
+        "track_index": track_index,
+    }
 
 
 # --- classify_hop_quality: unit tests, no dataset needed ---
@@ -71,28 +78,54 @@ def test_classify_co_billed_release_artists() -> None:
     rows_a = [_row(artist_id=100, credit_scope="release_artist", role_text=None)]
     rows_b = [_row(artist_id=200, credit_scope="release_artist", role_text=None)]
     flags = classify_hop_quality(rows_a, rows_b, artist_a_id=100, artist_b_id=200)
-    assert flags == ["co_billed_release_artists"]
+    assert flags == ["co_billed_release_artists", "same_recording"]
 
 
 def test_classify_performer_credit_when_one_side_is_track_performer() -> None:
     rows_a = [_row(artist_id=100, credit_scope="release_artist", role_text=None)]
     rows_b = [_row(artist_id=200, credit_scope="track_credit", role_text="Guitar")]
     flags = classify_hop_quality(rows_a, rows_b, artist_a_id=100, artist_b_id=200)
-    assert flags == ["performer_credit"]
+    assert flags == ["performer_credit", "same_recording"]
+
+
+def test_classify_billed_artist_fallback_as_same_recording() -> None:
+    """A billed artist can be the implicit performer for a guest track."""
+    rows_a = [_row(artist_id=100, credit_scope="release_artist", role_text=None, track_index=None)]
+    rows_b = [_row(artist_id=200, credit_scope="track_credit", role_text="Featuring")]
+    flags = classify_hop_quality(rows_a, rows_b, artist_a_id=100, artist_b_id=200)
+    assert flags == ["performer_credit", "same_recording"]
 
 
 def test_classify_non_performer_only() -> None:
     rows_a = [_row(artist_id=800, credit_scope="release_credit", role_text="Mastered By")]
     rows_b = [_row(artist_id=900, credit_scope="release_credit", role_text="Producer, Engineer")]
     flags = classify_hop_quality(rows_a, rows_b, artist_a_id=800, artist_b_id=900)
-    assert flags == ["non_performer_only"]
+    assert flags == ["non_performer_only", "same_recording"]
 
 
 def test_classify_placeholder_stacks_with_strength_flag() -> None:
     rows_a = [_row(artist_id=1000, credit_scope="release_artist", role_text=None)]
     rows_b = [_row(artist_id=151641, credit_scope="release_artist", role_text=None)]
     flags = classify_hop_quality(rows_a, rows_b, artist_a_id=1000, artist_b_id=151641)
-    assert set(flags) == {"co_billed_release_artists", "placeholder_artist_hop"}
+    assert set(flags) == {"co_billed_release_artists", "same_recording", "placeholder_artist_hop"}
+
+
+def test_classify_release_scope_credit_when_artists_share_no_track() -> None:
+    """An album-wide producer never appears on a track_index, so the hop is
+    real but weaker than same-recording evidence."""
+    rows_a = [_row(artist_id=100, credit_scope="release_artist", role_text=None, track_index=None)]
+    rows_b = [
+        _row(artist_id=200, credit_scope="release_credit", role_text="Producer", track_index=None)
+    ]
+    flags = classify_hop_quality(rows_a, rows_b, artist_a_id=100, artist_b_id=200)
+    assert flags == ["performer_credit", "release_scope_credit"]
+
+
+def test_classify_release_scope_credit_when_artists_are_on_different_tracks() -> None:
+    rows_a = [_row(artist_id=100, credit_scope="track_artist", role_text=None, track_index=0)]
+    rows_b = [_row(artist_id=200, credit_scope="track_artist", role_text=None, track_index=7)]
+    flags = classify_hop_quality(rows_a, rows_b, artist_a_id=100, artist_b_id=200)
+    assert flags == ["performer_credit", "release_scope_credit"]
 
 
 # --- _run_with_timeout: unit tests, no dataset/real timing race needed ---
@@ -170,7 +203,7 @@ def test_one_hop_pair_is_easy(dataset_root: Path) -> None:
     assert pair["status"] == "found"
     assert pair["hop_count"] == 1
     assert pair["difficulty"] == "easy"
-    assert pair["hops"][0]["quality_flags"] == ["co_billed_release_artists"]
+    assert pair["hops"][0]["quality_flags"] == ["co_billed_release_artists", "same_recording"]
     assert pair["warnings"] == []
 
 
@@ -312,7 +345,7 @@ def test_credit_graph_cursor_shares_materialized_tables(dataset_root: Path) -> N
     including tables materialized at open() time (not just views)."""
     with CreditGraph.open(dataset_root) as graph:
         cursor_graph = graph.cursor()
-        assert cursor_graph.credit_row_count(100) == graph.credit_row_count(100)
+        assert cursor_graph.degree(100) == graph.degree(100)
         assert cursor_graph.neighbors(100) == graph.neighbors(100)
 
 
@@ -331,8 +364,11 @@ def _skip_release(release_id: int, *, master_id: int) -> dict[str, object]:
     }
 
 
-def _skip_credit(release_id: int, *, artist_id: int, name: str) -> dict[str, object]:
-    return {
+def _skip_credit(release_id: int, *, artist_id: int, name: str) -> list[dict[str, object]]:
+    """A billed artist who also performs on the release's one track. Two rows:
+    since ADR 0035 an edge needs same-recording evidence, a credit with no
+    `track_index` makes nobody adjacent. Splat into a `credit_rows` list."""
+    base: dict[str, object] = {
         "snapshot_date": "20260601",
         "release_id": release_id,
         "track_index": None,
@@ -349,6 +385,16 @@ def _skip_credit(release_id: int, *, artist_id: int, name: str) -> dict[str, obj
         "is_linked": True,
         "playable_identity": True,
     }
+    track: dict[str, object] = {
+        **base,
+        "track_index": 0,
+        "track_path": "0",
+        "track_position": "1",
+        "track_title": "Track 1",
+        "credit_scope": "track_artist",
+        "role_text": None,
+    }
+    return [base, track]
 
 
 def test_pair_meeting_at_a_capped_hub_is_found(tmp_path: Path) -> None:
@@ -364,14 +410,14 @@ def test_pair_meeting_at_a_capped_hub_is_found(tmp_path: Path) -> None:
         tmp_path / "snapshot=20260601",
         release_rows=[_skip_release(i, master_id=900 + i) for i in range(1, 5)],
         credit_rows=[
-            _skip_credit(1, artist_id=1000, name="S"),
-            _skip_credit(1, artist_id=2000, name="Hub"),
-            _skip_credit(2, artist_id=2000, name="Hub"),
-            _skip_credit(2, artist_id=3001, name="P1"),
-            _skip_credit(3, artist_id=2000, name="Hub"),
-            _skip_credit(3, artist_id=3002, name="P2"),
-            _skip_credit(4, artist_id=2000, name="Hub"),
-            _skip_credit(4, artist_id=4000, name="T"),
+            *_skip_credit(1, artist_id=1000, name="S"),
+            *_skip_credit(1, artist_id=2000, name="Hub"),
+            *_skip_credit(2, artist_id=2000, name="Hub"),
+            *_skip_credit(2, artist_id=3001, name="P1"),
+            *_skip_credit(3, artist_id=2000, name="Hub"),
+            *_skip_credit(3, artist_id=3002, name="P2"),
+            *_skip_credit(4, artist_id=2000, name="Hub"),
+            *_skip_credit(4, artist_id=4000, name="T"),
         ],
     )
     with CreditGraph.open(root) as graph:
@@ -406,18 +452,18 @@ def test_score_pairs_reports_frontier_too_large_not_no_path(tmp_path: Path) -> N
 
     hub_a, hub_b = 2000, 2500
     credit_rows = [
-        _skip_credit(1, artist_id=1000, name="S"),
-        _skip_credit(1, artist_id=hub_a, name="HubA"),
-        _skip_credit(2, artist_id=hub_a, name="HubA"),
-        _skip_credit(2, artist_id=hub_b, name="HubB"),
-        _skip_credit(3, artist_id=hub_b, name="HubB"),
-        _skip_credit(3, artist_id=4000, name="T"),
+        *_skip_credit(1, artist_id=1000, name="S"),
+        *_skip_credit(1, artist_id=hub_a, name="HubA"),
+        *_skip_credit(2, artist_id=hub_a, name="HubA"),
+        *_skip_credit(2, artist_id=hub_b, name="HubB"),
+        *_skip_credit(3, artist_id=hub_b, name="HubB"),
+        *_skip_credit(3, artist_id=4000, name="T"),
     ]
     # Pad both hubs past the cap with filler releases.
     for i, hub in enumerate((hub_a, hub_a, hub_b, hub_b)):
         release_id = 10 + i
-        credit_rows.append(_skip_credit(release_id, artist_id=hub, name="Hub"))
-        credit_rows.append(_skip_credit(release_id, artist_id=5000 + i, name=f"F{i}"))
+        credit_rows.extend(_skip_credit(release_id, artist_id=hub, name="Hub"))
+        credit_rows.extend(_skip_credit(release_id, artist_id=5000 + i, name=f"F{i}"))
     release_rows = [_skip_release(i, master_id=900 + i) for i in (1, 2, 3, 10, 11, 12, 13)]
 
     root = write_synthetic_dataset(
@@ -477,9 +523,11 @@ def test_score_pairs_reports_seed_expansion_timeout(
     assert pairs[0]["skip_reason"] == "seed_expansion_timeout"
 
 
-def test_placeholder_artist_survives_as_live_hop_endpoint(tmp_path: Path) -> None:
-    """Proves the ADR 0029 gap is real: CreditGraph.NON_INDIVIDUAL_ARTIST_IDS only
-    excludes 194, so 151641 ("Trad.") can still be a live find_path endpoint."""
+def test_placeholder_artist_is_no_longer_a_live_hop_endpoint(tmp_path: Path) -> None:
+    """The inverse of the old ADR 0029 regression test. `CreditGraph` used to
+    exclude only artist 194, so 151641 ("Trad.") was a live `find_path`
+    endpoint and the scorer could only flag it after the fact. ADR 0035 keeps
+    both out of `credit_edges`, so the hop cannot be built at all."""
     from conftest import write_synthetic_dataset
 
     def _release(release_id, title, master_id=None, master_is_main_release=None):
@@ -496,15 +544,15 @@ def test_placeholder_artist_survives_as_live_hop_endpoint(tmp_path: Path) -> Non
             "source_url": f"https://example.invalid/release/{release_id}",
         }
 
-    def _credit(release_id, artist_id, name):
+    def _credit(release_id, artist_id, name, *, scope="release_artist", track_index=None):
         return {
             "snapshot_date": "20260601",
             "release_id": release_id,
-            "track_index": None,
-            "track_path": None,
-            "track_position": None,
-            "track_title": None,
-            "credit_scope": "release_artist",
+            "track_index": track_index,
+            "track_path": None if track_index is None else str(track_index),
+            "track_position": None if track_index is None else "1",
+            "track_title": None if track_index is None else "Track 1",
+            "credit_scope": scope,
             "artist_id": artist_id,
             "name": name,
             "anv": None,
@@ -518,25 +566,18 @@ def test_placeholder_artist_survives_as_live_hop_endpoint(tmp_path: Path) -> Non
     root = write_synthetic_dataset(
         tmp_path / "snapshot=20260601",
         release_rows=[_release(30, "Traditional Session")],
-        credit_rows=[_credit(30, 1000, "Zed"), _credit(30, 151641, "Trad.")],
+        credit_rows=[
+            _credit(30, 1000, "Zed"),
+            _credit(30, 1000, "Zed", scope="track_artist", track_index=0),
+            _credit(30, 151641, "Trad."),
+            _credit(30, 151641, "Trad.", scope="track_artist", track_index=0),
+        ],
     )
     with CreditGraph.open(root) as graph:
-        path = graph.find_path(1000, 151641)
-        assert path is not None
-        assert len(path.hops) == 1
-
-        pairs = score_pairs(
-            graph,
-            [
-                _resolved_album(artist_id=1000, release_id=30),
-                _resolved_album(artist_id=151641, release_id=30),
-            ],
-        )
-    assert set(pairs[0]["hops"][0]["quality_flags"]) == {
-        "co_billed_release_artists",
-        "placeholder_artist_hop",
-    }
-    assert any("placeholder" in w for w in pairs[0]["warnings"])
+        # Both hold a playable credit on the same track, yet no edge exists.
+        assert graph.neighbors(1000) == {}
+        assert graph.degree(151641) == 0
+        assert graph.find_path(1000, 151641) is None
 
 
 def test_dataset_snapshot_date_mismatch_raises(dataset_root: Path) -> None:
@@ -767,8 +808,8 @@ def _chain_dataset(tmp_path: Path) -> Path:
     credit_rows = []
     for edge_index, (left, right) in enumerate(itertools.pairwise(artists)):
         release_id = edge_index + 1
-        credit_rows.append(_skip_credit(release_id, artist_id=left, name=f"A{left}"))
-        credit_rows.append(_skip_credit(release_id, artist_id=right, name=f"A{right}"))
+        credit_rows.extend(_skip_credit(release_id, artist_id=left, name=f"A{left}"))
+        credit_rows.extend(_skip_credit(release_id, artist_id=right, name=f"A{right}"))
     release_rows = [_skip_release(i, master_id=900 + i) for i in range(1, 5)]
     return write_synthetic_dataset(
         tmp_path / "snapshot=20260601", release_rows=release_rows, credit_rows=credit_rows
@@ -819,20 +860,20 @@ def test_seed_over_the_frontier_cap_still_expands(tmp_path: Path) -> None:
     from conftest import write_synthetic_dataset
 
     credit_rows = [
-        _skip_credit(1, artist_id=1000, name="S"),
-        _skip_credit(1, artist_id=4000, name="T"),
+        *_skip_credit(1, artist_id=1000, name="S"),
+        *_skip_credit(1, artist_id=4000, name="T"),
     ]
     # Pad S past the cap of 2 with filler releases.
     for i in range(4):
         release_id = 10 + i
-        credit_rows.append(_skip_credit(release_id, artist_id=1000, name="S"))
-        credit_rows.append(_skip_credit(release_id, artist_id=5000 + i, name=f"F{i}"))
+        credit_rows.extend(_skip_credit(release_id, artist_id=1000, name="S"))
+        credit_rows.extend(_skip_credit(release_id, artist_id=5000 + i, name=f"F{i}"))
     release_rows = [_skip_release(i, master_id=900 + i) for i in (1, 10, 11, 12, 13)]
     root = write_synthetic_dataset(
         tmp_path / "snapshot=20260601", release_rows=release_rows, credit_rows=credit_rows
     )
     with CreditGraph.open(root) as graph:
-        assert graph.credit_row_count(1000) == 5  # would be capped at 2 as a non-seed
+        assert graph.degree(1000) == 5  # would be capped at 2 as a non-seed
         pairs = score_pairs(
             graph,
             [

@@ -40,9 +40,10 @@ def test_export_produces_expected_artists_and_edges(dataset_root: Path, tmp_path
         (501, 502),
     }
     # The Mega Compilation (release 4) drives six of the ten edges.
-    assert edges[(100, 500)]["release_ids"] == [4]
-    assert edges[(400, 500)]["release_ids"] == [6]
-    assert edges[(100, 200)]["release_count"] == 1
+    # schema_version 2: one deterministic evidence release per edge, not a list.
+    assert edges[(100, 500)]["release_id"] == 4
+    assert edges[(400, 500)]["release_id"] == 6
+    assert edges[(100, 200)]["release_id"] == 1
 
 
 def test_export_respects_max_artists_per_release_cap(dataset_root: Path, tmp_path: Path) -> None:

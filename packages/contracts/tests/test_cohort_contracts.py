@@ -11,7 +11,7 @@ def _hop() -> dict[str, Any]:
         "release_id": 10,
         "artist_a_id": 1,
         "artist_b_id": 2,
-        "quality_flags": ["performer_credit"],
+        "quality_flags": ["performer_credit", "same_recording"],
     }
 
 

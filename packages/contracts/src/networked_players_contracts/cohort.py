@@ -9,6 +9,8 @@ CONNECTIVITY_SCHEMA_VERSION = 1
 PLAYABLE_COHORT_SCHEMA_VERSION = 1
 
 _STRENGTH_FLAGS = frozenset({"co_billed_release_artists", "performer_credit", "non_performer_only"})
+# Which `credit_edges` rule admitted the hop (ADR 0035). Exactly one, always.
+_SCOPE_FLAGS = frozenset({"same_recording", "release_scope_credit"})
 _DIFFICULTIES = frozenset({"easy", "medium", "hard", "very_hard"})
 _FORBIDDEN_SUBSTRINGS = (
     "/" + "home/",
@@ -94,6 +96,12 @@ def _hop_failures(hop: Any) -> list[str]:
         return [
             f"hop on release {hop.get('release_id')} must have exactly one strength flag, "
             f"got {strength_flags}"
+        ]
+    scope_flags = [flag for flag in quality_flags if flag in _SCOPE_FLAGS]
+    if len(scope_flags) != 1:
+        return [
+            f"hop on release {hop.get('release_id')} must have exactly one scope flag, "
+            f"got {scope_flags}"
         ]
     return []
 

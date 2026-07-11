@@ -33,7 +33,7 @@ VALID_CONNECTIVITY = {
                     "release_id": 1,
                     "artist_a_id": 100,
                     "artist_b_id": 300,
-                    "quality_flags": ["co_billed_release_artists"],
+                    "quality_flags": ["co_billed_release_artists", "same_recording"],
                 }
             ],
             "warnings": [],

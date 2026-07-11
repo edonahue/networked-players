@@ -101,14 +101,15 @@ def _credit(
     is_linked: bool = True,
     playable_identity: bool = True,
     role_text: str | None = "Performer",
+    track_index: int | None = None,
 ) -> dict[str, Any]:
     return {
         "snapshot_date": SNAPSHOT_DATE,
         "release_id": release_id,
-        "track_index": None,
-        "track_path": None,
-        "track_position": None,
-        "track_title": None,
+        "track_index": track_index,
+        "track_path": None if track_index is None else str(track_index),
+        "track_position": None if track_index is None else str(track_index + 1),
+        "track_title": None if track_index is None else f"Track {track_index + 1}",
         "credit_scope": scope,
         "artist_id": artist_id,
         "name": name,
@@ -119,6 +120,27 @@ def _credit(
         "is_linked": is_linked,
         "playable_identity": playable_identity,
     }
+
+
+def _performed(release_id: int, *, artist_id: int, name: str) -> list[dict[str, Any]]:
+    """An artist billed on a release AND credited on its one track.
+
+    Since ADR 0035 an edge means "contributed to the same recording", so a
+    release with no tracklist has no edges at all. Every real Discogs release
+    has one; the fixtures must too, or they would only ever exercise the
+    release-container semantics this project removed.
+    """
+    return [
+        _credit(release_id, artist_id=artist_id, name=name, scope="release_artist"),
+        _credit(
+            release_id,
+            artist_id=artist_id,
+            name=name,
+            scope="track_artist",
+            role_text=None,
+            track_index=0,
+        ),
+    ]
 
 
 # Standard fixture graph, shared across graph-core tests:
@@ -145,17 +167,17 @@ FIXTURE_RELEASES = [
 ]
 
 FIXTURE_CREDITS = [
-    _credit(1, artist_id=100, name="Alice"),
-    _credit(1, artist_id=200, name="Bob"),
-    _credit(2, artist_id=200, name="Bob"),
-    _credit(2, artist_id=300, name="Cara"),
-    _credit(3, artist_id=300, name="Cara"),
-    _credit(3, artist_id=400, name="Dan"),
-    _credit(4, artist_id=100, name="Alice"),
-    _credit(4, artist_id=500, name="Eve"),
-    _credit(4, artist_id=501, name="PlusOne"),
-    _credit(4, artist_id=502, name="PlusTwo"),
-    _credit(5, artist_id=100, name="Alice"),
+    *_performed(1, artist_id=100, name="Alice"),
+    *_performed(1, artist_id=200, name="Bob"),
+    *_performed(2, artist_id=200, name="Bob"),
+    *_performed(2, artist_id=300, name="Cara"),
+    *_performed(3, artist_id=300, name="Cara"),
+    *_performed(3, artist_id=400, name="Dan"),
+    *_performed(4, artist_id=100, name="Alice"),
+    *_performed(4, artist_id=500, name="Eve"),
+    *_performed(4, artist_id=501, name="PlusOne"),
+    *_performed(4, artist_id=502, name="PlusTwo"),
+    *_performed(5, artist_id=100, name="Alice"),
     _credit(
         5,
         artist_id=None,
@@ -164,10 +186,10 @@ FIXTURE_CREDITS = [
         is_linked=False,
         playable_identity=False,
     ),
-    _credit(6, artist_id=400, name="Dan"),
-    _credit(6, artist_id=500, name="Eve"),
-    _credit(7, artist_id=194, name="Various"),
-    _credit(7, artist_id=600, name="Frank"),
+    *_performed(6, artist_id=400, name="Dan"),
+    *_performed(6, artist_id=500, name="Eve"),
+    *_performed(7, artist_id=194, name="Various"),
+    *_performed(7, artist_id=600, name="Frank"),
 ]
 
 FIXTURE_MASTERS = [

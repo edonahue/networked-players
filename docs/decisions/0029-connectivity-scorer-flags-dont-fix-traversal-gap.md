@@ -1,7 +1,17 @@
 # ADR 0029: Connectivity scorer flags the CreditGraph/onehop.py exclusion gap, doesn't fix it at the source
 
-- **Status:** Accepted
+- **Status:** Superseded by [ADR 0035](0035-track-scoped-credit-edges.md) (2026-07-10)
 - **Date:** 2026-07-05
+
+> **Superseded.** This ADR chose to flag the `CreditGraph`/`onehop.py` exclusion gap
+> post-hoc rather than fix it at the source, to avoid disturbing `challenge.py`'s live
+> traversal. A 2026-07-10 real-data audit found that deferral was load-bearing: it left
+> `CreditGraph` treating co-presence on *any* release as a connection, so a 46-track DJ
+> compilation formed a 46-artist clique and Pink Floyd scored one hop from Nas
+> (~99% false-positive rate over the curator's 326 evidence hops). ADR 0035 replaces
+> `linked_credits`' release self-join with a track-scoped `credit_edges` relation and
+> applies ADR 0026/0027's exclusions at the traversal layer. The "explicitly not done"
+> section below is exactly what ADR 0035 does.
 
 ## Context
 

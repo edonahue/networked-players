@@ -81,7 +81,7 @@ def _valid_connectivity() -> dict[str, Any]:
                         "release_id": 1,
                         "artist_a_id": 100,
                         "artist_b_id": 300,
-                        "quality_flags": ["co_billed_release_artists"],
+                        "quality_flags": ["co_billed_release_artists", "same_recording"],
                     }
                 ],
                 "warnings": [],
@@ -130,7 +130,7 @@ def _valid_playable_cohort() -> dict[str, Any]:
                         "release_id": 1,
                         "artist_a_id": 100,
                         "artist_b_id": 300,
-                        "quality_flags": ["co_billed_release_artists"],
+                        "quality_flags": ["co_billed_release_artists", "same_recording"],
                     }
                 ],
                 "warnings": [],
