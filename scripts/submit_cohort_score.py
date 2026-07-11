@@ -201,7 +201,9 @@ def main() -> int:
     if _run("git", "status", "--short", capture=True).strip():
         raise RuntimeError("submit scoring only from a clean checkout")
     commit = _run("git", "rev-parse", "HEAD", capture=True).strip()
-    run_id = f"cohort-score-{datetime.now(UTC):%Y%m%dT%H%M%SZ}-{uuid.uuid4().hex[:8]}"
+    # Platform identifiers are lowercase by contract; keep the timestamp
+    # readable without introducing uppercase `T`/`Z` characters.
+    run_id = f"cohort-score-{datetime.now(UTC):%Y%m%dt%H%M%sz}-{uuid.uuid4().hex[:8]}"
     request, local_run = _request(args, run_id, commit)
 
     broker_url = os.environ.get("JOBS_BROKER_URL", "")
