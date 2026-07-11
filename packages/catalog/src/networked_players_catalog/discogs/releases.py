@@ -16,6 +16,7 @@ class ParsedRelease:
     release: dict[str, object]
     tracks: list[dict[str, object]]
     credits: list[dict[str, object]]
+    formats: list[dict[str, object]]
 
 
 def _child_text_map(element: etree._Element) -> dict[str, str | None]:
@@ -54,6 +55,33 @@ def _integer(value: str | None) -> int | None:
     except ValueError:
         return None
     return parsed if parsed > 0 else None
+
+
+def _parse_formats(
+    element: etree._Element, *, snapshot_date: str, release_id: int
+) -> list[dict[str, object]]:
+    formats: list[dict[str, object]] = []
+    formats_element = element.find("formats")
+    if formats_element is None:
+        return formats
+    for format_index, format_element in enumerate(formats_element.findall("format")):
+        descriptions = [
+            description
+            for child in format_element.findall("descriptions/description")
+            if (description := _normalize_text(child.text)) is not None
+        ]
+        formats.append(
+            {
+                "snapshot_date": snapshot_date,
+                "release_id": release_id,
+                "format_index": format_index,
+                "format_name": _normalize_text(format_element.attrib.get("name")),
+                "quantity": _integer(format_element.attrib.get("qty")),
+                "format_text": _normalize_text(format_element.attrib.get("text")),
+                "descriptions": descriptions,
+            }
+        )
+    return formats
 
 
 def _artist_row(
@@ -237,7 +265,8 @@ def parse_release_element(
             credits=credits,
         )
 
-    return ParsedRelease(release=release, tracks=tracks, credits=credits)
+    formats = _parse_formats(element, snapshot_date=snapshot_date, release_id=release_id)
+    return ParsedRelease(release=release, tracks=tracks, credits=credits, formats=formats)
 
 
 def _iter_handle(

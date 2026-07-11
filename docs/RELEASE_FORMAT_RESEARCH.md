@@ -28,12 +28,20 @@ that a single or two-track release can use the main track title, which is why
 title-only classification cannot reliably detect singles. See the [Title
 guidelines](https://support.discogs.com/hc/en-us/articles/360005054813-Database-Guidelines-3-Title).
 
+## Structured dump mapping
+
+The streaming parser preserves each `<formats><format>` row in the normalized
+`release_formats` table. `name`, `qty`, and `text` map to `format_name`,
+`quantity`, and `format_text`; nested `<description>` values remain an ordered
+list. This keeps the distinction between a carrier (`LP`, `Vinyl`, `CD`) and
+descriptors (`Album`, `Compilation`, `Sampler`, and so on).
+
 ## Candidate implementation options
 
 ### Option 1: Extend the monthly dump parser
 
 Parse `<formats>` while streaming releases and retain a bounded normalized
-`release_formats` table:
+`release_formats` table. This is now the implemented foundation:
 
 ```text
 snapshot_date
@@ -42,7 +50,7 @@ format_index
 format_name
 quantity
 format_text
-description_text
+   descriptions
 source_snapshot
 parser_version
 ```
@@ -63,6 +71,15 @@ browser.
 This is the current interim approach. It is cheap and deterministic but has
 known false positives and false negatives. It should remain a temporary
 fallback only, with an explicit `unknown` outcome rather than silent confidence.
+
+## Current policy model
+
+`studio-album-v1` requires an explicit `Album` descriptor. `Compilation`,
+`Sampler`, `Single`, `Maxi-Single`, `EP`, `Mini-Album`, `Mixtape`, `Live`,
+`Bootleg`, `Unofficial Release`, `Remix`, `Soundtrack`, or `Box Set` descriptors
+exclude automatic eligibility. Missing or conflicting data is reviewable. An
+explicit `Compilation` wins even when `Album` is also present. Reissue and
+remaster descriptors do not disqualify an explicit Album.
 
 ## Recommended policy model
 
@@ -110,3 +127,17 @@ enrichment belongs in the private curator workflow, cached locally, with no
 token in committed files, worker environments, or browser code. Public artifacts
 should retain only the reviewed release and credit evidence allowed by the
 project's public/private boundary.
+
+## Bounded Pi work
+
+The Raspberry Pi fleet could perform bounded API enrichment, but the current
+project boundary intentionally does not distribute credentials to workers. The
+safe future opt-in is a node-local secret injected outside Git (for example via
+Ansible or a Swarm secret), a private allowlisted release-ID queue, strict rate
+and concurrency limits, and master-side acceptance of returned metadata. Pis
+could then fetch only assigned releases, validate image URLs and response shape,
+normalize metadata into a small checksummed sidecar, detect missing or changed
+fields, and return bounded diagnostics. They must not crawl arbitrary URLs,
+publish API responses, or replace dump-derived facts. Enabling this would be an
+explicit security/operations ADR change, not an incidental part of dump parsing
+or graph scoring.

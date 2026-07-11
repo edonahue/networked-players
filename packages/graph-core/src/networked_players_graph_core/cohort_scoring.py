@@ -31,11 +31,15 @@ def score_cohort_to_directory(
     pair_timeout_seconds: float | None = 180.0,
     max_workers: int = 1,
     max_reach_rows: int = DEFAULT_MAX_REACH_ROWS,
+    release_format_policy: Path | None = None,
 ) -> dict[str, Any]:
     """Score one resolved cohort and write its four local review artifacts."""
     resolved = json.loads(resolved_path.read_text())
     dataset_manifest = json.loads((dataset_path / "manifest.json").read_text())
     diagnostics: dict[str, Any] = {}
+    policy_name = None
+    if release_format_policy is not None:
+        policy_name = json.loads(Path(release_format_policy).read_text()).get("policy_name")
 
     with CreditGraph.open(
         dataset_path,
@@ -43,6 +47,7 @@ def score_cohort_to_directory(
         threads=threads,
         max_artists_per_release=max_artists_per_release,
         temp_dir=temp_dir,
+        release_format_policy=release_format_policy,
     ) as graph:
         connectivity_artifact = build_connectivity_cohort(
             graph,
@@ -58,6 +63,7 @@ def score_cohort_to_directory(
                 "memory_limit": memory_limit,
                 "threads": threads,
                 "custom_temp_dir": temp_dir is not None,
+                "release_format_policy": policy_name,
             },
             diagnostics=diagnostics,
         )

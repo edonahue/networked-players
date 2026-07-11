@@ -22,7 +22,7 @@ from .releases import ParsedRelease
 if TYPE_CHECKING:
     from .masters import ParsedMaster
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 MASTER_SCHEMA_VERSION = 1
 
 RELEASE_SCHEMA = pa.schema(
@@ -70,7 +70,23 @@ CREDIT_SCHEMA = pa.schema(
         ("playable_identity", pa.bool_()),
     ]
 )
-SCHEMAS = {"releases": RELEASE_SCHEMA, "tracks": TRACK_SCHEMA, "credits": CREDIT_SCHEMA}
+RELEASE_FORMAT_SCHEMA = pa.schema(
+    [
+        ("snapshot_date", pa.string()),
+        ("release_id", pa.int64()),
+        ("format_index", pa.int32()),
+        ("format_name", pa.string()),
+        ("quantity", pa.int32()),
+        ("format_text", pa.string()),
+        ("descriptions", pa.list_(pa.string())),
+    ]
+)
+SCHEMAS = {
+    "releases": RELEASE_SCHEMA,
+    "tracks": TRACK_SCHEMA,
+    "credits": CREDIT_SCHEMA,
+    "release_formats": RELEASE_FORMAT_SCHEMA,
+}
 
 MASTERS_SCHEMA = pa.schema(
     [
@@ -141,12 +157,14 @@ def _write_chunk(
     release_rows: list[dict[str, object]],
     track_rows: list[dict[str, object]],
     credit_rows: list[dict[str, object]],
+    format_rows: list[dict[str, object]],
 ) -> list[dict[str, object]]:
     chunk_files: list[dict[str, object]] = []
     for table_name, rows in (
         ("releases", release_rows),
         ("tracks", track_rows),
         ("credits", credit_rows),
+        ("release_formats", format_rows),
     ):
         path = _write_rows(staging_root, table_name, part, rows)
         if path is not None:
@@ -192,11 +210,12 @@ def write_release_dataset(
 
     staging_root = output_root / f".snapshot={snapshot_date}.tmp-{uuid.uuid4().hex}"
     staging_root.mkdir(parents=True, exist_ok=False)
-    counts = {"releases": 0, "tracks": 0, "credits": 0}
+    counts = {"releases": 0, "tracks": 0, "credits": 0, "release_formats": 0}
     files: list[dict[str, object]] = []
     release_rows: list[dict[str, object]] = []
     track_rows: list[dict[str, object]] = []
     credit_rows: list[dict[str, object]] = []
+    format_rows: list[dict[str, object]] = []
     part = 0
     pending: Future[list[dict[str, object]]] | None = None
 
@@ -204,32 +223,40 @@ def write_release_dataset(
         with ThreadPoolExecutor(max_workers=1) as executor:
 
             def start_flush() -> None:
-                nonlocal release_rows, track_rows, credit_rows, part, pending
+                nonlocal release_rows, track_rows, credit_rows, format_rows, part, pending
                 if pending is not None:
                     files.extend(pending.result())
                 pending = executor.submit(
-                    _write_chunk, staging_root, part, release_rows, track_rows, credit_rows
+                    _write_chunk,
+                    staging_root,
+                    part,
+                    release_rows,
+                    track_rows,
+                    credit_rows,
+                    format_rows,
                 )
-                release_rows, track_rows, credit_rows = [], [], []
+                release_rows, track_rows, credit_rows, format_rows = [], [], [], []
                 part += 1
 
             for record in records:
                 release_rows.append(record.release)
                 track_rows.extend(record.tracks)
                 credit_rows.extend(record.credits)
+                format_rows.extend(record.formats)
                 counts["releases"] += 1
                 counts["tracks"] += len(record.tracks)
                 counts["credits"] += len(record.credits)
+                counts["release_formats"] += len(record.formats)
                 if len(release_rows) >= chunk_releases:
                     start_flush()
-            if release_rows or track_rows or credit_rows:
+            if release_rows or track_rows or credit_rows or format_rows:
                 start_flush()
             if pending is not None:
                 files.extend(pending.result())
         if counts["releases"] == 0:
             raise ValueError("no release records were parsed")
 
-        for table_name in ("tracks", "credits"):
+        for table_name in ("tracks", "credits", "release_formats"):
             prefix = f"table={table_name}/"
             if not any(str(item["path"]).startswith(prefix) for item in files):
                 path = _write_rows(staging_root, table_name, 0, [], allow_empty=True)

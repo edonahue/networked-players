@@ -25,16 +25,19 @@ def validate_dataset(dataset_root: Path) -> dict[str, Any]:
     release_glob = str(dataset_root / "table=releases" / "*.parquet")
     track_glob = str(dataset_root / "table=tracks" / "*.parquet")
     credit_glob = str(dataset_root / "table=credits" / "*.parquet")
+    format_glob = str(dataset_root / "table=release_formats" / "*.parquet")
 
     connection = duckdb.connect(database=":memory:")
     connection.read_parquet(release_glob).create_view("releases")
     connection.read_parquet(track_glob).create_view("tracks")
     connection.read_parquet(credit_glob).create_view("credits")
+    connection.read_parquet(format_glob).create_view("release_formats")
 
     metrics = {
         "release_rows": _scalar(connection, "SELECT count(*) FROM releases"),
         "track_rows": _scalar(connection, "SELECT count(*) FROM tracks"),
         "credit_rows": _scalar(connection, "SELECT count(*) FROM credits"),
+        "release_format_rows": _scalar(connection, "SELECT count(*) FROM release_formats"),
         "distinct_release_ids": _scalar(
             connection, "SELECT count(DISTINCT release_id) FROM releases"
         ),
@@ -43,6 +46,10 @@ def validate_dataset(dataset_root: Path) -> dict[str, Any]:
         ),
         "orphan_credits": _scalar(
             connection, "SELECT count(*) FROM credits c ANTI JOIN releases r USING (release_id)"
+        ),
+        "orphan_release_formats": _scalar(
+            connection,
+            "SELECT count(*) FROM release_formats f ANTI JOIN releases r USING (release_id)",
         ),
         "invalid_linked_artist_ids": _scalar(
             connection,
@@ -61,6 +68,7 @@ def validate_dataset(dataset_root: Path) -> dict[str, Any]:
         in {
             "orphan_tracks",
             "orphan_credits",
+            "orphan_release_formats",
             "invalid_linked_artist_ids",
             "missing_credit_scope",
         }
@@ -79,6 +87,7 @@ def validate_dataset(dataset_root: Path) -> dict[str, Any]:
             ("releases", "release_rows"),
             ("tracks", "track_rows"),
             ("credits", "credit_rows"),
+            ("release_formats", "release_format_rows"),
         ):
             expected = manifest_counts.get(table_name)
             actual = metrics[metric_name]

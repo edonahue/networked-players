@@ -17,6 +17,13 @@ same PAN/ANV separation, same track-scope-only-from-real-nesting rule. Wherever 
 page says "the parser," it means "both parsers, identically," unless noted
 otherwise.
 
+Release format normalization is dump-backed in schema v3: each nested
+`<formats><format>` element becomes one `release_formats` row keyed by
+`release_id` and source-order `format_index`. The carrier `name`, positive
+`qty`, free-text `text`, and ordered nested descriptions are preserved. Format
+policy classification is a separate projection and never replaces these
+normalized facts.
+
 ## Identity: PAN, ANV, and the source data's third concept (aliases)
 
 - **PAN** (`artist_id` in the output) comes directly from the source's `id` — the

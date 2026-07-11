@@ -56,6 +56,22 @@ def _parser() -> argparse.ArgumentParser:
     )
     validate_masters.add_argument("--dataset", type=Path, required=True)
 
+    format_policy = subparsers.add_parser(
+        "classify-release-formats",
+        help="classify normalized release formats with a named local policy",
+    )
+    format_policy.add_argument("--dataset", type=Path, required=True)
+    format_policy.add_argument("--output", type=Path, required=True)
+    format_policy.add_argument("--policy", default="studio-album-v1")
+
+    format_shadow = subparsers.add_parser(
+        "compare-release-format-policy",
+        help="compare the title safeguard with a generated release-format policy",
+    )
+    format_shadow.add_argument("--dataset", type=Path, required=True)
+    format_shadow.add_argument("--policy", type=Path, required=True)
+    format_shadow.add_argument("--output", type=Path, required=True)
+
     import_seed = subparsers.add_parser(
         "import-seed", help="reduce a local Discogs collection export to a release-ID seed"
     )
@@ -254,6 +270,12 @@ def _parser() -> argparse.ArgumentParser:
     score_connectivity.add_argument("--max-artists-per-release", type=int, default=50)
     score_connectivity.add_argument(
         "--temp-dir", type=Path, default=None, help="DuckDB spill directory"
+    )
+    score_connectivity.add_argument(
+        "--release-format-policy",
+        type=Path,
+        default=None,
+        help="local studio-album-v1 policy JSON; omit for legacy title-only scoring",
     )
     score_connectivity.add_argument(
         "--max-frontier-expansion",
@@ -526,6 +548,30 @@ def main(argv: Sequence[str] | None = None) -> int:
         from .discogs.validation import validate_master_dataset
 
         print(json.dumps(validate_master_dataset(args.dataset), indent=2, sort_keys=True))
+        return 0
+
+    if args.command == "classify-release-formats":
+        from .discogs.release_format_policy import (
+            build_release_format_policy,
+            write_release_format_policy,
+        )
+
+        policy = build_release_format_policy(args.dataset, policy_name=args.policy)
+        write_release_format_policy(policy, args.output)
+        counts: dict[str, int] = {}
+        for item in policy["classifications"]:
+            counts[item["decision"]] = counts.get(item["decision"], 0) + 1
+        print(json.dumps({"output": str(args.output), "counts": counts}, indent=2, sort_keys=True))
+        return 0
+
+    if args.command == "compare-release-format-policy":
+        from .discogs.release_format_policy import build_format_policy_shadow_report
+
+        policy = json.loads(args.policy.read_text())
+        report = build_format_policy_shadow_report(args.dataset, policy)
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n")
+        print(json.dumps({"output": str(args.output), "counts": report["counts"]}, indent=2))
         return 0
 
     if args.command == "import-seed":
@@ -807,6 +853,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             pair_timeout_seconds=args.pair_timeout_seconds,
             max_workers=args.max_workers,
             max_reach_rows=args.max_reach_rows,
+            release_format_policy=args.release_format_policy,
         )
         print(json.dumps(summary, indent=2, sort_keys=True))
         return 0

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
@@ -11,6 +12,30 @@ def test_neighbors_finds_co_credited_playable_artists(dataset_root: Path) -> Non
     with CreditGraph.open(dataset_root) as graph:
         neighbors = graph.neighbors(200)  # Bob: R1 with Alice, R2 with Cara
     assert neighbors == {100: (1,), 300: (2,)}
+
+
+def test_release_format_policy_excludes_non_album_evidence(
+    dataset_root: Path, tmp_path: Path
+) -> None:
+    policy = tmp_path / "policy.json"
+    policy.write_text(
+        json.dumps(
+            {
+                "policy_name": "studio-album-v1",
+                "policy_version": 1,
+                "snapshot_date": "20260601",
+                "classifications": [
+                    {
+                        "release_id": release_id,
+                        "decision": "exclude" if release_id == 1 else "allow",
+                    }
+                    for release_id in range(1, 8)
+                ],
+            }
+        )
+    )
+    with CreditGraph.open(dataset_root, release_format_policy=policy) as graph:
+        assert graph.neighbors(100) == {500: (4,), 501: (4,), 502: (4,)}
 
 
 def test_neighbors_excludes_non_linked_names(dataset_root: Path) -> None:

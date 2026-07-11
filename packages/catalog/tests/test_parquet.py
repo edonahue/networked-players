@@ -29,7 +29,12 @@ def _write_fixture_dataset(tmp_path: Path) -> Path:
 def test_parquet_round_trip_and_duckdb_validation(tmp_path: Path) -> None:
     dataset = _write_fixture_dataset(tmp_path)
     manifest = json.loads((dataset / "manifest.json").read_text())
-    assert manifest["counts"] == {"releases": 2, "tracks": 4, "credits": 9}
+    assert manifest["counts"] == {
+        "releases": 2,
+        "tracks": 4,
+        "credits": 9,
+        "release_formats": 0,
+    }
     assert len(list(dataset.glob("table=releases/*.parquet"))) == 2
     metrics = validate_dataset(dataset)
     assert metrics["release_rows"] == 2
@@ -68,7 +73,12 @@ def test_empty_optional_tables_remain_queryable(tmp_path: Path) -> None:
         source_url=source_url,
     )
     dataset = tmp_path / "output" / "snapshot=20260501"
-    assert manifest["counts"] == {"releases": 1, "tracks": 0, "credits": 0}
+    assert manifest["counts"] == {
+        "releases": 1,
+        "tracks": 0,
+        "credits": 0,
+        "release_formats": 0,
+    }
     assert len(list(dataset.glob("table=tracks/*.parquet"))) == 1
     assert len(list(dataset.glob("table=credits/*.parquet"))) == 1
     metrics = validate_dataset(dataset)

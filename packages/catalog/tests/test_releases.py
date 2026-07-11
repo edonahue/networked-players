@@ -57,6 +57,44 @@ def test_empty_status_attribute_normalizes_to_none() -> None:
     assert parsed.release["status"] is None
 
 
+def test_structured_formats_preserve_rows_and_descriptions() -> None:
+    element = etree.fromstring(
+        """<release id="999"><title>Format Fixture</title><formats>
+          <format name="Vinyl" qty="2" text="180 Gram">
+            <descriptions><description>LP</description><description>Album</description></descriptions>
+          </format>
+          <format name="CD" qty="bad" text="">
+            <descriptions><description>Compilation</description></descriptions>
+          </format>
+        </formats></release>"""
+    )
+    parsed = parse_release_element(
+        element,
+        snapshot_date="20260501",
+        source_url="https://example.test/releases.xml.gz",
+    )
+    assert parsed.formats == [
+        {
+            "snapshot_date": "20260501",
+            "release_id": 999,
+            "format_index": 0,
+            "format_name": "Vinyl",
+            "quantity": 2,
+            "format_text": "180 Gram",
+            "descriptions": ["LP", "Album"],
+        },
+        {
+            "snapshot_date": "20260501",
+            "release_id": 999,
+            "format_index": 1,
+            "format_name": "CD",
+            "quantity": None,
+            "format_text": None,
+            "descriptions": ["Compilation"],
+        },
+    ]
+
+
 def test_stream_parser_can_stop_after_a_bounded_slice() -> None:
     records = list(
         iter_releases(

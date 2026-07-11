@@ -84,6 +84,7 @@ def test_frontier_retention_and_evidence(tmp_path: Path) -> None:
         "releases": 2,
         "tracks": 4,
         "credits": 10,
+        "release_formats": 0,
         "frontier_artists": 4,
         "seed_releases": 1,
     }

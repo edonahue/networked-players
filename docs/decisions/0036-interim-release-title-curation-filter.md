@@ -63,6 +63,12 @@ The durable design is a release-format policy, separate from graph traversal:
 6. Measure recall against a synthetic fixture matrix and a manually reviewed
    sample of real evidence releases before changing the public cohort.
 
+The implementation foundation is now present in schema v3 as `release_formats`,
+with the first named projection `studio-album-v1`. The title guard remains the
+legacy default until a shadow comparison of title-only and format-aware scoring
+has been reviewed against the real cohort. Under this policy, an explicit
+`Compilation` excludes a release even when `Album` is also present.
+
 The API can enrich selected releases because Discogs API content includes
 format, track listings, and credits, but API calls should remain an operator
 or curation aid, not a bulk-ingestion dependency. The project continues to use

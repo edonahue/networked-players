@@ -1,8 +1,8 @@
-# Discogs release dataset contract (schema v2)
+# Discogs release dataset contract (schema v3)
 
 This documents the normalized Parquet tables produced by `parse-releases` in the
 [catalog package](../../packages/catalog/README.md). It corresponds to
-`SCHEMA_VERSION = 2` in
+`SCHEMA_VERSION = 3` in
 `packages/catalog/src/networked_players_catalog/discogs/parquet.py`.
 
 > **Source of truth.** The PyArrow schemas in `parquet.py` (`RELEASE_SCHEMA`,
@@ -41,6 +41,21 @@ so tables remain self-describing once separated from their path.
 | `position` | string | yes | Original position text (e.g. `A1`, `A2a`) |
 | `title` | string | yes | Track title |
 | `duration` | string | yes | Duration text (e.g. `3:15`) |
+
+## `release_formats` — one row per structured Discogs format row
+
+| Field | Type | Null? | Meaning |
+| --- | --- | --- | --- |
+| `snapshot_date` | string | no | Source dump snapshot |
+| `release_id` | int64 | no | Owning Discogs release |
+| `format_index` | int32 | no | Source order within the release's `<formats>` element |
+| `format_name` | string | yes | Main carrier/type, such as `Vinyl`, `CD`, or `File` |
+| `quantity` | int32 | yes | Positive `qty` value when present and parseable |
+| `format_text` | string | yes | Discogs free-text format field, preserved as text |
+| `descriptions` | list[string] | no | Ordered descriptors such as `LP`, `Album`, or `Compilation` |
+
+The parser preserves format rows without inferring an album from the physical
+carrier. A separate named policy classifies this evidence for graph use.
 
 ## `credits` — one row per release- or track-level artist/credit
 

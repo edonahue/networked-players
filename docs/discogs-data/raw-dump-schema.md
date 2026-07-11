@@ -77,6 +77,8 @@ project's parser (kept verbatim as the `released` string field).
 `id` (attribute), `status` (attribute), `title`, `country`, `released`,
 `master_id`/`is_main_release` (attribute), `data_quality`, `artists/artist` and
 `extraartists/artist` (each: `id`, `name`, `anv`, `join`, `role`, `tracks`),
+`formats/format` (`name`, positive `qty` when parseable, `text`, ordered nested
+`description` values),
 `tracklist/track` (`position`, `title`, `duration`, its own nested
 `artists`/`extraartists`, and recursive `sub_tracks/track`).
 
@@ -88,7 +90,6 @@ Confirmed present in the real inspected sample, not represented in
 | Field | Real example | Notes |
 | --- | --- | --- |
 | `<labels><label>` | `name="Svek" catno="SK032" id="5"` | Label name, catalog number, and a real `label_id` — a genuine graph edge (release↔label) this project doesn't extract yet |
-| `<formats><format>` | `name="Vinyl" qty="2"`, nested `<descriptions>` (`12"`, `33 ⅓ RPM`) | Physical format facts |
 | `<genres>`/`<styles>` | `Electronic` / `Deep House` | Discogs' own genre/style taxonomy (controlled vocabulary, not free text) |
 | `<notes>` | Free text | Often contains `[a=]`/`[l=]` cross-references (see above) |
 | `<identifiers>` | `type="Matrix / Runout" value="..."` | Matrix/runout, barcode, etc. — physical-artifact-level evidence |

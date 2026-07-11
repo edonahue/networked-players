@@ -288,6 +288,7 @@ def credit_edges_sql(
     compilation_track_artist_threshold: int = COMPILATION_TRACK_ARTIST_THRESHOLD,
     max_artists_per_track: int = MAX_ARTISTS_PER_TRACK,
     credits_relation: str = "credits",
+    release_format_policy_relation: str | None = None,
 ) -> str:
     """A SELECT producing the directed, deduplicated co-credit edge relation
     `(artist_a_id, artist_b_id, release_id)` over `credits_relation`.
@@ -326,18 +327,29 @@ def credit_edges_sql(
     ineligible = _edge_ineligible_role_sql("role_text")
     not_placeholder = _not_placeholder_sql()
     studio_track = _non_studio_track_variant_sql()
-    studio_release = _non_studio_release_title_sql("r.title")
+    studio_release = (
+        "TRUE"
+        if release_format_policy_relation is not None
+        else _non_studio_release_title_sql("r.title")
+    )
     cap = int(max_artists_per_release)
     track_cap = int(max_artists_per_track)
+    policy_join = ""
+    policy_filter = ""
+    if release_format_policy_relation is not None:
+        policy_join = f"JOIN {release_format_policy_relation} rfp ON rfp.release_id = c.release_id"
+        policy_filter = "AND rfp.decision = 'allow'"
     return f"""
     WITH edge_credits AS (
         SELECT c.release_id, c.track_index, c.track_title, c.credit_scope, c.artist_id
         FROM {credits_relation} c
         JOIN releases r USING (release_id)
+        {policy_join}
         WHERE c.playable_identity AND c.artist_id IS NOT NULL AND c.artist_id > 0
           AND {not_placeholder}
           AND NOT {ineligible}
           AND {studio_release}
+          {policy_filter}
     ), release_shape AS (
         SELECT release_id,
                count(DISTINCT CASE WHEN credit_scope = 'track_artist'
@@ -533,6 +545,7 @@ class CreditGraph:
         max_artists_per_release: int = 50,
         temp_dir: Path | None = None,
         build_edges: bool = True,
+        release_format_policy: Path | None = None,
     ) -> CreditGraph:
         """`build_edges=False` skips materializing `credit_edges` -- the ~2.5
         minute step on the real corpus. The result can read evidence rows
@@ -571,6 +584,28 @@ class CreditGraph:
         except duckdb.IOException as exc:
             raise GraphError(f"could not open dataset at {dataset_root}: {exc}") from exc
 
+        policy_relation: str | None = None
+        if release_format_policy is not None:
+            try:
+                policy_payload = json.loads(Path(release_format_policy).read_text())
+                if policy_payload.get("snapshot_date") != str(
+                    json.loads(manifest_path.read_text())["snapshot_date"]
+                ):
+                    raise GraphError("release format policy snapshot does not match dataset")
+                if policy_payload.get("policy_name") != "studio-album-v1":
+                    raise GraphError("unsupported release format policy")
+                classifications = policy_payload["classifications"]
+                connection.execute(
+                    "CREATE TABLE release_format_policy (release_id BIGINT, decision VARCHAR)"
+                )
+                connection.executemany(
+                    "INSERT INTO release_format_policy VALUES (?, ?)",
+                    [(int(row["release_id"]), str(row["decision"])) for row in classifications],
+                )
+                policy_relation = "release_format_policy"
+            except (OSError, KeyError, TypeError, ValueError) as exc:
+                raise GraphError(f"could not load release format policy: {exc}") from exc
+
         credit_count = connection.execute("SELECT count(*) FROM credits").fetchone()
         if credit_count is None or credit_count[0] == 0:
             raise GraphError(f"no credit rows found under {dataset_root}")
@@ -598,7 +633,10 @@ class CreditGraph:
         if build_edges:
             connection.execute(
                 "CREATE TABLE credit_edges AS "
-                + credit_edges_sql(max_artists_per_release=max_artists_per_release)
+                + credit_edges_sql(
+                    max_artists_per_release=max_artists_per_release,
+                    release_format_policy_relation=policy_relation,
+                )
             )
             connection.execute("CREATE INDEX credit_edges_a ON credit_edges (artist_a_id)")
         return cls(

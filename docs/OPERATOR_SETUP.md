@@ -422,11 +422,32 @@ master/coordination host for its own authoritative copy, or SSH to
 
 ### 4. Score (needs the one-hop dataset)
 
+Before scoring a real cohort with format-aware evidence, generate the local
+classification and inspect the title-policy transition. These commands do not
+publish anything and do not call the API:
+
+```bash
+uv run networked-players-catalog classify-release-formats \
+  --dataset local/processed/discogs-onehop/snapshot=20260601 \
+  --output local/analysis/cohorts/<source-id>/release-format-policy.json
+
+uv run networked-players-catalog compare-release-format-policy \
+  --dataset local/processed/discogs-onehop/snapshot=20260601 \
+  --policy local/analysis/cohorts/<source-id>/release-format-policy.json \
+  --output local/analysis/cohorts/<source-id>/format-policy-shadow.json
+```
+
+Review the disagreement list before adding `--release-format-policy` to the
+scoring command. The policy requires an explicit Album descriptor and excludes
+Compilation, Sampler, Single, EP, Live, Remix, Bootleg, Soundtrack, and Box Set
+evidence. Missing or ambiguous format data remains review-required.
+
 ```bash
 uv run networked-players-catalog score-cohort-connectivity \
   --resolved local/analysis/cohorts/<source-id>/resolved.json \
   --dataset local/processed/discogs-onehop/snapshot=<SNAPSHOT> \
   --output-dir local/analysis/cohorts/<source-id>/ \
+  --release-format-policy local/analysis/cohorts/<source-id>/release-format-policy.json \
   --memory-limit 3GB --threads 3 --pair-timeout-seconds 180
 ```
 

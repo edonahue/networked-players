@@ -12,7 +12,7 @@ frontier-and-filter one-hop corpus `docs/DISCOGS_INGESTION.md` describes:
    subset of ``releases``/``tracks``/``credits`` (ALL credit rows of every
    retained release, including non-linked evidence rows -- no shortcut that
    drops evidence), plus two expansion-specific tables:
-   ``frontier_artists`` and ``seed_releases``.
+``release_formats``, ``frontier_artists`` and ``seed_releases``.
 
 Everything heavy runs inside DuckDB with an explicit memory limit and a
 spill directory -- the 220M-row credits table streams through two
@@ -62,7 +62,14 @@ from networked_players_catalog import __version__
 from .parquet import SCHEMA_VERSION, _sha256
 from .seed import SeedManifest
 
-ONEHOP_TABLES = ("releases", "tracks", "credits", "frontier_artists", "seed_releases")
+ONEHOP_TABLES = (
+    "releases",
+    "tracks",
+    "credits",
+    "release_formats",
+    "frontier_artists",
+    "seed_releases",
+)
 
 # Deterministic output ordering per table. `ORDER BY ALL` sorts by every
 # column left-to-right, which makes the row order a pure function of the row
@@ -72,6 +79,7 @@ _TABLE_ORDER = {
     "releases": "ORDER BY release_id",
     "tracks": "ORDER BY ALL",
     "credits": "ORDER BY ALL",
+    "release_formats": "ORDER BY release_id, format_index",
     "frontier_artists": "ORDER BY artist_id",
     "seed_releases": "ORDER BY release_id",
 }
@@ -208,6 +216,7 @@ def expand_one_hop(
     releases_glob = str(dataset_root / "table=releases" / "*.parquet")
     tracks_glob = str(dataset_root / "table=tracks" / "*.parquet")
     credits_glob = str(dataset_root / "table=credits" / "*.parquet")
+    formats_glob = str(dataset_root / "table=release_formats" / "*.parquet")
 
     staging_root = output_root / f".snapshot={snapshot_date}.tmp-{uuid.uuid4().hex}"
     staging_root.mkdir(parents=True, exist_ok=False)
@@ -296,6 +305,10 @@ def expand_one_hop(
             "credits": (
                 f"SELECT c.* FROM {_rp(credits_glob)} c "
                 "WHERE c.release_id IN (SELECT release_id FROM retained_releases)"
+            ),
+            "release_formats": (
+                f"SELECT f.* FROM {_rp(formats_glob)} f "
+                "WHERE f.release_id IN (SELECT release_id FROM retained_releases)"
             ),
             "frontier_artists": "SELECT artist_id FROM frontier_artists",
             "seed_releases": (
@@ -408,7 +421,7 @@ def _self_check(
     if unprovable:
         failures["releases_without_frontier_evidence"] = unprovable
 
-    for child in ("tracks", "credits"):
+    for child in ("tracks", "credits", "release_formats"):
         orphans = _scalar(
             connection,
             f"""
