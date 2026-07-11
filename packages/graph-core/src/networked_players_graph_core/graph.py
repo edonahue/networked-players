@@ -122,8 +122,9 @@ _NON_STUDIO_TRACK_VARIANT_PATTERN = r"\b(live|demo|remix|re-?edit|acoustic|radio
 # keep the worst compilation-like containers out of the first cohort while a
 # format-aware release model is researched (ADR 0036).
 _NON_STUDIO_RELEASE_TITLE_PATTERN = (
-    r"\b(compilation|sampler|greatest hits|best of|anthology|collection|rarities|"
-    r"bootleg|mash[- ]?up|live|remix(?:es)?|reissue|soundtrack|singles|box set)\b"
+    r"\b(compilations?|samplers?|greatest hits|best of|antholog(?:y|ies)|"
+    r"collections?|rarit(?:y|ies)|bootlegs?|mash[- ]?ups?|live(?:box)?|"
+    r"remixes?|reissues?|soundtracks?|sound collages?|singles?|box sets?|mixtapes?)\b"
 )
 
 # Roles whose credit records a *quotation* of an artist, not a contribution

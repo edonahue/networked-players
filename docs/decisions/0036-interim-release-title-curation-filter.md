@@ -19,7 +19,8 @@ or `Remix`.
 ## Decision
 
 As an interim first-cohort guard, `credit_edges` excludes releases whose title
-contains an explicit compilation-like signal:
+contains an explicit compilation-like signal (including plural and common
+compound forms):
 
 `compilation`, `sampler`, `greatest hits`, `best of`, `anthology`, `collection`,
 `rarities`, `bootleg`, `mashup`, `live`, `remix`, `reissue`, `soundtrack`,
