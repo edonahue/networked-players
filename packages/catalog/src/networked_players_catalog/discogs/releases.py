@@ -19,6 +19,33 @@ class ParsedRelease:
     formats: list[dict[str, object]]
 
 
+def _format_rows(
+    element: etree._Element, *, snapshot_date: str, release_id: int
+) -> list[dict[str, object]]:
+    formats: list[dict[str, object]] = []
+    formats_element = element.find("formats")
+    if formats_element is None:
+        return formats
+    for format_index, format_element in enumerate(formats_element.findall("format")):
+        descriptions = [
+            description
+            for child in format_element.findall("descriptions/description")
+            if (description := _normalize_text(child.text)) is not None
+        ]
+        formats.append(
+            {
+                "snapshot_date": snapshot_date,
+                "release_id": release_id,
+                "format_index": format_index,
+                "format_name": _normalize_text(format_element.attrib.get("name")),
+                "quantity": _integer(format_element.attrib.get("qty")),
+                "format_text": _normalize_text(format_element.attrib.get("text")),
+                "descriptions": descriptions,
+            }
+        )
+    return formats
+
+
 def _child_text_map(element: etree._Element) -> dict[str, str | None]:
     """Direct children's text, keyed by tag; first occurrence wins (matches
     findtext()'s semantics). Real profiling (docs/DATA_SIZING.md, 2026-07-01) found
@@ -60,28 +87,7 @@ def _integer(value: str | None) -> int | None:
 def _parse_formats(
     element: etree._Element, *, snapshot_date: str, release_id: int
 ) -> list[dict[str, object]]:
-    formats: list[dict[str, object]] = []
-    formats_element = element.find("formats")
-    if formats_element is None:
-        return formats
-    for format_index, format_element in enumerate(formats_element.findall("format")):
-        descriptions = [
-            description
-            for child in format_element.findall("descriptions/description")
-            if (description := _normalize_text(child.text)) is not None
-        ]
-        formats.append(
-            {
-                "snapshot_date": snapshot_date,
-                "release_id": release_id,
-                "format_index": format_index,
-                "format_name": _normalize_text(format_element.attrib.get("name")),
-                "quantity": _integer(format_element.attrib.get("qty")),
-                "format_text": _normalize_text(format_element.attrib.get("text")),
-                "descriptions": descriptions,
-            }
-        )
-    return formats
+    return _format_rows(element, snapshot_date=snapshot_date, release_id=release_id)
 
 
 def _artist_row(
@@ -325,3 +331,35 @@ def iter_releases(
                 source_url=source_url,
                 max_releases=max_releases,
             )
+
+
+def iter_release_formats(
+    path: Path,
+    *,
+    snapshot_date: str,
+    release_ids: set[int] | None = None,
+) -> Iterator[dict[str, object]]:
+    """Stream only structured format rows, optionally for a bounded ID set."""
+    if path.name.endswith(".gz"):
+        handle_context: BinaryIO = cast(BinaryIO, gzip.open(path, "rb"))
+    else:
+        handle_context = path.open("rb")
+    with handle_context as handle:
+        context = etree.iterparse(
+            handle,
+            events=("end",),
+            tag="release",
+            huge_tree=True,
+            recover=False,
+            resolve_entities=False,
+            no_network=True,
+        )
+        for _, element in context:
+            release_id = int(element.attrib["id"])
+            if release_ids is None or release_id in release_ids:
+                yield from _format_rows(element, snapshot_date=snapshot_date, release_id=release_id)
+            element.clear()
+            parent = element.getparent()
+            if parent is not None:
+                while element.getprevious() is not None:
+                    del parent[0]

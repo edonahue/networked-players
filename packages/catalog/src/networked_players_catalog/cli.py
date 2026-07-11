@@ -72,6 +72,18 @@ def _parser() -> argparse.ArgumentParser:
     format_shadow.add_argument("--policy", type=Path, required=True)
     format_shadow.add_argument("--output", type=Path, required=True)
 
+    format_migration = subparsers.add_parser(
+        "migrate-release-formats",
+        help="copy a dataset and add structured release formats from a local dump",
+    )
+    format_migration.add_argument("--input-dataset", type=Path, required=True)
+    format_migration.add_argument("--raw-dump", type=Path, required=True)
+    format_migration.add_argument("--snapshot", required=True)
+    format_migration.add_argument("--source-url", required=True)
+    format_migration.add_argument("--output-root", type=Path, required=True)
+    format_migration.add_argument("--chunk-rows", type=int, default=50_000)
+    format_migration.add_argument("--overwrite", action="store_true")
+
     import_seed = subparsers.add_parser(
         "import-seed", help="reduce a local Discogs collection export to a release-ID seed"
     )
@@ -572,6 +584,21 @@ def main(argv: Sequence[str] | None = None) -> int:
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n")
         print(json.dumps({"output": str(args.output), "counts": report["counts"]}, indent=2))
+        return 0
+
+    if args.command == "migrate-release-formats":
+        from .discogs.format_migration import migrate_dataset_with_formats
+
+        migration_manifest = migrate_dataset_with_formats(
+            args.input_dataset,
+            args.raw_dump,
+            args.output_root,
+            snapshot_date=args.snapshot,
+            source_url=args.source_url,
+            chunk_rows=args.chunk_rows,
+            overwrite=args.overwrite,
+        )
+        print(json.dumps(migration_manifest, indent=2, sort_keys=True))
         return 0
 
     if args.command == "import-seed":
