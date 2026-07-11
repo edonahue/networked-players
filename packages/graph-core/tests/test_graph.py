@@ -664,7 +664,7 @@ def test_writing_and_packaging_credits_never_create_edges(tmp_path: Path) -> Non
             role_text="Written-By, Producer",
         ),
     ]
-    with _adr35_graph(tmp_path, rows, "Greatest Hits And Videos") as graph:
+    with _adr35_graph(tmp_path, rows, "Sessions And Videos") as graph:
         neighbors = graph.neighbors(92476)
         assert 18956 not in neighbors, "a Written-By-only cover credit is not a collaboration"
         assert 2551803 not in neighbors, "a Design credit is not a collaboration"
@@ -1141,3 +1141,16 @@ def test_live_b_side_feature_does_not_create_a_curated_edge(tmp_path: Path) -> N
     ]
     with _adr35_graph(tmp_path, rows, "Taken For A Fool") as graph:
         assert 55029 not in graph.neighbors(55980)
+
+
+def test_obvious_compilation_title_does_not_create_curated_edges(tmp_path: Path) -> None:
+    """The interim title guard blocks an otherwise album-shaped sampler."""
+    rows = [
+        _adr35_credit(4001, artist_id=100, name="Alice", scope="release_artist"),
+        _adr35_credit(4001, artist_id=100, name="Alice", scope="track_artist", track_index=0),
+        _adr35_credit(4001, artist_id=200, name="Bob", scope="release_artist"),
+        _adr35_credit(4001, artist_id=200, name="Bob", scope="track_artist", track_index=0),
+    ]
+    with _adr35_graph(tmp_path, rows, "Greatest Hits") as graph:
+        assert graph.neighbors(100) == {}
+        assert graph.neighbors(200) == {}

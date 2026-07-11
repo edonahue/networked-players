@@ -117,6 +117,15 @@ MAX_ARTISTS_PER_TRACK = 16
 # single or every studio album.
 _NON_STUDIO_TRACK_VARIANT_PATTERN = r"\b(live|demo|remix|re-?edit|acoustic|radio edit)\b"
 
+# Temporary curation guard for evidence releases. The normalized snapshot does
+# not yet preserve Discogs format descriptions, so these obvious title signals
+# keep the worst compilation-like containers out of the first cohort while a
+# format-aware release model is researched (ADR 0036).
+_NON_STUDIO_RELEASE_TITLE_PATTERN = (
+    r"\b(compilation|sampler|greatest hits|best of|anthology|collection|rarities|"
+    r"bootleg|mash[- ]?up|live|remix(?:es)?|reissue|soundtrack|singles|box set)\b"
+)
+
 # Roles whose credit records a *quotation* of an artist, not a contribution
 # by them: a sample, an interpolation, an excerpt. Discogs writes these as a
 # bracketed qualifier ("Performer [Sample]", "Featuring [Samples From]",
@@ -217,6 +226,14 @@ def _non_studio_track_variant_sql(track_title_column: str = "track_title") -> st
     )
 
 
+def _non_studio_release_title_sql(title_column: str = "title") -> str:
+    """SQL predicate for an obvious compilation-like release title."""
+    return (
+        "NOT regexp_matches(lower(coalesce("
+        f"{title_column}, '')), '{_NON_STUDIO_RELEASE_TITLE_PATTERN}')"
+    )
+
+
 def edge_ineligible_role(role_text: str | None) -> bool:
     """Python mirror of `_edge_ineligible_role_sql`: True when a credit's role
     means it cannot create an edge.
@@ -308,15 +325,18 @@ def credit_edges_sql(
     ineligible = _edge_ineligible_role_sql("role_text")
     not_placeholder = _not_placeholder_sql()
     studio_track = _non_studio_track_variant_sql()
+    studio_release = _non_studio_release_title_sql("r.title")
     cap = int(max_artists_per_release)
     track_cap = int(max_artists_per_track)
     return f"""
     WITH edge_credits AS (
-        SELECT release_id, track_index, track_title, credit_scope, artist_id
-        FROM {credits_relation}
-        WHERE playable_identity AND artist_id IS NOT NULL AND artist_id > 0
+        SELECT c.release_id, c.track_index, c.track_title, c.credit_scope, c.artist_id
+        FROM {credits_relation} c
+        JOIN releases r USING (release_id)
+        WHERE c.playable_identity AND c.artist_id IS NOT NULL AND c.artist_id > 0
           AND {not_placeholder}
           AND NOT {ineligible}
+          AND {studio_release}
     ), release_shape AS (
         SELECT release_id,
                count(DISTINCT CASE WHEN credit_scope = 'track_artist'

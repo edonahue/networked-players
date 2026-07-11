@@ -147,7 +147,7 @@ def _performed(release_id: int, *, artist_id: int, name: str) -> list[dict[str, 
 #   R1 "First Light" (master 901, main): Alice(100) + Bob(200)
 #   R2 "Second Set" (no master): Bob(200) + Cara(300)
 #   R3 "Third Wave" (master 903, main, not in the masters fixture): Cara(300) + Dan(400)
-#   R4 "Mega Compilation" (master 904, main): Alice(100) + Eve(500) + PlusOne(501) + PlusTwo(502)
+#   R4 "Large Ensemble" (master 904, main): Alice(100) + Eve(500) + PlusOne(501) + PlusTwo(502)
 #     -- a 4-linked-artist release, used for the max_artists_per_release cap tests.
 #   R5 "Choir Sessions" (no master): Alice(100) + a non-linked "Session Choir" evidence row
 #   R6 "Sixth Sense" (master 906, main, not in the masters fixture): Dan(400) + Eve(500)
@@ -160,7 +160,7 @@ FIXTURE_RELEASES = [
     _release(1, "First Light", released="1993", master_id=901, master_is_main_release=True),
     _release(2, "Second Set", released="1994"),
     _release(3, "Third Wave", released="1995", master_id=903, master_is_main_release=True),
-    _release(4, "Mega Compilation", released="1996", master_id=904, master_is_main_release=True),
+    _release(4, "Large Ensemble", released="1996", master_id=904, master_is_main_release=True),
     _release(5, "Choir Sessions", released="1997"),
     _release(6, "Sixth Sense", released="1998", master_id=906, master_is_main_release=True),
     _release(7, "Compilation Various", released="1999"),
