@@ -594,13 +594,22 @@ class CreditGraph:
                     raise GraphError("release format policy snapshot does not match dataset")
                 if policy_payload.get("policy_name") != "studio-album-v1":
                     raise GraphError("unsupported release format policy")
-                classifications = policy_payload["classifications"]
                 connection.execute(
                     "CREATE TABLE release_format_policy (release_id BIGINT, decision VARCHAR)"
                 )
+                if policy_payload.get("kind") == "release-format-scoring-index":
+                    policy_rows = [
+                        (int(release_id), "allow")
+                        for release_id in policy_payload["allowed_release_ids"]
+                    ]
+                else:
+                    policy_rows = [
+                        (int(row["release_id"]), str(row["decision"]))
+                        for row in policy_payload["classifications"]
+                    ]
                 connection.executemany(
                     "INSERT INTO release_format_policy VALUES (?, ?)",
-                    [(int(row["release_id"]), str(row["decision"])) for row in classifications],
+                    policy_rows,
                 )
                 policy_relation = "release_format_policy"
             except (OSError, KeyError, TypeError, ValueError) as exc:

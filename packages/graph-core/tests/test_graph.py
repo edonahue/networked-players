@@ -24,13 +24,8 @@ def test_release_format_policy_excludes_non_album_evidence(
                 "policy_name": "studio-album-v1",
                 "policy_version": 1,
                 "snapshot_date": "20260601",
-                "classifications": [
-                    {
-                        "release_id": release_id,
-                        "decision": "exclude" if release_id == 1 else "allow",
-                    }
-                    for release_id in range(1, 8)
-                ],
+                "kind": "release-format-scoring-index",
+                "allowed_release_ids": [2, 3, 4, 5, 6, 7],
             }
         )
     )

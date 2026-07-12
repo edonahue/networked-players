@@ -435,10 +435,14 @@ uv run networked-players-catalog compare-release-format-policy \
   --dataset local/processed/discogs-onehop/snapshot=20260601 \
   --policy local/analysis/cohorts/<source-id>/release-format-policy.json \
   --output local/analysis/cohorts/<source-id>/format-policy-shadow.json
+
+uv run networked-players-catalog build-release-format-scoring-index \
+  --policy local/analysis/cohorts/<source-id>/release-format-policy.json \
+  --output local/analysis/cohorts/<source-id>/release-format-scoring-index.json
 ```
 
-Review the disagreement list before adding `--release-format-policy` to the
-scoring command. The policy requires an explicit Album descriptor and excludes
+Review the disagreement list before adding the compact scoring index through
+`--release-format-policy`. The policy requires an explicit Album descriptor and excludes
 Compilation, Sampler, Single, EP, Live, Remix, Bootleg, Soundtrack, and Box Set
 evidence. Missing or ambiguous format data remains review-required.
 

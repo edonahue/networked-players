@@ -72,6 +72,13 @@ def _parser() -> argparse.ArgumentParser:
     format_shadow.add_argument("--policy", type=Path, required=True)
     format_shadow.add_argument("--output", type=Path, required=True)
 
+    format_index = subparsers.add_parser(
+        "build-release-format-scoring-index",
+        help="write a compact allowed-release index from a review policy",
+    )
+    format_index.add_argument("--policy", type=Path, required=True)
+    format_index.add_argument("--output", type=Path, required=True)
+
     format_migration = subparsers.add_parser(
         "migrate-release-formats",
         help="copy a dataset and add structured release formats from a local dump",
@@ -584,6 +591,25 @@ def main(argv: Sequence[str] | None = None) -> int:
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n")
         print(json.dumps({"output": str(args.output), "counts": report["counts"]}, indent=2))
+        return 0
+
+    if args.command == "build-release-format-scoring-index":
+        from .discogs.release_format_policy import (
+            build_release_format_scoring_index,
+            write_release_format_scoring_index,
+        )
+
+        index = build_release_format_scoring_index(json.loads(args.policy.read_text()))
+        write_release_format_scoring_index(index, args.output)
+        print(
+            json.dumps(
+                {
+                    "output": str(args.output),
+                    "allowed_release_count": index["allowed_release_count"],
+                },
+                indent=2,
+            )
+        )
         return 0
 
     if args.command == "migrate-release-formats":

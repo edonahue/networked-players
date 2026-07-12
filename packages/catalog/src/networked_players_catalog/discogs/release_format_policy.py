@@ -159,6 +159,41 @@ def write_release_format_policy(policy: dict[str, Any], output: Path) -> None:
         raise
 
 
+def build_release_format_scoring_index(policy: dict[str, Any]) -> dict[str, Any]:
+    """Build the compact allow-list consumed by graph scoring.
+
+    The full policy keeps reasons and normalized descriptors for editorial
+    review. Scoring only needs the releases explicitly allowed by the policy,
+    so this index avoids loading that larger review artifact on a worker.
+    """
+    canonical_policy = json.dumps(policy, sort_keys=True, separators=(",", ":")).encode()
+    allowed_release_ids = sorted(
+        int(item["release_id"]) for item in policy["classifications"] if item["decision"] == "allow"
+    )
+    return {
+        "schema_version": 1,
+        "kind": "release-format-scoring-index",
+        "policy_name": policy["policy_name"],
+        "policy_version": policy["policy_version"],
+        "snapshot_date": policy["snapshot_date"],
+        "source_policy_sha256": hashlib.sha256(canonical_policy).hexdigest(),
+        "allowed_release_count": len(allowed_release_ids),
+        "allowed_release_ids": allowed_release_ids,
+    }
+
+
+def write_release_format_scoring_index(index: dict[str, Any], output: Path) -> None:
+    output = Path(output)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    staging = output.with_name(f".{output.name}.tmp-{uuid.uuid4().hex}")
+    try:
+        staging.write_text(json.dumps(index, indent=2, sort_keys=True) + "\n")
+        staging.replace(output)
+    except Exception:
+        staging.unlink(missing_ok=True)
+        raise
+
+
 def build_format_policy_shadow_report(dataset_root: Path, policy: dict[str, Any]) -> dict[str, Any]:
     """Compare the legacy title guard with a generated format policy."""
     root = Path(dataset_root)
