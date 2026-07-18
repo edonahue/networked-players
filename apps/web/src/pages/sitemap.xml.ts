@@ -17,9 +17,24 @@ const connectedAlbumIds = new Set(
 );
 const albumPaths = challenge.albums
   .filter((album) => connectedAlbumIds.has(album.id))
-  .map((album) => `/play/${album.id}/`);
+  .map((album) => `/albums/${album.id}/`);
 
-const paths = ["/", "/about/", "/demo/", ...albumPaths];
+import cohortManifest from "../../public/data/cohorts/index.json";
+
+const cohortPaths = cohortManifest.cohorts.map(
+  (cohort: { cohort_id: string }) => `/cohorts/${cohort.cohort_id}/`,
+);
+
+const paths = [
+  "/",
+  "/play/",
+  "/albums/",
+  "/about/",
+  "/demo/",
+  "/cohorts/",
+  ...cohortPaths,
+  ...albumPaths,
+];
 
 export const GET: APIRoute = async ({ site }) => {
   if (!site)

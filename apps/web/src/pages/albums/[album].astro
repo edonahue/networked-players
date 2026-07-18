@@ -1,0 +1,133 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import EvidenceCard from '../../components/EvidenceCard.astro';
+import RevealControls from '../../components/RevealControls.astro';
+import type { AlbumV2, ChallengeV2 } from '../../data/challenge';
+import challengeData from '../../../public/data/challenge.v2.json';
+
+const challenge = challengeData as ChallengeV2;
+
+export function getStaticPaths() {
+  const data = challengeData as ChallengeV2;
+  const connectedAlbumIds = new Set<string>();
+  for (const path of data.paths) {
+    connectedAlbumIds.add(path.from_album_id);
+    connectedAlbumIds.add(path.to_album_id);
+  }
+  return data.albums
+    .filter((album) => connectedAlbumIds.has(album.id))
+    .map((album) => ({ params: { album: album.id }, props: { album } }));
+}
+
+interface Props {
+  album: AlbumV2;
+}
+
+const { album } = Astro.props;
+const { albums, artists, paths, releases } = challenge;
+const albumById = new Map(albums.map((a) => [a.id, a]));
+
+const connectedPaths = paths
+  .filter((p) => p.from_album_id === album.id || p.to_album_id === album.id)
+  .map((path) => {
+    const otherAlbumId =
+      path.from_album_id === album.id ? path.to_album_id : path.from_album_id;
+    return { path, otherAlbum: albumById.get(otherAlbumId) };
+  })
+  .filter((entry): entry is { path: (typeof paths)[number]; otherAlbum: AlbumV2 } =>
+    Boolean(entry.otherAlbum),
+  );
+
+const description = [
+  `Find the documented connections between ${album.title}`,
+  'and other albums, with credit evidence at every hop.',
+].join(' ');
+---
+
+<BaseLayout title={album.title} description={description}>
+  <section class="shell" style="padding-top:40px">
+    <div class="play-header">
+      {
+        album.cover_image ? (
+          <img
+            class="play-header__cover"
+            src={album.cover_image.uri150}
+            width="96"
+            height="96"
+            alt={`Cover art for ${album.title}`}
+          />
+        ) : (
+          <span class="play-header__placeholder album-card__placeholder" aria-hidden="true">
+            <span class="album-card__placeholder-disc" />
+          </span>
+        )
+      }
+      <div>
+        <p class="eyebrow" style="margin-bottom:6px">Album</p>
+        <h1 style="font-size:clamp(1.8rem,4vw,2.6rem)">{album.title}</h1>
+        <p class="lede" style="margin-top:6px;font-size:1rem">
+          {album.artist}
+          {album.year ? ` · ${album.year}` : ''}
+        </p>
+      </div>
+    </div>
+
+    {
+      connectedPaths.length === 0 ? (
+        <p class="lede">No documented connections from this album yet.</p>
+      ) : (
+        <>
+          <div class="mode-toggle" role="group" aria-label="Play mode">
+            <button type="button" data-reveal-mode="hide" aria-pressed="true">
+              Find the connection
+            </button>
+            <button type="button" data-reveal-mode="show" aria-pressed="false">
+              Reveal every path
+            </button>
+          </div>
+
+          {
+            connectedPaths.map(({ path, otherAlbum }, index) => {
+              const evidenceId = `play-${path.id}-evidence`;
+              return (
+                <div
+                  class="play-path"
+                  data-play-path={path.id}
+                  data-reveal-scope
+                  style="margin-bottom:20px"
+                >
+                  <p class="path-card__sub" style="margin-bottom:12px">
+                    Connection {index + 1}:{' '}
+                    <span class="guess-target" data-guess-target data-revealed="false">
+                      {otherAlbum.title}
+                    </span>{' '}
+                    <button
+                      type="button"
+                      data-reveal-button
+                      data-reveal-label="Reveal"
+                      data-hide-label="Hide"
+                      aria-expanded="false"
+                      aria-controls={evidenceId}
+                    >
+                      Reveal
+                    </button>
+                  </p>
+                  <EvidenceCard
+                    id={evidenceId}
+                    path={path}
+                    releases={releases}
+                    artists={artists}
+                    albums={albums}
+                    hidden
+                  />
+                </div>
+              );
+            })
+          }
+        </>
+      )
+    }
+  </section>
+</BaseLayout>
+
+<RevealControls />

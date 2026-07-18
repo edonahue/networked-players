@@ -1,0 +1,127 @@
+/* Game-surface design extension (docs/WEB_PRODUCT_PLAN.md §7):
+   record-shop-after-hours staging for play, liner-note paper panels for
+   evidence. PR 2 ships the tokens plus the play-hub mode cards; the stage,
+   chip tray, and paper evidence sheet consume these in the flagship slice. */
+
+:root {
+  /* The "counter": the warm surface records land on. */
+  --counter: color-mix(in srgb, var(--surface) 82%, #3a2f22);
+  --counter-line: color-mix(in srgb, var(--gold) 40%, transparent);
+  --lamplight: radial-gradient(
+    120% 90% at 50% 0%,
+    color-mix(in srgb, var(--gold) 16%, transparent),
+    transparent 70%
+  );
+  /* Liner-note paper: the light-theme surface used as a component inside
+     dark pages, like pulling the insert out of the sleeve. */
+  --paper-panel: #f5ead8;
+  --paper-panel-deep: #d8c5a7;
+  --paper-ink: #292722;
+  --paper-muted: #6f665a;
+  --paper-line: rgba(41, 39, 34, 0.22);
+  /* Motion budget (consumed by the flagship stage; reduced-motion and
+     ?motion=off collapse these to near-zero). */
+  --motion-deal: 700ms;
+  --motion-deal-short: 250ms;
+  --motion-flip: 500ms;
+}
+
+/* Play hub ---------------------------------------------------------------- */
+.mode-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 18px;
+}
+
+.mode-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 22px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--lamplight), var(--surface);
+  box-shadow: var(--shadow);
+  text-decoration: none;
+  color: var(--ink);
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease;
+}
+a.mode-card:hover,
+a.mode-card:focus-visible {
+  transform: translateY(-2px);
+  border-color: var(--accent);
+}
+.mode-card--coming {
+  border-style: dashed;
+  opacity: 0.82;
+}
+
+/* The kicker reads like a handwritten shop divider tab. */
+.mode-card__kicker {
+  align-self: flex-start;
+  padding: 3px 10px;
+  border-radius: 3px 10px 3px 3px;
+  transform: rotate(-1.2deg);
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  background: color-mix(in srgb, var(--accent) 22%, var(--surface-soft));
+  color: var(--accent-strong);
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--line));
+}
+.mode-card[data-tone="rust"] .mode-card__kicker {
+  background: color-mix(in srgb, var(--warm) 20%, var(--surface-soft));
+  color: var(--warm);
+  border-color: color-mix(in srgb, var(--warm) 40%, var(--line));
+}
+.mode-card[data-tone="gold"] .mode-card__kicker {
+  background: color-mix(in srgb, var(--gold) 22%, var(--surface-soft));
+  color: var(--gold);
+  border-color: color-mix(in srgb, var(--gold) 45%, var(--line));
+}
+
+.mode-card__title {
+  margin: 4px 0 0;
+  font-size: 1.35rem;
+}
+.mode-card__body {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.96rem;
+}
+.mode-card__note {
+  margin: auto 0 0;
+  padding-top: 10px;
+  font-family: var(--mono);
+  font-size: 0.74rem;
+  color: var(--muted);
+}
+
+/* Paper evidence panel (consumed by the flagship's evidence sheet; the
+   class is established here so the visual language ships with the hub). */
+.paper-panel {
+  background: var(--paper-panel);
+  color: var(--paper-ink);
+  border: 1px solid var(--paper-line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-strong);
+}
+.paper-panel .stamp {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--paper-muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mode-card,
+  a.mode-card:hover {
+    transition: none;
+    transform: none;
+  }
+}

@@ -19,6 +19,19 @@ const {
 const canonicalUrl = new URL(Astro.url.pathname, Astro.site);
 const ogImageUrl = new URL(site.socialImage, Astro.site);
 const fullTitle = title === site.title ? title : `${title} · ${site.title}`;
+
+// Primary navigation with aria-current on the active section. A link is
+// current when the page lives under its path (so /albums/syn-a01/ lights up
+// "Albums" and /play/connection/ lights up "Play").
+const navLinks = [
+  { href: '/play/', label: 'Play' },
+  { href: '/albums/', label: 'Albums' },
+  { href: '/cohorts/', label: 'Cohorts' },
+  { href: '/about/', label: 'About' },
+];
+const currentPath = Astro.url.pathname;
+const isCurrent = (href: string) =>
+  currentPath === href || currentPath.startsWith(href);
 ---
 
 <!doctype html>
@@ -100,9 +113,16 @@ const fullTitle = title === site.title ? title : `${title} · ${site.title}`;
       </a>
       <div class="site-header__right">
         <nav aria-label="Primary">
-          <a href="/about/">About</a>
-          <a href="/cohorts/" title="Reviewed cohorts: guess the documented connection, then reveal the evidence">Cohorts</a>
-          <a href="/demo/" title="An earlier artist-path demo, kept during the album-centered transition">Legacy demo</a>
+          {
+            navLinks.map((link) => (
+              <a
+                href={link.href}
+                aria-current={isCurrent(link.href) ? 'page' : undefined}
+              >
+                {link.label}
+              </a>
+            ))
+          }
           <a href={site.repositoryUrl}>Source</a>
         </nav>
         <button
@@ -119,7 +139,10 @@ const fullTitle = title === site.title ? title : `${title} · ${site.title}`;
     <main id="main"><slot /></main>
     <footer class="site-footer shell">
       <p>An early, evidence-first project by <a href={site.authorUrl}>Erich Donahue</a>.</p>
-      <p><a href={site.repositoryUrl}>View source on GitHub</a></p>
+      <p>
+        <a href="/demo/" title="An earlier artist-path demo, kept during the album-centered transition">Archive: first demo</a>
+        · <a href={site.repositoryUrl}>View source on GitHub</a>
+      </p>
     </footer>
     <script is:inline>
       (() => {
