@@ -1,16 +1,24 @@
-// Client controller for the flagship one-hop Connection Guesser
+// Client controller for the flagship Connection Guesser
 // (docs/WEB_PRODUCT_PLAN.md §5). Reads the round pool from the page's JSON
 // island, drives the pure engine, and renders every phase into the static
-// shells in play/connection.astro. Nothing here marks which chip is correct —
-// answers are checked in memory, and verdict/evidence markup exists only
-// after the round resolves.
+// shells in play/connection.astro. One-hop rounds ask a single question;
+// two-hop rounds walk bridge_a → bridge_b → hidden middle, rebuilding the
+// tray per step. Nothing here marks which chip is correct — answers are
+// checked in memory, and verdict/evidence markup exists only after the
+// round resolves.
 
 import { createEngine, type Engine } from "./engine";
 import { createRng } from "./prng";
 import { ratingGlyph } from "./scoring";
 import { load, recordRound, save, type StorageLike } from "./store";
 import { sleeveSvg } from "./sleeves";
-import type { AlbumRef, EngineState, GameRound } from "./types";
+import type {
+  AlbumRef,
+  ContributorRef,
+  EngineState,
+  GameRound,
+  Step,
+} from "./types";
 
 const $ = <T extends HTMLElement>(testid: string): T => {
   const el = document.querySelector<T>(`[data-testid="${testid}"]`);
@@ -62,14 +70,25 @@ function placeholderDisc(): HTMLElement {
   return span;
 }
 
+/** The face-down hidden-middle slot: a question mark, never a spoiler. */
+function mysterySleeve(): HTMLElement {
+  const span = document.createElement("span");
+  span.className = "sleeve__mystery";
+  span.setAttribute("aria-hidden", "true");
+  span.textContent = "?";
+  return span;
+}
+
 function pickRound(rounds: GameRound[], params: URLSearchParams): GameRound {
   const pinned = params.get("round");
   if (pinned) {
     const match = rounds.find((r) => r.id === pinned);
     if (match) return match;
   }
+  const kind = params.get("kind") === "two_hop" ? "two_hop" : "one_hop";
+  const pool = rounds.filter((r) => r.kind === kind);
   const seed = params.get("seed") ?? String(Date.now());
-  const ordered = createRng(`flagship-${seed}`).shuffle(rounds);
+  const ordered = createRng(`flagship-${seed}`).shuffle(pool);
   const seen = new Set(load(storage()).seenRounds);
   return ordered.find((r) => !seen.has(r.id)) ?? ordered[0];
 }
@@ -77,9 +96,7 @@ function pickRound(rounds: GameRound[], params: URLSearchParams): GameRound {
 export function initFlagship(): void {
   const island = document.getElementById("np-round-data");
   if (!island?.textContent) throw new Error("round data island missing");
-  const rounds = (JSON.parse(island.textContent) as GameRound[]).filter(
-    (round) => round.kind === "one_hop",
-  );
+  const rounds = JSON.parse(island.textContent) as GameRound[];
   const params = new URLSearchParams(window.location.search);
   if (
     params.get("motion") === "off" ||
@@ -87,6 +104,11 @@ export function initFlagship(): void {
   ) {
     document.documentElement.dataset.motion = "off";
   }
+
+  const activeKind = params.get("kind") === "two_hop" ? "two_hop" : "one_hop";
+  document
+    .querySelector(`[data-testid="kind-toggle"] a[data-kind="${activeKind}"]`)
+    ?.setAttribute("aria-current", "true");
 
   const round = pickRound(rounds, params);
   const stage = $("stage");
@@ -96,6 +118,10 @@ export function initFlagship(): void {
   const nextButton = $<HTMLButtonElement>("next-round");
   const clueList = $("clue-list");
   const attempts = $("attempts");
+  const stepLabel = $("step-label");
+  const middleSlot = $("middle-slot");
+  const middleArt = $("sleeve-middle");
+  const middleCaption = $("caption-middle");
   const verdict = $("verdict");
   const verdictHeading = $("verdict-heading");
   const verdictRating = $("verdict-rating");
@@ -104,39 +130,139 @@ export function initFlagship(): void {
   const livePolite = $("live-region");
   const liveAssertive = $("live-assertive");
 
+  const twoHop = round.kind === "two_hop";
+  stage.dataset.kind = round.kind;
   $("pool-badge").textContent = poolLabel(round);
   $("difficulty-tag").textContent = round.difficulty;
   renderSleeve($("sleeve-a"), round.endpoints[0]);
   renderSleeve($("sleeve-b"), round.endpoints[1]);
   $("caption-a").textContent = captionFor(round.endpoints[0]);
   $("caption-b").textContent = captionFor(round.endpoints[1]);
-  $("question").textContent =
-    "One person is credited on both of these records. Who?";
+  if (twoHop) {
+    middleSlot.hidden = false;
+    middleArt.replaceChildren(mysterySleeve());
+    middleCaption.textContent = "Hidden record";
+  }
 
   const answerIds = new Set(round.answer_set.map((a) => a.id));
-  const chipRefs = createRng(`chips-${round.id}`).shuffle([
-    ...round.answer_set,
-    ...round.distractors,
-  ]);
+  let chips: HTMLButtonElement[] = [];
 
-  const chips = chipRefs.map((ref, index) => {
+  /** Contributor refs for the tray of a given step. */
+  function stepRefs(step: Step): ContributorRef[] {
+    if (step === "single" || !round.bridge_answer_sets) {
+      return [...round.answer_set, ...round.distractors];
+    }
+    const [a, b] = round.bridge_answer_sets;
+    return [...(step === "bridge_a" ? a : b), ...round.distractors];
+  }
+
+  function questionFor(step: Step): string {
+    const [a, b] = round.endpoints;
+    switch (step) {
+      case "single":
+        return "One person is credited on both of these records. Who?";
+      case "bridge_a":
+        return `No one is credited on both of these records — a hidden middle record links them. Who is credited on both ${a.title} and the hidden record?`;
+      case "bridge_b":
+        return `Now the other side: who is credited on both ${b.title} and the hidden record?`;
+      case "middle":
+        return "Last step: which record is the hidden middle?";
+    }
+  }
+
+  function stepLabelFor(step: Step): string {
+    switch (step) {
+      case "single":
+        return "";
+      case "bridge_a":
+        return "Step 1 of 3 · first bridge";
+      case "bridge_b":
+        return "Step 2 of 3 · second bridge";
+      case "middle":
+        return "Step 3 of 3 · the hidden record";
+    }
+  }
+
+  function makeChip(value: string, index: number): HTMLButtonElement {
     const chip = document.createElement("button");
     chip.type = "button";
     chip.setAttribute("role", "radio");
     chip.setAttribute("aria-checked", "false");
     chip.className = "chip";
-    chip.dataset.chip = String(ref.id);
+    chip.dataset.chip = value;
     chip.tabIndex = index === 0 ? 0 : -1;
-    const name = document.createElement("span");
-    name.className = "chip__name";
-    name.textContent = ref.name;
-    const role = document.createElement("span");
-    role.className = "chip__role";
-    role.textContent = ref.role_category.replaceAll("_", " ");
-    chip.append(name, role);
-    tray.append(chip);
     return chip;
-  });
+  }
+
+  function buildContributorTray(step: Step): void {
+    tray.replaceChildren();
+    const refs = createRng(`chips-${round.id}-${step}`).shuffle(stepRefs(step));
+    chips = refs.map((ref, index) => {
+      const chip = makeChip(String(ref.id), index);
+      const name = document.createElement("span");
+      name.className = "chip__name";
+      name.textContent = ref.name;
+      const role = document.createElement("span");
+      role.className = "chip__role";
+      role.textContent = ref.role_category.replaceAll("_", " ");
+      chip.append(name, role);
+      tray.append(chip);
+      return chip;
+    });
+  }
+
+  /** Middle-step tray: album choices as mini-sleeve chips (choices ship pre-shuffled). */
+  function buildMiddleTray(): void {
+    if (!round.middle) return;
+    tray.replaceChildren();
+    chips = round.middle.choices.map((album, index) => {
+      const chip = makeChip(album.id, index);
+      chip.classList.add("chip--album");
+      const art = document.createElement("span");
+      art.className = "chip__sleeve";
+      art.setAttribute("aria-hidden", "true");
+      renderSleeve(art, album);
+      const name = document.createElement("span");
+      name.className = "chip__name";
+      name.textContent = album.title;
+      const role = document.createElement("span");
+      role.className = "chip__role";
+      role.textContent = captionFor(album).replace(`${album.title} · `, "");
+      chip.append(art, name, role);
+      tray.append(chip);
+      return chip;
+    });
+  }
+
+  let trayStep: Step | null = null;
+  /** A paid eliminate clue keeps its strikes across step tray rebuilds. */
+  const eliminatedIds = new Set<number>();
+
+  function syncTray(state: EngineState): void {
+    if (state.step !== trayStep) {
+      trayStep = state.step;
+      if (state.step === "middle") buildMiddleTray();
+      else buildContributorTray(state.step);
+      stepLabel.textContent = stepLabelFor(state.step);
+      $("question").textContent = questionFor(state.step);
+    }
+    for (const chip of chips) {
+      const value = chip.dataset.chip ?? "";
+      if (state.step !== "middle" && eliminatedIds.has(Number(value))) {
+        if (chip.dataset.chipState !== "eliminated") {
+          strikeChip(chip, "eliminated");
+        }
+        continue;
+      }
+      const struck =
+        state.step === "middle"
+          ? state.struckAlbums.includes(value)
+          : state.struck.includes(Number(value));
+      if (struck && chip.dataset.chipState !== "struck") {
+        strikeChip(chip, "struck");
+      }
+    }
+  }
 
   const engine: Engine = createEngine(round, render);
 
@@ -162,25 +288,32 @@ export function initFlagship(): void {
   }
 
   let announcedStrikes = 0;
+  let announcedSteps = 0;
 
   function render(state: EngineState): void {
     stage.dataset.phase = state.phase;
-    for (const chip of chips) {
-      const id = Number(chip.dataset.chip);
-      if (state.struck.includes(id) && chip.dataset.chipState !== "struck") {
-        strikeChip(chip, "struck");
-      }
-    }
+    stage.dataset.step = state.step;
+    syncTray(state);
     if (state.phase === "guessing") {
       attempts.textContent =
-        state.attemptsLeft === 1 ? "Last attempt." : "Two attempts per round.";
-      if (state.struck.length > announcedStrikes) {
-        announcedStrikes = state.struck.length;
+        state.attemptsLeft === 1
+          ? "Last attempt."
+          : twoHop
+            ? "Two attempts per step."
+            : "Two attempts per round.";
+      const strikes = state.struck.length + state.struckAlbums.length;
+      if (strikes > announcedStrikes) {
+        announcedStrikes = strikes;
         announce(
           state.attemptsLeft === 1
-            ? "Not credited on both. One attempt left."
-            : "Not credited on both.",
+            ? "Not this one. One attempt left."
+            : "Not this one.",
         );
+      }
+      if (state.solvedSteps.length > announcedSteps) {
+        announcedSteps = state.solvedSteps.length;
+        announce(`Found. ${questionFor(state.step)}`);
+        chips.find((chip) => !chip.disabled)?.focus();
       }
     } else if (state.phase === "revealed") {
       attempts.textContent = "";
@@ -201,16 +334,28 @@ export function initFlagship(): void {
   function finishRound(state: EngineState): void {
     for (const chip of chips) {
       chip.disabled = true;
-      const id = Number(chip.dataset.chip);
-      if (answerIds.has(id)) {
+      const value = chip.dataset.chip ?? "";
+      const correct =
+        trayStep === "middle"
+          ? value === round.middle?.album.id
+          : answerIds.has(Number(value));
+      if (correct) {
         chip.dataset.chipState = "correct";
         chip.setAttribute("aria-checked", "true");
       }
     }
+    if (twoHop && round.middle) {
+      renderSleeve(middleArt, round.middle.album);
+      middleCaption.textContent = captionFor(round.middle.album);
+    }
     const names = round.answer_set.map((a) => a.name).join(" and ");
+    const path =
+      twoHop && round.middle
+        ? `${names}, through ${round.middle.album.title}`
+        : names;
     verdictHeading.textContent = state.solved
-      ? `Solved: ${names}`
-      : `The answer was ${names}`;
+      ? `Solved: ${path}`
+      : `The answer was ${path}`;
     verdict.hidden = false;
     verdict.dataset.rating = state.rating ?? "";
     verdictRating.textContent =
@@ -262,7 +407,8 @@ export function initFlagship(): void {
       "button.chip",
     );
     if (!chip || chip.disabled) return;
-    engine.choose(Number(chip.dataset.chip));
+    const value = chip.dataset.chip ?? "";
+    engine.choose(trayStep === "middle" ? value : Number(value));
   });
 
   tray.addEventListener("keydown", (event) => {
@@ -289,6 +435,7 @@ export function initFlagship(): void {
     item.textContent = clue.text;
     clueList.append(item);
     if (clue.kind === "eliminate" && clue.eliminate_ids) {
+      for (const id of clue.eliminate_ids) eliminatedIds.add(id);
       for (const chip of chips) {
         if (clue.eliminate_ids.includes(Number(chip.dataset.chip))) {
           strikeChip(chip, "eliminated");
@@ -310,7 +457,7 @@ export function initFlagship(): void {
 
   // --- kick off -------------------------------------------------------------
   announce(
-    `Two records on the table: ${captionFor(round.endpoints[0])}, and ${captionFor(round.endpoints[1])}.`,
+    `Two records on the table: ${captionFor(round.endpoints[0])}, and ${captionFor(round.endpoints[1])}.${twoHop ? " A hidden record sits between them." : ""}`,
   );
   engine.deal();
   const dealMs = document.documentElement.dataset.motion === "off" ? 0 : 750;
