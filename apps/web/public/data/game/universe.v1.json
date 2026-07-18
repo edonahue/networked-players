@@ -1,0 +1,1392 @@
+{
+  "schema_version": 1,
+  "provenance": {
+    "source": "Synthetic fixture — the Meridian Tapes universe, an entirely fictional catalog invented for this repository",
+    "license": "Fictional synthetic data authored in this repository; no external source, no real artists, releases, or Discogs identifiers",
+    "note": "Every act, contributor, record, and credit here is invented. Ids use reserved synthetic ranges. Sleeve art is generated geometry stamped SYNTHETIC. Never present this as real catalog data.",
+    "generated_by": "apps/web/scripts/build-rounds.mjs from scripts/universe-def.mjs (deterministic expansion)"
+  },
+  "albums": [
+    {
+      "id": "syn-a01",
+      "title": "Late Ferry",
+      "act": "The Harbor Lights",
+      "act_id": 90001001,
+      "year": 1974,
+      "label": "Meridian",
+      "art": {
+        "kind": "generated"
+      }
+    },
+    {
+      "id": "syn-a02",
+      "title": "Paper Lanterns",
+      "act": "Vela Marsh",
+      "act_id": 90001002,
+      "year": 1975,
+      "label": "Meridian",
+      "art": {
+        "kind": "generated"
+      }
+    },
+    {
+      "id": "syn-a03",
+      "title": "Copper Sound!",
+      "act": "The Copper Sound",
+      "act_id": 90001003,
+      "year": 1975,
+      "label": "Copper Kettle",
+      "art": {
+        "kind": "generated"
+      }
+    },
+    {
+      "id": "syn-a04",
+      "title": "Quiet Acre",
+      "act": "Ada Quinn",
+      "act_id": 90001004,
+      "year": 1976,
+      "label": "Meridian",
+      "art": {
+        "kind": "generated"
+      }
+    },
+    {
+      "id": "syn-a05",
+      "title": "Terminal Lights",
+      "act": "Night Ferry",
+      "act_id": 90001005,
+      "year": 1980,
+      "label": "Meridian",
+      "art": {
+        "kind": "generated"
+      }
+    },
+    {
+      "id": "syn-a06",
+      "title": "Silver Standards",
+      "act": "The Silver Setts",
+      "act_id": 90001006,
+      "year": 1976,
+      "label": "Meridian",
+      "art": {
+        "kind": "generated"
+      }
+    },
+    {
+      "id": "syn-a07",
+      "title": "Midnight Arcade",
+      "act": "Marta Vale",
+      "act_id": 90001007,
+      "year": 1978,
+      "label": "Meridian",
+      "art": {
+        "kind": "generated"
+      }
+    },
+    {
+      "id": "syn-a08",
+      "title": "Reedwork",
+      "act": "Ossian Reed",
+      "act_id": 90001008,
+      "year": 1977,
+      "label": "Copper Kettle",
+      "art": {
+        "kind": "generated"
+      }
+    },
+    {
+      "id": "syn-a09",
+      "title": "Union of Kites",
+      "act": "The Kite Union",
+      "act_id": 90001009,
+      "year": 1984,
+      "label": "Copper Kettle",
+      "art": {
+        "kind": "generated"
+      }
+    },
+    {
+      "id": "syn-a10",
+      "title": "Blue Meridian Presents",
+      "act": "Blue Meridian Orchestra",
+      "act_id": 90001010,
+      "year": 1974,
+      "label": "Meridian",
+      "art": {
+        "kind": "generated"
+      }
+    },
+    {
+      "id": "syn-a11",
+      "title": "Filament",
+      "act": "Tin Lantern",
+      "act_id": 90001011,
+      "year": 1981,
+      "label": "Copper Kettle",
+      "art": {
+        "kind": "generated"
+      }
+    },
+    {
+      "id": "syn-a12",
+      "title": "Solis",
+      "act": "Yara Solis",
+      "act_id": 90001012,
+      "year": 1977,
+      "label": "Meridian",
+      "art": {
+        "kind": "generated"
+      }
+    },
+    {
+      "id": "syn-a13",
+      "title": "Second Harbor",
+      "act": "The Harbor Lights",
+      "act_id": 90001001,
+      "year": 1977,
+      "label": "Meridian",
+      "art": {
+        "kind": "generated"
+      }
+    },
+    {
+      "id": "syn-a14",
+      "title": "Vela",
+      "act": "Vela Marsh",
+      "act_id": 90001002,
+      "year": 1978,
+      "label": "Meridian",
+      "art": {
+        "kind": "generated"
+      }
+    },
+    {
+      "id": "syn-a15",
+      "title": "Kettle Steam",
+      "act": "The Copper Sound",
+      "act_id": 90001003,
+      "year": 1979,
+      "label": "Copper Kettle",
+      "art": {
+        "kind": "generated"
+      }
+    },
+    {
+      "id": "syn-a16",
+      "title": "Hollow Lane",
+      "act": "Ada Quinn",
+      "act_id": 90001004,
+      "year": 1980,
+      "label": "Meridian",
+      "art": null
+    },
+    {
+      "id": "syn-a17",
+      "title": "Crossing at Dusk",
+      "act": "Night Ferry",
+      "act_id": 90001005,
+      "year": 1982,
+      "label": "Meridian",
+      "art": {
+        "kind": "generated"
+      }
+    },
+    {
+      "id": "syn-a18",
+      "title": "Setts in Motion",
+      "act": "The Silver Setts",
+      "act_id": 90001006,
+      "year": 1979,
+      "label": "Meridian",
+      "art": {
+        "kind": "generated"
+      }
+    },
+    {
+      "id": "syn-a19",
+      "title": "Vale of Mirrors",
+      "act": "Marta Vale",
+      "act_id": 90001007,
+      "year": 1981,
+      "label": "Copper Kettle",
+      "art": {
+        "kind": "generated"
+      }
+    },
+    {
+      "id": "syn-a20",
+      "title": "The Long Field",
+      "act": "Ossian Reed",
+      "act_id": 90001008,
+      "year": 1982,
+      "label": "Copper Kettle",
+      "art": {
+        "kind": "generated"
+      }
+    },
+    {
+      "id": "syn-a21",
+      "title": "String Theory for Beginners",
+      "act": "The Kite Union",
+      "act_id": 90001009,
+      "year": 1987,
+      "label": "Copper Kettle",
+      "art": {
+        "kind": "generated"
+      }
+    },
+    {
+      "id": "syn-a22",
+      "title": "Second Pressing",
+      "act": "Blue Meridian Orchestra",
+      "act_id": 90001010,
+      "year": 1978,
+      "label": "Meridian",
+      "art": {
+        "kind": "generated"
+      }
+    },
+    {
+      "id": "syn-a23",
+      "title": "Tin Lantern II",
+      "act": "Tin Lantern",
+      "act_id": 90001011,
+      "year": 1984,
+      "label": "Copper Kettle",
+      "art": {
+        "kind": "generated"
+      }
+    },
+    {
+      "id": "syn-a24",
+      "title": "Crossing Lights",
+      "act": "The Harbor Lights",
+      "act_id": 90001001,
+      "year": 1981,
+      "label": "Meridian",
+      "art": {
+        "kind": "generated"
+      }
+    },
+    {
+      "id": "syn-a25",
+      "title": "Rain on the Patio",
+      "act": "Yara Solis",
+      "act_id": 90001012,
+      "year": 1980,
+      "label": "Meridian",
+      "art": {
+        "kind": "generated"
+      }
+    },
+    {
+      "id": "syn-a26",
+      "title": "Marshlight",
+      "act": "Vela Marsh",
+      "act_id": 90001002,
+      "year": 1983,
+      "label": "Copper Kettle",
+      "art": {
+        "kind": "generated"
+      }
+    },
+    {
+      "id": "syn-a27",
+      "title": "Alloy",
+      "act": "The Copper Sound",
+      "act_id": 90001003,
+      "year": 1985,
+      "label": "Copper Kettle",
+      "art": {
+        "kind": "generated"
+      }
+    },
+    {
+      "id": "syn-a28",
+      "title": "Harbor Wall",
+      "act": "Night Ferry",
+      "act_id": 90001005,
+      "year": 1986,
+      "label": "Copper Kettle",
+      "art": null
+    },
+    {
+      "id": "syn-a29",
+      "title": "Winter Wiring: Songs from the Meridian Annex Sessions, Volume One",
+      "act": "Ossian Reed",
+      "act_id": 90001008,
+      "year": 1988,
+      "label": "Copper Kettle",
+      "art": {
+        "kind": "generated"
+      }
+    },
+    {
+      "id": "syn-a30",
+      "title": "Glass & Wire",
+      "act": "Tin Lantern",
+      "act_id": 90001011,
+      "year": 1990,
+      "label": "Copper Kettle",
+      "art": {
+        "kind": "generated"
+      }
+    }
+  ],
+  "contributors": [
+    {
+      "id": 90000001,
+      "name": "Dee Calloway",
+      "role_category": "bass",
+      "performer": true
+    },
+    {
+      "id": 90000002,
+      "name": "Del Callahan",
+      "role_category": "bass",
+      "performer": true
+    },
+    {
+      "id": 90000003,
+      "name": "Ray Okafor",
+      "role_category": "drums",
+      "performer": true
+    },
+    {
+      "id": 90000004,
+      "name": "Lena Brook",
+      "role_category": "producer",
+      "performer": false
+    },
+    {
+      "id": 90000005,
+      "name": "Hal Mercer",
+      "role_category": "engineer",
+      "performer": false
+    },
+    {
+      "id": 90000006,
+      "name": "Hale Mercier",
+      "role_category": "engineer",
+      "performer": false
+    },
+    {
+      "id": 90000007,
+      "name": "Sonia Vex",
+      "role_category": "keys",
+      "performer": true
+    },
+    {
+      "id": 90000008,
+      "name": "Chip Adler",
+      "role_category": "guitar",
+      "performer": true
+    },
+    {
+      "id": 90000009,
+      "name": "Mira Costa",
+      "role_category": "backing_vocals",
+      "performer": true
+    },
+    {
+      "id": 90000010,
+      "name": "Gus Fenn",
+      "role_category": "sax",
+      "performer": true
+    },
+    {
+      "id": 90000011,
+      "name": "Percy Lim",
+      "role_category": "string_arrangement",
+      "performer": false
+    },
+    {
+      "id": 90000012,
+      "name": "Tessa Wynn",
+      "role_category": "producer",
+      "performer": false
+    },
+    {
+      "id": 90000013,
+      "name": "Omar Reyes",
+      "role_category": "percussion",
+      "performer": true
+    },
+    {
+      "id": 90000014,
+      "name": "June Halloran",
+      "role_category": "mastering",
+      "performer": false
+    },
+    {
+      "id": 90000015,
+      "name": "Viv Sandoval",
+      "role_category": "trumpet",
+      "performer": true
+    },
+    {
+      "id": 90000016,
+      "name": "Kit Marlowe",
+      "role_category": "mixing",
+      "performer": false
+    },
+    {
+      "id": 90000017,
+      "name": "Fern Okafor",
+      "role_category": "violin",
+      "performer": true
+    },
+    {
+      "id": 90000018,
+      "name": "Bo Lindqvist",
+      "role_category": "guitar",
+      "performer": true
+    },
+    {
+      "id": 90000019,
+      "name": "Nia Vale",
+      "role_category": "flute",
+      "performer": true
+    },
+    {
+      "id": 90000020,
+      "name": "Rex Torres",
+      "role_category": "bass",
+      "performer": true
+    },
+    {
+      "id": 90000021,
+      "name": "Isla Chen",
+      "role_category": "harp",
+      "performer": true
+    },
+    {
+      "id": 90000022,
+      "name": "Duke Farrow",
+      "role_category": "organ",
+      "performer": true
+    }
+  ],
+  "releases": [
+    {
+      "id": "syn-r01",
+      "album_id": "syn-a01",
+      "title": "Late Ferry",
+      "year": 1974,
+      "catalog_stamp": "MER-101"
+    },
+    {
+      "id": "syn-r02",
+      "album_id": "syn-a02",
+      "title": "Paper Lanterns",
+      "year": 1975,
+      "catalog_stamp": "MER-102"
+    },
+    {
+      "id": "syn-r03",
+      "album_id": "syn-a03",
+      "title": "Copper Sound!",
+      "year": 1975,
+      "catalog_stamp": "CK-103"
+    },
+    {
+      "id": "syn-r04",
+      "album_id": "syn-a04",
+      "title": "Quiet Acre",
+      "year": 1976,
+      "catalog_stamp": "MER-104"
+    },
+    {
+      "id": "syn-r05",
+      "album_id": "syn-a05",
+      "title": "Terminal Lights",
+      "year": 1980,
+      "catalog_stamp": "MER-105"
+    },
+    {
+      "id": "syn-r06",
+      "album_id": "syn-a06",
+      "title": "Silver Standards",
+      "year": 1976,
+      "catalog_stamp": "MER-106"
+    },
+    {
+      "id": "syn-r07",
+      "album_id": "syn-a07",
+      "title": "Midnight Arcade",
+      "year": 1978,
+      "catalog_stamp": "MER-107"
+    },
+    {
+      "id": "syn-r08",
+      "album_id": "syn-a08",
+      "title": "Reedwork",
+      "year": 1977,
+      "catalog_stamp": "CK-108"
+    },
+    {
+      "id": "syn-r09",
+      "album_id": "syn-a09",
+      "title": "Union of Kites",
+      "year": 1984,
+      "catalog_stamp": "CK-109"
+    },
+    {
+      "id": "syn-r10",
+      "album_id": "syn-a10",
+      "title": "Blue Meridian Presents",
+      "year": 1974,
+      "catalog_stamp": "MER-110"
+    },
+    {
+      "id": "syn-r11",
+      "album_id": "syn-a11",
+      "title": "Filament",
+      "year": 1981,
+      "catalog_stamp": "CK-111"
+    },
+    {
+      "id": "syn-r12",
+      "album_id": "syn-a12",
+      "title": "Solis",
+      "year": 1977,
+      "catalog_stamp": "MER-112"
+    },
+    {
+      "id": "syn-r13",
+      "album_id": "syn-a13",
+      "title": "Second Harbor",
+      "year": 1977,
+      "catalog_stamp": "MER-113"
+    },
+    {
+      "id": "syn-r14",
+      "album_id": "syn-a14",
+      "title": "Vela",
+      "year": 1978,
+      "catalog_stamp": "MER-114"
+    },
+    {
+      "id": "syn-r15",
+      "album_id": "syn-a15",
+      "title": "Kettle Steam",
+      "year": 1979,
+      "catalog_stamp": "CK-115"
+    },
+    {
+      "id": "syn-r16",
+      "album_id": "syn-a16",
+      "title": "Hollow Lane",
+      "year": 1980,
+      "catalog_stamp": "MER-116"
+    },
+    {
+      "id": "syn-r17",
+      "album_id": "syn-a17",
+      "title": "Crossing at Dusk",
+      "year": 1982,
+      "catalog_stamp": "MER-117"
+    },
+    {
+      "id": "syn-r18",
+      "album_id": "syn-a18",
+      "title": "Setts in Motion",
+      "year": 1979,
+      "catalog_stamp": "MER-118"
+    },
+    {
+      "id": "syn-r19",
+      "album_id": "syn-a19",
+      "title": "Vale of Mirrors",
+      "year": 1981,
+      "catalog_stamp": "CK-119"
+    },
+    {
+      "id": "syn-r20",
+      "album_id": "syn-a20",
+      "title": "The Long Field",
+      "year": 1982,
+      "catalog_stamp": "CK-120"
+    },
+    {
+      "id": "syn-r21",
+      "album_id": "syn-a21",
+      "title": "String Theory for Beginners",
+      "year": 1987,
+      "catalog_stamp": "CK-121"
+    },
+    {
+      "id": "syn-r22",
+      "album_id": "syn-a22",
+      "title": "Second Pressing",
+      "year": 1978,
+      "catalog_stamp": "MER-122"
+    },
+    {
+      "id": "syn-r23",
+      "album_id": "syn-a23",
+      "title": "Tin Lantern II",
+      "year": 1984,
+      "catalog_stamp": "CK-123"
+    },
+    {
+      "id": "syn-r24",
+      "album_id": "syn-a24",
+      "title": "Crossing Lights",
+      "year": 1981,
+      "catalog_stamp": "MER-124"
+    },
+    {
+      "id": "syn-r25",
+      "album_id": "syn-a25",
+      "title": "Rain on the Patio",
+      "year": 1980,
+      "catalog_stamp": "MER-125"
+    },
+    {
+      "id": "syn-r26",
+      "album_id": "syn-a26",
+      "title": "Marshlight",
+      "year": 1983,
+      "catalog_stamp": "CK-126"
+    },
+    {
+      "id": "syn-r27",
+      "album_id": "syn-a27",
+      "title": "Alloy",
+      "year": 1985,
+      "catalog_stamp": "CK-127"
+    },
+    {
+      "id": "syn-r28",
+      "album_id": "syn-a28",
+      "title": "Harbor Wall",
+      "year": 1986,
+      "catalog_stamp": "CK-128"
+    },
+    {
+      "id": "syn-r29",
+      "album_id": "syn-a29",
+      "title": "Winter Wiring: Songs from the Meridian Annex Sessions, Volume One",
+      "year": 1988,
+      "catalog_stamp": "CK-129"
+    },
+    {
+      "id": "syn-r30",
+      "album_id": "syn-a30",
+      "title": "Glass & Wire",
+      "year": 1990,
+      "catalog_stamp": "CK-130"
+    }
+  ],
+  "credits": [
+    {
+      "release_id": "syn-r01",
+      "contributor_id": 90000001,
+      "role_text": "Bass",
+      "role_category": "bass",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r01",
+      "contributor_id": 90000003,
+      "role_text": "Drums",
+      "role_category": "drums",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r01",
+      "contributor_id": 90000005,
+      "role_text": "Engineer",
+      "role_category": "engineer",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r01",
+      "contributor_id": 90000014,
+      "role_text": "Mastered By",
+      "role_category": "mastering",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r01",
+      "contributor_id": 90000021,
+      "role_text": "Harp",
+      "role_category": "harp",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r02",
+      "contributor_id": 90000004,
+      "role_text": "Producer",
+      "role_category": "producer",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r02",
+      "contributor_id": 90000005,
+      "role_text": "Engineer",
+      "role_category": "engineer",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r02",
+      "contributor_id": 90000009,
+      "role_text": "Backing Vocals",
+      "role_category": "backing_vocals",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r02",
+      "contributor_id": 90000015,
+      "role_text": "Trumpet",
+      "role_category": "trumpet",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r02",
+      "contributor_id": 90000022,
+      "role_text": "Organ",
+      "role_category": "organ",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r03",
+      "contributor_id": 90000001,
+      "role_text": "Bass",
+      "role_category": "bass",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r03",
+      "contributor_id": 90000004,
+      "role_text": "Producer",
+      "role_category": "producer",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r03",
+      "contributor_id": 90000007,
+      "role_text": "Keyboards",
+      "role_category": "keys",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r03",
+      "contributor_id": 90000016,
+      "role_text": "Mixed By",
+      "role_category": "mixing",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r04",
+      "contributor_id": 90000003,
+      "role_text": "Drums",
+      "role_category": "drums",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r04",
+      "contributor_id": 90000008,
+      "role_text": "Guitar",
+      "role_category": "guitar",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r04",
+      "contributor_id": 90000017,
+      "role_text": "Violin",
+      "role_category": "violin",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r05",
+      "contributor_id": 90000002,
+      "role_text": "Bass",
+      "role_category": "bass",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r05",
+      "contributor_id": 90000005,
+      "role_text": "Engineer",
+      "role_category": "engineer",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r05",
+      "contributor_id": 90000010,
+      "role_text": "Saxophone",
+      "role_category": "sax",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r05",
+      "contributor_id": 90000018,
+      "role_text": "Guitar",
+      "role_category": "guitar",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r06",
+      "contributor_id": 90000007,
+      "role_text": "Keyboards",
+      "role_category": "keys",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r06",
+      "contributor_id": 90000009,
+      "role_text": "Backing Vocals",
+      "role_category": "backing_vocals",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r06",
+      "contributor_id": 90000019,
+      "role_text": "Flute",
+      "role_category": "flute",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r07",
+      "contributor_id": 90000001,
+      "role_text": "Bass",
+      "role_category": "bass",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r07",
+      "contributor_id": 90000003,
+      "role_text": "Drums",
+      "role_category": "drums",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r07",
+      "contributor_id": 90000011,
+      "role_text": "Strings, Arranged By",
+      "role_category": "string_arrangement",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r07",
+      "contributor_id": 90000020,
+      "role_text": "Bass",
+      "role_category": "bass",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r08",
+      "contributor_id": 90000004,
+      "role_text": "Producer",
+      "role_category": "producer",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r08",
+      "contributor_id": 90000008,
+      "role_text": "Guitar",
+      "role_category": "guitar",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r08",
+      "contributor_id": 90000021,
+      "role_text": "Harp",
+      "role_category": "harp",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r09",
+      "contributor_id": 90000002,
+      "role_text": "Bass",
+      "role_category": "bass",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r09",
+      "contributor_id": 90000012,
+      "role_text": "Producer",
+      "role_category": "producer",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r09",
+      "contributor_id": 90000022,
+      "role_text": "Organ",
+      "role_category": "organ",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r10",
+      "contributor_id": 90000005,
+      "role_text": "Engineer",
+      "role_category": "engineer",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r10",
+      "contributor_id": 90000013,
+      "role_text": "Percussion",
+      "role_category": "percussion",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r10",
+      "contributor_id": 90000014,
+      "role_text": "Mastered By",
+      "role_category": "mastering",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r11",
+      "contributor_id": 90000007,
+      "role_text": "Keyboards",
+      "role_category": "keys",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r11",
+      "contributor_id": 90000010,
+      "role_text": "Saxophone",
+      "role_category": "sax",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r11",
+      "contributor_id": 90000014,
+      "role_text": "Mastered By",
+      "role_category": "mastering",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r12",
+      "contributor_id": 90000001,
+      "role_text": "Bass",
+      "role_category": "bass",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r12",
+      "contributor_id": 90000008,
+      "role_text": "Guitar",
+      "role_category": "guitar",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r12",
+      "contributor_id": 90000015,
+      "role_text": "Trumpet",
+      "role_category": "trumpet",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r13",
+      "contributor_id": 90000003,
+      "role_text": "Drums",
+      "role_category": "drums",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r13",
+      "contributor_id": 90000009,
+      "role_text": "Backing Vocals",
+      "role_category": "backing_vocals",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r13",
+      "contributor_id": 90000016,
+      "role_text": "Mixed By",
+      "role_category": "mixing",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r14",
+      "contributor_id": 90000004,
+      "role_text": "Producer",
+      "role_category": "producer",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r14",
+      "contributor_id": 90000011,
+      "role_text": "Strings, Arranged By",
+      "role_category": "string_arrangement",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r14",
+      "contributor_id": 90000017,
+      "role_text": "Violin",
+      "role_category": "violin",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r15",
+      "contributor_id": 90000002,
+      "role_text": "Bass",
+      "role_category": "bass",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r15",
+      "contributor_id": 90000005,
+      "role_text": "Engineer",
+      "role_category": "engineer",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r15",
+      "contributor_id": 90000012,
+      "role_text": "Producer",
+      "role_category": "producer",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r15",
+      "contributor_id": 90000018,
+      "role_text": "Guitar",
+      "role_category": "guitar",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r16",
+      "contributor_id": 90000006,
+      "role_text": "Engineer",
+      "role_category": "engineer",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r16",
+      "contributor_id": 90000013,
+      "role_text": "Percussion",
+      "role_category": "percussion",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r16",
+      "contributor_id": 90000019,
+      "role_text": "Flute",
+      "role_category": "flute",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r17",
+      "contributor_id": 90000007,
+      "role_text": "Keyboards",
+      "role_category": "keys",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r17",
+      "contributor_id": 90000014,
+      "role_text": "Mastered By",
+      "role_category": "mastering",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r17",
+      "contributor_id": 90000020,
+      "role_text": "Bass",
+      "role_category": "bass",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r18",
+      "contributor_id": 90000001,
+      "role_text": "Bass",
+      "role_category": "bass",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r18",
+      "contributor_id": 90000010,
+      "role_text": "Saxophone",
+      "role_category": "sax",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r18",
+      "contributor_id": 90000015,
+      "role_text": "Trumpet",
+      "role_category": "trumpet",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r18",
+      "contributor_id": 90000021,
+      "role_text": "Harp",
+      "role_category": "harp",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r19",
+      "contributor_id": 90000003,
+      "role_text": "Drums",
+      "role_category": "drums",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r19",
+      "contributor_id": 90000016,
+      "role_text": "Mixed By",
+      "role_category": "mixing",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r19",
+      "contributor_id": 90000022,
+      "role_text": "Organ",
+      "role_category": "organ",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r20",
+      "contributor_id": 90000004,
+      "role_text": "Producer",
+      "role_category": "producer",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r20",
+      "contributor_id": 90000009,
+      "role_text": "Backing Vocals",
+      "role_category": "backing_vocals",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r20",
+      "contributor_id": 90000017,
+      "role_text": "Violin",
+      "role_category": "violin",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r21",
+      "contributor_id": 90000005,
+      "role_text": "Engineer",
+      "role_category": "engineer",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r21",
+      "contributor_id": 90000011,
+      "role_text": "Strings, Arranged By",
+      "role_category": "string_arrangement",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r21",
+      "contributor_id": 90000018,
+      "role_text": "Guitar",
+      "role_category": "guitar",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r22",
+      "contributor_id": 90000001,
+      "role_text": "Bass",
+      "role_category": "bass",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r22",
+      "contributor_id": 90000012,
+      "role_text": "Producer",
+      "role_category": "producer",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r22",
+      "contributor_id": 90000019,
+      "role_text": "Flute",
+      "role_category": "flute",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r23",
+      "contributor_id": 90000006,
+      "role_text": "Engineer",
+      "role_category": "engineer",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r23",
+      "contributor_id": 90000008,
+      "role_text": "Guitar",
+      "role_category": "guitar",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r23",
+      "contributor_id": 90000013,
+      "role_text": "Percussion",
+      "role_category": "percussion",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r23",
+      "contributor_id": 90000020,
+      "role_text": "Bass",
+      "role_category": "bass",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r24",
+      "contributor_id": 90000009,
+      "role_text": "Backing Vocals",
+      "role_category": "backing_vocals",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r24",
+      "contributor_id": 90000014,
+      "role_text": "Mastered By",
+      "role_category": "mastering",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r24",
+      "contributor_id": 90000021,
+      "role_text": "Harp",
+      "role_category": "harp",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r25",
+      "contributor_id": 90000003,
+      "role_text": "Drums",
+      "role_category": "drums",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r25",
+      "contributor_id": 90000010,
+      "role_text": "Saxophone",
+      "role_category": "sax",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r25",
+      "contributor_id": 90000015,
+      "role_text": "Trumpet",
+      "role_category": "trumpet",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r25",
+      "contributor_id": 90000022,
+      "role_text": "Organ",
+      "role_category": "organ",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r26",
+      "contributor_id": 90000004,
+      "role_text": "Producer",
+      "role_category": "producer",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r26",
+      "contributor_id": 90000007,
+      "role_text": "Keyboards",
+      "role_category": "keys",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r26",
+      "contributor_id": 90000016,
+      "role_text": "Mixed By",
+      "role_category": "mixing",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r27",
+      "contributor_id": 90000006,
+      "role_text": "Engineer",
+      "role_category": "engineer",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r27",
+      "contributor_id": 90000010,
+      "role_text": "Saxophone",
+      "role_category": "sax",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r27",
+      "contributor_id": 90000017,
+      "role_text": "Violin",
+      "role_category": "violin",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r28",
+      "contributor_id": 90000008,
+      "role_text": "Guitar",
+      "role_category": "guitar",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r28",
+      "contributor_id": 90000011,
+      "role_text": "Strings, Arranged By",
+      "role_category": "string_arrangement",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r28",
+      "contributor_id": 90000018,
+      "role_text": "Guitar",
+      "role_category": "guitar",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r29",
+      "contributor_id": 90000009,
+      "role_text": "Backing Vocals",
+      "role_category": "backing_vocals",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r29",
+      "contributor_id": 90000012,
+      "role_text": "Producer",
+      "role_category": "producer",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r29",
+      "contributor_id": 90000019,
+      "role_text": "Flute",
+      "role_category": "flute",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r30",
+      "contributor_id": 90000013,
+      "role_text": "Percussion",
+      "role_category": "percussion",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r30",
+      "contributor_id": 90000014,
+      "role_text": "Mastered By",
+      "role_category": "mastering",
+      "credit_scope": "release_credit"
+    },
+    {
+      "release_id": "syn-r30",
+      "contributor_id": 90000020,
+      "role_text": "Bass",
+      "role_category": "bass",
+      "credit_scope": "release_credit"
+    }
+  ]
+}

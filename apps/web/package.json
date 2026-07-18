@@ -5,9 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "astro dev",
-    "build": "astro build",
+    "validate:data": "node scripts/build-rounds.mjs --check",
+    "build": "npm run validate:data && astro build",
     "preview": "astro preview",
-    "check": "astro check && astro build",
+    "check": "npm run validate:data && astro check && astro build",
     "test:smoke": "playwright test",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
