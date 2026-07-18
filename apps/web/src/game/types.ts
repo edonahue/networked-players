@@ -85,6 +85,8 @@ export interface AlbumRef {
   title: string;
   year: number | null;
   act: string | null;
+  /** Fictional label for synthetic albums (drives generated sleeve style); null for real records. */
+  label: string | null;
   art: SleeveArt;
 }
 

@@ -28,6 +28,7 @@ const cohortPaths = cohortManifest.cohorts.map(
 const paths = [
   "/",
   "/play/",
+  "/play/connection/",
   "/albums/",
   "/about/",
   "/demo/",

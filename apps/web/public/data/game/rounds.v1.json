@@ -18,6 +18,7 @@
           "title": "Late Ferry",
           "year": 1974,
           "act": "The Harbor Lights",
+          "label": "Meridian",
           "art": {
             "kind": "generated"
           }
@@ -27,6 +28,7 @@
           "title": "Paper Lanterns",
           "year": 1975,
           "act": "Vela Marsh",
+          "label": "Meridian",
           "art": {
             "kind": "generated"
           }
@@ -115,6 +117,7 @@
           "title": "Late Ferry",
           "year": 1974,
           "act": "The Harbor Lights",
+          "label": "Meridian",
           "art": {
             "kind": "generated"
           }
@@ -124,6 +127,7 @@
           "title": "Copper Sound!",
           "year": 1975,
           "act": "The Copper Sound",
+          "label": "Copper Kettle",
           "art": {
             "kind": "generated"
           }
@@ -212,6 +216,7 @@
           "title": "Late Ferry",
           "year": 1974,
           "act": "The Harbor Lights",
+          "label": "Meridian",
           "art": {
             "kind": "generated"
           }
@@ -221,6 +226,7 @@
           "title": "Quiet Acre",
           "year": 1976,
           "act": "Ada Quinn",
+          "label": "Meridian",
           "art": {
             "kind": "generated"
           }
@@ -309,6 +315,7 @@
           "title": "Late Ferry",
           "year": 1974,
           "act": "The Harbor Lights",
+          "label": "Meridian",
           "art": {
             "kind": "generated"
           }
@@ -318,6 +325,7 @@
           "title": "Terminal Lights",
           "year": 1980,
           "act": "Night Ferry",
+          "label": "Meridian",
           "art": {
             "kind": "generated"
           }
@@ -406,6 +414,7 @@
           "title": "Late Ferry",
           "year": 1974,
           "act": "The Harbor Lights",
+          "label": "Meridian",
           "art": {
             "kind": "generated"
           }
@@ -415,6 +424,7 @@
           "title": "Midnight Arcade",
           "year": 1978,
           "act": "Marta Vale",
+          "label": "Meridian",
           "art": {
             "kind": "generated"
           }
@@ -524,6 +534,7 @@
           "title": "Late Ferry",
           "year": 1974,
           "act": "The Harbor Lights",
+          "label": "Meridian",
           "art": {
             "kind": "generated"
           }
@@ -533,6 +544,7 @@
           "title": "Reedwork",
           "year": 1977,
           "act": "Ossian Reed",
+          "label": "Copper Kettle",
           "art": {
             "kind": "generated"
           }
@@ -621,6 +633,7 @@
           "title": "Late Ferry",
           "year": 1974,
           "act": "The Harbor Lights",
+          "label": "Meridian",
           "art": {
             "kind": "generated"
           }
@@ -630,6 +643,7 @@
           "title": "Blue Meridian Presents",
           "year": 1974,
           "act": "Blue Meridian Orchestra",
+          "label": "Meridian",
           "art": {
             "kind": "generated"
           }
@@ -739,6 +753,7 @@
           "title": "Late Ferry",
           "year": 1974,
           "act": "The Harbor Lights",
+          "label": "Meridian",
           "art": {
             "kind": "generated"
           }
@@ -748,6 +763,7 @@
           "title": "Filament",
           "year": 1981,
           "act": "Tin Lantern",
+          "label": "Copper Kettle",
           "art": {
             "kind": "generated"
           }
@@ -836,6 +852,7 @@
           "title": "Late Ferry",
           "year": 1974,
           "act": "The Harbor Lights",
+          "label": "Meridian",
           "art": {
             "kind": "generated"
           }
@@ -845,6 +862,7 @@
           "title": "Solis",
           "year": 1977,
           "act": "Yara Solis",
+          "label": "Meridian",
           "art": {
             "kind": "generated"
           }
@@ -933,6 +951,7 @@
           "title": "Late Ferry",
           "year": 1974,
           "act": "The Harbor Lights",
+          "label": "Meridian",
           "art": {
             "kind": "generated"
           }
@@ -942,6 +961,7 @@
           "title": "Kettle Steam",
           "year": 1979,
           "act": "The Copper Sound",
+          "label": "Copper Kettle",
           "art": {
             "kind": "generated"
           }
@@ -1030,6 +1050,7 @@
           "title": "Late Ferry",
           "year": 1974,
           "act": "The Harbor Lights",
+          "label": "Meridian",
           "art": {
             "kind": "generated"
           }
@@ -1039,6 +1060,7 @@
           "title": "Crossing at Dusk",
           "year": 1982,
           "act": "Night Ferry",
+          "label": "Meridian",
           "art": {
             "kind": "generated"
           }
@@ -1127,6 +1149,7 @@
           "title": "Late Ferry",
           "year": 1974,
           "act": "The Harbor Lights",
+          "label": "Meridian",
           "art": {
             "kind": "generated"
           }
@@ -1136,6 +1159,7 @@
           "title": "Setts in Motion",
           "year": 1979,
           "act": "The Silver Setts",
+          "label": "Meridian",
           "art": {
             "kind": "generated"
           }
@@ -1245,6 +1269,7 @@
           "title": "Late Ferry",
           "year": 1974,
           "act": "The Harbor Lights",
+          "label": "Meridian",
           "art": {
             "kind": "generated"
           }
@@ -1254,6 +1279,7 @@
           "title": "Vale of Mirrors",
           "year": 1981,
           "act": "Marta Vale",
+          "label": "Copper Kettle",
           "art": {
             "kind": "generated"
           }
@@ -1342,6 +1368,7 @@
           "title": "Late Ferry",
           "year": 1974,
           "act": "The Harbor Lights",
+          "label": "Meridian",
           "art": {
             "kind": "generated"
           }
@@ -1351,6 +1378,7 @@
           "title": "String Theory for Beginners",
           "year": 1987,
           "act": "The Kite Union",
+          "label": "Copper Kettle",
           "art": {
             "kind": "generated"
           }
@@ -1439,6 +1467,7 @@
           "title": "Late Ferry",
           "year": 1974,
           "act": "The Harbor Lights",
+          "label": "Meridian",
           "art": {
             "kind": "generated"
           }
@@ -1448,6 +1477,7 @@
           "title": "Second Pressing",
           "year": 1978,
           "act": "Blue Meridian Orchestra",
+          "label": "Meridian",
           "art": {
             "kind": "generated"
           }
@@ -1536,6 +1566,7 @@
           "title": "Late Ferry",
           "year": 1974,
           "act": "The Harbor Lights",
+          "label": "Meridian",
           "art": {
             "kind": "generated"
           }
@@ -1545,6 +1576,7 @@
           "title": "Rain on the Patio",
           "year": 1980,
           "act": "Yara Solis",
+          "label": "Meridian",
           "art": {
             "kind": "generated"
           }
@@ -1633,6 +1665,7 @@
           "title": "Late Ferry",
           "year": 1974,
           "act": "The Harbor Lights",
+          "label": "Meridian",
           "art": {
             "kind": "generated"
           }
@@ -1642,6 +1675,7 @@
           "title": "Glass & Wire",
           "year": 1990,
           "act": "Tin Lantern",
+          "label": "Copper Kettle",
           "art": {
             "kind": "generated"
           }
@@ -1730,6 +1764,7 @@
           "title": "Paper Lanterns",
           "year": 1975,
           "act": "Vela Marsh",
+          "label": "Meridian",
           "art": {
             "kind": "generated"
           }
@@ -1739,6 +1774,7 @@
           "title": "Copper Sound!",
           "year": 1975,
           "act": "The Copper Sound",
+          "label": "Copper Kettle",
           "art": {
             "kind": "generated"
           }
@@ -1827,6 +1863,7 @@
           "title": "Paper Lanterns",
           "year": 1975,
           "act": "Vela Marsh",
+          "label": "Meridian",
           "art": {
             "kind": "generated"
           }
@@ -1836,6 +1873,7 @@
           "title": "Terminal Lights",
           "year": 1980,
           "act": "Night Ferry",
+          "label": "Meridian",
           "art": {
             "kind": "generated"
           }
@@ -1924,6 +1962,7 @@
           "title": "Paper Lanterns",
           "year": 1975,
           "act": "Vela Marsh",
+          "label": "Meridian",
           "art": {
             "kind": "generated"
           }
@@ -1933,6 +1972,7 @@
           "title": "Silver Standards",
           "year": 1976,
           "act": "The Silver Setts",
+          "label": "Meridian",
           "art": {
             "kind": "generated"
           }
@@ -2021,6 +2061,7 @@
           "title": "Paper Lanterns",
           "year": 1975,
           "act": "Vela Marsh",
+          "label": "Meridian",
           "art": {
             "kind": "generated"
           }
@@ -2030,6 +2071,7 @@
           "title": "Union of Kites",
           "year": 1984,
           "act": "The Kite Union",
+          "label": "Copper Kettle",
           "art": {
             "kind": "generated"
           }
@@ -2118,6 +2160,7 @@
           "title": "Paper Lanterns",
           "year": 1975,
           "act": "Vela Marsh",
+          "label": "Meridian",
           "art": {
             "kind": "generated"
           }
@@ -2127,6 +2170,7 @@
           "title": "Solis",
           "year": 1977,
           "act": "Yara Solis",
+          "label": "Meridian",
           "art": {
             "kind": "generated"
           }
@@ -2215,6 +2259,7 @@
           "title": "Paper Lanterns",
           "year": 1975,
           "act": "Vela Marsh",
+          "label": "Meridian",
           "art": {
             "kind": "generated"
           }
@@ -2224,6 +2269,7 @@
           "title": "Second Harbor",
           "year": 1977,
           "act": "The Harbor Lights",
+          "label": "Meridian",
           "art": {
             "kind": "generated"
           }
@@ -2312,6 +2358,7 @@
           "title": "Paper Lanterns",
           "year": 1975,
           "act": "Vela Marsh",
+          "label": "Meridian",
           "art": {
             "kind": "generated"
           }
@@ -2321,6 +2368,7 @@
           "title": "Setts in Motion",
           "year": 1979,
           "act": "The Silver Setts",
+          "label": "Meridian",
           "art": {
             "kind": "generated"
           }
@@ -2409,6 +2457,7 @@
           "title": "Paper Lanterns",
           "year": 1975,
           "act": "Vela Marsh",
+          "label": "Meridian",
           "art": {
             "kind": "generated"
           }
@@ -2418,6 +2467,7 @@
           "title": "Vale of Mirrors",
           "year": 1981,
           "act": "Marta Vale",
+          "label": "Copper Kettle",
           "art": {
             "kind": "generated"
           }
@@ -2506,6 +2556,7 @@
           "title": "Paper Lanterns",
           "year": 1975,
           "act": "Vela Marsh",
+          "label": "Meridian",
           "art": {
             "kind": "generated"
           }
@@ -2515,6 +2566,7 @@
           "title": "Rain on the Patio",
           "year": 1980,
           "act": "Yara Solis",
+          "label": "Meridian",
           "art": {
             "kind": "generated"
           }
@@ -2624,6 +2676,7 @@
           "title": "Copper Sound!",
           "year": 1975,
           "act": "The Copper Sound",
+          "label": "Copper Kettle",
           "art": {
             "kind": "generated"
           }
@@ -2633,6 +2686,7 @@
           "title": "Midnight Arcade",
           "year": 1978,
           "act": "Marta Vale",
+          "label": "Meridian",
           "art": {
             "kind": "generated"
           }
@@ -2721,6 +2775,7 @@
           "title": "Quiet Acre",
           "year": 1976,
           "act": "Ada Quinn",
+          "label": "Meridian",
           "art": {
             "kind": "generated"
           }
@@ -2730,6 +2785,7 @@
           "title": "Midnight Arcade",
           "year": 1978,
           "act": "Marta Vale",
+          "label": "Meridian",
           "art": {
             "kind": "generated"
           }
@@ -2818,6 +2874,7 @@
           "title": "Quiet Acre",
           "year": 1976,
           "act": "Ada Quinn",
+          "label": "Meridian",
           "art": {
             "kind": "generated"
           }
@@ -2827,6 +2884,7 @@
           "title": "Second Harbor",
           "year": 1977,
           "act": "The Harbor Lights",
+          "label": "Meridian",
           "art": {
             "kind": "generated"
           }
@@ -2915,6 +2973,7 @@
           "title": "Quiet Acre",
           "year": 1976,
           "act": "Ada Quinn",
+          "label": "Meridian",
           "art": {
             "kind": "generated"
           }
@@ -2924,6 +2983,7 @@
           "title": "Vela",
           "year": 1978,
           "act": "Vela Marsh",
+          "label": "Meridian",
           "art": {
             "kind": "generated"
           }
@@ -3012,6 +3072,7 @@
           "title": "Quiet Acre",
           "year": 1976,
           "act": "Ada Quinn",
+          "label": "Meridian",
           "art": {
             "kind": "generated"
           }
@@ -3021,6 +3082,7 @@
           "title": "Vale of Mirrors",
           "year": 1981,
           "act": "Marta Vale",
+          "label": "Copper Kettle",
           "art": {
             "kind": "generated"
           }
@@ -3109,6 +3171,7 @@
           "title": "Quiet Acre",
           "year": 1976,
           "act": "Ada Quinn",
+          "label": "Meridian",
           "art": {
             "kind": "generated"
           }
@@ -3118,6 +3181,7 @@
           "title": "The Long Field",
           "year": 1982,
           "act": "Ossian Reed",
+          "label": "Copper Kettle",
           "art": {
             "kind": "generated"
           }
@@ -3206,6 +3270,7 @@
           "title": "Quiet Acre",
           "year": 1976,
           "act": "Ada Quinn",
+          "label": "Meridian",
           "art": {
             "kind": "generated"
           }
@@ -3215,6 +3280,7 @@
           "title": "Rain on the Patio",
           "year": 1980,
           "act": "Yara Solis",
+          "label": "Meridian",
           "art": {
             "kind": "generated"
           }
@@ -3303,6 +3369,7 @@
           "title": "Quiet Acre",
           "year": 1976,
           "act": "Ada Quinn",
+          "label": "Meridian",
           "art": {
             "kind": "generated"
           }
@@ -3312,6 +3379,7 @@
           "title": "Alloy",
           "year": 1985,
           "act": "The Copper Sound",
+          "label": "Copper Kettle",
           "art": {
             "kind": "generated"
           }
@@ -3400,6 +3468,7 @@
           "title": "Silver Standards",
           "year": 1976,
           "act": "The Silver Setts",
+          "label": "Meridian",
           "art": {
             "kind": "generated"
           }
@@ -3409,6 +3478,7 @@
           "title": "String Theory for Beginners",
           "year": 1987,
           "act": "The Kite Union",
+          "label": "Copper Kettle",
           "art": {
             "kind": "generated"
           }
@@ -3420,6 +3490,7 @@
           "title": "Paper Lanterns",
           "year": 1975,
           "act": "Vela Marsh",
+          "label": "Meridian",
           "art": {
             "kind": "generated"
           }
@@ -3430,6 +3501,7 @@
             "title": "Paper Lanterns",
             "year": 1975,
             "act": "Vela Marsh",
+            "label": "Meridian",
             "art": {
               "kind": "generated"
             }
@@ -3439,6 +3511,7 @@
             "title": "Vale of Mirrors",
             "year": 1981,
             "act": "Marta Vale",
+            "label": "Copper Kettle",
             "art": {
               "kind": "generated"
             }
@@ -3448,6 +3521,7 @@
             "title": "Quiet Acre",
             "year": 1976,
             "act": "Ada Quinn",
+            "label": "Meridian",
             "art": {
               "kind": "generated"
             }
@@ -3457,6 +3531,7 @@
             "title": "Harbor Wall",
             "year": 1986,
             "act": "Night Ferry",
+            "label": "Copper Kettle",
             "art": null
           }
         ]
@@ -3581,6 +3656,7 @@
           "title": "Reedwork",
           "year": 1977,
           "act": "Ossian Reed",
+          "label": "Copper Kettle",
           "art": {
             "kind": "generated"
           }
@@ -3590,6 +3666,7 @@
           "title": "Union of Kites",
           "year": 1984,
           "act": "The Kite Union",
+          "label": "Copper Kettle",
           "art": {
             "kind": "generated"
           }
@@ -3601,6 +3678,7 @@
           "title": "Paper Lanterns",
           "year": 1975,
           "act": "Vela Marsh",
+          "label": "Meridian",
           "art": {
             "kind": "generated"
           }
@@ -3611,6 +3689,7 @@
             "title": "Late Ferry",
             "year": 1974,
             "act": "The Harbor Lights",
+            "label": "Meridian",
             "art": {
               "kind": "generated"
             }
@@ -3620,6 +3699,7 @@
             "title": "Paper Lanterns",
             "year": 1975,
             "act": "Vela Marsh",
+            "label": "Meridian",
             "art": {
               "kind": "generated"
             }
@@ -3629,6 +3709,7 @@
             "title": "Second Harbor",
             "year": 1977,
             "act": "The Harbor Lights",
+            "label": "Meridian",
             "art": {
               "kind": "generated"
             }
@@ -3638,6 +3719,7 @@
             "title": "Kettle Steam",
             "year": 1979,
             "act": "The Copper Sound",
+            "label": "Copper Kettle",
             "art": {
               "kind": "generated"
             }
@@ -3764,6 +3846,7 @@
           "title": "Reedwork",
           "year": 1977,
           "act": "Ossian Reed",
+          "label": "Copper Kettle",
           "art": {
             "kind": "generated"
           }
@@ -3773,6 +3856,7 @@
           "title": "Hollow Lane",
           "year": 1980,
           "act": "Ada Quinn",
+          "label": "Meridian",
           "art": null
         }
       ],
@@ -3782,6 +3866,7 @@
           "title": "Tin Lantern II",
           "year": 1984,
           "act": "Tin Lantern",
+          "label": "Copper Kettle",
           "art": {
             "kind": "generated"
           }
@@ -3792,6 +3877,7 @@
             "title": "Tin Lantern II",
             "year": 1984,
             "act": "Tin Lantern",
+            "label": "Copper Kettle",
             "art": {
               "kind": "generated"
             }
@@ -3801,6 +3887,7 @@
             "title": "The Long Field",
             "year": 1982,
             "act": "Ossian Reed",
+            "label": "Copper Kettle",
             "art": {
               "kind": "generated"
             }
@@ -3810,6 +3897,7 @@
             "title": "Solis",
             "year": 1977,
             "act": "Yara Solis",
+            "label": "Meridian",
             "art": {
               "kind": "generated"
             }
@@ -3819,6 +3907,7 @@
             "title": "Late Ferry",
             "year": 1974,
             "act": "The Harbor Lights",
+            "label": "Meridian",
             "art": {
               "kind": "generated"
             }
@@ -3971,6 +4060,7 @@
           "title": "Union of Kites",
           "year": 1984,
           "act": "The Kite Union",
+          "label": "Copper Kettle",
           "art": {
             "kind": "generated"
           }
@@ -3980,6 +4070,7 @@
           "title": "Vela",
           "year": 1978,
           "act": "Vela Marsh",
+          "label": "Meridian",
           "art": {
             "kind": "generated"
           }
@@ -3991,6 +4082,7 @@
           "title": "Paper Lanterns",
           "year": 1975,
           "act": "Vela Marsh",
+          "label": "Meridian",
           "art": {
             "kind": "generated"
           }
@@ -4001,6 +4093,7 @@
             "title": "Hollow Lane",
             "year": 1980,
             "act": "Ada Quinn",
+            "label": "Meridian",
             "art": null
           },
           {
@@ -4008,6 +4101,7 @@
             "title": "Paper Lanterns",
             "year": 1975,
             "act": "Vela Marsh",
+            "label": "Meridian",
             "art": {
               "kind": "generated"
             }
@@ -4017,6 +4111,7 @@
             "title": "Marshlight",
             "year": 1983,
             "act": "Vela Marsh",
+            "label": "Copper Kettle",
             "art": {
               "kind": "generated"
             }
@@ -4026,6 +4121,7 @@
             "title": "Terminal Lights",
             "year": 1980,
             "act": "Night Ferry",
+            "label": "Meridian",
             "art": {
               "kind": "generated"
             }
@@ -4152,6 +4248,7 @@
           "title": "Filament",
           "year": 1981,
           "act": "Tin Lantern",
+          "label": "Copper Kettle",
           "art": {
             "kind": "generated"
           }
@@ -4161,6 +4258,7 @@
           "title": "Harbor Wall",
           "year": 1986,
           "act": "Night Ferry",
+          "label": "Copper Kettle",
           "art": null
         }
       ],
@@ -4170,6 +4268,7 @@
           "title": "Terminal Lights",
           "year": 1980,
           "act": "Night Ferry",
+          "label": "Meridian",
           "art": {
             "kind": "generated"
           }
@@ -4180,6 +4279,7 @@
             "title": "Setts in Motion",
             "year": 1979,
             "act": "The Silver Setts",
+            "label": "Meridian",
             "art": {
               "kind": "generated"
             }
@@ -4189,6 +4289,7 @@
             "title": "Copper Sound!",
             "year": 1975,
             "act": "The Copper Sound",
+            "label": "Copper Kettle",
             "art": {
               "kind": "generated"
             }
@@ -4198,6 +4299,7 @@
             "title": "Terminal Lights",
             "year": 1980,
             "act": "Night Ferry",
+            "label": "Meridian",
             "art": {
               "kind": "generated"
             }
@@ -4207,6 +4309,7 @@
             "title": "Solis",
             "year": 1977,
             "act": "Yara Solis",
+            "label": "Meridian",
             "art": {
               "kind": "generated"
             }
@@ -4333,6 +4436,7 @@
           "title": "Vela",
           "year": 1978,
           "act": "Vela Marsh",
+          "label": "Meridian",
           "art": {
             "kind": "generated"
           }
@@ -4342,6 +4446,7 @@
           "title": "Hollow Lane",
           "year": 1980,
           "act": "Ada Quinn",
+          "label": "Meridian",
           "art": null
         }
       ],
@@ -4351,6 +4456,7 @@
           "title": "Alloy",
           "year": 1985,
           "act": "The Copper Sound",
+          "label": "Copper Kettle",
           "art": {
             "kind": "generated"
           }
@@ -4361,6 +4467,7 @@
             "title": "Filament",
             "year": 1981,
             "act": "Tin Lantern",
+            "label": "Copper Kettle",
             "art": {
               "kind": "generated"
             }
@@ -4370,6 +4477,7 @@
             "title": "Terminal Lights",
             "year": 1980,
             "act": "Night Ferry",
+            "label": "Meridian",
             "art": {
               "kind": "generated"
             }
@@ -4379,6 +4487,7 @@
             "title": "Paper Lanterns",
             "year": 1975,
             "act": "Vela Marsh",
+            "label": "Meridian",
             "art": {
               "kind": "generated"
             }
@@ -4388,6 +4497,7 @@
             "title": "Alloy",
             "year": 1985,
             "act": "The Copper Sound",
+            "label": "Copper Kettle",
             "art": {
               "kind": "generated"
             }
@@ -4514,6 +4624,7 @@
           "title": "Vela",
           "year": 1978,
           "act": "Vela Marsh",
+          "label": "Meridian",
           "art": {
             "kind": "generated"
           }
@@ -4523,6 +4634,7 @@
           "title": "Glass & Wire",
           "year": 1990,
           "act": "Tin Lantern",
+          "label": "Copper Kettle",
           "art": {
             "kind": "generated"
           }
@@ -4534,6 +4646,7 @@
           "title": "Midnight Arcade",
           "year": 1978,
           "act": "Marta Vale",
+          "label": "Meridian",
           "art": {
             "kind": "generated"
           }
@@ -4544,6 +4657,7 @@
             "title": "Second Pressing",
             "year": 1978,
             "act": "Blue Meridian Orchestra",
+            "label": "Meridian",
             "art": {
               "kind": "generated"
             }
@@ -4553,6 +4667,7 @@
             "title": "String Theory for Beginners",
             "year": 1987,
             "act": "The Kite Union",
+            "label": "Copper Kettle",
             "art": {
               "kind": "generated"
             }
@@ -4562,6 +4677,7 @@
             "title": "Copper Sound!",
             "year": 1975,
             "act": "The Copper Sound",
+            "label": "Copper Kettle",
             "art": {
               "kind": "generated"
             }
@@ -4571,6 +4687,7 @@
             "title": "Midnight Arcade",
             "year": 1978,
             "act": "Marta Vale",
+            "label": "Meridian",
             "art": {
               "kind": "generated"
             }
@@ -4697,6 +4814,7 @@
           "title": "Kettle Steam",
           "year": 1979,
           "act": "The Copper Sound",
+          "label": "Copper Kettle",
           "art": {
             "kind": "generated"
           }
@@ -4706,6 +4824,7 @@
           "title": "Marshlight",
           "year": 1983,
           "act": "Vela Marsh",
+          "label": "Copper Kettle",
           "art": {
             "kind": "generated"
           }
@@ -4717,6 +4836,7 @@
           "title": "Paper Lanterns",
           "year": 1975,
           "act": "Vela Marsh",
+          "label": "Meridian",
           "art": {
             "kind": "generated"
           }
@@ -4727,6 +4847,7 @@
             "title": "Paper Lanterns",
             "year": 1975,
             "act": "Vela Marsh",
+            "label": "Meridian",
             "art": {
               "kind": "generated"
             }
@@ -4736,6 +4857,7 @@
             "title": "Second Pressing",
             "year": 1978,
             "act": "Blue Meridian Orchestra",
+            "label": "Meridian",
             "art": {
               "kind": "generated"
             }
@@ -4745,6 +4867,7 @@
             "title": "Crossing at Dusk",
             "year": 1982,
             "act": "Night Ferry",
+            "label": "Meridian",
             "art": {
               "kind": "generated"
             }
@@ -4754,6 +4877,7 @@
             "title": "Crossing Lights",
             "year": 1981,
             "act": "The Harbor Lights",
+            "label": "Meridian",
             "art": {
               "kind": "generated"
             }
@@ -4880,6 +5004,7 @@
           "title": "Kettle Steam",
           "year": 1979,
           "act": "The Copper Sound",
+          "label": "Copper Kettle",
           "art": {
             "kind": "generated"
           }
@@ -4889,6 +5014,7 @@
           "title": "Alloy",
           "year": 1985,
           "act": "The Copper Sound",
+          "label": "Copper Kettle",
           "art": {
             "kind": "generated"
           }
@@ -4900,6 +5026,7 @@
           "title": "Terminal Lights",
           "year": 1980,
           "act": "Night Ferry",
+          "label": "Meridian",
           "art": {
             "kind": "generated"
           }
@@ -4910,6 +5037,7 @@
             "title": "Crossing at Dusk",
             "year": 1982,
             "act": "Night Ferry",
+            "label": "Meridian",
             "art": {
               "kind": "generated"
             }
@@ -4919,6 +5047,7 @@
             "title": "Vale of Mirrors",
             "year": 1981,
             "act": "Marta Vale",
+            "label": "Copper Kettle",
             "art": {
               "kind": "generated"
             }
@@ -4928,6 +5057,7 @@
             "title": "Terminal Lights",
             "year": 1980,
             "act": "Night Ferry",
+            "label": "Meridian",
             "art": {
               "kind": "generated"
             }
@@ -4937,6 +5067,7 @@
             "title": "Copper Sound!",
             "year": 1975,
             "act": "The Copper Sound",
+            "label": "Copper Kettle",
             "art": {
               "kind": "generated"
             }
@@ -5115,6 +5246,7 @@
           "title": "Hollow Lane",
           "year": 1980,
           "act": "Ada Quinn",
+          "label": "Meridian",
           "art": null
         },
         {
@@ -5122,6 +5254,7 @@
           "title": "String Theory for Beginners",
           "year": 1987,
           "act": "The Kite Union",
+          "label": "Copper Kettle",
           "art": {
             "kind": "generated"
           }
@@ -5133,6 +5266,7 @@
           "title": "Blue Meridian Presents",
           "year": 1974,
           "act": "Blue Meridian Orchestra",
+          "label": "Meridian",
           "art": {
             "kind": "generated"
           }
@@ -5143,6 +5277,7 @@
             "title": "Blue Meridian Presents",
             "year": 1974,
             "act": "Blue Meridian Orchestra",
+            "label": "Meridian",
             "art": {
               "kind": "generated"
             }
@@ -5152,6 +5287,7 @@
             "title": "Copper Sound!",
             "year": 1975,
             "act": "The Copper Sound",
+            "label": "Copper Kettle",
             "art": {
               "kind": "generated"
             }
@@ -5161,6 +5297,7 @@
             "title": "Crossing at Dusk",
             "year": 1982,
             "act": "Night Ferry",
+            "label": "Meridian",
             "art": {
               "kind": "generated"
             }
@@ -5170,6 +5307,7 @@
             "title": "Solis",
             "year": 1977,
             "act": "Yara Solis",
+            "label": "Meridian",
             "art": {
               "kind": "generated"
             }
@@ -5296,6 +5434,7 @@
           "title": "Hollow Lane",
           "year": 1980,
           "act": "Ada Quinn",
+          "label": "Meridian",
           "art": null
         },
         {
@@ -5303,6 +5442,7 @@
           "title": "Rain on the Patio",
           "year": 1980,
           "act": "Yara Solis",
+          "label": "Meridian",
           "art": {
             "kind": "generated"
           }
@@ -5314,6 +5454,7 @@
           "title": "Alloy",
           "year": 1985,
           "act": "The Copper Sound",
+          "label": "Copper Kettle",
           "art": {
             "kind": "generated"
           }
@@ -5324,6 +5465,7 @@
             "title": "Union of Kites",
             "year": 1984,
             "act": "The Kite Union",
+            "label": "Copper Kettle",
             "art": {
               "kind": "generated"
             }
@@ -5333,6 +5475,7 @@
             "title": "Terminal Lights",
             "year": 1980,
             "act": "Night Ferry",
+            "label": "Meridian",
             "art": {
               "kind": "generated"
             }
@@ -5342,6 +5485,7 @@
             "title": "Glass & Wire",
             "year": 1990,
             "act": "Tin Lantern",
+            "label": "Copper Kettle",
             "art": {
               "kind": "generated"
             }
@@ -5351,6 +5495,7 @@
             "title": "Alloy",
             "year": 1985,
             "act": "The Copper Sound",
+            "label": "Copper Kettle",
             "art": {
               "kind": "generated"
             }
@@ -5477,6 +5622,7 @@
           "title": "Hollow Lane",
           "year": 1980,
           "act": "Ada Quinn",
+          "label": "Meridian",
           "art": null
         },
         {
@@ -5484,6 +5630,7 @@
           "title": "Marshlight",
           "year": 1983,
           "act": "Vela Marsh",
+          "label": "Copper Kettle",
           "art": {
             "kind": "generated"
           }
@@ -5495,6 +5642,7 @@
           "title": "Silver Standards",
           "year": 1976,
           "act": "The Silver Setts",
+          "label": "Meridian",
           "art": {
             "kind": "generated"
           }
@@ -5505,6 +5653,7 @@
             "title": "Harbor Wall",
             "year": 1986,
             "act": "Night Ferry",
+            "label": "Copper Kettle",
             "art": null
           },
           {
@@ -5512,6 +5661,7 @@
             "title": "Silver Standards",
             "year": 1976,
             "act": "The Silver Setts",
+            "label": "Meridian",
             "art": {
               "kind": "generated"
             }
@@ -5521,6 +5671,7 @@
             "title": "Winter Wiring: Songs from the Meridian Annex Sessions, Volume One",
             "year": 1988,
             "act": "Ossian Reed",
+            "label": "Copper Kettle",
             "art": {
               "kind": "generated"
             }
@@ -5530,6 +5681,7 @@
             "title": "Midnight Arcade",
             "year": 1978,
             "act": "Marta Vale",
+            "label": "Meridian",
             "art": {
               "kind": "generated"
             }
@@ -5656,6 +5808,7 @@
           "title": "Hollow Lane",
           "year": 1980,
           "act": "Ada Quinn",
+          "label": "Meridian",
           "art": null
         },
         {
@@ -5663,6 +5816,7 @@
           "title": "Harbor Wall",
           "year": 1986,
           "act": "Night Ferry",
+          "label": "Copper Kettle",
           "art": null
         }
       ],
@@ -5672,6 +5826,7 @@
           "title": "Tin Lantern II",
           "year": 1984,
           "act": "Tin Lantern",
+          "label": "Copper Kettle",
           "art": {
             "kind": "generated"
           }
@@ -5682,6 +5837,7 @@
             "title": "Tin Lantern II",
             "year": 1984,
             "act": "Tin Lantern",
+            "label": "Copper Kettle",
             "art": {
               "kind": "generated"
             }
@@ -5691,6 +5847,7 @@
             "title": "Reedwork",
             "year": 1977,
             "act": "Ossian Reed",
+            "label": "Copper Kettle",
             "art": {
               "kind": "generated"
             }
@@ -5700,6 +5857,7 @@
             "title": "Second Pressing",
             "year": 1978,
             "act": "Blue Meridian Orchestra",
+            "label": "Meridian",
             "art": {
               "kind": "generated"
             }
@@ -5709,6 +5867,7 @@
             "title": "Crossing at Dusk",
             "year": 1982,
             "act": "Night Ferry",
+            "label": "Meridian",
             "art": {
               "kind": "generated"
             }
@@ -5861,6 +6020,7 @@
           "title": "The Long Field",
           "year": 1982,
           "act": "Ossian Reed",
+          "label": "Copper Kettle",
           "art": {
             "kind": "generated"
           }
@@ -5870,6 +6030,7 @@
           "title": "Glass & Wire",
           "year": 1990,
           "act": "Tin Lantern",
+          "label": "Copper Kettle",
           "art": {
             "kind": "generated"
           }
@@ -5881,6 +6042,7 @@
           "title": "Crossing Lights",
           "year": 1981,
           "act": "The Harbor Lights",
+          "label": "Meridian",
           "art": {
             "kind": "generated"
           }
@@ -5891,6 +6053,7 @@
             "title": "Crossing Lights",
             "year": 1981,
             "act": "The Harbor Lights",
+            "label": "Meridian",
             "art": {
               "kind": "generated"
             }
@@ -5900,6 +6063,7 @@
             "title": "Terminal Lights",
             "year": 1980,
             "act": "Night Ferry",
+            "label": "Meridian",
             "art": {
               "kind": "generated"
             }
@@ -5909,6 +6073,7 @@
             "title": "Vale of Mirrors",
             "year": 1981,
             "act": "Marta Vale",
+            "label": "Copper Kettle",
             "art": {
               "kind": "generated"
             }
@@ -5918,6 +6083,7 @@
             "title": "Copper Sound!",
             "year": 1975,
             "act": "The Copper Sound",
+            "label": "Copper Kettle",
             "art": {
               "kind": "generated"
             }
@@ -6044,6 +6210,7 @@
           "title": "This Land",
           "year": 2019,
           "act": "Gary Clark Jr.",
+          "label": null,
           "art": {
             "kind": "hotlink",
             "uri150": "https://i.discogs.com/hlpYc0vGMkvtU-SOLnbq3Lf2KxS1qnn-5Rcc8Q1MRfU/rs:fit/g:sm/q:40/h:150/w:150/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTEzMjUz/MDk3LTE1NTEyNzM4/ODQtODM4Ni5qcGVn.jpeg",
@@ -6055,6 +6222,7 @@
           "title": "Communiqué",
           "year": null,
           "act": "Dire Straits",
+          "label": null,
           "art": {
             "kind": "hotlink",
             "uri150": "https://i.discogs.com/cEaH7BHggX5QFMiDU7MUKN4BsskxLjIQXOYl4jeL9YA/rs:fit/g:sm/q:40/h:150/w:150/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTE0NjI5/NjU3LTE1Nzg1OTIx/OTAtOTY4NS5qcGVn.jpeg",
@@ -6153,6 +6321,7 @@
           "title": "Big Whiskey And The GrooGrux King",
           "year": 2009,
           "act": "Dave Matthews Band",
+          "label": null,
           "art": {
             "kind": "hotlink",
             "uri150": "https://i.discogs.com/FrHRjJB3jy-KQYtsXOYG1FhuyjaV7ZYTY-fUSn4jchg/rs:fit/g:sm/q:40/h:150/w:150/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTE4MzY0/MjYtMTQ3ODgwMTI0/Ni02NzcwLmpwZWc.jpeg",
@@ -6164,6 +6333,7 @@
           "title": "This Land",
           "year": 2019,
           "act": "Gary Clark Jr.",
+          "label": null,
           "art": {
             "kind": "hotlink",
             "uri150": "https://i.discogs.com/hlpYc0vGMkvtU-SOLnbq3Lf2KxS1qnn-5Rcc8Q1MRfU/rs:fit/g:sm/q:40/h:150/w:150/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTEzMjUz/MDk3LTE1NTEyNzM4/ODQtODM4Ni5qcGVn.jpeg",
@@ -6254,6 +6424,7 @@
           "title": "An Anthology",
           "year": 1972,
           "act": "Duane Allman",
+          "label": null,
           "art": {
             "kind": "hotlink",
             "uri150": "https://i.discogs.com/uUH93H4r-xmU9mpFngCAgkBVsMnGu5U1Un-16jPnP84/rs:fit/g:sm/q:40/h:150/w:150/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTE5Mjk0/MDctMTM5NjEwMjEz/Mi05NTY2LmpwZWc.jpeg",
@@ -6265,6 +6436,7 @@
           "title": "This Land",
           "year": 2019,
           "act": "Gary Clark Jr.",
+          "label": null,
           "art": {
             "kind": "hotlink",
             "uri150": "https://i.discogs.com/hlpYc0vGMkvtU-SOLnbq3Lf2KxS1qnn-5Rcc8Q1MRfU/rs:fit/g:sm/q:40/h:150/w:150/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTEzMjUz/MDk3LTE1NTEyNzM4/ODQtODM4Ni5qcGVn.jpeg",
@@ -6363,6 +6535,7 @@
           "title": "An Anthology",
           "year": 1972,
           "act": "Duane Allman",
+          "label": null,
           "art": {
             "kind": "hotlink",
             "uri150": "https://i.discogs.com/uUH93H4r-xmU9mpFngCAgkBVsMnGu5U1Un-16jPnP84/rs:fit/g:sm/q:40/h:150/w:150/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTE5Mjk0/MDctMTM5NjEwMjEz/Mi05NTY2LmpwZWc.jpeg",
@@ -6374,6 +6547,7 @@
           "title": "Communiqué",
           "year": null,
           "act": "Dire Straits",
+          "label": null,
           "art": {
             "kind": "hotlink",
             "uri150": "https://i.discogs.com/cEaH7BHggX5QFMiDU7MUKN4BsskxLjIQXOYl4jeL9YA/rs:fit/g:sm/q:40/h:150/w:150/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTE0NjI5/NjU3LTE1Nzg1OTIx/OTAtOTY4NS5qcGVn.jpeg",
@@ -6501,6 +6675,7 @@
           "title": "Torches",
           "year": 2011,
           "act": "Foster The People",
+          "label": null,
           "art": {
             "kind": "hotlink",
             "uri150": "https://i.discogs.com/0nINEIiPdD56Da952wu1akikPHppc6R1o2JAPEp4RAM/rs:fit/g:sm/q:40/h:150/w:150/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTI5MDA4/NzctMTQ3MjE0Nzc0/OS03ODIxLmpwZWc.jpeg",
@@ -6512,6 +6687,7 @@
           "title": "Footloose (Original Motion Picture Soundtrack)",
           "year": 1984,
           "act": "Various",
+          "label": null,
           "art": {
             "kind": "hotlink",
             "uri150": "https://i.discogs.com/laMiwzjPRYvhUD51YNWCzwXcCe5GIurCeN3_Q1YpMKc/rs:fit/g:sm/q:40/h:150/w:150/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTk3NjM2/NTYtMTQ4NTk3OTY3/My05MDE5LmpwZWc.jpeg",
@@ -6602,6 +6778,7 @@
           "title": "Greatest Hits",
           "year": 1978,
           "act": "James Taylor (2)",
+          "label": null,
           "art": {
             "kind": "hotlink",
             "uri150": "https://i.discogs.com/9ZentGcgI17tswuXc9BUdIRuqjpGWFjkJ3UIUEs0YuE/rs:fit/g:sm/q:40/h:150/w:150/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTQ5Mzk2/MTItMTU3NTUxMzIw/NS02OTk1LmpwZWc.jpeg",
@@ -6613,6 +6790,7 @@
           "title": "This Land",
           "year": 2019,
           "act": "Gary Clark Jr.",
+          "label": null,
           "art": {
             "kind": "hotlink",
             "uri150": "https://i.discogs.com/hlpYc0vGMkvtU-SOLnbq3Lf2KxS1qnn-5Rcc8Q1MRfU/rs:fit/g:sm/q:40/h:150/w:150/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTEzMjUz/MDk3LTE1NTEyNzM4/ODQtODM4Ni5qcGVn.jpeg",
@@ -6703,6 +6881,7 @@
           "title": "Greatest Hits",
           "year": 1978,
           "act": "James Taylor (2)",
+          "label": null,
           "art": {
             "kind": "hotlink",
             "uri150": "https://i.discogs.com/9ZentGcgI17tswuXc9BUdIRuqjpGWFjkJ3UIUEs0YuE/rs:fit/g:sm/q:40/h:150/w:150/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTQ5Mzk2/MTItMTU3NTUxMzIw/NS02OTk1LmpwZWc.jpeg",
@@ -6714,6 +6893,7 @@
           "title": "Communiqué",
           "year": null,
           "act": "Dire Straits",
+          "label": null,
           "art": {
             "kind": "hotlink",
             "uri150": "https://i.discogs.com/cEaH7BHggX5QFMiDU7MUKN4BsskxLjIQXOYl4jeL9YA/rs:fit/g:sm/q:40/h:150/w:150/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTE0NjI5/NjU3LTE1Nzg1OTIx/OTAtOTY4NS5qcGVn.jpeg",
@@ -6812,6 +6992,7 @@
           "title": "Greatest Hits",
           "year": 1978,
           "act": "James Taylor (2)",
+          "label": null,
           "art": {
             "kind": "hotlink",
             "uri150": "https://i.discogs.com/9ZentGcgI17tswuXc9BUdIRuqjpGWFjkJ3UIUEs0YuE/rs:fit/g:sm/q:40/h:150/w:150/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTQ5Mzk2/MTItMTU3NTUxMzIw/NS02OTk1LmpwZWc.jpeg",
@@ -6823,6 +7004,7 @@
           "title": "Footloose (Original Motion Picture Soundtrack)",
           "year": 1984,
           "act": "Various",
+          "label": null,
           "art": {
             "kind": "hotlink",
             "uri150": "https://i.discogs.com/laMiwzjPRYvhUD51YNWCzwXcCe5GIurCeN3_Q1YpMKc/rs:fit/g:sm/q:40/h:150/w:150/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTk3NjM2/NTYtMTQ4NTk3OTY3/My05MDE5LmpwZWc.jpeg",
@@ -6934,6 +7116,7 @@
           "title": "Gold & Platinum",
           "year": 1979,
           "act": "Lynyrd Skynyrd Band",
+          "label": null,
           "art": {
             "kind": "hotlink",
             "uri150": "https://i.discogs.com/Vyw1JrRCZLowVTgSkYy5mcj2TxB0JEpPTSY-R0YJtI8/rs:fit/g:sm/q:40/h:150/w:150/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTgwMjg2/Mi0xNzUzMDY0NDcw/LTkwNjkuanBlZw.jpeg",
@@ -6945,6 +7128,7 @@
           "title": "An Anthology",
           "year": 1972,
           "act": "Duane Allman",
+          "label": null,
           "art": {
             "kind": "hotlink",
             "uri150": "https://i.discogs.com/uUH93H4r-xmU9mpFngCAgkBVsMnGu5U1Un-16jPnP84/rs:fit/g:sm/q:40/h:150/w:150/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTE5Mjk0/MDctMTM5NjEwMjEz/Mi05NTY2LmpwZWc.jpeg",
@@ -7088,6 +7272,7 @@
           "title": "Gold & Platinum",
           "year": 1979,
           "act": "Lynyrd Skynyrd Band",
+          "label": null,
           "art": {
             "kind": "hotlink",
             "uri150": "https://i.discogs.com/Vyw1JrRCZLowVTgSkYy5mcj2TxB0JEpPTSY-R0YJtI8/rs:fit/g:sm/q:40/h:150/w:150/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTgwMjg2/Mi0xNzUzMDY0NDcw/LTkwNjkuanBlZw.jpeg",
@@ -7099,6 +7284,7 @@
           "title": "Footloose (Original Motion Picture Soundtrack)",
           "year": 1984,
           "act": "Various",
+          "label": null,
           "art": {
             "kind": "hotlink",
             "uri150": "https://i.discogs.com/laMiwzjPRYvhUD51YNWCzwXcCe5GIurCeN3_Q1YpMKc/rs:fit/g:sm/q:40/h:150/w:150/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTk3NjM2/NTYtMTQ4NTk3OTY3/My05MDE5LmpwZWc.jpeg",

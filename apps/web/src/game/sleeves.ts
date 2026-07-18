@@ -4,7 +4,13 @@
 // edge stamp so the fictional status can never be separated from the artwork.
 // No real album artwork is imitated; compositions are generated geometry.
 
-import type { GameAlbum } from "./types";
+// Minimal structural subject: GameAlbum and synthetic AlbumRef both satisfy it.
+export interface SleeveSubject {
+  id: string;
+  title: string;
+  act: string | null;
+  label: string | null;
+}
 
 // Self-contained seeded PRNG (same xmur3+mulberry32 pair as ./prng) so this
 // module also runs under Node's native type stripping for the preview CLI
@@ -62,7 +68,7 @@ function stamp(x: number, y: number, rotate: number, fill: string): string {
 }
 
 /** Geometric duotone system for the fictional "Meridian" label. */
-function meridianSleeve(album: GameAlbum): string {
+function meridianSleeve(album: SleeveSubject): string {
   const rng = createRng(`sleeve-${album.id}`);
   const [accent, ground] = MERIDIAN_DUOTONES[rng.int(MERIDIAN_DUOTONES.length)];
   const shapes: string[] = [];
@@ -84,7 +90,7 @@ function meridianSleeve(album: GameAlbum): string {
     `aria-label="${escapeXml(`Synthetic sleeve art for ${album.title}`)}">` +
     `<rect width="200" height="200" fill="${ground}"/>` +
     shapes.join("") +
-    `<text x="12" y="24" font-family="Georgia, serif" font-size="15" fill="${accent}">${escapeXml(album.act)}</text>` +
+    `<text x="12" y="24" font-family="Georgia, serif" font-size="15" fill="${accent}">${escapeXml(album.act ?? "")}</text>` +
     `<text x="12" y="188" font-family="IBM Plex Mono, monospace" font-size="9" fill="${accent}">${escapeXml(album.title.slice(0, 30))}</text>` +
     stamp(148, 12, 0, accent) +
     `</svg>`
@@ -92,7 +98,7 @@ function meridianSleeve(album: GameAlbum): string {
 }
 
 /** Type-forward paper system for the fictional "Copper Kettle" label. */
-function kettleSleeve(album: GameAlbum): string {
+function kettleSleeve(album: SleeveSubject): string {
   const rng = createRng(`sleeve-${album.id}`);
   const [paper, ink] = KETTLE_PAPERS[rng.int(KETTLE_PAPERS.length)];
   const rules: string[] = [];
@@ -108,17 +114,17 @@ function kettleSleeve(album: GameAlbum): string {
     `aria-label="${escapeXml(`Synthetic sleeve art for ${album.title}`)}">` +
     `<rect width="200" height="200" fill="${paper}"/>` +
     `<rect x="8" y="8" width="184" height="184" fill="none" stroke="${ink}" stroke-width="2"/>` +
-    `<text x="14" y="36" font-family="Georgia, serif" font-size="18" fill="${ink}">${escapeXml(album.act)}</text>` +
+    `<text x="14" y="36" font-family="Georgia, serif" font-size="18" fill="${ink}">${escapeXml(album.act ?? "")}</text>` +
     `<text x="14" y="52" font-family="IBM Plex Mono, monospace" font-size="9" fill="${ink}">${escapeXml(album.title.slice(0, 34))}</text>` +
     rules.join("") +
-    `<text x="14" y="186" font-family="IBM Plex Mono, monospace" font-size="8" fill="${ink}">${escapeXml(`${album.label.toUpperCase()} · ${album.year}`)}</text>` +
+    `<text x="14" y="186" font-family="IBM Plex Mono, monospace" font-size="8" fill="${ink}">${escapeXml((album.label ?? "").toUpperCase())}</text>` +
     stamp(150, 190, 0, ink) +
     `</svg>`
   );
 }
 
 /** Deterministic SVG sleeve for a synthetic album. */
-export function sleeveSvg(album: GameAlbum): string {
+export function sleeveSvg(album: SleeveSubject): string {
   return album.label === "Copper Kettle"
     ? kettleSleeve(album)
     : meridianSleeve(album);

@@ -118,10 +118,290 @@ a.mode-card:focus-visible {
   color: var(--paper-muted);
 }
 
+/* Flagship stage ---------------------------------------------------------- */
+.stage {
+  padding-top: 24px;
+  padding-bottom: 24px;
+}
+
+.stage__meta {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.stage__badge {
+  padding: 3px 10px;
+  border-radius: 3px;
+  border: 1px solid var(--counter-line);
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--gold);
+  background: color-mix(in srgb, var(--gold) 10%, transparent);
+}
+.stage__badge:empty {
+  display: none;
+}
+.stage__badge--difficulty {
+  color: var(--muted);
+  background: transparent;
+}
+
+/* The counter: two sleeves under lamplight. */
+.stage__counter {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(10px, 4vw, 32px);
+  padding: clamp(16px, 4vw, 32px);
+  border: 1px solid var(--counter-line);
+  border-radius: var(--radius-lg);
+  background: var(--lamplight), var(--counter);
+}
+.stage__ampersand {
+  font-family: Georgia, serif;
+  font-size: clamp(1.4rem, 4vw, 2.2rem);
+  color: var(--gold);
+}
+.sleeve {
+  margin: 0;
+  max-width: 190px;
+  text-align: center;
+}
+.sleeve__art {
+  width: clamp(120px, 34vw, 170px);
+  aspect-ratio: 1;
+  margin: 0 auto;
+  border-radius: 4px;
+  overflow: hidden;
+  box-shadow: var(--shadow-strong);
+  background: var(--surface-soft);
+}
+.sleeve__art svg,
+.sleeve__art img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.sleeve__placeholder {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+}
+.sleeve__caption {
+  margin-top: 10px;
+  font-family: var(--mono);
+  font-size: 0.74rem;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+/* Deal-in: sleeves slide onto the counter, then settle. */
+.stage[data-phase="idle"] .sleeve,
+.stage[data-phase="dealing"] .sleeve {
+  animation: sleeve-deal var(--motion-deal) ease-out both;
+}
+.stage[data-phase="dealing"] .sleeve:last-of-type {
+  animation-delay: calc(var(--motion-deal) * 0.25);
+}
+@keyframes sleeve-deal {
+  from {
+    opacity: 0;
+    transform: translateY(-14px) rotate(-1.5deg);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.stage__question {
+  margin: 20px 0 14px;
+  font-family: Georgia, serif;
+  font-size: clamp(1.1rem, 2.6vw, 1.35rem);
+}
+
+/* Chip tray */
+.chip-tray {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.chip {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 10px 16px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+  transition:
+    transform 140ms ease,
+    border-color 140ms ease;
+}
+.chip:hover:not(:disabled),
+.chip:focus-visible {
+  transform: translateY(-1px);
+  border-color: var(--accent);
+}
+.chip__name {
+  font-weight: 600;
+}
+.chip__role {
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.chip[data-chip-state="struck"],
+.chip[data-chip-state="eliminated"] {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.chip[data-chip-state="struck"] .chip__name {
+  text-decoration: line-through;
+}
+.chip[data-chip-state="eliminated"] .chip__name {
+  text-decoration: line-through dotted;
+}
+.chip[data-chip-state="correct"] {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 16%, var(--surface));
+  opacity: 1;
+}
+
+.stage__attempts {
+  min-height: 1.2em;
+  margin: 10px 0 0;
+  font-family: var(--mono);
+  font-size: 0.74rem;
+  color: var(--muted);
+}
+
+.stage__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+}
+.stage__action {
+  padding: 9px 18px;
+  border: 1px solid var(--counter-line);
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--gold) 12%, var(--surface));
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+}
+.stage__action:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.stage__action--quiet {
+  background: transparent;
+  color: var(--muted);
+}
+
+.clue-list {
+  margin: 14px 0 0;
+  padding-left: 22px;
+  font-size: 0.95rem;
+  color: var(--muted);
+}
+.clue-list:empty {
+  display: none;
+}
+.clue-list li {
+  margin-bottom: 4px;
+}
+
+/* Verdict + liner notes */
+.verdict {
+  margin-top: 22px;
+}
+.verdict__heading {
+  font-size: clamp(1.3rem, 3vw, 1.7rem);
+  outline: none;
+}
+.verdict__rating {
+  margin-top: 4px;
+  color: var(--muted);
+}
+.evidence-sheet {
+  margin-top: 14px;
+  padding: 18px 20px;
+  transform: rotate(-0.4deg);
+}
+.evidence-sheet h3 {
+  margin: 0 0 4px;
+  font-family: Georgia, serif;
+}
+.evidence-sheet table {
+  width: 100%;
+  margin-top: 10px;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+.evidence-sheet th,
+.evidence-sheet td {
+  padding: 6px 10px 6px 0;
+  text-align: left;
+  border-bottom: 1px solid var(--paper-line);
+  vertical-align: top;
+}
+.evidence-sheet th {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--paper-muted);
+}
+.stage__provenance {
+  margin-top: 12px;
+  color: var(--muted);
+}
+.stage [data-testid="next-round"] {
+  margin-top: 16px;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .mode-card,
   a.mode-card:hover {
     transition: none;
     transform: none;
   }
+}
+
+/* Reduced motion / ?motion=off collapse the deal to a plain appear. */
+@media (prefers-reduced-motion: reduce) {
+  .stage .sleeve,
+  .chip {
+    animation: none;
+    transition: none;
+  }
+}
+:root[data-motion="off"] .stage .sleeve,
+:root[data-motion="off"] .chip {
+  animation: none;
+  transition: none;
 }
