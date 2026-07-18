@@ -1,0 +1,64 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import ModeCard from '../../components/ModeCard.astro';
+
+const description =
+  'The play hub: deduction games over documented music credits. Guess the contributor who connects two records, then open the evidence.';
+---
+
+<BaseLayout title="Play" description={description}>
+  <section class="prose shell" style="padding-bottom:8px">
+    <p class="eyebrow">Play</p>
+    <h1>Pick a game off the shelf.</h1>
+    <p class="lede">
+      Every mode here plays the same honest game underneath: two records, a documented
+      connection between them, and the liner-note evidence to prove it. A shared credit means
+      documented participation on a recording — nothing more is ever claimed.
+    </p>
+  </section>
+
+  <section class="shell" aria-label="Game modes" style="padding-bottom:24px">
+    <div class="mode-grid">
+      <ModeCard
+        title="Connection Guesser"
+        kicker="Flagship"
+        tone="teal"
+        status="coming"
+        href="/play/connection/"
+        description="Two sleeves land on the counter. Who is credited on both? Choose from the tray, spend clues carefully, then open the liner notes."
+        note="Next up — the round engine already ships in this build."
+      />
+      <ModeCard
+        title="Connection of the Day"
+        kicker="Daily"
+        tone="gold"
+        status="coming"
+        href="/play/daily/"
+        description="One deterministic connection per day, the same for everyone. Keep a streak; share your grooves, never the answer."
+      />
+      <ModeCard
+        title="Album connections"
+        kicker="Browse & reveal"
+        tone="rust"
+        status="live"
+        href="/albums/"
+        description="The original mode: open an album, guess what links it onward, and reveal the documented path hop by hop."
+      />
+      <ModeCard
+        title="Cohorts"
+        kicker="Curated sets"
+        tone="teal"
+        status="live"
+        href="/cohorts/"
+        description="Curated album pairs scored against the real credit graph, with difficulty and hop counts — synthetic example today, reviewed sets as they land."
+      />
+    </div>
+  </section>
+
+  <section class="prose shell" style="padding-top:0;padding-bottom:72px">
+    <p class="lede" style="font-size:0.95rem">
+      Looking for the earliest artist-path demo? It lives in the
+      <a href="/demo/">archive</a>.
+    </p>
+  </section>
+</BaseLayout>

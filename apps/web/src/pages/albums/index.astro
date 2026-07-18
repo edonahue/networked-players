@@ -1,0 +1,33 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import AlbumCard from '../../components/AlbumCard.astro';
+import type { ChallengeV2 } from '../../data/challenge';
+import challengeData from '../../../public/data/challenge.v2.json';
+
+const challenge = challengeData as ChallengeV2;
+const connectedAlbumIds = new Set(
+  challenge.paths.flatMap((p) => [p.from_album_id, p.to_album_id]),
+);
+const albums = challenge.albums.filter((album) => connectedAlbumIds.has(album.id));
+
+const description =
+  'Browse the albums in the current challenge set. Open one to find who connects it to another record, documented credit by credit.';
+---
+
+<BaseLayout title="Albums" description={description}>
+  <section class="prose shell" style="padding-bottom:8px">
+    <p class="eyebrow">Browse</p>
+    <h1>Albums</h1>
+    <p class="lede">
+      Every record here is a door into the credit graph. Open one to find who connects it to
+      another album — a shared session player, producer, or engineer — then step through the
+      evidence that proves it.
+    </p>
+  </section>
+
+  <section class="shell" aria-label="Album grid" style="padding-bottom:72px">
+    <div class="album-grid" data-testid="album-grid">
+      {albums.map((album) => <AlbumCard album={album} />)}
+    </div>
+  </section>
+</BaseLayout>

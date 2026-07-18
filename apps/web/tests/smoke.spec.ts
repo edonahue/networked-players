@@ -68,7 +68,7 @@ test("static challenge.v2 artifact is reachable", async ({ request }) => {
   expect(Array.isArray(body.paths)).toBe(true);
 });
 
-test("a play page renders mode controls and reveals evidence", async ({
+test("an album page renders mode controls and reveals evidence", async ({
   page,
   request,
 }) => {
@@ -83,7 +83,7 @@ test("a play page renders mode controls and reveals evidence", async ({
   const album = albums.find((a: { id: string }) => connectedIds.has(a.id));
   test.skip(!album, "need at least one connected album to test the play view");
 
-  await page.goto(`/play/${album.id}/`);
+  await page.goto(`/albums/${album.id}/`);
   await expect(page.getByRole("heading", { level: 1 })).toContainText(
     album.title,
   );
@@ -193,4 +193,55 @@ test("cohort detail page shows the synthetic notice and reveals a pair", async (
   expect(bodyText).not.toContain("worked with");
   expect(bodyText).not.toContain("collaborated with");
   expect(bodyText).not.toContain("influenced");
+});
+
+test("play hub lists mode cards with honest availability", async ({ page }) => {
+  await page.goto("/play/");
+  await expect(page.getByRole("heading", { level: 1 })).toContainText(
+    "Pick a game",
+  );
+  const cards = page.locator("[data-testid='mode-card']");
+  await expect(cards.first()).toBeVisible();
+  expect(await cards.count()).toBeGreaterThanOrEqual(4);
+  // At least one live mode links onward; coming modes are never dead links.
+  await expect(
+    page.locator("a[data-mode-status='live']").first(),
+  ).toHaveAttribute("href", /\/(albums|cohorts)\//);
+  expect(await page.locator("a[data-mode-status='coming']").count()).toBe(0);
+});
+
+test("old /play/<album>/ URLs redirect to /albums/<album>/", async ({
+  page,
+  request,
+}) => {
+  const res = await request.get("/data/challenge.v2.json");
+  const { albums, paths } = await res.json();
+  const connectedIds = new Set(
+    paths.flatMap((p: { from_album_id: string; to_album_id: string }) => [
+      p.from_album_id,
+      p.to_album_id,
+    ]),
+  );
+  const album = albums.find((a: { id: string }) => connectedIds.has(a.id));
+  test.skip(!album, "need a connected album to test the redirect stub");
+
+  await page.goto(`/play/${album.id}/`);
+  // The meta refresh lands on the new home; the stub also carries a canonical.
+  await page.waitForURL(`**/albums/${album.id}/`);
+  await expect(page.getByRole("heading", { level: 1 })).toContainText(
+    album.title,
+  );
+});
+
+test("primary nav marks the current section with aria-current", async ({
+  page,
+}) => {
+  await page.goto("/albums/");
+  await expect(
+    page.locator("nav[aria-label='Primary'] a[aria-current='page']"),
+  ).toHaveText("Albums");
+  await page.goto("/play/");
+  await expect(
+    page.locator("nav[aria-label='Primary'] a[aria-current='page']"),
+  ).toHaveText("Play");
 });

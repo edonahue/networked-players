@@ -9,7 +9,7 @@ const { album } = Astro.props;
 const cover = album.cover_image;
 ---
 
-<a class="album-card" href={`/play/${album.id}/`}>
+<a class="album-card" href={`/albums/${album.id}/`}>
   {
     cover ? (
       <img

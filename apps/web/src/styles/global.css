@@ -1,5 +1,6 @@
 @import "./tokens.css";
 @import "./motif.css";
+@import "./game.css";
 
 * {
   box-sizing: border-box;

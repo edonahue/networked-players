@@ -9,8 +9,14 @@
     "eyebrow": "Early build · evidence-first",
     "headline": "Pick an album. Find its documented connections.",
     "lede": "Every album below is a door into the credit graph. Guess who links it to another album, then step through the evidence — the release, the role, the credit scope — that proves the connection.",
-    "ctaPrimary": { "label": "Browse the albums", "href": "#albums" },
-    "ctaSecondary": { "label": "What this is", "href": "/about/" }
+    "ctaPrimary": {
+      "label": "Open the play hub",
+      "href": "/play/"
+    },
+    "ctaSecondary": {
+      "label": "Browse the albums",
+      "href": "/albums/"
+    }
   },
   "focus": {
     "eyebrow": "How it works",
