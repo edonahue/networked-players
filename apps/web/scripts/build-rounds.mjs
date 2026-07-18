@@ -164,6 +164,7 @@ const albumRef = (album) => ({
   title: album.title,
   year: album.year,
   act: album.act,
+  label: album.label,
   art: album.art,
 });
 const contributorRef = (c) => ({
@@ -537,6 +538,7 @@ function deriveRealRounds(challenge) {
             .map((c) => c.anv ?? c.name)
             .slice(0, 2)
             .join(" & ") || null,
+        label: null,
         art:
           Array.isArray(release.images) &&
           release.images.length > 0 &&

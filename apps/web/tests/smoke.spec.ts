@@ -206,7 +206,7 @@ test("play hub lists mode cards with honest availability", async ({ page }) => {
   // At least one live mode links onward; coming modes are never dead links.
   await expect(
     page.locator("a[data-mode-status='live']").first(),
-  ).toHaveAttribute("href", /\/(albums|cohorts)\//);
+  ).toHaveAttribute("href", /\/(play\/connection|albums|cohorts)\//);
   expect(await page.locator("a[data-mode-status='coming']").count()).toBe(0);
 });
 

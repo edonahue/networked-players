@@ -1,0 +1,100 @@
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import type { GameRounds } from '../../../game/types';
+import roundsData from '../../../../public/data/game/rounds.v1.json';
+
+// The flagship serves one-hop rounds only for now; two-hop
+// (bridges-then-hidden-middle) lands as its own slice. Filtering here keeps
+// two-hop answer material out of this page's payload entirely.
+const rounds = (roundsData as unknown as GameRounds).rounds.filter(
+  (round) => round.kind === 'one_hop',
+);
+const islandJson = JSON.stringify(rounds).replaceAll('<', '\\u003c');
+
+const description =
+  'The flagship round: two records land on the counter, one person is credited on both. Guess from the tray, spend clues carefully, then open the liner notes.';
+---
+
+<BaseLayout title="Connection Guesser" description={description}>
+  <section class="prose shell" style="padding-bottom:0">
+    <p class="eyebrow">Connection Guesser</p>
+    <h1 style="font-size:clamp(1.9rem,4.5vw,2.8rem)">Who is credited on both?</h1>
+  </section>
+
+  <section
+    class="shell stage"
+    data-testid="stage"
+    data-phase="idle"
+    aria-label="Connection Guesser round"
+  >
+    <noscript>
+      <p class="lede">
+        The Connection Guesser needs JavaScript for the guessing round. The same
+        connections are browsable without it under <a href="/albums/">Albums</a>.
+      </p>
+    </noscript>
+
+    <div class="stage__meta">
+      <span class="stage__badge" data-testid="pool-badge"></span>
+      <span class="stage__badge stage__badge--difficulty" data-testid="difficulty-tag"></span>
+    </div>
+
+    <div class="stage__counter">
+      <figure class="sleeve">
+        <div class="sleeve__art" data-testid="sleeve-a"></div>
+        <figcaption class="sleeve__caption" data-testid="caption-a"></figcaption>
+      </figure>
+      <span class="stage__ampersand" aria-hidden="true">&amp;</span>
+      <figure class="sleeve">
+        <div class="sleeve__art" data-testid="sleeve-b"></div>
+        <figcaption class="sleeve__caption" data-testid="caption-b"></figcaption>
+      </figure>
+    </div>
+
+    <p class="stage__question" data-testid="question"></p>
+
+    <div
+      class="chip-tray"
+      data-testid="chip-tray"
+      role="radiogroup"
+      aria-label="Pick the contributor credited on both records"
+    ></div>
+    <p class="stage__attempts" data-testid="attempts"></p>
+
+    <div class="stage__actions">
+      <button type="button" class="stage__action" data-testid="clue-button">Use a clue</button>
+      <button type="button" class="stage__action stage__action--quiet" data-testid="give-up">
+        Give up &amp; open the liner notes
+      </button>
+    </div>
+    <ol class="clue-list" data-testid="clue-list" aria-label="Clues used"></ol>
+
+    <div class="verdict" data-testid="verdict" hidden>
+      <h2 class="verdict__heading" data-testid="verdict-heading" tabindex="-1"></h2>
+      <p class="verdict__rating" data-testid="verdict-rating"></p>
+    </div>
+
+    <div class="paper-panel evidence-sheet" data-testid="evidence-sheet" hidden></div>
+    <p class="stamp stage__provenance" data-testid="provenance-note" hidden></p>
+
+    <button type="button" class="stage__action" data-testid="next-round" hidden>
+      Deal the next round
+    </button>
+
+    <div class="visually-hidden" aria-live="polite" data-testid="live-region"></div>
+    <div class="visually-hidden" aria-live="assertive" role="alert" data-testid="live-assertive"></div>
+  </section>
+
+  <section class="prose shell" style="padding-top:28px;padding-bottom:72px">
+    <p class="lede" style="font-size:0.95rem">
+      Two-hop rounds — a hidden record bridging the two sleeves — are coming to this
+      table next. Every connection shown here is a documented credit: participation on
+      a recording, nothing more.
+    </p>
+  </section>
+</BaseLayout>
+
+<script type="application/json" id="np-round-data" set:html={islandJson} />
+<script>
+  import '../../../game/flagship';
+</script>

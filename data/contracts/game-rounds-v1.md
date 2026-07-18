@@ -17,7 +17,7 @@ One round:
 | `pool` | `synthetic-universe` \| `real-records` — badged in the UI |
 | `kind` | `one_hop` \| `two_hop` |
 | `difficulty` | `easy` \| `medium` \| `hard` (derived, see below) |
-| `endpoints` | Two `AlbumRef`s: `{id, title, year, act, art}` |
+| `endpoints` | Two `AlbumRef`s: `{id, title, year, act, label, art}` (`label` is the fictional label for synthetic albums, `null` for real records) |
 | `middle` | Two-hop only: the hidden album plus shuffled `choices[]` (answer included, distractor middles validated invalid) |
 | `answer_set` | **Every** valid connecting contributor — any member is a correct answer |
 | `bridge_answer_sets` | Two-hop only: valid bridges per side for the chosen middle |
