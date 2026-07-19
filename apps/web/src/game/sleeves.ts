@@ -59,9 +59,12 @@ function escapeXml(value: string): string {
     .replaceAll('"', "&quot;");
 }
 
+// The stamp anchors to its right edge so the full word always fits inside the
+// 200-unit viewBox — the synthetic label must never be clipped, since the art
+// can't be separated from its fictional status.
 function stamp(x: number, y: number, rotate: number, fill: string): string {
   return (
-    `<text x="${x}" y="${y}" transform="rotate(${rotate} ${x} ${y})" ` +
+    `<text x="${x}" y="${y}" text-anchor="end" transform="rotate(${rotate} ${x} ${y})" ` +
     `font-family="IBM Plex Mono, monospace" font-size="7" letter-spacing="2" ` +
     `fill="${fill}" opacity="0.85">SYNTHETIC</text>`
   );
@@ -92,7 +95,7 @@ function meridianSleeve(album: SleeveSubject): string {
     shapes.join("") +
     `<text x="12" y="24" font-family="Georgia, serif" font-size="15" fill="${accent}">${escapeXml(album.act ?? "")}</text>` +
     `<text x="12" y="188" font-family="IBM Plex Mono, monospace" font-size="9" fill="${accent}">${escapeXml(album.title.slice(0, 30))}</text>` +
-    stamp(148, 12, 0, accent) +
+    stamp(192, 14, 0, accent) +
     `</svg>`
   );
 }
@@ -118,7 +121,7 @@ function kettleSleeve(album: SleeveSubject): string {
     `<text x="14" y="52" font-family="IBM Plex Mono, monospace" font-size="9" fill="${ink}">${escapeXml(album.title.slice(0, 34))}</text>` +
     rules.join("") +
     `<text x="14" y="186" font-family="IBM Plex Mono, monospace" font-size="8" fill="${ink}">${escapeXml((album.label ?? "").toUpperCase())}</text>` +
-    stamp(150, 190, 0, ink) +
+    stamp(192, 190, 0, ink) +
     `</svg>`
   );
 }
