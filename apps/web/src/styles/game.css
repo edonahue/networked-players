@@ -466,6 +466,27 @@ a.mode-card:focus-visible {
   font-size: 1.4rem;
   letter-spacing: 0.35em;
 }
+
+/* Connection of the Day card. */
+.daily-panel {
+  margin-top: 16px;
+  padding: 18px 20px;
+  transform: rotate(-0.4deg);
+}
+.daily-panel h3 {
+  margin: 0 0 6px;
+  font-family: Georgia, serif;
+}
+.daily-panel__share {
+  margin: 6px 0 10px;
+  font-family: var(--mono);
+  font-size: 0.85rem;
+}
+.daily-panel .stage__action {
+  border-color: var(--paper-line);
+  background: transparent;
+  color: var(--paper-ink);
+}
 .stage [data-testid="next-round"] {
   margin-top: 16px;
 }

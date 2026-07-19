@@ -1,0 +1,87 @@
+---
+// The Connection Guesser stage shell (docs/WEB_PRODUCT_PLAN.md §5/§7):
+// static markup only — src/game/flagship.ts renders every phase into these
+// data-testid hooks. Shared by /play/connection/ (set play) and /play/daily/
+// (Connection of the Day) so the two modes cannot drift apart.
+
+interface Props {
+  label?: string;
+}
+
+const { label = 'Connection Guesser round' } = Astro.props;
+---
+
+<section class="shell stage" data-testid="stage" data-phase="idle" aria-label={label}>
+  <noscript>
+    <p class="lede">
+      The Connection Guesser needs JavaScript for the guessing round. The same
+      connections are browsable without it under <a href="/albums/">Albums</a>.
+    </p>
+  </noscript>
+
+  <div class="stage__meta">
+    <span class="stage__badge" data-testid="pool-badge"></span>
+    <span class="stage__badge stage__badge--difficulty" data-testid="difficulty-tag"></span>
+    <span class="stage__set-progress" data-testid="set-progress"></span>
+  </div>
+
+  <div class="stage__counter">
+    <figure class="sleeve">
+      <div class="sleeve__art" data-testid="sleeve-a"></div>
+      <figcaption class="sleeve__caption" data-testid="caption-a"></figcaption>
+    </figure>
+    <span class="stage__ampersand" aria-hidden="true">&amp;</span>
+    <figure class="sleeve sleeve--middle" data-testid="middle-slot" hidden>
+      <div class="sleeve__art" data-testid="sleeve-middle"></div>
+      <figcaption class="sleeve__caption" data-testid="caption-middle"></figcaption>
+    </figure>
+    <figure class="sleeve">
+      <div class="sleeve__art" data-testid="sleeve-b"></div>
+      <figcaption class="sleeve__caption" data-testid="caption-b"></figcaption>
+    </figure>
+  </div>
+
+  <p class="stage__step" data-testid="step-label"></p>
+  <p class="stage__question" data-testid="question"></p>
+
+  <div
+    class="chip-tray"
+    data-testid="chip-tray"
+    role="radiogroup"
+    aria-label="Pick the contributor credited on both records"
+  >
+  </div>
+  <p class="stage__attempts" data-testid="attempts"></p>
+
+  <div class="stage__actions">
+    <button type="button" class="stage__action" data-testid="clue-button">Use a clue</button>
+    <button type="button" class="stage__action stage__action--quiet" data-testid="give-up">
+      Give up &amp; open the liner notes
+    </button>
+  </div>
+  <ol class="clue-list" data-testid="clue-list" aria-label="Clues used"></ol>
+
+  <div class="verdict" data-testid="verdict" hidden>
+    <h2 class="verdict__heading" data-testid="verdict-heading" tabindex="-1"></h2>
+    <p class="verdict__rating" data-testid="verdict-rating"></p>
+  </div>
+
+  <div class="paper-panel evidence-sheet" data-testid="evidence-sheet" hidden></div>
+  <p class="stamp stage__provenance" data-testid="provenance-note" hidden></p>
+
+  <div class="paper-panel set-summary" data-testid="set-summary" hidden></div>
+  <div class="paper-panel daily-panel" data-testid="daily-panel" hidden></div>
+
+  <button type="button" class="stage__action" data-testid="next-round" hidden>
+    Deal the next round
+  </button>
+
+  <div class="visually-hidden" aria-live="polite" data-testid="live-region"></div>
+  <div
+    class="visually-hidden"
+    aria-live="assertive"
+    role="alert"
+    data-testid="live-assertive"
+  >
+  </div>
+</section>

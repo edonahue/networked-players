@@ -8,11 +8,12 @@
 // round resolves.
 
 import { createEngine, type Engine } from "./engine";
-import { createRng } from "./prng";
+import { createRng, dailySeed } from "./prng";
 import { ratingGlyph, summarizeSet } from "./scoring";
 import {
   load,
   loadSet,
+  recordDaily,
   recordRound,
   recordSetRound,
   save,
@@ -20,6 +21,7 @@ import {
   SET_SIZE,
   setComplete,
   freshSet,
+  type GameStore,
   type SetState,
   type StorageLike,
 } from "./store";
@@ -29,6 +31,7 @@ import type {
   ContributorRef,
   EngineState,
   GameRound,
+  Rating,
   Step,
 } from "./types";
 
@@ -121,7 +124,19 @@ function pickRound(
   );
 }
 
-export function initFlagship(): void {
+/** The daily deal: derived from the UTC date alone — the same for everyone. */
+function pickDaily(rounds: GameRound[], isoDate: string): GameRound {
+  const pool = rounds.filter((r) => r.kind === "one_hop");
+  const seed = dailySeed(new Date(`${isoDate}T12:00:00Z`));
+  return createRng(seed).shuffle(pool)[0];
+}
+
+export interface FlagshipOptions {
+  /** Connection of the Day: deterministic date round, streaks, no set arc. */
+  daily?: boolean;
+}
+
+export function initFlagship(options: FlagshipOptions = {}): void {
   const island = document.getElementById("np-round-data");
   if (!island?.textContent) throw new Error("round data island missing");
   const rounds = JSON.parse(island.textContent) as GameRound[];
@@ -133,19 +148,29 @@ export function initFlagship(): void {
     document.documentElement.dataset.motion = "off";
   }
 
-  const activeKind = params.get("kind") === "two_hop" ? "two_hop" : "one_hop";
+  const daily = options.daily === true;
+  const isoDate = daily
+    ? (params.get("date") ?? new Date().toISOString().slice(0, 10))
+    : "";
+
+  const activeKind =
+    !daily && params.get("kind") === "two_hop" ? "two_hop" : "one_hop";
   document
     .querySelector(`[data-testid="kind-toggle"] a[data-kind="${activeKind}"]`)
     ?.setAttribute("aria-current", "true");
 
-  let set = loadSet(
-    sessionStore(),
-    activeKind,
-    params.get("seed") ?? String(Date.now()),
-  );
-  saveSet(sessionStore(), set);
+  let set = daily
+    ? freshSet(activeKind, `daily-${isoDate}`)
+    : loadSet(
+        sessionStore(),
+        activeKind,
+        params.get("seed") ?? String(Date.now()),
+      );
+  if (!daily) saveSet(sessionStore(), set);
 
-  const round = pickRound(rounds, params, set);
+  const round = daily
+    ? pickDaily(rounds, isoDate)
+    : pickRound(rounds, params, set);
   const stage = $("stage");
   const tray = $("chip-tray");
   const clueButton = $<HTMLButtonElement>("clue-button");
@@ -155,6 +180,7 @@ export function initFlagship(): void {
   const attempts = $("attempts");
   const setProgress = $("set-progress");
   const setSummary = $("set-summary");
+  const dailyPanel = $("daily-panel");
   const stepLabel = $("step-label");
   const middleSlot = $("middle-slot");
   const middleArt = $("sleeve-middle");
@@ -169,6 +195,7 @@ export function initFlagship(): void {
 
   const twoHop = round.kind === "two_hop";
   stage.dataset.kind = round.kind;
+  stage.dataset.round = round.id;
   $("pool-badge").textContent = poolLabel(round);
   $("difficulty-tag").textContent = round.difficulty;
   renderSleeve($("sleeve-a"), round.endpoints[0]);
@@ -183,6 +210,10 @@ export function initFlagship(): void {
 
   /** "Round N of 5" plus the groove glyphs earned so far this sitting. */
   function renderSetProgress(): void {
+    if (daily) {
+      setProgress.textContent = `Connection of the Day · ${isoDate}`;
+      return;
+    }
     const glyphs = set.entries.map((e) => ratingGlyph(e.rating)).join(" ");
     const current = Math.min(set.entries.length + 1, SET_SIZE);
     setProgress.textContent = setComplete(set)
@@ -192,6 +223,24 @@ export function initFlagship(): void {
         : `Round ${current} of ${SET_SIZE}`;
   }
   renderSetProgress();
+
+  // Replay guard: the daily is one play per day. A recorded result renders
+  // the stored spoiler-free card instead of re-dealing the round.
+  if (daily) {
+    const playedShare = load(storage()).daily[isoDate];
+    if (playedShare) {
+      tray.hidden = true;
+      attempts.hidden = true;
+      clueButton.hidden = true;
+      giveUp.hidden = true;
+      $("question").textContent = "You've already played today's connection.";
+      stage.dataset.phase = "played";
+      buildDailyPanel(playedShare, load(storage()).streak, true);
+      dailyPanel.hidden = false;
+      announce("You've already played today's connection. Come back tomorrow.");
+      return;
+    }
+  }
 
   const answerIds = new Set(round.answer_set.map((a) => a.id));
   let chips: HTMLButtonElement[] = [];
@@ -421,10 +470,21 @@ export function initFlagship(): void {
     announce(verdictHeading.textContent ?? "", true);
     verdictHeading.focus();
 
-    const store = load(storage());
-    save(storage(), recordRound(store, round.id, state.rating ?? "revealed"));
+    const rating = state.rating ?? "revealed";
+    if (daily) {
+      nextButton.hidden = true;
+      const share = shareString(rating, state.cluesUsed);
+      const updated = recordDaily(load(storage()), isoDate, rating, share);
+      save(storage(), updated);
+      buildDailyPanel(share, updated.streak, false);
+      dailyPanel.hidden = false;
+      return;
+    }
 
-    set = recordSetRound(set, round.id, state.rating ?? "revealed");
+    const store = load(storage());
+    save(storage(), recordRound(store, round.id, rating));
+
+    set = recordSetRound(set, round.id, rating);
     saveSet(sessionStore(), set);
     renderSetProgress();
     if (setComplete(set)) {
@@ -434,6 +494,55 @@ export function initFlagship(): void {
     } else {
       nextButton.textContent = `Next round (${set.entries.length + 1} of ${SET_SIZE})`;
     }
+  }
+
+  /** Spoiler-free by construction: the date and glyphs — never a name. */
+  function shareString(rating: Rating, cluesUsed: number): string {
+    const clueNote =
+      cluesUsed > 0 ? ` · ${cluesUsed} clue${cluesUsed === 1 ? "" : "s"}` : "";
+    return `Networked Players · Connection of the Day ${isoDate} · ${ratingGlyph(rating)}${clueNote}`;
+  }
+
+  /** The daily card: share text, copy, streak, and the honest ground rules. */
+  function buildDailyPanel(
+    share: string,
+    streak: GameStore["streak"],
+    alreadyPlayed: boolean,
+  ): void {
+    dailyPanel.replaceChildren();
+    const heading = document.createElement("h3");
+    heading.textContent = alreadyPlayed
+      ? "Already in the crate today"
+      : "Connection of the Day";
+    const shareLine = document.createElement("p");
+    shareLine.className = "daily-panel__share";
+    shareLine.dataset.testid = "share-string";
+    shareLine.textContent = share;
+    const copy = document.createElement("button");
+    copy.type = "button";
+    copy.className = "stage__action";
+    copy.dataset.testid = "share-copy";
+    copy.textContent = "Copy share text";
+    copy.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(share);
+        copy.textContent = "Copied";
+      } catch {
+        announce("Copy failed — select the share text above instead.");
+      }
+    });
+    const streakLine = document.createElement("p");
+    streakLine.dataset.testid = "streak-line";
+    streakLine.textContent =
+      streak.current > 0
+        ? `Streak: ${streak.current} day${streak.current === 1 ? "" : "s"} · best ${streak.best}`
+        : `Streak reset — best ${streak.best}.`;
+    const note = document.createElement("p");
+    note.className = "stamp";
+    note.textContent = alreadyPlayed
+      ? "One connection per day. Tomorrow's record is already on its way."
+      : "Same connection for everyone today. Share the grooves, never the answer.";
+    dailyPanel.append(heading, shareLine, copy, streakLine, note);
   }
 
   /** The needle-drop set card: glyph strip, counts, and a local-only note. */
@@ -550,5 +659,3 @@ export function initFlagship(): void {
   const dealMs = document.documentElement.dataset.motion === "off" ? 0 : 750;
   window.setTimeout(() => engine.present(), dealMs);
 }
-
-initFlagship();

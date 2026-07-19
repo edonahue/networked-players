@@ -1,0 +1,43 @@
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import GameStage from '../../../components/GameStage.astro';
+import type { GameRounds } from '../../../game/types';
+import roundsData from '../../../../public/data/game/rounds.v1.json';
+
+// The daily deals one deterministic one-hop round per UTC date — the same
+// connection for everyone (docs/WEB_PRODUCT_PLAN.md §5). Only the one-hop
+// pool ships in this page's payload.
+const rounds = (roundsData as unknown as GameRounds).rounds.filter(
+  (round) => round.kind === 'one_hop',
+);
+const islandJson = JSON.stringify(rounds).replaceAll('<', '\\u003c');
+
+const description =
+  'Connection of the Day: one documented connection per day, the same for everyone. Keep a streak; share your grooves, never the answer.';
+---
+
+<BaseLayout title="Connection of the Day" description={description}>
+  <section class="prose shell" style="padding-bottom:0">
+    <p class="eyebrow">Connection of the Day</p>
+    <h1 style="font-size:clamp(1.9rem,4.5vw,2.8rem)">
+      One connection. Everyone digs today.
+    </h1>
+  </section>
+
+  <GameStage label="Connection of the Day round" />
+
+  <section class="prose shell" style="padding-top:28px;padding-bottom:72px">
+    <p class="lede" style="font-size:0.95rem">
+      The day's round is derived from the date — no account, no server, and your streak
+      stays on this device. The share text carries the date and your grooves, never a
+      name. Every connection is a documented credit: participation on a recording,
+      nothing more.
+    </p>
+  </section>
+</BaseLayout>
+
+<script type="application/json" id="np-round-data" set:html={islandJson} />
+<script>
+  import { initFlagship } from '../../../game/flagship';
+  initFlagship({ daily: true });
+</script>
