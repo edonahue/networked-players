@@ -119,6 +119,90 @@ export function recordRound(
   return next;
 }
 
+// --- Set state (docs/WEB_PRODUCT_PLAN.md §5: quick rounds in ~5-round sets).
+// One sitting = one set. Session-scoped by convention (the caller passes
+// sessionStorage), same injected-StorageLike pattern as the main store.
+
+export const SET_KEY = "np.set.v1";
+export const SET_VERSION = 1;
+export const SET_SIZE = 5;
+
+export interface SetEntry {
+  roundId: string;
+  rating: Rating;
+}
+
+export interface SetState {
+  version: number;
+  kind: string;
+  seed: string;
+  entries: SetEntry[];
+}
+
+export function freshSet(kind: string, seed: string): SetState {
+  return { version: SET_VERSION, kind, seed, entries: [] };
+}
+
+const RATINGS: readonly string[] = ["clean", "with_clues", "revealed"];
+
+/**
+ * Load the in-progress set for a kind. Anything unusable — missing, corrupt,
+ * version or kind mismatch, or already complete — yields a fresh set seeded
+ * with `seed`, so a new sitting simply begins.
+ */
+export function loadSet(
+  storage: StorageLike | null,
+  kind: string,
+  seed: string,
+): SetState {
+  if (!storage) return freshSet(kind, seed);
+  try {
+    const raw = storage.getItem(SET_KEY);
+    if (raw === null) return freshSet(kind, seed);
+    const parsed = JSON.parse(raw) as Partial<SetState>;
+    if (
+      parsed.version !== SET_VERSION ||
+      parsed.kind !== kind ||
+      typeof parsed.seed !== "string" ||
+      !Array.isArray(parsed.entries) ||
+      parsed.entries.length >= SET_SIZE ||
+      !parsed.entries.every(
+        (e) =>
+          typeof e === "object" &&
+          e !== null &&
+          typeof e.roundId === "string" &&
+          RATINGS.includes(e.rating),
+      )
+    ) {
+      return freshSet(kind, seed);
+    }
+    return parsed as SetState;
+  } catch {
+    return freshSet(kind, seed);
+  }
+}
+
+export function saveSet(storage: StorageLike | null, set: SetState): void {
+  if (!storage) return;
+  try {
+    storage.setItem(SET_KEY, JSON.stringify(set));
+  } catch {
+    // Best-effort, like the main store.
+  }
+}
+
+export function recordSetRound(
+  set: SetState,
+  roundId: string,
+  rating: Rating,
+): SetState {
+  return { ...set, entries: [...set.entries, { roundId, rating }] };
+}
+
+export function setComplete(set: SetState): boolean {
+  return set.entries.length >= SET_SIZE;
+}
+
 /** Record a daily result; streak counts consecutive solved daily dates. */
 export function recordDaily(
   store: GameStore,

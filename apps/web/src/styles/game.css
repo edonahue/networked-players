@@ -442,6 +442,30 @@ a.mode-card:focus-visible {
   margin-top: 12px;
   color: var(--muted);
 }
+
+/* Set arc: the sitting's progress and its needle-drop summary card. */
+.stage__set-progress {
+  margin-left: auto;
+  align-self: center;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+.set-summary {
+  margin-top: 16px;
+  padding: 18px 20px;
+  transform: rotate(0.4deg);
+}
+.set-summary h3 {
+  margin: 0 0 4px;
+  font-family: Georgia, serif;
+}
+.set-summary__glyphs {
+  margin: 6px 0;
+  font-size: 1.4rem;
+  letter-spacing: 0.35em;
+}
 .stage [data-testid="next-round"] {
   margin-top: 16px;
 }
