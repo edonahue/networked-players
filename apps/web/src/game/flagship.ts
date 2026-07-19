@@ -9,8 +9,20 @@
 
 import { createEngine, type Engine } from "./engine";
 import { createRng } from "./prng";
-import { ratingGlyph } from "./scoring";
-import { load, recordRound, save, type StorageLike } from "./store";
+import { ratingGlyph, summarizeSet } from "./scoring";
+import {
+  load,
+  loadSet,
+  recordRound,
+  recordSetRound,
+  save,
+  saveSet,
+  SET_SIZE,
+  setComplete,
+  freshSet,
+  type SetState,
+  type StorageLike,
+} from "./store";
 import { sleeveSvg } from "./sleeves";
 import type {
   AlbumRef,
@@ -29,6 +41,15 @@ const $ = <T extends HTMLElement>(testid: string): T => {
 function storage(): StorageLike | null {
   try {
     return window.localStorage;
+  } catch {
+    return null;
+  }
+}
+
+/** The set lives with the sitting: sessionStorage, degrading silently. */
+function sessionStore(): StorageLike | null {
+  try {
+    return window.sessionStorage;
   } catch {
     return null;
   }
@@ -79,18 +100,25 @@ function mysterySleeve(): HTMLElement {
   return span;
 }
 
-function pickRound(rounds: GameRound[], params: URLSearchParams): GameRound {
+function pickRound(
+  rounds: GameRound[],
+  params: URLSearchParams,
+  set: SetState,
+): GameRound {
   const pinned = params.get("round");
   if (pinned) {
     const match = rounds.find((r) => r.id === pinned);
     if (match) return match;
   }
-  const kind = params.get("kind") === "two_hop" ? "two_hop" : "one_hop";
-  const pool = rounds.filter((r) => r.kind === kind);
-  const seed = params.get("seed") ?? String(Date.now());
-  const ordered = createRng(`flagship-${seed}`).shuffle(pool);
+  const pool = rounds.filter((r) => r.kind === set.kind);
+  const ordered = createRng(`flagship-${set.seed}`).shuffle(pool);
+  const inSet = new Set(set.entries.map((e) => e.roundId));
   const seen = new Set(load(storage()).seenRounds);
-  return ordered.find((r) => !seen.has(r.id)) ?? ordered[0];
+  return (
+    ordered.find((r) => !inSet.has(r.id) && !seen.has(r.id)) ??
+    ordered.find((r) => !inSet.has(r.id)) ??
+    ordered[set.entries.length % ordered.length]
+  );
 }
 
 export function initFlagship(): void {
@@ -110,7 +138,14 @@ export function initFlagship(): void {
     .querySelector(`[data-testid="kind-toggle"] a[data-kind="${activeKind}"]`)
     ?.setAttribute("aria-current", "true");
 
-  const round = pickRound(rounds, params);
+  let set = loadSet(
+    sessionStore(),
+    activeKind,
+    params.get("seed") ?? String(Date.now()),
+  );
+  saveSet(sessionStore(), set);
+
+  const round = pickRound(rounds, params, set);
   const stage = $("stage");
   const tray = $("chip-tray");
   const clueButton = $<HTMLButtonElement>("clue-button");
@@ -118,6 +153,8 @@ export function initFlagship(): void {
   const nextButton = $<HTMLButtonElement>("next-round");
   const clueList = $("clue-list");
   const attempts = $("attempts");
+  const setProgress = $("set-progress");
+  const setSummary = $("set-summary");
   const stepLabel = $("step-label");
   const middleSlot = $("middle-slot");
   const middleArt = $("sleeve-middle");
@@ -143,6 +180,18 @@ export function initFlagship(): void {
     middleArt.replaceChildren(mysterySleeve());
     middleCaption.textContent = "Hidden record";
   }
+
+  /** "Round N of 5" plus the groove glyphs earned so far this sitting. */
+  function renderSetProgress(): void {
+    const glyphs = set.entries.map((e) => ratingGlyph(e.rating)).join(" ");
+    const current = Math.min(set.entries.length + 1, SET_SIZE);
+    setProgress.textContent = setComplete(set)
+      ? `Set complete · ${glyphs}`
+      : glyphs
+        ? `Round ${current} of ${SET_SIZE} · ${glyphs}`
+        : `Round ${current} of ${SET_SIZE}`;
+  }
+  renderSetProgress();
 
   const answerIds = new Set(round.answer_set.map((a) => a.id));
   let chips: HTMLButtonElement[] = [];
@@ -374,6 +423,41 @@ export function initFlagship(): void {
 
     const store = load(storage());
     save(storage(), recordRound(store, round.id, state.rating ?? "revealed"));
+
+    set = recordSetRound(set, round.id, state.rating ?? "revealed");
+    saveSet(sessionStore(), set);
+    renderSetProgress();
+    if (setComplete(set)) {
+      buildSetSummary();
+      setSummary.hidden = false;
+      nextButton.textContent = "Start a new set";
+    } else {
+      nextButton.textContent = `Next round (${set.entries.length + 1} of ${SET_SIZE})`;
+    }
+  }
+
+  /** The needle-drop set card: glyph strip, counts, and a local-only note. */
+  function buildSetSummary(): void {
+    setSummary.replaceChildren();
+    const heading = document.createElement("h3");
+    heading.textContent = "Set complete";
+    const glyphs = document.createElement("p");
+    glyphs.className = "set-summary__glyphs";
+    glyphs.textContent = set.entries
+      .map((e) => ratingGlyph(e.rating))
+      .join(" ");
+    const summary = summarizeSet(set.entries.map((e) => e.rating));
+    const parts: string[] = [];
+    if (summary.clean) parts.push(`${summary.clean} clean`);
+    if (summary.withClues) parts.push(`${summary.withClues} with help`);
+    if (summary.revealed) parts.push(`${summary.revealed} revealed`);
+    const line = document.createElement("p");
+    line.textContent = `${summary.played} rounds this sitting — ${parts.join(", ")}.`;
+    const note = document.createElement("p");
+    note.className = "stamp";
+    note.textContent =
+      "Ratings stay on this device. A new set starts whenever you do.";
+    setSummary.append(heading, glyphs, line, note);
   }
 
   function buildEvidence(): void {
@@ -450,8 +534,11 @@ export function initFlagship(): void {
   nextButton.addEventListener("click", () => {
     const url = new URL(window.location.href);
     url.searchParams.delete("round");
-    if (!url.searchParams.get("seed"))
-      url.searchParams.set("seed", String(Date.now()));
+    if (setComplete(set)) {
+      // A finished set: reseed the sitting and let the next load start fresh.
+      saveSet(sessionStore(), freshSet(activeKind, String(Date.now())));
+      url.searchParams.delete("seed");
+    }
     window.location.assign(url.toString());
   });
 
