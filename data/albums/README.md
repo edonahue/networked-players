@@ -29,6 +29,18 @@ local-only shortlist** (`local/analysis/album-candidates-<snapshot>.json`) -- it
 curation input for a human to review, never committed or auto-merged into
 `top-albums-v1.json`.
 
+## Hybrid catalog assembly for a real-data launch
+
+[ADR 0037](../../docs/decisions/0037-hybrid-album-catalog-assembly.md) adds a second,
+narrower way to use `rank-album-candidates`' output: the CLI's `build-album-catalog`
+command combines this file's editorial entries with a `rank-album-candidates` shortlist
+(format-policy-filtered, resolved to real `{artist, title}` pairs) into a **generated,
+also-never-committed** combined album list, deterministic given a fixed snapshot and
+target count. That combined list is consumed directly as `--albums` input to
+`build-challenge-from-dump` -- it is a bigger, better *build input*, not a change to this
+file. `top-albums-v1.json` keeps exactly the meaning documented above: hand-picked,
+unranked, reviewable on its own.
+
 ## Adding an album
 
 Add a `{"artist": "...", "title": "..."}` entry to the `albums` array, keeping

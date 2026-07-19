@@ -11,6 +11,7 @@ and verify the experience, plus full provenance.
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from typing import Any
@@ -138,11 +139,20 @@ def match_albums(
 
 def _candidate_album_pairs(
     ordered: list[MatchedAlbum],
+    *,
+    is_family_excluded: Callable[[int, int], bool] | None = None,
 ) -> list[tuple[MatchedAlbum, MatchedAlbum]]:
     """Every distinct-artist-pair candidate, in the same `i, i+1:` order the
     original sequential loop used -- shared by both the sequential and
     concurrent paths so output ordering/determinism never depends on
-    `max_workers`."""
+    `max_workers`.
+
+    `is_family_excluded`, when given, drops a pair before any path search is
+    attempted (e.g. a band's own album paired with a member's solo album) --
+    see `networked_players_catalog.discogs.artist_family`. Excluded pairs
+    never reach `find_path`, so no evidence toward them can ever surface,
+    trivial or not.
+    """
     used_pairs: set[tuple[int, int]] = set()
     candidates: list[tuple[MatchedAlbum, MatchedAlbum]] = []
     for i, from_album in enumerate(ordered):
@@ -152,6 +162,8 @@ def _candidate_album_pairs(
                 max(from_album.artist_id, to_album.artist_id),
             )
             if pair in used_pairs:
+                continue
+            if is_family_excluded is not None and is_family_excluded(*pair):
                 continue
             used_pairs.add(pair)
             candidates.append((from_album, to_album))
@@ -204,6 +216,7 @@ def build_challenge_v2(
     max_paths: int = 12,
     max_hops: int = 4,
     max_workers: int = 1,
+    is_family_excluded: Callable[[int, int], bool] | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     matched, missed = match_albums(graph, albums)
     distinct_artist_matches = {m.artist_id: m for m in matched}
@@ -214,7 +227,7 @@ def build_challenge_v2(
         )
 
     ordered = sorted(matched, key=lambda m: m.album_id)
-    candidate_pairs = _candidate_album_pairs(ordered)
+    candidate_pairs = _candidate_album_pairs(ordered, is_family_excluded=is_family_excluded)
     precomputed_paths = (
         _find_paths_concurrently(graph, candidate_pairs, max_hops=max_hops, max_workers=max_workers)
         if max_workers > 1

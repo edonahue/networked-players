@@ -182,6 +182,12 @@ def _parser() -> argparse.ArgumentParser:
         help="find_path() candidate pairs concurrently across this many DuckDB cursors; "
         "default 1 preserves the original sequential, early-stopping behavior",
     )
+    build_challenge.add_argument(
+        "--artist-family-exclusions",
+        type=Path,
+        default=None,
+        help="optional artist-family-exclusions-v1.json; drops trivial group/frontperson pairs",
+    )
     build_challenge.add_argument("--enrich-images", action="store_true")
     build_challenge.add_argument(
         "--cache-dir", type=Path, default=Path("data/private/discogs-api-cache")
@@ -202,6 +208,31 @@ def _parser() -> argparse.ArgumentParser:
     rank_albums.add_argument("--limit", type=int, default=200)
     rank_albums.add_argument("--memory-limit", default="3GB")
     rank_albums.add_argument("--threads", type=int, default=2)
+    rank_albums.add_argument(
+        "--release-format-policy",
+        type=Path,
+        default=None,
+        help="optional release-format-scoring-index.json; excludes non-studio-album candidates",
+    )
+
+    build_album_catalog = subparsers.add_parser(
+        "build-album-catalog",
+        help=(
+            "combine the editorial album list with rank-album-candidates output into a "
+            "generated, non-committed --albums input for build-challenge-from-dump (ADR 0037)"
+        ),
+    )
+    build_album_catalog.add_argument("--onehop-root", type=Path, required=True)
+    build_album_catalog.add_argument(
+        "--editorial-albums", type=Path, default=Path("data/albums/top-albums-v1.json")
+    )
+    build_album_catalog.add_argument(
+        "--candidates", type=Path, required=True, help="rank-album-candidates output"
+    )
+    build_album_catalog.add_argument("--target-count", type=int, required=True)
+    build_album_catalog.add_argument("--output", type=Path, required=True)
+    build_album_catalog.add_argument("--memory-limit", default="1GB")
+    build_album_catalog.add_argument("--threads", type=int, default=2)
 
     fetch_dataset_parser = subparsers.add_parser(
         "fetch-dataset",
@@ -772,6 +803,15 @@ def main(argv: Sequence[str] | None = None) -> int:
         snapshot_date = str(onehop_manifest["expansion"]["source_snapshot_date"])
         albums = json.loads(args.albums.read_text())["albums"]
 
+        is_family_excluded = None
+        if args.artist_family_exclusions is not None:
+            from .discogs.artist_family import is_family_excluded_pair
+
+            exclusions = json.loads(args.artist_family_exclusions.read_text())
+
+            def is_family_excluded(a: int, b: int) -> bool:
+                return is_family_excluded_pair(a, b, exclusions)
+
         with CreditGraph.open(
             args.onehop_root,
             memory_limit=args.memory_limit,
@@ -789,6 +829,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 max_paths=args.max_paths,
                 max_hops=args.max_hops,
                 max_workers=args.max_workers,
+                is_family_excluded=is_family_excluded,
             )
 
         if args.enrich_images:
@@ -829,11 +870,44 @@ def main(argv: Sequence[str] | None = None) -> int:
             limit=args.limit,
             memory_limit=args.memory_limit,
             threads=args.threads,
+            release_format_policy=args.release_format_policy,
         )
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(json.dumps(candidates, indent=2) + "\n")
         summary = {"output": str(args.output), "candidate_count": len(candidates)}
         print(json.dumps(summary, indent=2))
+        return 0
+
+    if args.command == "build-album-catalog":
+        from networked_players_graph_core.analysis import assemble_album_catalog
+        from networked_players_graph_core.graph import CreditGraph
+
+        editorial_albums = json.loads(args.editorial_albums.read_text())["albums"]
+        candidates = json.loads(args.candidates.read_text())
+
+        with CreditGraph.open(
+            args.onehop_root,
+            memory_limit=args.memory_limit,
+            threads=args.threads,
+            build_edges=False,
+        ) as graph:
+            catalog = assemble_album_catalog(
+                graph, editorial_albums, candidates, target_count=args.target_count
+            )
+
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(json.dumps(catalog, indent=2) + "\n")
+        print(
+            json.dumps(
+                {
+                    "output": str(args.output),
+                    "editorial_count": catalog["editorial_count"],
+                    "candidate_count_added": catalog["candidate_count_added"],
+                    "total_albums": len(catalog["albums"]),
+                },
+                indent=2,
+            )
+        )
         return 0
 
     if args.command == "fetch-dataset":

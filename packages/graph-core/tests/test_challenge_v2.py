@@ -78,6 +78,31 @@ def test_build_challenge_v2_produces_a_valid_artifact(dataset_root: Path) -> Non
     assert report["paths_found"] >= 1
 
 
+def test_build_challenge_v2_applies_family_exclusion(dataset_root: Path) -> None:
+    """Alice(100) and Eve(500) are directly one-hop connected via R4 -- a
+    real, trivial-looking pairing this test treats as if it were a band's own
+    album vs. a member's solo release. Excluding it must remove that pair's
+    path from the artifact without touching the other matched albums."""
+
+    def is_family_excluded(artist_a_id: int, artist_b_id: int) -> bool:
+        return {artist_a_id, artist_b_id} == {100, 500}
+
+    with CreditGraph.open(dataset_root) as graph:
+        artifact, report = build_challenge_v2(
+            graph,
+            ALBUMS,
+            snapshot_date="20260601",
+            generated_by="test-suite",
+            is_family_excluded=is_family_excluded,
+        )
+
+    validate_challenge(artifact)
+    excluded_pair_ids = {(100, 500), (500, 100)}
+    for path in artifact["paths"]:
+        assert (path["from_artist_id"], path["to_artist_id"]) not in excluded_pair_ids
+    assert report["albums_matched"] == 3
+
+
 def test_build_challenge_v2_concurrent_matches_sequential(dataset_root: Path) -> None:
     """max_workers > 1 must produce byte-for-byte the same artifact/report as
     the default sequential path -- concurrency here (each candidate pair's
