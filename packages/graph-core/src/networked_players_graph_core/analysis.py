@@ -15,8 +15,8 @@ from typing import Any
 
 import duckdb
 
-from .challenge import match_albums
-from .graph import CreditGraph, read_parquet_sql
+from .challenge import MatchedAlbum, _year_from_released, match_albums
+from .graph import CreditGraph, _not_placeholder_sql, read_parquet_sql
 
 
 def rank_album_candidates(
@@ -48,6 +48,7 @@ def rank_album_candidates(
     connection.execute(f"CREATE VIEW releases AS SELECT * FROM {read_parquet_sql(releases_glob)}")
     connection.execute(f"CREATE VIEW credits AS SELECT * FROM {read_parquet_sql(credits_glob)}")
 
+    not_placeholder = _not_placeholder_sql()
     policy_filter_sql = ""
     if release_format_policy is not None:
         payload = json.loads(Path(release_format_policy).read_text())
@@ -78,21 +79,26 @@ def rank_album_candidates(
             GROUP BY r.master_id
         ),
         titles AS (
-            SELECT master_id, title
+            SELECT master_id, title, released
             FROM releases
             WHERE master_is_main_release
             QUALIFY row_number() OVER (PARTITION BY master_id ORDER BY release_id) = 1
         ),
         release_artists AS (
+            -- Excluded by numeric artist_id, never by name (a real band could
+            -- be named "Anonymous") -- same placeholder-identity guard
+            -- credit_edges_sql uses, so a compilation billed to "Various
+            -- Artists" (id 194) can never surface as an album candidate.
             SELECT release_id, artist_id, name
             FROM credits
             WHERE credit_scope = 'release_artist' AND playable_identity AND artist_id IS NOT NULL
+              AND {not_placeholder}
             QUALIFY row_number() OVER (PARTITION BY release_id ORDER BY artist_id) = 1
         )
         SELECT v.master_id, t.title AS sample_title, v.variant_count,
                coalesce(cc.credit_rows, 0) AS credit_rows,
                v.variant_count * coalesce(cc.credit_rows, 0) AS score,
-               v.main_release_id, ra.artist_id, ra.name AS artist_name
+               v.main_release_id, ra.artist_id, ra.name AS artist_name, t.released
         FROM variants v
         LEFT JOIN credit_counts cc USING (master_id)
         LEFT JOIN titles t USING (master_id)
@@ -115,6 +121,7 @@ def rank_album_candidates(
             "main_release_id": int(row[5]),
             "artist_id": int(row[6]),
             "artist_name": row[7],
+            "year": _year_from_released(row[8]),
         }
         for row in rows
     ]
@@ -147,6 +154,16 @@ def assemble_album_catalog(
     upstream in `rank_album_candidates` -- an editorial entry whose matched
     release isn't in the allow-list is dropped, never silently included, and
     never fabricated back in from the candidate pool.
+
+    The returned `albums[]` are ID-resolved (`MatchedAlbum.to_resolved_dict()`
+    shape: `artist_id`, `main_release_id`, ...), not `{artist, title}` name
+    queries -- both the editorial entries (already resolved by the
+    `match_albums` call below) and the candidates (already resolved by
+    `rank_album_candidates`) carry a real, known `artist_id`. Re-serializing
+    either back to a name string and re-matching downstream would reopen
+    exactly the collision risk this function's own `match_albums` call
+    already resolved once -- a common display name, or a placeholder
+    identity, could resolve to the wrong artist on a second, blind pass.
     """
     if target_count <= 0:
         raise ValueError("target_count must be positive")
@@ -155,12 +172,6 @@ def assemble_album_catalog(
         graph, editorial_albums, allowed_release_ids=allowed_release_ids
     )
     editorial_artist_ids = {m.artist_id for m in matched_editorial}
-    # match_albums reports misses as the original query dicts, so anything
-    # not in that list succeeded -- used to keep only real, matching editorial
-    # entries in the generated catalog (an entry that misses the snapshot or
-    # fails the format gate would just miss again downstream; no reason to
-    # carry it forward and double-report the same gap).
-    matched_editorial_queries = [a for a in editorial_albums if a not in missed_editorial]
 
     def _weighted_score(candidate: dict[str, Any]) -> float:
         base = float(candidate["score"])
@@ -178,7 +189,7 @@ def assemble_album_catalog(
     # shouldn't silently shrink how many candidates fill out the target.
     remaining_slots = max(0, target_count - len(matched_editorial))
     added_candidate_ids: set[int] = set()
-    candidate_albums: list[dict[str, str]] = []
+    candidate_albums: list[MatchedAlbum] = []
     for candidate in ranked_candidates:
         if len(candidate_albums) >= remaining_slots:
             break
@@ -187,7 +198,16 @@ def assemble_album_catalog(
             continue
         added_candidate_ids.add(artist_id)
         candidate_albums.append(
-            {"artist": candidate["artist_name"], "title": candidate["sample_title"]}
+            MatchedAlbum(
+                artist_query=candidate["artist_name"],
+                title_query=candidate["sample_title"],
+                master_id=candidate["master_id"],
+                main_release_id=candidate["main_release_id"],
+                title=candidate["sample_title"],
+                artist_id=artist_id,
+                artist_name=candidate["artist_name"],
+                year=candidate["year"],
+            )
         )
 
     return {
@@ -196,12 +216,15 @@ def assemble_album_catalog(
             "Hybrid catalog: an editorial backbone plus graph-rich additions selected by "
             "deterministic candidate scoring (ADR 0037). Not itself committed -- combined "
             "at build time from data/albums/top-albums-v1.json and a rank-album-candidates "
-            "shortlist."
+            "shortlist. Albums are ID-resolved (artist_id/main_release_id), not name queries."
         ),
         "target_count": target_count,
-        "editorial_count": len(matched_editorial_queries),
+        "editorial_count": len(matched_editorial),
         "editorial_missed": missed_editorial,
         "candidate_count_considered": len(candidates),
         "candidate_count_added": len(candidate_albums),
-        "albums": [*matched_editorial_queries, *candidate_albums],
+        "albums": [
+            *(m.to_resolved_dict() for m in matched_editorial),
+            *(m.to_resolved_dict() for m in candidate_albums),
+        ],
     }

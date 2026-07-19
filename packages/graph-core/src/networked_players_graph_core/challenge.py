@@ -88,6 +88,40 @@ class MatchedAlbum:
     def album_id(self) -> str:
         return f"master-{self.master_id}" if self.master_id else f"release-{self.main_release_id}"
 
+    def to_resolved_dict(self) -> dict[str, Any]:
+        """The ID-precise wire shape for an already-resolved album -- see
+        `resolved_album_from_dict`. Carries `artist_id`/`main_release_id`
+        directly so a downstream consumer never needs to re-resolve this
+        album by matching on artist/title strings again, which for a common
+        display name (or, worse, a placeholder identity like "Various") is a
+        real collision risk `find_release_by_title_artist` can't rule out on
+        text alone."""
+        return {
+            "artist_id": self.artist_id,
+            "artist": self.artist_name,
+            "master_id": self.master_id,
+            "main_release_id": self.main_release_id,
+            "title": self.title,
+            "year": self.year,
+        }
+
+
+def resolved_album_from_dict(d: dict[str, Any]) -> MatchedAlbum:
+    """Reconstruct a `MatchedAlbum` from `to_resolved_dict`'s shape without
+    any graph query -- the whole point being that a candidate or previously
+    -matched album, once resolved to a real artist_id/release_id, never needs
+    to be re-matched by name again."""
+    return MatchedAlbum(
+        artist_query=d["artist"],
+        title_query=d["title"],
+        master_id=d["master_id"],
+        main_release_id=d["main_release_id"],
+        title=d["title"],
+        artist_id=d["artist_id"],
+        artist_name=d["artist"],
+        year=d["year"],
+    )
+
 
 def _year_from_released(released: str | None) -> int | None:
     if released and len(released) >= 4 and released[:4].isdigit():
@@ -235,7 +269,42 @@ def build_challenge_v2(
     is_family_excluded: Callable[[int, int], bool] | None = None,
     allowed_release_ids: frozenset[int] | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Match `{artist, title}` name/title queries against the graph, then
+    build the artifact. For albums already resolved to a real artist_id
+    (e.g. from `assemble_album_catalog`'s hybrid-catalog output), prefer
+    `build_challenge_v2_from_matched` -- re-matching an already-known
+    artist_id by name string is a real collision risk (a common display
+    name, or worse a placeholder identity, can resolve to the wrong artist),
+    not just redundant work."""
     matched, missed = match_albums(graph, albums, allowed_release_ids=allowed_release_ids)
+    return build_challenge_v2_from_matched(
+        graph,
+        matched,
+        missed,
+        snapshot_date=snapshot_date,
+        generated_by=generated_by,
+        max_paths=max_paths,
+        max_hops=max_hops,
+        max_workers=max_workers,
+        is_family_excluded=is_family_excluded,
+    )
+
+
+def build_challenge_v2_from_matched(
+    graph: CreditGraph,
+    matched: list[MatchedAlbum],
+    missed: list[dict[str, str]],
+    *,
+    snapshot_date: str,
+    generated_by: str,
+    max_paths: int = 12,
+    max_hops: int = 4,
+    max_workers: int = 1,
+    is_family_excluded: Callable[[int, int], bool] | None = None,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Build the artifact from an already-resolved album list -- no further
+    name-based matching happens here. `missed` is carried through only for
+    the report; pass `()` if there is nothing to report as missed."""
     distinct_artist_matches = {m.artist_id: m for m in matched}
     if len(distinct_artist_matches) < 2:
         raise ValueError(

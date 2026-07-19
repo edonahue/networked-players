@@ -159,7 +159,10 @@ def test_build_album_catalog_cli_wiring(dataset_root: Path, tmp_path: Path, caps
     assert summary["total_albums"] == 3
 
     catalog = json.loads(catalog_path.read_text())
-    assert catalog["albums"][0] == {"artist": "Alice", "title": "First Light"}
+    # ID-resolved (artist_id/main_release_id), not a re-queryable name pair.
+    assert catalog["albums"][0]["artist_id"] == 100
+    assert catalog["albums"][0]["artist"] == "Alice"
+    assert catalog["albums"][0]["title"] == "First Light"
     assert len(catalog["albums"]) == 3
 
     # The generated catalog is a valid --albums input for build-challenge-from-dump.

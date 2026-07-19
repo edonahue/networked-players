@@ -884,13 +884,22 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.command == "build-challenge-from-dump":
         import sys
 
-        from networked_players_graph_core.challenge import build_challenge_v2, validate_challenge
+        from networked_players_graph_core.challenge import (
+            build_challenge_v2,
+            build_challenge_v2_from_matched,
+            resolved_album_from_dict,
+            validate_challenge,
+        )
         from networked_players_graph_core.graph import CreditGraph
 
         onehop_manifest_path = args.onehop_root / "manifest.json"
         onehop_manifest = json.loads(onehop_manifest_path.read_text())
         snapshot_date = str(onehop_manifest["expansion"]["source_snapshot_date"])
         albums = json.loads(args.albums.read_text())["albums"]
+        # An ID-resolved album (e.g. build-album-catalog's output) carries
+        # artist_id directly; re-matching it by name string would reopen the
+        # exact collision risk resolving it once already closed.
+        albums_are_resolved = bool(albums) and "artist_id" in albums[0]
 
         is_family_excluded: Callable[[int, int], bool] | None = None
         if args.artist_family_exclusions is not None:
@@ -915,17 +924,39 @@ def main(argv: Sequence[str] | None = None) -> int:
             if args.masters_root is not None:
                 graph.attach_masters(args.masters_root)
 
-            artifact, report = build_challenge_v2(
-                graph,
-                albums,
-                snapshot_date=snapshot_date,
-                generated_by=f"networked-players-catalog build-challenge-from-dump {__version__}",
-                max_paths=args.max_paths,
-                max_hops=args.max_hops,
-                max_workers=args.max_workers,
-                is_family_excluded=is_family_excluded,
-                allowed_release_ids=allowed_release_ids,
-            )
+            if albums_are_resolved:
+                matched = [resolved_album_from_dict(a) for a in albums]
+                if allowed_release_ids is not None:
+                    # Defense in depth: assemble_album_catalog already gated
+                    # these, but never trust an upstream artifact blindly.
+                    matched = [m for m in matched if m.main_release_id in allowed_release_ids]
+                artifact, report = build_challenge_v2_from_matched(
+                    graph,
+                    matched,
+                    [],
+                    snapshot_date=snapshot_date,
+                    generated_by=(
+                        f"networked-players-catalog build-challenge-from-dump {__version__}"
+                    ),
+                    max_paths=args.max_paths,
+                    max_hops=args.max_hops,
+                    max_workers=args.max_workers,
+                    is_family_excluded=is_family_excluded,
+                )
+            else:
+                artifact, report = build_challenge_v2(
+                    graph,
+                    albums,
+                    snapshot_date=snapshot_date,
+                    generated_by=(
+                        f"networked-players-catalog build-challenge-from-dump {__version__}"
+                    ),
+                    max_paths=args.max_paths,
+                    max_hops=args.max_hops,
+                    max_workers=args.max_workers,
+                    is_family_excluded=is_family_excluded,
+                    allowed_release_ids=allowed_release_ids,
+                )
 
         if args.enrich_images:
             from .discogs.album_art import enrich_challenge_albums
@@ -958,7 +989,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 0
 
     if args.command == "build-rounds-from-dump":
-        from networked_players_graph_core.challenge import match_albums
+        from networked_players_graph_core.challenge import match_albums, resolved_album_from_dict
         from networked_players_graph_core.graph import CreditGraph
         from networked_players_graph_core.rounds import build_rounds_v1, validate_rounds_artifact
         from networked_players_graph_core.rounds_generator import generate_round_pool
@@ -966,6 +997,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         onehop_manifest = json.loads((args.onehop_root / "manifest.json").read_text())
         snapshot_date = str(onehop_manifest["expansion"]["source_snapshot_date"])
         albums = json.loads(args.albums.read_text())["albums"]
+        albums_are_resolved = bool(albums) and "artist_id" in albums[0]
 
         rounds_is_family_excluded: Callable[[int, int], bool] | None = None
         if args.artist_family_exclusions is not None:
@@ -990,7 +1022,17 @@ def main(argv: Sequence[str] | None = None) -> int:
             if args.masters_root is not None:
                 graph.attach_masters(args.masters_root)
 
-            matched, missed = match_albums(graph, albums, allowed_release_ids=allowed_release_ids)
+            if albums_are_resolved:
+                matched = [resolved_album_from_dict(a) for a in albums]
+                if allowed_release_ids is not None:
+                    # Defense in depth: assemble_album_catalog already gated
+                    # these, but never trust an upstream artifact blindly.
+                    matched = [m for m in matched if m.main_release_id in allowed_release_ids]
+                missed: list[dict[str, str]] = []
+            else:
+                matched, missed = match_albums(
+                    graph, albums, allowed_release_ids=allowed_release_ids
+                )
             if len(matched) < 2:
                 raise ValueError(
                     f"only {len(matched)} album(s) matched with distinct artists "
