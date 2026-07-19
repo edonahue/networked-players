@@ -20,6 +20,8 @@ from __future__ import annotations
 import json
 from typing import Any
 
+from . import __version__
+from .challenge import MatchedAlbum
 from .cohort_connectivity import classify_hop_quality
 from .eligibility import is_performer_role
 from .graph import CreditGraph, EvidencePath, Hop
@@ -271,3 +273,112 @@ def validate_rounds_artifact(universe: dict[str, Any], rounds: dict[str, Any]) -
         for phrase in _FORBIDDEN_PHRASES:
             if phrase in lowered:
                 raise RoundsValidationError(f"artifact contains forbidden phrase: {phrase!r}")
+
+
+def build_rounds_v1(
+    graph: CreditGraph,
+    matched_albums: list[MatchedAlbum],
+    rounds_json: list[dict[str, Any]],
+    *,
+    snapshot_date: str,
+    generated_by: str,
+    pool_version: str,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Assemble the final universe.v1/rounds.v1 artifact pair from an already
+    -generated round list (see `rounds_generator.generate_round_pool`).
+    Dedupes evidence releases and artists referenced by any round's hops,
+    same shape and same evidence-preservation posture as `challenge.py`'s
+    `build_challenge_v2`. Only albums that are actually a round endpoint
+    appear in `universe.albums` -- an album that matched but never
+    connected to anything is not part of the game universe.
+    """
+    used_album_ids: set[str] = set()
+    used_release_ids: set[int] = set()
+    used_artist_ids: set[int] = set()
+    one_hop_count = 0
+    two_hop_count = 0
+
+    for round_json in rounds_json:
+        used_album_ids.add(round_json["from_album_id"])
+        used_album_ids.add(round_json["to_album_id"])
+        used_artist_ids.add(round_json["from_artist_id"])
+        used_artist_ids.add(round_json["to_artist_id"])
+        for hop in round_json["hops"]:
+            used_release_ids.add(hop["release_id"])
+            used_artist_ids.add(hop["artist_a_id"])
+            used_artist_ids.add(hop["artist_b_id"])
+        if round_json["kind"] == "one_hop":
+            one_hop_count += 1
+        else:
+            two_hop_count += 1
+        for distractor in round_json["distractors"]:
+            used_album_ids.add(distractor["album_id"])
+
+    releases_json = []
+    for release_id in sorted(used_release_ids):
+        release = graph.release(release_id)
+        if release is None:
+            continue
+        hop_artist_ids = {
+            a
+            for r in rounds_json
+            for h in r["hops"]
+            if h["release_id"] == release_id
+            for a in (h["artist_a_id"], h["artist_b_id"])
+        }
+        release_json = dict(release)
+        release_json["credits"] = graph.credit_rows(release_id, hop_artist_ids)
+        releases_json.append(release_json)
+
+    artist_names = {aid: graph.artist_name(aid) or f"Artist {aid}" for aid in used_artist_ids}
+    artists_json = [
+        {"artist_id": aid, "name": artist_names[aid]} for aid in sorted(used_artist_ids)
+    ]
+    albums_json = [
+        {
+            "id": album.album_id,
+            "master_id": album.master_id,
+            "main_release_id": album.main_release_id,
+            "title": album.title,
+            "artist_id": album.artist_id,
+            "artist": album.artist_name,
+            "year": album.year,
+            "cover_image": album.cover_image,
+        }
+        for album in sorted(matched_albums, key=lambda a: a.album_id)
+        if album.album_id in used_album_ids
+    ]
+
+    provenance = {
+        "source": "Discogs monthly data dump (CC0), one-hop working set",
+        "license": "Derived from the Discogs monthly CC0 data dumps. See docs/DATA_AND_RIGHTS.md.",
+        "snapshot_date": snapshot_date,
+        "generated_by": generated_by,
+        "graph_core_version": __version__,
+        "note": (
+            "Derived from a bounded one-hop working set; the private collection seed "
+            "used to build that working set is never published. Every round's hops "
+            "require an explicit, displayable instrument/vocal role on both sides."
+        ),
+    }
+
+    universe: dict[str, Any] = {
+        "schema_version": ROUNDS_SCHEMA_VERSION,
+        "pool_version": pool_version,
+        "provenance": provenance,
+        "counts": {
+            "one_hop": one_hop_count,
+            "two_hop": two_hop_count,
+            "daily_eligible": len(rounds_json),
+        },
+        "albums": albums_json,
+    }
+    rounds: dict[str, Any] = {
+        "schema_version": ROUNDS_SCHEMA_VERSION,
+        "pool_version": pool_version,
+        "provenance": provenance,
+        "rounds": rounds_json,
+        "releases": releases_json,
+        "artists": artists_json,
+    }
+    return universe, rounds

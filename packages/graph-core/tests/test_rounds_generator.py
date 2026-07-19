@@ -7,6 +7,11 @@ import pytest
 
 from networked_players_graph_core.challenge import match_albums
 from networked_players_graph_core.graph import CreditGraph
+from networked_players_graph_core.rounds import (
+    ROUNDS_SCHEMA_VERSION,
+    build_rounds_v1,
+    validate_rounds_artifact,
+)
 from networked_players_graph_core.rounds_generator import generate_round_pool
 
 SNAPSHOT_DATE = "20260601"
@@ -252,3 +257,65 @@ def test_generate_round_pool_assigns_sequential_ids_and_distractors(
     distractor_album_ids = {d["album_id"] for d in dan_eve_round["distractors"]}
     assert "release-3" not in distractor_album_ids  # Dan's own album never distracts itself
     assert "release-5" not in distractor_album_ids  # nor Eve's
+
+
+def test_build_rounds_v1_produces_a_valid_artifact_pair(rounds_dataset_root: Path) -> None:
+    with CreditGraph.open(rounds_dataset_root) as graph:
+        matched, _ = match_albums(graph, ALBUMS)
+        rounds_json, _ = generate_round_pool(
+            graph,
+            matched,
+            one_hop_target=10,
+            two_hop_target=10,
+            max_endpoint_share=1.0,
+            max_bridge_share=1.0,
+        )
+        universe, rounds = build_rounds_v1(
+            graph,
+            matched,
+            rounds_json,
+            snapshot_date=SNAPSHOT_DATE,
+            generated_by="test-suite",
+            pool_version="rounds-v1-test",
+        )
+
+    validate_rounds_artifact(universe, rounds)
+    assert universe["schema_version"] == ROUNDS_SCHEMA_VERSION
+    assert universe["counts"] == {"one_hop": 3, "two_hop": 1, "daily_eligible": 4}
+    # All 5 backbone albums are round endpoints in this fixture.
+    assert {a["id"] for a in universe["albums"]} == {a.album_id for a in matched}
+    assert len(rounds["rounds"]) == 4
+    # Evidence releases are deduped: release 1 and 2 each justify a one-hop
+    # round AND are reused as the two-hop bridge's own hop evidence.
+    release_ids = {r["release_id"] for r in rounds["releases"]}
+    assert release_ids == {1, 2, 3}
+
+
+def test_build_rounds_v1_only_includes_endpoints_and_real_distractors(
+    rounds_dataset_root: Path,
+) -> None:
+    """Every album in the published universe is either a round endpoint or a
+    genuine distractor of a published round -- never an album that matched
+    the snapshot but has no role in the pool at all."""
+    with CreditGraph.open(rounds_dataset_root) as graph:
+        matched, _ = match_albums(graph, ALBUMS)
+        rounds_json, _ = generate_round_pool(graph, matched, one_hop_target=1, two_hop_target=0)
+        universe, rounds = build_rounds_v1(
+            graph,
+            matched,
+            rounds_json,
+            snapshot_date=SNAPSHOT_DATE,
+            generated_by="test-suite",
+            pool_version="rounds-v1-test",
+        )
+
+    validate_rounds_artifact(universe, rounds)
+    assert len(rounds_json) == 1
+    expected_ids = {rounds_json[0]["from_album_id"], rounds_json[0]["to_album_id"]}
+    expected_ids |= {d["album_id"] for d in rounds_json[0]["distractors"]}
+    assert {a["id"] for a in universe["albums"]} == expected_ids
+    # The winning round is Alice-Bob (deterministic tie-break); Cara Solo
+    # (release-4) never appears even as a distractor, since Cara *is*
+    # one-hop connected to Bob -- a real connection is never mislabeled as a
+    # "no known path" decoy just because it wasn't the selected round.
+    assert "release-4" not in expected_ids
