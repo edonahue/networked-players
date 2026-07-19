@@ -174,5 +174,37 @@ const isCurrent = (href: string) =>
         apply(root.dataset.theme, false);
       })();
     </script>
+    <script is:inline>
+      // Hotlinked cover art can 404 or expire upstream; degrade marked images
+      // to the house placeholder (or hide decorative thumbs) instead of
+      // leaving a broken-image glyph (plan §12.8 image-fallback audit).
+      (() => {
+        const fallback = (img) => {
+          if (img.dataset.artFallback === 'disc') {
+            const span = document.createElement('span');
+            span.className = 'album-card__placeholder';
+            span.setAttribute('aria-hidden', 'true');
+            const disc = document.createElement('span');
+            disc.className = 'album-card__placeholder-disc';
+            span.append(disc);
+            img.replaceWith(span);
+          } else {
+            img.hidden = true;
+          }
+        };
+        document.addEventListener(
+          'error',
+          (event) => {
+            const img = event.target;
+            if (img instanceof HTMLImageElement && img.dataset.artFallback) fallback(img);
+          },
+          true,
+        );
+        // Images that already failed before this script attached.
+        for (const img of document.querySelectorAll('img[data-art-fallback]')) {
+          if (img.complete && img.naturalWidth === 0) fallback(img);
+        }
+      })();
+    </script>
   </body>
 </html>

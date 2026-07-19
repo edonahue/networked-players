@@ -19,6 +19,7 @@ const cover = album.cover_image;
         height="150"
         loading="lazy"
         alt={`Cover art for ${album.title}`}
+        data-art-fallback="disc"
       />
     ) : (
       <span class="album-card__placeholder" aria-hidden="true">

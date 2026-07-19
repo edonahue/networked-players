@@ -81,7 +81,15 @@ const description =
           {coverStrip(path).length > 0 && (
             <div class="path-card__covers" aria-hidden="true">
               {coverStrip(path).map((uri) => (
-                <img class="cover-thumb" src={uri} width="56" height="56" loading="lazy" alt="" />
+                <img
+                  class="cover-thumb"
+                  src={uri}
+                  width="56"
+                  height="56"
+                  loading="lazy"
+                  alt=""
+                  data-art-fallback="hide"
+                />
               ))}
             </div>
           )}

@@ -540,24 +540,33 @@ a.mode-card:focus-visible {
   border: 0;
 }
 
+/* Motion audit (plan §12.8): every game-surface animation and transition
+   collapses under BOTH signals — the OS preference and ?motion=off. Static
+   compositional transforms (the paper tilt, the divider-tab rotation) stay;
+   anything that moves over time or on hover stops. */
 @media (prefers-reduced-motion: reduce) {
   .mode-card,
-  a.mode-card:hover {
-    transition: none;
+  .stage *,
+  .chip {
+    animation: none !important;
+    transition: none !important;
+  }
+  a.mode-card:hover,
+  a.mode-card:focus-visible,
+  .chip:hover:not(:disabled),
+  .chip:focus-visible {
     transform: none;
   }
 }
-
-/* Reduced motion / ?motion=off collapse the deal to a plain appear. */
-@media (prefers-reduced-motion: reduce) {
-  .stage .sleeve,
-  .chip {
-    animation: none;
-    transition: none;
-  }
-}
-:root[data-motion="off"] .stage .sleeve,
+:root[data-motion="off"] .mode-card,
+:root[data-motion="off"] .stage *,
 :root[data-motion="off"] .chip {
-  animation: none;
-  transition: none;
+  animation: none !important;
+  transition: none !important;
+}
+:root[data-motion="off"] a.mode-card:hover,
+:root[data-motion="off"] a.mode-card:focus-visible,
+:root[data-motion="off"] .chip:hover:not(:disabled),
+:root[data-motion="off"] .chip:focus-visible {
+  transform: none;
 }

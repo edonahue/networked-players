@@ -341,6 +341,12 @@ export function initFlagship(options: FlagshipOptions = {}): void {
       trayStep = state.step;
       if (state.step === "middle") buildMiddleTray();
       else buildContributorTray(state.step);
+      tray.setAttribute(
+        "aria-label",
+        state.step === "middle"
+          ? "Pick the hidden middle record"
+          : "Pick the contributor credited on both records",
+      );
       stepLabel.textContent = stepLabelFor(state.step);
       $("question").textContent = questionFor(state.step);
     }
