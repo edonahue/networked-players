@@ -1,4 +1,6 @@
 ---
+import EvidencePanel from './EvidencePanel.astro';
+import type { PanelHop } from '../data/evidence';
 import type { CohortAlbum, CohortPair } from '../data/cohort';
 
 interface Props {
@@ -22,6 +24,32 @@ const FLAG_LABELS: Record<string, string> = {
 
 const flagLabels = (flags: string[]) =>
   flags.map((f) => FLAG_LABELS[f] ?? f).join(', ');
+
+// The playable-cohort contract ships hop ids and quality flags, not
+// per-credit rows — the panel renders the flags line in place of a table.
+const artistName = (id: number) =>
+  pair.artist_a_id === id && albumA
+    ? albumA.artist
+    : pair.artist_b_id === id && albumB
+      ? albumB.artist
+      : `artist ${id}`;
+
+const hopViews: PanelHop[] = pair.hops.map((hop, index) => ({
+  index: index + 1,
+  aName: artistName(hop.artist_a_id),
+  bName: artistName(hop.artist_b_id),
+  release: {
+    ref: String(hop.release_id),
+    title: `release ${hop.release_id}`,
+    released: null,
+    country: null,
+    sourceUrl: null,
+  },
+  coverUri: null,
+  rows: [],
+  nonLinked: [],
+  flagsLine: `Quality: ${flagLabels(hop.quality_flags)}. Per the playable-cohort contract, no per-credit rows ship here — the reviewed connection itself is the claim.`,
+}));
 ---
 
 <article class="cohort-pair" data-cohort-pair data-reveal-scope>
@@ -93,14 +121,6 @@ const flagLabels = (flags: string[]) =>
     data-revealed="false"
     hidden
   >
-    {
-      pair.hops.map((hop, index) => (
-        <p class="hop__release">
-          Hop {index + 1}: artists {hop.artist_a_id} and {hop.artist_b_id} are{' '}
-          connected via a shared release credit on release {hop.release_id} (
-          {flagLabels(hop.quality_flags)}).
-        </p>
-      ))
-    }
+    <EvidencePanel hops={hopViews} />
   </div>
 </article>

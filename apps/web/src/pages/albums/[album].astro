@@ -1,7 +1,8 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
-import EvidenceCard from '../../components/EvidenceCard.astro';
+import EvidencePanel from '../../components/EvidencePanel.astro';
 import RevealControls from '../../components/RevealControls.astro';
+import { buildHopViews } from '../../data/evidence';
 import type { AlbumV2, ChallengeV2 } from '../../data/challenge';
 import challengeData from '../../../public/data/challenge.v2.json';
 
@@ -37,6 +38,15 @@ const connectedPaths = paths
   .filter((entry): entry is { path: (typeof paths)[number]; otherAlbum: AlbumV2 } =>
     Boolean(entry.otherAlbum),
   );
+
+// Minimal contributor cards (plan §6/§12.7): the linked identities that carry
+// this album's documented connections. Names only — deliberately not pages.
+const contributorIds = new Set(
+  connectedPaths.flatMap(({ path }) =>
+    path.hops.flatMap((hop) => [hop.artist_a_id, hop.artist_b_id]),
+  ),
+);
+const contributors = artists.filter((artist) => contributorIds.has(artist.artist_id));
 
 const description = [
   `Find the documented connections between ${album.title}`,
@@ -112,21 +122,80 @@ const description = [
                       Reveal
                     </button>
                   </p>
-                  <EvidenceCard
+                  <EvidencePanel
+                    class="evidence-card"
                     id={evidenceId}
-                    path={path}
-                    releases={releases}
-                    artists={artists}
-                    albums={albums}
+                    pathId={path.id}
+                    hops={buildHopViews(path.hops, releases, artists)}
                     hidden
-                  />
+                  >
+                    <div class="evidence-card__summary">
+                      <div class="evidence-card__endpoint">
+                        {album.cover_image && (
+                          <img
+                            class="cover-thumb"
+                            src={album.cover_image.uri150}
+                            width="56"
+                            height="56"
+                            loading="lazy"
+                            alt=""
+                          />
+                        )}
+                        <span>{album.title}</span>
+                      </div>
+                      <span class="arrow" aria-hidden="true">→</span>
+                      <div class="evidence-card__endpoint">
+                        {otherAlbum.cover_image && (
+                          <img
+                            class="cover-thumb"
+                            src={otherAlbum.cover_image.uri150}
+                            width="56"
+                            height="56"
+                            loading="lazy"
+                            alt=""
+                          />
+                        )}
+                        <span>{otherAlbum.title}</span>
+                      </div>
+                    </div>
+                    <p class="path-card__sub">{path.description}</p>
+                  </EvidencePanel>
                 </div>
               );
             })
           }
+
+          {
+            contributors.length > 0 && (
+              <section aria-label="Linked contributors" style="margin-top:28px">
+                <p class="eyebrow" style="margin-bottom:10px">
+                  The names carrying these connections
+                </p>
+                <div class="contributor-grid">
+                  {contributors.map((artist) => (
+                    <div class="contributor-card">
+                      <span class="contributor-card__name">{artist.name}</span>
+                      <span class="contributor-card__id">
+                        #{artist.artist_id} · linked identity
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )
+          }
         </>
       )
     }
+
+    <section aria-label="Play from here" class="play-from-here">
+      <p class="lede" style="font-size:0.98rem">
+        Prefer to guess before you look? The
+        <a href="/play/connection/"> Connection Guesser</a> deals rounds like these —
+        two records, one credited name to find — and the
+        <a href="/play/daily/"> Connection of the Day</a> deals one for everyone.
+      </p>
+    </section>
   </section>
 </BaseLayout>
 

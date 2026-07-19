@@ -1,13 +1,32 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
-import PathCard from '../components/PathCard.astro';
-import type { Challenge } from '../data/challenge';
+import EvidencePanel from '../components/EvidencePanel.astro';
+import { buildHopViews } from '../data/evidence';
+import type { Challenge, Release } from '../data/challenge';
 import challengeData from '../../public/data/challenge.v1.json';
 
 // The same versioned artifact that is served at /data/challenge.v1.json. The
 // demo is static-first: paths are rendered at build time and need no backend.
 const challenge = challengeData as Challenge;
 const { provenance, releases, artists, paths } = challenge;
+
+const nameById = new Map(artists.map((a) => [a.artist_id, a.name]));
+const releaseById = new Map(releases.map((r) => [r.release_id, r]));
+const displayName = (id: number) => nameById.get(id) ?? `Artist ${id}`;
+
+// Deduplicated cover thumbnails across a path's releases, in hop order.
+const coverStrip = (path: (typeof paths)[number]) => {
+  const seen = new Set<number>();
+  return path.hops
+    .map((hop) => releaseById.get(hop.release_id))
+    .filter((release): release is Release => release !== undefined)
+    .filter((release) => {
+      if (seen.has(release.release_id) || release.images.length === 0) return false;
+      seen.add(release.release_id);
+      return true;
+    })
+    .map((release) => release.images[0].uri150);
+};
 
 const description =
   'A static, client-side proof of concept: documented paths between real artists, with the credit evidence and cover art shown at every hop.';
@@ -47,7 +66,26 @@ const description =
 
     {
       paths.map((path, index) => (
-        <PathCard path={path} releases={releases} artists={artists} hidden={index !== 0} />
+        <EvidencePanel
+          class="path-card"
+          pathId={path.id}
+          hidden={index !== 0}
+          hops={buildHopViews(path.hops, releases, artists, { covers: true })}
+        >
+          <h3 class="path-card__summary">
+            {displayName(path.from_artist_id)}
+            <span class="arrow" aria-hidden="true">→</span>
+            {displayName(path.to_artist_id)}
+          </h3>
+          <p class="path-card__sub">{path.description}</p>
+          {coverStrip(path).length > 0 && (
+            <div class="path-card__covers" aria-hidden="true">
+              {coverStrip(path).map((uri) => (
+                <img class="cover-thumb" src={uri} width="56" height="56" loading="lazy" alt="" />
+              ))}
+            </div>
+          )}
+        </EvidencePanel>
       ))
     }
 
