@@ -33,6 +33,7 @@ const { hops, pathId, id, hidden = false, class: className } = Astro.props;
               height="64"
               loading="lazy"
               alt={`Cover art for ${hop.release.title}`}
+              data-art-fallback="hide"
             />
           )}
           <div class="hop__head-text">

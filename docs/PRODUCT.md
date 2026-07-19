@@ -25,6 +25,17 @@ Given two albums, Networked Players can present a documented route through the c
 
 A small browser experience presents a grid of albums, each an entry point into the credit graph. Opening an album offers two ways in: **find the connection** (guess which artist links it to another album before revealing the answer) and **reveal the path** (step through the evidence — release, role, credit scope — hop by hop). The experience loads a versioned static challenge and remains functional when all home-hosted services are offline; it is deployed as the core experience at `networked-players.com`.
 
+## Shipped play modes
+
+The site now ships a game-first surface on top of the browse experience (plan:
+`docs/WEB_PRODUCT_PLAN.md`; decisions: ADR 0037):
+
+- **Connection Guesser** (`/play/connection/`): two records land on the counter and the player picks the contributor credited on both from a tray of choices — two attempts, an optional clue ladder, an honest give-up. Two-hop rounds hide a middle record: find the bridge credit on each side, then name the record itself. Rounds play in five-round sittings with a needle-drop summary (clean / with help / revealed), stored only on the device.
+- **Connection of the Day** (`/play/daily/`): one deterministic round per UTC date, the same for everyone, with a local streak and a spoiler-free share string (the date and grooves, never a name).
+- Two content pools, badged during play: a clearly-stamped **synthetic universe** (fictional catalog with generated sleeve art) and **real records** derived from the curated demo dataset (ADR 0012), with cover art hotlinked from Discogs' own CDN.
+
+Every round resolves into a liner-note evidence sheet: the credit rows, role text, and provenance that document the connection. A shared credit documents participation on a recording — never influence.
+
 ## Not yet promised
 
 - exhaustive catalog coverage;
@@ -38,7 +49,7 @@ A small browser experience presents a grid of albums, each an entry point into t
 
 - producer/engineer-bridge mode: find the behind-the-scenes credit that links two albums, not just a performing artist;
 - six-degrees mode: shortest documented route between two albums, with a hop budget;
-- daily or curated paths;
+- curated paths (the daily shipped; a reviewed-cohort browse shell exists, reviewed sets pending);
 - hidden contributor;
 - role-restricted paths;
 - manual relay between players;

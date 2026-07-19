@@ -228,7 +228,7 @@ fourth original Pi, plus a separate Pi 3B+, are planned but not yet revived
 | `game-rules` | Placeholder (README only) |
 | `workers` | Placeholder (README only) |
 | `apps/api` | Placeholder (README only) |
-| `apps/web` | Early implementation; album-centered landing + `/play/<album>/` evidence viewer (real code, synthetic placeholder data pending live gate F), plus the ADR-0012 real curated `/demo/`; deploys via Cloudflare Git integration on push to `main`; Node 22 + Playwright (7 smoke tests) fixed locally, CI added |
+| `apps/web` | Playable game surface shipped (see `docs/WEB_PRODUCT_PLAN.md`, ADR 0037): `/play/` hub, flagship Connection Guesser (one-hop + two-hop) in five-round sets, Connection of the Day, `/albums/` browse + evidence pages (old `/play/<album>/` URLs redirect), cohorts, ADR-0012 real curated `/demo/`; album/browse data still the synthetic challenge.v2 placeholder pending live gate F; deploys via Cloudflare Git integration on push to `main`; CI green (format/check/build + 67 Playwright specs) |
 | Coordination host OS + inventory | Done (64-bit confirmed, local inventory created) |
 | Coordination host storage | NVMe attached and mounted at `/mnt/data` (916G ext4, ADR 0013); `local/` and coordination volumes relocated; 250 GB bulk-ingest floor met (869 GB free, confirmed) |
 | Coordination host hardening | Done (ADR 0014): persistent journald, hardware watchdog, Docker log rotation, `vm.swappiness` tuning (`infra/ansible/playbooks/harden.yml`) |
@@ -249,7 +249,7 @@ fourth original Pi, plus a separate Pi 3B+, are planned but not yet revived
 | Health playbook | Passing (confirmed 2026-07-01: 869.2 GB free on `/mnt/data`) |
 | Raspberry Pi workers | **3 of 4 joined and smoke-tested, 2026-07-02** (ADR 0015, ADR 0017); fourth remains unreachable; a separate Pi 3B+ is also planned but not yet active |
 | Second ZimaBoard 832 (the "x86 worker," `x86_workers`) | Joined as a real, dedicated x86_64 Swarm worker (ADR 0022/0023); worker-only, never promoted; participates in RQ/Dask fleet work at a higher-capability tier than the Pi's |
-| `networked-players.com` | Registered, not live |
+| `networked-players.com` | Registered; **status needs operator confirmation** — Cloudflare Workers Builds report successful production deploys on every push to `main`, which contradicts this row's earlier "not live", but domain reachability could not be verified from a sandboxed session |
 
 ## How to use this document
 
