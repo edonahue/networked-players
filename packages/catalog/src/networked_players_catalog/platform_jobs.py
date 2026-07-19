@@ -55,6 +55,7 @@ def _cohort_score_handler(
     _verified_manifest_sha256(dataset)
 
     parameters = request.parameters
+    release_format_policy = input_dir / "release-format-policy.json"
     score_cohort_to_directory(
         resolved_path=input_dir / "resolved.json",
         dataset_path=dataset,
@@ -68,6 +69,7 @@ def _cohort_score_handler(
         pair_timeout_seconds=float(parameters.get("pair_timeout_seconds", 180.0)),
         max_workers=1,
         max_reach_rows=int(parameters.get("max_reach_rows", 2_000_000)),
+        release_format_policy=release_format_policy if release_format_policy.is_file() else None,
     )
     outputs = (
         ("connectivity", "album-cohort-connectivity-v1", "connectivity.json"),
