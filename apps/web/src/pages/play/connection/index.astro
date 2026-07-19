@@ -3,12 +3,10 @@ import BaseLayout from '../../../layouts/BaseLayout.astro';
 import type { GameRounds } from '../../../game/types';
 import roundsData from '../../../../public/data/game/rounds.v1.json';
 
-// The flagship serves one-hop rounds only for now; two-hop
-// (bridges-then-hidden-middle) lands as its own slice. Filtering here keeps
-// two-hop answer material out of this page's payload entirely.
-const rounds = (roundsData as unknown as GameRounds).rounds.filter(
-  (round) => round.kind === 'one_hop',
-);
+// The full round pool: one-hop rounds are the default deal, two-hop rounds
+// (bridges-then-hidden-middle) deal when ?kind=two_hop is set. The
+// controller keeps every answer check in memory either way.
+const rounds = (roundsData as unknown as GameRounds).rounds;
 const islandJson = JSON.stringify(rounds).replaceAll('<', '\\u003c');
 
 const description =
@@ -19,6 +17,10 @@ const description =
   <section class="prose shell" style="padding-bottom:0">
     <p class="eyebrow">Connection Guesser</p>
     <h1 style="font-size:clamp(1.9rem,4.5vw,2.8rem)">Who is credited on both?</h1>
+    <nav class="kind-toggle" aria-label="Round kind" data-testid="kind-toggle">
+      <a href="/play/connection/" data-kind="one_hop">One hop</a>
+      <a href="/play/connection/?kind=two_hop" data-kind="two_hop">Two hop — hidden middle</a>
+    </nav>
   </section>
 
   <section
@@ -45,12 +47,17 @@ const description =
         <figcaption class="sleeve__caption" data-testid="caption-a"></figcaption>
       </figure>
       <span class="stage__ampersand" aria-hidden="true">&amp;</span>
+      <figure class="sleeve sleeve--middle" data-testid="middle-slot" hidden>
+        <div class="sleeve__art" data-testid="sleeve-middle"></div>
+        <figcaption class="sleeve__caption" data-testid="caption-middle"></figcaption>
+      </figure>
       <figure class="sleeve">
         <div class="sleeve__art" data-testid="sleeve-b"></div>
         <figcaption class="sleeve__caption" data-testid="caption-b"></figcaption>
       </figure>
     </div>
 
+    <p class="stage__step" data-testid="step-label"></p>
     <p class="stage__question" data-testid="question"></p>
 
     <div
@@ -87,9 +94,9 @@ const description =
 
   <section class="prose shell" style="padding-top:28px;padding-bottom:72px">
     <p class="lede" style="font-size:0.95rem">
-      Two-hop rounds — a hidden record bridging the two sleeves — are coming to this
-      table next. Every connection shown here is a documented credit: participation on
-      a recording, nothing more.
+      Two-hop rounds put a hidden record between the sleeves: find the bridge credit on
+      each side, then name the record itself. Every connection shown here is a
+      documented credit: participation on a recording, nothing more.
     </p>
   </section>
 </BaseLayout>
