@@ -96,9 +96,22 @@ def _year_from_released(released: str | None) -> int | None:
 
 
 def match_albums(
-    graph: CreditGraph, albums: list[dict[str, str]]
+    graph: CreditGraph,
+    albums: list[dict[str, str]],
+    *,
+    allowed_release_ids: frozenset[int] | None = None,
 ) -> tuple[list[MatchedAlbum], list[dict[str, str]]]:
     """Match each ``{"artist", "title"}`` query against the graph's releases.
+
+    ``allowed_release_ids``, when given (the ``allowed_release_ids`` of a
+    ``release-format-scoring-index``, see ``discogs/release_format_policy.py``),
+    fail-closed gates every match -- editorial or graph-candidate alike -- by
+    the same studio-album-v1 policy used for round/candidate generation. A
+    query whose matched release isn't in the allow-list is treated exactly
+    like an unmatched query: reported in ``missed``, never silently included.
+    This is deliberately applied here, not only in the candidate-ranking SQL,
+    so any caller of ``match_albums``/``build_challenge_v2`` gets the same
+    guarantee even with a hand-written album list that wasn't pre-filtered.
 
     Returns (matched, missed) -- ``missed`` entries are the original query dicts.
     """
@@ -111,6 +124,9 @@ def match_albums(
         title_query = album["title"]
         found = graph.find_release_by_title_artist(title_query, artist_query)
         if found is None or found["artist_id"] in seen_artist_ids:
+            missed.append(album)
+            continue
+        if allowed_release_ids is not None and found["release_id"] not in allowed_release_ids:
             missed.append(album)
             continue
         seen_artist_ids.add(found["artist_id"])
@@ -217,8 +233,9 @@ def build_challenge_v2(
     max_hops: int = 4,
     max_workers: int = 1,
     is_family_excluded: Callable[[int, int], bool] | None = None,
+    allowed_release_ids: frozenset[int] | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
-    matched, missed = match_albums(graph, albums)
+    matched, missed = match_albums(graph, albums, allowed_release_ids=allowed_release_ids)
     distinct_artist_matches = {m.artist_id: m for m in matched}
     if len(distinct_artist_matches) < 2:
         raise ValueError(

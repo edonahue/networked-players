@@ -188,6 +188,15 @@ def _parser() -> argparse.ArgumentParser:
         default=None,
         help="optional artist-family-exclusions-v1.json; drops trivial group/frontperson pairs",
     )
+    build_challenge.add_argument(
+        "--release-format-policy",
+        type=Path,
+        default=None,
+        help=(
+            "optional release-format-scoring-index.json; fail-closed gates every matched "
+            "album (editorial or hybrid-catalog) by the studio-album-v1 policy"
+        ),
+    )
     build_challenge.add_argument("--enrich-images", action="store_true")
     build_challenge.add_argument(
         "--cache-dir", type=Path, default=Path("data/private/discogs-api-cache")
@@ -233,6 +242,12 @@ def _parser() -> argparse.ArgumentParser:
     build_album_catalog.add_argument("--output", type=Path, required=True)
     build_album_catalog.add_argument("--memory-limit", default="1GB")
     build_album_catalog.add_argument("--threads", type=int, default=2)
+    build_album_catalog.add_argument(
+        "--release-format-policy",
+        type=Path,
+        default=None,
+        help="optional release-format-scoring-index.json; also gates the editorial entries",
+    )
 
     fetch_dataset_parser = subparsers.add_parser(
         "fetch-dataset",
@@ -812,6 +827,11 @@ def main(argv: Sequence[str] | None = None) -> int:
             def is_family_excluded(a: int, b: int) -> bool:
                 return is_family_excluded_pair(a, b, exclusions)
 
+        allowed_release_ids = None
+        if args.release_format_policy is not None:
+            policy_payload = json.loads(args.release_format_policy.read_text())
+            allowed_release_ids = frozenset(policy_payload["allowed_release_ids"])
+
         with CreditGraph.open(
             args.onehop_root,
             memory_limit=args.memory_limit,
@@ -830,6 +850,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 max_hops=args.max_hops,
                 max_workers=args.max_workers,
                 is_family_excluded=is_family_excluded,
+                allowed_release_ids=allowed_release_ids,
             )
 
         if args.enrich_images:
@@ -884,6 +905,10 @@ def main(argv: Sequence[str] | None = None) -> int:
 
         editorial_albums = json.loads(args.editorial_albums.read_text())["albums"]
         candidates = json.loads(args.candidates.read_text())
+        allowed_release_ids = None
+        if args.release_format_policy is not None:
+            policy_payload = json.loads(args.release_format_policy.read_text())
+            allowed_release_ids = frozenset(policy_payload["allowed_release_ids"])
 
         with CreditGraph.open(
             args.onehop_root,
@@ -892,7 +917,11 @@ def main(argv: Sequence[str] | None = None) -> int:
             build_edges=False,
         ) as graph:
             catalog = assemble_album_catalog(
-                graph, editorial_albums, candidates, target_count=args.target_count
+                graph,
+                editorial_albums,
+                candidates,
+                target_count=args.target_count,
+                allowed_release_ids=allowed_release_ids,
             )
 
         args.output.parent.mkdir(parents=True, exist_ok=True)
@@ -902,6 +931,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 {
                     "output": str(args.output),
                     "editorial_count": catalog["editorial_count"],
+                    "editorial_missed": len(catalog["editorial_missed"]),
                     "candidate_count_added": catalog["candidate_count_added"],
                     "total_albums": len(catalog["albums"]),
                 },

@@ -127,6 +127,7 @@ def assemble_album_catalog(
     *,
     target_count: int,
     private_weight_fn: Callable[[int], float] | None = None,
+    allowed_release_ids: frozenset[int] | None = None,
 ) -> dict[str, Any]:
     """Combine the editorial backbone with graph-rich candidates up to
     `target_count` (see ADR 0037). Deterministic given a fixed graph
@@ -140,12 +141,26 @@ def assemble_album_catalog(
     published, and this function never records which albums it affected) and
     added in that order until `target_count` is reached or candidates run
     out. Never pads past what real candidates support.
+
+    `allowed_release_ids`, when given, fail-closed gates the *editorial* side
+    by the same studio-album-v1 policy `candidates` was already filtered by
+    upstream in `rank_album_candidates` -- an editorial entry whose matched
+    release isn't in the allow-list is dropped, never silently included, and
+    never fabricated back in from the candidate pool.
     """
     if target_count <= 0:
         raise ValueError("target_count must be positive")
 
-    matched_editorial, _missed = match_albums(graph, editorial_albums)
+    matched_editorial, missed_editorial = match_albums(
+        graph, editorial_albums, allowed_release_ids=allowed_release_ids
+    )
     editorial_artist_ids = {m.artist_id for m in matched_editorial}
+    # match_albums reports misses as the original query dicts, so anything
+    # not in that list succeeded -- used to keep only real, matching editorial
+    # entries in the generated catalog (an entry that misses the snapshot or
+    # fails the format gate would just miss again downstream; no reason to
+    # carry it forward and double-report the same gap).
+    matched_editorial_queries = [a for a in editorial_albums if a not in missed_editorial]
 
     def _weighted_score(candidate: dict[str, Any]) -> float:
         base = float(candidate["score"])
@@ -184,8 +199,9 @@ def assemble_album_catalog(
             "shortlist."
         ),
         "target_count": target_count,
-        "editorial_count": len(editorial_albums),
+        "editorial_count": len(matched_editorial_queries),
+        "editorial_missed": missed_editorial,
         "candidate_count_considered": len(candidates),
         "candidate_count_added": len(candidate_albums),
-        "albums": [*editorial_albums, *candidate_albums],
+        "albums": [*matched_editorial_queries, *candidate_albums],
     }

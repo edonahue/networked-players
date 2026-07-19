@@ -35,6 +35,28 @@ def test_match_albums_case_insensitive_and_reports_misses(dataset_root: Path) ->
     assert missed == [{"artist": "Nobody", "title": "Nothing"}]
 
 
+def test_match_albums_rejects_release_outside_format_policy(dataset_root: Path) -> None:
+    with CreditGraph.open(dataset_root) as graph:
+        matched, missed = match_albums(
+            graph,
+            [{"artist": "Alice", "title": "First Light"}],
+            allowed_release_ids=frozenset({2, 3, 4, 5, 6, 7}),  # release 1 excluded
+        )
+    assert matched == []
+    assert missed == [{"artist": "Alice", "title": "First Light"}]
+
+
+def test_match_albums_allows_release_inside_format_policy(dataset_root: Path) -> None:
+    with CreditGraph.open(dataset_root) as graph:
+        matched, missed = match_albums(
+            graph,
+            [{"artist": "Alice", "title": "First Light"}],
+            allowed_release_ids=frozenset({1}),
+        )
+    assert len(matched) == 1
+    assert missed == []
+
+
 def test_match_albums_prefers_main_release_and_year(dataset_root: Path) -> None:
     with CreditGraph.open(dataset_root) as graph:
         matched, _ = match_albums(graph, [{"artist": "Alice", "title": "First Light"}])

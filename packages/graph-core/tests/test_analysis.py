@@ -116,6 +116,27 @@ def test_assemble_album_catalog_private_weight_can_reorder_ties(dataset_root: Pa
     assert weighted["albums"][1]["artist"] == "Dan"
 
 
+def test_assemble_album_catalog_applies_release_format_policy_to_editorial(
+    dataset_root: Path,
+) -> None:
+    editorial = [{"artist": "Alice", "title": "First Light"}]  # release 1
+    with CreditGraph.open(dataset_root) as graph:
+        candidates = rank_album_candidates(dataset_root)
+        catalog = assemble_album_catalog(
+            graph,
+            editorial,
+            candidates,
+            target_count=3,
+            allowed_release_ids=frozenset({2, 3, 4, 5, 6, 7}),  # release 1 excluded
+        )
+
+    assert catalog["editorial_count"] == 0
+    # Master 904 (also Alice, artist_id 100) is now a free candidate slot
+    # since the editorial entry no longer consumes that artist_id.
+    added_artists = {a["artist"] for a in catalog["albums"]}
+    assert "Alice" in added_artists
+
+
 def test_assemble_album_catalog_rejects_non_positive_target(dataset_root: Path) -> None:
     with CreditGraph.open(dataset_root) as graph:
         with pytest.raises(ValueError, match="target_count must be positive"):
