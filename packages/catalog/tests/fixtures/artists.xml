@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<artists>
+  <artist>
+    <id>2</id>
+    <name>Mr. James Barth &amp; A.D.</name>
+    <data_quality>Correct</data_quality>
+    <namevariations>
+      <name>MR JAMES BARTH &amp; A. D.</name>
+    </namevariations>
+    <members>
+      <name id="26">Alexi Delano</name>
+      <name id="27">Cari Lekebusch</name>
+    </members>
+  </artist>
+  <artist>
+    <id>26</id>
+    <name>Alexi Delano</name>
+    <data_quality>Correct</data_quality>
+    <groups>
+      <name id="2">Mr. James Barth &amp; A.D.</name>
+    </groups>
+  </artist>
+  <artist>
+    <id>50</id>
+    <name>Solo Artist With No Relations</name>
+    <data_quality>Needs Vote</data_quality>
+  </artist>
+</artists>

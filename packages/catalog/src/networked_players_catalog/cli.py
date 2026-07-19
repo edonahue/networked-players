@@ -48,6 +48,32 @@ def _parser() -> argparse.ArgumentParser:
     parse_masters.add_argument("--chunk-masters", type=int, default=10_000)
     parse_masters.add_argument("--overwrite", action="store_true")
 
+    parse_artist_relations = subparsers.add_parser(
+        "parse-artist-relations",
+        help="stream an artists dump's <groups>/<members> tags into Parquet",
+    )
+    parse_artist_relations.add_argument("--input", type=Path, required=True)
+    parse_artist_relations.add_argument("--snapshot", required=True)
+    parse_artist_relations.add_argument("--source-url", required=True)
+    parse_artist_relations.add_argument("--output-root", type=Path, required=True)
+    parse_artist_relations.add_argument("--max-artists", type=int)
+    parse_artist_relations.add_argument("--chunk-artists", type=int, default=50_000)
+    parse_artist_relations.add_argument("--overwrite", action="store_true")
+
+    artist_family = subparsers.add_parser(
+        "build-artist-family-exclusions",
+        help="build a scoped person->group_act_ids exclusion artifact from parsed artist relations",
+    )
+    artist_family.add_argument("--dataset", type=Path, required=True)
+    artist_family.add_argument(
+        "--artist-ids-file",
+        type=Path,
+        required=True,
+        help="JSON file containing a flat array of artist IDs to scope the artifact to",
+    )
+    artist_family.add_argument("--snapshot", required=True)
+    artist_family.add_argument("--output", type=Path, required=True)
+
     validate = subparsers.add_parser("validate", help="validate a normalized snapshot with DuckDB")
     validate.add_argument("--dataset", type=Path, required=True)
 
@@ -555,6 +581,47 @@ def main(argv: Sequence[str] | None = None) -> int:
             overwrite=args.overwrite,
         )
         print(json.dumps(masters_manifest, indent=2, sort_keys=True))
+        return 0
+
+    if args.command == "parse-artist-relations":
+        from .discogs.artists import iter_artist_relations
+        from .discogs.parquet import write_artist_relations_dataset
+
+        relation_records = iter_artist_relations(
+            args.input,
+            snapshot_date=args.snapshot,
+            source_url=args.source_url,
+            max_artists=args.max_artists,
+        )
+        relations_manifest = write_artist_relations_dataset(
+            relation_records,
+            args.output_root,
+            snapshot_date=args.snapshot,
+            source_url=args.source_url,
+            chunk_artists=args.chunk_artists,
+            overwrite=args.overwrite,
+        )
+        print(json.dumps(relations_manifest, indent=2, sort_keys=True))
+        return 0
+
+    if args.command == "build-artist-family-exclusions":
+        from .discogs.artist_family import (
+            build_artist_family_exclusions,
+            write_artist_family_exclusions,
+        )
+
+        artist_ids = json.loads(args.artist_ids_file.read_text())
+        exclusions = build_artist_family_exclusions(
+            args.dataset, artist_ids=artist_ids, snapshot_date=args.snapshot
+        )
+        write_artist_family_exclusions(exclusions, args.output)
+        print(
+            json.dumps(
+                {"output": str(args.output), "entry_count": len(exclusions["entries"])},
+                indent=2,
+                sort_keys=True,
+            )
+        )
         return 0
 
     if args.command == "validate":
