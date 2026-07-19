@@ -258,6 +258,30 @@ def _parser() -> argparse.ArgumentParser:
     validate_rounds.add_argument("--universe", type=Path, required=True)
     validate_rounds.add_argument("--rounds", type=Path, required=True)
 
+    build_daily = subparsers.add_parser(
+        "build-daily-manifest",
+        help="build a frozen date->round_id schedule for Connection of the Day",
+    )
+    build_daily.add_argument("--rounds", type=Path, required=True)
+    build_daily.add_argument("--start-date", required=True, help="YYYY-MM-DD")
+    build_daily.add_argument("--days", type=int, default=365)
+    build_daily.add_argument("--output", type=Path, required=True)
+
+    extend_daily = subparsers.add_parser(
+        "extend-daily-manifest",
+        help="append new dates to an existing daily manifest without touching history",
+    )
+    extend_daily.add_argument("--manifest", type=Path, required=True)
+    extend_daily.add_argument("--rounds", type=Path, required=True)
+    extend_daily.add_argument("--days", type=int, default=365)
+    extend_daily.add_argument("--output", type=Path, required=True)
+
+    validate_daily = subparsers.add_parser(
+        "validate-daily-manifest", help="validate a daily-manifest.v1 artifact against its contract"
+    )
+    validate_daily.add_argument("--manifest", type=Path, required=True)
+    validate_daily.add_argument("--rounds", type=Path, required=True)
+
     rank_albums = subparsers.add_parser(
         "rank-album-candidates",
         help="rank master_ids by release-variant count x credit richness (local-only shortlist)",
@@ -1021,6 +1045,70 @@ def main(argv: Sequence[str] | None = None) -> int:
         universe = json.loads(args.universe.read_text())
         rounds = json.loads(args.rounds.read_text())
         validate_rounds_artifact(universe, rounds)
+        print(json.dumps({"ok": True}, indent=2))
+        return 0
+
+    if args.command == "build-daily-manifest":
+        from networked_players_graph_core.daily_manifest import build_daily_manifest
+
+        rounds = json.loads(args.rounds.read_text())
+        round_ids = [r["id"] for r in rounds["rounds"]]
+        daily_manifest = build_daily_manifest(
+            round_ids,
+            pool_version=rounds["pool_version"],
+            start_date=args.start_date,
+            days=args.days,
+        )
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(json.dumps(daily_manifest, indent=2) + "\n")
+        print(
+            json.dumps(
+                {
+                    "output": str(args.output),
+                    "days_requested": args.days,
+                    "days_scheduled": len(daily_manifest["schedule"]),
+                    "first_date": daily_manifest["schedule"][0]["date"],
+                    "last_date": daily_manifest["schedule"][-1]["date"],
+                },
+                indent=2,
+            )
+        )
+        return 0
+
+    if args.command == "extend-daily-manifest":
+        from networked_players_graph_core.daily_manifest import extend_daily_manifest
+
+        daily_manifest = json.loads(args.manifest.read_text())
+        rounds = json.loads(args.rounds.read_text())
+        if rounds["pool_version"] != daily_manifest["pool_version"]:
+            raise ValueError(
+                f"rounds pool_version {rounds['pool_version']!r} does not match "
+                f"manifest pool_version {daily_manifest['pool_version']!r}"
+            )
+        round_ids = [r["id"] for r in rounds["rounds"]]
+        extended = extend_daily_manifest(daily_manifest, round_ids, days=args.days)
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(json.dumps(extended, indent=2) + "\n")
+        print(
+            json.dumps(
+                {
+                    "output": str(args.output),
+                    "days_before": len(daily_manifest["schedule"]),
+                    "days_after": len(extended["schedule"]),
+                    "last_date": extended["schedule"][-1]["date"],
+                },
+                indent=2,
+            )
+        )
+        return 0
+
+    if args.command == "validate-daily-manifest":
+        from networked_players_graph_core.daily_manifest import validate_daily_manifest
+
+        daily_manifest = json.loads(args.manifest.read_text())
+        rounds = json.loads(args.rounds.read_text())
+        valid_round_ids = {r["id"] for r in rounds["rounds"]}
+        validate_daily_manifest(daily_manifest, valid_round_ids=valid_round_ids)
         print(json.dumps({"ok": True}, indent=2))
         return 0
 
