@@ -487,6 +487,43 @@ a.mode-card:focus-visible {
   background: transparent;
   color: var(--paper-ink);
 }
+
+/* Shared evidence panel: the honesty stamp under every connection. */
+.evidence-panel__stamp {
+  margin-top: 12px;
+  color: var(--muted);
+}
+
+/* Minimal contributor cards on album pages — names, never pages. */
+.contributor-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.contributor-card {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+.contributor-card__name {
+  font-weight: 600;
+}
+.contributor-card__id {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.play-from-here {
+  margin-top: 32px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
 .stage [data-testid="next-round"] {
   margin-top: 16px;
 }

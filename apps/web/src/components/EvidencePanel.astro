@@ -1,0 +1,121 @@
+---
+// The one evidence component (plan §12.7): every documented connection —
+// challenge.v1 demo paths, challenge.v2 album pairs, playable-cohort hops —
+// renders through this panel. Callers supply their own summary header via
+// the slot and a normalized PanelHop list (src/data/evidence.ts). Hops with
+// credit rows show the full table; cohort hops show their quality flags,
+// because the playable-cohort contract deliberately ships no per-credit rows.
+
+import type { PanelHop } from '../data/evidence';
+
+interface Props {
+  hops: PanelHop[];
+  pathId?: string;
+  id?: string;
+  hidden?: boolean;
+  class?: string;
+}
+
+const { hops, pathId, id, hidden = false, class: className } = Astro.props;
+---
+
+<article class={className} id={id} data-path-id={pathId} hidden={hidden}>
+  <slot />
+  {
+    hops.map((hop) => (
+      <div class="hop">
+        <div class="hop__head">
+          {hop.coverUri && (
+            <img
+              class="hop__cover"
+              src={hop.coverUri}
+              width="64"
+              height="64"
+              loading="lazy"
+              alt={`Cover art for ${hop.release.title}`}
+            />
+          )}
+          <div class="hop__head-text">
+            <p class="hop__title">
+              Hop {hop.index}: {hop.aName} and {hop.bName}
+            </p>
+            <p class="hop__release">
+              both credited on <strong>{hop.release.title}</strong>
+              {hop.release.released ? ` (${hop.release.released}` : ''}
+              {hop.release.released && hop.release.country
+                ? `, ${hop.release.country})`
+                : hop.release.released
+                  ? ')'
+                  : ''}
+              {hop.release.sourceUrl && (
+                <>
+                  {' · '}
+                  <a href={hop.release.sourceUrl} rel="nofollow noopener">
+                    source
+                  </a>
+                </>
+              )}
+            </p>
+          </div>
+        </div>
+        {hop.rows.length > 0 && (
+          <div class="evidence">
+            <table>
+              <caption>Release {hop.release.ref} · evidence</caption>
+              <thead>
+                <tr>
+                  <th scope="col">Credited as</th>
+                  <th scope="col">Scope</th>
+                  <th scope="col">Role</th>
+                  <th scope="col">Identity</th>
+                </tr>
+              </thead>
+              <tbody>
+                {hop.rows.map((row) => (
+                  <tr>
+                    <td>
+                      {row.name}
+                      {row.anv ? (
+                        <>
+                          {' '}
+                          (as <em>{row.anv}</em>)
+                        </>
+                      ) : null}
+                      {row.trackPosition ? (
+                        <>
+                          {' '}
+                          <code>{row.trackPosition}</code>
+                        </>
+                      ) : null}
+                    </td>
+                    <td>{row.scope}</td>
+                    <td>{row.role ?? '—'}</td>
+                    <td>
+                      <span class="tag tag--linked">#{row.artistId} · linked</span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        {hop.flagsLine && <p class="hop__release">{hop.flagsLine}</p>}
+        {hop.nonLinked.length > 0 && (
+          <p class="hop__release" style="margin-top:10px">
+            Also on this release as <strong>evidence only</strong> (not a playable identity):{' '}
+            {hop.nonLinked.map((c, i) => (
+              <>
+                {i > 0 ? ', ' : ''}
+                <span class="tag tag--unlinked">{c.name}</span>
+                {c.role ? ` — ${c.role}` : ''}
+              </>
+            ))}
+          </p>
+        )}
+      </div>
+    ))
+  }
+  <p class="stamp evidence-panel__stamp">
+    A shared credit documents participation on a recording — evidence, never influence.
+  </p>
+</article>

@@ -132,6 +132,12 @@ test("an album page renders mode controls and reveals evidence", async ({
     "aria-expanded",
     "false",
   );
+
+  // Plan §12.7: minimal contributor cards and the play-from-here cross-link.
+  await expect(page.locator(".contributor-card").first()).toBeVisible();
+  await expect(
+    page.locator(".play-from-here a[href='/play/connection/']"),
+  ).toBeVisible();
 });
 
 test("cohorts index lists cohorts and links to a detail page", async ({
@@ -183,11 +189,23 @@ test("cohort detail page shows the synthetic notice and reveals a pair", async (
     page.locator("[data-guess-target]:not([hidden])").first(),
   ).toBeVisible();
   await expect(page.locator(`#${controls}`)).toBeVisible();
+  // Plan §12.7: cohort hops render through the shared evidence panel — the
+  // contract ships no per-credit rows, so the quality-flags line stands in.
+  await expect(page.locator(`#${controls} .hop`).first()).toContainText(
+    "playable-cohort contract",
+  );
 
   await firstReveal.click();
   await expect(firstReveal).toHaveText("Reveal");
   await expect(firstReveal).toHaveAttribute("aria-expanded", "false");
   await expect(page.locator(`#${controls}`)).toBeHidden();
+
+  // Plan §12.7: the page links onward into play.
+  await expect(
+    page.locator(
+      "[data-testid='cohort-play-link'] a[href='/play/connection/']",
+    ),
+  ).toBeVisible();
 
   const bodyText = (await page.textContent("body"))?.toLowerCase() ?? "";
   expect(bodyText).not.toContain("worked with");
