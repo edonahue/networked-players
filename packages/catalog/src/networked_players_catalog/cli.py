@@ -894,7 +894,14 @@ def main(argv: Sequence[str] | None = None) -> int:
 
         onehop_manifest_path = args.onehop_root / "manifest.json"
         onehop_manifest = json.loads(onehop_manifest_path.read_text())
-        snapshot_date = str(onehop_manifest["expansion"]["source_snapshot_date"])
+        # Prefer the dataset's own top-level snapshot_date -- always present
+        # and, for a format-migrated dataset (e.g. discogs-onehop-v3), the
+        # only one present; expansion.source_snapshot_date is kept as a
+        # fallback for older manifests that predate this preference.
+        snapshot_date = str(
+            onehop_manifest.get("snapshot_date")
+            or onehop_manifest["expansion"]["source_snapshot_date"]
+        )
         albums = json.loads(args.albums.read_text())["albums"]
         # An ID-resolved album (e.g. build-album-catalog's output) carries
         # artist_id directly; re-matching it by name string would reopen the
@@ -995,7 +1002,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         from networked_players_graph_core.rounds_generator import generate_round_pool
 
         onehop_manifest = json.loads((args.onehop_root / "manifest.json").read_text())
-        snapshot_date = str(onehop_manifest["expansion"]["source_snapshot_date"])
+        # Prefer the dataset's own top-level snapshot_date -- always present
+        # and, for a format-migrated dataset (e.g. discogs-onehop-v3), the
+        # only one present; expansion.source_snapshot_date is kept as a
+        # fallback for older manifests that predate this preference.
+        snapshot_date = str(
+            onehop_manifest.get("snapshot_date")
+            or onehop_manifest["expansion"]["source_snapshot_date"]
+        )
         albums = json.loads(args.albums.read_text())["albums"]
         albums_are_resolved = bool(albums) and "artist_id" in albums[0]
 
