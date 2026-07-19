@@ -37,17 +37,40 @@ _TITLE_SIGNAL_PATTERN = re.compile(
     re.IGNORECASE,
 )
 
+# A narrower, downgrade-only safety net -- see the 2026-07-19 real-snapshot
+# validation run recorded in docs/RELEASE_FORMAT_RESEARCH.md: of 33,929
+# releases where the legacy title filter would have excluded a release the
+# structured-format policy allows, 32,119 (94.7%) had "live", "bootleg", or
+# "soundtrack" in the title (e.g. "801 Live", "Unplugged (The Official
+# Bootleg)", "Live In Japan") while their only format descriptor was a bare
+# "Album" -- Discogs' own contributors evidently tag the carrier/edition
+# facts far more consistently than the "Live"/"Soundtrack" descriptor itself.
+# Deliberately excludes "reissue" (explicitly meant to NOT disqualify an
+# Album, confirmed correct in that same run: only 6 of 33,929 disagreements
+# were reissue-only) and the broader compilation-family terms (already
+# well-covered by explicit structured descriptors, per the same run: compilation
+# alone accounts for 380,004 of the 600,373 structurally-excluded releases).
+_RESIDUAL_LIVE_SIGNAL_PATTERN = re.compile(
+    r"\b(bootlegs?|live(?:box)?|soundtracks?|sound collages?)\b", re.IGNORECASE
+)
+
 
 def _norm(value: object) -> str:
     return " ".join(str(value or "").casefold().split())
 
 
-def classify_formats(formats: list[dict[str, Any]]) -> dict[str, Any]:
+def classify_formats(formats: list[dict[str, Any]], *, title: str | None = None) -> dict[str, Any]:
     """Classify one release's structured format rows.
 
     The policy deliberately requires the factual ``Album`` descriptor. A
     carrier such as LP or CD is not enough, and explicit Compilation wins over
     Album for this first curated cohort.
+
+    ``title`` is optional and used only as a downgrade-only safety net (see
+    ``_RESIDUAL_LIVE_SIGNAL_PATTERN``): it can turn an ``allow`` into
+    ``review``, never the reverse, and never turns anything into ``exclude``
+    on its own -- matching this project's "can only under-filter" precedent
+    for every other keyword-based guard (ADR 0027, ADR 0036).
     """
     descriptors = [_norm(d) for row in formats for d in (row.get("descriptions") or [])]
     names = [_norm(row.get("format_name")) for row in formats if row.get("format_name")]
@@ -74,6 +97,14 @@ def classify_formats(formats: list[dict[str, Any]]) -> dict[str, Any]:
             "descriptors": descriptors,
         }
     if "album" in descriptors:
+        if title and _RESIDUAL_LIVE_SIGNAL_PATTERN.search(title):
+            return {
+                "decision": "review",
+                "shape": "unknown",
+                "signals": ["explicit_album", "title_signals_live_or_soundtrack"],
+                "format_names": names,
+                "descriptors": descriptors,
+            }
         return {
             "decision": "allow",
             "shape": "studio_album",
@@ -103,7 +134,7 @@ def build_release_format_policy(
         formats_glob = str(root / "table=release_formats" / "*.parquet")
         rows = connection.execute(
             f"""
-            SELECT r.release_id, f.format_name, f.descriptions
+            SELECT r.release_id, r.title, f.format_name, f.descriptions
             FROM read_parquet('{release_glob}', hive_partitioning = false) r
             LEFT JOIN read_parquet('{formats_glob}', hive_partitioning = false) f
               USING (release_id)
@@ -115,7 +146,9 @@ def build_release_format_policy(
 
     classifications: list[dict[str, Any]] = []
     by_release: dict[int, list[dict[str, Any]]] = {}
-    for release_id, format_name, descriptions in rows:
+    titles: dict[int, str | None] = {}
+    for release_id, title, format_name, descriptions in rows:
+        titles[int(release_id)] = title
         if format_name is not None:
             by_release.setdefault(int(release_id), []).append(
                 {"format_name": format_name, "descriptions": descriptions or []}
@@ -123,7 +156,7 @@ def build_release_format_policy(
         else:
             by_release.setdefault(int(release_id), [])
     for release_id, normalized_rows in by_release.items():
-        result = classify_formats(normalized_rows)
+        result = classify_formats(normalized_rows, title=titles.get(release_id))
         classifications.append(
             {
                 "snapshot_date": str(manifest["snapshot_date"]),
