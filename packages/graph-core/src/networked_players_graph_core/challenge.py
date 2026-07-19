@@ -17,7 +17,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from . import __version__
-from .graph import CreditGraph, EvidencePath
+from .graph import CreditGraph, EvidencePath, FrontierTooLargeError
 
 CHALLENGE_SCHEMA_VERSION = 2
 
@@ -220,20 +220,50 @@ def _candidate_album_pairs(
     return candidates
 
 
+def _bounded_find_path(
+    graph: CreditGraph,
+    from_artist_id: int,
+    to_artist_id: int,
+    *,
+    max_hops: int,
+    max_frontier_expansion: int | None,
+) -> tuple[EvidencePath | None, bool]:
+    """`find_path`, but a `FrontierTooLargeError` (search inconclusive, not a
+    confirmed no-path -- see `graph.py`) is caught and reported as `(None,
+    capped=True)` rather than propagating. At real-catalog scale (tens of
+    thousands of candidate pairs, most of which are NOT connected), an
+    unbounded BFS through a high-degree hub artist is the actual cost driver;
+    a cap turns "run for a very long time" into "report this pair as
+    inconclusive," which is honest -- not a confirmed no-path -- and bounded.
+    """
+    try:
+        return (
+            graph.find_path(
+                from_artist_id,
+                to_artist_id,
+                max_hops=max_hops,
+                max_frontier_expansion=max_frontier_expansion,
+            ),
+            False,
+        )
+    except FrontierTooLargeError:
+        return None, True
+
+
 def _find_paths_concurrently(
     graph: CreditGraph,
     candidate_pairs: list[tuple[MatchedAlbum, MatchedAlbum]],
     *,
     max_hops: int,
     max_workers: int,
-) -> dict[tuple[int, int], EvidencePath | None]:
+    max_frontier_expansion: int | None,
+) -> tuple[dict[tuple[int, int], EvidencePath | None], int]:
     """Precomputes every candidate pair's `find_path` result up front, spread
     across `max_workers` cursors -- unlike the sequential path (which can
     stop calling `find_path` once `max_paths` is satisfied), this always
-    computes every candidate. Album lists here are small (tens, not
-    hundreds) so that's a bounded, acceptable cost for real concurrency;
-    output building afterward still stops at `max_paths`, so report/ordering
-    semantics are unchanged from the sequential path."""
+    computes every candidate. Output building afterward still stops at
+    `max_paths`, so report/ordering semantics are unchanged from the
+    sequential path. Returns `(paths, capped_count)`."""
     worker_graphs = [graph.cursor() for _ in range(max_workers)]
     chunks: list[list[tuple[MatchedAlbum, MatchedAlbum]]] = [[] for _ in range(max_workers)]
     for index, pair in enumerate(candidate_pairs):
@@ -241,20 +271,27 @@ def _find_paths_concurrently(
 
     def _run_chunk(
         worker_index: int,
-    ) -> list[tuple[int, int, EvidencePath | None]]:
+    ) -> list[tuple[int, int, EvidencePath | None, bool]]:
         worker_graph = worker_graphs[worker_index]
-        return [
-            (
+        results = []
+        for from_album, to_album in chunks[worker_index]:
+            path, capped = _bounded_find_path(
+                worker_graph,
                 from_album.artist_id,
                 to_album.artist_id,
-                worker_graph.find_path(from_album.artist_id, to_album.artist_id, max_hops=max_hops),
+                max_hops=max_hops,
+                max_frontier_expansion=max_frontier_expansion,
             )
-            for from_album, to_album in chunks[worker_index]
-        ]
+            results.append((from_album.artist_id, to_album.artist_id, path, capped))
+        return results
 
     with ThreadPoolExecutor(max_workers=max_workers) as pool:
         chunk_results = list(pool.map(_run_chunk, range(max_workers)))
-    return {(from_id, to_id): path for chunk in chunk_results for from_id, to_id, path in chunk}
+    paths = {
+        (from_id, to_id): path for chunk in chunk_results for from_id, to_id, path, _capped in chunk
+    }
+    capped_count = sum(1 for chunk in chunk_results for *_rest, capped in chunk if capped)
+    return paths, capped_count
 
 
 def build_challenge_v2(
@@ -268,6 +305,7 @@ def build_challenge_v2(
     max_workers: int = 1,
     is_family_excluded: Callable[[int, int], bool] | None = None,
     allowed_release_ids: frozenset[int] | None = None,
+    max_frontier_expansion: int | None = 300,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     """Match `{artist, title}` name/title queries against the graph, then
     build the artifact. For albums already resolved to a real artist_id
@@ -287,6 +325,7 @@ def build_challenge_v2(
         max_hops=max_hops,
         max_workers=max_workers,
         is_family_excluded=is_family_excluded,
+        max_frontier_expansion=max_frontier_expansion,
     )
 
 
@@ -301,10 +340,18 @@ def build_challenge_v2_from_matched(
     max_hops: int = 4,
     max_workers: int = 1,
     is_family_excluded: Callable[[int, int], bool] | None = None,
+    max_frontier_expansion: int | None = 300,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     """Build the artifact from an already-resolved album list -- no further
     name-based matching happens here. `missed` is carried through only for
-    the report; pass `()` if there is nothing to report as missed."""
+    the report; pass `()` if there is nothing to report as missed.
+
+    `max_frontier_expansion` (default 300, same as the cohort scorer's own
+    default) bounds each `find_path` search -- at real-catalog scale (tens of
+    thousands of candidate pairs, most NOT connected), an unbounded BFS
+    through a high-degree hub artist is the real cost driver, not edge
+    construction. A pair whose search hits the cap is reported inconclusive
+    (`paths_capped` in the report), never as a confirmed no-path."""
     distinct_artist_matches = {m.artist_id: m for m in matched}
     if len(distinct_artist_matches) < 2:
         raise ValueError(
@@ -314,11 +361,16 @@ def build_challenge_v2_from_matched(
 
     ordered = sorted(matched, key=lambda m: m.album_id)
     candidate_pairs = _candidate_album_pairs(ordered, is_family_excluded=is_family_excluded)
-    precomputed_paths = (
-        _find_paths_concurrently(graph, candidate_pairs, max_hops=max_hops, max_workers=max_workers)
-        if max_workers > 1
-        else None
-    )
+    capped_count = 0
+    precomputed_paths: dict[tuple[int, int], EvidencePath | None] | None = None
+    if max_workers > 1:
+        precomputed_paths, capped_count = _find_paths_concurrently(
+            graph,
+            candidate_pairs,
+            max_hops=max_hops,
+            max_workers=max_workers,
+            max_frontier_expansion=max_frontier_expansion,
+        )
 
     attempted = 0
     paths_json: list[dict[str, Any]] = []
@@ -332,7 +384,14 @@ def build_challenge_v2_from_matched(
         if precomputed_paths is not None:
             path = precomputed_paths[(from_album.artist_id, to_album.artist_id)]
         else:
-            path = graph.find_path(from_album.artist_id, to_album.artist_id, max_hops=max_hops)
+            path, capped = _bounded_find_path(
+                graph,
+                from_album.artist_id,
+                to_album.artist_id,
+                max_hops=max_hops,
+                max_frontier_expansion=max_frontier_expansion,
+            )
+            capped_count += int(capped)
         if path is None:
             continue
 
@@ -430,6 +489,7 @@ def build_challenge_v2_from_matched(
         "missed_queries": missed,
         "paths_found": len(paths_json),
         "paths_attempted": attempted,
+        "paths_capped": capped_count,
     }
     return artifact, report
 

@@ -172,6 +172,13 @@ def _parser() -> argparse.ArgumentParser:
     build_challenge.add_argument("--output", type=Path, required=True)
     build_challenge.add_argument("--max-paths", type=int, default=12)
     build_challenge.add_argument("--max-hops", type=int, default=4)
+    build_challenge.add_argument(
+        "--max-frontier-expansion",
+        type=int,
+        default=300,
+        help="bound each find_path search's per-hop degree (same default as the cohort scorer); "
+        "0 or negative disables the bound",
+    )
     build_challenge.add_argument("--max-artists-per-release", type=int, default=50)
     build_challenge.add_argument("--memory-limit", default="1GB")
     build_challenge.add_argument("--threads", type=int, default=2)
@@ -931,6 +938,9 @@ def main(argv: Sequence[str] | None = None) -> int:
             if args.masters_root is not None:
                 graph.attach_masters(args.masters_root)
 
+            max_frontier_expansion = (
+                args.max_frontier_expansion if args.max_frontier_expansion > 0 else None
+            )
             if albums_are_resolved:
                 matched = [resolved_album_from_dict(a) for a in albums]
                 if allowed_release_ids is not None:
@@ -949,6 +959,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                     max_hops=args.max_hops,
                     max_workers=args.max_workers,
                     is_family_excluded=is_family_excluded,
+                    max_frontier_expansion=max_frontier_expansion,
                 )
             else:
                 artifact, report = build_challenge_v2(
@@ -963,6 +974,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                     max_workers=args.max_workers,
                     is_family_excluded=is_family_excluded,
                     allowed_release_ids=allowed_release_ids,
+                    max_frontier_expansion=max_frontier_expansion,
                 )
 
         if args.enrich_images:
