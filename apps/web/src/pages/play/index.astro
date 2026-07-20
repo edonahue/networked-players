@@ -1,0 +1,68 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import type { UniverseV1 } from '../../data/rounds';
+import universeData from '../../../public/data/game/universe.v1.json';
+
+const universe = universeData as UniverseV1;
+const { one_hop, two_hop } = universe.counts;
+
+const description = [
+  `${one_hop + two_hop} real, performer-only connections drawn from the Discogs monthly dump.`,
+  'Guess the connection, then reveal the documented evidence.',
+].join(' ');
+---
+
+<BaseLayout title="Connection Guesser" description={description}>
+  <section class="shell" style="padding-top:40px">
+    <p class="eyebrow">Connection Guesser</p>
+    <h1 style="font-size:clamp(1.8rem,4vw,2.6rem)">Guess the connection</h1>
+    <p class="lede" style="margin-top:6px">
+      {one_hop} one-hop and {two_hop} two-hop rounds, every one a real, documented
+      instrumental or vocal credit — never inferred influence. Pool version{' '}
+      <code>{universe.pool_version}</code>.
+    </p>
+
+    <div id="round-status" class="lede" aria-live="polite">Loading a real round…</div>
+    <div id="round-container" data-round-container></div>
+    <button type="button" id="next-round" class="mode-toggle" hidden style="margin-top:16px">
+      Next round
+    </button>
+  </section>
+</BaseLayout>
+
+<script>
+  import { fetchRounds, pickRandomRound, renderRound } from '../../game/render';
+  import type { RoundsV1, UniverseV1 } from '../../data/rounds';
+  import universeData from '../../../public/data/game/universe.v1.json';
+
+  const universe = universeData as UniverseV1;
+  const status = document.getElementById('round-status');
+  const container = document.querySelector<HTMLElement>('[data-round-container]');
+  const nextButton = document.getElementById('next-round') as HTMLButtonElement | null;
+
+  let rounds: RoundsV1 | null = null;
+  let currentId: string | undefined;
+
+  const showRound = () => {
+    if (!rounds || !container) return;
+    const round = pickRandomRound(rounds, currentId);
+    currentId = round.id;
+    renderRound(round, universe, rounds, container);
+  };
+
+  fetchRounds()
+    .then((data) => {
+      rounds = data;
+      if (status) status.textContent = '';
+      if (nextButton) nextButton.hidden = false;
+      showRound();
+    })
+    .catch(() => {
+      if (status) {
+        status.textContent =
+          'Could not load the round pool right now — try refreshing the page.';
+      }
+    });
+
+  nextButton?.addEventListener('click', showRound);
+</script>

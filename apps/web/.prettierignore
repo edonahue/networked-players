@@ -1,0 +1,10 @@
+# Generated data artifacts, not authored source -- produced by the Python
+# catalog/graph-core pipeline (packages/catalog, packages/graph-core), never
+# hand-edited. Prettier's array-collapsing heuristics differ from Python's
+# json.dumps(indent=2) output in ways that are cosmetic, not meaningful; the
+# real contract is enforced by validate_challenge/validate_rounds_artifact
+# and this app's own rounds-manifest.spec.ts/cohort-manifest.spec.ts, not by
+# formatting.
+public/data/**/*.json
+
+dist/

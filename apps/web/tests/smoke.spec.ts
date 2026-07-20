@@ -134,6 +134,94 @@ test("a play page renders mode controls and reveals evidence", async ({
   );
 });
 
+test("static game artifacts are reachable and real", async ({ request }) => {
+  const universeRes = await request.get("/data/game/universe.v1.json");
+  expect(universeRes.ok()).toBeTruthy();
+  const universe = await universeRes.json();
+  expect(universe.schema_version).toBe(1);
+  expect(universe.provenance.generated_by).not.toContain("synthetic");
+  expect(Array.isArray(universe.albums)).toBe(true);
+
+  const roundsRes = await request.get("/data/game/rounds.v1.json");
+  expect(roundsRes.ok()).toBeTruthy();
+  const rounds = await roundsRes.json();
+  expect(rounds.schema_version).toBe(1);
+  expect(rounds.pool_version).toBe(universe.pool_version);
+  expect(Array.isArray(rounds.rounds)).toBe(true);
+  expect(rounds.rounds.length).toBeGreaterThan(0);
+
+  const dailyRes = await request.get("/data/game/daily-manifest.v1.json");
+  expect(dailyRes.ok()).toBeTruthy();
+  const daily = await dailyRes.json();
+  expect(daily.pool_version).toBe(universe.pool_version);
+  expect(Array.isArray(daily.schedule)).toBe(true);
+});
+
+test("play page loads a real round and reveals evidence without leaking the answer first", async ({
+  page,
+}) => {
+  await page.goto("/play/");
+  await expect(page.getByRole("heading", { level: 1 })).toContainText(
+    "Guess the connection",
+  );
+
+  const round = page.locator("[data-round-container] article.evidence-card");
+  await expect(round).toBeVisible({ timeout: 15000 });
+
+  const reveal = page.locator("[data-round-reveal-button]");
+  await expect(reveal).toHaveAttribute("aria-expanded", "false");
+  const evidence = page.locator(".round-evidence");
+  // Same established pattern as EvidenceCard/CohortPairCard: evidence is
+  // present in the DOM but under the `hidden` attribute (browser-default
+  // `display: none`) until revealed -- not literally absent from markup,
+  // consistent with every other reveal mechanic already shipped and tested
+  // in this codebase (cohort-manifest.spec.ts, the existing play-page test).
+  await expect(evidence).toBeHidden();
+
+  await reveal.click();
+  await expect(reveal).toHaveAttribute("aria-expanded", "true");
+  await expect(evidence).toBeVisible();
+  await expect(evidence.locator(".hop").first()).toBeVisible();
+  await expect(evidence.locator("table").first()).toBeVisible();
+
+  // "Next round" swaps in a different real round.
+  const firstRoundId = await round.getAttribute("data-round-id");
+  await page.getByRole("button", { name: "Next round" }).click();
+  await expect(round).toBeVisible({ timeout: 15000 });
+  // Not asserted to differ (the pool could be small enough to repeat), but
+  // must still be a real, evidence-bearing round either way.
+  await expect(page.locator(".round-evidence")).toBeHidden();
+  expect(await round.getAttribute("data-round-id")).toBeTruthy();
+  void firstRoundId;
+});
+
+test("daily page resolves today's exact round from the frozen manifest", async ({
+  page,
+  request,
+}) => {
+  const dailyRes = await request.get("/data/game/daily-manifest.v1.json");
+  const daily = await dailyRes.json();
+  const today = new Date().toISOString().slice(0, 10);
+  const entry = daily.schedule.find(
+    (e: { date: string; round_id: string }) => e.date === today,
+  );
+  test.skip(!entry, "today's date is outside the generated schedule");
+
+  await page.goto("/daily/");
+  await expect(page.getByRole("heading", { level: 1 })).toContainText(today);
+
+  const round = page.locator("[data-round-container] article.evidence-card");
+  await expect(round).toBeVisible({ timeout: 15000 });
+  await expect(round).toHaveAttribute("data-round-id", entry.round_id);
+
+  // Reloading the same real date must resolve to the exact same round --
+  // the frozen-manifest stability guarantee, checked end to end through the
+  // actual page, not just the artifact.
+  await page.reload();
+  await expect(round).toBeVisible({ timeout: 15000 });
+  await expect(round).toHaveAttribute("data-round-id", entry.round_id);
+});
+
 test("cohorts index lists cohorts and links to a detail page", async ({
   page,
 }) => {

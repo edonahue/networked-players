@@ -1,0 +1,695 @@
+{
+  "schema_version": 1,
+  "pool_version": "rounds-v1-20260719",
+  "generated_at": "2026-07-20T02:10:28.870745+00:00",
+  "schedule": [
+    {
+      "date": "2026-07-19",
+      "round_id": "round-000021"
+    },
+    {
+      "date": "2026-07-20",
+      "round_id": "round-000105"
+    },
+    {
+      "date": "2026-07-21",
+      "round_id": "round-000116"
+    },
+    {
+      "date": "2026-07-22",
+      "round_id": "round-000151"
+    },
+    {
+      "date": "2026-07-23",
+      "round_id": "round-000009"
+    },
+    {
+      "date": "2026-07-24",
+      "round_id": "round-000008"
+    },
+    {
+      "date": "2026-07-25",
+      "round_id": "round-000079"
+    },
+    {
+      "date": "2026-07-26",
+      "round_id": "round-000032"
+    },
+    {
+      "date": "2026-07-27",
+      "round_id": "round-000101"
+    },
+    {
+      "date": "2026-07-28",
+      "round_id": "round-000018"
+    },
+    {
+      "date": "2026-07-29",
+      "round_id": "round-000110"
+    },
+    {
+      "date": "2026-07-30",
+      "round_id": "round-000136"
+    },
+    {
+      "date": "2026-07-31",
+      "round_id": "round-000086"
+    },
+    {
+      "date": "2026-08-01",
+      "round_id": "round-000084"
+    },
+    {
+      "date": "2026-08-02",
+      "round_id": "round-000097"
+    },
+    {
+      "date": "2026-08-03",
+      "round_id": "round-000077"
+    },
+    {
+      "date": "2026-08-04",
+      "round_id": "round-000157"
+    },
+    {
+      "date": "2026-08-05",
+      "round_id": "round-000131"
+    },
+    {
+      "date": "2026-08-06",
+      "round_id": "round-000129"
+    },
+    {
+      "date": "2026-08-07",
+      "round_id": "round-000052"
+    },
+    {
+      "date": "2026-08-08",
+      "round_id": "round-000102"
+    },
+    {
+      "date": "2026-08-09",
+      "round_id": "round-000081"
+    },
+    {
+      "date": "2026-08-10",
+      "round_id": "round-000055"
+    },
+    {
+      "date": "2026-08-11",
+      "round_id": "round-000143"
+    },
+    {
+      "date": "2026-08-12",
+      "round_id": "round-000073"
+    },
+    {
+      "date": "2026-08-13",
+      "round_id": "round-000013"
+    },
+    {
+      "date": "2026-08-14",
+      "round_id": "round-000038"
+    },
+    {
+      "date": "2026-08-15",
+      "round_id": "round-000065"
+    },
+    {
+      "date": "2026-08-16",
+      "round_id": "round-000095"
+    },
+    {
+      "date": "2026-08-17",
+      "round_id": "round-000112"
+    },
+    {
+      "date": "2026-08-18",
+      "round_id": "round-000007"
+    },
+    {
+      "date": "2026-08-19",
+      "round_id": "round-000171"
+    },
+    {
+      "date": "2026-08-20",
+      "round_id": "round-000063"
+    },
+    {
+      "date": "2026-08-21",
+      "round_id": "round-000075"
+    },
+    {
+      "date": "2026-08-22",
+      "round_id": "round-000030"
+    },
+    {
+      "date": "2026-08-23",
+      "round_id": "round-000153"
+    },
+    {
+      "date": "2026-08-24",
+      "round_id": "round-000024"
+    },
+    {
+      "date": "2026-08-25",
+      "round_id": "round-000144"
+    },
+    {
+      "date": "2026-08-26",
+      "round_id": "round-000152"
+    },
+    {
+      "date": "2026-08-27",
+      "round_id": "round-000060"
+    },
+    {
+      "date": "2026-08-28",
+      "round_id": "round-000002"
+    },
+    {
+      "date": "2026-08-29",
+      "round_id": "round-000124"
+    },
+    {
+      "date": "2026-08-30",
+      "round_id": "round-000078"
+    },
+    {
+      "date": "2026-08-31",
+      "round_id": "round-000046"
+    },
+    {
+      "date": "2026-09-01",
+      "round_id": "round-000088"
+    },
+    {
+      "date": "2026-09-02",
+      "round_id": "round-000085"
+    },
+    {
+      "date": "2026-09-03",
+      "round_id": "round-000089"
+    },
+    {
+      "date": "2026-09-04",
+      "round_id": "round-000119"
+    },
+    {
+      "date": "2026-09-05",
+      "round_id": "round-000123"
+    },
+    {
+      "date": "2026-09-06",
+      "round_id": "round-000150"
+    },
+    {
+      "date": "2026-09-07",
+      "round_id": "round-000059"
+    },
+    {
+      "date": "2026-09-08",
+      "round_id": "round-000149"
+    },
+    {
+      "date": "2026-09-09",
+      "round_id": "round-000005"
+    },
+    {
+      "date": "2026-09-10",
+      "round_id": "round-000016"
+    },
+    {
+      "date": "2026-09-11",
+      "round_id": "round-000099"
+    },
+    {
+      "date": "2026-09-12",
+      "round_id": "round-000082"
+    },
+    {
+      "date": "2026-09-13",
+      "round_id": "round-000108"
+    },
+    {
+      "date": "2026-09-14",
+      "round_id": "round-000146"
+    },
+    {
+      "date": "2026-09-15",
+      "round_id": "round-000127"
+    },
+    {
+      "date": "2026-09-16",
+      "round_id": "round-000019"
+    },
+    {
+      "date": "2026-09-17",
+      "round_id": "round-000096"
+    },
+    {
+      "date": "2026-09-18",
+      "round_id": "round-000148"
+    },
+    {
+      "date": "2026-09-19",
+      "round_id": "round-000098"
+    },
+    {
+      "date": "2026-09-20",
+      "round_id": "round-000114"
+    },
+    {
+      "date": "2026-09-21",
+      "round_id": "round-000029"
+    },
+    {
+      "date": "2026-09-22",
+      "round_id": "round-000058"
+    },
+    {
+      "date": "2026-09-23",
+      "round_id": "round-000172"
+    },
+    {
+      "date": "2026-09-24",
+      "round_id": "round-000154"
+    },
+    {
+      "date": "2026-09-25",
+      "round_id": "round-000031"
+    },
+    {
+      "date": "2026-09-26",
+      "round_id": "round-000106"
+    },
+    {
+      "date": "2026-09-27",
+      "round_id": "round-000027"
+    },
+    {
+      "date": "2026-09-28",
+      "round_id": "round-000035"
+    },
+    {
+      "date": "2026-09-29",
+      "round_id": "round-000092"
+    },
+    {
+      "date": "2026-09-30",
+      "round_id": "round-000049"
+    },
+    {
+      "date": "2026-10-01",
+      "round_id": "round-000140"
+    },
+    {
+      "date": "2026-10-02",
+      "round_id": "round-000033"
+    },
+    {
+      "date": "2026-10-03",
+      "round_id": "round-000141"
+    },
+    {
+      "date": "2026-10-04",
+      "round_id": "round-000145"
+    },
+    {
+      "date": "2026-10-05",
+      "round_id": "round-000109"
+    },
+    {
+      "date": "2026-10-06",
+      "round_id": "round-000017"
+    },
+    {
+      "date": "2026-10-07",
+      "round_id": "round-000042"
+    },
+    {
+      "date": "2026-10-08",
+      "round_id": "round-000163"
+    },
+    {
+      "date": "2026-10-09",
+      "round_id": "round-000034"
+    },
+    {
+      "date": "2026-10-10",
+      "round_id": "round-000080"
+    },
+    {
+      "date": "2026-10-11",
+      "round_id": "round-000170"
+    },
+    {
+      "date": "2026-10-12",
+      "round_id": "round-000045"
+    },
+    {
+      "date": "2026-10-13",
+      "round_id": "round-000133"
+    },
+    {
+      "date": "2026-10-14",
+      "round_id": "round-000001"
+    },
+    {
+      "date": "2026-10-15",
+      "round_id": "round-000074"
+    },
+    {
+      "date": "2026-10-16",
+      "round_id": "round-000120"
+    },
+    {
+      "date": "2026-10-17",
+      "round_id": "round-000160"
+    },
+    {
+      "date": "2026-10-18",
+      "round_id": "round-000091"
+    },
+    {
+      "date": "2026-10-19",
+      "round_id": "round-000004"
+    },
+    {
+      "date": "2026-10-20",
+      "round_id": "round-000062"
+    },
+    {
+      "date": "2026-10-21",
+      "round_id": "round-000023"
+    },
+    {
+      "date": "2026-10-22",
+      "round_id": "round-000115"
+    },
+    {
+      "date": "2026-10-23",
+      "round_id": "round-000056"
+    },
+    {
+      "date": "2026-10-24",
+      "round_id": "round-000070"
+    },
+    {
+      "date": "2026-10-25",
+      "round_id": "round-000044"
+    },
+    {
+      "date": "2026-10-26",
+      "round_id": "round-000168"
+    },
+    {
+      "date": "2026-10-27",
+      "round_id": "round-000064"
+    },
+    {
+      "date": "2026-10-28",
+      "round_id": "round-000107"
+    },
+    {
+      "date": "2026-10-29",
+      "round_id": "round-000010"
+    },
+    {
+      "date": "2026-10-30",
+      "round_id": "round-000015"
+    },
+    {
+      "date": "2026-10-31",
+      "round_id": "round-000061"
+    },
+    {
+      "date": "2026-11-01",
+      "round_id": "round-000104"
+    },
+    {
+      "date": "2026-11-02",
+      "round_id": "round-000040"
+    },
+    {
+      "date": "2026-11-03",
+      "round_id": "round-000166"
+    },
+    {
+      "date": "2026-11-04",
+      "round_id": "round-000066"
+    },
+    {
+      "date": "2026-11-05",
+      "round_id": "round-000139"
+    },
+    {
+      "date": "2026-11-06",
+      "round_id": "round-000039"
+    },
+    {
+      "date": "2026-11-07",
+      "round_id": "round-000003"
+    },
+    {
+      "date": "2026-11-08",
+      "round_id": "round-000047"
+    },
+    {
+      "date": "2026-11-09",
+      "round_id": "round-000113"
+    },
+    {
+      "date": "2026-11-10",
+      "round_id": "round-000069"
+    },
+    {
+      "date": "2026-11-11",
+      "round_id": "round-000025"
+    },
+    {
+      "date": "2026-11-12",
+      "round_id": "round-000041"
+    },
+    {
+      "date": "2026-11-13",
+      "round_id": "round-000050"
+    },
+    {
+      "date": "2026-11-14",
+      "round_id": "round-000158"
+    },
+    {
+      "date": "2026-11-15",
+      "round_id": "round-000037"
+    },
+    {
+      "date": "2026-11-16",
+      "round_id": "round-000026"
+    },
+    {
+      "date": "2026-11-17",
+      "round_id": "round-000134"
+    },
+    {
+      "date": "2026-11-18",
+      "round_id": "round-000135"
+    },
+    {
+      "date": "2026-11-19",
+      "round_id": "round-000122"
+    },
+    {
+      "date": "2026-11-20",
+      "round_id": "round-000147"
+    },
+    {
+      "date": "2026-11-21",
+      "round_id": "round-000068"
+    },
+    {
+      "date": "2026-11-22",
+      "round_id": "round-000090"
+    },
+    {
+      "date": "2026-11-23",
+      "round_id": "round-000164"
+    },
+    {
+      "date": "2026-11-24",
+      "round_id": "round-000051"
+    },
+    {
+      "date": "2026-11-25",
+      "round_id": "round-000103"
+    },
+    {
+      "date": "2026-11-26",
+      "round_id": "round-000169"
+    },
+    {
+      "date": "2026-11-27",
+      "round_id": "round-000162"
+    },
+    {
+      "date": "2026-11-28",
+      "round_id": "round-000138"
+    },
+    {
+      "date": "2026-11-29",
+      "round_id": "round-000053"
+    },
+    {
+      "date": "2026-11-30",
+      "round_id": "round-000057"
+    },
+    {
+      "date": "2026-12-01",
+      "round_id": "round-000028"
+    },
+    {
+      "date": "2026-12-02",
+      "round_id": "round-000011"
+    },
+    {
+      "date": "2026-12-03",
+      "round_id": "round-000048"
+    },
+    {
+      "date": "2026-12-04",
+      "round_id": "round-000043"
+    },
+    {
+      "date": "2026-12-05",
+      "round_id": "round-000083"
+    },
+    {
+      "date": "2026-12-06",
+      "round_id": "round-000087"
+    },
+    {
+      "date": "2026-12-07",
+      "round_id": "round-000071"
+    },
+    {
+      "date": "2026-12-08",
+      "round_id": "round-000165"
+    },
+    {
+      "date": "2026-12-09",
+      "round_id": "round-000159"
+    },
+    {
+      "date": "2026-12-10",
+      "round_id": "round-000118"
+    },
+    {
+      "date": "2026-12-11",
+      "round_id": "round-000137"
+    },
+    {
+      "date": "2026-12-12",
+      "round_id": "round-000126"
+    },
+    {
+      "date": "2026-12-13",
+      "round_id": "round-000128"
+    },
+    {
+      "date": "2026-12-14",
+      "round_id": "round-000067"
+    },
+    {
+      "date": "2026-12-15",
+      "round_id": "round-000076"
+    },
+    {
+      "date": "2026-12-16",
+      "round_id": "round-000130"
+    },
+    {
+      "date": "2026-12-17",
+      "round_id": "round-000161"
+    },
+    {
+      "date": "2026-12-18",
+      "round_id": "round-000014"
+    },
+    {
+      "date": "2026-12-19",
+      "round_id": "round-000022"
+    },
+    {
+      "date": "2026-12-20",
+      "round_id": "round-000156"
+    },
+    {
+      "date": "2026-12-21",
+      "round_id": "round-000100"
+    },
+    {
+      "date": "2026-12-22",
+      "round_id": "round-000142"
+    },
+    {
+      "date": "2026-12-23",
+      "round_id": "round-000132"
+    },
+    {
+      "date": "2026-12-24",
+      "round_id": "round-000006"
+    },
+    {
+      "date": "2026-12-25",
+      "round_id": "round-000155"
+    },
+    {
+      "date": "2026-12-26",
+      "round_id": "round-000111"
+    },
+    {
+      "date": "2026-12-27",
+      "round_id": "round-000094"
+    },
+    {
+      "date": "2026-12-28",
+      "round_id": "round-000117"
+    },
+    {
+      "date": "2026-12-29",
+      "round_id": "round-000093"
+    },
+    {
+      "date": "2026-12-30",
+      "round_id": "round-000167"
+    },
+    {
+      "date": "2026-12-31",
+      "round_id": "round-000020"
+    },
+    {
+      "date": "2027-01-01",
+      "round_id": "round-000125"
+    },
+    {
+      "date": "2027-01-02",
+      "round_id": "round-000054"
+    },
+    {
+      "date": "2027-01-03",
+      "round_id": "round-000012"
+    },
+    {
+      "date": "2027-01-04",
+      "round_id": "round-000072"
+    },
+    {
+      "date": "2027-01-05",
+      "round_id": "round-000121"
+    },
+    {
+      "date": "2027-01-06",
+      "round_id": "round-000036"
+    }
+  ]
+}

@@ -1,0 +1,67 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import type { DailyManifestV1 } from '../../data/rounds';
+import dailyManifestData from '../../../public/data/game/daily-manifest.v1.json';
+
+const dailyManifest = dailyManifestData as DailyManifestV1;
+
+const description =
+  'Connection of the Day: one real, performer-only round a day. A given date always resolves to the same round, even after the pool is regenerated.';
+---
+
+<BaseLayout title="Connection of the Day" description={description}>
+  <section class="shell" style="padding-top:40px">
+    <p class="eyebrow">Connection of the Day</p>
+    <h1 style="font-size:clamp(1.8rem,4vw,2.6rem)" id="daily-heading">Today's connection</h1>
+    <p class="lede" style="margin-top:6px">
+      Real records only. Schedule version <code>{dailyManifest.pool_version}</code>, covering
+      {dailyManifest.schedule[0]?.date} through{' '}
+      {dailyManifest.schedule[dailyManifest.schedule.length - 1]?.date}.
+    </p>
+
+    <div id="round-status" class="lede" aria-live="polite">Loading today's round…</div>
+    <div id="round-container" data-round-container></div>
+  </section>
+</BaseLayout>
+
+<script>
+  import { fetchRounds, renderRound, todayUtcDate } from '../../game/render';
+  import type { DailyManifestV1, UniverseV1 } from '../../data/rounds';
+  import universeData from '../../../public/data/game/universe.v1.json';
+  import dailyManifestData from '../../../public/data/game/daily-manifest.v1.json';
+
+  const universe = universeData as UniverseV1;
+  const dailyManifest = dailyManifestData as DailyManifestV1;
+  const status = document.getElementById('round-status');
+  const heading = document.getElementById('daily-heading');
+  const container = document.querySelector<HTMLElement>('[data-round-container]');
+
+  const today = todayUtcDate();
+  const entry = dailyManifest.schedule.find((e) => e.date === today);
+
+  if (heading) heading.textContent = `Today's connection — ${today}`;
+
+  if (!entry) {
+    if (status) {
+      status.textContent =
+        'No daily connection is scheduled for today yet — the schedule will be extended in a future update.';
+    }
+  } else {
+    fetchRounds()
+      .then((rounds) => {
+        const round = rounds.rounds.find((r) => r.id === entry.round_id);
+        if (!round || !container) {
+          if (status) status.textContent = 'Today\'s round could not be found in the pool.';
+          return;
+        }
+        if (status) status.textContent = '';
+        renderRound(round, universe, rounds, container);
+      })
+      .catch(() => {
+        if (status) {
+          status.textContent =
+            'Could not load the round pool right now — try refreshing the page.';
+        }
+      });
+  }
+</script>
