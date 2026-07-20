@@ -306,6 +306,31 @@ reconsider Pi dataset-caching scope" for why real free-space headroom on the Pi 
 (confirmed comfortably sufficient for this size class, exact figures kept local per ADR
 0018) is relevant background for a future revisit.
 
+## Masters parse, first real run (2026-07-20, coordination host)
+
+The `parse-masters` command (long present, tested, but never run) was executed for the
+first time against the real `20260601` masters dump, to supply original album years and
+Discogs genre/style — the authoritative fix for the reissue-year and soundtrack leaks in
+the generated album catalog (see `docs/RELEASE_FORMAT_RESEARCH.md`). Observed, not
+projected:
+
+| Item | Value |
+| --- | ---: |
+| Compressed masters dump (`.xml.gz`) | 614,336,787 bytes (~614 MB) |
+| Masters parsed | 2,560,991 (matches the DATA_SIZING Jun 2026 count exactly) |
+| Master-artist credit rows parsed | 3,145,466 |
+| Parquet output (`masters` + `master_artists`, zstd) | ~124 MB total (~120 MB on disk) |
+| Wall clock (from raw-file → final-snapshot mtimes) | ~8 minutes |
+| Peak RSS (observed mid-run via `ps`) | ~90 MB (streaming/bounded, consistent with the parser design; not rigorously captured) |
+
+The masters extract keeps only `main_release_id`, `title`, `year`, `genres`, `styles`
+(plus `master_artists`), so the output is an order of magnitude smaller than a
+full-fidelity masters conversion. Stored on the project NVMe (`/mnt/data`), referenced by
+absolute `--masters-root`, so the coordination host's smaller root disk is untouched. The
+existing catalog generation commands already accepted `--masters-root`; the same-day
+catalog/format-policy corrections wired it through `build-album-catalog`,
+`rank-album-candidates`, `build-challenge-from-dump`, and `build-rounds-from-dump`.
+
 ## Real-data launch: public game/album artifact sizes (2026-07-19/20)
 
 The first real (non-synthetic) generation of every public game/album artifact, against

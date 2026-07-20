@@ -55,6 +55,20 @@ _RESIDUAL_LIVE_SIGNAL_PATTERN = re.compile(
 )
 
 
+def load_master_exclusions(path: Path | None) -> frozenset[int]:
+    """Load the curated human-reviewed master-ID deny-list (or an empty set).
+
+    See data/albums/studio-album-master-exclusions-v1.json -- the residual
+    backstop for non-studio masters no structured signal can catch. The
+    genre/style-based automatic exclusion lives in graph-core's
+    ``album_policy`` (it runs inside catalog assembly, which is graph-core).
+    """
+    if path is None:
+        return frozenset()
+    payload = json.loads(Path(path).read_text())
+    return frozenset(int(item["master_id"]) for item in payload.get("exclusions", []))
+
+
 def _norm(value: object) -> str:
     return " ".join(str(value or "").casefold().split())
 

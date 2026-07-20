@@ -204,6 +204,12 @@ def _parser() -> argparse.ArgumentParser:
             "album (editorial or hybrid-catalog) by the studio-album-v1 policy"
         ),
     )
+    build_challenge.add_argument(
+        "--studio-album-exclusions",
+        type=Path,
+        default=None,
+        help="optional studio-album-master-exclusions-v1.json; curated non-studio master deny-list",
+    )
     build_challenge.add_argument("--enrich-images", action="store_true")
     build_challenge.add_argument(
         "--cache-dir", type=Path, default=Path("data/private/discogs-api-cache")
@@ -246,6 +252,12 @@ def _parser() -> argparse.ArgumentParser:
             "optional release-format-scoring-index.json; gates matched albums and every "
             "two-hop round's bridge evidence by the studio-album-v1 policy"
         ),
+    )
+    build_rounds.add_argument(
+        "--studio-album-exclusions",
+        type=Path,
+        default=None,
+        help="optional studio-album-master-exclusions-v1.json; curated non-studio master deny-list",
     )
     build_rounds.add_argument("--one-hop-target", type=int, default=400)
     build_rounds.add_argument("--two-hop-target", type=int, default=100)
@@ -304,6 +316,19 @@ def _parser() -> argparse.ArgumentParser:
         default=None,
         help="optional release-format-scoring-index.json; excludes non-studio-album candidates",
     )
+    rank_albums.add_argument(
+        "--masters-root",
+        type=Path,
+        default=None,
+        help="optional parsed masters snapshot root; supplies the original album year and "
+        "the Discogs genre/style non-studio (soundtrack/stage) exclusion",
+    )
+    rank_albums.add_argument(
+        "--studio-album-exclusions",
+        type=Path,
+        default=None,
+        help="optional studio-album-master-exclusions-v1.json; curated master-ID deny-list",
+    )
 
     build_album_catalog = subparsers.add_parser(
         "build-album-catalog",
@@ -328,6 +353,19 @@ def _parser() -> argparse.ArgumentParser:
         type=Path,
         default=None,
         help="optional release-format-scoring-index.json; also gates the editorial entries",
+    )
+    build_album_catalog.add_argument(
+        "--masters-root",
+        type=Path,
+        default=None,
+        help="optional parsed masters snapshot root; original album year + genre/style "
+        "non-studio exclusion for both the editorial and candidate sides",
+    )
+    build_album_catalog.add_argument(
+        "--studio-album-exclusions",
+        type=Path,
+        default=None,
+        help="optional studio-album-master-exclusions-v1.json; curated master-ID deny-list",
     )
 
     fetch_dataset_parser = subparsers.add_parser(
@@ -929,6 +967,10 @@ def main(argv: Sequence[str] | None = None) -> int:
             policy_payload = json.loads(args.release_format_policy.read_text())
             allowed_release_ids = frozenset(policy_payload["allowed_release_ids"])
 
+        from .discogs.release_format_policy import load_master_exclusions
+
+        master_exclusions = load_master_exclusions(args.studio_album_exclusions)
+
         with CreditGraph.open(
             args.onehop_root,
             memory_limit=args.memory_limit,
@@ -947,6 +989,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                     # Defense in depth: assemble_album_catalog already gated
                     # these, but never trust an upstream artifact blindly.
                     matched = [m for m in matched if m.main_release_id in allowed_release_ids]
+                if master_exclusions:
+                    matched = [m for m in matched if m.master_id not in master_exclusions]
                 artifact, report = build_challenge_v2_from_matched(
                     graph,
                     matched,
@@ -974,6 +1018,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                     max_workers=args.max_workers,
                     is_family_excluded=is_family_excluded,
                     allowed_release_ids=allowed_release_ids,
+                    master_exclusions=master_exclusions,
                     max_frontier_expansion=max_frontier_expansion,
                 )
 
@@ -1039,6 +1084,10 @@ def main(argv: Sequence[str] | None = None) -> int:
             policy_payload = json.loads(args.release_format_policy.read_text())
             allowed_release_ids = frozenset(policy_payload["allowed_release_ids"])
 
+        from .discogs.release_format_policy import load_master_exclusions
+
+        master_exclusions = load_master_exclusions(args.studio_album_exclusions)
+
         with CreditGraph.open(
             args.onehop_root,
             memory_limit=args.memory_limit,
@@ -1054,10 +1103,15 @@ def main(argv: Sequence[str] | None = None) -> int:
                     # Defense in depth: assemble_album_catalog already gated
                     # these, but never trust an upstream artifact blindly.
                     matched = [m for m in matched if m.main_release_id in allowed_release_ids]
+                if master_exclusions:
+                    matched = [m for m in matched if m.master_id not in master_exclusions]
                 missed: list[dict[str, str]] = []
             else:
                 matched, missed = match_albums(
-                    graph, albums, allowed_release_ids=allowed_release_ids
+                    graph,
+                    albums,
+                    allowed_release_ids=allowed_release_ids,
+                    master_exclusions=master_exclusions,
                 )
             if len(matched) < 2:
                 raise ValueError(
@@ -1183,12 +1237,16 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.command == "rank-album-candidates":
         from networked_players_graph_core.analysis import rank_album_candidates
 
+        from .discogs.release_format_policy import load_master_exclusions
+
         candidates = rank_album_candidates(
             args.dataset,
             limit=args.limit,
             memory_limit=args.memory_limit,
             threads=args.threads,
             release_format_policy=args.release_format_policy,
+            masters_root=args.masters_root,
+            master_exclusions=load_master_exclusions(args.studio_album_exclusions),
         )
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(json.dumps(candidates, indent=2) + "\n")
@@ -1200,12 +1258,15 @@ def main(argv: Sequence[str] | None = None) -> int:
         from networked_players_graph_core.analysis import assemble_album_catalog
         from networked_players_graph_core.graph import CreditGraph
 
+        from .discogs.release_format_policy import load_master_exclusions
+
         editorial_albums = json.loads(args.editorial_albums.read_text())["albums"]
         candidates = json.loads(args.candidates.read_text())
         allowed_release_ids = None
         if args.release_format_policy is not None:
             policy_payload = json.loads(args.release_format_policy.read_text())
             allowed_release_ids = frozenset(policy_payload["allowed_release_ids"])
+        master_exclusions = load_master_exclusions(args.studio_album_exclusions)
 
         with CreditGraph.open(
             args.onehop_root,
@@ -1213,12 +1274,15 @@ def main(argv: Sequence[str] | None = None) -> int:
             threads=args.threads,
             build_edges=False,
         ) as graph:
+            if args.masters_root is not None:
+                graph.attach_masters(args.masters_root)
             catalog = assemble_album_catalog(
                 graph,
                 editorial_albums,
                 candidates,
                 target_count=args.target_count,
                 allowed_release_ids=allowed_release_ids,
+                master_exclusions=master_exclusions,
             )
 
         args.output.parent.mkdir(parents=True, exist_ok=True)

@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "policy": "studio-album-v1",
+  "snapshot_date": "20260601",
+  "note": "Human-reviewed backstop deny-list of Discogs master IDs that are NOT studio albums (live albums, soundtracks, etc.) but carry no structured Discogs signal any automated rule can key on -- neither a release format descriptor (confirmed: zero 'Live' descriptors across every working-set pressing) nor a master genre/style. The master genre/style gate (release_format_policy.master_non_studio_reason) already excludes soundtracks and stage-&-screen masters automatically; this file is only for the residual cases that gate cannot see. Each entry is one auditable, reasoned exclusion, in the same spirit as placeholder_artists.json and artist-family-exclusions (ADR 0035's 'human curation is the backstop for un-separable cases', ADR 0036's interim curation filter). Keep it small; prefer a structured signal whenever one exists.",
+  "exclusions": [
+    {
+      "master_id": 128523,
+      "title": "Hot August Night",
+      "artist": "Neil Diamond",
+      "reason": "live album; 0 of 178 working-set pressings carry a 'Live' descriptor, master genres/styles are ['Rock','Pop']/['Pop Rock','Vocal'] with no live signal, and the title contains no 'live' token"
+    },
+    {
+      "master_id": 14495,
+      "title": "The Last Waltz",
+      "artist": "The Band",
+      "reason": "live concert album; 0 of 153 working-set pressings carry a 'Live' descriptor, master genres/styles are ['Rock']/['Folk Rock','Country Rock','Blues Rock'] with no live signal, and the title contains no 'live' token"
+    }
+  ]
+}

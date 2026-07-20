@@ -1033,13 +1033,29 @@ class CreditGraph:
         }
 
     def master(self, master_id: int) -> dict[str, Any] | None:
-        """Row from the attached masters table, or None if not attached/found."""
+        """Row from the attached masters table, or None if not attached/found.
+
+        Exposes ``main_release_id`` (the master's canonical original pressing --
+        preferred over an arbitrary in-working-set reissue for both the cited
+        evidence release and the display year), ``year`` (the master's original
+        release year, not an edition date), and ``genres``/``styles`` (Discogs'
+        own editorial classification, used to fail-closed exclude soundtracks /
+        stage & screen masters that carry no structured format signal)."""
         if not self._masters_attached:
             return None
         row = self._connection.execute(
-            "SELECT title, year FROM masters WHERE master_id = ?", [master_id]
+            "SELECT title, year, main_release_id, genres, styles FROM masters WHERE master_id = ?",
+            [master_id],
         ).fetchone()
-        return None if row is None else {"title": row[0], "year": row[1]}
+        if row is None:
+            return None
+        return {
+            "title": row[0],
+            "year": row[1],
+            "main_release_id": row[2],
+            "genres": list(row[3]) if row[3] is not None else [],
+            "styles": list(row[4]) if row[4] is not None else [],
+        }
 
     def placeholder_artist_candidates(self) -> list[dict[str, Any]]:
         """Playable identities whose name looks like a placeholder ("Various",

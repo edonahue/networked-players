@@ -17,6 +17,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from . import __version__
+from .album_policy import master_non_studio_reason
 from .graph import CreditGraph, EvidencePath, FrontierTooLargeError
 
 CHALLENGE_SCHEMA_VERSION = 2
@@ -134,6 +135,7 @@ def match_albums(
     albums: list[dict[str, str]],
     *,
     allowed_release_ids: frozenset[int] | None = None,
+    master_exclusions: frozenset[int] | None = None,
 ) -> tuple[list[MatchedAlbum], list[dict[str, str]]]:
     """Match each ``{"artist", "title"}`` query against the graph's releases.
 
@@ -163,11 +165,23 @@ def match_albums(
         if allowed_release_ids is not None and found["release_id"] not in allowed_release_ids:
             missed.append(album)
             continue
+
+        master = graph.master(found["master_id"]) if found["master_id"] is not None else None
+        # Fail-closed master-level exclusion: soundtracks/stage recordings the
+        # release-format gate can't see (via Discogs genre/style), plus the
+        # curated human-reviewed deny-list for non-studio masters that carry no
+        # structured signal at all. Excluded albums are treated exactly like an
+        # unmatched query -- reported in missed, never silently included.
+        if master is not None and master_non_studio_reason(master["genres"], master["styles"]):
+            missed.append(album)
+            continue
+        if master_exclusions and found["master_id"] in master_exclusions:
+            missed.append(album)
+            continue
         seen_artist_ids.add(found["artist_id"])
 
         year = _year_from_released(found["released"])
         resolved_title = found["title"]
-        master = graph.master(found["master_id"]) if found["master_id"] is not None else None
         if master is not None:
             resolved_title = master["title"] or resolved_title
             year = int(master["year"]) if master["year"] else year
@@ -305,6 +319,7 @@ def build_challenge_v2(
     max_workers: int = 1,
     is_family_excluded: Callable[[int, int], bool] | None = None,
     allowed_release_ids: frozenset[int] | None = None,
+    master_exclusions: frozenset[int] | None = None,
     max_frontier_expansion: int | None = 300,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     """Match `{artist, title}` name/title queries against the graph, then
@@ -314,7 +329,12 @@ def build_challenge_v2(
     artist_id by name string is a real collision risk (a common display
     name, or worse a placeholder identity, can resolve to the wrong artist),
     not just redundant work."""
-    matched, missed = match_albums(graph, albums, allowed_release_ids=allowed_release_ids)
+    matched, missed = match_albums(
+        graph,
+        albums,
+        allowed_release_ids=allowed_release_ids,
+        master_exclusions=master_exclusions,
+    )
     return build_challenge_v2_from_matched(
         graph,
         matched,

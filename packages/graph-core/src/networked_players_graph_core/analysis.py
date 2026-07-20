@@ -15,6 +15,7 @@ from typing import Any
 
 import duckdb
 
+from .album_policy import master_non_studio_sql
 from .challenge import MatchedAlbum, _year_from_released, match_albums
 from .graph import CreditGraph, _not_placeholder_sql, read_parquet_sql
 
@@ -26,6 +27,8 @@ def rank_album_candidates(
     memory_limit: str = "3GB",
     threads: int = 2,
     release_format_policy: Path | None = None,
+    masters_root: Path | None = None,
+    master_exclusions: frozenset[int] | None = None,
 ) -> list[dict[str, Any]]:
     """Rank master_ids by variant_count * credit_rows, resolved to a real
     {artist, title} query pair via the main release's release_artist credit.
@@ -47,6 +50,24 @@ def rank_album_candidates(
     connection.execute(f"SET threads = {int(threads)}")
     connection.execute(f"CREATE VIEW releases AS SELECT * FROM {read_parquet_sql(releases_glob)}")
     connection.execute(f"CREATE VIEW credits AS SELECT * FROM {read_parquet_sql(credits_glob)}")
+
+    # Masters carry the original release year (not an edition/reissue date) and
+    # Discogs' editorial genre/style -- the only reliable non-studio signal for
+    # soundtracks/stage recordings (release format descriptors miss them). When
+    # absent, year falls back to the main-release edition date as before and no
+    # genre/style exclusion is applied.
+    master_meta_join = ""
+    master_year_expr = "NULL"
+    master_exclude_filter = ""
+    if masters_root is not None:
+        masters_glob = str(Path(masters_root) / "table=masters" / "*.parquet")
+        connection.execute(f"CREATE VIEW masters AS SELECT * FROM {read_parquet_sql(masters_glob)}")
+        master_meta_join = "LEFT JOIN masters m ON m.master_id = v.master_id"
+        master_year_expr = "m.year"
+        master_exclude_filter = f"AND NOT {master_non_studio_sql('m.genres', 'm.styles')}"
+    if master_exclusions:
+        ids = ", ".join(str(int(mid)) for mid in sorted(master_exclusions))
+        master_exclude_filter += f" AND v.master_id NOT IN ({ids})"
 
     not_placeholder = _not_placeholder_sql()
     policy_filter_sql = ""
@@ -98,13 +119,16 @@ def rank_album_candidates(
         SELECT v.master_id, t.title AS sample_title, v.variant_count,
                coalesce(cc.credit_rows, 0) AS credit_rows,
                v.variant_count * coalesce(cc.credit_rows, 0) AS score,
-               v.main_release_id, ra.artist_id, ra.name AS artist_name, t.released
+               v.main_release_id, ra.artist_id, ra.name AS artist_name, t.released,
+               {master_year_expr} AS master_year
         FROM variants v
         LEFT JOIN credit_counts cc USING (master_id)
         LEFT JOIN titles t USING (master_id)
         LEFT JOIN release_artists ra ON ra.release_id = v.main_release_id
+        {master_meta_join}
         WHERE ra.artist_id IS NOT NULL
         {policy_filter_sql}
+        {master_exclude_filter}
         ORDER BY score DESC, v.master_id
         LIMIT ?
         """,
@@ -121,7 +145,9 @@ def rank_album_candidates(
             "main_release_id": int(row[5]),
             "artist_id": int(row[6]),
             "artist_name": row[7],
-            "year": _year_from_released(row[8]),
+            # Master original year wins over the main-release edition date, which
+            # is often a reissue in the bounded working set (the reissue-year bug).
+            "year": int(row[9]) if row[9] is not None else _year_from_released(row[8]),
         }
         for row in rows
     ]
@@ -135,6 +161,7 @@ def assemble_album_catalog(
     target_count: int,
     private_weight_fn: Callable[[int], float] | None = None,
     allowed_release_ids: frozenset[int] | None = None,
+    master_exclusions: frozenset[int] | None = None,
 ) -> dict[str, Any]:
     """Combine the editorial backbone with graph-rich candidates up to
     `target_count` (see ADR 0038). Deterministic given a fixed graph
@@ -169,7 +196,10 @@ def assemble_album_catalog(
         raise ValueError("target_count must be positive")
 
     matched_editorial, missed_editorial = match_albums(
-        graph, editorial_albums, allowed_release_ids=allowed_release_ids
+        graph,
+        editorial_albums,
+        allowed_release_ids=allowed_release_ids,
+        master_exclusions=master_exclusions,
     )
     editorial_artist_ids = {m.artist_id for m in matched_editorial}
 
@@ -179,7 +209,13 @@ def assemble_album_catalog(
             return base
         return base * (1.0 + private_weight_fn(int(candidate["artist_id"])))
 
-    eligible_candidates = [c for c in candidates if c["artist_id"] not in editorial_artist_ids]
+    excluded_masters = master_exclusions or frozenset()
+    eligible_candidates = [
+        c
+        for c in candidates
+        if c["artist_id"] not in editorial_artist_ids
+        and (c.get("master_id") is None or int(c["master_id"]) not in excluded_masters)
+    ]
     ranked_candidates = sorted(
         eligible_candidates, key=lambda c: (-_weighted_score(c), c["master_id"])
     )

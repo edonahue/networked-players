@@ -229,6 +229,64 @@ current as of 2026-07-20T12:02:49Z); the operator's next step is unchanged from 
 0031's standing requirement: author a human-reviewed `selection` file referencing this
 report.
 
+## Masters-based year + non-studio fix (2026-07-20, integration branch)
+
+The first real challenge/game generation exposed two defects the release-format policy
+alone could not fix, both confirmed against `snapshot=20260601` and both traced to a
+single missing input — a parsed **masters** dataset:
+
+1. **Reissue years for classic albums.** With no masters attached, the master-year
+   override in `challenge.py::match_albums` was dead code, so the displayed year fell back
+   to the representative release's edition date — frequently a reissue when the original
+   pressing was absent from the bounded one-hop set (e.g. *The Dark Side of the Moon*
+   showed 2003, *Pet Sounds* 1999). This is an **editorial-path** defect; the candidate
+   ranker's main-release selection already yielded correct original years in most cases.
+2. **Live albums and soundtracks passing the studio-album gate.** Discogs contributors tag
+   many of them with a bare `Album` format descriptor and **no** `Live`/`Soundtrack`
+   descriptor at all. Measured: master 128523 *Hot August Night* — **0 of 178** working-set
+   pressings carry a `Live` descriptor; master 14495 *The Last Waltz* — **0 of 153**.
+   Neither title contains "live". No release-level format rule, and no widening of the
+   title net, can catch these.
+
+**The masters dataset supplies what descriptors cannot.** Parsing masters (see
+`docs/DATA_SIZING.md`) gives, per master, the **original `year`** and Discogs' own
+editorial **`genres`/`styles`**:
+
+| master | title | year | genres | styles |
+| ---: | --- | ---: | --- | --- |
+| 10362 | The Dark Side Of The Moon | 1973 | Rock | Prog Rock, Psychedelic Rock |
+| 124110 | West Side Story (…Sound Track…) | 1961 | **Stage & Screen** | **Soundtrack, Musical** |
+| 128523 | Hot August Night | 1972 | Rock, Pop | Pop Rock, Vocal |
+| 14495 | The Last Waltz | 1978 | Rock | Folk Rock, Country Rock, Blues Rock |
+
+The fix, in three layers (fail-closed, deterministic):
+
+- **Original year.** Catalog generation now attaches masters and prefers the master's
+  `year` over the edition date, in both the editorial (`match_albums`) and candidate
+  (`rank_album_candidates`) paths.
+- **Genre/style non-studio gate** (`graph-core/album_policy.py`, Python +
+  DuckDB-SQL parity like `eligibility.py`): a master whose Discogs genre is
+  `Stage & Screen` or whose style is `Soundtrack`/`Musical`/`Score` is excluded. This
+  *cleanly* catches soundtracks/stage recordings (e.g. *West Side Story*) with no
+  false-positive risk on real studio albums — verified against the master table above.
+- **Curated deny-list** (`data/albums/studio-album-master-exclusions-v1.json`): the
+  residual live albums that carry no structured signal at all (*Hot August Night*, *The
+  Last Waltz*) are excluded by a small, reasoned, human-reviewed master-ID list — the same
+  "human curation is the backstop for un-separable cases" posture as ADR 0035, and the
+  interim-curation precedent of ADR 0036. Each entry records exactly why (zero Live
+  descriptors, no live genre/style, no title token).
+
+**Real verification** (`snapshot=20260601`). Candidate path (`rank-album-candidates`, 400
+candidates, release-format index + masters + deny-list): all three known leaks are
+**absent** (before the fix, all three were present in the top 400); the top-scored
+candidates show original years throughout (Sgt. Pepper 1967, *Led Zeppelin IV*/"Untitled"
+1971 — previously the reissue year 1978, Revolver 1966, Rumours 1977). Editorial path
+(`build-album-catalog`, 80-album catalog): the reissue-year cases are corrected —
+*The Dark Side of the Moon* **1973** (was 2003), *Pet Sounds* **1966** (was 1999),
+*A Night at the Opera* 1975 — and a title scan of the assembled catalog finds zero
+live/soundtrack/compilation entries. Analysis artifacts are local-only
+(`local/analysis/album-catalog-integration/`, ADR 0018).
+
 ## Rights and operational boundary
 
 The project should continue using monthly dumps for bulk processing. API
