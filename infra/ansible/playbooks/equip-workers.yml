@@ -24,6 +24,7 @@
   gather_facts: true
   vars:
     worker_venv_dir: "{{ ansible_env.HOME }}/.local/share/networked-players/worker-venv"
+    contracts_src_dir: "{{ ansible_env.HOME }}/.local/share/networked-players/contracts-src"
   tasks:
     - name: Install baseline system packages
       # baseline_packages already existed in group_vars but was documented
@@ -70,6 +71,39 @@
         redis rq duckdb
       register: venv_install
       changed_when: "'Installed' in venv_install.stdout or 'Audited' not in venv_install.stdout"
+
+    - name: Create the contracts-source staging directory
+      ansible.builtin.file:
+        path: "{{ contracts_src_dir }}/src"
+        state: directory
+        mode: "0755"
+
+    - name: Copy the networked-players-contracts package source
+      # Dependency-free, pure Python, requires-python >=3.11 (see
+      # packages/contracts/pyproject.toml) -- deliberately not >=3.12 like
+      # the rest of this monorepo, precisely so it installs on this real Pi
+      # venv. Its check-job adapters (files/cohort_artifact_check_job.py,
+      # files/rounds_check_job.py) import it directly; without this install
+      # step those jobs fail with ModuleNotFoundError on a real Pi, which is
+      # exactly what happened before this task existed. Only pyproject.toml
+      # and src/ are copied -- not tests/ -- this Pi only ever imports the
+      # installed package, never runs its test suite.
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../../../packages/contracts/{{ item }}"
+        dest: "{{ contracts_src_dir }}/{{ item }}"
+        mode: preserve
+      loop:
+        - pyproject.toml
+        - src/
+
+    - name: Install networked-players-contracts into the worker venv
+      ansible.builtin.command: >-
+        {{ ansible_env.HOME }}/.local/bin/uv pip install
+        --python {{ worker_venv_dir }}/bin/python3
+        --reinstall
+        {{ contracts_src_dir }}
+      register: contracts_install
+      changed_when: "'Installed' in contracts_install.stdout"
 
     # Re-checked unconditionally (not reusing the pre-install check's stdout,
     # which is empty on a fresh install and would otherwise report blank).

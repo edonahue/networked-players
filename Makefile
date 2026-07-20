@@ -10,6 +10,7 @@
 	cluster-health cluster-benchmark cluster-onboard cluster-swarm-join cluster-smoke-test \
 	cluster-recovery-drill harden-workers equip-workers equip-x86-workers replicate-x86 replicate-pi deploy-jobs-broker deploy-catalog-data cluster-benchmark-distributed \
 	deploy-verify-job verify-challenge-distributed \
+	deploy-rounds-check-job rounds-check-distributed \
 	score-cohort-on-worker \
 	platform-build platform-deploy platform-status curator \
 	dask-up dask-down
@@ -135,6 +136,12 @@ deploy-verify-job: ## Deploy the challenge-evidence verification job to Pi worke
 
 verify-challenge-distributed: ## Re-verify a challenge.v2 artifact's evidence across Pi workers' local caches (ADR 0025); needs deploy-jobs-broker + deploy-verify-job; writes local/jobs/ only
 	./scripts/enqueue-verify-challenge.sh $(ARGS)
+
+deploy-rounds-check-job: ## Deploy the rounds-pool validation job + universe.v1/rounds.v1 artifacts to Pi workers; ARGS="--limit worker-01"
+	./infra/ansible/run-deploy-rounds-check-job-local.sh $(ARGS)
+
+rounds-check-distributed: ## Independently re-validate the published rounds pool across Pi workers; needs deploy-jobs-broker + deploy-rounds-check-job; writes local/jobs/ only
+	./scripts/enqueue-rounds-check.sh $(ARGS)
 
 score-cohort-on-worker: ## Submit whole-cohort scoring to a matching platform worker; needs platform runtime + verified x86 cache; ARGS="--source-id <id> --snapshot-date <date> [--release-format-policy <path>]"
 	./scripts/score-cohort-on-worker.sh $(ARGS)
