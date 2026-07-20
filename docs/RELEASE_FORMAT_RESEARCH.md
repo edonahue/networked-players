@@ -189,6 +189,46 @@ a format-policy measurement rather than a performance benchmark). The prior 2026
 under `local/analysis/cohorts/discogs-community-best-albums/` predates this fix and should not
 be treated as current; PR2/PR3 album and round generation should use the `-v2` scoring index.
 
+### PR3 cohort re-score: the deferred diff, now measured (2026-07-20)
+
+`scripts/submit_cohort_score.py` (fixed in PR1 to accept `--release-format-policy` and
+forward it to the worker-side handler) submitted a real whole-cohort re-score of
+`discogs-community-best-albums` (300 pairs, 25 albums) through the capability platform
+to the x86 worker `zimaworker1`, using the `-v2` scoring index above. This closes the
+"deferred to PR3" note directly above. Three real runs, same 300 pairs, same dataset
+snapshot, compared:
+
+| Run | When / how | Found | No path | Skipped | Distinct evidence releases | Releases reused across >1 pair |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| No format policy (legacy title-only filter) | 2026-07-11, local CLI | 299 | 0 | 1 | — | — |
+| Format policy, pre-safety-net-fix | 2026-07-12, local CLI | 277 | 6 | 17 | 273 | 136 |
+| Format policy, post-safety-net-fix | 2026-07-20, **distributed platform, this run** | 281 | 1 | 18 | 271 | 132 |
+
+The studio-album format gate's real, quantified cost versus no format filtering at all is
+**-18 found pairs** (299 → 281): albums whose only prior connecting evidence ran through a
+compilation, live album, bootleg, or reissue correctly lose that connection. This is the
+expected, intended trade-off of gating on format, not a regression.
+
+Between the two format-gated runs, the residual-live-signal safety-net fix (`allow`
+693,113 → 660,994) **increased** found pairs (277 → 281) and eliminated most no-path
+results (6 → 1), rather than reducing connectivity further as a stricter filter might be
+expected to. The most likely mechanism, not independently isolated further here: the
+32,119 newly-downgraded releases (real titles like "801 Live", "Unplugged (The Official
+Bootleg)") were disproportionately high-degree hub releases before the fix, and pruning
+them reduced frontier noise inside the bounded bidirectional-reach search
+(`max_frontier_expansion=300`), letting more real paths complete within the guardrail
+instead of hitting `frontier_too_large`. Repeated-intermediary reuse is essentially flat
+between the two format-gated runs (136 → 132 releases reused across more than one pair;
+the single most-reused release drops from 24 to 18 appearances) — the fix did not
+meaningfully concentrate or disperse evidence reuse either way.
+
+No `selection`/promoted cohort artifact was created by this run, per ADR 0031 — scoring
+and `review-report.md` regeneration only. The regenerated report lives at
+`local/analysis/cohorts/discogs-community-best-albums/review-report.md` (local-only,
+current as of 2026-07-20T12:02:49Z); the operator's next step is unchanged from ADR
+0031's standing requirement: author a human-reviewed `selection` file referencing this
+report.
+
 ## Rights and operational boundary
 
 The project should continue using monthly dumps for bulk processing. API

@@ -305,3 +305,29 @@ The two cached datasets together are ~7.5 GB — see `docs/HARDWARE.md`'s "Futur
 reconsider Pi dataset-caching scope" for why real free-space headroom on the Pi fleet
 (confirmed comfortably sufficient for this size class, exact figures kept local per ADR
 0018) is relevant background for a future revisit.
+
+## Real-data launch: public game/album artifact sizes (2026-07-19/20)
+
+The first real (non-synthetic) generation of every public game/album artifact, against
+`snapshot=20260601` and the format-corrected `studio-album-v1` policy. Observed directly
+from the committed files under `apps/web/public/data/`, not projected:
+
+| Artifact | File size | Contents |
+| --- | ---: | --- |
+| `challenge.v2.json` | 2.1 MB | 140 albums, 251 artists, 300 evidence paths, 335 releases |
+| `game/universe.v1.json` | 19.6 KB | 79 albums (only those that are an actual round endpoint or distractor) |
+| `game/rounds.v1.json` | 1.79 MB | 172 rounds (72 one-hop, 100 two-hop), 208 evidence releases, 170 artists |
+| `game/daily-manifest.v1.json` | 12.9 KB | 172 scheduled dates, one real round per date, no repeats |
+
+The rounds pool (72 one-hop / 100 two-hop) landed below the plan's original 250-500
+one-hop / 50-150 two-hop target range. This is a real, reported shortfall, not a
+silently-padded number: the allowlist gate (`eligibility.py`, explicit instrument/vocal
+roles only) is deliberately narrower than `credit_edges_sql`'s existing collaboration
+denylist, and both hops of a two-hop round must independently pass it plus the studio-
+album format gate plus relationship exclusion, on top of the 140-album backbone's own
+candidate-pair yield. `universe.v1.json`'s 79-album count (fewer than `challenge.v2`'s
+140) reflects the same real selectivity: an album that matched the backbone but never
+became a round endpoint or distractor is correctly absent from the game's own universe.
+`rounds.v1.json` is fetched at runtime rather than bundled at build time for exactly the
+reason anticipated during planning: at this scale it is already well past a
+reasonable per-page Astro budget.
