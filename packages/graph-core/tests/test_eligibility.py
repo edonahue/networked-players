@@ -2,7 +2,13 @@ from __future__ import annotations
 
 import duckdb
 
-from networked_players_graph_core.eligibility import is_performer_role, is_performer_role_sql
+from networked_players_graph_core.eligibility import (
+    _PERFORMER_ROLE_TOKENS,
+    _ROLE_CATEGORY_BY_TOKEN,
+    is_performer_role,
+    is_performer_role_sql,
+    performer_role_category,
+)
 
 # Deliberately overlaps graph.py's ROLE_PARITY_CASES so the two eligibility
 # layers can be reasoned about side by side, plus cases specific to the
@@ -88,3 +94,19 @@ def test_bare_programmer_excluded_but_qualifies_via_compound_instrument() -> Non
 def test_qualifies_via_any_eligible_component_even_with_ineligible_ones() -> None:
     assert is_performer_role("Piano, Producer") is True
     assert is_performer_role("Written-By, Producer") is False
+
+
+def test_every_performer_token_has_exactly_one_role_category() -> None:
+    assert set(_ROLE_CATEGORY_BY_TOKEN) == _PERFORMER_ROLE_TOKENS
+
+
+def test_performer_role_category_matches_the_first_eligible_component() -> None:
+    assert performer_role_category("Bass") == "bass"
+    assert performer_role_category("Violin, Viola") == "violin"
+    assert performer_role_category("Written-By, Guitar") == "guitar"
+    assert performer_role_category("Backing Vocals [Uncredited]") == "backing_vocals"
+
+
+def test_performer_role_category_falls_back_for_ineligible_role() -> None:
+    assert performer_role_category("Producer") == "performer"
+    assert performer_role_category(None) == "performer"

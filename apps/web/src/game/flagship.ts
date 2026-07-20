@@ -1,11 +1,11 @@
 // Client controller for the flagship Connection Guesser
-// (docs/WEB_PRODUCT_PLAN.md §5). Reads the round pool from the page's JSON
-// island, drives the pure engine, and renders every phase into the static
-// shells in play/connection.astro. One-hop rounds ask a single question;
-// two-hop rounds walk bridge_a → bridge_b → hidden middle, rebuilding the
-// tray per step. Nothing here marks which chip is correct — answers are
-// checked in memory, and verdict/evidence markup exists only after the
-// round resolves.
+// (docs/WEB_PRODUCT_PLAN.md §5). Fetches the round pool at runtime
+// (fetchRounds), drives the pure engine, and renders every phase into the
+// static shells in play/connection.astro. One-hop rounds ask a single
+// question; two-hop rounds walk bridge_a → bridge_b → hidden middle,
+// rebuilding the tray per step. Nothing here marks which chip is correct —
+// answers are checked in memory, and verdict/evidence markup exists only
+// after the round resolves.
 
 import { createEngine, type Engine } from "./engine";
 import { createRng, dailySeed } from "./prng";
@@ -136,10 +136,35 @@ export interface FlagshipOptions {
   daily?: boolean;
 }
 
-export function initFlagship(options: FlagshipOptions = {}): void {
-  const island = document.getElementById("np-round-data");
-  if (!island?.textContent) throw new Error("round data island missing");
-  const rounds = JSON.parse(island.textContent) as GameRound[];
+/** The real pool is fetched at runtime, not embedded in the page -- it is
+ * well past a reasonable inline-HTML budget at real-launch scale (500 real
+ * rounds, ~1.2 MB). Cached by the browser like any other static asset after
+ * the first load; nothing here is per-user or per-request. */
+async function fetchRounds(): Promise<GameRound[]> {
+  const response = await fetch("/data/game/rounds.v1.json");
+  if (!response.ok) {
+    throw new Error(`failed to load rounds.v1.json: ${response.status}`);
+  }
+  const data = (await response.json()) as { rounds: GameRound[] };
+  return data.rounds;
+}
+
+export async function initFlagship(
+  options: FlagshipOptions = {},
+): Promise<void> {
+  let rounds: GameRound[];
+  try {
+    rounds = await fetchRounds();
+  } catch {
+    const stage = document.querySelector('[data-testid="stage"]');
+    const question = document.querySelector('[data-testid="question"]');
+    if (question) {
+      question.textContent =
+        "Could not load the round pool right now — try refreshing the page.";
+    }
+    stage?.setAttribute("data-phase", "error");
+    return;
+  }
   const params = new URLSearchParams(window.location.search);
   if (
     params.get("motion") === "off" ||

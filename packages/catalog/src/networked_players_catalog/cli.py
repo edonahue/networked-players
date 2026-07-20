@@ -277,6 +277,43 @@ def _parser() -> argparse.ArgumentParser:
     validate_rounds.add_argument("--universe", type=Path, required=True)
     validate_rounds.add_argument("--rounds", type=Path, required=True)
 
+    build_connection_rounds = subparsers.add_parser(
+        "build-connection-rounds",
+        help=(
+            "build the real Connection Guesser universe.v1/rounds.v1 pair (apps/web's "
+            "GameUniverse/GameRounds contract) -- a performer credited on BOTH displayed "
+            "albums directly, distinct from build-rounds-from-dump's path semantic"
+        ),
+    )
+    build_connection_rounds.add_argument("--onehop-root", type=Path, required=True)
+    build_connection_rounds.add_argument(
+        "--challenge",
+        type=Path,
+        required=True,
+        help="a published challenge.v2.json; its albums[] is the album catalog",
+    )
+    build_connection_rounds.add_argument(
+        "--artist-family-exclusions",
+        type=Path,
+        default=None,
+        help="optional artist-family-exclusions-v1.json; drops trivial group/frontperson pairs",
+    )
+    build_connection_rounds.add_argument("--one-hop-target", type=int, default=300)
+    build_connection_rounds.add_argument("--two-hop-target", type=int, default=200)
+    build_connection_rounds.add_argument("--max-endpoint-share", type=float, default=0.15)
+    build_connection_rounds.add_argument("--max-bridge-share", type=float, default=0.2)
+    build_connection_rounds.add_argument("--memory-limit", default="1GB")
+    build_connection_rounds.add_argument("--threads", type=int, default=2)
+    build_connection_rounds.add_argument("--output-universe", type=Path, required=True)
+    build_connection_rounds.add_argument("--output-rounds", type=Path, required=True)
+
+    validate_connection_rounds = subparsers.add_parser(
+        "validate-connection-rounds",
+        help="validate a real Connection Guesser universe.v1/rounds.v1 pair against its contract",
+    )
+    validate_connection_rounds.add_argument("--universe", type=Path, required=True)
+    validate_connection_rounds.add_argument("--rounds", type=Path, required=True)
+
     build_daily = subparsers.add_parser(
         "build-daily-manifest",
         help="build a frozen date->round_id schedule for Connection of the Day",
@@ -1167,6 +1204,71 @@ def main(argv: Sequence[str] | None = None) -> int:
         universe = json.loads(args.universe.read_text())
         rounds = json.loads(args.rounds.read_text())
         validate_rounds_artifact(universe, rounds)
+        print(json.dumps({"ok": True}, indent=2))
+        return 0
+
+    if args.command == "build-connection-rounds":
+        from networked_players_graph_core.connection_rounds import (
+            build_connection_universe_and_rounds,
+            generate_connection_round_pool,
+            validate_connection_rounds_artifact,
+        )
+        from networked_players_graph_core.graph import CreditGraph
+
+        challenge = json.loads(args.challenge.read_text())
+        albums = challenge["albums"]
+        snapshot_date = challenge["provenance"]["snapshot_date"]
+
+        connection_is_family_excluded: Callable[[int, int], bool] | None = None
+        if args.artist_family_exclusions is not None:
+            from .discogs.artist_family import is_family_excluded_pair
+
+            exclusions = json.loads(args.artist_family_exclusions.read_text())
+
+            def connection_is_family_excluded(a: int, b: int) -> bool:
+                return is_family_excluded_pair(a, b, exclusions)
+
+        with CreditGraph.open(
+            args.onehop_root,
+            memory_limit=args.memory_limit,
+            threads=args.threads,
+            build_edges=False,
+        ) as graph:
+            rounds_json, diagnostics = generate_connection_round_pool(
+                graph,
+                albums,
+                one_hop_target=args.one_hop_target,
+                two_hop_target=args.two_hop_target,
+                is_family_excluded=connection_is_family_excluded,
+                max_endpoint_share=args.max_endpoint_share,
+                max_bridge_share=args.max_bridge_share,
+            )
+            if not rounds_json:
+                raise ValueError("no eligible connection rounds were found between any album pair")
+
+            universe, rounds = build_connection_universe_and_rounds(
+                albums,
+                rounds_json,
+                snapshot_date=snapshot_date,
+                generated_by=f"networked-players-catalog build-connection-rounds {__version__}",
+            )
+
+        validate_connection_rounds_artifact(universe, rounds)
+        args.output_universe.parent.mkdir(parents=True, exist_ok=True)
+        args.output_rounds.parent.mkdir(parents=True, exist_ok=True)
+        args.output_universe.write_text(json.dumps(universe, indent=2) + "\n")
+        args.output_rounds.write_text(json.dumps(rounds, indent=2) + "\n")
+        print(json.dumps(diagnostics, indent=2))
+        return 0
+
+    if args.command == "validate-connection-rounds":
+        from networked_players_graph_core.connection_rounds import (
+            validate_connection_rounds_artifact,
+        )
+
+        universe = json.loads(args.universe.read_text())
+        rounds = json.loads(args.rounds.read_text())
+        validate_connection_rounds_artifact(universe, rounds)
         print(json.dumps({"ok": True}, indent=2))
         return 0
 

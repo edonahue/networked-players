@@ -128,6 +128,115 @@ def is_performer_role(role_text: str | None) -> bool:
     return False
 
 
+# Display-only categorization of the same token set above, for the game's
+# contributor chips (a short, human label like "guitar" or "vocals" -- purely
+# presentational text, never branched on). Grouped exactly like
+# `_PERFORMER_ROLE_TOKENS`'s comments; a token not listed here falls back to
+# `"performer"`, which should never actually happen since every token in
+# `_PERFORMER_ROLE_TOKENS` has an entry.
+_ROLE_CATEGORY_BY_TOKEN: dict[str, str] = {
+    # Voice
+    "vocals": "vocals",
+    "lead vocals": "vocals",
+    "co-lead vocals": "vocals",
+    "backing vocals": "backing_vocals",
+    "background vocals": "backing_vocals",
+    "additional vocals": "backing_vocals",
+    "choir": "vocals",
+    "chorus": "vocals",
+    "voice": "vocals",
+    "rap": "vocals",
+    "spoken word": "vocals",
+    # Fretted / plucked / bowed strings
+    "guitar": "guitar",
+    "acoustic guitar": "guitar",
+    "electric guitar": "guitar",
+    "lead guitar": "guitar",
+    "rhythm guitar": "guitar",
+    "slide guitar": "guitar",
+    "steel guitar": "guitar",
+    "pedal steel": "guitar",
+    "bass": "bass",
+    "bass guitar": "bass",
+    "double bass": "bass",
+    "upright bass": "bass",
+    "banjo": "strings",
+    "mandolin": "strings",
+    "ukulele": "strings",
+    "sitar": "strings",
+    "violin": "violin",
+    "viola": "strings",
+    "cello": "strings",
+    "fiddle": "violin",
+    "harp": "harp",
+    # Percussion / keys
+    "drums": "drums",
+    "percussion": "percussion",
+    "congas": "percussion",
+    "bongos": "percussion",
+    "timpani": "percussion",
+    "tabla": "percussion",
+    "piano": "keys",
+    "electric piano": "keys",
+    "organ": "organ",
+    "hammond organ": "organ",
+    "keyboards": "keys",
+    "synthesizer": "keys",
+    "synth": "keys",
+    "accordion": "keys",
+    "harpsichord": "keys",
+    "celesta": "keys",
+    "vibraphone": "percussion",
+    "marimba": "percussion",
+    "xylophone": "percussion",
+    # Brass
+    "trumpet": "trumpet",
+    "trombone": "brass",
+    "tuba": "brass",
+    "french horn": "brass",
+    "cornet": "brass",
+    "flugelhorn": "brass",
+    # Woodwind
+    "saxophone": "sax",
+    "alto saxophone": "sax",
+    "tenor saxophone": "sax",
+    "baritone saxophone": "sax",
+    "soprano saxophone": "sax",
+    "clarinet": "woodwind",
+    "flute": "flute",
+    "piccolo": "woodwind",
+    "oboe": "woodwind",
+    "bassoon": "woodwind",
+    "bagpipes": "woodwind",
+    "harmonica": "woodwind",
+}
+
+
+def first_performer_component(role_text: str | None) -> str | None:
+    """The first comma-separated component of `role_text` that is a recognized
+    performer token, normalized (bracket-stripped, trimmed, lowercased) but not
+    re-cased -- or None if `role_text` is not performer-eligible. Feeds
+    `performer_role_category`."""
+    if role_text is None:
+        return None
+    for component in role_text.split(","):
+        stripped = re.sub(r"\[.*\]", "", component).strip().lower()
+        if stripped in _PERFORMER_ROLE_TOKENS:
+            return stripped
+    return None
+
+
+def performer_role_category(role_text: str | None) -> str:
+    """Short display category (e.g. "guitar", "vocals") for a performer-eligible
+    `role_text`. Presentational only -- see `_ROLE_CATEGORY_BY_TOKEN`. Falls back
+    to `"performer"` for a non-eligible or unrecognized role_text; callers should
+    only invoke this after confirming `is_performer_role(role_text)`."""
+    token = first_performer_component(role_text)
+    if token is None:
+        return "performer"
+    return _ROLE_CATEGORY_BY_TOKEN.get(token, "performer")
+
+
 def is_performer_role_sql(role_column: str) -> str:
     """SQL boolean: true when at least one comma-separated component of
     `role_column` is a recognized instrument/vocal token. False for NULL.

@@ -1,0 +1,6347 @@
+{
+  "schema_version": 1,
+  "provenance": {
+    "source": "Synthetic fixture -- the Meridian Tapes universe, an entirely fictional catalog invented for this repository, for tests only. The real Connection Guesser pool is generated separately (networked-players-catalog build-connection-rounds) and published at public/data/game/*.json.",
+    "license": "Fictional synthetic data authored in this repository; no external source, no real artists, releases, or Discogs identifiers",
+    "note": "Rounds are regenerated deterministically by apps/web/scripts/build-rounds.mjs; every distractor is validated to NOT satisfy the connection. Never presented as real catalog data, and never published outside this test fixture.",
+    "generated_by": "apps/web/scripts/build-rounds.mjs (deterministic derivation)"
+  },
+  "rounds": [
+    {
+      "id": "syn-1h-0102",
+      "pool": "synthetic-universe",
+      "kind": "one_hop",
+      "difficulty": "hard",
+      "endpoints": [
+        {
+          "id": "syn-a01",
+          "title": "Late Ferry",
+          "year": 1974,
+          "act": "The Harbor Lights",
+          "label": "Meridian",
+          "art": {
+            "kind": "generated"
+          }
+        },
+        {
+          "id": "syn-a02",
+          "title": "Paper Lanterns",
+          "year": 1975,
+          "act": "Vela Marsh",
+          "label": "Meridian",
+          "art": {
+            "kind": "generated"
+          }
+        }
+      ],
+      "answer_set": [
+        {
+          "id": 90000005,
+          "name": "Hal Mercer",
+          "role_category": "engineer"
+        }
+      ],
+      "distractors": [
+        {
+          "id": 90000021,
+          "name": "Isla Chen",
+          "role_category": "harp"
+        },
+        {
+          "id": 90000004,
+          "name": "Lena Brook",
+          "role_category": "producer"
+        },
+        {
+          "id": 90000022,
+          "name": "Duke Farrow",
+          "role_category": "organ"
+        },
+        {
+          "id": 90000015,
+          "name": "Viv Sandoval",
+          "role_category": "trumpet"
+        }
+      ],
+      "clues": [
+        {
+          "kind": "years",
+          "text": "The records are from 1974 and 1975."
+        },
+        {
+          "kind": "role",
+          "text": "The connecting credit is engineer work."
+        },
+        {
+          "kind": "initials",
+          "text": "Their initials are H. M."
+        },
+        {
+          "kind": "credit_excerpt",
+          "text": "Liner note, Late Ferry: \"Engineer — ▮▮▮▮▮▮\""
+        },
+        {
+          "kind": "eliminate",
+          "text": "Two names struck from the tray.",
+          "eliminate_ids": [
+            90000021,
+            90000004
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "release_ref": "syn-r01",
+          "release_title": "Late Ferry",
+          "contributor_id": 90000005,
+          "credited_as": "Hal Mercer",
+          "role_text": "Engineer",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r02",
+          "release_title": "Paper Lanterns",
+          "contributor_id": 90000005,
+          "credited_as": "Hal Mercer",
+          "role_text": "Engineer",
+          "credit_scope": "release_credit"
+        }
+      ],
+      "provenance_note": "Synthetic-universe round: a fictional catalog with generated sleeve art, clearly stamped SYNTHETIC."
+    },
+    {
+      "id": "syn-1h-0103",
+      "pool": "synthetic-universe",
+      "kind": "one_hop",
+      "difficulty": "easy",
+      "endpoints": [
+        {
+          "id": "syn-a01",
+          "title": "Late Ferry",
+          "year": 1974,
+          "act": "The Harbor Lights",
+          "label": "Meridian",
+          "art": {
+            "kind": "generated"
+          }
+        },
+        {
+          "id": "syn-a03",
+          "title": "Copper Sound!",
+          "year": 1975,
+          "act": "The Copper Sound",
+          "label": "Copper Kettle",
+          "art": {
+            "kind": "generated"
+          }
+        }
+      ],
+      "answer_set": [
+        {
+          "id": 90000001,
+          "name": "Dee Calloway",
+          "role_category": "bass"
+        }
+      ],
+      "distractors": [
+        {
+          "id": 90000007,
+          "name": "Sonia Vex",
+          "role_category": "keys"
+        },
+        {
+          "id": 90000016,
+          "name": "Kit Marlowe",
+          "role_category": "mixing"
+        },
+        {
+          "id": 90000005,
+          "name": "Hal Mercer",
+          "role_category": "engineer"
+        },
+        {
+          "id": 90000014,
+          "name": "June Halloran",
+          "role_category": "mastering"
+        }
+      ],
+      "clues": [
+        {
+          "kind": "years",
+          "text": "The records are from 1974 and 1975."
+        },
+        {
+          "kind": "role",
+          "text": "The connecting credit is bass work."
+        },
+        {
+          "kind": "initials",
+          "text": "Their initials are D. C."
+        },
+        {
+          "kind": "credit_excerpt",
+          "text": "Liner note, Late Ferry: \"Bass — ▮▮▮▮▮▮\""
+        },
+        {
+          "kind": "eliminate",
+          "text": "Two names struck from the tray.",
+          "eliminate_ids": [
+            90000007,
+            90000016
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "release_ref": "syn-r01",
+          "release_title": "Late Ferry",
+          "contributor_id": 90000001,
+          "credited_as": "Dee Calloway",
+          "role_text": "Bass",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r03",
+          "release_title": "Copper Sound!",
+          "contributor_id": 90000001,
+          "credited_as": "Dee Calloway",
+          "role_text": "Bass",
+          "credit_scope": "release_credit"
+        }
+      ],
+      "provenance_note": "Synthetic-universe round: a fictional catalog with generated sleeve art, clearly stamped SYNTHETIC."
+    },
+    {
+      "id": "syn-1h-0104",
+      "pool": "synthetic-universe",
+      "kind": "one_hop",
+      "difficulty": "medium",
+      "endpoints": [
+        {
+          "id": "syn-a01",
+          "title": "Late Ferry",
+          "year": 1974,
+          "act": "The Harbor Lights",
+          "label": "Meridian",
+          "art": {
+            "kind": "generated"
+          }
+        },
+        {
+          "id": "syn-a04",
+          "title": "Quiet Acre",
+          "year": 1976,
+          "act": "Ada Quinn",
+          "label": "Meridian",
+          "art": {
+            "kind": "generated"
+          }
+        }
+      ],
+      "answer_set": [
+        {
+          "id": 90000003,
+          "name": "Ray Okafor",
+          "role_category": "drums"
+        }
+      ],
+      "distractors": [
+        {
+          "id": 90000017,
+          "name": "Fern Okafor",
+          "role_category": "violin"
+        },
+        {
+          "id": 90000014,
+          "name": "June Halloran",
+          "role_category": "mastering"
+        },
+        {
+          "id": 90000001,
+          "name": "Dee Calloway",
+          "role_category": "bass"
+        },
+        {
+          "id": 90000005,
+          "name": "Hal Mercer",
+          "role_category": "engineer"
+        }
+      ],
+      "clues": [
+        {
+          "kind": "years",
+          "text": "The records are from 1974 and 1976."
+        },
+        {
+          "kind": "role",
+          "text": "The connecting credit is drums work."
+        },
+        {
+          "kind": "initials",
+          "text": "Their initials are R. O."
+        },
+        {
+          "kind": "credit_excerpt",
+          "text": "Liner note, Late Ferry: \"Drums — ▮▮▮▮▮▮\""
+        },
+        {
+          "kind": "eliminate",
+          "text": "Two names struck from the tray.",
+          "eliminate_ids": [
+            90000017,
+            90000014
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "release_ref": "syn-r01",
+          "release_title": "Late Ferry",
+          "contributor_id": 90000003,
+          "credited_as": "Ray Okafor",
+          "role_text": "Drums",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r04",
+          "release_title": "Quiet Acre",
+          "contributor_id": 90000003,
+          "credited_as": "Ray Okafor",
+          "role_text": "Drums",
+          "credit_scope": "release_credit"
+        }
+      ],
+      "provenance_note": "Synthetic-universe round: a fictional catalog with generated sleeve art, clearly stamped SYNTHETIC."
+    },
+    {
+      "id": "syn-1h-0105",
+      "pool": "synthetic-universe",
+      "kind": "one_hop",
+      "difficulty": "hard",
+      "endpoints": [
+        {
+          "id": "syn-a01",
+          "title": "Late Ferry",
+          "year": 1974,
+          "act": "The Harbor Lights",
+          "label": "Meridian",
+          "art": {
+            "kind": "generated"
+          }
+        },
+        {
+          "id": "syn-a05",
+          "title": "Terminal Lights",
+          "year": 1980,
+          "act": "Night Ferry",
+          "label": "Meridian",
+          "art": {
+            "kind": "generated"
+          }
+        }
+      ],
+      "answer_set": [
+        {
+          "id": 90000005,
+          "name": "Hal Mercer",
+          "role_category": "engineer"
+        }
+      ],
+      "distractors": [
+        {
+          "id": 90000014,
+          "name": "June Halloran",
+          "role_category": "mastering"
+        },
+        {
+          "id": 90000018,
+          "name": "Bo Lindqvist",
+          "role_category": "guitar"
+        },
+        {
+          "id": 90000002,
+          "name": "Del Callahan",
+          "role_category": "bass"
+        },
+        {
+          "id": 90000021,
+          "name": "Isla Chen",
+          "role_category": "harp"
+        }
+      ],
+      "clues": [
+        {
+          "kind": "years",
+          "text": "The records are from 1974 and 1980."
+        },
+        {
+          "kind": "role",
+          "text": "The connecting credit is engineer work."
+        },
+        {
+          "kind": "initials",
+          "text": "Their initials are H. M."
+        },
+        {
+          "kind": "credit_excerpt",
+          "text": "Liner note, Late Ferry: \"Engineer — ▮▮▮▮▮▮\""
+        },
+        {
+          "kind": "eliminate",
+          "text": "Two names struck from the tray.",
+          "eliminate_ids": [
+            90000014,
+            90000018
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "release_ref": "syn-r01",
+          "release_title": "Late Ferry",
+          "contributor_id": 90000005,
+          "credited_as": "Hal Mercer",
+          "role_text": "Engineer",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r05",
+          "release_title": "Terminal Lights",
+          "contributor_id": 90000005,
+          "credited_as": "Hal Mercer",
+          "role_text": "Engineer",
+          "credit_scope": "release_credit"
+        }
+      ],
+      "provenance_note": "Synthetic-universe round: a fictional catalog with generated sleeve art, clearly stamped SYNTHETIC."
+    },
+    {
+      "id": "syn-1h-0107",
+      "pool": "synthetic-universe",
+      "kind": "one_hop",
+      "difficulty": "hard",
+      "endpoints": [
+        {
+          "id": "syn-a01",
+          "title": "Late Ferry",
+          "year": 1974,
+          "act": "The Harbor Lights",
+          "label": "Meridian",
+          "art": {
+            "kind": "generated"
+          }
+        },
+        {
+          "id": "syn-a07",
+          "title": "Midnight Arcade",
+          "year": 1978,
+          "act": "Marta Vale",
+          "label": "Meridian",
+          "art": {
+            "kind": "generated"
+          }
+        }
+      ],
+      "answer_set": [
+        {
+          "id": 90000001,
+          "name": "Dee Calloway",
+          "role_category": "bass"
+        },
+        {
+          "id": 90000003,
+          "name": "Ray Okafor",
+          "role_category": "drums"
+        }
+      ],
+      "distractors": [
+        {
+          "id": 90000020,
+          "name": "Rex Torres",
+          "role_category": "bass"
+        },
+        {
+          "id": 90000005,
+          "name": "Hal Mercer",
+          "role_category": "engineer"
+        },
+        {
+          "id": 90000014,
+          "name": "June Halloran",
+          "role_category": "mastering"
+        },
+        {
+          "id": 90000021,
+          "name": "Isla Chen",
+          "role_category": "harp"
+        }
+      ],
+      "clues": [
+        {
+          "kind": "years",
+          "text": "The records are from 1974 and 1978."
+        },
+        {
+          "kind": "role",
+          "text": "The connecting credit is bass work."
+        },
+        {
+          "kind": "initials",
+          "text": "Their initials are D. C."
+        },
+        {
+          "kind": "credit_excerpt",
+          "text": "Liner note, Late Ferry: \"Bass — ▮▮▮▮▮▮\""
+        },
+        {
+          "kind": "eliminate",
+          "text": "Two names struck from the tray.",
+          "eliminate_ids": [
+            90000020,
+            90000005
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "release_ref": "syn-r01",
+          "release_title": "Late Ferry",
+          "contributor_id": 90000001,
+          "credited_as": "Dee Calloway",
+          "role_text": "Bass",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r01",
+          "release_title": "Late Ferry",
+          "contributor_id": 90000003,
+          "credited_as": "Ray Okafor",
+          "role_text": "Drums",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r07",
+          "release_title": "Midnight Arcade",
+          "contributor_id": 90000001,
+          "credited_as": "Dee Calloway",
+          "role_text": "Bass",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r07",
+          "release_title": "Midnight Arcade",
+          "contributor_id": 90000003,
+          "credited_as": "Ray Okafor",
+          "role_text": "Drums",
+          "credit_scope": "release_credit"
+        }
+      ],
+      "provenance_note": "Synthetic-universe round: a fictional catalog with generated sleeve art, clearly stamped SYNTHETIC."
+    },
+    {
+      "id": "syn-1h-0108",
+      "pool": "synthetic-universe",
+      "kind": "one_hop",
+      "difficulty": "easy",
+      "endpoints": [
+        {
+          "id": "syn-a01",
+          "title": "Late Ferry",
+          "year": 1974,
+          "act": "The Harbor Lights",
+          "label": "Meridian",
+          "art": {
+            "kind": "generated"
+          }
+        },
+        {
+          "id": "syn-a08",
+          "title": "Reedwork",
+          "year": 1977,
+          "act": "Ossian Reed",
+          "label": "Copper Kettle",
+          "art": {
+            "kind": "generated"
+          }
+        }
+      ],
+      "answer_set": [
+        {
+          "id": 90000021,
+          "name": "Isla Chen",
+          "role_category": "harp"
+        }
+      ],
+      "distractors": [
+        {
+          "id": 90000001,
+          "name": "Dee Calloway",
+          "role_category": "bass"
+        },
+        {
+          "id": 90000003,
+          "name": "Ray Okafor",
+          "role_category": "drums"
+        },
+        {
+          "id": 90000005,
+          "name": "Hal Mercer",
+          "role_category": "engineer"
+        },
+        {
+          "id": 90000014,
+          "name": "June Halloran",
+          "role_category": "mastering"
+        }
+      ],
+      "clues": [
+        {
+          "kind": "years",
+          "text": "The records are from 1974 and 1977."
+        },
+        {
+          "kind": "role",
+          "text": "The connecting credit is harp work."
+        },
+        {
+          "kind": "initials",
+          "text": "Their initials are I. C."
+        },
+        {
+          "kind": "credit_excerpt",
+          "text": "Liner note, Late Ferry: \"Harp — ▮▮▮▮▮▮\""
+        },
+        {
+          "kind": "eliminate",
+          "text": "Two names struck from the tray.",
+          "eliminate_ids": [
+            90000001,
+            90000003
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "release_ref": "syn-r01",
+          "release_title": "Late Ferry",
+          "contributor_id": 90000021,
+          "credited_as": "Isla Chen",
+          "role_text": "Harp",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r08",
+          "release_title": "Reedwork",
+          "contributor_id": 90000021,
+          "credited_as": "Isla Chen",
+          "role_text": "Harp",
+          "credit_scope": "release_credit"
+        }
+      ],
+      "provenance_note": "Synthetic-universe round: a fictional catalog with generated sleeve art, clearly stamped SYNTHETIC."
+    },
+    {
+      "id": "syn-1h-0110",
+      "pool": "synthetic-universe",
+      "kind": "one_hop",
+      "difficulty": "hard",
+      "endpoints": [
+        {
+          "id": "syn-a01",
+          "title": "Late Ferry",
+          "year": 1974,
+          "act": "The Harbor Lights",
+          "label": "Meridian",
+          "art": {
+            "kind": "generated"
+          }
+        },
+        {
+          "id": "syn-a10",
+          "title": "Blue Meridian Presents",
+          "year": 1974,
+          "act": "Blue Meridian Orchestra",
+          "label": "Meridian",
+          "art": {
+            "kind": "generated"
+          }
+        }
+      ],
+      "answer_set": [
+        {
+          "id": 90000005,
+          "name": "Hal Mercer",
+          "role_category": "engineer"
+        },
+        {
+          "id": 90000014,
+          "name": "June Halloran",
+          "role_category": "mastering"
+        }
+      ],
+      "distractors": [
+        {
+          "id": 90000013,
+          "name": "Omar Reyes",
+          "role_category": "percussion"
+        },
+        {
+          "id": 90000021,
+          "name": "Isla Chen",
+          "role_category": "harp"
+        },
+        {
+          "id": 90000001,
+          "name": "Dee Calloway",
+          "role_category": "bass"
+        },
+        {
+          "id": 90000003,
+          "name": "Ray Okafor",
+          "role_category": "drums"
+        }
+      ],
+      "clues": [
+        {
+          "kind": "years",
+          "text": "The records are from 1974 and 1974."
+        },
+        {
+          "kind": "role",
+          "text": "The connecting credit is engineer work."
+        },
+        {
+          "kind": "initials",
+          "text": "Their initials are H. M."
+        },
+        {
+          "kind": "credit_excerpt",
+          "text": "Liner note, Late Ferry: \"Engineer — ▮▮▮▮▮▮\""
+        },
+        {
+          "kind": "eliminate",
+          "text": "Two names struck from the tray.",
+          "eliminate_ids": [
+            90000013,
+            90000021
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "release_ref": "syn-r01",
+          "release_title": "Late Ferry",
+          "contributor_id": 90000005,
+          "credited_as": "Hal Mercer",
+          "role_text": "Engineer",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r01",
+          "release_title": "Late Ferry",
+          "contributor_id": 90000014,
+          "credited_as": "June Halloran",
+          "role_text": "Mastered By",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r10",
+          "release_title": "Blue Meridian Presents",
+          "contributor_id": 90000005,
+          "credited_as": "Hal Mercer",
+          "role_text": "Engineer",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r10",
+          "release_title": "Blue Meridian Presents",
+          "contributor_id": 90000014,
+          "credited_as": "June Halloran",
+          "role_text": "Mastered By",
+          "credit_scope": "release_credit"
+        }
+      ],
+      "provenance_note": "Synthetic-universe round: a fictional catalog with generated sleeve art, clearly stamped SYNTHETIC."
+    },
+    {
+      "id": "syn-1h-0111",
+      "pool": "synthetic-universe",
+      "kind": "one_hop",
+      "difficulty": "hard",
+      "endpoints": [
+        {
+          "id": "syn-a01",
+          "title": "Late Ferry",
+          "year": 1974,
+          "act": "The Harbor Lights",
+          "label": "Meridian",
+          "art": {
+            "kind": "generated"
+          }
+        },
+        {
+          "id": "syn-a11",
+          "title": "Filament",
+          "year": 1981,
+          "act": "Tin Lantern",
+          "label": "Copper Kettle",
+          "art": {
+            "kind": "generated"
+          }
+        }
+      ],
+      "answer_set": [
+        {
+          "id": 90000014,
+          "name": "June Halloran",
+          "role_category": "mastering"
+        }
+      ],
+      "distractors": [
+        {
+          "id": 90000005,
+          "name": "Hal Mercer",
+          "role_category": "engineer"
+        },
+        {
+          "id": 90000007,
+          "name": "Sonia Vex",
+          "role_category": "keys"
+        },
+        {
+          "id": 90000001,
+          "name": "Dee Calloway",
+          "role_category": "bass"
+        },
+        {
+          "id": 90000003,
+          "name": "Ray Okafor",
+          "role_category": "drums"
+        }
+      ],
+      "clues": [
+        {
+          "kind": "years",
+          "text": "The records are from 1974 and 1981."
+        },
+        {
+          "kind": "role",
+          "text": "The connecting credit is mastered by work."
+        },
+        {
+          "kind": "initials",
+          "text": "Their initials are J. H."
+        },
+        {
+          "kind": "credit_excerpt",
+          "text": "Liner note, Late Ferry: \"Mastered By — ▮▮▮▮▮▮\""
+        },
+        {
+          "kind": "eliminate",
+          "text": "Two names struck from the tray.",
+          "eliminate_ids": [
+            90000005,
+            90000007
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "release_ref": "syn-r01",
+          "release_title": "Late Ferry",
+          "contributor_id": 90000014,
+          "credited_as": "June Halloran",
+          "role_text": "Mastered By",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r11",
+          "release_title": "Filament",
+          "contributor_id": 90000014,
+          "credited_as": "June Halloran",
+          "role_text": "Mastered By",
+          "credit_scope": "release_credit"
+        }
+      ],
+      "provenance_note": "Synthetic-universe round: a fictional catalog with generated sleeve art, clearly stamped SYNTHETIC."
+    },
+    {
+      "id": "syn-1h-0112",
+      "pool": "synthetic-universe",
+      "kind": "one_hop",
+      "difficulty": "easy",
+      "endpoints": [
+        {
+          "id": "syn-a01",
+          "title": "Late Ferry",
+          "year": 1974,
+          "act": "The Harbor Lights",
+          "label": "Meridian",
+          "art": {
+            "kind": "generated"
+          }
+        },
+        {
+          "id": "syn-a12",
+          "title": "Solis",
+          "year": 1977,
+          "act": "Yara Solis",
+          "label": "Meridian",
+          "art": {
+            "kind": "generated"
+          }
+        }
+      ],
+      "answer_set": [
+        {
+          "id": 90000001,
+          "name": "Dee Calloway",
+          "role_category": "bass"
+        }
+      ],
+      "distractors": [
+        {
+          "id": 90000021,
+          "name": "Isla Chen",
+          "role_category": "harp"
+        },
+        {
+          "id": 90000014,
+          "name": "June Halloran",
+          "role_category": "mastering"
+        },
+        {
+          "id": 90000005,
+          "name": "Hal Mercer",
+          "role_category": "engineer"
+        },
+        {
+          "id": 90000015,
+          "name": "Viv Sandoval",
+          "role_category": "trumpet"
+        }
+      ],
+      "clues": [
+        {
+          "kind": "years",
+          "text": "The records are from 1974 and 1977."
+        },
+        {
+          "kind": "role",
+          "text": "The connecting credit is bass work."
+        },
+        {
+          "kind": "initials",
+          "text": "Their initials are D. C."
+        },
+        {
+          "kind": "credit_excerpt",
+          "text": "Liner note, Late Ferry: \"Bass — ▮▮▮▮▮▮\""
+        },
+        {
+          "kind": "eliminate",
+          "text": "Two names struck from the tray.",
+          "eliminate_ids": [
+            90000021,
+            90000014
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "release_ref": "syn-r01",
+          "release_title": "Late Ferry",
+          "contributor_id": 90000001,
+          "credited_as": "Dee Calloway",
+          "role_text": "Bass",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r12",
+          "release_title": "Solis",
+          "contributor_id": 90000001,
+          "credited_as": "Dee Calloway",
+          "role_text": "Bass",
+          "credit_scope": "release_credit"
+        }
+      ],
+      "provenance_note": "Synthetic-universe round: a fictional catalog with generated sleeve art, clearly stamped SYNTHETIC."
+    },
+    {
+      "id": "syn-1h-0115",
+      "pool": "synthetic-universe",
+      "kind": "one_hop",
+      "difficulty": "hard",
+      "endpoints": [
+        {
+          "id": "syn-a01",
+          "title": "Late Ferry",
+          "year": 1974,
+          "act": "The Harbor Lights",
+          "label": "Meridian",
+          "art": {
+            "kind": "generated"
+          }
+        },
+        {
+          "id": "syn-a15",
+          "title": "Kettle Steam",
+          "year": 1979,
+          "act": "The Copper Sound",
+          "label": "Copper Kettle",
+          "art": {
+            "kind": "generated"
+          }
+        }
+      ],
+      "answer_set": [
+        {
+          "id": 90000005,
+          "name": "Hal Mercer",
+          "role_category": "engineer"
+        }
+      ],
+      "distractors": [
+        {
+          "id": 90000002,
+          "name": "Del Callahan",
+          "role_category": "bass"
+        },
+        {
+          "id": 90000003,
+          "name": "Ray Okafor",
+          "role_category": "drums"
+        },
+        {
+          "id": 90000001,
+          "name": "Dee Calloway",
+          "role_category": "bass"
+        },
+        {
+          "id": 90000014,
+          "name": "June Halloran",
+          "role_category": "mastering"
+        }
+      ],
+      "clues": [
+        {
+          "kind": "years",
+          "text": "The records are from 1974 and 1979."
+        },
+        {
+          "kind": "role",
+          "text": "The connecting credit is engineer work."
+        },
+        {
+          "kind": "initials",
+          "text": "Their initials are H. M."
+        },
+        {
+          "kind": "credit_excerpt",
+          "text": "Liner note, Late Ferry: \"Engineer — ▮▮▮▮▮▮\""
+        },
+        {
+          "kind": "eliminate",
+          "text": "Two names struck from the tray.",
+          "eliminate_ids": [
+            90000002,
+            90000003
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "release_ref": "syn-r01",
+          "release_title": "Late Ferry",
+          "contributor_id": 90000005,
+          "credited_as": "Hal Mercer",
+          "role_text": "Engineer",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r15",
+          "release_title": "Kettle Steam",
+          "contributor_id": 90000005,
+          "credited_as": "Hal Mercer",
+          "role_text": "Engineer",
+          "credit_scope": "release_credit"
+        }
+      ],
+      "provenance_note": "Synthetic-universe round: a fictional catalog with generated sleeve art, clearly stamped SYNTHETIC."
+    },
+    {
+      "id": "syn-1h-0117",
+      "pool": "synthetic-universe",
+      "kind": "one_hop",
+      "difficulty": "hard",
+      "endpoints": [
+        {
+          "id": "syn-a01",
+          "title": "Late Ferry",
+          "year": 1974,
+          "act": "The Harbor Lights",
+          "label": "Meridian",
+          "art": {
+            "kind": "generated"
+          }
+        },
+        {
+          "id": "syn-a17",
+          "title": "Crossing at Dusk",
+          "year": 1982,
+          "act": "Night Ferry",
+          "label": "Meridian",
+          "art": {
+            "kind": "generated"
+          }
+        }
+      ],
+      "answer_set": [
+        {
+          "id": 90000014,
+          "name": "June Halloran",
+          "role_category": "mastering"
+        }
+      ],
+      "distractors": [
+        {
+          "id": 90000001,
+          "name": "Dee Calloway",
+          "role_category": "bass"
+        },
+        {
+          "id": 90000003,
+          "name": "Ray Okafor",
+          "role_category": "drums"
+        },
+        {
+          "id": 90000021,
+          "name": "Isla Chen",
+          "role_category": "harp"
+        },
+        {
+          "id": 90000007,
+          "name": "Sonia Vex",
+          "role_category": "keys"
+        }
+      ],
+      "clues": [
+        {
+          "kind": "years",
+          "text": "The records are from 1974 and 1982."
+        },
+        {
+          "kind": "role",
+          "text": "The connecting credit is mastered by work."
+        },
+        {
+          "kind": "initials",
+          "text": "Their initials are J. H."
+        },
+        {
+          "kind": "credit_excerpt",
+          "text": "Liner note, Late Ferry: \"Mastered By — ▮▮▮▮▮▮\""
+        },
+        {
+          "kind": "eliminate",
+          "text": "Two names struck from the tray.",
+          "eliminate_ids": [
+            90000001,
+            90000003
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "release_ref": "syn-r01",
+          "release_title": "Late Ferry",
+          "contributor_id": 90000014,
+          "credited_as": "June Halloran",
+          "role_text": "Mastered By",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r17",
+          "release_title": "Crossing at Dusk",
+          "contributor_id": 90000014,
+          "credited_as": "June Halloran",
+          "role_text": "Mastered By",
+          "credit_scope": "release_credit"
+        }
+      ],
+      "provenance_note": "Synthetic-universe round: a fictional catalog with generated sleeve art, clearly stamped SYNTHETIC."
+    },
+    {
+      "id": "syn-1h-0118",
+      "pool": "synthetic-universe",
+      "kind": "one_hop",
+      "difficulty": "medium",
+      "endpoints": [
+        {
+          "id": "syn-a01",
+          "title": "Late Ferry",
+          "year": 1974,
+          "act": "The Harbor Lights",
+          "label": "Meridian",
+          "art": {
+            "kind": "generated"
+          }
+        },
+        {
+          "id": "syn-a18",
+          "title": "Setts in Motion",
+          "year": 1979,
+          "act": "The Silver Setts",
+          "label": "Meridian",
+          "art": {
+            "kind": "generated"
+          }
+        }
+      ],
+      "answer_set": [
+        {
+          "id": 90000001,
+          "name": "Dee Calloway",
+          "role_category": "bass"
+        },
+        {
+          "id": 90000021,
+          "name": "Isla Chen",
+          "role_category": "harp"
+        }
+      ],
+      "distractors": [
+        {
+          "id": 90000015,
+          "name": "Viv Sandoval",
+          "role_category": "trumpet"
+        },
+        {
+          "id": 90000010,
+          "name": "Gus Fenn",
+          "role_category": "sax"
+        },
+        {
+          "id": 90000014,
+          "name": "June Halloran",
+          "role_category": "mastering"
+        },
+        {
+          "id": 90000003,
+          "name": "Ray Okafor",
+          "role_category": "drums"
+        }
+      ],
+      "clues": [
+        {
+          "kind": "years",
+          "text": "The records are from 1974 and 1979."
+        },
+        {
+          "kind": "role",
+          "text": "The connecting credit is bass work."
+        },
+        {
+          "kind": "initials",
+          "text": "Their initials are D. C."
+        },
+        {
+          "kind": "credit_excerpt",
+          "text": "Liner note, Late Ferry: \"Bass — ▮▮▮▮▮▮\""
+        },
+        {
+          "kind": "eliminate",
+          "text": "Two names struck from the tray.",
+          "eliminate_ids": [
+            90000015,
+            90000010
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "release_ref": "syn-r01",
+          "release_title": "Late Ferry",
+          "contributor_id": 90000001,
+          "credited_as": "Dee Calloway",
+          "role_text": "Bass",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r01",
+          "release_title": "Late Ferry",
+          "contributor_id": 90000021,
+          "credited_as": "Isla Chen",
+          "role_text": "Harp",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r18",
+          "release_title": "Setts in Motion",
+          "contributor_id": 90000001,
+          "credited_as": "Dee Calloway",
+          "role_text": "Bass",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r18",
+          "release_title": "Setts in Motion",
+          "contributor_id": 90000021,
+          "credited_as": "Isla Chen",
+          "role_text": "Harp",
+          "credit_scope": "release_credit"
+        }
+      ],
+      "provenance_note": "Synthetic-universe round: a fictional catalog with generated sleeve art, clearly stamped SYNTHETIC."
+    },
+    {
+      "id": "syn-1h-0119",
+      "pool": "synthetic-universe",
+      "kind": "one_hop",
+      "difficulty": "easy",
+      "endpoints": [
+        {
+          "id": "syn-a01",
+          "title": "Late Ferry",
+          "year": 1974,
+          "act": "The Harbor Lights",
+          "label": "Meridian",
+          "art": {
+            "kind": "generated"
+          }
+        },
+        {
+          "id": "syn-a19",
+          "title": "Vale of Mirrors",
+          "year": 1981,
+          "act": "Marta Vale",
+          "label": "Copper Kettle",
+          "art": {
+            "kind": "generated"
+          }
+        }
+      ],
+      "answer_set": [
+        {
+          "id": 90000003,
+          "name": "Ray Okafor",
+          "role_category": "drums"
+        }
+      ],
+      "distractors": [
+        {
+          "id": 90000021,
+          "name": "Isla Chen",
+          "role_category": "harp"
+        },
+        {
+          "id": 90000014,
+          "name": "June Halloran",
+          "role_category": "mastering"
+        },
+        {
+          "id": 90000001,
+          "name": "Dee Calloway",
+          "role_category": "bass"
+        },
+        {
+          "id": 90000022,
+          "name": "Duke Farrow",
+          "role_category": "organ"
+        }
+      ],
+      "clues": [
+        {
+          "kind": "years",
+          "text": "The records are from 1974 and 1981."
+        },
+        {
+          "kind": "role",
+          "text": "The connecting credit is drums work."
+        },
+        {
+          "kind": "initials",
+          "text": "Their initials are R. O."
+        },
+        {
+          "kind": "credit_excerpt",
+          "text": "Liner note, Late Ferry: \"Drums — ▮▮▮▮▮▮\""
+        },
+        {
+          "kind": "eliminate",
+          "text": "Two names struck from the tray.",
+          "eliminate_ids": [
+            90000021,
+            90000014
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "release_ref": "syn-r01",
+          "release_title": "Late Ferry",
+          "contributor_id": 90000003,
+          "credited_as": "Ray Okafor",
+          "role_text": "Drums",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r19",
+          "release_title": "Vale of Mirrors",
+          "contributor_id": 90000003,
+          "credited_as": "Ray Okafor",
+          "role_text": "Drums",
+          "credit_scope": "release_credit"
+        }
+      ],
+      "provenance_note": "Synthetic-universe round: a fictional catalog with generated sleeve art, clearly stamped SYNTHETIC."
+    },
+    {
+      "id": "syn-1h-0121",
+      "pool": "synthetic-universe",
+      "kind": "one_hop",
+      "difficulty": "hard",
+      "endpoints": [
+        {
+          "id": "syn-a01",
+          "title": "Late Ferry",
+          "year": 1974,
+          "act": "The Harbor Lights",
+          "label": "Meridian",
+          "art": {
+            "kind": "generated"
+          }
+        },
+        {
+          "id": "syn-a21",
+          "title": "String Theory for Beginners",
+          "year": 1987,
+          "act": "The Kite Union",
+          "label": "Copper Kettle",
+          "art": {
+            "kind": "generated"
+          }
+        }
+      ],
+      "answer_set": [
+        {
+          "id": 90000005,
+          "name": "Hal Mercer",
+          "role_category": "engineer"
+        }
+      ],
+      "distractors": [
+        {
+          "id": 90000011,
+          "name": "Percy Lim",
+          "role_category": "string_arrangement"
+        },
+        {
+          "id": 90000001,
+          "name": "Dee Calloway",
+          "role_category": "bass"
+        },
+        {
+          "id": 90000021,
+          "name": "Isla Chen",
+          "role_category": "harp"
+        },
+        {
+          "id": 90000014,
+          "name": "June Halloran",
+          "role_category": "mastering"
+        }
+      ],
+      "clues": [
+        {
+          "kind": "years",
+          "text": "The records are from 1974 and 1987."
+        },
+        {
+          "kind": "role",
+          "text": "The connecting credit is engineer work."
+        },
+        {
+          "kind": "initials",
+          "text": "Their initials are H. M."
+        },
+        {
+          "kind": "credit_excerpt",
+          "text": "Liner note, Late Ferry: \"Engineer — ▮▮▮▮▮▮\""
+        },
+        {
+          "kind": "eliminate",
+          "text": "Two names struck from the tray.",
+          "eliminate_ids": [
+            90000011,
+            90000001
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "release_ref": "syn-r01",
+          "release_title": "Late Ferry",
+          "contributor_id": 90000005,
+          "credited_as": "Hal Mercer",
+          "role_text": "Engineer",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r21",
+          "release_title": "String Theory for Beginners",
+          "contributor_id": 90000005,
+          "credited_as": "Hal Mercer",
+          "role_text": "Engineer",
+          "credit_scope": "release_credit"
+        }
+      ],
+      "provenance_note": "Synthetic-universe round: a fictional catalog with generated sleeve art, clearly stamped SYNTHETIC."
+    },
+    {
+      "id": "syn-1h-0122",
+      "pool": "synthetic-universe",
+      "kind": "one_hop",
+      "difficulty": "easy",
+      "endpoints": [
+        {
+          "id": "syn-a01",
+          "title": "Late Ferry",
+          "year": 1974,
+          "act": "The Harbor Lights",
+          "label": "Meridian",
+          "art": {
+            "kind": "generated"
+          }
+        },
+        {
+          "id": "syn-a22",
+          "title": "Second Pressing",
+          "year": 1978,
+          "act": "Blue Meridian Orchestra",
+          "label": "Meridian",
+          "art": {
+            "kind": "generated"
+          }
+        }
+      ],
+      "answer_set": [
+        {
+          "id": 90000001,
+          "name": "Dee Calloway",
+          "role_category": "bass"
+        }
+      ],
+      "distractors": [
+        {
+          "id": 90000019,
+          "name": "Nia Vale",
+          "role_category": "flute"
+        },
+        {
+          "id": 90000003,
+          "name": "Ray Okafor",
+          "role_category": "drums"
+        },
+        {
+          "id": 90000021,
+          "name": "Isla Chen",
+          "role_category": "harp"
+        },
+        {
+          "id": 90000012,
+          "name": "Tessa Wynn",
+          "role_category": "producer"
+        }
+      ],
+      "clues": [
+        {
+          "kind": "years",
+          "text": "The records are from 1974 and 1978."
+        },
+        {
+          "kind": "role",
+          "text": "The connecting credit is bass work."
+        },
+        {
+          "kind": "initials",
+          "text": "Their initials are D. C."
+        },
+        {
+          "kind": "credit_excerpt",
+          "text": "Liner note, Late Ferry: \"Bass — ▮▮▮▮▮▮\""
+        },
+        {
+          "kind": "eliminate",
+          "text": "Two names struck from the tray.",
+          "eliminate_ids": [
+            90000019,
+            90000003
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "release_ref": "syn-r01",
+          "release_title": "Late Ferry",
+          "contributor_id": 90000001,
+          "credited_as": "Dee Calloway",
+          "role_text": "Bass",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r22",
+          "release_title": "Second Pressing",
+          "contributor_id": 90000001,
+          "credited_as": "Dee Calloway",
+          "role_text": "Bass",
+          "credit_scope": "release_credit"
+        }
+      ],
+      "provenance_note": "Synthetic-universe round: a fictional catalog with generated sleeve art, clearly stamped SYNTHETIC."
+    },
+    {
+      "id": "syn-1h-0125",
+      "pool": "synthetic-universe",
+      "kind": "one_hop",
+      "difficulty": "easy",
+      "endpoints": [
+        {
+          "id": "syn-a01",
+          "title": "Late Ferry",
+          "year": 1974,
+          "act": "The Harbor Lights",
+          "label": "Meridian",
+          "art": {
+            "kind": "generated"
+          }
+        },
+        {
+          "id": "syn-a25",
+          "title": "Rain on the Patio",
+          "year": 1980,
+          "act": "Yara Solis",
+          "label": "Meridian",
+          "art": {
+            "kind": "generated"
+          }
+        }
+      ],
+      "answer_set": [
+        {
+          "id": 90000003,
+          "name": "Ray Okafor",
+          "role_category": "drums"
+        }
+      ],
+      "distractors": [
+        {
+          "id": 90000021,
+          "name": "Isla Chen",
+          "role_category": "harp"
+        },
+        {
+          "id": 90000010,
+          "name": "Gus Fenn",
+          "role_category": "sax"
+        },
+        {
+          "id": 90000005,
+          "name": "Hal Mercer",
+          "role_category": "engineer"
+        },
+        {
+          "id": 90000022,
+          "name": "Duke Farrow",
+          "role_category": "organ"
+        }
+      ],
+      "clues": [
+        {
+          "kind": "years",
+          "text": "The records are from 1974 and 1980."
+        },
+        {
+          "kind": "role",
+          "text": "The connecting credit is drums work."
+        },
+        {
+          "kind": "initials",
+          "text": "Their initials are R. O."
+        },
+        {
+          "kind": "credit_excerpt",
+          "text": "Liner note, Late Ferry: \"Drums — ▮▮▮▮▮▮\""
+        },
+        {
+          "kind": "eliminate",
+          "text": "Two names struck from the tray.",
+          "eliminate_ids": [
+            90000021,
+            90000010
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "release_ref": "syn-r01",
+          "release_title": "Late Ferry",
+          "contributor_id": 90000003,
+          "credited_as": "Ray Okafor",
+          "role_text": "Drums",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r25",
+          "release_title": "Rain on the Patio",
+          "contributor_id": 90000003,
+          "credited_as": "Ray Okafor",
+          "role_text": "Drums",
+          "credit_scope": "release_credit"
+        }
+      ],
+      "provenance_note": "Synthetic-universe round: a fictional catalog with generated sleeve art, clearly stamped SYNTHETIC."
+    },
+    {
+      "id": "syn-1h-0130",
+      "pool": "synthetic-universe",
+      "kind": "one_hop",
+      "difficulty": "hard",
+      "endpoints": [
+        {
+          "id": "syn-a01",
+          "title": "Late Ferry",
+          "year": 1974,
+          "act": "The Harbor Lights",
+          "label": "Meridian",
+          "art": {
+            "kind": "generated"
+          }
+        },
+        {
+          "id": "syn-a30",
+          "title": "Glass & Wire",
+          "year": 1990,
+          "act": "Tin Lantern",
+          "label": "Copper Kettle",
+          "art": {
+            "kind": "generated"
+          }
+        }
+      ],
+      "answer_set": [
+        {
+          "id": 90000014,
+          "name": "June Halloran",
+          "role_category": "mastering"
+        }
+      ],
+      "distractors": [
+        {
+          "id": 90000003,
+          "name": "Ray Okafor",
+          "role_category": "drums"
+        },
+        {
+          "id": 90000013,
+          "name": "Omar Reyes",
+          "role_category": "percussion"
+        },
+        {
+          "id": 90000021,
+          "name": "Isla Chen",
+          "role_category": "harp"
+        },
+        {
+          "id": 90000001,
+          "name": "Dee Calloway",
+          "role_category": "bass"
+        }
+      ],
+      "clues": [
+        {
+          "kind": "years",
+          "text": "The records are from 1974 and 1990."
+        },
+        {
+          "kind": "role",
+          "text": "The connecting credit is mastered by work."
+        },
+        {
+          "kind": "initials",
+          "text": "Their initials are J. H."
+        },
+        {
+          "kind": "credit_excerpt",
+          "text": "Liner note, Late Ferry: \"Mastered By — ▮▮▮▮▮▮\""
+        },
+        {
+          "kind": "eliminate",
+          "text": "Two names struck from the tray.",
+          "eliminate_ids": [
+            90000003,
+            90000013
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "release_ref": "syn-r01",
+          "release_title": "Late Ferry",
+          "contributor_id": 90000014,
+          "credited_as": "June Halloran",
+          "role_text": "Mastered By",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r30",
+          "release_title": "Glass & Wire",
+          "contributor_id": 90000014,
+          "credited_as": "June Halloran",
+          "role_text": "Mastered By",
+          "credit_scope": "release_credit"
+        }
+      ],
+      "provenance_note": "Synthetic-universe round: a fictional catalog with generated sleeve art, clearly stamped SYNTHETIC."
+    },
+    {
+      "id": "syn-1h-0203",
+      "pool": "synthetic-universe",
+      "kind": "one_hop",
+      "difficulty": "hard",
+      "endpoints": [
+        {
+          "id": "syn-a02",
+          "title": "Paper Lanterns",
+          "year": 1975,
+          "act": "Vela Marsh",
+          "label": "Meridian",
+          "art": {
+            "kind": "generated"
+          }
+        },
+        {
+          "id": "syn-a03",
+          "title": "Copper Sound!",
+          "year": 1975,
+          "act": "The Copper Sound",
+          "label": "Copper Kettle",
+          "art": {
+            "kind": "generated"
+          }
+        }
+      ],
+      "answer_set": [
+        {
+          "id": 90000004,
+          "name": "Lena Brook",
+          "role_category": "producer"
+        }
+      ],
+      "distractors": [
+        {
+          "id": 90000016,
+          "name": "Kit Marlowe",
+          "role_category": "mixing"
+        },
+        {
+          "id": 90000001,
+          "name": "Dee Calloway",
+          "role_category": "bass"
+        },
+        {
+          "id": 90000009,
+          "name": "Mira Costa",
+          "role_category": "backing_vocals"
+        },
+        {
+          "id": 90000015,
+          "name": "Viv Sandoval",
+          "role_category": "trumpet"
+        }
+      ],
+      "clues": [
+        {
+          "kind": "years",
+          "text": "The records are from 1975 and 1975."
+        },
+        {
+          "kind": "role",
+          "text": "The connecting credit is producer work."
+        },
+        {
+          "kind": "initials",
+          "text": "Their initials are L. B."
+        },
+        {
+          "kind": "credit_excerpt",
+          "text": "Liner note, Paper Lanterns: \"Producer — ▮▮▮▮▮▮\""
+        },
+        {
+          "kind": "eliminate",
+          "text": "Two names struck from the tray.",
+          "eliminate_ids": [
+            90000016,
+            90000001
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "release_ref": "syn-r02",
+          "release_title": "Paper Lanterns",
+          "contributor_id": 90000004,
+          "credited_as": "Lena Brook",
+          "role_text": "Producer",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r03",
+          "release_title": "Copper Sound!",
+          "contributor_id": 90000004,
+          "credited_as": "Lena Brook",
+          "role_text": "Producer",
+          "credit_scope": "release_credit"
+        }
+      ],
+      "provenance_note": "Synthetic-universe round: a fictional catalog with generated sleeve art, clearly stamped SYNTHETIC."
+    },
+    {
+      "id": "syn-1h-0205",
+      "pool": "synthetic-universe",
+      "kind": "one_hop",
+      "difficulty": "hard",
+      "endpoints": [
+        {
+          "id": "syn-a02",
+          "title": "Paper Lanterns",
+          "year": 1975,
+          "act": "Vela Marsh",
+          "label": "Meridian",
+          "art": {
+            "kind": "generated"
+          }
+        },
+        {
+          "id": "syn-a05",
+          "title": "Terminal Lights",
+          "year": 1980,
+          "act": "Night Ferry",
+          "label": "Meridian",
+          "art": {
+            "kind": "generated"
+          }
+        }
+      ],
+      "answer_set": [
+        {
+          "id": 90000005,
+          "name": "Hal Mercer",
+          "role_category": "engineer"
+        }
+      ],
+      "distractors": [
+        {
+          "id": 90000022,
+          "name": "Duke Farrow",
+          "role_category": "organ"
+        },
+        {
+          "id": 90000010,
+          "name": "Gus Fenn",
+          "role_category": "sax"
+        },
+        {
+          "id": 90000015,
+          "name": "Viv Sandoval",
+          "role_category": "trumpet"
+        },
+        {
+          "id": 90000018,
+          "name": "Bo Lindqvist",
+          "role_category": "guitar"
+        }
+      ],
+      "clues": [
+        {
+          "kind": "years",
+          "text": "The records are from 1975 and 1980."
+        },
+        {
+          "kind": "role",
+          "text": "The connecting credit is engineer work."
+        },
+        {
+          "kind": "initials",
+          "text": "Their initials are H. M."
+        },
+        {
+          "kind": "credit_excerpt",
+          "text": "Liner note, Paper Lanterns: \"Engineer — ▮▮▮▮▮▮\""
+        },
+        {
+          "kind": "eliminate",
+          "text": "Two names struck from the tray.",
+          "eliminate_ids": [
+            90000022,
+            90000010
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "release_ref": "syn-r02",
+          "release_title": "Paper Lanterns",
+          "contributor_id": 90000005,
+          "credited_as": "Hal Mercer",
+          "role_text": "Engineer",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r05",
+          "release_title": "Terminal Lights",
+          "contributor_id": 90000005,
+          "credited_as": "Hal Mercer",
+          "role_text": "Engineer",
+          "credit_scope": "release_credit"
+        }
+      ],
+      "provenance_note": "Synthetic-universe round: a fictional catalog with generated sleeve art, clearly stamped SYNTHETIC."
+    },
+    {
+      "id": "syn-1h-0206",
+      "pool": "synthetic-universe",
+      "kind": "one_hop",
+      "difficulty": "easy",
+      "endpoints": [
+        {
+          "id": "syn-a02",
+          "title": "Paper Lanterns",
+          "year": 1975,
+          "act": "Vela Marsh",
+          "label": "Meridian",
+          "art": {
+            "kind": "generated"
+          }
+        },
+        {
+          "id": "syn-a06",
+          "title": "Silver Standards",
+          "year": 1976,
+          "act": "The Silver Setts",
+          "label": "Meridian",
+          "art": {
+            "kind": "generated"
+          }
+        }
+      ],
+      "answer_set": [
+        {
+          "id": 90000009,
+          "name": "Mira Costa",
+          "role_category": "backing_vocals"
+        }
+      ],
+      "distractors": [
+        {
+          "id": 90000005,
+          "name": "Hal Mercer",
+          "role_category": "engineer"
+        },
+        {
+          "id": 90000007,
+          "name": "Sonia Vex",
+          "role_category": "keys"
+        },
+        {
+          "id": 90000022,
+          "name": "Duke Farrow",
+          "role_category": "organ"
+        },
+        {
+          "id": 90000015,
+          "name": "Viv Sandoval",
+          "role_category": "trumpet"
+        }
+      ],
+      "clues": [
+        {
+          "kind": "years",
+          "text": "The records are from 1975 and 1976."
+        },
+        {
+          "kind": "role",
+          "text": "The connecting credit is backing vocals work."
+        },
+        {
+          "kind": "initials",
+          "text": "Their initials are M. C."
+        },
+        {
+          "kind": "credit_excerpt",
+          "text": "Liner note, Paper Lanterns: \"Backing Vocals — ▮▮▮▮▮▮\""
+        },
+        {
+          "kind": "eliminate",
+          "text": "Two names struck from the tray.",
+          "eliminate_ids": [
+            90000005,
+            90000007
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "release_ref": "syn-r02",
+          "release_title": "Paper Lanterns",
+          "contributor_id": 90000009,
+          "credited_as": "Mira Costa",
+          "role_text": "Backing Vocals",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r06",
+          "release_title": "Silver Standards",
+          "contributor_id": 90000009,
+          "credited_as": "Mira Costa",
+          "role_text": "Backing Vocals",
+          "credit_scope": "release_credit"
+        }
+      ],
+      "provenance_note": "Synthetic-universe round: a fictional catalog with generated sleeve art, clearly stamped SYNTHETIC."
+    },
+    {
+      "id": "syn-1h-0209",
+      "pool": "synthetic-universe",
+      "kind": "one_hop",
+      "difficulty": "easy",
+      "endpoints": [
+        {
+          "id": "syn-a02",
+          "title": "Paper Lanterns",
+          "year": 1975,
+          "act": "Vela Marsh",
+          "label": "Meridian",
+          "art": {
+            "kind": "generated"
+          }
+        },
+        {
+          "id": "syn-a09",
+          "title": "Union of Kites",
+          "year": 1984,
+          "act": "The Kite Union",
+          "label": "Copper Kettle",
+          "art": {
+            "kind": "generated"
+          }
+        }
+      ],
+      "answer_set": [
+        {
+          "id": 90000022,
+          "name": "Duke Farrow",
+          "role_category": "organ"
+        }
+      ],
+      "distractors": [
+        {
+          "id": 90000002,
+          "name": "Del Callahan",
+          "role_category": "bass"
+        },
+        {
+          "id": 90000009,
+          "name": "Mira Costa",
+          "role_category": "backing_vocals"
+        },
+        {
+          "id": 90000012,
+          "name": "Tessa Wynn",
+          "role_category": "producer"
+        },
+        {
+          "id": 90000004,
+          "name": "Lena Brook",
+          "role_category": "producer"
+        }
+      ],
+      "clues": [
+        {
+          "kind": "years",
+          "text": "The records are from 1975 and 1984."
+        },
+        {
+          "kind": "role",
+          "text": "The connecting credit is organ work."
+        },
+        {
+          "kind": "initials",
+          "text": "Their initials are D. F."
+        },
+        {
+          "kind": "credit_excerpt",
+          "text": "Liner note, Paper Lanterns: \"Organ — ▮▮▮▮▮▮\""
+        },
+        {
+          "kind": "eliminate",
+          "text": "Two names struck from the tray.",
+          "eliminate_ids": [
+            90000002,
+            90000009
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "release_ref": "syn-r02",
+          "release_title": "Paper Lanterns",
+          "contributor_id": 90000022,
+          "credited_as": "Duke Farrow",
+          "role_text": "Organ",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r09",
+          "release_title": "Union of Kites",
+          "contributor_id": 90000022,
+          "credited_as": "Duke Farrow",
+          "role_text": "Organ",
+          "credit_scope": "release_credit"
+        }
+      ],
+      "provenance_note": "Synthetic-universe round: a fictional catalog with generated sleeve art, clearly stamped SYNTHETIC."
+    },
+    {
+      "id": "syn-1h-0212",
+      "pool": "synthetic-universe",
+      "kind": "one_hop",
+      "difficulty": "easy",
+      "endpoints": [
+        {
+          "id": "syn-a02",
+          "title": "Paper Lanterns",
+          "year": 1975,
+          "act": "Vela Marsh",
+          "label": "Meridian",
+          "art": {
+            "kind": "generated"
+          }
+        },
+        {
+          "id": "syn-a12",
+          "title": "Solis",
+          "year": 1977,
+          "act": "Yara Solis",
+          "label": "Meridian",
+          "art": {
+            "kind": "generated"
+          }
+        }
+      ],
+      "answer_set": [
+        {
+          "id": 90000015,
+          "name": "Viv Sandoval",
+          "role_category": "trumpet"
+        }
+      ],
+      "distractors": [
+        {
+          "id": 90000001,
+          "name": "Dee Calloway",
+          "role_category": "bass"
+        },
+        {
+          "id": 90000022,
+          "name": "Duke Farrow",
+          "role_category": "organ"
+        },
+        {
+          "id": 90000004,
+          "name": "Lena Brook",
+          "role_category": "producer"
+        },
+        {
+          "id": 90000005,
+          "name": "Hal Mercer",
+          "role_category": "engineer"
+        }
+      ],
+      "clues": [
+        {
+          "kind": "years",
+          "text": "The records are from 1975 and 1977."
+        },
+        {
+          "kind": "role",
+          "text": "The connecting credit is trumpet work."
+        },
+        {
+          "kind": "initials",
+          "text": "Their initials are V. S."
+        },
+        {
+          "kind": "credit_excerpt",
+          "text": "Liner note, Paper Lanterns: \"Trumpet — ▮▮▮▮▮▮\""
+        },
+        {
+          "kind": "eliminate",
+          "text": "Two names struck from the tray.",
+          "eliminate_ids": [
+            90000001,
+            90000022
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "release_ref": "syn-r02",
+          "release_title": "Paper Lanterns",
+          "contributor_id": 90000015,
+          "credited_as": "Viv Sandoval",
+          "role_text": "Trumpet",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r12",
+          "release_title": "Solis",
+          "contributor_id": 90000015,
+          "credited_as": "Viv Sandoval",
+          "role_text": "Trumpet",
+          "credit_scope": "release_credit"
+        }
+      ],
+      "provenance_note": "Synthetic-universe round: a fictional catalog with generated sleeve art, clearly stamped SYNTHETIC."
+    },
+    {
+      "id": "syn-1h-0213",
+      "pool": "synthetic-universe",
+      "kind": "one_hop",
+      "difficulty": "easy",
+      "endpoints": [
+        {
+          "id": "syn-a02",
+          "title": "Paper Lanterns",
+          "year": 1975,
+          "act": "Vela Marsh",
+          "label": "Meridian",
+          "art": {
+            "kind": "generated"
+          }
+        },
+        {
+          "id": "syn-a13",
+          "title": "Second Harbor",
+          "year": 1977,
+          "act": "The Harbor Lights",
+          "label": "Meridian",
+          "art": {
+            "kind": "generated"
+          }
+        }
+      ],
+      "answer_set": [
+        {
+          "id": 90000009,
+          "name": "Mira Costa",
+          "role_category": "backing_vocals"
+        }
+      ],
+      "distractors": [
+        {
+          "id": 90000022,
+          "name": "Duke Farrow",
+          "role_category": "organ"
+        },
+        {
+          "id": 90000015,
+          "name": "Viv Sandoval",
+          "role_category": "trumpet"
+        },
+        {
+          "id": 90000004,
+          "name": "Lena Brook",
+          "role_category": "producer"
+        },
+        {
+          "id": 90000005,
+          "name": "Hal Mercer",
+          "role_category": "engineer"
+        }
+      ],
+      "clues": [
+        {
+          "kind": "years",
+          "text": "The records are from 1975 and 1977."
+        },
+        {
+          "kind": "role",
+          "text": "The connecting credit is backing vocals work."
+        },
+        {
+          "kind": "initials",
+          "text": "Their initials are M. C."
+        },
+        {
+          "kind": "credit_excerpt",
+          "text": "Liner note, Paper Lanterns: \"Backing Vocals — ▮▮▮▮▮▮\""
+        },
+        {
+          "kind": "eliminate",
+          "text": "Two names struck from the tray.",
+          "eliminate_ids": [
+            90000022,
+            90000015
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "release_ref": "syn-r02",
+          "release_title": "Paper Lanterns",
+          "contributor_id": 90000009,
+          "credited_as": "Mira Costa",
+          "role_text": "Backing Vocals",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r13",
+          "release_title": "Second Harbor",
+          "contributor_id": 90000009,
+          "credited_as": "Mira Costa",
+          "role_text": "Backing Vocals",
+          "credit_scope": "release_credit"
+        }
+      ],
+      "provenance_note": "Synthetic-universe round: a fictional catalog with generated sleeve art, clearly stamped SYNTHETIC."
+    },
+    {
+      "id": "syn-1h-0218",
+      "pool": "synthetic-universe",
+      "kind": "one_hop",
+      "difficulty": "easy",
+      "endpoints": [
+        {
+          "id": "syn-a02",
+          "title": "Paper Lanterns",
+          "year": 1975,
+          "act": "Vela Marsh",
+          "label": "Meridian",
+          "art": {
+            "kind": "generated"
+          }
+        },
+        {
+          "id": "syn-a18",
+          "title": "Setts in Motion",
+          "year": 1979,
+          "act": "The Silver Setts",
+          "label": "Meridian",
+          "art": {
+            "kind": "generated"
+          }
+        }
+      ],
+      "answer_set": [
+        {
+          "id": 90000015,
+          "name": "Viv Sandoval",
+          "role_category": "trumpet"
+        }
+      ],
+      "distractors": [
+        {
+          "id": 90000021,
+          "name": "Isla Chen",
+          "role_category": "harp"
+        },
+        {
+          "id": 90000001,
+          "name": "Dee Calloway",
+          "role_category": "bass"
+        },
+        {
+          "id": 90000004,
+          "name": "Lena Brook",
+          "role_category": "producer"
+        },
+        {
+          "id": 90000022,
+          "name": "Duke Farrow",
+          "role_category": "organ"
+        }
+      ],
+      "clues": [
+        {
+          "kind": "years",
+          "text": "The records are from 1975 and 1979."
+        },
+        {
+          "kind": "role",
+          "text": "The connecting credit is trumpet work."
+        },
+        {
+          "kind": "initials",
+          "text": "Their initials are V. S."
+        },
+        {
+          "kind": "credit_excerpt",
+          "text": "Liner note, Paper Lanterns: \"Trumpet — ▮▮▮▮▮▮\""
+        },
+        {
+          "kind": "eliminate",
+          "text": "Two names struck from the tray.",
+          "eliminate_ids": [
+            90000021,
+            90000001
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "release_ref": "syn-r02",
+          "release_title": "Paper Lanterns",
+          "contributor_id": 90000015,
+          "credited_as": "Viv Sandoval",
+          "role_text": "Trumpet",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r18",
+          "release_title": "Setts in Motion",
+          "contributor_id": 90000015,
+          "credited_as": "Viv Sandoval",
+          "role_text": "Trumpet",
+          "credit_scope": "release_credit"
+        }
+      ],
+      "provenance_note": "Synthetic-universe round: a fictional catalog with generated sleeve art, clearly stamped SYNTHETIC."
+    },
+    {
+      "id": "syn-1h-0219",
+      "pool": "synthetic-universe",
+      "kind": "one_hop",
+      "difficulty": "easy",
+      "endpoints": [
+        {
+          "id": "syn-a02",
+          "title": "Paper Lanterns",
+          "year": 1975,
+          "act": "Vela Marsh",
+          "label": "Meridian",
+          "art": {
+            "kind": "generated"
+          }
+        },
+        {
+          "id": "syn-a19",
+          "title": "Vale of Mirrors",
+          "year": 1981,
+          "act": "Marta Vale",
+          "label": "Copper Kettle",
+          "art": {
+            "kind": "generated"
+          }
+        }
+      ],
+      "answer_set": [
+        {
+          "id": 90000022,
+          "name": "Duke Farrow",
+          "role_category": "organ"
+        }
+      ],
+      "distractors": [
+        {
+          "id": 90000016,
+          "name": "Kit Marlowe",
+          "role_category": "mixing"
+        },
+        {
+          "id": 90000003,
+          "name": "Ray Okafor",
+          "role_category": "drums"
+        },
+        {
+          "id": 90000015,
+          "name": "Viv Sandoval",
+          "role_category": "trumpet"
+        },
+        {
+          "id": 90000004,
+          "name": "Lena Brook",
+          "role_category": "producer"
+        }
+      ],
+      "clues": [
+        {
+          "kind": "years",
+          "text": "The records are from 1975 and 1981."
+        },
+        {
+          "kind": "role",
+          "text": "The connecting credit is organ work."
+        },
+        {
+          "kind": "initials",
+          "text": "Their initials are D. F."
+        },
+        {
+          "kind": "credit_excerpt",
+          "text": "Liner note, Paper Lanterns: \"Organ — ▮▮▮▮▮▮\""
+        },
+        {
+          "kind": "eliminate",
+          "text": "Two names struck from the tray.",
+          "eliminate_ids": [
+            90000016,
+            90000003
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "release_ref": "syn-r02",
+          "release_title": "Paper Lanterns",
+          "contributor_id": 90000022,
+          "credited_as": "Duke Farrow",
+          "role_text": "Organ",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r19",
+          "release_title": "Vale of Mirrors",
+          "contributor_id": 90000022,
+          "credited_as": "Duke Farrow",
+          "role_text": "Organ",
+          "credit_scope": "release_credit"
+        }
+      ],
+      "provenance_note": "Synthetic-universe round: a fictional catalog with generated sleeve art, clearly stamped SYNTHETIC."
+    },
+    {
+      "id": "syn-1h-0225",
+      "pool": "synthetic-universe",
+      "kind": "one_hop",
+      "difficulty": "medium",
+      "endpoints": [
+        {
+          "id": "syn-a02",
+          "title": "Paper Lanterns",
+          "year": 1975,
+          "act": "Vela Marsh",
+          "label": "Meridian",
+          "art": {
+            "kind": "generated"
+          }
+        },
+        {
+          "id": "syn-a25",
+          "title": "Rain on the Patio",
+          "year": 1980,
+          "act": "Yara Solis",
+          "label": "Meridian",
+          "art": {
+            "kind": "generated"
+          }
+        }
+      ],
+      "answer_set": [
+        {
+          "id": 90000015,
+          "name": "Viv Sandoval",
+          "role_category": "trumpet"
+        },
+        {
+          "id": 90000022,
+          "name": "Duke Farrow",
+          "role_category": "organ"
+        }
+      ],
+      "distractors": [
+        {
+          "id": 90000009,
+          "name": "Mira Costa",
+          "role_category": "backing_vocals"
+        },
+        {
+          "id": 90000005,
+          "name": "Hal Mercer",
+          "role_category": "engineer"
+        },
+        {
+          "id": 90000004,
+          "name": "Lena Brook",
+          "role_category": "producer"
+        },
+        {
+          "id": 90000010,
+          "name": "Gus Fenn",
+          "role_category": "sax"
+        }
+      ],
+      "clues": [
+        {
+          "kind": "years",
+          "text": "The records are from 1975 and 1980."
+        },
+        {
+          "kind": "role",
+          "text": "The connecting credit is trumpet work."
+        },
+        {
+          "kind": "initials",
+          "text": "Their initials are V. S."
+        },
+        {
+          "kind": "credit_excerpt",
+          "text": "Liner note, Paper Lanterns: \"Trumpet — ▮▮▮▮▮▮\""
+        },
+        {
+          "kind": "eliminate",
+          "text": "Two names struck from the tray.",
+          "eliminate_ids": [
+            90000009,
+            90000005
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "release_ref": "syn-r02",
+          "release_title": "Paper Lanterns",
+          "contributor_id": 90000015,
+          "credited_as": "Viv Sandoval",
+          "role_text": "Trumpet",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r02",
+          "release_title": "Paper Lanterns",
+          "contributor_id": 90000022,
+          "credited_as": "Duke Farrow",
+          "role_text": "Organ",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r25",
+          "release_title": "Rain on the Patio",
+          "contributor_id": 90000015,
+          "credited_as": "Viv Sandoval",
+          "role_text": "Trumpet",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r25",
+          "release_title": "Rain on the Patio",
+          "contributor_id": 90000022,
+          "credited_as": "Duke Farrow",
+          "role_text": "Organ",
+          "credit_scope": "release_credit"
+        }
+      ],
+      "provenance_note": "Synthetic-universe round: a fictional catalog with generated sleeve art, clearly stamped SYNTHETIC."
+    },
+    {
+      "id": "syn-1h-0307",
+      "pool": "synthetic-universe",
+      "kind": "one_hop",
+      "difficulty": "medium",
+      "endpoints": [
+        {
+          "id": "syn-a03",
+          "title": "Copper Sound!",
+          "year": 1975,
+          "act": "The Copper Sound",
+          "label": "Copper Kettle",
+          "art": {
+            "kind": "generated"
+          }
+        },
+        {
+          "id": "syn-a07",
+          "title": "Midnight Arcade",
+          "year": 1978,
+          "act": "Marta Vale",
+          "label": "Meridian",
+          "art": {
+            "kind": "generated"
+          }
+        }
+      ],
+      "answer_set": [
+        {
+          "id": 90000001,
+          "name": "Dee Calloway",
+          "role_category": "bass"
+        }
+      ],
+      "distractors": [
+        {
+          "id": 90000020,
+          "name": "Rex Torres",
+          "role_category": "bass"
+        },
+        {
+          "id": 90000007,
+          "name": "Sonia Vex",
+          "role_category": "keys"
+        },
+        {
+          "id": 90000004,
+          "name": "Lena Brook",
+          "role_category": "producer"
+        },
+        {
+          "id": 90000016,
+          "name": "Kit Marlowe",
+          "role_category": "mixing"
+        }
+      ],
+      "clues": [
+        {
+          "kind": "years",
+          "text": "The records are from 1975 and 1978."
+        },
+        {
+          "kind": "role",
+          "text": "The connecting credit is bass work."
+        },
+        {
+          "kind": "initials",
+          "text": "Their initials are D. C."
+        },
+        {
+          "kind": "credit_excerpt",
+          "text": "Liner note, Copper Sound!: \"Bass — ▮▮▮▮▮▮\""
+        },
+        {
+          "kind": "eliminate",
+          "text": "Two names struck from the tray.",
+          "eliminate_ids": [
+            90000020,
+            90000007
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "release_ref": "syn-r03",
+          "release_title": "Copper Sound!",
+          "contributor_id": 90000001,
+          "credited_as": "Dee Calloway",
+          "role_text": "Bass",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r07",
+          "release_title": "Midnight Arcade",
+          "contributor_id": 90000001,
+          "credited_as": "Dee Calloway",
+          "role_text": "Bass",
+          "credit_scope": "release_credit"
+        }
+      ],
+      "provenance_note": "Synthetic-universe round: a fictional catalog with generated sleeve art, clearly stamped SYNTHETIC."
+    },
+    {
+      "id": "syn-1h-0407",
+      "pool": "synthetic-universe",
+      "kind": "one_hop",
+      "difficulty": "medium",
+      "endpoints": [
+        {
+          "id": "syn-a04",
+          "title": "Quiet Acre",
+          "year": 1976,
+          "act": "Ada Quinn",
+          "label": "Meridian",
+          "art": {
+            "kind": "generated"
+          }
+        },
+        {
+          "id": "syn-a07",
+          "title": "Midnight Arcade",
+          "year": 1978,
+          "act": "Marta Vale",
+          "label": "Meridian",
+          "art": {
+            "kind": "generated"
+          }
+        }
+      ],
+      "answer_set": [
+        {
+          "id": 90000003,
+          "name": "Ray Okafor",
+          "role_category": "drums"
+        }
+      ],
+      "distractors": [
+        {
+          "id": 90000017,
+          "name": "Fern Okafor",
+          "role_category": "violin"
+        },
+        {
+          "id": 90000001,
+          "name": "Dee Calloway",
+          "role_category": "bass"
+        },
+        {
+          "id": 90000008,
+          "name": "Chip Adler",
+          "role_category": "guitar"
+        },
+        {
+          "id": 90000011,
+          "name": "Percy Lim",
+          "role_category": "string_arrangement"
+        }
+      ],
+      "clues": [
+        {
+          "kind": "years",
+          "text": "The records are from 1976 and 1978."
+        },
+        {
+          "kind": "role",
+          "text": "The connecting credit is drums work."
+        },
+        {
+          "kind": "initials",
+          "text": "Their initials are R. O."
+        },
+        {
+          "kind": "credit_excerpt",
+          "text": "Liner note, Quiet Acre: \"Drums — ▮▮▮▮▮▮\""
+        },
+        {
+          "kind": "eliminate",
+          "text": "Two names struck from the tray.",
+          "eliminate_ids": [
+            90000017,
+            90000001
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "release_ref": "syn-r04",
+          "release_title": "Quiet Acre",
+          "contributor_id": 90000003,
+          "credited_as": "Ray Okafor",
+          "role_text": "Drums",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r07",
+          "release_title": "Midnight Arcade",
+          "contributor_id": 90000003,
+          "credited_as": "Ray Okafor",
+          "role_text": "Drums",
+          "credit_scope": "release_credit"
+        }
+      ],
+      "provenance_note": "Synthetic-universe round: a fictional catalog with generated sleeve art, clearly stamped SYNTHETIC."
+    },
+    {
+      "id": "syn-1h-0413",
+      "pool": "synthetic-universe",
+      "kind": "one_hop",
+      "difficulty": "medium",
+      "endpoints": [
+        {
+          "id": "syn-a04",
+          "title": "Quiet Acre",
+          "year": 1976,
+          "act": "Ada Quinn",
+          "label": "Meridian",
+          "art": {
+            "kind": "generated"
+          }
+        },
+        {
+          "id": "syn-a13",
+          "title": "Second Harbor",
+          "year": 1977,
+          "act": "The Harbor Lights",
+          "label": "Meridian",
+          "art": {
+            "kind": "generated"
+          }
+        }
+      ],
+      "answer_set": [
+        {
+          "id": 90000003,
+          "name": "Ray Okafor",
+          "role_category": "drums"
+        }
+      ],
+      "distractors": [
+        {
+          "id": 90000017,
+          "name": "Fern Okafor",
+          "role_category": "violin"
+        },
+        {
+          "id": 90000016,
+          "name": "Kit Marlowe",
+          "role_category": "mixing"
+        },
+        {
+          "id": 90000009,
+          "name": "Mira Costa",
+          "role_category": "backing_vocals"
+        },
+        {
+          "id": 90000008,
+          "name": "Chip Adler",
+          "role_category": "guitar"
+        }
+      ],
+      "clues": [
+        {
+          "kind": "years",
+          "text": "The records are from 1976 and 1977."
+        },
+        {
+          "kind": "role",
+          "text": "The connecting credit is drums work."
+        },
+        {
+          "kind": "initials",
+          "text": "Their initials are R. O."
+        },
+        {
+          "kind": "credit_excerpt",
+          "text": "Liner note, Quiet Acre: \"Drums — ▮▮▮▮▮▮\""
+        },
+        {
+          "kind": "eliminate",
+          "text": "Two names struck from the tray.",
+          "eliminate_ids": [
+            90000017,
+            90000016
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "release_ref": "syn-r04",
+          "release_title": "Quiet Acre",
+          "contributor_id": 90000003,
+          "credited_as": "Ray Okafor",
+          "role_text": "Drums",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r13",
+          "release_title": "Second Harbor",
+          "contributor_id": 90000003,
+          "credited_as": "Ray Okafor",
+          "role_text": "Drums",
+          "credit_scope": "release_credit"
+        }
+      ],
+      "provenance_note": "Synthetic-universe round: a fictional catalog with generated sleeve art, clearly stamped SYNTHETIC."
+    },
+    {
+      "id": "syn-1h-0414",
+      "pool": "synthetic-universe",
+      "kind": "one_hop",
+      "difficulty": "medium",
+      "endpoints": [
+        {
+          "id": "syn-a04",
+          "title": "Quiet Acre",
+          "year": 1976,
+          "act": "Ada Quinn",
+          "label": "Meridian",
+          "art": {
+            "kind": "generated"
+          }
+        },
+        {
+          "id": "syn-a14",
+          "title": "Vela",
+          "year": 1978,
+          "act": "Vela Marsh",
+          "label": "Meridian",
+          "art": {
+            "kind": "generated"
+          }
+        }
+      ],
+      "answer_set": [
+        {
+          "id": 90000017,
+          "name": "Fern Okafor",
+          "role_category": "violin"
+        }
+      ],
+      "distractors": [
+        {
+          "id": 90000003,
+          "name": "Ray Okafor",
+          "role_category": "drums"
+        },
+        {
+          "id": 90000008,
+          "name": "Chip Adler",
+          "role_category": "guitar"
+        },
+        {
+          "id": 90000004,
+          "name": "Lena Brook",
+          "role_category": "producer"
+        },
+        {
+          "id": 90000011,
+          "name": "Percy Lim",
+          "role_category": "string_arrangement"
+        }
+      ],
+      "clues": [
+        {
+          "kind": "years",
+          "text": "The records are from 1976 and 1978."
+        },
+        {
+          "kind": "role",
+          "text": "The connecting credit is violin work."
+        },
+        {
+          "kind": "initials",
+          "text": "Their initials are F. O."
+        },
+        {
+          "kind": "credit_excerpt",
+          "text": "Liner note, Quiet Acre: \"Violin — ▮▮▮▮▮▮\""
+        },
+        {
+          "kind": "eliminate",
+          "text": "Two names struck from the tray.",
+          "eliminate_ids": [
+            90000003,
+            90000008
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "release_ref": "syn-r04",
+          "release_title": "Quiet Acre",
+          "contributor_id": 90000017,
+          "credited_as": "Fern Okafor",
+          "role_text": "Violin",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r14",
+          "release_title": "Vela",
+          "contributor_id": 90000017,
+          "credited_as": "Fern Okafor",
+          "role_text": "Violin",
+          "credit_scope": "release_credit"
+        }
+      ],
+      "provenance_note": "Synthetic-universe round: a fictional catalog with generated sleeve art, clearly stamped SYNTHETIC."
+    },
+    {
+      "id": "syn-1h-0419",
+      "pool": "synthetic-universe",
+      "kind": "one_hop",
+      "difficulty": "medium",
+      "endpoints": [
+        {
+          "id": "syn-a04",
+          "title": "Quiet Acre",
+          "year": 1976,
+          "act": "Ada Quinn",
+          "label": "Meridian",
+          "art": {
+            "kind": "generated"
+          }
+        },
+        {
+          "id": "syn-a19",
+          "title": "Vale of Mirrors",
+          "year": 1981,
+          "act": "Marta Vale",
+          "label": "Copper Kettle",
+          "art": {
+            "kind": "generated"
+          }
+        }
+      ],
+      "answer_set": [
+        {
+          "id": 90000003,
+          "name": "Ray Okafor",
+          "role_category": "drums"
+        }
+      ],
+      "distractors": [
+        {
+          "id": 90000017,
+          "name": "Fern Okafor",
+          "role_category": "violin"
+        },
+        {
+          "id": 90000022,
+          "name": "Duke Farrow",
+          "role_category": "organ"
+        },
+        {
+          "id": 90000008,
+          "name": "Chip Adler",
+          "role_category": "guitar"
+        },
+        {
+          "id": 90000016,
+          "name": "Kit Marlowe",
+          "role_category": "mixing"
+        }
+      ],
+      "clues": [
+        {
+          "kind": "years",
+          "text": "The records are from 1976 and 1981."
+        },
+        {
+          "kind": "role",
+          "text": "The connecting credit is drums work."
+        },
+        {
+          "kind": "initials",
+          "text": "Their initials are R. O."
+        },
+        {
+          "kind": "credit_excerpt",
+          "text": "Liner note, Quiet Acre: \"Drums — ▮▮▮▮▮▮\""
+        },
+        {
+          "kind": "eliminate",
+          "text": "Two names struck from the tray.",
+          "eliminate_ids": [
+            90000017,
+            90000022
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "release_ref": "syn-r04",
+          "release_title": "Quiet Acre",
+          "contributor_id": 90000003,
+          "credited_as": "Ray Okafor",
+          "role_text": "Drums",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r19",
+          "release_title": "Vale of Mirrors",
+          "contributor_id": 90000003,
+          "credited_as": "Ray Okafor",
+          "role_text": "Drums",
+          "credit_scope": "release_credit"
+        }
+      ],
+      "provenance_note": "Synthetic-universe round: a fictional catalog with generated sleeve art, clearly stamped SYNTHETIC."
+    },
+    {
+      "id": "syn-1h-0420",
+      "pool": "synthetic-universe",
+      "kind": "one_hop",
+      "difficulty": "medium",
+      "endpoints": [
+        {
+          "id": "syn-a04",
+          "title": "Quiet Acre",
+          "year": 1976,
+          "act": "Ada Quinn",
+          "label": "Meridian",
+          "art": {
+            "kind": "generated"
+          }
+        },
+        {
+          "id": "syn-a20",
+          "title": "The Long Field",
+          "year": 1982,
+          "act": "Ossian Reed",
+          "label": "Copper Kettle",
+          "art": {
+            "kind": "generated"
+          }
+        }
+      ],
+      "answer_set": [
+        {
+          "id": 90000017,
+          "name": "Fern Okafor",
+          "role_category": "violin"
+        }
+      ],
+      "distractors": [
+        {
+          "id": 90000003,
+          "name": "Ray Okafor",
+          "role_category": "drums"
+        },
+        {
+          "id": 90000009,
+          "name": "Mira Costa",
+          "role_category": "backing_vocals"
+        },
+        {
+          "id": 90000008,
+          "name": "Chip Adler",
+          "role_category": "guitar"
+        },
+        {
+          "id": 90000004,
+          "name": "Lena Brook",
+          "role_category": "producer"
+        }
+      ],
+      "clues": [
+        {
+          "kind": "years",
+          "text": "The records are from 1976 and 1982."
+        },
+        {
+          "kind": "role",
+          "text": "The connecting credit is violin work."
+        },
+        {
+          "kind": "initials",
+          "text": "Their initials are F. O."
+        },
+        {
+          "kind": "credit_excerpt",
+          "text": "Liner note, Quiet Acre: \"Violin — ▮▮▮▮▮▮\""
+        },
+        {
+          "kind": "eliminate",
+          "text": "Two names struck from the tray.",
+          "eliminate_ids": [
+            90000003,
+            90000009
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "release_ref": "syn-r04",
+          "release_title": "Quiet Acre",
+          "contributor_id": 90000017,
+          "credited_as": "Fern Okafor",
+          "role_text": "Violin",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r20",
+          "release_title": "The Long Field",
+          "contributor_id": 90000017,
+          "credited_as": "Fern Okafor",
+          "role_text": "Violin",
+          "credit_scope": "release_credit"
+        }
+      ],
+      "provenance_note": "Synthetic-universe round: a fictional catalog with generated sleeve art, clearly stamped SYNTHETIC."
+    },
+    {
+      "id": "syn-1h-0425",
+      "pool": "synthetic-universe",
+      "kind": "one_hop",
+      "difficulty": "medium",
+      "endpoints": [
+        {
+          "id": "syn-a04",
+          "title": "Quiet Acre",
+          "year": 1976,
+          "act": "Ada Quinn",
+          "label": "Meridian",
+          "art": {
+            "kind": "generated"
+          }
+        },
+        {
+          "id": "syn-a25",
+          "title": "Rain on the Patio",
+          "year": 1980,
+          "act": "Yara Solis",
+          "label": "Meridian",
+          "art": {
+            "kind": "generated"
+          }
+        }
+      ],
+      "answer_set": [
+        {
+          "id": 90000003,
+          "name": "Ray Okafor",
+          "role_category": "drums"
+        }
+      ],
+      "distractors": [
+        {
+          "id": 90000017,
+          "name": "Fern Okafor",
+          "role_category": "violin"
+        },
+        {
+          "id": 90000008,
+          "name": "Chip Adler",
+          "role_category": "guitar"
+        },
+        {
+          "id": 90000015,
+          "name": "Viv Sandoval",
+          "role_category": "trumpet"
+        },
+        {
+          "id": 90000010,
+          "name": "Gus Fenn",
+          "role_category": "sax"
+        }
+      ],
+      "clues": [
+        {
+          "kind": "years",
+          "text": "The records are from 1976 and 1980."
+        },
+        {
+          "kind": "role",
+          "text": "The connecting credit is drums work."
+        },
+        {
+          "kind": "initials",
+          "text": "Their initials are R. O."
+        },
+        {
+          "kind": "credit_excerpt",
+          "text": "Liner note, Quiet Acre: \"Drums — ▮▮▮▮▮▮\""
+        },
+        {
+          "kind": "eliminate",
+          "text": "Two names struck from the tray.",
+          "eliminate_ids": [
+            90000017,
+            90000008
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "release_ref": "syn-r04",
+          "release_title": "Quiet Acre",
+          "contributor_id": 90000003,
+          "credited_as": "Ray Okafor",
+          "role_text": "Drums",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r25",
+          "release_title": "Rain on the Patio",
+          "contributor_id": 90000003,
+          "credited_as": "Ray Okafor",
+          "role_text": "Drums",
+          "credit_scope": "release_credit"
+        }
+      ],
+      "provenance_note": "Synthetic-universe round: a fictional catalog with generated sleeve art, clearly stamped SYNTHETIC."
+    },
+    {
+      "id": "syn-1h-0427",
+      "pool": "synthetic-universe",
+      "kind": "one_hop",
+      "difficulty": "medium",
+      "endpoints": [
+        {
+          "id": "syn-a04",
+          "title": "Quiet Acre",
+          "year": 1976,
+          "act": "Ada Quinn",
+          "label": "Meridian",
+          "art": {
+            "kind": "generated"
+          }
+        },
+        {
+          "id": "syn-a27",
+          "title": "Alloy",
+          "year": 1985,
+          "act": "The Copper Sound",
+          "label": "Copper Kettle",
+          "art": {
+            "kind": "generated"
+          }
+        }
+      ],
+      "answer_set": [
+        {
+          "id": 90000017,
+          "name": "Fern Okafor",
+          "role_category": "violin"
+        }
+      ],
+      "distractors": [
+        {
+          "id": 90000003,
+          "name": "Ray Okafor",
+          "role_category": "drums"
+        },
+        {
+          "id": 90000006,
+          "name": "Hale Mercier",
+          "role_category": "engineer"
+        },
+        {
+          "id": 90000008,
+          "name": "Chip Adler",
+          "role_category": "guitar"
+        },
+        {
+          "id": 90000010,
+          "name": "Gus Fenn",
+          "role_category": "sax"
+        }
+      ],
+      "clues": [
+        {
+          "kind": "years",
+          "text": "The records are from 1976 and 1985."
+        },
+        {
+          "kind": "role",
+          "text": "The connecting credit is violin work."
+        },
+        {
+          "kind": "initials",
+          "text": "Their initials are F. O."
+        },
+        {
+          "kind": "credit_excerpt",
+          "text": "Liner note, Quiet Acre: \"Violin — ▮▮▮▮▮▮\""
+        },
+        {
+          "kind": "eliminate",
+          "text": "Two names struck from the tray.",
+          "eliminate_ids": [
+            90000003,
+            90000006
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "release_ref": "syn-r04",
+          "release_title": "Quiet Acre",
+          "contributor_id": 90000017,
+          "credited_as": "Fern Okafor",
+          "role_text": "Violin",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r27",
+          "release_title": "Alloy",
+          "contributor_id": 90000017,
+          "credited_as": "Fern Okafor",
+          "role_text": "Violin",
+          "credit_scope": "release_credit"
+        }
+      ],
+      "provenance_note": "Synthetic-universe round: a fictional catalog with generated sleeve art, clearly stamped SYNTHETIC."
+    },
+    {
+      "id": "syn-2h-0621",
+      "pool": "synthetic-universe",
+      "kind": "two_hop",
+      "difficulty": "hard",
+      "endpoints": [
+        {
+          "id": "syn-a06",
+          "title": "Silver Standards",
+          "year": 1976,
+          "act": "The Silver Setts",
+          "label": "Meridian",
+          "art": {
+            "kind": "generated"
+          }
+        },
+        {
+          "id": "syn-a21",
+          "title": "String Theory for Beginners",
+          "year": 1987,
+          "act": "The Kite Union",
+          "label": "Copper Kettle",
+          "art": {
+            "kind": "generated"
+          }
+        }
+      ],
+      "middle": {
+        "album": {
+          "id": "syn-a02",
+          "title": "Paper Lanterns",
+          "year": 1975,
+          "act": "Vela Marsh",
+          "label": "Meridian",
+          "art": {
+            "kind": "generated"
+          }
+        },
+        "choices": [
+          {
+            "id": "syn-a02",
+            "title": "Paper Lanterns",
+            "year": 1975,
+            "act": "Vela Marsh",
+            "label": "Meridian",
+            "art": {
+              "kind": "generated"
+            }
+          },
+          {
+            "id": "syn-a19",
+            "title": "Vale of Mirrors",
+            "year": 1981,
+            "act": "Marta Vale",
+            "label": "Copper Kettle",
+            "art": {
+              "kind": "generated"
+            }
+          },
+          {
+            "id": "syn-a04",
+            "title": "Quiet Acre",
+            "year": 1976,
+            "act": "Ada Quinn",
+            "label": "Meridian",
+            "art": {
+              "kind": "generated"
+            }
+          },
+          {
+            "id": "syn-a28",
+            "title": "Harbor Wall",
+            "year": 1986,
+            "act": "Night Ferry",
+            "label": "Copper Kettle",
+            "art": null
+          }
+        ]
+      },
+      "answer_set": [
+        {
+          "id": 90000009,
+          "name": "Mira Costa",
+          "role_category": "backing_vocals"
+        },
+        {
+          "id": 90000005,
+          "name": "Hal Mercer",
+          "role_category": "engineer"
+        }
+      ],
+      "bridge_answer_sets": [
+        [
+          {
+            "id": 90000009,
+            "name": "Mira Costa",
+            "role_category": "backing_vocals"
+          }
+        ],
+        [
+          {
+            "id": 90000005,
+            "name": "Hal Mercer",
+            "role_category": "engineer"
+          }
+        ]
+      ],
+      "distractors": [
+        {
+          "id": 90000011,
+          "name": "Percy Lim",
+          "role_category": "string_arrangement"
+        },
+        {
+          "id": 90000019,
+          "name": "Nia Vale",
+          "role_category": "flute"
+        },
+        {
+          "id": 90000018,
+          "name": "Bo Lindqvist",
+          "role_category": "guitar"
+        },
+        {
+          "id": 90000007,
+          "name": "Sonia Vex",
+          "role_category": "keys"
+        }
+      ],
+      "clues": [
+        {
+          "kind": "years",
+          "text": "The hidden middle record is from 1975."
+        },
+        {
+          "kind": "role",
+          "text": "One bridge is backing vocals work; the other is engineer work."
+        },
+        {
+          "kind": "initials",
+          "text": "Bridge initials: M. C. and H. M."
+        },
+        {
+          "kind": "credit_excerpt",
+          "text": "Liner note, Paper Lanterns: two familiar names appear in the credits — ▮▮▮▮▮▮ and ▮▮▮▮▮▮."
+        },
+        {
+          "kind": "eliminate",
+          "text": "Two names struck from the tray.",
+          "eliminate_ids": [
+            90000011,
+            90000019
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "release_ref": "syn-r06",
+          "release_title": "Silver Standards",
+          "contributor_id": 90000009,
+          "credited_as": "Mira Costa",
+          "role_text": "Backing Vocals",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r02",
+          "release_title": "Paper Lanterns",
+          "contributor_id": 90000005,
+          "credited_as": "Hal Mercer",
+          "role_text": "Engineer",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r02",
+          "release_title": "Paper Lanterns",
+          "contributor_id": 90000009,
+          "credited_as": "Mira Costa",
+          "role_text": "Backing Vocals",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r21",
+          "release_title": "String Theory for Beginners",
+          "contributor_id": 90000005,
+          "credited_as": "Hal Mercer",
+          "role_text": "Engineer",
+          "credit_scope": "release_credit"
+        }
+      ],
+      "provenance_note": "Synthetic-universe round: a fictional catalog with generated sleeve art, clearly stamped SYNTHETIC."
+    },
+    {
+      "id": "syn-2h-0809",
+      "pool": "synthetic-universe",
+      "kind": "two_hop",
+      "difficulty": "hard",
+      "endpoints": [
+        {
+          "id": "syn-a08",
+          "title": "Reedwork",
+          "year": 1977,
+          "act": "Ossian Reed",
+          "label": "Copper Kettle",
+          "art": {
+            "kind": "generated"
+          }
+        },
+        {
+          "id": "syn-a09",
+          "title": "Union of Kites",
+          "year": 1984,
+          "act": "The Kite Union",
+          "label": "Copper Kettle",
+          "art": {
+            "kind": "generated"
+          }
+        }
+      ],
+      "middle": {
+        "album": {
+          "id": "syn-a02",
+          "title": "Paper Lanterns",
+          "year": 1975,
+          "act": "Vela Marsh",
+          "label": "Meridian",
+          "art": {
+            "kind": "generated"
+          }
+        },
+        "choices": [
+          {
+            "id": "syn-a01",
+            "title": "Late Ferry",
+            "year": 1974,
+            "act": "The Harbor Lights",
+            "label": "Meridian",
+            "art": {
+              "kind": "generated"
+            }
+          },
+          {
+            "id": "syn-a02",
+            "title": "Paper Lanterns",
+            "year": 1975,
+            "act": "Vela Marsh",
+            "label": "Meridian",
+            "art": {
+              "kind": "generated"
+            }
+          },
+          {
+            "id": "syn-a13",
+            "title": "Second Harbor",
+            "year": 1977,
+            "act": "The Harbor Lights",
+            "label": "Meridian",
+            "art": {
+              "kind": "generated"
+            }
+          },
+          {
+            "id": "syn-a15",
+            "title": "Kettle Steam",
+            "year": 1979,
+            "act": "The Copper Sound",
+            "label": "Copper Kettle",
+            "art": {
+              "kind": "generated"
+            }
+          }
+        ]
+      },
+      "answer_set": [
+        {
+          "id": 90000004,
+          "name": "Lena Brook",
+          "role_category": "producer"
+        },
+        {
+          "id": 90000022,
+          "name": "Duke Farrow",
+          "role_category": "organ"
+        }
+      ],
+      "bridge_answer_sets": [
+        [
+          {
+            "id": 90000004,
+            "name": "Lena Brook",
+            "role_category": "producer"
+          }
+        ],
+        [
+          {
+            "id": 90000022,
+            "name": "Duke Farrow",
+            "role_category": "organ"
+          }
+        ]
+      ],
+      "distractors": [
+        {
+          "id": 90000012,
+          "name": "Tessa Wynn",
+          "role_category": "producer"
+        },
+        {
+          "id": 90000008,
+          "name": "Chip Adler",
+          "role_category": "guitar"
+        },
+        {
+          "id": 90000021,
+          "name": "Isla Chen",
+          "role_category": "harp"
+        },
+        {
+          "id": 90000002,
+          "name": "Del Callahan",
+          "role_category": "bass"
+        }
+      ],
+      "clues": [
+        {
+          "kind": "years",
+          "text": "The hidden middle record is from 1975."
+        },
+        {
+          "kind": "role",
+          "text": "One bridge is producer work; the other is organ work."
+        },
+        {
+          "kind": "initials",
+          "text": "Bridge initials: L. B. and D. F."
+        },
+        {
+          "kind": "credit_excerpt",
+          "text": "Liner note, Paper Lanterns: two familiar names appear in the credits — ▮▮▮▮▮▮ and ▮▮▮▮▮▮."
+        },
+        {
+          "kind": "eliminate",
+          "text": "Two names struck from the tray.",
+          "eliminate_ids": [
+            90000012,
+            90000008
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "release_ref": "syn-r08",
+          "release_title": "Reedwork",
+          "contributor_id": 90000004,
+          "credited_as": "Lena Brook",
+          "role_text": "Producer",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r02",
+          "release_title": "Paper Lanterns",
+          "contributor_id": 90000004,
+          "credited_as": "Lena Brook",
+          "role_text": "Producer",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r02",
+          "release_title": "Paper Lanterns",
+          "contributor_id": 90000022,
+          "credited_as": "Duke Farrow",
+          "role_text": "Organ",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r09",
+          "release_title": "Union of Kites",
+          "contributor_id": 90000022,
+          "credited_as": "Duke Farrow",
+          "role_text": "Organ",
+          "credit_scope": "release_credit"
+        }
+      ],
+      "provenance_note": "Synthetic-universe round: a fictional catalog with generated sleeve art, clearly stamped SYNTHETIC."
+    },
+    {
+      "id": "syn-2h-0816",
+      "pool": "synthetic-universe",
+      "kind": "two_hop",
+      "difficulty": "hard",
+      "endpoints": [
+        {
+          "id": "syn-a08",
+          "title": "Reedwork",
+          "year": 1977,
+          "act": "Ossian Reed",
+          "label": "Copper Kettle",
+          "art": {
+            "kind": "generated"
+          }
+        },
+        {
+          "id": "syn-a16",
+          "title": "Hollow Lane",
+          "year": 1980,
+          "act": "Ada Quinn",
+          "label": "Meridian",
+          "art": null
+        }
+      ],
+      "middle": {
+        "album": {
+          "id": "syn-a23",
+          "title": "Tin Lantern II",
+          "year": 1984,
+          "act": "Tin Lantern",
+          "label": "Copper Kettle",
+          "art": {
+            "kind": "generated"
+          }
+        },
+        "choices": [
+          {
+            "id": "syn-a23",
+            "title": "Tin Lantern II",
+            "year": 1984,
+            "act": "Tin Lantern",
+            "label": "Copper Kettle",
+            "art": {
+              "kind": "generated"
+            }
+          },
+          {
+            "id": "syn-a20",
+            "title": "The Long Field",
+            "year": 1982,
+            "act": "Ossian Reed",
+            "label": "Copper Kettle",
+            "art": {
+              "kind": "generated"
+            }
+          },
+          {
+            "id": "syn-a12",
+            "title": "Solis",
+            "year": 1977,
+            "act": "Yara Solis",
+            "label": "Meridian",
+            "art": {
+              "kind": "generated"
+            }
+          },
+          {
+            "id": "syn-a01",
+            "title": "Late Ferry",
+            "year": 1974,
+            "act": "The Harbor Lights",
+            "label": "Meridian",
+            "art": {
+              "kind": "generated"
+            }
+          }
+        ]
+      },
+      "answer_set": [
+        {
+          "id": 90000008,
+          "name": "Chip Adler",
+          "role_category": "guitar"
+        },
+        {
+          "id": 90000006,
+          "name": "Hale Mercier",
+          "role_category": "engineer"
+        },
+        {
+          "id": 90000013,
+          "name": "Omar Reyes",
+          "role_category": "percussion"
+        }
+      ],
+      "bridge_answer_sets": [
+        [
+          {
+            "id": 90000008,
+            "name": "Chip Adler",
+            "role_category": "guitar"
+          }
+        ],
+        [
+          {
+            "id": 90000006,
+            "name": "Hale Mercier",
+            "role_category": "engineer"
+          },
+          {
+            "id": 90000013,
+            "name": "Omar Reyes",
+            "role_category": "percussion"
+          }
+        ]
+      ],
+      "distractors": [
+        {
+          "id": 90000021,
+          "name": "Isla Chen",
+          "role_category": "harp"
+        },
+        {
+          "id": 90000004,
+          "name": "Lena Brook",
+          "role_category": "producer"
+        },
+        {
+          "id": 90000019,
+          "name": "Nia Vale",
+          "role_category": "flute"
+        },
+        {
+          "id": 90000018,
+          "name": "Bo Lindqvist",
+          "role_category": "guitar"
+        }
+      ],
+      "clues": [
+        {
+          "kind": "years",
+          "text": "The hidden middle record is from 1984."
+        },
+        {
+          "kind": "role",
+          "text": "One bridge is guitar work; the other is engineer work."
+        },
+        {
+          "kind": "initials",
+          "text": "Bridge initials: C. A. and H. M."
+        },
+        {
+          "kind": "credit_excerpt",
+          "text": "Liner note, Tin Lantern II: two familiar names appear in the credits — ▮▮▮▮▮▮ and ▮▮▮▮▮▮."
+        },
+        {
+          "kind": "eliminate",
+          "text": "Two names struck from the tray.",
+          "eliminate_ids": [
+            90000021,
+            90000004
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "release_ref": "syn-r08",
+          "release_title": "Reedwork",
+          "contributor_id": 90000008,
+          "credited_as": "Chip Adler",
+          "role_text": "Guitar",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r23",
+          "release_title": "Tin Lantern II",
+          "contributor_id": 90000006,
+          "credited_as": "Hale Mercier",
+          "role_text": "Engineer",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r23",
+          "release_title": "Tin Lantern II",
+          "contributor_id": 90000008,
+          "credited_as": "Chip Adler",
+          "role_text": "Guitar",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r23",
+          "release_title": "Tin Lantern II",
+          "contributor_id": 90000013,
+          "credited_as": "Omar Reyes",
+          "role_text": "Percussion",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r16",
+          "release_title": "Hollow Lane",
+          "contributor_id": 90000006,
+          "credited_as": "Hale Mercier",
+          "role_text": "Engineer",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r16",
+          "release_title": "Hollow Lane",
+          "contributor_id": 90000013,
+          "credited_as": "Omar Reyes",
+          "role_text": "Percussion",
+          "credit_scope": "release_credit"
+        }
+      ],
+      "provenance_note": "Synthetic-universe round: a fictional catalog with generated sleeve art, clearly stamped SYNTHETIC."
+    },
+    {
+      "id": "syn-2h-0914",
+      "pool": "synthetic-universe",
+      "kind": "two_hop",
+      "difficulty": "hard",
+      "endpoints": [
+        {
+          "id": "syn-a09",
+          "title": "Union of Kites",
+          "year": 1984,
+          "act": "The Kite Union",
+          "label": "Copper Kettle",
+          "art": {
+            "kind": "generated"
+          }
+        },
+        {
+          "id": "syn-a14",
+          "title": "Vela",
+          "year": 1978,
+          "act": "Vela Marsh",
+          "label": "Meridian",
+          "art": {
+            "kind": "generated"
+          }
+        }
+      ],
+      "middle": {
+        "album": {
+          "id": "syn-a02",
+          "title": "Paper Lanterns",
+          "year": 1975,
+          "act": "Vela Marsh",
+          "label": "Meridian",
+          "art": {
+            "kind": "generated"
+          }
+        },
+        "choices": [
+          {
+            "id": "syn-a16",
+            "title": "Hollow Lane",
+            "year": 1980,
+            "act": "Ada Quinn",
+            "label": "Meridian",
+            "art": null
+          },
+          {
+            "id": "syn-a02",
+            "title": "Paper Lanterns",
+            "year": 1975,
+            "act": "Vela Marsh",
+            "label": "Meridian",
+            "art": {
+              "kind": "generated"
+            }
+          },
+          {
+            "id": "syn-a26",
+            "title": "Marshlight",
+            "year": 1983,
+            "act": "Vela Marsh",
+            "label": "Copper Kettle",
+            "art": {
+              "kind": "generated"
+            }
+          },
+          {
+            "id": "syn-a05",
+            "title": "Terminal Lights",
+            "year": 1980,
+            "act": "Night Ferry",
+            "label": "Meridian",
+            "art": {
+              "kind": "generated"
+            }
+          }
+        ]
+      },
+      "answer_set": [
+        {
+          "id": 90000022,
+          "name": "Duke Farrow",
+          "role_category": "organ"
+        },
+        {
+          "id": 90000004,
+          "name": "Lena Brook",
+          "role_category": "producer"
+        }
+      ],
+      "bridge_answer_sets": [
+        [
+          {
+            "id": 90000022,
+            "name": "Duke Farrow",
+            "role_category": "organ"
+          }
+        ],
+        [
+          {
+            "id": 90000004,
+            "name": "Lena Brook",
+            "role_category": "producer"
+          }
+        ]
+      ],
+      "distractors": [
+        {
+          "id": 90000002,
+          "name": "Del Callahan",
+          "role_category": "bass"
+        },
+        {
+          "id": 90000012,
+          "name": "Tessa Wynn",
+          "role_category": "producer"
+        },
+        {
+          "id": 90000017,
+          "name": "Fern Okafor",
+          "role_category": "violin"
+        },
+        {
+          "id": 90000011,
+          "name": "Percy Lim",
+          "role_category": "string_arrangement"
+        }
+      ],
+      "clues": [
+        {
+          "kind": "years",
+          "text": "The hidden middle record is from 1975."
+        },
+        {
+          "kind": "role",
+          "text": "One bridge is organ work; the other is producer work."
+        },
+        {
+          "kind": "initials",
+          "text": "Bridge initials: D. F. and L. B."
+        },
+        {
+          "kind": "credit_excerpt",
+          "text": "Liner note, Paper Lanterns: two familiar names appear in the credits — ▮▮▮▮▮▮ and ▮▮▮▮▮▮."
+        },
+        {
+          "kind": "eliminate",
+          "text": "Two names struck from the tray.",
+          "eliminate_ids": [
+            90000002,
+            90000012
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "release_ref": "syn-r09",
+          "release_title": "Union of Kites",
+          "contributor_id": 90000022,
+          "credited_as": "Duke Farrow",
+          "role_text": "Organ",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r02",
+          "release_title": "Paper Lanterns",
+          "contributor_id": 90000004,
+          "credited_as": "Lena Brook",
+          "role_text": "Producer",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r02",
+          "release_title": "Paper Lanterns",
+          "contributor_id": 90000022,
+          "credited_as": "Duke Farrow",
+          "role_text": "Organ",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r14",
+          "release_title": "Vela",
+          "contributor_id": 90000004,
+          "credited_as": "Lena Brook",
+          "role_text": "Producer",
+          "credit_scope": "release_credit"
+        }
+      ],
+      "provenance_note": "Synthetic-universe round: a fictional catalog with generated sleeve art, clearly stamped SYNTHETIC."
+    },
+    {
+      "id": "syn-2h-1128",
+      "pool": "synthetic-universe",
+      "kind": "two_hop",
+      "difficulty": "hard",
+      "endpoints": [
+        {
+          "id": "syn-a11",
+          "title": "Filament",
+          "year": 1981,
+          "act": "Tin Lantern",
+          "label": "Copper Kettle",
+          "art": {
+            "kind": "generated"
+          }
+        },
+        {
+          "id": "syn-a28",
+          "title": "Harbor Wall",
+          "year": 1986,
+          "act": "Night Ferry",
+          "label": "Copper Kettle",
+          "art": null
+        }
+      ],
+      "middle": {
+        "album": {
+          "id": "syn-a05",
+          "title": "Terminal Lights",
+          "year": 1980,
+          "act": "Night Ferry",
+          "label": "Meridian",
+          "art": {
+            "kind": "generated"
+          }
+        },
+        "choices": [
+          {
+            "id": "syn-a18",
+            "title": "Setts in Motion",
+            "year": 1979,
+            "act": "The Silver Setts",
+            "label": "Meridian",
+            "art": {
+              "kind": "generated"
+            }
+          },
+          {
+            "id": "syn-a03",
+            "title": "Copper Sound!",
+            "year": 1975,
+            "act": "The Copper Sound",
+            "label": "Copper Kettle",
+            "art": {
+              "kind": "generated"
+            }
+          },
+          {
+            "id": "syn-a05",
+            "title": "Terminal Lights",
+            "year": 1980,
+            "act": "Night Ferry",
+            "label": "Meridian",
+            "art": {
+              "kind": "generated"
+            }
+          },
+          {
+            "id": "syn-a12",
+            "title": "Solis",
+            "year": 1977,
+            "act": "Yara Solis",
+            "label": "Meridian",
+            "art": {
+              "kind": "generated"
+            }
+          }
+        ]
+      },
+      "answer_set": [
+        {
+          "id": 90000010,
+          "name": "Gus Fenn",
+          "role_category": "sax"
+        },
+        {
+          "id": 90000018,
+          "name": "Bo Lindqvist",
+          "role_category": "guitar"
+        }
+      ],
+      "bridge_answer_sets": [
+        [
+          {
+            "id": 90000010,
+            "name": "Gus Fenn",
+            "role_category": "sax"
+          }
+        ],
+        [
+          {
+            "id": 90000018,
+            "name": "Bo Lindqvist",
+            "role_category": "guitar"
+          }
+        ]
+      ],
+      "distractors": [
+        {
+          "id": 90000008,
+          "name": "Chip Adler",
+          "role_category": "guitar"
+        },
+        {
+          "id": 90000007,
+          "name": "Sonia Vex",
+          "role_category": "keys"
+        },
+        {
+          "id": 90000014,
+          "name": "June Halloran",
+          "role_category": "mastering"
+        },
+        {
+          "id": 90000011,
+          "name": "Percy Lim",
+          "role_category": "string_arrangement"
+        }
+      ],
+      "clues": [
+        {
+          "kind": "years",
+          "text": "The hidden middle record is from 1980."
+        },
+        {
+          "kind": "role",
+          "text": "One bridge is saxophone work; the other is guitar work."
+        },
+        {
+          "kind": "initials",
+          "text": "Bridge initials: G. F. and B. L."
+        },
+        {
+          "kind": "credit_excerpt",
+          "text": "Liner note, Terminal Lights: two familiar names appear in the credits — ▮▮▮▮▮▮ and ▮▮▮▮▮▮."
+        },
+        {
+          "kind": "eliminate",
+          "text": "Two names struck from the tray.",
+          "eliminate_ids": [
+            90000008,
+            90000007
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "release_ref": "syn-r11",
+          "release_title": "Filament",
+          "contributor_id": 90000010,
+          "credited_as": "Gus Fenn",
+          "role_text": "Saxophone",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r05",
+          "release_title": "Terminal Lights",
+          "contributor_id": 90000010,
+          "credited_as": "Gus Fenn",
+          "role_text": "Saxophone",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r05",
+          "release_title": "Terminal Lights",
+          "contributor_id": 90000018,
+          "credited_as": "Bo Lindqvist",
+          "role_text": "Guitar",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r28",
+          "release_title": "Harbor Wall",
+          "contributor_id": 90000018,
+          "credited_as": "Bo Lindqvist",
+          "role_text": "Guitar",
+          "credit_scope": "release_credit"
+        }
+      ],
+      "provenance_note": "Synthetic-universe round: a fictional catalog with generated sleeve art, clearly stamped SYNTHETIC."
+    },
+    {
+      "id": "syn-2h-1416",
+      "pool": "synthetic-universe",
+      "kind": "two_hop",
+      "difficulty": "hard",
+      "endpoints": [
+        {
+          "id": "syn-a14",
+          "title": "Vela",
+          "year": 1978,
+          "act": "Vela Marsh",
+          "label": "Meridian",
+          "art": {
+            "kind": "generated"
+          }
+        },
+        {
+          "id": "syn-a16",
+          "title": "Hollow Lane",
+          "year": 1980,
+          "act": "Ada Quinn",
+          "label": "Meridian",
+          "art": null
+        }
+      ],
+      "middle": {
+        "album": {
+          "id": "syn-a27",
+          "title": "Alloy",
+          "year": 1985,
+          "act": "The Copper Sound",
+          "label": "Copper Kettle",
+          "art": {
+            "kind": "generated"
+          }
+        },
+        "choices": [
+          {
+            "id": "syn-a11",
+            "title": "Filament",
+            "year": 1981,
+            "act": "Tin Lantern",
+            "label": "Copper Kettle",
+            "art": {
+              "kind": "generated"
+            }
+          },
+          {
+            "id": "syn-a05",
+            "title": "Terminal Lights",
+            "year": 1980,
+            "act": "Night Ferry",
+            "label": "Meridian",
+            "art": {
+              "kind": "generated"
+            }
+          },
+          {
+            "id": "syn-a02",
+            "title": "Paper Lanterns",
+            "year": 1975,
+            "act": "Vela Marsh",
+            "label": "Meridian",
+            "art": {
+              "kind": "generated"
+            }
+          },
+          {
+            "id": "syn-a27",
+            "title": "Alloy",
+            "year": 1985,
+            "act": "The Copper Sound",
+            "label": "Copper Kettle",
+            "art": {
+              "kind": "generated"
+            }
+          }
+        ]
+      },
+      "answer_set": [
+        {
+          "id": 90000017,
+          "name": "Fern Okafor",
+          "role_category": "violin"
+        },
+        {
+          "id": 90000006,
+          "name": "Hale Mercier",
+          "role_category": "engineer"
+        }
+      ],
+      "bridge_answer_sets": [
+        [
+          {
+            "id": 90000017,
+            "name": "Fern Okafor",
+            "role_category": "violin"
+          }
+        ],
+        [
+          {
+            "id": 90000006,
+            "name": "Hale Mercier",
+            "role_category": "engineer"
+          }
+        ]
+      ],
+      "distractors": [
+        {
+          "id": 90000013,
+          "name": "Omar Reyes",
+          "role_category": "percussion"
+        },
+        {
+          "id": 90000004,
+          "name": "Lena Brook",
+          "role_category": "producer"
+        },
+        {
+          "id": 90000019,
+          "name": "Nia Vale",
+          "role_category": "flute"
+        },
+        {
+          "id": 90000011,
+          "name": "Percy Lim",
+          "role_category": "string_arrangement"
+        }
+      ],
+      "clues": [
+        {
+          "kind": "years",
+          "text": "The hidden middle record is from 1985."
+        },
+        {
+          "kind": "role",
+          "text": "One bridge is violin work; the other is engineer work."
+        },
+        {
+          "kind": "initials",
+          "text": "Bridge initials: F. O. and H. M."
+        },
+        {
+          "kind": "credit_excerpt",
+          "text": "Liner note, Alloy: two familiar names appear in the credits — ▮▮▮▮▮▮ and ▮▮▮▮▮▮."
+        },
+        {
+          "kind": "eliminate",
+          "text": "Two names struck from the tray.",
+          "eliminate_ids": [
+            90000013,
+            90000004
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "release_ref": "syn-r14",
+          "release_title": "Vela",
+          "contributor_id": 90000017,
+          "credited_as": "Fern Okafor",
+          "role_text": "Violin",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r27",
+          "release_title": "Alloy",
+          "contributor_id": 90000006,
+          "credited_as": "Hale Mercier",
+          "role_text": "Engineer",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r27",
+          "release_title": "Alloy",
+          "contributor_id": 90000017,
+          "credited_as": "Fern Okafor",
+          "role_text": "Violin",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r16",
+          "release_title": "Hollow Lane",
+          "contributor_id": 90000006,
+          "credited_as": "Hale Mercier",
+          "role_text": "Engineer",
+          "credit_scope": "release_credit"
+        }
+      ],
+      "provenance_note": "Synthetic-universe round: a fictional catalog with generated sleeve art, clearly stamped SYNTHETIC."
+    },
+    {
+      "id": "syn-2h-1430",
+      "pool": "synthetic-universe",
+      "kind": "two_hop",
+      "difficulty": "hard",
+      "endpoints": [
+        {
+          "id": "syn-a14",
+          "title": "Vela",
+          "year": 1978,
+          "act": "Vela Marsh",
+          "label": "Meridian",
+          "art": {
+            "kind": "generated"
+          }
+        },
+        {
+          "id": "syn-a30",
+          "title": "Glass & Wire",
+          "year": 1990,
+          "act": "Tin Lantern",
+          "label": "Copper Kettle",
+          "art": {
+            "kind": "generated"
+          }
+        }
+      ],
+      "middle": {
+        "album": {
+          "id": "syn-a07",
+          "title": "Midnight Arcade",
+          "year": 1978,
+          "act": "Marta Vale",
+          "label": "Meridian",
+          "art": {
+            "kind": "generated"
+          }
+        },
+        "choices": [
+          {
+            "id": "syn-a22",
+            "title": "Second Pressing",
+            "year": 1978,
+            "act": "Blue Meridian Orchestra",
+            "label": "Meridian",
+            "art": {
+              "kind": "generated"
+            }
+          },
+          {
+            "id": "syn-a21",
+            "title": "String Theory for Beginners",
+            "year": 1987,
+            "act": "The Kite Union",
+            "label": "Copper Kettle",
+            "art": {
+              "kind": "generated"
+            }
+          },
+          {
+            "id": "syn-a03",
+            "title": "Copper Sound!",
+            "year": 1975,
+            "act": "The Copper Sound",
+            "label": "Copper Kettle",
+            "art": {
+              "kind": "generated"
+            }
+          },
+          {
+            "id": "syn-a07",
+            "title": "Midnight Arcade",
+            "year": 1978,
+            "act": "Marta Vale",
+            "label": "Meridian",
+            "art": {
+              "kind": "generated"
+            }
+          }
+        ]
+      },
+      "answer_set": [
+        {
+          "id": 90000011,
+          "name": "Percy Lim",
+          "role_category": "string_arrangement"
+        },
+        {
+          "id": 90000020,
+          "name": "Rex Torres",
+          "role_category": "bass"
+        }
+      ],
+      "bridge_answer_sets": [
+        [
+          {
+            "id": 90000011,
+            "name": "Percy Lim",
+            "role_category": "string_arrangement"
+          }
+        ],
+        [
+          {
+            "id": 90000020,
+            "name": "Rex Torres",
+            "role_category": "bass"
+          }
+        ]
+      ],
+      "distractors": [
+        {
+          "id": 90000017,
+          "name": "Fern Okafor",
+          "role_category": "violin"
+        },
+        {
+          "id": 90000013,
+          "name": "Omar Reyes",
+          "role_category": "percussion"
+        },
+        {
+          "id": 90000004,
+          "name": "Lena Brook",
+          "role_category": "producer"
+        },
+        {
+          "id": 90000014,
+          "name": "June Halloran",
+          "role_category": "mastering"
+        }
+      ],
+      "clues": [
+        {
+          "kind": "years",
+          "text": "The hidden middle record is from 1978."
+        },
+        {
+          "kind": "role",
+          "text": "One bridge is strings, arranged by work; the other is bass work."
+        },
+        {
+          "kind": "initials",
+          "text": "Bridge initials: P. L. and R. T."
+        },
+        {
+          "kind": "credit_excerpt",
+          "text": "Liner note, Midnight Arcade: two familiar names appear in the credits — ▮▮▮▮▮▮ and ▮▮▮▮▮▮."
+        },
+        {
+          "kind": "eliminate",
+          "text": "Two names struck from the tray.",
+          "eliminate_ids": [
+            90000017,
+            90000013
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "release_ref": "syn-r14",
+          "release_title": "Vela",
+          "contributor_id": 90000011,
+          "credited_as": "Percy Lim",
+          "role_text": "Strings, Arranged By",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r07",
+          "release_title": "Midnight Arcade",
+          "contributor_id": 90000011,
+          "credited_as": "Percy Lim",
+          "role_text": "Strings, Arranged By",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r07",
+          "release_title": "Midnight Arcade",
+          "contributor_id": 90000020,
+          "credited_as": "Rex Torres",
+          "role_text": "Bass",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r30",
+          "release_title": "Glass & Wire",
+          "contributor_id": 90000020,
+          "credited_as": "Rex Torres",
+          "role_text": "Bass",
+          "credit_scope": "release_credit"
+        }
+      ],
+      "provenance_note": "Synthetic-universe round: a fictional catalog with generated sleeve art, clearly stamped SYNTHETIC."
+    },
+    {
+      "id": "syn-2h-1526",
+      "pool": "synthetic-universe",
+      "kind": "two_hop",
+      "difficulty": "hard",
+      "endpoints": [
+        {
+          "id": "syn-a15",
+          "title": "Kettle Steam",
+          "year": 1979,
+          "act": "The Copper Sound",
+          "label": "Copper Kettle",
+          "art": {
+            "kind": "generated"
+          }
+        },
+        {
+          "id": "syn-a26",
+          "title": "Marshlight",
+          "year": 1983,
+          "act": "Vela Marsh",
+          "label": "Copper Kettle",
+          "art": {
+            "kind": "generated"
+          }
+        }
+      ],
+      "middle": {
+        "album": {
+          "id": "syn-a02",
+          "title": "Paper Lanterns",
+          "year": 1975,
+          "act": "Vela Marsh",
+          "label": "Meridian",
+          "art": {
+            "kind": "generated"
+          }
+        },
+        "choices": [
+          {
+            "id": "syn-a02",
+            "title": "Paper Lanterns",
+            "year": 1975,
+            "act": "Vela Marsh",
+            "label": "Meridian",
+            "art": {
+              "kind": "generated"
+            }
+          },
+          {
+            "id": "syn-a22",
+            "title": "Second Pressing",
+            "year": 1978,
+            "act": "Blue Meridian Orchestra",
+            "label": "Meridian",
+            "art": {
+              "kind": "generated"
+            }
+          },
+          {
+            "id": "syn-a17",
+            "title": "Crossing at Dusk",
+            "year": 1982,
+            "act": "Night Ferry",
+            "label": "Meridian",
+            "art": {
+              "kind": "generated"
+            }
+          },
+          {
+            "id": "syn-a24",
+            "title": "Crossing Lights",
+            "year": 1981,
+            "act": "The Harbor Lights",
+            "label": "Meridian",
+            "art": {
+              "kind": "generated"
+            }
+          }
+        ]
+      },
+      "answer_set": [
+        {
+          "id": 90000005,
+          "name": "Hal Mercer",
+          "role_category": "engineer"
+        },
+        {
+          "id": 90000004,
+          "name": "Lena Brook",
+          "role_category": "producer"
+        }
+      ],
+      "bridge_answer_sets": [
+        [
+          {
+            "id": 90000005,
+            "name": "Hal Mercer",
+            "role_category": "engineer"
+          }
+        ],
+        [
+          {
+            "id": 90000004,
+            "name": "Lena Brook",
+            "role_category": "producer"
+          }
+        ]
+      ],
+      "distractors": [
+        {
+          "id": 90000016,
+          "name": "Kit Marlowe",
+          "role_category": "mixing"
+        },
+        {
+          "id": 90000012,
+          "name": "Tessa Wynn",
+          "role_category": "producer"
+        },
+        {
+          "id": 90000002,
+          "name": "Del Callahan",
+          "role_category": "bass"
+        },
+        {
+          "id": 90000007,
+          "name": "Sonia Vex",
+          "role_category": "keys"
+        }
+      ],
+      "clues": [
+        {
+          "kind": "years",
+          "text": "The hidden middle record is from 1975."
+        },
+        {
+          "kind": "role",
+          "text": "One bridge is engineer work; the other is producer work."
+        },
+        {
+          "kind": "initials",
+          "text": "Bridge initials: H. M. and L. B."
+        },
+        {
+          "kind": "credit_excerpt",
+          "text": "Liner note, Paper Lanterns: two familiar names appear in the credits — ▮▮▮▮▮▮ and ▮▮▮▮▮▮."
+        },
+        {
+          "kind": "eliminate",
+          "text": "Two names struck from the tray.",
+          "eliminate_ids": [
+            90000016,
+            90000012
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "release_ref": "syn-r15",
+          "release_title": "Kettle Steam",
+          "contributor_id": 90000005,
+          "credited_as": "Hal Mercer",
+          "role_text": "Engineer",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r02",
+          "release_title": "Paper Lanterns",
+          "contributor_id": 90000004,
+          "credited_as": "Lena Brook",
+          "role_text": "Producer",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r02",
+          "release_title": "Paper Lanterns",
+          "contributor_id": 90000005,
+          "credited_as": "Hal Mercer",
+          "role_text": "Engineer",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r26",
+          "release_title": "Marshlight",
+          "contributor_id": 90000004,
+          "credited_as": "Lena Brook",
+          "role_text": "Producer",
+          "credit_scope": "release_credit"
+        }
+      ],
+      "provenance_note": "Synthetic-universe round: a fictional catalog with generated sleeve art, clearly stamped SYNTHETIC."
+    },
+    {
+      "id": "syn-2h-1527",
+      "pool": "synthetic-universe",
+      "kind": "two_hop",
+      "difficulty": "hard",
+      "endpoints": [
+        {
+          "id": "syn-a15",
+          "title": "Kettle Steam",
+          "year": 1979,
+          "act": "The Copper Sound",
+          "label": "Copper Kettle",
+          "art": {
+            "kind": "generated"
+          }
+        },
+        {
+          "id": "syn-a27",
+          "title": "Alloy",
+          "year": 1985,
+          "act": "The Copper Sound",
+          "label": "Copper Kettle",
+          "art": {
+            "kind": "generated"
+          }
+        }
+      ],
+      "middle": {
+        "album": {
+          "id": "syn-a05",
+          "title": "Terminal Lights",
+          "year": 1980,
+          "act": "Night Ferry",
+          "label": "Meridian",
+          "art": {
+            "kind": "generated"
+          }
+        },
+        "choices": [
+          {
+            "id": "syn-a17",
+            "title": "Crossing at Dusk",
+            "year": 1982,
+            "act": "Night Ferry",
+            "label": "Meridian",
+            "art": {
+              "kind": "generated"
+            }
+          },
+          {
+            "id": "syn-a19",
+            "title": "Vale of Mirrors",
+            "year": 1981,
+            "act": "Marta Vale",
+            "label": "Copper Kettle",
+            "art": {
+              "kind": "generated"
+            }
+          },
+          {
+            "id": "syn-a05",
+            "title": "Terminal Lights",
+            "year": 1980,
+            "act": "Night Ferry",
+            "label": "Meridian",
+            "art": {
+              "kind": "generated"
+            }
+          },
+          {
+            "id": "syn-a03",
+            "title": "Copper Sound!",
+            "year": 1975,
+            "act": "The Copper Sound",
+            "label": "Copper Kettle",
+            "art": {
+              "kind": "generated"
+            }
+          }
+        ]
+      },
+      "answer_set": [
+        {
+          "id": 90000002,
+          "name": "Del Callahan",
+          "role_category": "bass"
+        },
+        {
+          "id": 90000005,
+          "name": "Hal Mercer",
+          "role_category": "engineer"
+        },
+        {
+          "id": 90000018,
+          "name": "Bo Lindqvist",
+          "role_category": "guitar"
+        },
+        {
+          "id": 90000010,
+          "name": "Gus Fenn",
+          "role_category": "sax"
+        }
+      ],
+      "bridge_answer_sets": [
+        [
+          {
+            "id": 90000002,
+            "name": "Del Callahan",
+            "role_category": "bass"
+          },
+          {
+            "id": 90000005,
+            "name": "Hal Mercer",
+            "role_category": "engineer"
+          },
+          {
+            "id": 90000018,
+            "name": "Bo Lindqvist",
+            "role_category": "guitar"
+          }
+        ],
+        [
+          {
+            "id": 90000010,
+            "name": "Gus Fenn",
+            "role_category": "sax"
+          }
+        ]
+      ],
+      "distractors": [
+        {
+          "id": 90000006,
+          "name": "Hale Mercier",
+          "role_category": "engineer"
+        },
+        {
+          "id": 90000012,
+          "name": "Tessa Wynn",
+          "role_category": "producer"
+        },
+        {
+          "id": 90000017,
+          "name": "Fern Okafor",
+          "role_category": "violin"
+        },
+        {
+          "id": 90000008,
+          "name": "Chip Adler",
+          "role_category": "guitar"
+        }
+      ],
+      "clues": [
+        {
+          "kind": "years",
+          "text": "The hidden middle record is from 1980."
+        },
+        {
+          "kind": "role",
+          "text": "One bridge is bass work; the other is saxophone work."
+        },
+        {
+          "kind": "initials",
+          "text": "Bridge initials: D. C. and G. F."
+        },
+        {
+          "kind": "credit_excerpt",
+          "text": "Liner note, Terminal Lights: two familiar names appear in the credits — ▮▮▮▮▮▮ and ▮▮▮▮▮▮."
+        },
+        {
+          "kind": "eliminate",
+          "text": "Two names struck from the tray.",
+          "eliminate_ids": [
+            90000006,
+            90000012
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "release_ref": "syn-r15",
+          "release_title": "Kettle Steam",
+          "contributor_id": 90000002,
+          "credited_as": "Del Callahan",
+          "role_text": "Bass",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r15",
+          "release_title": "Kettle Steam",
+          "contributor_id": 90000005,
+          "credited_as": "Hal Mercer",
+          "role_text": "Engineer",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r15",
+          "release_title": "Kettle Steam",
+          "contributor_id": 90000018,
+          "credited_as": "Bo Lindqvist",
+          "role_text": "Guitar",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r05",
+          "release_title": "Terminal Lights",
+          "contributor_id": 90000002,
+          "credited_as": "Del Callahan",
+          "role_text": "Bass",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r05",
+          "release_title": "Terminal Lights",
+          "contributor_id": 90000005,
+          "credited_as": "Hal Mercer",
+          "role_text": "Engineer",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r05",
+          "release_title": "Terminal Lights",
+          "contributor_id": 90000010,
+          "credited_as": "Gus Fenn",
+          "role_text": "Saxophone",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r05",
+          "release_title": "Terminal Lights",
+          "contributor_id": 90000018,
+          "credited_as": "Bo Lindqvist",
+          "role_text": "Guitar",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r27",
+          "release_title": "Alloy",
+          "contributor_id": 90000010,
+          "credited_as": "Gus Fenn",
+          "role_text": "Saxophone",
+          "credit_scope": "release_credit"
+        }
+      ],
+      "provenance_note": "Synthetic-universe round: a fictional catalog with generated sleeve art, clearly stamped SYNTHETIC."
+    },
+    {
+      "id": "syn-2h-1621",
+      "pool": "synthetic-universe",
+      "kind": "two_hop",
+      "difficulty": "hard",
+      "endpoints": [
+        {
+          "id": "syn-a16",
+          "title": "Hollow Lane",
+          "year": 1980,
+          "act": "Ada Quinn",
+          "label": "Meridian",
+          "art": null
+        },
+        {
+          "id": "syn-a21",
+          "title": "String Theory for Beginners",
+          "year": 1987,
+          "act": "The Kite Union",
+          "label": "Copper Kettle",
+          "art": {
+            "kind": "generated"
+          }
+        }
+      ],
+      "middle": {
+        "album": {
+          "id": "syn-a10",
+          "title": "Blue Meridian Presents",
+          "year": 1974,
+          "act": "Blue Meridian Orchestra",
+          "label": "Meridian",
+          "art": {
+            "kind": "generated"
+          }
+        },
+        "choices": [
+          {
+            "id": "syn-a10",
+            "title": "Blue Meridian Presents",
+            "year": 1974,
+            "act": "Blue Meridian Orchestra",
+            "label": "Meridian",
+            "art": {
+              "kind": "generated"
+            }
+          },
+          {
+            "id": "syn-a03",
+            "title": "Copper Sound!",
+            "year": 1975,
+            "act": "The Copper Sound",
+            "label": "Copper Kettle",
+            "art": {
+              "kind": "generated"
+            }
+          },
+          {
+            "id": "syn-a17",
+            "title": "Crossing at Dusk",
+            "year": 1982,
+            "act": "Night Ferry",
+            "label": "Meridian",
+            "art": {
+              "kind": "generated"
+            }
+          },
+          {
+            "id": "syn-a12",
+            "title": "Solis",
+            "year": 1977,
+            "act": "Yara Solis",
+            "label": "Meridian",
+            "art": {
+              "kind": "generated"
+            }
+          }
+        ]
+      },
+      "answer_set": [
+        {
+          "id": 90000013,
+          "name": "Omar Reyes",
+          "role_category": "percussion"
+        },
+        {
+          "id": 90000005,
+          "name": "Hal Mercer",
+          "role_category": "engineer"
+        }
+      ],
+      "bridge_answer_sets": [
+        [
+          {
+            "id": 90000013,
+            "name": "Omar Reyes",
+            "role_category": "percussion"
+          }
+        ],
+        [
+          {
+            "id": 90000005,
+            "name": "Hal Mercer",
+            "role_category": "engineer"
+          }
+        ]
+      ],
+      "distractors": [
+        {
+          "id": 90000006,
+          "name": "Hale Mercier",
+          "role_category": "engineer"
+        },
+        {
+          "id": 90000011,
+          "name": "Percy Lim",
+          "role_category": "string_arrangement"
+        },
+        {
+          "id": 90000019,
+          "name": "Nia Vale",
+          "role_category": "flute"
+        },
+        {
+          "id": 90000018,
+          "name": "Bo Lindqvist",
+          "role_category": "guitar"
+        }
+      ],
+      "clues": [
+        {
+          "kind": "years",
+          "text": "The hidden middle record is from 1974."
+        },
+        {
+          "kind": "role",
+          "text": "One bridge is percussion work; the other is engineer work."
+        },
+        {
+          "kind": "initials",
+          "text": "Bridge initials: O. R. and H. M."
+        },
+        {
+          "kind": "credit_excerpt",
+          "text": "Liner note, Blue Meridian Presents: two familiar names appear in the credits — ▮▮▮▮▮▮ and ▮▮▮▮▮▮."
+        },
+        {
+          "kind": "eliminate",
+          "text": "Two names struck from the tray.",
+          "eliminate_ids": [
+            90000006,
+            90000011
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "release_ref": "syn-r16",
+          "release_title": "Hollow Lane",
+          "contributor_id": 90000013,
+          "credited_as": "Omar Reyes",
+          "role_text": "Percussion",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r10",
+          "release_title": "Blue Meridian Presents",
+          "contributor_id": 90000005,
+          "credited_as": "Hal Mercer",
+          "role_text": "Engineer",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r10",
+          "release_title": "Blue Meridian Presents",
+          "contributor_id": 90000013,
+          "credited_as": "Omar Reyes",
+          "role_text": "Percussion",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r21",
+          "release_title": "String Theory for Beginners",
+          "contributor_id": 90000005,
+          "credited_as": "Hal Mercer",
+          "role_text": "Engineer",
+          "credit_scope": "release_credit"
+        }
+      ],
+      "provenance_note": "Synthetic-universe round: a fictional catalog with generated sleeve art, clearly stamped SYNTHETIC."
+    },
+    {
+      "id": "syn-2h-1625",
+      "pool": "synthetic-universe",
+      "kind": "two_hop",
+      "difficulty": "hard",
+      "endpoints": [
+        {
+          "id": "syn-a16",
+          "title": "Hollow Lane",
+          "year": 1980,
+          "act": "Ada Quinn",
+          "label": "Meridian",
+          "art": null
+        },
+        {
+          "id": "syn-a25",
+          "title": "Rain on the Patio",
+          "year": 1980,
+          "act": "Yara Solis",
+          "label": "Meridian",
+          "art": {
+            "kind": "generated"
+          }
+        }
+      ],
+      "middle": {
+        "album": {
+          "id": "syn-a27",
+          "title": "Alloy",
+          "year": 1985,
+          "act": "The Copper Sound",
+          "label": "Copper Kettle",
+          "art": {
+            "kind": "generated"
+          }
+        },
+        "choices": [
+          {
+            "id": "syn-a09",
+            "title": "Union of Kites",
+            "year": 1984,
+            "act": "The Kite Union",
+            "label": "Copper Kettle",
+            "art": {
+              "kind": "generated"
+            }
+          },
+          {
+            "id": "syn-a05",
+            "title": "Terminal Lights",
+            "year": 1980,
+            "act": "Night Ferry",
+            "label": "Meridian",
+            "art": {
+              "kind": "generated"
+            }
+          },
+          {
+            "id": "syn-a30",
+            "title": "Glass & Wire",
+            "year": 1990,
+            "act": "Tin Lantern",
+            "label": "Copper Kettle",
+            "art": {
+              "kind": "generated"
+            }
+          },
+          {
+            "id": "syn-a27",
+            "title": "Alloy",
+            "year": 1985,
+            "act": "The Copper Sound",
+            "label": "Copper Kettle",
+            "art": {
+              "kind": "generated"
+            }
+          }
+        ]
+      },
+      "answer_set": [
+        {
+          "id": 90000006,
+          "name": "Hale Mercier",
+          "role_category": "engineer"
+        },
+        {
+          "id": 90000010,
+          "name": "Gus Fenn",
+          "role_category": "sax"
+        }
+      ],
+      "bridge_answer_sets": [
+        [
+          {
+            "id": 90000006,
+            "name": "Hale Mercier",
+            "role_category": "engineer"
+          }
+        ],
+        [
+          {
+            "id": 90000010,
+            "name": "Gus Fenn",
+            "role_category": "sax"
+          }
+        ]
+      ],
+      "distractors": [
+        {
+          "id": 90000019,
+          "name": "Nia Vale",
+          "role_category": "flute"
+        },
+        {
+          "id": 90000022,
+          "name": "Duke Farrow",
+          "role_category": "organ"
+        },
+        {
+          "id": 90000013,
+          "name": "Omar Reyes",
+          "role_category": "percussion"
+        },
+        {
+          "id": 90000015,
+          "name": "Viv Sandoval",
+          "role_category": "trumpet"
+        }
+      ],
+      "clues": [
+        {
+          "kind": "years",
+          "text": "The hidden middle record is from 1985."
+        },
+        {
+          "kind": "role",
+          "text": "One bridge is engineer work; the other is saxophone work."
+        },
+        {
+          "kind": "initials",
+          "text": "Bridge initials: H. M. and G. F."
+        },
+        {
+          "kind": "credit_excerpt",
+          "text": "Liner note, Alloy: two familiar names appear in the credits — ▮▮▮▮▮▮ and ▮▮▮▮▮▮."
+        },
+        {
+          "kind": "eliminate",
+          "text": "Two names struck from the tray.",
+          "eliminate_ids": [
+            90000019,
+            90000022
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "release_ref": "syn-r16",
+          "release_title": "Hollow Lane",
+          "contributor_id": 90000006,
+          "credited_as": "Hale Mercier",
+          "role_text": "Engineer",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r27",
+          "release_title": "Alloy",
+          "contributor_id": 90000006,
+          "credited_as": "Hale Mercier",
+          "role_text": "Engineer",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r27",
+          "release_title": "Alloy",
+          "contributor_id": 90000010,
+          "credited_as": "Gus Fenn",
+          "role_text": "Saxophone",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r25",
+          "release_title": "Rain on the Patio",
+          "contributor_id": 90000010,
+          "credited_as": "Gus Fenn",
+          "role_text": "Saxophone",
+          "credit_scope": "release_credit"
+        }
+      ],
+      "provenance_note": "Synthetic-universe round: a fictional catalog with generated sleeve art, clearly stamped SYNTHETIC."
+    },
+    {
+      "id": "syn-2h-1626",
+      "pool": "synthetic-universe",
+      "kind": "two_hop",
+      "difficulty": "medium",
+      "endpoints": [
+        {
+          "id": "syn-a16",
+          "title": "Hollow Lane",
+          "year": 1980,
+          "act": "Ada Quinn",
+          "label": "Meridian",
+          "art": null
+        },
+        {
+          "id": "syn-a26",
+          "title": "Marshlight",
+          "year": 1983,
+          "act": "Vela Marsh",
+          "label": "Copper Kettle",
+          "art": {
+            "kind": "generated"
+          }
+        }
+      ],
+      "middle": {
+        "album": {
+          "id": "syn-a06",
+          "title": "Silver Standards",
+          "year": 1976,
+          "act": "The Silver Setts",
+          "label": "Meridian",
+          "art": {
+            "kind": "generated"
+          }
+        },
+        "choices": [
+          {
+            "id": "syn-a28",
+            "title": "Harbor Wall",
+            "year": 1986,
+            "act": "Night Ferry",
+            "label": "Copper Kettle",
+            "art": null
+          },
+          {
+            "id": "syn-a06",
+            "title": "Silver Standards",
+            "year": 1976,
+            "act": "The Silver Setts",
+            "label": "Meridian",
+            "art": {
+              "kind": "generated"
+            }
+          },
+          {
+            "id": "syn-a29",
+            "title": "Winter Wiring: Songs from the Meridian Annex Sessions, Volume One",
+            "year": 1988,
+            "act": "Ossian Reed",
+            "label": "Copper Kettle",
+            "art": {
+              "kind": "generated"
+            }
+          },
+          {
+            "id": "syn-a07",
+            "title": "Midnight Arcade",
+            "year": 1978,
+            "act": "Marta Vale",
+            "label": "Meridian",
+            "art": {
+              "kind": "generated"
+            }
+          }
+        ]
+      },
+      "answer_set": [
+        {
+          "id": 90000019,
+          "name": "Nia Vale",
+          "role_category": "flute"
+        },
+        {
+          "id": 90000007,
+          "name": "Sonia Vex",
+          "role_category": "keys"
+        }
+      ],
+      "bridge_answer_sets": [
+        [
+          {
+            "id": 90000019,
+            "name": "Nia Vale",
+            "role_category": "flute"
+          }
+        ],
+        [
+          {
+            "id": 90000007,
+            "name": "Sonia Vex",
+            "role_category": "keys"
+          }
+        ]
+      ],
+      "distractors": [
+        {
+          "id": 90000016,
+          "name": "Kit Marlowe",
+          "role_category": "mixing"
+        },
+        {
+          "id": 90000004,
+          "name": "Lena Brook",
+          "role_category": "producer"
+        },
+        {
+          "id": 90000013,
+          "name": "Omar Reyes",
+          "role_category": "percussion"
+        },
+        {
+          "id": 90000006,
+          "name": "Hale Mercier",
+          "role_category": "engineer"
+        }
+      ],
+      "clues": [
+        {
+          "kind": "years",
+          "text": "The hidden middle record is from 1976."
+        },
+        {
+          "kind": "role",
+          "text": "One bridge is flute work; the other is keyboards work."
+        },
+        {
+          "kind": "initials",
+          "text": "Bridge initials: N. V. and S. V."
+        },
+        {
+          "kind": "credit_excerpt",
+          "text": "Liner note, Silver Standards: two familiar names appear in the credits — ▮▮▮▮▮▮ and ▮▮▮▮▮▮."
+        },
+        {
+          "kind": "eliminate",
+          "text": "Two names struck from the tray.",
+          "eliminate_ids": [
+            90000016,
+            90000004
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "release_ref": "syn-r16",
+          "release_title": "Hollow Lane",
+          "contributor_id": 90000019,
+          "credited_as": "Nia Vale",
+          "role_text": "Flute",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r06",
+          "release_title": "Silver Standards",
+          "contributor_id": 90000007,
+          "credited_as": "Sonia Vex",
+          "role_text": "Keyboards",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r06",
+          "release_title": "Silver Standards",
+          "contributor_id": 90000019,
+          "credited_as": "Nia Vale",
+          "role_text": "Flute",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r26",
+          "release_title": "Marshlight",
+          "contributor_id": 90000007,
+          "credited_as": "Sonia Vex",
+          "role_text": "Keyboards",
+          "credit_scope": "release_credit"
+        }
+      ],
+      "provenance_note": "Synthetic-universe round: a fictional catalog with generated sleeve art, clearly stamped SYNTHETIC."
+    },
+    {
+      "id": "syn-2h-1628",
+      "pool": "synthetic-universe",
+      "kind": "two_hop",
+      "difficulty": "hard",
+      "endpoints": [
+        {
+          "id": "syn-a16",
+          "title": "Hollow Lane",
+          "year": 1980,
+          "act": "Ada Quinn",
+          "label": "Meridian",
+          "art": null
+        },
+        {
+          "id": "syn-a28",
+          "title": "Harbor Wall",
+          "year": 1986,
+          "act": "Night Ferry",
+          "label": "Copper Kettle",
+          "art": null
+        }
+      ],
+      "middle": {
+        "album": {
+          "id": "syn-a23",
+          "title": "Tin Lantern II",
+          "year": 1984,
+          "act": "Tin Lantern",
+          "label": "Copper Kettle",
+          "art": {
+            "kind": "generated"
+          }
+        },
+        "choices": [
+          {
+            "id": "syn-a23",
+            "title": "Tin Lantern II",
+            "year": 1984,
+            "act": "Tin Lantern",
+            "label": "Copper Kettle",
+            "art": {
+              "kind": "generated"
+            }
+          },
+          {
+            "id": "syn-a08",
+            "title": "Reedwork",
+            "year": 1977,
+            "act": "Ossian Reed",
+            "label": "Copper Kettle",
+            "art": {
+              "kind": "generated"
+            }
+          },
+          {
+            "id": "syn-a22",
+            "title": "Second Pressing",
+            "year": 1978,
+            "act": "Blue Meridian Orchestra",
+            "label": "Meridian",
+            "art": {
+              "kind": "generated"
+            }
+          },
+          {
+            "id": "syn-a17",
+            "title": "Crossing at Dusk",
+            "year": 1982,
+            "act": "Night Ferry",
+            "label": "Meridian",
+            "art": {
+              "kind": "generated"
+            }
+          }
+        ]
+      },
+      "answer_set": [
+        {
+          "id": 90000006,
+          "name": "Hale Mercier",
+          "role_category": "engineer"
+        },
+        {
+          "id": 90000013,
+          "name": "Omar Reyes",
+          "role_category": "percussion"
+        },
+        {
+          "id": 90000008,
+          "name": "Chip Adler",
+          "role_category": "guitar"
+        }
+      ],
+      "bridge_answer_sets": [
+        [
+          {
+            "id": 90000006,
+            "name": "Hale Mercier",
+            "role_category": "engineer"
+          },
+          {
+            "id": 90000013,
+            "name": "Omar Reyes",
+            "role_category": "percussion"
+          }
+        ],
+        [
+          {
+            "id": 90000008,
+            "name": "Chip Adler",
+            "role_category": "guitar"
+          }
+        ]
+      ],
+      "distractors": [
+        {
+          "id": 90000018,
+          "name": "Bo Lindqvist",
+          "role_category": "guitar"
+        },
+        {
+          "id": 90000011,
+          "name": "Percy Lim",
+          "role_category": "string_arrangement"
+        },
+        {
+          "id": 90000019,
+          "name": "Nia Vale",
+          "role_category": "flute"
+        },
+        {
+          "id": 90000005,
+          "name": "Hal Mercer",
+          "role_category": "engineer"
+        }
+      ],
+      "clues": [
+        {
+          "kind": "years",
+          "text": "The hidden middle record is from 1984."
+        },
+        {
+          "kind": "role",
+          "text": "One bridge is engineer work; the other is guitar work."
+        },
+        {
+          "kind": "initials",
+          "text": "Bridge initials: H. M. and C. A."
+        },
+        {
+          "kind": "credit_excerpt",
+          "text": "Liner note, Tin Lantern II: two familiar names appear in the credits — ▮▮▮▮▮▮ and ▮▮▮▮▮▮."
+        },
+        {
+          "kind": "eliminate",
+          "text": "Two names struck from the tray.",
+          "eliminate_ids": [
+            90000018,
+            90000011
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "release_ref": "syn-r16",
+          "release_title": "Hollow Lane",
+          "contributor_id": 90000006,
+          "credited_as": "Hale Mercier",
+          "role_text": "Engineer",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r16",
+          "release_title": "Hollow Lane",
+          "contributor_id": 90000013,
+          "credited_as": "Omar Reyes",
+          "role_text": "Percussion",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r23",
+          "release_title": "Tin Lantern II",
+          "contributor_id": 90000006,
+          "credited_as": "Hale Mercier",
+          "role_text": "Engineer",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r23",
+          "release_title": "Tin Lantern II",
+          "contributor_id": 90000008,
+          "credited_as": "Chip Adler",
+          "role_text": "Guitar",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r23",
+          "release_title": "Tin Lantern II",
+          "contributor_id": 90000013,
+          "credited_as": "Omar Reyes",
+          "role_text": "Percussion",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r28",
+          "release_title": "Harbor Wall",
+          "contributor_id": 90000008,
+          "credited_as": "Chip Adler",
+          "role_text": "Guitar",
+          "credit_scope": "release_credit"
+        }
+      ],
+      "provenance_note": "Synthetic-universe round: a fictional catalog with generated sleeve art, clearly stamped SYNTHETIC."
+    },
+    {
+      "id": "syn-2h-2030",
+      "pool": "synthetic-universe",
+      "kind": "two_hop",
+      "difficulty": "hard",
+      "endpoints": [
+        {
+          "id": "syn-a20",
+          "title": "The Long Field",
+          "year": 1982,
+          "act": "Ossian Reed",
+          "label": "Copper Kettle",
+          "art": {
+            "kind": "generated"
+          }
+        },
+        {
+          "id": "syn-a30",
+          "title": "Glass & Wire",
+          "year": 1990,
+          "act": "Tin Lantern",
+          "label": "Copper Kettle",
+          "art": {
+            "kind": "generated"
+          }
+        }
+      ],
+      "middle": {
+        "album": {
+          "id": "syn-a24",
+          "title": "Crossing Lights",
+          "year": 1981,
+          "act": "The Harbor Lights",
+          "label": "Meridian",
+          "art": {
+            "kind": "generated"
+          }
+        },
+        "choices": [
+          {
+            "id": "syn-a24",
+            "title": "Crossing Lights",
+            "year": 1981,
+            "act": "The Harbor Lights",
+            "label": "Meridian",
+            "art": {
+              "kind": "generated"
+            }
+          },
+          {
+            "id": "syn-a05",
+            "title": "Terminal Lights",
+            "year": 1980,
+            "act": "Night Ferry",
+            "label": "Meridian",
+            "art": {
+              "kind": "generated"
+            }
+          },
+          {
+            "id": "syn-a19",
+            "title": "Vale of Mirrors",
+            "year": 1981,
+            "act": "Marta Vale",
+            "label": "Copper Kettle",
+            "art": {
+              "kind": "generated"
+            }
+          },
+          {
+            "id": "syn-a03",
+            "title": "Copper Sound!",
+            "year": 1975,
+            "act": "The Copper Sound",
+            "label": "Copper Kettle",
+            "art": {
+              "kind": "generated"
+            }
+          }
+        ]
+      },
+      "answer_set": [
+        {
+          "id": 90000009,
+          "name": "Mira Costa",
+          "role_category": "backing_vocals"
+        },
+        {
+          "id": 90000014,
+          "name": "June Halloran",
+          "role_category": "mastering"
+        }
+      ],
+      "bridge_answer_sets": [
+        [
+          {
+            "id": 90000009,
+            "name": "Mira Costa",
+            "role_category": "backing_vocals"
+          }
+        ],
+        [
+          {
+            "id": 90000014,
+            "name": "June Halloran",
+            "role_category": "mastering"
+          }
+        ]
+      ],
+      "distractors": [
+        {
+          "id": 90000004,
+          "name": "Lena Brook",
+          "role_category": "producer"
+        },
+        {
+          "id": 90000020,
+          "name": "Rex Torres",
+          "role_category": "bass"
+        },
+        {
+          "id": 90000017,
+          "name": "Fern Okafor",
+          "role_category": "violin"
+        },
+        {
+          "id": 90000013,
+          "name": "Omar Reyes",
+          "role_category": "percussion"
+        }
+      ],
+      "clues": [
+        {
+          "kind": "years",
+          "text": "The hidden middle record is from 1981."
+        },
+        {
+          "kind": "role",
+          "text": "One bridge is backing vocals work; the other is mastered by work."
+        },
+        {
+          "kind": "initials",
+          "text": "Bridge initials: M. C. and J. H."
+        },
+        {
+          "kind": "credit_excerpt",
+          "text": "Liner note, Crossing Lights: two familiar names appear in the credits — ▮▮▮▮▮▮ and ▮▮▮▮▮▮."
+        },
+        {
+          "kind": "eliminate",
+          "text": "Two names struck from the tray.",
+          "eliminate_ids": [
+            90000004,
+            90000020
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "release_ref": "syn-r20",
+          "release_title": "The Long Field",
+          "contributor_id": 90000009,
+          "credited_as": "Mira Costa",
+          "role_text": "Backing Vocals",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r24",
+          "release_title": "Crossing Lights",
+          "contributor_id": 90000009,
+          "credited_as": "Mira Costa",
+          "role_text": "Backing Vocals",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r24",
+          "release_title": "Crossing Lights",
+          "contributor_id": 90000014,
+          "credited_as": "June Halloran",
+          "role_text": "Mastered By",
+          "credit_scope": "release_credit"
+        },
+        {
+          "release_ref": "syn-r30",
+          "release_title": "Glass & Wire",
+          "contributor_id": 90000014,
+          "credited_as": "June Halloran",
+          "role_text": "Mastered By",
+          "credit_scope": "release_credit"
+        }
+      ],
+      "provenance_note": "Synthetic-universe round: a fictional catalog with generated sleeve art, clearly stamped SYNTHETIC."
+    }
+  ]
+}

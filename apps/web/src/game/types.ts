@@ -4,9 +4,12 @@
 // scripts/build-rounds.mjs derives and validates the artifacts at build time.
 
 export type RoleCategory =
+  | "vocals"
+  | "backing_vocals"
   | "bass"
   | "drums"
   | "guitar"
+  | "strings"
   | "keys"
   | "organ"
   | "percussion"
@@ -15,14 +18,22 @@ export type RoleCategory =
   | "violin"
   | "flute"
   | "harp"
-  | "backing_vocals"
+  | "brass"
+  | "woodwind"
   | "string_arrangement"
   | "producer"
   | "engineer"
   | "mixing"
-  | "mastering";
+  | "mastering"
+  /** Fallback for a credited role this project's performer allowlist doesn't
+   * name a specific category for; should be rare (see eligibility.py). */
+  | "performer";
 
-export interface SyntheticProvenance {
+/** Provenance for either pool -- synthetic or real. Field content must
+ * self-identify which one (see the game-universe-v1/game-rounds-v1 contracts'
+ * self-identification requirement, born from the challenge.v2.json trap
+ * where only `generated_by` revealed a synthetic fixture). */
+export interface GameProvenance {
   source: string;
   license: string;
   note: string;
@@ -39,8 +50,10 @@ export interface GameAlbum {
   title: string;
   act: string;
   act_id: number;
-  year: number;
-  label: string;
+  /** Null when a real album has no reliably known original year. */
+  year: number | null;
+  /** Fictional label for synthetic albums (drives generated sleeve style); null for real records. */
+  label: string | null;
   art: SleeveArt;
 }
 
@@ -55,7 +68,8 @@ export interface GameRelease {
   id: string;
   album_id: string;
   title: string;
-  year: number;
+  /** Null when a real evidence release has no recorded release date. */
+  year: number | null;
   catalog_stamp: string;
 }
 
@@ -64,12 +78,12 @@ export interface GameCredit {
   contributor_id: number;
   role_text: string;
   role_category: RoleCategory;
-  credit_scope: "release_credit";
+  credit_scope: string;
 }
 
 export interface GameUniverse {
   schema_version: 1;
-  provenance: SyntheticProvenance;
+  provenance: GameProvenance;
   albums: GameAlbum[];
   contributors: GameContributor[];
   releases: GameRelease[];
@@ -128,7 +142,7 @@ export interface GameRound {
 
 export interface GameRounds {
   schema_version: 1;
-  provenance: SyntheticProvenance;
+  provenance: GameProvenance;
   rounds: GameRound[];
 }
 

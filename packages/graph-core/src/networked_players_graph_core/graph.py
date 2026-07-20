@@ -918,6 +918,35 @@ class CreditGraph:
         ).fetchall()
         return [dict(zip(_CREDIT_COLUMNS, row, strict=True)) for row in rows]
 
+    def credit_rows_for_releases(
+        self, release_ids: Sequence[int]
+    ) -> dict[int, list[dict[str, Any]]]:
+        """Every playable, non-placeholder credit row for a batch of releases,
+        grouped by `release_id` -- one query, not one per release. Unlike
+        `credit_rows`, no `artist_ids` filter: the caller doesn't yet know which
+        artists matter (e.g. discovering who performs on an album at all), only
+        which releases. Applies no role-eligibility filter -- that is the game
+        allowlist's job (`eligibility.py`), which this module must never import.
+        """
+        if not release_ids:
+            return {}
+        ids = sorted(set(release_ids))
+        placeholders = ", ".join("?" for _ in ids)
+        columns = ", ".join(_CREDIT_COLUMNS)
+        not_placeholder = _not_placeholder_sql()
+        rows = self._connection.execute(
+            f"SELECT {columns} FROM credits "
+            f"WHERE release_id IN ({placeholders}) "
+            f"AND playable_identity AND artist_id IS NOT NULL AND {not_placeholder} "
+            "ORDER BY ALL",
+            ids,
+        ).fetchall()
+        grouped: dict[int, list[dict[str, Any]]] = {rid: [] for rid in ids}
+        for row in rows:
+            record = dict(zip(_CREDIT_COLUMNS, row, strict=True))
+            grouped[int(record["release_id"])].append(record)
+        return grouped
+
     def release(self, release_id: int) -> dict[str, Any] | None:
         row = self._connection.execute(
             "SELECT * FROM releases WHERE release_id = ?", [release_id]
