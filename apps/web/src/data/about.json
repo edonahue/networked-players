@@ -19,7 +19,8 @@
     {
       "heading": "Where the project actually is",
       "paragraphs": [
-        "This is an early build, not a finished product. The album-centered browsing and evidence-viewer experience on the home page is real, working code — but the album and path data behind it is currently a small synthetic placeholder, not the real catalog. A Discogs release-ingestion pipeline exists and has run at full scale against the real monthly dump, and the tooling to turn that into a real album-centered artifact is built; swapping the placeholder for real data is a remaining step, not a design question.",
+        "This is an early build, not a finished product, but the album grid, Connection Guesser, and Connection of the Day now all run on real, Discogs monthly-dump-derived data (snapshot 20260601) — not a synthetic placeholder. Connection Guesser's rounds are deliberately narrower than the album browser's evidence: a round only counts a hop when both people have an explicit, documented instrument or vocal credit, never a bare billing or a production role. That narrower rule means the rounds pool is smaller than the album grid's connected set, reported honestly rather than padded.",
+        "A reviewed community-sourced cohort of albums has been scored for real connectivity against the current dataset, but promotion to a published, playable cohort requires a human review step that has not yet happened — no cohort is silently auto-approved.",
         "The connections demo on this site runs separately, on real Discogs data for a small, curated subset of releases and artist connections — fetched via the Discogs API ahead of the full CC0 dump pipeline (see the project's ADR 0012)."
       ]
     },
@@ -33,7 +34,7 @@
     {
       "heading": "What's next",
       "paragraphs": [
-        "Generating the album grid's real artifact from the actual one-hop dataset and swapping it in for the synthetic placeholder; replacing the connections demo's API-sourced dataset with one derived from the CC0 monthly dumps (with full provenance and no collection membership); and, eventually, producer/engineer-bridge and six-degrees play modes. A future live-search mode is additive and must fail gracefully — the static-first core always works on its own."
+        "A human-reviewed decision on the scored community cohort, so it can be published as a playable set rather than staying an internal review artifact; growing the Connection Guesser rounds pool as more of the album backbone clears the game's stricter performer-only rule; replacing the connections demo's API-sourced dataset with one derived from the CC0 monthly dumps (with full provenance and no collection membership); and, eventually, producer/engineer-bridge and six-degrees play modes. A future live-search mode is additive and must fail gracefully — the static-first core always works on its own."
       ]
     }
   ]

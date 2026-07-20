@@ -1,4 +1,4 @@
-// Client-side rendering for the flagship game (/play/) and Connection of the
+// Client-side rendering for the flagship game (/guess/) and Connection of the
 // Day (/daily/). rounds.v1.json is fetched at runtime, not bundled -- at real
 // launch scale it is well over Astro's reasonable per-page budget, per
 // ADR 0002's static-first posture (no live API required, but a large

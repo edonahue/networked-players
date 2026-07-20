@@ -157,10 +157,10 @@ test("static game artifacts are reachable and real", async ({ request }) => {
   expect(Array.isArray(daily.schedule)).toBe(true);
 });
 
-test("play page loads a real round and reveals evidence without leaking the answer first", async ({
+test("guess page loads a real round and reveals evidence without leaking the answer first", async ({
   page,
 }) => {
-  await page.goto("/play/");
+  await page.goto("/guess/");
   await expect(page.getByRole("heading", { level: 1 })).toContainText(
     "Guess the connection",
   );
@@ -175,7 +175,7 @@ test("play page loads a real round and reveals evidence without leaking the answ
   // present in the DOM but under the `hidden` attribute (browser-default
   // `display: none`) until revealed -- not literally absent from markup,
   // consistent with every other reveal mechanic already shipped and tested
-  // in this codebase (cohort-manifest.spec.ts, the existing play-page test).
+  // in this codebase (cohort-manifest.spec.ts, the existing guess-page test).
   await expect(evidence).toBeHidden();
 
   await reveal.click();
