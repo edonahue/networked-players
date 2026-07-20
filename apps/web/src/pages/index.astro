@@ -68,11 +68,13 @@ const albums = challenge.albums.filter((album) => connectedAlbumIds.has(album.id
       <p class="eyebrow">Honest status</p>
       <h2 id="state-title">An early build, not a finished product.</h2>
       <p class="lede">
-        The album grid above and its evidence viewer are real, working code — but the data behind
-        them is currently a small synthetic placeholder, not the real catalog. The connections
-        demo (linked below) runs on a small, curated subset of <strong>real</strong> Discogs data,
-        fetched via the Discogs API ahead of the full CC0 dump pipeline that will eventually
-        replace this placeholder with real albums and real evidence.
+        The album grid above and its evidence viewer run on real, Discogs monthly-dump-derived
+        data (snapshot {challenge.provenance.snapshot_date}) — {albums.length} studio albums
+        connected by {challenge.paths.length} documented credit paths, not a synthetic
+        placeholder. The connections demo (linked below) runs on a small, curated subset of
+        <strong>real</strong> Discogs data, fetched via the Discogs API ahead of the full CC0
+        dump pipeline — an earlier, smaller slice kept during the transition, not the primary
+        real dataset anymore.
       </p>
     </div>
     <div class="hero-actions" style="margin-top:0">

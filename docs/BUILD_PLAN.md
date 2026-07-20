@@ -228,7 +228,7 @@ fourth original Pi, plus a separate Pi 3B+, are planned but not yet revived
 | `game-rules` | Placeholder (README only) |
 | `workers` | Placeholder (README only) |
 | `apps/api` | Placeholder (README only) |
-| `apps/web` | Playable game surface shipped (see `docs/WEB_PRODUCT_PLAN.md`, ADR 0037): `/play/` hub, flagship Connection Guesser (one-hop + two-hop) in five-round sets, Connection of the Day, `/albums/` browse + evidence pages (old `/play/<album>/` URLs redirect), cohorts, ADR-0012 real curated `/demo/`; album/browse data still the synthetic challenge.v2 placeholder pending live gate F; deploys via Cloudflare Git integration on push to `main`; CI green (format/check/build + 67 Playwright specs) |
+| `apps/web` | Playable game surface shipped (see `docs/WEB_PRODUCT_PLAN.md`, ADR 0037): `/play/` hub, flagship Connection Guesser (one-hop + two-hop) in five-round sets, Connection of the Day, `/albums/` browse + evidence pages (old `/play/<album>/` URLs redirect), cohorts, ADR-0012 real curated `/demo/`; `/albums/` browse data is now the real, masters-corrected `challenge.v2.json` (140 albums, snapshot 20260601, live gate F closed 2026-07-20); the Connection Guesser's own pool (`public/data/game/*`) is still the synthetic Meridian Tapes universe plus a handful of real rounds, not yet on the same real catalog; deploys via Cloudflare Git integration on push to `main`; CI green (format/check/build + 67 Playwright specs) |
 | Coordination host OS + inventory | Done (64-bit confirmed, local inventory created) |
 | Coordination host storage | NVMe attached and mounted at `/mnt/data` (916G ext4, ADR 0013); `local/` and coordination volumes relocated; 250 GB bulk-ingest floor met (869 GB free, confirmed) |
 | Coordination host hardening | Done (ADR 0014): persistent journald, hardware watchdog, Docker log rotation, `vm.swappiness` tuning (`infra/ansible/playbooks/harden.yml`) |
@@ -757,9 +757,12 @@ Milestone 5.
       missing/absent path) — `packages/graph-core/tests/` (16 tests in
       `test_graph.py`, using real Parquet fixtures written via the catalog
       package's own schemas, not `data/samples/`)
-- [ ] Manually verify at least one real evidence path from the actual one-hop
-      expansion end to end (not just against synthetic fixtures) — pending live
-      gate F (build a real challenge.v2 artifact from the real one-hop dataset)
+- [x] Manually verify at least one real evidence path from the actual one-hop
+      expansion end to end (not just against synthetic fixtures) — done as part of
+      Milestone 8's real `build-challenge-from-dump` run (2026-07-20): e.g. Pink
+      Floyd's *The Dark Side Of The Moon* (master 10362, original year 1973, not
+      the 2003 reissue edition its evidence release carries) connects via real,
+      preserved credit rows
 
 ### ADR
 Recorded in-code (module docstring of `graph.py`) rather than a standalone ADR:
@@ -795,12 +798,12 @@ Milestone 6.
 > **Note:** `apps/web`'s `/demo/` page already runs on real, curated Discogs data as
 > of [ADR 0012](decisions/0012-real-discogs-api-demo-challenge.md) — an API-sourced
 > detour taken ahead of this milestone. The album-centered web experience (landing
-> page + `/play/<album>/`, challenge.v2.json) has since landed as real, working code
-> — this milestone's remaining task is generating *real* data for it, not building
-> the experience itself. The original framing ("swap `challenge.v1.json`'s content
-> in place") is superseded: v2 is a separate artifact and route structure, not an
-> in-place edit of v1. `/demo/` remains, relabeled "Legacy demo" in the nav, pending
-> an explicit decision to retire it.
+> page + `/albums/<album>/`, challenge.v2.json) had already landed as real, working
+> code against a synthetic placeholder; this milestone's real task — generating and
+> swapping in real data — is now done (2026-07-20, integration branch). The original
+> framing ("swap `challenge.v1.json`'s content in place") is superseded: v2 is a
+> separate artifact and route structure, not an in-place edit of v1. `/demo/` remains,
+> relabeled "Legacy demo" in the nav, pending an explicit decision to retire it.
 
 ### Goal
 Produce one real, privacy-safe, evidence-backed album-centered challenge from the
@@ -820,21 +823,27 @@ Milestones 6 and 7.
       `rank-album-candidates` CLI). Includes a committed leak/contract test
       suite (`test_challenge_leaks.py`, `validate_challenge`'s scan).
 - [x] Build the album-centered web experience against a synthetic-but-valid
-      placeholder artifact: landing-page album grid, `/play/<album>/` pages with
-      find-the-connection/reveal-the-path modes, `AlbumCard`/`EvidenceCard`
-      [`apps/web`]. **Running the generator against the real one-hop dataset and
-      swapping in the result is the still-open part of Milestone 8** (live gate F).
-- [ ] Generate one real challenge artifact from the manually verified path
+      placeholder artifact: landing-page album grid, `/albums/<album>/` pages with
+      find-the-connection/reveal-the-path modes, `AlbumCard`/`EvidencePanel`
+      [`apps/web`].
+- [x] Generate one real challenge artifact from the manually verified path
       (Milestone 6) using the contracts from Milestone 7 [`packages/graph-core`,
-      `data/`]
-- [ ] Confirm the generated artifact contains no collection-membership signal
+      `data/`] — real run, `snapshot=20260601`: 140 studio albums / 250 artists /
+      300 documented paths / 335 evidence releases, masters-attached for original
+      release years, gated by the `studio-album-v1` release-format policy plus a
+      master genre/style non-studio check (`docs/RELEASE_FORMAT_RESEARCH.md`)
+- [x] Confirm the generated artifact contains no collection-membership signal
       beyond derived public catalog facts, per
-      `docs/PUBLIC_PRIVATE_BOUNDARY.md`'s pre-publish checklist
-- [ ] Replace `apps/web/public/data/challenge.v2.json`'s synthetic placeholder with
+      `docs/PUBLIC_PRIVATE_BOUNDARY.md`'s pre-publish checklist — walked, real
+      `validate_challenge()` scan plus a manual grep both clean; provenance
+      self-documents that the private collection seed is never published
+- [x] Replace `apps/web/public/data/challenge.v2.json`'s synthetic placeholder with
       the real generated artifact, keeping the schema unchanged [`apps/web`]
-- [ ] Confirm the landing page and `/play/<album>/` pages render correctly against
-      the real artifact with no code changes required [`apps/web`]
-- [ ] Update `apps/web/README.md`'s "Next steps" section to reflect the swap
+- [x] Confirm the landing page and `/albums/<album>/` pages render correctly against
+      the real artifact with no code changes required [`apps/web`] — real
+      `npm run check` (0 errors) and the full Playwright suite (67/67) pass against
+      the swapped-in real artifact, unmodified frontend code
+- [x] Update `apps/web/README.md`'s "Next steps" section to reflect the swap
 
 ## Milestone 9: First deploy to networked-players.com (ROADMAP 5)
 

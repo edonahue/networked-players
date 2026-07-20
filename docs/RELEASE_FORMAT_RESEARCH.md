@@ -287,6 +287,37 @@ candidates show original years throughout (Sgt. Pepper 1967, *Led Zeppelin IV*/"
 live/soundtrack/compilation entries. Analysis artifacts are local-only
 (`local/analysis/album-catalog-integration/`, ADR 0018).
 
+### Deferred finding: multi-row format descriptors are flattened, not scoped per row
+
+While diagnosing the 140-album catalog's `editorial_missed` list (39 of 91 editorial
+entries; confirmed identical before and after the masters fix — not a regression), 8
+were format-policy-excluded rather than absent from the working set. Of those, most
+(*Born to Run*, *What's Going On*, *I Never Loved a Man the Way I Love You*, *Who's
+Next*) turned out to be a genuinely different, unfixable problem: the only pressings
+present in this bounded one-hop working set for that master are singles/promos/a
+DVD-Video, not the studio LP itself — a data-coverage gap tied to the private
+one-hop seed, not a classification bug.
+
+One case, *Songs in the Key of Life* (release 355233), is a real classification bug:
+`classify_formats` flattens descriptors across **every** `format_index` row on a
+release into one set before checking for an exclude descriptor. This release has three
+separate rows — `['LP']`, `['7", 33⅓ RPM, EP']`, `['Album']` — and the bonus-7"-EP row's
+`ep` descriptor vetoes the whole release even though a clean `Album` row exists.
+Measured corpus-wide: **6,539 releases** have this shape (a clean Album row conflated
+with an independently-excluding row).
+
+**Deliberately not fixed in this pass.** Two other cases surfaced by the same
+diagnostic — *Exodus* (`['Album','Reissue']` / `['Compilation']` / `['Remastered']` as
+three separate rows) and *Daydream Nation* (same shape) — are genuinely ambiguous: is
+the `Compilation` row a mislabel of a bonus item, or does it mean the cited release
+actually is a compilation packaging despite an `Album` tag elsewhere? A per-row fix
+narrow enough to safely rescue *Songs in the Key of Life* without also rescuing a
+genuine compilation needs the same judged-sample validation this document's earlier
+fixes used (the "Validation plan" and the 2026-07-19 residual-live-signal fix), not a
+same-session guess. Flagged here as a known, quantified, deferred residual — the same
+posture as the still-open 1,810 "greatest hits"/"anthology" residual above — rather than
+silently left unmeasured or rushed through unvalidated.
+
 ## Rights and operational boundary
 
 The project should continue using monthly dumps for bulk processing. API

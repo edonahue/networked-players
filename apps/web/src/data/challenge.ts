@@ -46,7 +46,7 @@ export interface ReleaseImage {
 export interface Release {
   snapshot_date: string;
   release_id: number;
-  status: string;
+  status: string | null;
   title: string;
   country: string | null;
   released: string | null;
@@ -124,7 +124,7 @@ export interface AlbumV2 {
 export interface EvidenceRelease {
   snapshot_date: string;
   release_id: number;
-  status: string;
+  status: string | null;
   title: string;
   country: string | null;
   released: string | null;
