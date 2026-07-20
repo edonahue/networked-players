@@ -120,6 +120,115 @@ For a real snapshot, measure:
 - repeated intermediaries before and after filtering;
 - manually judged false-positive and false-negative rates.
 
+## Validation results (observed, 2026-07-19, snapshot 20260601)
+
+The synthetic matrix above is now executed as `packages/catalog/tests/test_release_format_policy.py`
+(one test per bullet). Two matrix cases are not inputs to `classify_formats` at all and are
+covered elsewhere instead: "compilation with two/four/many track artists" is
+`album_shaped()`/`COMPILATION_TRACK_ARTIST_THRESHOLD` in `graph.py` (a traversal-layer guard,
+already tested there); "soundtrack with an individual billed artist" and "studio album with
+producer and guest credits" are about credit shape, not format data, and belong to the
+`credit_edges`/eligibility layer instead.
+
+Real-snapshot measurement ran `classify-release-formats` against the format-enriched one-hop
+dataset (`discogs-onehop-v3`, 1,410,106 releases) and `compare-release-format-policy` against
+the legacy title-only guard. Observed, from a real run (not projected):
+
+| Metric | Count |
+| --- | --- |
+| Releases classified | 1,410,106 |
+| `allow` (before the title safety net below) | 693,113 |
+| `exclude` | 600,373 |
+| `review` (before) | 116,620 |
+| Disagreements vs. the legacy title-only filter | 536,308 |
+| ...of which the format policy correctly caught what titles missed | 502,379 |
+| ...of which titles flagged something the format policy allowed | 33,929 |
+
+**A manually judged sample of the 33,929 "titles flagged, format policy allowed" releases found
+a real, measured false-positive pattern, not evenly distributed noise**: stratified regex
+matching over the full 33,929 (not just the sample) found 32,119 (94.7%) contained "live",
+"bootleg", or "soundtrack" in the title (e.g. real titles observed: "801 Live", "Unplugged (The
+Official Bootleg)", "Live In Japan", "Live Cream Volume II", "Apollo - Atmospheres &
+Soundtracks") while their only structured format descriptor was a bare `Album` — Discogs
+contributors evidently tag carrier/edition facts (LP, CD, Reissue, Mono, Stereo) far more
+consistently than the `Live`/`Soundtrack` descriptor itself. Only 6 of the 33,929 were
+reissue-only matches (the correct, intended override — reissue must not disqualify an explicit
+Album — confirmed working as designed).
+
+**Fix applied** (`classify_formats`, `packages/catalog/.../release_format_policy.py`): an
+optional `title` parameter and a narrow `_RESIDUAL_LIVE_SIGNAL_PATTERN`
+(`bootlegs?|live(?:box)?|soundtracks?|sound collages?` — deliberately narrower than the legacy
+`_TITLE_SIGNAL_PATTERN`, excluding "reissue" and the broader compilation-family terms) that can
+only **downgrade** an `allow` to `review`, never exclude and never promote — the same
+"can only under-filter" precedent as ADR 0027/0036's own keyword guards. This is exactly the
+`title` signal the "Recommended policy model" section above already anticipated, now
+implemented as a bounded safety net rather than a parallel classifier.
+
+Re-running with the fix: `allow` 693,113 → 660,994 (-32,119, matching the measured gap exactly),
+`review` 116,620 → 148,739 (+32,119), `exclude` unchanged at 600,373. Re-running the shadow
+report: `title_filtered_format_allowed` disagreements 33,929 → 1,810 (-94.7%).
+
+**Manually judged, the residual 1,810 are a distinct, smaller, already-understood category**: a
+sample showed titles like "Greatest Hits", "Anthology 3", "The Best Of Freddy McKay" — real
+compilations Discogs tagged only `Album` (missing `Compilation`), not live/bootleg/soundtrack
+titles. Deliberately **not** added to the safety net in this pass: "greatest hits"/"anthology"/
+"best of"/"collection" are higher-collision keywords (a real studio album titled "Collection" or
+"Anthology" is plausible) than "live"/"bootleg"/"soundtrack", and compilations are already the
+best-covered exclude category structurally (380,004 of 600,373 excludes). Flagged here as a
+known, quantified, deferred residual rather than silently left unmeasured.
+
+**Deferred to the PR3 cohort re-score** (a natural byproduct of that required diff, not
+re-measured separately here): endpoint pairs lost versus the title-only policy, and repeated
+intermediaries before/after filtering — both require an actual connectivity re-scoring run,
+which PR3 performs anyway once `scripts/submit_cohort_score.py` carries the format-policy fix.
+
+Artifacts from this run: `local/analysis/release-format-policy-v2/{release-format-policy,
+release-format-scoring-index,format-policy-shadow}.json` (local-only, not committed, per this
+project's benchmark/analysis-results-stay-local convention — ADR 0018's same posture applied to
+a format-policy measurement rather than a performance benchmark). The prior 2026-07-11 run
+under `local/analysis/cohorts/discogs-community-best-albums/` predates this fix and should not
+be treated as current; PR2/PR3 album and round generation should use the `-v2` scoring index.
+
+### PR3 cohort re-score: the deferred diff, now measured (2026-07-20)
+
+`scripts/submit_cohort_score.py` (fixed in PR1 to accept `--release-format-policy` and
+forward it to the worker-side handler) submitted a real whole-cohort re-score of
+`discogs-community-best-albums` (300 pairs, 25 albums) through the capability platform
+to the x86 worker `zimaworker1`, using the `-v2` scoring index above. This closes the
+"deferred to PR3" note directly above. Three real runs, same 300 pairs, same dataset
+snapshot, compared:
+
+| Run | When / how | Found | No path | Skipped | Distinct evidence releases | Releases reused across >1 pair |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| No format policy (legacy title-only filter) | 2026-07-11, local CLI | 299 | 0 | 1 | — | — |
+| Format policy, pre-safety-net-fix | 2026-07-12, local CLI | 277 | 6 | 17 | 273 | 136 |
+| Format policy, post-safety-net-fix | 2026-07-20, **distributed platform, this run** | 281 | 1 | 18 | 271 | 132 |
+
+The studio-album format gate's real, quantified cost versus no format filtering at all is
+**-18 found pairs** (299 → 281): albums whose only prior connecting evidence ran through a
+compilation, live album, bootleg, or reissue correctly lose that connection. This is the
+expected, intended trade-off of gating on format, not a regression.
+
+Between the two format-gated runs, the residual-live-signal safety-net fix (`allow`
+693,113 → 660,994) **increased** found pairs (277 → 281) and eliminated most no-path
+results (6 → 1), rather than reducing connectivity further as a stricter filter might be
+expected to. The most likely mechanism, not independently isolated further here: the
+32,119 newly-downgraded releases (real titles like "801 Live", "Unplugged (The Official
+Bootleg)") were disproportionately high-degree hub releases before the fix, and pruning
+them reduced frontier noise inside the bounded bidirectional-reach search
+(`max_frontier_expansion=300`), letting more real paths complete within the guardrail
+instead of hitting `frontier_too_large`. Repeated-intermediary reuse is essentially flat
+between the two format-gated runs (136 → 132 releases reused across more than one pair;
+the single most-reused release drops from 24 to 18 appearances) — the fix did not
+meaningfully concentrate or disperse evidence reuse either way.
+
+No `selection`/promoted cohort artifact was created by this run, per ADR 0031 — scoring
+and `review-report.md` regeneration only. The regenerated report lives at
+`local/analysis/cohorts/discogs-community-best-albums/review-report.md` (local-only,
+current as of 2026-07-20T12:02:49Z); the operator's next step is unchanged from ADR
+0031's standing requirement: author a human-reviewed `selection` file referencing this
+report.
+
 ## Rights and operational boundary
 
 The project should continue using monthly dumps for bulk processing. API

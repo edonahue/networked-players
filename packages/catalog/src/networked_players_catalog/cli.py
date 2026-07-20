@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from datetime import UTC, date, datetime
 from pathlib import Path
 
@@ -47,6 +47,32 @@ def _parser() -> argparse.ArgumentParser:
     parse_masters.add_argument("--max-masters", type=int)
     parse_masters.add_argument("--chunk-masters", type=int, default=10_000)
     parse_masters.add_argument("--overwrite", action="store_true")
+
+    parse_artist_relations = subparsers.add_parser(
+        "parse-artist-relations",
+        help="stream an artists dump's <groups>/<members> tags into Parquet",
+    )
+    parse_artist_relations.add_argument("--input", type=Path, required=True)
+    parse_artist_relations.add_argument("--snapshot", required=True)
+    parse_artist_relations.add_argument("--source-url", required=True)
+    parse_artist_relations.add_argument("--output-root", type=Path, required=True)
+    parse_artist_relations.add_argument("--max-artists", type=int)
+    parse_artist_relations.add_argument("--chunk-artists", type=int, default=50_000)
+    parse_artist_relations.add_argument("--overwrite", action="store_true")
+
+    artist_family = subparsers.add_parser(
+        "build-artist-family-exclusions",
+        help="build a scoped person->group_act_ids exclusion artifact from parsed artist relations",
+    )
+    artist_family.add_argument("--dataset", type=Path, required=True)
+    artist_family.add_argument(
+        "--artist-ids-file",
+        type=Path,
+        required=True,
+        help="JSON file containing a flat array of artist IDs to scope the artifact to",
+    )
+    artist_family.add_argument("--snapshot", required=True)
+    artist_family.add_argument("--output", type=Path, required=True)
 
     validate = subparsers.add_parser("validate", help="validate a normalized snapshot with DuckDB")
     validate.add_argument("--dataset", type=Path, required=True)
@@ -146,6 +172,13 @@ def _parser() -> argparse.ArgumentParser:
     build_challenge.add_argument("--output", type=Path, required=True)
     build_challenge.add_argument("--max-paths", type=int, default=12)
     build_challenge.add_argument("--max-hops", type=int, default=4)
+    build_challenge.add_argument(
+        "--max-frontier-expansion",
+        type=int,
+        default=300,
+        help="bound each find_path search's per-hop degree (same default as the cohort scorer); "
+        "0 or negative disables the bound",
+    )
     build_challenge.add_argument("--max-artists-per-release", type=int, default=50)
     build_challenge.add_argument("--memory-limit", default="1GB")
     build_challenge.add_argument("--threads", type=int, default=2)
@@ -155,6 +188,21 @@ def _parser() -> argparse.ArgumentParser:
         default=1,
         help="find_path() candidate pairs concurrently across this many DuckDB cursors; "
         "default 1 preserves the original sequential, early-stopping behavior",
+    )
+    build_challenge.add_argument(
+        "--artist-family-exclusions",
+        type=Path,
+        default=None,
+        help="optional artist-family-exclusions-v1.json; drops trivial group/frontperson pairs",
+    )
+    build_challenge.add_argument(
+        "--release-format-policy",
+        type=Path,
+        default=None,
+        help=(
+            "optional release-format-scoring-index.json; fail-closed gates every matched "
+            "album (editorial or hybrid-catalog) by the studio-album-v1 policy"
+        ),
     )
     build_challenge.add_argument("--enrich-images", action="store_true")
     build_challenge.add_argument(
@@ -167,6 +215,80 @@ def _parser() -> argparse.ArgumentParser:
     )
     validate_challenge.add_argument("--input", type=Path, required=True)
 
+    build_rounds = subparsers.add_parser(
+        "build-rounds-from-dump",
+        help=(
+            "build a real, performer-only universe.v1/rounds.v1 artifact pair "
+            "from a one-hop dataset"
+        ),
+    )
+    build_rounds.add_argument("--onehop-root", type=Path, required=True)
+    build_rounds.add_argument(
+        "--albums",
+        type=Path,
+        required=True,
+        help='an {"albums": [...]} file, e.g. build-album-catalog\'s output',
+    )
+    build_rounds.add_argument(
+        "--masters-root", type=Path, default=None, help="optional parsed masters snapshot root"
+    )
+    build_rounds.add_argument(
+        "--artist-family-exclusions",
+        type=Path,
+        default=None,
+        help="optional artist-family-exclusions-v1.json; drops trivial group/frontperson pairs",
+    )
+    build_rounds.add_argument(
+        "--release-format-policy",
+        type=Path,
+        default=None,
+        help=(
+            "optional release-format-scoring-index.json; gates matched albums and every "
+            "two-hop round's bridge evidence by the studio-album-v1 policy"
+        ),
+    )
+    build_rounds.add_argument("--one-hop-target", type=int, default=400)
+    build_rounds.add_argument("--two-hop-target", type=int, default=100)
+    build_rounds.add_argument("--max-endpoint-share", type=float, default=0.15)
+    build_rounds.add_argument("--max-bridge-share", type=float, default=0.2)
+    build_rounds.add_argument("--pool-version", required=True)
+    build_rounds.add_argument("--max-artists-per-release", type=int, default=50)
+    build_rounds.add_argument("--memory-limit", default="1GB")
+    build_rounds.add_argument("--threads", type=int, default=2)
+    build_rounds.add_argument("--output-universe", type=Path, required=True)
+    build_rounds.add_argument("--output-rounds", type=Path, required=True)
+
+    validate_rounds = subparsers.add_parser(
+        "validate-rounds",
+        help="validate a universe.v1/rounds.v1 artifact pair against its contract",
+    )
+    validate_rounds.add_argument("--universe", type=Path, required=True)
+    validate_rounds.add_argument("--rounds", type=Path, required=True)
+
+    build_daily = subparsers.add_parser(
+        "build-daily-manifest",
+        help="build a frozen date->round_id schedule for Connection of the Day",
+    )
+    build_daily.add_argument("--rounds", type=Path, required=True)
+    build_daily.add_argument("--start-date", required=True, help="YYYY-MM-DD")
+    build_daily.add_argument("--days", type=int, default=365)
+    build_daily.add_argument("--output", type=Path, required=True)
+
+    extend_daily = subparsers.add_parser(
+        "extend-daily-manifest",
+        help="append new dates to an existing daily manifest without touching history",
+    )
+    extend_daily.add_argument("--manifest", type=Path, required=True)
+    extend_daily.add_argument("--rounds", type=Path, required=True)
+    extend_daily.add_argument("--days", type=int, default=365)
+    extend_daily.add_argument("--output", type=Path, required=True)
+
+    validate_daily = subparsers.add_parser(
+        "validate-daily-manifest", help="validate a daily-manifest.v1 artifact against its contract"
+    )
+    validate_daily.add_argument("--manifest", type=Path, required=True)
+    validate_daily.add_argument("--rounds", type=Path, required=True)
+
     rank_albums = subparsers.add_parser(
         "rank-album-candidates",
         help="rank master_ids by release-variant count x credit richness (local-only shortlist)",
@@ -176,6 +298,37 @@ def _parser() -> argparse.ArgumentParser:
     rank_albums.add_argument("--limit", type=int, default=200)
     rank_albums.add_argument("--memory-limit", default="3GB")
     rank_albums.add_argument("--threads", type=int, default=2)
+    rank_albums.add_argument(
+        "--release-format-policy",
+        type=Path,
+        default=None,
+        help="optional release-format-scoring-index.json; excludes non-studio-album candidates",
+    )
+
+    build_album_catalog = subparsers.add_parser(
+        "build-album-catalog",
+        help=(
+            "combine the editorial album list with rank-album-candidates output into a "
+            "generated, non-committed --albums input for build-challenge-from-dump (ADR 0038)"
+        ),
+    )
+    build_album_catalog.add_argument("--onehop-root", type=Path, required=True)
+    build_album_catalog.add_argument(
+        "--editorial-albums", type=Path, default=Path("data/albums/top-albums-v1.json")
+    )
+    build_album_catalog.add_argument(
+        "--candidates", type=Path, required=True, help="rank-album-candidates output"
+    )
+    build_album_catalog.add_argument("--target-count", type=int, required=True)
+    build_album_catalog.add_argument("--output", type=Path, required=True)
+    build_album_catalog.add_argument("--memory-limit", default="1GB")
+    build_album_catalog.add_argument("--threads", type=int, default=2)
+    build_album_catalog.add_argument(
+        "--release-format-policy",
+        type=Path,
+        default=None,
+        help="optional release-format-scoring-index.json; also gates the editorial entries",
+    )
 
     fetch_dataset_parser = subparsers.add_parser(
         "fetch-dataset",
@@ -557,6 +710,47 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(json.dumps(masters_manifest, indent=2, sort_keys=True))
         return 0
 
+    if args.command == "parse-artist-relations":
+        from .discogs.artists import iter_artist_relations
+        from .discogs.parquet import write_artist_relations_dataset
+
+        relation_records = iter_artist_relations(
+            args.input,
+            snapshot_date=args.snapshot,
+            source_url=args.source_url,
+            max_artists=args.max_artists,
+        )
+        relations_manifest = write_artist_relations_dataset(
+            relation_records,
+            args.output_root,
+            snapshot_date=args.snapshot,
+            source_url=args.source_url,
+            chunk_artists=args.chunk_artists,
+            overwrite=args.overwrite,
+        )
+        print(json.dumps(relations_manifest, indent=2, sort_keys=True))
+        return 0
+
+    if args.command == "build-artist-family-exclusions":
+        from .discogs.artist_family import (
+            build_artist_family_exclusions,
+            write_artist_family_exclusions,
+        )
+
+        artist_ids = json.loads(args.artist_ids_file.read_text())
+        exclusions = build_artist_family_exclusions(
+            args.dataset, artist_ids=artist_ids, snapshot_date=args.snapshot
+        )
+        write_artist_family_exclusions(exclusions, args.output)
+        print(
+            json.dumps(
+                {"output": str(args.output), "entry_count": len(exclusions["entries"])},
+                indent=2,
+                sort_keys=True,
+            )
+        )
+        return 0
+
     if args.command == "validate":
         from .discogs.validation import validate_dataset
 
@@ -697,13 +891,43 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.command == "build-challenge-from-dump":
         import sys
 
-        from networked_players_graph_core.challenge import build_challenge_v2, validate_challenge
+        from networked_players_graph_core.challenge import (
+            build_challenge_v2,
+            build_challenge_v2_from_matched,
+            resolved_album_from_dict,
+            validate_challenge,
+        )
         from networked_players_graph_core.graph import CreditGraph
 
         onehop_manifest_path = args.onehop_root / "manifest.json"
         onehop_manifest = json.loads(onehop_manifest_path.read_text())
-        snapshot_date = str(onehop_manifest["expansion"]["source_snapshot_date"])
+        # Prefer the dataset's own top-level snapshot_date -- always present
+        # and, for a format-migrated dataset (e.g. discogs-onehop-v3), the
+        # only one present; expansion.source_snapshot_date is kept as a
+        # fallback for older manifests that predate this preference.
+        snapshot_date = str(
+            onehop_manifest.get("snapshot_date")
+            or onehop_manifest["expansion"]["source_snapshot_date"]
+        )
         albums = json.loads(args.albums.read_text())["albums"]
+        # An ID-resolved album (e.g. build-album-catalog's output) carries
+        # artist_id directly; re-matching it by name string would reopen the
+        # exact collision risk resolving it once already closed.
+        albums_are_resolved = bool(albums) and "artist_id" in albums[0]
+
+        is_family_excluded: Callable[[int, int], bool] | None = None
+        if args.artist_family_exclusions is not None:
+            from .discogs.artist_family import is_family_excluded_pair
+
+            exclusions = json.loads(args.artist_family_exclusions.read_text())
+
+            def is_family_excluded(a: int, b: int) -> bool:
+                return is_family_excluded_pair(a, b, exclusions)
+
+        allowed_release_ids = None
+        if args.release_format_policy is not None:
+            policy_payload = json.loads(args.release_format_policy.read_text())
+            allowed_release_ids = frozenset(policy_payload["allowed_release_ids"])
 
         with CreditGraph.open(
             args.onehop_root,
@@ -714,15 +938,44 @@ def main(argv: Sequence[str] | None = None) -> int:
             if args.masters_root is not None:
                 graph.attach_masters(args.masters_root)
 
-            artifact, report = build_challenge_v2(
-                graph,
-                albums,
-                snapshot_date=snapshot_date,
-                generated_by=f"networked-players-catalog build-challenge-from-dump {__version__}",
-                max_paths=args.max_paths,
-                max_hops=args.max_hops,
-                max_workers=args.max_workers,
+            max_frontier_expansion = (
+                args.max_frontier_expansion if args.max_frontier_expansion > 0 else None
             )
+            if albums_are_resolved:
+                matched = [resolved_album_from_dict(a) for a in albums]
+                if allowed_release_ids is not None:
+                    # Defense in depth: assemble_album_catalog already gated
+                    # these, but never trust an upstream artifact blindly.
+                    matched = [m for m in matched if m.main_release_id in allowed_release_ids]
+                artifact, report = build_challenge_v2_from_matched(
+                    graph,
+                    matched,
+                    [],
+                    snapshot_date=snapshot_date,
+                    generated_by=(
+                        f"networked-players-catalog build-challenge-from-dump {__version__}"
+                    ),
+                    max_paths=args.max_paths,
+                    max_hops=args.max_hops,
+                    max_workers=args.max_workers,
+                    is_family_excluded=is_family_excluded,
+                    max_frontier_expansion=max_frontier_expansion,
+                )
+            else:
+                artifact, report = build_challenge_v2(
+                    graph,
+                    albums,
+                    snapshot_date=snapshot_date,
+                    generated_by=(
+                        f"networked-players-catalog build-challenge-from-dump {__version__}"
+                    ),
+                    max_paths=args.max_paths,
+                    max_hops=args.max_hops,
+                    max_workers=args.max_workers,
+                    is_family_excluded=is_family_excluded,
+                    allowed_release_ids=allowed_release_ids,
+                    max_frontier_expansion=max_frontier_expansion,
+                )
 
         if args.enrich_images:
             from .discogs.album_art import enrich_challenge_albums
@@ -754,6 +1007,179 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(json.dumps({"ok": True}, indent=2))
         return 0
 
+    if args.command == "build-rounds-from-dump":
+        from networked_players_graph_core.challenge import match_albums, resolved_album_from_dict
+        from networked_players_graph_core.graph import CreditGraph
+        from networked_players_graph_core.rounds import build_rounds_v1, validate_rounds_artifact
+        from networked_players_graph_core.rounds_generator import generate_round_pool
+
+        onehop_manifest = json.loads((args.onehop_root / "manifest.json").read_text())
+        # Prefer the dataset's own top-level snapshot_date -- always present
+        # and, for a format-migrated dataset (e.g. discogs-onehop-v3), the
+        # only one present; expansion.source_snapshot_date is kept as a
+        # fallback for older manifests that predate this preference.
+        snapshot_date = str(
+            onehop_manifest.get("snapshot_date")
+            or onehop_manifest["expansion"]["source_snapshot_date"]
+        )
+        albums = json.loads(args.albums.read_text())["albums"]
+        albums_are_resolved = bool(albums) and "artist_id" in albums[0]
+
+        rounds_is_family_excluded: Callable[[int, int], bool] | None = None
+        if args.artist_family_exclusions is not None:
+            from .discogs.artist_family import is_family_excluded_pair
+
+            rounds_exclusions = json.loads(args.artist_family_exclusions.read_text())
+
+            def rounds_is_family_excluded(a: int, b: int) -> bool:
+                return is_family_excluded_pair(a, b, rounds_exclusions)
+
+        allowed_release_ids = None
+        if args.release_format_policy is not None:
+            policy_payload = json.loads(args.release_format_policy.read_text())
+            allowed_release_ids = frozenset(policy_payload["allowed_release_ids"])
+
+        with CreditGraph.open(
+            args.onehop_root,
+            memory_limit=args.memory_limit,
+            threads=args.threads,
+            max_artists_per_release=args.max_artists_per_release,
+        ) as graph:
+            if args.masters_root is not None:
+                graph.attach_masters(args.masters_root)
+
+            if albums_are_resolved:
+                matched = [resolved_album_from_dict(a) for a in albums]
+                if allowed_release_ids is not None:
+                    # Defense in depth: assemble_album_catalog already gated
+                    # these, but never trust an upstream artifact blindly.
+                    matched = [m for m in matched if m.main_release_id in allowed_release_ids]
+                missed: list[dict[str, str]] = []
+            else:
+                matched, missed = match_albums(
+                    graph, albums, allowed_release_ids=allowed_release_ids
+                )
+            if len(matched) < 2:
+                raise ValueError(
+                    f"only {len(matched)} album(s) matched with distinct artists "
+                    "(need at least 2); widen the album list or check the snapshot"
+                )
+
+            rounds_json, diagnostics = generate_round_pool(
+                graph,
+                matched,
+                one_hop_target=args.one_hop_target,
+                two_hop_target=args.two_hop_target,
+                is_family_excluded=rounds_is_family_excluded,
+                allowed_release_ids=allowed_release_ids,
+                max_endpoint_share=args.max_endpoint_share,
+                max_bridge_share=args.max_bridge_share,
+            )
+            if not rounds_json:
+                raise ValueError("no eligible rounds were found between any matched albums")
+
+            universe, rounds = build_rounds_v1(
+                graph,
+                matched,
+                rounds_json,
+                snapshot_date=snapshot_date,
+                generated_by=f"networked-players-catalog build-rounds-from-dump {__version__}",
+                pool_version=args.pool_version,
+            )
+
+        validate_rounds_artifact(universe, rounds)
+        args.output_universe.parent.mkdir(parents=True, exist_ok=True)
+        args.output_rounds.parent.mkdir(parents=True, exist_ok=True)
+        args.output_universe.write_text(json.dumps(universe, indent=2) + "\n")
+        args.output_rounds.write_text(json.dumps(rounds, indent=2) + "\n")
+        print(
+            json.dumps(
+                {
+                    "output_universe": str(args.output_universe),
+                    "output_rounds": str(args.output_rounds),
+                    "albums_matched": len(matched),
+                    "albums_missed": len(missed),
+                    "diagnostics": diagnostics,
+                },
+                indent=2,
+                sort_keys=True,
+            )
+        )
+        return 0
+
+    if args.command == "validate-rounds":
+        from networked_players_graph_core.rounds import validate_rounds_artifact
+
+        universe = json.loads(args.universe.read_text())
+        rounds = json.loads(args.rounds.read_text())
+        validate_rounds_artifact(universe, rounds)
+        print(json.dumps({"ok": True}, indent=2))
+        return 0
+
+    if args.command == "build-daily-manifest":
+        from networked_players_graph_core.daily_manifest import build_daily_manifest
+
+        rounds = json.loads(args.rounds.read_text())
+        round_ids = [r["id"] for r in rounds["rounds"]]
+        daily_manifest = build_daily_manifest(
+            round_ids,
+            pool_version=rounds["pool_version"],
+            start_date=args.start_date,
+            days=args.days,
+        )
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(json.dumps(daily_manifest, indent=2) + "\n")
+        print(
+            json.dumps(
+                {
+                    "output": str(args.output),
+                    "days_requested": args.days,
+                    "days_scheduled": len(daily_manifest["schedule"]),
+                    "first_date": daily_manifest["schedule"][0]["date"],
+                    "last_date": daily_manifest["schedule"][-1]["date"],
+                },
+                indent=2,
+            )
+        )
+        return 0
+
+    if args.command == "extend-daily-manifest":
+        from networked_players_graph_core.daily_manifest import extend_daily_manifest
+
+        daily_manifest = json.loads(args.manifest.read_text())
+        rounds = json.loads(args.rounds.read_text())
+        if rounds["pool_version"] != daily_manifest["pool_version"]:
+            raise ValueError(
+                f"rounds pool_version {rounds['pool_version']!r} does not match "
+                f"manifest pool_version {daily_manifest['pool_version']!r}"
+            )
+        round_ids = [r["id"] for r in rounds["rounds"]]
+        extended = extend_daily_manifest(daily_manifest, round_ids, days=args.days)
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(json.dumps(extended, indent=2) + "\n")
+        print(
+            json.dumps(
+                {
+                    "output": str(args.output),
+                    "days_before": len(daily_manifest["schedule"]),
+                    "days_after": len(extended["schedule"]),
+                    "last_date": extended["schedule"][-1]["date"],
+                },
+                indent=2,
+            )
+        )
+        return 0
+
+    if args.command == "validate-daily-manifest":
+        from networked_players_graph_core.daily_manifest import validate_daily_manifest
+
+        daily_manifest = json.loads(args.manifest.read_text())
+        rounds = json.loads(args.rounds.read_text())
+        valid_round_ids = {r["id"] for r in rounds["rounds"]}
+        validate_daily_manifest(daily_manifest, valid_round_ids=valid_round_ids)
+        print(json.dumps({"ok": True}, indent=2))
+        return 0
+
     if args.command == "rank-album-candidates":
         from networked_players_graph_core.analysis import rank_album_candidates
 
@@ -762,11 +1188,53 @@ def main(argv: Sequence[str] | None = None) -> int:
             limit=args.limit,
             memory_limit=args.memory_limit,
             threads=args.threads,
+            release_format_policy=args.release_format_policy,
         )
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(json.dumps(candidates, indent=2) + "\n")
         summary = {"output": str(args.output), "candidate_count": len(candidates)}
         print(json.dumps(summary, indent=2))
+        return 0
+
+    if args.command == "build-album-catalog":
+        from networked_players_graph_core.analysis import assemble_album_catalog
+        from networked_players_graph_core.graph import CreditGraph
+
+        editorial_albums = json.loads(args.editorial_albums.read_text())["albums"]
+        candidates = json.loads(args.candidates.read_text())
+        allowed_release_ids = None
+        if args.release_format_policy is not None:
+            policy_payload = json.loads(args.release_format_policy.read_text())
+            allowed_release_ids = frozenset(policy_payload["allowed_release_ids"])
+
+        with CreditGraph.open(
+            args.onehop_root,
+            memory_limit=args.memory_limit,
+            threads=args.threads,
+            build_edges=False,
+        ) as graph:
+            catalog = assemble_album_catalog(
+                graph,
+                editorial_albums,
+                candidates,
+                target_count=args.target_count,
+                allowed_release_ids=allowed_release_ids,
+            )
+
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(json.dumps(catalog, indent=2) + "\n")
+        print(
+            json.dumps(
+                {
+                    "output": str(args.output),
+                    "editorial_count": catalog["editorial_count"],
+                    "editorial_missed": len(catalog["editorial_missed"]),
+                    "candidate_count_added": catalog["candidate_count_added"],
+                    "total_albums": len(catalog["albums"]),
+                },
+                indent=2,
+            )
+        )
         return 0
 
     if args.command == "fetch-dataset":
