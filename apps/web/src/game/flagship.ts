@@ -152,7 +152,9 @@ function showStageError(message: string, announceText = message): void {
   const question = document.querySelector('[data-testid="question"]');
   if (question) question.textContent = message;
   stage?.setAttribute("data-phase", "error");
-  const liveAssertive = document.querySelector('[data-testid="live-assertive"]');
+  const liveAssertive = document.querySelector(
+    '[data-testid="live-assertive"]',
+  );
   if (liveAssertive) liveAssertive.textContent = announceText;
 }
 

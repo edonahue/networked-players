@@ -55,7 +55,9 @@ test("a pinned round deals, presents chips, and never marks the answer before re
   // The premise is performer-specific, not a bare "credited on both" claim
   // (a non-performer credit like producer/engineer wouldn't satisfy it --
   // see eligibility.py; corrective slice 4.6).
-  await expect(page.getByTestId("question")).toContainText("eligible performer");
+  await expect(page.getByTestId("question")).toContainText(
+    "eligible performer",
+  );
   const chips = page.locator(".chip");
   await expect(chips).toHaveCount(
     round.answer_set.length + round.distractors.length,

@@ -28,7 +28,9 @@ export interface DailyManifest {
 export async function fetchDailyManifest(): Promise<DailyManifest> {
   const response = await fetch("/data/game/daily-manifest.v1.json");
   if (!response.ok) {
-    throw new Error(`failed to load daily-manifest.v1.json: ${response.status}`);
+    throw new Error(
+      `failed to load daily-manifest.v1.json: ${response.status}`,
+    );
   }
   return (await response.json()) as DailyManifest;
 }
@@ -53,10 +55,15 @@ export async function resolveDailyRound(
   const entry = manifest.schedule.find((e) => e.date === isoDate);
   if (!entry) return { ok: false, reason: "not-scheduled" };
   const round = rounds.find((r) => r.id === entry.round_id);
-  if (!round) return { ok: false, reason: "missing-round", roundId: entry.round_id };
+  if (!round)
+    return { ok: false, reason: "missing-round", roundId: entry.round_id };
   const fingerprint = await roundContentFingerprint(round);
   if (fingerprint !== entry.round_fingerprint) {
-    return { ok: false, reason: "fingerprint-mismatch", roundId: entry.round_id };
+    return {
+      ok: false,
+      reason: "fingerprint-mismatch",
+      roundId: entry.round_id,
+    };
   }
   return { ok: true, round };
 }

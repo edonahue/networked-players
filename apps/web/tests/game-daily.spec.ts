@@ -44,7 +44,8 @@ async function fetchRounds(page: Page): Promise<RoundLite[]> {
 async function entryFor(page: Page, date: string): Promise<DailyManifestEntry> {
   const manifest = await fetchManifest(page);
   const entry = manifest.schedule.find((e) => e.date === date);
-  if (!entry) throw new Error(`fixture date ${date} is not in the committed manifest`);
+  if (!entry)
+    throw new Error(`fixture date ${date} is not in the committed manifest`);
   return entry;
 }
 
@@ -62,18 +63,30 @@ test("the manifest is real, one-hop only, and covers the documented range", asyn
   expect(manifest.start_date).toBe("2026-08-01");
   expect(manifest.schedule.length).toBeGreaterThanOrEqual(60);
   for (const entry of manifest.schedule) {
-    expect(byId.get(entry.round_id)?.kind, `${entry.date} -> ${entry.round_id}`).toBe(
-      "one_hop",
-    );
+    expect(
+      byId.get(entry.round_id)?.kind,
+      `${entry.date} -> ${entry.round_id}`,
+    ).toBe("one_hop");
   }
 });
 
-test("a pinned scheduled date resolves exactly to its manifest entry", async ({ page }) => {
+test("a pinned scheduled date resolves exactly to its manifest entry", async ({
+  page,
+}) => {
   const entry = await entryFor(page, PINNED_DATE_A);
   await gotoDaily(page, PINNED_DATE_A);
-  await expect(page.getByTestId("stage")).toHaveAttribute("data-round", entry.round_id);
-  await expect(page.getByTestId("stage")).toHaveAttribute("data-phase", "guessing");
-  await expect(page.getByTestId("stage")).toHaveAttribute("data-kind", "one_hop");
+  await expect(page.getByTestId("stage")).toHaveAttribute(
+    "data-round",
+    entry.round_id,
+  );
+  await expect(page.getByTestId("stage")).toHaveAttribute(
+    "data-phase",
+    "guessing",
+  );
+  await expect(page.getByTestId("stage")).toHaveAttribute(
+    "data-kind",
+    "one_hop",
+  );
   await expect(page.getByTestId("set-progress")).toHaveText(
     `Connection of the Day · ${PINNED_DATE_A}`,
   );
@@ -87,18 +100,32 @@ test("two different scheduled dates resolve to their own declared entries", asyn
   expect(entryA.round_id).not.toBe(entryB.round_id);
 
   await gotoDaily(page, PINNED_DATE_A);
-  await expect(page.getByTestId("stage")).toHaveAttribute("data-round", entryA.round_id);
+  await expect(page.getByTestId("stage")).toHaveAttribute(
+    "data-round",
+    entryA.round_id,
+  );
 
   await gotoDaily(page, PINNED_DATE_B);
-  await expect(page.getByTestId("stage")).toHaveAttribute("data-round", entryB.round_id);
+  await expect(page.getByTestId("stage")).toHaveAttribute(
+    "data-round",
+    entryB.round_id,
+  );
 });
 
-test("reloading the same date never changes the resolved round", async ({ page }) => {
+test("reloading the same date never changes the resolved round", async ({
+  page,
+}) => {
   const entry = await entryFor(page, PINNED_DATE_A);
   await gotoDaily(page, PINNED_DATE_A);
-  await expect(page.getByTestId("stage")).toHaveAttribute("data-round", entry.round_id);
+  await expect(page.getByTestId("stage")).toHaveAttribute(
+    "data-round",
+    entry.round_id,
+  );
   await page.reload();
-  await expect(page.getByTestId("stage")).toHaveAttribute("data-round", entry.round_id);
+  await expect(page.getByTestId("stage")).toHaveAttribute(
+    "data-round",
+    entry.round_id,
+  );
 });
 
 test("a later scheduled date still resolves to its own frozen round (no drift)", async ({
@@ -107,8 +134,14 @@ test("a later scheduled date still resolves to its own frozen round (no drift)",
   const manifest = await fetchManifest(page);
   const laterEntry = manifest.schedule[manifest.schedule.length - 1];
   await gotoDaily(page, laterEntry.date);
-  await expect(page.getByTestId("stage")).toHaveAttribute("data-round", laterEntry.round_id);
-  await expect(page.getByTestId("stage")).toHaveAttribute("data-phase", "guessing");
+  await expect(page.getByTestId("stage")).toHaveAttribute(
+    "data-round",
+    laterEntry.round_id,
+  );
+  await expect(page.getByTestId("stage")).toHaveAttribute(
+    "data-phase",
+    "guessing",
+  );
 });
 
 test("solving the daily records a streak and builds a spoiler-free share string", async ({
@@ -119,9 +152,15 @@ test("solving the daily records a streak and builds a spoiler-free share string"
   const round = rounds.find((r) => r.id === entry.round_id)!;
 
   await gotoDaily(page, PINNED_DATE_A);
-  await expect(page.getByTestId("stage")).toHaveAttribute("data-phase", "guessing");
+  await expect(page.getByTestId("stage")).toHaveAttribute(
+    "data-phase",
+    "guessing",
+  );
   await page.locator(`.chip[data-chip="${round.answer_set[0].id}"]`).click();
-  await expect(page.getByTestId("stage")).toHaveAttribute("data-phase", "revealed");
+  await expect(page.getByTestId("stage")).toHaveAttribute(
+    "data-phase",
+    "revealed",
+  );
 
   const share = page.getByTestId("share-string");
   await expect(share).toContainText(`Connection of the Day ${PINNED_DATE_A}`);
@@ -136,7 +175,8 @@ test("solving the daily records a streak and builds a spoiler-free share string"
   await expect(page.getByTestId("next-round")).toBeHidden();
 
   const stored = JSON.parse(
-    (await page.evaluate(() => window.localStorage.getItem("np.game.v1"))) ?? "{}",
+    (await page.evaluate(() => window.localStorage.getItem("np.game.v1"))) ??
+      "{}",
   );
   expect(stored.daily[PINNED_DATE_A]).toContain(PINNED_DATE_A);
   expect(stored.streak.current).toBe(1);
@@ -151,18 +191,28 @@ test("the daily refuses a second play and shows the recorded result instead", as
 
   await gotoDaily(page, PINNED_DATE_A);
   await page.locator(`.chip[data-chip="${round.answer_set[0].id}"]`).click();
-  await expect(page.getByTestId("stage")).toHaveAttribute("data-phase", "revealed");
+  await expect(page.getByTestId("stage")).toHaveAttribute(
+    "data-phase",
+    "revealed",
+  );
   const firstShare = await page.getByTestId("share-string").textContent();
 
   await page.reload();
-  await expect(page.getByTestId("stage")).toHaveAttribute("data-phase", "played");
+  await expect(page.getByTestId("stage")).toHaveAttribute(
+    "data-phase",
+    "played",
+  );
   await expect(page.getByTestId("chip-tray")).toBeHidden();
   await expect(page.getByTestId("clue-button")).toBeHidden();
   await expect(page.getByTestId("daily-panel")).toBeVisible();
-  await expect(page.getByTestId("daily-panel")).toContainText("Already in the crate");
+  await expect(page.getByTestId("daily-panel")).toContainText(
+    "Already in the crate",
+  );
   await expect(page.getByTestId("share-string")).toHaveText(firstShare ?? "");
   for (const person of round.answer_set) {
-    await expect(page.getByTestId("daily-panel")).not.toContainText(person.name);
+    await expect(page.getByTestId("daily-panel")).not.toContainText(
+      person.name,
+    );
   }
 });
 
@@ -173,7 +223,10 @@ test("a streak breaks across a missed date", async ({ page }) => {
 
   await gotoDaily(page, PINNED_DATE_A);
   await page.locator(`.chip[data-chip="${roundA.answer_set[0].id}"]`).click();
-  await expect(page.getByTestId("stage")).toHaveAttribute("data-phase", "revealed");
+  await expect(page.getByTestId("stage")).toHaveAttribute(
+    "data-phase",
+    "revealed",
+  );
   await expect(page.getByTestId("streak-line")).toContainText("Streak: 1 day");
 
   // Skip a date (not the immediately following calendar day) -- the streak
@@ -183,12 +236,19 @@ test("a streak breaks across a missed date", async ({ page }) => {
   const rounds = await fetchRounds(page);
   const laterRound = rounds.find((r) => r.id === laterEntry.round_id)!;
   await gotoDaily(page, laterDate);
-  await page.locator(`.chip[data-chip="${laterRound.answer_set[0].id}"]`).click();
-  await expect(page.getByTestId("stage")).toHaveAttribute("data-phase", "revealed");
+  await page
+    .locator(`.chip[data-chip="${laterRound.answer_set[0].id}"]`)
+    .click();
+  await expect(page.getByTestId("stage")).toHaveAttribute(
+    "data-phase",
+    "revealed",
+  );
   await expect(page.getByTestId("streak-line")).toContainText("Streak: 1 day");
 });
 
-test("the hub daily card is live and links to /play/daily/", async ({ page }) => {
+test("the hub daily card is live and links to /play/daily/", async ({
+  page,
+}) => {
   await page.goto("/play/");
   const card = page.locator("a[data-mode-status='live']", {
     hasText: "Connection of the Day",
@@ -200,7 +260,10 @@ test("a date outside the committed schedule fails gracefully, never a derived fa
   page,
 }) => {
   await gotoDaily(page, OUT_OF_RANGE_DATE);
-  await expect(page.getByTestId("stage")).toHaveAttribute("data-phase", "error");
+  await expect(page.getByTestId("stage")).toHaveAttribute(
+    "data-phase",
+    "error",
+  );
   await expect(page.getByTestId("question")).toContainText(
     "has not been scheduled yet",
   );
@@ -212,8 +275,13 @@ test("a missing daily-manifest fetch fails gracefully", async ({ page }) => {
     route.fulfill({ status: 500, body: "boom" }),
   );
   await gotoDaily(page, PINNED_DATE_A);
-  await expect(page.getByTestId("stage")).toHaveAttribute("data-phase", "error");
-  await expect(page.getByTestId("question")).toContainText("Could not load today's schedule");
+  await expect(page.getByTestId("stage")).toHaveAttribute(
+    "data-phase",
+    "error",
+  );
+  await expect(page.getByTestId("question")).toContainText(
+    "Could not load today's schedule",
+  );
 });
 
 test("a manifest entry referencing a missing round is an integrity error, not a crash", async ({
@@ -223,12 +291,19 @@ test("a manifest entry referencing a missing round is an integrity error, not a 
   await page.route("**/data/game/rounds.v1.json", async (route) => {
     const response = await route.fetch();
     const body = await response.json();
-    body.rounds = body.rounds.filter((r: { id: string }) => r.id !== entry.round_id);
+    body.rounds = body.rounds.filter(
+      (r: { id: string }) => r.id !== entry.round_id,
+    );
     await route.fulfill({ response, json: body });
   });
   await gotoDaily(page, PINNED_DATE_A);
-  await expect(page.getByTestId("stage")).toHaveAttribute("data-phase", "error");
-  await expect(page.getByTestId("question")).toContainText("record set is missing");
+  await expect(page.getByTestId("stage")).toHaveAttribute(
+    "data-phase",
+    "error",
+  );
+  await expect(page.getByTestId("question")).toContainText(
+    "record set is missing",
+  );
 });
 
 test("a round whose content silently changed is an integrity error, not a spoofed round", async ({
@@ -238,7 +313,9 @@ test("a round whose content silently changed is an integrity error, not a spoofe
   await page.route("**/data/game/rounds.v1.json", async (route) => {
     const response = await route.fetch();
     const body = await response.json();
-    const round = body.rounds.find((r: { id: string }) => r.id === entry.round_id);
+    const round = body.rounds.find(
+      (r: { id: string }) => r.id === entry.round_id,
+    );
     // Tamper with a real published field without changing the id -- exactly
     // the case round_content_fingerprint exists to catch.
     round.distractors = [
@@ -248,8 +325,13 @@ test("a round whose content silently changed is an integrity error, not a spoofe
     await route.fulfill({ response, json: body });
   });
   await gotoDaily(page, PINNED_DATE_A);
-  await expect(page.getByTestId("stage")).toHaveAttribute("data-phase", "error");
-  await expect(page.getByTestId("question")).toContainText("changed unexpectedly");
+  await expect(page.getByTestId("stage")).toHaveAttribute(
+    "data-phase",
+    "error",
+  );
+  await expect(page.getByTestId("question")).toContainText(
+    "changed unexpectedly",
+  );
 });
 
 test("pre-existing daily results in storage survive the manifest migration untouched", async ({
@@ -268,21 +350,32 @@ test("pre-existing daily results in storage survive the manifest migration untou
         totals: { played: 3, solved: 2, clean: 1, revealed: 1 },
         streak: { current: 2, best: 4, lastDailyDate: "2026-01-05" },
         seenRounds: ["conn-old-example"],
-        daily: { "2026-01-04": "old share text", "2026-01-05": "old share text 2" },
+        daily: {
+          "2026-01-04": "old share text",
+          "2026-01-05": "old share text 2",
+        },
       }),
     );
   });
   await gotoDaily(page, PINNED_DATE_A);
-  await expect(page.getByTestId("stage")).toHaveAttribute("data-phase", "guessing");
+  await expect(page.getByTestId("stage")).toHaveAttribute(
+    "data-phase",
+    "guessing",
+  );
   const stored = JSON.parse(
-    (await page.evaluate(() => window.localStorage.getItem("np.game.v1"))) ?? "{}",
+    (await page.evaluate(() => window.localStorage.getItem("np.game.v1"))) ??
+      "{}",
   );
   expect(stored.daily["2026-01-04"]).toBe("old share text");
   expect(stored.daily["2026-01-05"]).toBe("old share text 2");
   expect(stored.streak.best).toBe(4);
 });
 
-test("an error state announces to the assertive live region", async ({ page }) => {
+test("an error state announces to the assertive live region", async ({
+  page,
+}) => {
   await gotoDaily(page, OUT_OF_RANGE_DATE);
-  await expect(page.getByTestId("live-assertive")).toContainText("has not been scheduled yet");
+  await expect(page.getByTestId("live-assertive")).toContainText(
+    "has not been scheduled yet",
+  );
 });

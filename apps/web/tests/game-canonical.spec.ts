@@ -5,7 +5,11 @@
 // (packages/contracts/src/networked_players_contracts/canonical.py).
 
 import { expect, test } from "@playwright/test";
-import { canonicalJson, contentHash, roundContentFingerprint } from "../src/game/canonical";
+import {
+  canonicalJson,
+  contentHash,
+  roundContentFingerprint,
+} from "../src/game/canonical";
 
 test("canonicalJson sorts keys at every nesting level", () => {
   const a = { b: 2, a: { y: 1, x: [3, 2, 1] } };

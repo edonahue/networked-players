@@ -23,7 +23,9 @@ export function canonicalJson(value: unknown): string {
   }
   const record = value as Record<string, unknown>;
   const keys = Object.keys(record).sort();
-  const parts = keys.map((key) => `${JSON.stringify(key)}:${canonicalJson(record[key])}`);
+  const parts = keys.map(
+    (key) => `${JSON.stringify(key)}:${canonicalJson(record[key])}`,
+  );
   return `{${parts.join(",")}}`;
 }
 
@@ -38,7 +40,10 @@ async function sha256Hex(text: string): Promise<string> {
 /** A truncated sha256 hex digest of `value`'s canonical JSON form. Matches
  * `networked_players_contracts.canonical.content_hash`. Async: browsers only
  * expose SHA-256 via the (async) SubtleCrypto API. */
-export async function contentHash(value: unknown, length = 16): Promise<string> {
+export async function contentHash(
+  value: unknown,
+  length = 16,
+): Promise<string> {
   const digest = await sha256Hex(canonicalJson(value));
   return digest.slice(0, length);
 }
