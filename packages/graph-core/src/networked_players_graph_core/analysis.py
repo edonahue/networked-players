@@ -8,6 +8,7 @@ never committed (see data/albums/README.md).
 
 from __future__ import annotations
 
+import hashlib
 import json
 from collections.abc import Callable
 from pathlib import Path
@@ -153,6 +154,22 @@ def rank_album_candidates(
     ]
 
 
+def _catalog_version(albums: list[dict[str, Any]], snapshot_date: str | None) -> str:
+    """Deterministic, content-derived version identifier -- changes if and
+    only if the resolved album set (or the snapshot it was resolved against)
+    changes, so a downstream artifact can prove which catalog it consumed
+    without trusting a hand-bumped number."""
+    fingerprint = "|".join(
+        sorted(
+            f"{a['artist_id']}:{a['main_release_id']}:{a.get('master_id')}:{a['year']}"
+            for a in albums
+        )
+    )
+    digest = hashlib.sha256(fingerprint.encode()).hexdigest()[:12]
+    prefix = f"catalog-v1-{snapshot_date}" if snapshot_date else "catalog-v1"
+    return f"{prefix}-{digest}"
+
+
 def assemble_album_catalog(
     graph: CreditGraph,
     editorial_albums: list[dict[str, str]],
@@ -162,6 +179,8 @@ def assemble_album_catalog(
     private_weight_fn: Callable[[int], float] | None = None,
     allowed_release_ids: frozenset[int] | None = None,
     master_exclusions: frozenset[int] | None = None,
+    snapshot_date: str | None = None,
+    generated_by: str | None = None,
 ) -> dict[str, Any]:
     """Combine the editorial backbone with graph-rich candidates up to
     `target_count` (see ADR 0038). Deterministic given a fixed graph
@@ -246,21 +265,91 @@ def assemble_album_catalog(
             )
         )
 
+    albums = [
+        *(m.to_resolved_dict() for m in matched_editorial),
+        *(m.to_resolved_dict() for m in candidate_albums),
+    ]
+
     return {
         "version": 1,
+        "catalog_version": _catalog_version(albums, snapshot_date),
+        "snapshot_date": snapshot_date,
+        "generated_by": generated_by,
         "source_note": (
             "Hybrid catalog: an editorial backbone plus graph-rich additions selected by "
-            "deterministic candidate scoring (ADR 0038). Not itself committed -- combined "
-            "at build time from data/albums/top-albums-v1.json and a rank-album-candidates "
-            "shortlist. Albums are ID-resolved (artist_id/main_release_id), not name queries."
+            "deterministic candidate scoring (ADR 0038). The canonical, single source of "
+            "truth for which albums exist across every real public surface (album browser, "
+            "Connection Guesser, Record Routes) -- every one derives its album set from "
+            "this artifact's own catalog_version, never re-deriving or narrowing it "
+            "independently (see ADR 0043). Combined at build time from "
+            "data/albums/top-albums-v1.json and a rank-album-candidates shortlist. Albums "
+            "are ID-resolved (artist_id/main_release_id), not name queries."
         ),
         "target_count": target_count,
         "editorial_count": len(matched_editorial),
         "editorial_missed": missed_editorial,
         "candidate_count_considered": len(candidates),
         "candidate_count_added": len(candidate_albums),
-        "albums": [
-            *(m.to_resolved_dict() for m in matched_editorial),
-            *(m.to_resolved_dict() for m in candidate_albums),
-        ],
+        "albums": albums,
     }
+
+
+class AlbumCatalogValidationError(RuntimeError):
+    """Raised when the canonical album catalog artifact violates its contract."""
+
+
+_CATALOG_FORBIDDEN_SUBSTRINGS = ("/home/", "data/private", "local/", "DISCOGS_TOKEN", ".ssh")
+_CATALOG_FORBIDDEN_PHRASES = ("worked with", "collaborated with", "influenced")
+
+
+def validate_album_catalog(catalog: dict[str, Any]) -> None:
+    """Structural/provenance validation for the canonical
+    `apps/web/public/data/catalog/albums.v1.json` artifact (ADR 0043) --
+    every real public surface (album browser, Connection Guesser, Record
+    Routes) derives its album set from this file, so a malformed or
+    unversioned catalog would silently break every downstream consumer's
+    ability to prove which catalog it consumed."""
+    failures: list[str] = []
+    if not catalog.get("catalog_version"):
+        failures.append("catalog_version is required")
+    if not catalog.get("snapshot_date"):
+        failures.append("snapshot_date is required")
+    if not catalog.get("generated_by"):
+        failures.append("generated_by is required")
+
+    albums = catalog.get("albums", [])
+    if not albums:
+        failures.append("albums must not be empty")
+    seen_ids: set[str] = set()
+    for album in albums:
+        album_id = album.get("id")
+        if not album_id:
+            failures.append(f"album missing id: {album!r}")
+            continue
+        if album_id in seen_ids:
+            failures.append(f"duplicate album id: {album_id}")
+        seen_ids.add(album_id)
+        for field_name in ("artist_id", "artist", "main_release_id", "title", "year"):
+            if field_name not in album:
+                failures.append(f"album {album_id} missing required field {field_name!r}")
+        if not isinstance(album.get("main_release_id"), int) or album["main_release_id"] <= 0:
+            failures.append(f"album {album_id} has an invalid main_release_id")
+
+    expected_version = _catalog_version(albums, catalog.get("snapshot_date"))
+    if catalog.get("catalog_version") != expected_version:
+        failures.append(
+            f"catalog_version {catalog.get('catalog_version')!r} does not match its own "
+            f"content (expected {expected_version!r}) -- the file was hand-edited or corrupted"
+        )
+
+    serialized = str(catalog)
+    for forbidden in _CATALOG_FORBIDDEN_SUBSTRINGS:
+        if forbidden in serialized:
+            failures.append(f"catalog contains forbidden substring: {forbidden!r}")
+    lowered = serialized.lower()
+    for phrase in _CATALOG_FORBIDDEN_PHRASES:
+        if phrase in lowered:
+            failures.append(f"catalog contains forbidden phrase: {phrase!r}")
+
+    if failures:
+        raise AlbumCatalogValidationError("; ".join(failures))

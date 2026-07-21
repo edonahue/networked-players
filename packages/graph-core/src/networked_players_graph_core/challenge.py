@@ -98,6 +98,7 @@ class MatchedAlbum:
         real collision risk `find_release_by_title_artist` can't rule out on
         text alone."""
         return {
+            "id": self.album_id,
             "artist_id": self.artist_id,
             "artist": self.artist_name,
             "master_id": self.master_id,
@@ -321,6 +322,7 @@ def build_challenge_v2(
     allowed_release_ids: frozenset[int] | None = None,
     master_exclusions: frozenset[int] | None = None,
     max_frontier_expansion: int | None = 300,
+    catalog_version: str | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     """Match `{artist, title}` name/title queries against the graph, then
     build the artifact. For albums already resolved to a real artist_id
@@ -346,6 +348,7 @@ def build_challenge_v2(
         max_workers=max_workers,
         is_family_excluded=is_family_excluded,
         max_frontier_expansion=max_frontier_expansion,
+        catalog_version=catalog_version,
     )
 
 
@@ -361,6 +364,7 @@ def build_challenge_v2_from_matched(
     max_workers: int = 1,
     is_family_excluded: Callable[[int, int], bool] | None = None,
     max_frontier_expansion: int | None = 300,
+    catalog_version: str | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     """Build the artifact from an already-resolved album list -- no further
     name-based matching happens here. `missed` is carried through only for
@@ -491,11 +495,15 @@ def build_challenge_v2_from_matched(
             "snapshot_date": snapshot_date,
             "generated_by": generated_by,
             "graph_core_version": __version__,
+            "catalog_version": catalog_version,
             "note": (
                 "Derived from a bounded one-hop working set; the private "
                 "collection seed used to build that working set is never "
                 "published. The album list is an editorial selection, not a "
-                "ranking."
+                "ranking. catalog_version identifies the canonical "
+                "apps/web/public/data/catalog/albums.v1.json this artifact's "
+                "album set was resolved from, when built from that artifact "
+                "(null for a hand-written {artist,title} query list)."
             ),
         },
         "albums": albums_json,

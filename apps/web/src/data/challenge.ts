@@ -154,6 +154,10 @@ export interface ProvenanceV2 {
   generated_by: string;
   graph_core_version: string;
   note: string;
+  /** Names the canonical apps/web/public/data/catalog/albums.v1.json this
+   * artifact's album set was resolved from, when built from that artifact
+   * (null for a hand-written {artist,title} query list). See ADR 0043. */
+  catalog_version?: string | null;
 }
 
 export interface ChallengeV2 {
