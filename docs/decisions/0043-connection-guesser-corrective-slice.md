@@ -324,7 +324,9 @@ check` (0 errors), full Playwright suite (100/100, +15 new in
 
 If a future catalog expansion or policy change admits new candidates, re-run
 the audit in `docs/STUDIO_ALBUM_CATALOG_AUDIT.md` and regenerate
-`docs/data/studio-album-catalog-audit-v1.json` — the deny-list categories the
+`docs/data/studio-album-catalog-inclusion-audit-v1.json` (renamed from
+`studio-album-catalog-audit-v1.json` in slice 5.1 to make its scope
+unambiguous — see that addendum below) — the deny-list categories the
 prose audit covers are specifically the ones with no structured Discogs
 signal, so a new candidate can silently reintroduce the same class of leak
 without a human pass, and a stale JSON audit will fail
@@ -339,3 +341,133 @@ date until an operator makes an explicit decision — this is deliberate,
 not a bug to silently patch around. A repeat/cycling policy for after pool
 exhaustion must be an explicit, documented, versioned decision, not a quiet
 code change.
+
+## Addendum: corrective slice 5.1 (2026-07-22) — hardening the frozen contract
+
+A focused follow-up review of the slice-5 daily manifest found real gaps in
+the version-agreement and reproducibility guarantees it claimed, plus two
+correctness/product gaps in the frontend (UTC-day rollover, an ungated
+`?date=` override) and one honesty gap in the catalog audit's scope. All
+fixed without reverting the slice 5 architecture (dedicated module, real
+one-hop-only eligibility, append-only schedule, per-round fingerprints,
+graceful frontend failure) and without moving any already-assigned date.
+
+1. **Strict single-artifact-version manifest (schema v1).** The manifest
+   recorded `catalog_version`/`pool_version`/`artifact_version`, but only
+   `pool_version` was ever checked against the paired rounds artifact — an
+   extension could append rounds from a differently-versioned artifact while
+   keeping the old manifest-level `artifact_version`. Fixed:
+   `_version_mismatches` now requires exact three-way agreement, checked
+   before any output in both `validate_connection_daily_manifest` and
+   `extend_connection_daily_manifest` (fail-before-output). No schedule
+   segments or per-entry artifact versions — a manifest genuinely spanning
+   two generations is out of scope for schema v1 by design; a real
+   generation change requires an explicit versioned migration.
+2. **`artifact_version` now reflects PUBLISHED ORDER.** It previously
+   sorted per-round fingerprints before hashing — order-insensitive, even
+   though `rounds[]`'s array order is itself part of the published artifact
+   and can affect ordinary set ordering. Fixed in both
+   `networked_players_graph_core.connection_rounds::artifact_version` and
+   its dependency-free mirror: the fingerprints are hashed in their actual
+   array order. Verified: swapping two rounds changes `artifact_version`;
+   unrelated JSON formatting does not; round ids and per-round fingerprints
+   are completely unaffected by this change (see the real-artifact
+   regeneration below).
+3. **Validator strengthened** to check the full contract: exact key sets,
+   `schema_version`/`mode`, valid non-empty versions, the three-way
+   version-agreement rule above, valid ISO `generated_at`/`start_date`,
+   `start_date == schedule[0].date`, contiguous/unique dates, unique round
+   ids, `conn-<10 hex>`/`rfp-<16 hex>` format checks, forbidden-substring/
+   phrase scans, and a controlled `ConnectionDailyManifestError` (never an
+   uncaught `ValueError`) on malformed date strings.
+4. **`generated_at` is now an explicit required input**, never
+   `datetime.now(UTC)` — `build_connection_daily_manifest`/
+   `extend_connection_daily_manifest` take it as a caller-supplied argument,
+   and the new `--generated-at` CLI flag is required on both commands. This
+   makes both operations byte-for-byte reproducible as COMPLETE artifacts
+   (not just their `schedule` array) given identical arguments — verified
+   directly by running each twice and comparing full dicts.
+5. **Extension-boundary adjacency quality.** The scheduler's lookahead-swap
+   pass only ever looked within the newly-shuffled batch; the boundary round
+   (the manifest's prior last entry) was never considered. Fixed:
+   `_quality_scheduled_order` accepts the prior last round as adjacency
+   context during extension, so the first appended date also avoids
+   repeating its endpoint/performer when a non-conflicting candidate exists
+   — a forced conflict (none available) is left in place, deterministically,
+   and shows up honestly in `schedule_diagnostics`.
+6. **Local calendar day, not UTC.** `new Date().toISOString().slice(0,10)`
+   reported the UTC calendar date; Connection of the Day now rolls over at
+   the player's own LOCAL midnight (`apps/web/src/game/localDate.ts::
+   localIsoDate`, using local-time getters only). This is a real product
+   decision, documented in `connection-daily-manifest-v1.md`: players in
+   different time zones enter the next scheduled puzzle at their own local
+   midnight, not simultaneously — the committed schedule itself is unchanged.
+7. **Gated `?date=` override.** Previously honored unconditionally in every
+   build, including production. `apps/web/src/game/dateOverride.ts::
+   isDateOverrideAllowed()` now allows it only under `astro dev`
+   (`import.meta.env.DEV`) or when a test harness has explicitly injected
+   `window.__NP_ALLOW_DATE_OVERRIDE__ = true` (Playwright, via
+   `page.addInitScript`) — a real production build (`astro build` +
+   `wrangler deploy`) never has either set, so `?date=` is silently ignored
+   there. No secret involved; the manifest itself stays public.
+8. **Full artifact verification in the browser, with runtime guards.**
+   `dailyManifest.ts::resolveDailyRound` now takes the COMPLETE fetched
+   `GameRounds` artifact (not just `.rounds`) and checks, with lightweight
+   runtime type guards rather than trusted TypeScript assertions: both
+   schema versions are supported (`unsupported-manifest`); `manifest.mode`
+   is exactly `connection_guesser_one_hop` (`wrong-mode`); all three
+   versions agree with the fetched pool's provenance (`version-mismatch`);
+   the date is scheduled (`not-scheduled`); the round exists
+   (`missing-round`); the round is actually `real-records`/`one_hop`
+   (`ineligible-round` — catches a manifest somehow pointing at a two-hop or
+   synthetic round); and the fingerprint matches (`fingerprint-mismatch`).
+   Each reason is independently tested
+   (`apps/web/tests/game-dailyresolver.spec.ts`, 14 pure-node tests); the UI
+   collapses several into one shared integrity message but the resolver
+   never does.
+9. **Catalog audit scope corrected.** The committed audit was already
+   narrowly an inclusion-only ledger in practice (excluded masters never got
+   a row), but its generic filename invited reading it as a full
+   accept/reject ledger. Renamed
+   `docs/data/studio-album-catalog-audit-v1.json` →
+   `studio-album-catalog-inclusion-audit-v1.json`; its own `note` field and
+   `docs/STUDIO_ALBUM_CATALOG_AUDIT.md`'s pointer now say explicitly that
+   this is an inclusion ledger, not an accept-and-reject one, and link
+   directly to `data/albums/studio-album-master-exclusions-v1.json` for
+   excluded-master decisions and their reasoning.
+10. **Production catalog command fully fail-closed on snapshot metadata.**
+    `build-public-album-catalog` required its policy *paths* but tolerated
+    *missing* `snapshot_date`/identity fields inside them (only a
+    *mismatched* one was refused). Fixed: the one-hop manifest, masters
+    manifest, release-format-policy, and studio-album-exclusions inputs
+    must all carry a valid non-empty `snapshot_date` matching the one-hop
+    snapshot; the policy file's `kind` and the exclusions file's `policy`
+    identity fields are checked; the exclusions array must be a well-formed
+    list (an empty list is valid; a missing/malformed one is not).
+
+**Real artifact regeneration** (same `local/processed/discogs-onehop-v3/
+snapshot=20260601` + `apps/web/public/data/catalog/albums.v1.json` +
+`local/analysis/album-catalog-integration/artist-family-exclusions-v1.json`
+inputs slice 4.5/4.6 used): `build-connection-rounds` reproduced the exact
+same 425/885 candidates found, 300/200 selected, identical round order,
+identical round ids, and identical per-round content fingerprints — only
+`provenance.artifact_version` changed (from the old order-insensitive value
+to the new order-sensitive one), confirmed byte-identical across two
+independent regeneration runs. The daily manifest was then rebuilt against
+the corrected rounds artifact with the SAME `--start-date 2026-08-01
+--days 90`: **the resulting `schedule` array is byte-for-byte identical to
+the previous one** — every date, round_id, and round_fingerprint unchanged;
+only the manifest's top-level `artifact_version` and `generated_at` moved.
+No previously assigned date changed.
+
+**Final published versions:** `catalog_version
+catalog-v1-20260601-0e7ec70fbb7e` (unchanged), `pool_version
+connection-v1-20260601-27f5032ebc16` (unchanged), `artifact_version
+connection-artifact-v1-20260601-e27209c5f7a0` (new, order-sensitive
+formula), 90 dates `2026-08-01`..`2026-10-29` (unchanged).
+
+Validation: `make check` (612 tests, +34 over slice 5's 578), full
+Playwright suite (124/124, +24 over slice 5's 100: 14 pure-node resolver
+tests in `game-dailyresolver.spec.ts`, 2 in `game-localdate.spec.ts`, and 8
+new browser-level integrity scenarios added to `game-daily.spec.ts`),
+`npm run check` (0 errors).

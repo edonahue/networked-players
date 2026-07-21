@@ -368,3 +368,287 @@ def test_argparse_requires_every_policy_flag(tmp_path: Path) -> None:
     # downstream check.
     with pytest.raises(SystemExit):
         main(args)
+
+
+# --- Corrective slice 5.1: fully fail-closed on unknown/malformed metadata --
+# (not just mismatched metadata -- missing snapshot fields and wrong-artifact
+# identity must be refused exactly like a mismatched snapshot).
+
+
+def test_refuses_onehop_manifest_missing_snapshot(tmp_path: Path) -> None:
+    onehop_root = _write_onehop_dataset(tmp_path / "onehop")
+    (onehop_root / "manifest.json").write_text(json.dumps({"counts": {}}))
+    masters_root = _write_masters_dataset(tmp_path / "masters")
+    policy_path = _write_release_format_policy(tmp_path / "policy.json")
+    exclusions_path = _write_exclusions(tmp_path / "exclusions.json")
+    output_path = tmp_path / "albums.v1.json"
+
+    args = _base_args(tmp_path, onehop_root=onehop_root, output=output_path)
+    args += [
+        "--release-format-policy",
+        str(policy_path),
+        "--masters-root",
+        str(masters_root),
+        "--studio-album-exclusions",
+        str(exclusions_path),
+    ]
+    with pytest.raises(ValueError, match="onehop-root manifest"):
+        main(args)
+    assert not output_path.exists()
+
+
+def test_refuses_masters_root_missing_manifest_file(tmp_path: Path) -> None:
+    onehop_root = _write_onehop_dataset(tmp_path / "onehop")
+    masters_root = _write_masters_dataset(tmp_path / "masters")
+    (masters_root / "manifest.json").unlink()
+    policy_path = _write_release_format_policy(tmp_path / "policy.json")
+    exclusions_path = _write_exclusions(tmp_path / "exclusions.json")
+    output_path = tmp_path / "albums.v1.json"
+
+    args = _base_args(tmp_path, onehop_root=onehop_root, output=output_path)
+    args += [
+        "--release-format-policy",
+        str(policy_path),
+        "--masters-root",
+        str(masters_root),
+        "--studio-album-exclusions",
+        str(exclusions_path),
+    ]
+    with pytest.raises(ValueError, match="masters-root manifest"):
+        main(args)
+    assert not output_path.exists()
+
+
+def test_refuses_masters_manifest_missing_snapshot(tmp_path: Path) -> None:
+    onehop_root = _write_onehop_dataset(tmp_path / "onehop")
+    masters_root = _write_masters_dataset(tmp_path / "masters")
+    (masters_root / "manifest.json").write_text(json.dumps({"counts": {"masters": 1}}))
+    policy_path = _write_release_format_policy(tmp_path / "policy.json")
+    exclusions_path = _write_exclusions(tmp_path / "exclusions.json")
+    output_path = tmp_path / "albums.v1.json"
+
+    args = _base_args(tmp_path, onehop_root=onehop_root, output=output_path)
+    args += [
+        "--release-format-policy",
+        str(policy_path),
+        "--masters-root",
+        str(masters_root),
+        "--studio-album-exclusions",
+        str(exclusions_path),
+    ]
+    with pytest.raises(ValueError, match="masters-root manifest"):
+        main(args)
+    assert not output_path.exists()
+
+
+def test_refuses_release_format_policy_missing_snapshot(tmp_path: Path) -> None:
+    onehop_root = _write_onehop_dataset(tmp_path / "onehop")
+    masters_root = _write_masters_dataset(tmp_path / "masters")
+    exclusions_path = _write_exclusions(tmp_path / "exclusions.json")
+    policy_path = tmp_path / "policy.json"
+    policy_path.write_text(
+        json.dumps(
+            {
+                "kind": "release-format-scoring-index",
+                "policy_name": "studio-album-v1",
+                "policy_version": 1,
+                "schema_version": 1,
+                "allowed_release_ids": [1, 2],
+                "allowed_release_count": 2,
+                "source_policy_sha256": "deadbeef",
+            }
+        )
+    )
+    output_path = tmp_path / "albums.v1.json"
+
+    args = _base_args(tmp_path, onehop_root=onehop_root, output=output_path)
+    args += [
+        "--release-format-policy",
+        str(policy_path),
+        "--masters-root",
+        str(masters_root),
+        "--studio-album-exclusions",
+        str(exclusions_path),
+    ]
+    with pytest.raises(ValueError, match="release-format-policy"):
+        main(args)
+    assert not output_path.exists()
+
+
+def test_refuses_exclusions_missing_snapshot(tmp_path: Path) -> None:
+    onehop_root = _write_onehop_dataset(tmp_path / "onehop")
+    masters_root = _write_masters_dataset(tmp_path / "masters")
+    policy_path = _write_release_format_policy(tmp_path / "policy.json")
+    exclusions_path = tmp_path / "exclusions.json"
+    exclusions_path.write_text(
+        json.dumps(
+            {"schema_version": 1, "policy": "studio-album-v1", "note": "test", "exclusions": []}
+        )
+    )
+    output_path = tmp_path / "albums.v1.json"
+
+    args = _base_args(tmp_path, onehop_root=onehop_root, output=output_path)
+    args += [
+        "--release-format-policy",
+        str(policy_path),
+        "--masters-root",
+        str(masters_root),
+        "--studio-album-exclusions",
+        str(exclusions_path),
+    ]
+    with pytest.raises(ValueError, match="studio-album-exclusions"):
+        main(args)
+    assert not output_path.exists()
+
+
+def test_refuses_release_format_policy_wrong_kind(tmp_path: Path) -> None:
+    onehop_root = _write_onehop_dataset(tmp_path / "onehop")
+    masters_root = _write_masters_dataset(tmp_path / "masters")
+    exclusions_path = _write_exclusions(tmp_path / "exclusions.json")
+    policy_path = tmp_path / "policy.json"
+    policy_path.write_text(
+        json.dumps(
+            {
+                "kind": "some-other-artifact",
+                "policy_name": "studio-album-v1",
+                "policy_version": 1,
+                "schema_version": 1,
+                "snapshot_date": SNAPSHOT_DATE,
+                "allowed_release_ids": [1, 2],
+                "allowed_release_count": 2,
+                "source_policy_sha256": "deadbeef",
+            }
+        )
+    )
+    output_path = tmp_path / "albums.v1.json"
+
+    args = _base_args(tmp_path, onehop_root=onehop_root, output=output_path)
+    args += [
+        "--release-format-policy",
+        str(policy_path),
+        "--masters-root",
+        str(masters_root),
+        "--studio-album-exclusions",
+        str(exclusions_path),
+    ]
+    with pytest.raises(ValueError, match="kind"):
+        main(args)
+    assert not output_path.exists()
+
+
+def test_refuses_exclusions_wrong_policy_identity(tmp_path: Path) -> None:
+    onehop_root = _write_onehop_dataset(tmp_path / "onehop")
+    masters_root = _write_masters_dataset(tmp_path / "masters")
+    policy_path = _write_release_format_policy(tmp_path / "policy.json")
+    exclusions_path = tmp_path / "exclusions.json"
+    exclusions_path.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "policy": "some-other-policy",
+                "snapshot_date": SNAPSHOT_DATE,
+                "note": "test",
+                "exclusions": [],
+            }
+        )
+    )
+    output_path = tmp_path / "albums.v1.json"
+
+    args = _base_args(tmp_path, onehop_root=onehop_root, output=output_path)
+    args += [
+        "--release-format-policy",
+        str(policy_path),
+        "--masters-root",
+        str(masters_root),
+        "--studio-album-exclusions",
+        str(exclusions_path),
+    ]
+    with pytest.raises(ValueError, match="policy"):
+        main(args)
+    assert not output_path.exists()
+
+
+def test_refuses_malformed_exclusions_structure(tmp_path: Path) -> None:
+    onehop_root = _write_onehop_dataset(tmp_path / "onehop")
+    masters_root = _write_masters_dataset(tmp_path / "masters")
+    policy_path = _write_release_format_policy(tmp_path / "policy.json")
+    exclusions_path = tmp_path / "exclusions.json"
+    exclusions_path.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "policy": "studio-album-v1",
+                "snapshot_date": SNAPSHOT_DATE,
+                "note": "test",
+                "exclusions": [{"title": "No master_id here"}],
+            }
+        )
+    )
+    output_path = tmp_path / "albums.v1.json"
+
+    args = _base_args(tmp_path, onehop_root=onehop_root, output=output_path)
+    args += [
+        "--release-format-policy",
+        str(policy_path),
+        "--masters-root",
+        str(masters_root),
+        "--studio-album-exclusions",
+        str(exclusions_path),
+    ]
+    with pytest.raises(ValueError, match="malformed"):
+        main(args)
+    assert not output_path.exists()
+
+
+def test_refuses_exclusions_field_not_an_array(tmp_path: Path) -> None:
+    onehop_root = _write_onehop_dataset(tmp_path / "onehop")
+    masters_root = _write_masters_dataset(tmp_path / "masters")
+    policy_path = _write_release_format_policy(tmp_path / "policy.json")
+    exclusions_path = tmp_path / "exclusions.json"
+    exclusions_path.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "policy": "studio-album-v1",
+                "snapshot_date": SNAPSHOT_DATE,
+                "note": "test",
+                "exclusions": "not-an-array",
+            }
+        )
+    )
+    output_path = tmp_path / "albums.v1.json"
+
+    args = _base_args(tmp_path, onehop_root=onehop_root, output=output_path)
+    args += [
+        "--release-format-policy",
+        str(policy_path),
+        "--masters-root",
+        str(masters_root),
+        "--studio-album-exclusions",
+        str(exclusions_path),
+    ]
+    with pytest.raises(ValueError, match="non-array"):
+        main(args)
+    assert not output_path.exists()
+
+
+def test_accepts_a_genuinely_empty_exclusions_array(tmp_path: Path) -> None:
+    """An empty exclusions array is valid (no non-studio masters known yet)
+    -- only a missing/wrong-typed field is refused, not an empty one."""
+    onehop_root = _write_onehop_dataset(tmp_path / "onehop")
+    masters_root = _write_masters_dataset(tmp_path / "masters")
+    policy_path = _write_release_format_policy(tmp_path / "policy.json")
+    exclusions_path = _write_exclusions(tmp_path / "exclusions.json")
+    output_path = tmp_path / "albums.v1.json"
+
+    args = _base_args(tmp_path, onehop_root=onehop_root, output=output_path)
+    args += [
+        "--release-format-policy",
+        str(policy_path),
+        "--masters-root",
+        str(masters_root),
+        "--studio-album-exclusions",
+        str(exclusions_path),
+    ]
+    assert main(args) == 0
+    assert output_path.exists()

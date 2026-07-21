@@ -369,6 +369,13 @@ def _parser() -> argparse.ArgumentParser:
     build_connection_daily.add_argument("--start-date", required=True, help="YYYY-MM-DD")
     build_connection_daily.add_argument("--days", type=int, default=90)
     build_connection_daily.add_argument("--output", type=Path, required=True)
+    build_connection_daily.add_argument(
+        "--generated-at",
+        required=True,
+        help="explicit ISO datetime for this build, e.g. 2026-08-01T00:00:00+00:00 -- "
+        "never the wall clock, so identical arguments reproduce a byte-identical "
+        "manifest (corrective slice 5.1)",
+    )
 
     extend_connection_daily = subparsers.add_parser(
         "extend-connection-daily-manifest",
@@ -382,6 +389,12 @@ def _parser() -> argparse.ArgumentParser:
     extend_connection_daily.add_argument("--rounds", type=Path, required=True)
     extend_connection_daily.add_argument("--days", type=int, default=90)
     extend_connection_daily.add_argument("--output", type=Path, required=True)
+    extend_connection_daily.add_argument(
+        "--generated-at",
+        required=True,
+        help="explicit ISO datetime for this extension -- never the wall clock "
+        "(corrective slice 5.1)",
+    )
 
     validate_connection_daily = subparsers.add_parser(
         "validate-connection-daily-manifest",
@@ -523,8 +536,11 @@ def _parser() -> argparse.ArgumentParser:
     build_catalog_audit = subparsers.add_parser(
         "build-album-catalog-audit",
         help=(
-            "build a committed, machine-readable, one-row-per-album audit of the canonical "
-            "public catalog (docs/data/studio-album-catalog-audit-v1.json, ADR 0043)"
+            "build a committed, machine-readable, one-row-per-INCLUDED-album inclusion "
+            "audit of the canonical public catalog -- NOT an accept-and-reject ledger; "
+            "excluded masters never get a row here (see "
+            "data/albums/studio-album-master-exclusions-v1.json for those decisions). "
+            "Writes docs/data/studio-album-catalog-inclusion-audit-v1.json (ADR 0043)"
         ),
     )
     build_catalog_audit.add_argument(
@@ -540,7 +556,11 @@ def _parser() -> argparse.ArgumentParser:
 
     validate_catalog_audit = subparsers.add_parser(
         "validate-album-catalog-audit",
-        help="prove exact 1:1 correspondence between a catalog and its audit artifact",
+        help=(
+            "prove exact 1:1 correspondence between a catalog and its INCLUSION audit "
+            "artifact -- validates only the one-row-per-included-album guarantee, not "
+            "any claim about excluded candidates"
+        ),
     )
     validate_catalog_audit.add_argument("--catalog", type=Path, required=True)
     validate_catalog_audit.add_argument("--audit", type=Path, required=True)
@@ -1491,7 +1511,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
         conn_rounds = json.loads(args.rounds.read_text())
         conn_daily_manifest = build_connection_daily_manifest(
-            conn_rounds, start_date=args.start_date, days=args.days
+            conn_rounds, start_date=args.start_date, days=args.days, generated_at=args.generated_at
         )
         validate_connection_daily_manifest(conn_daily_manifest, conn_rounds)
         args.output.parent.mkdir(parents=True, exist_ok=True)
@@ -1522,7 +1542,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         conn_rounds = json.loads(args.rounds.read_text())
         days_before = len(conn_daily_manifest["schedule"])
         conn_daily_extended = extend_connection_daily_manifest(
-            conn_daily_manifest, conn_rounds, days=args.days
+            conn_daily_manifest, conn_rounds, days=args.days, generated_at=args.generated_at
         )
         validate_connection_daily_manifest(conn_daily_extended, conn_rounds)
         args.output.parent.mkdir(parents=True, exist_ok=True)
@@ -1657,11 +1677,24 @@ def main(argv: Sequence[str] | None = None) -> int:
 
         from .discogs.release_format_policy import load_master_exclusions
 
-        onehop_manifest = json.loads((args.onehop_root / "manifest.json").read_text())
+        onehop_manifest_path = args.onehop_root / "manifest.json"
+        if not onehop_manifest_path.is_file():
+            raise ValueError(
+                f"--onehop-root manifest is required and must exist: {onehop_manifest_path} "
+                "not found."
+            )
+        onehop_manifest = json.loads(onehop_manifest_path.read_text())
         snapshot_date = str(
             onehop_manifest.get("snapshot_date")
-            or onehop_manifest["expansion"]["source_snapshot_date"]
+            or (onehop_manifest.get("expansion") or {}).get("source_snapshot_date")
+            or ""
         )
+        if not snapshot_date:
+            raise ValueError(
+                f"--onehop-root manifest {onehop_manifest_path} has no valid, non-empty "
+                "snapshot_date (checked snapshot_date and expansion.source_snapshot_date) -- "
+                "unknown snapshot metadata is refused just like a mismatched one."
+            )
 
         if not args.release_format_policy.is_file():
             raise ValueError(
@@ -1669,6 +1702,12 @@ def main(argv: Sequence[str] | None = None) -> int:
                 "not found. The public catalog command never falls back to an ungated build."
             )
         policy_payload = json.loads(args.release_format_policy.read_text())
+        if policy_payload.get("kind") != "release-format-scoring-index":
+            raise ValueError(
+                f"--release-format-policy {args.release_format_policy} has kind "
+                f"{policy_payload.get('kind')!r}, expected 'release-format-scoring-index' -- "
+                "malformed or wrong-artifact input refused"
+            )
         allowed_release_ids = policy_payload.get("allowed_release_ids")
         if not allowed_release_ids:
             raise ValueError(
@@ -1677,7 +1716,13 @@ def main(argv: Sequence[str] | None = None) -> int:
                 "effectively-ungated catalog"
             )
         policy_snapshot = str(policy_payload.get("snapshot_date") or "")
-        if policy_snapshot and policy_snapshot != snapshot_date:
+        if not policy_snapshot:
+            raise ValueError(
+                f"--release-format-policy {args.release_format_policy} has no valid, "
+                "non-empty snapshot_date -- unknown snapshot metadata is refused just like a "
+                "mismatched one."
+            )
+        if policy_snapshot != snapshot_date:
             raise ValueError(
                 f"--release-format-policy snapshot_date {policy_snapshot!r} does not match "
                 f"--onehop-root snapshot_date {snapshot_date!r} -- mismatched-snapshot inputs "
@@ -1691,15 +1736,26 @@ def main(argv: Sequence[str] | None = None) -> int:
                 "years, genre/style non-studio exclusion)."
             )
         masters_manifest_path = args.masters_root / "manifest.json"
-        if masters_manifest_path.is_file():
-            masters_manifest = json.loads(masters_manifest_path.read_text())
-            masters_snapshot = str(masters_manifest.get("snapshot_date") or "")
-            if masters_snapshot and masters_snapshot != snapshot_date:
-                raise ValueError(
-                    f"--masters-root snapshot_date {masters_snapshot!r} does not match "
-                    f"--onehop-root snapshot_date {snapshot_date!r} -- mismatched-snapshot "
-                    "inputs refused"
-                )
+        if not masters_manifest_path.is_file():
+            raise ValueError(
+                f"--masters-root manifest is required and must exist: {masters_manifest_path} "
+                "not found -- a masters directory with unknown snapshot metadata is refused "
+                "just like a mismatched one."
+            )
+        masters_manifest = json.loads(masters_manifest_path.read_text())
+        masters_snapshot = str(masters_manifest.get("snapshot_date") or "")
+        if not masters_snapshot:
+            raise ValueError(
+                f"--masters-root manifest {masters_manifest_path} has no valid, non-empty "
+                "snapshot_date -- unknown snapshot metadata is refused just like a mismatched "
+                "one."
+            )
+        if masters_snapshot != snapshot_date:
+            raise ValueError(
+                f"--masters-root snapshot_date {masters_snapshot!r} does not match "
+                f"--onehop-root snapshot_date {snapshot_date!r} -- mismatched-snapshot "
+                "inputs refused"
+            )
 
         if not args.studio_album_exclusions.is_file():
             raise ValueError(
@@ -1708,13 +1764,39 @@ def main(argv: Sequence[str] | None = None) -> int:
                 "builds without the curated non-studio-master deny-list."
             )
         exclusions_payload = json.loads(args.studio_album_exclusions.read_text())
+        if exclusions_payload.get("policy") != "studio-album-v1":
+            raise ValueError(
+                f"--studio-album-exclusions {args.studio_album_exclusions} has policy "
+                f"{exclusions_payload.get('policy')!r}, expected 'studio-album-v1' -- "
+                "malformed or wrong-artifact input refused"
+            )
         exclusions_snapshot = str(exclusions_payload.get("snapshot_date") or "")
-        if exclusions_snapshot and exclusions_snapshot != snapshot_date:
+        if not exclusions_snapshot:
+            raise ValueError(
+                f"--studio-album-exclusions {args.studio_album_exclusions} has no valid, "
+                "non-empty snapshot_date -- unknown snapshot metadata is refused just like a "
+                "mismatched one."
+            )
+        if exclusions_snapshot != snapshot_date:
             raise ValueError(
                 f"--studio-album-exclusions snapshot_date {exclusions_snapshot!r} does not "
                 f"match --onehop-root snapshot_date {snapshot_date!r} -- mismatched-snapshot "
                 "inputs refused"
             )
+        exclusions_list = exclusions_payload.get("exclusions")
+        if not isinstance(exclusions_list, list):
+            raise ValueError(
+                f"--studio-album-exclusions {args.studio_album_exclusions} has a missing or "
+                "non-array 'exclusions' field -- malformed exclusions structure refused (an "
+                "empty array is valid; a missing/wrong-typed field is not)."
+            )
+        for exclusion_index, item in enumerate(exclusions_list):
+            if not isinstance(item, dict) or not isinstance(item.get("master_id"), int):
+                raise ValueError(
+                    f"--studio-album-exclusions {args.studio_album_exclusions} "
+                    f"exclusions[{exclusion_index}] is malformed: every entry must be an "
+                    "object with an integer master_id."
+                )
         master_exclusions = load_master_exclusions(args.studio_album_exclusions)
 
         editorial_albums = json.loads(args.editorial_albums.read_text())["albums"]

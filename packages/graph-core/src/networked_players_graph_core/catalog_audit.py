@@ -1,14 +1,27 @@
-"""A committed, machine-readable, one-row-per-album audit of the canonical
-public catalog (corrective slice 4.6, ADR 0043).
+"""A committed, machine-readable, one-row-per-INCLUDED-album audit of the
+canonical public catalog (corrective slice 4.6; scope corrected in slice
+5.1, ADR 0043).
 
 `docs/STUDIO_ALBUM_CATALOG_AUDIT.md` (the corrective-slice-4.5 prose writeup)
 is useful narrative but is not itself a verifiable record: nothing proves it
 actually covers every current catalog album, or that a future catalog
 regeneration didn't silently drift from what it described. This module
-builds `docs/data/studio-album-catalog-audit-v1.json` -- one row per album
-in `apps/web/public/data/catalog/albums.v1.json`, each carrying the
-structured signals that justified its inclusion, so the audit is provable at
-`make check` time rather than trusted by memory.
+builds `docs/data/studio-album-catalog-inclusion-audit-v1.json` -- one row
+per album in `apps/web/public/data/catalog/albums.v1.json`, each carrying
+the structured signals that justified its inclusion, so the audit is
+provable at `make check` time rather than trusted by memory.
+
+**This is an INCLUSION ledger only -- it is not an accept-and-reject
+decision ledger.** It has exactly one row per album currently IN the
+catalog; a master excluded by the format policy, the genre/style gate, or
+the curated deny-list (`data/albums/studio-album-master-exclusions-v1.json`)
+never appears here at all, by construction. Do not describe a passing
+`validate_album_catalog_audit` run as proving anything about what was
+excluded or why -- for that, see the deny-list file directly (each entry
+already carries its own reasoning) and `docs/STUDIO_ALBUM_CATALOG_AUDIT.md`'s
+narrative. Extending this into a true two-sided ledger (excluded rows too)
+is a real future option, not done here, to avoid inventing "excluded"
+evidence rows this slice did not actually re-derive.
 
 This is a point-in-time artifact tied to one `catalog_version`. A future
 catalog regeneration (new snapshot, new target count, new policy) requires a
@@ -106,12 +119,15 @@ def build_album_catalog_audit(
         "snapshot_date": catalog["snapshot_date"],
         "generated_at": datetime.now(UTC).isoformat(),
         "note": (
-            "One row per apps/web/public/data/catalog/albums.v1.json album, in the "
-            "same order. A point-in-time artifact tied to catalog_version -- a future "
-            "catalog regeneration requires a new audit (see "
-            "docs/STUDIO_ALBUM_CATALOG_AUDIT.md for the full methodology and the "
-            "4 masters this catalog excludes, which -- being excluded -- have no row "
-            "here)."
+            "INCLUSION LEDGER ONLY: one row per apps/web/public/data/catalog/"
+            "albums.v1.json album currently IN the catalog, in the same order -- this "
+            "file does not represent excluded/rejected candidates. A master excluded "
+            "by the format policy, the genre/style gate, or the curated deny-list "
+            "never appears here. For excluded-master decisions and their reasoning, "
+            "see data/albums/studio-album-master-exclusions-v1.json directly. A "
+            "point-in-time artifact tied to catalog_version -- a future catalog "
+            "regeneration requires a new audit (see docs/STUDIO_ALBUM_CATALOG_AUDIT.md "
+            "for the full methodology)."
         ),
         "albums": rows,
     }

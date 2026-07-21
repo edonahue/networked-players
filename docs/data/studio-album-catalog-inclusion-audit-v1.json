@@ -3,7 +3,7 @@
   "catalog_version": "catalog-v1-20260601-0e7ec70fbb7e",
   "snapshot_date": "20260601",
   "generated_at": "2026-07-21T20:51:43.551923+00:00",
-  "note": "One row per apps/web/public/data/catalog/albums.v1.json album, in the same order. A point-in-time artifact tied to catalog_version -- a future catalog regeneration requires a new audit (see docs/STUDIO_ALBUM_CATALOG_AUDIT.md for the full methodology and the 4 masters this catalog excludes, which -- being excluded -- have no row here).",
+  "note": "INCLUSION LEDGER ONLY: one row per apps/web/public/data/catalog/albums.v1.json album currently IN the catalog, in the same order -- this file does not represent excluded/rejected candidates. A master excluded by the format policy, the genre/style gate, or the curated deny-list never appears here. For excluded-master decisions and their reasoning, see data/albums/studio-album-master-exclusions-v1.json directly. A point-in-time artifact tied to catalog_version -- a future catalog regeneration requires a new audit (see docs/STUDIO_ALBUM_CATALOG_AUDIT.md for the full methodology).",
   "albums": [
     {
       "album_id": "master-45922",
