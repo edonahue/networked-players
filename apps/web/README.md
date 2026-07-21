@@ -19,9 +19,13 @@ versioned static artifacts — no backend, no accounts.
   record: find the bridge credit on each side, then name the record. Rounds play
   in five-round sittings with a needle-drop set summary (● clean / ◐ with help /
   ○ revealed).
-- **Connection of the Day** (`/play/daily/`) — one deterministic round per UTC
-  date, the same for everyone; local streak; spoiler-free share string (date and
-  grooves, never a name); one play per day.
+- **Connection of the Day** (`/play/daily/`) — one real one-hop round per UTC
+  date, resolved from a frozen, committed, append-only manifest
+  (`data/contracts/connection-daily-manifest-v1.md`, ADR 0043) — never a
+  date-seeded derivation; local streak; spoiler-free share string (date and
+  grooves, never a name); one play per day. A date outside the committed
+  schedule, or a round whose published content no longer matches what the
+  manifest expects, fails gracefully rather than deriving a substitute.
 - **Albums** (`/albums/`, `/albums/<album-id>/`) — browse grid and per-album
   connection pages: **find the connection** / **reveal every path**, evidence at
   every hop, minimal contributor cards, and cross-links into play. (Old
@@ -106,12 +110,13 @@ key (dark default, light/dark toggle).
 
 - Real cover art for `challenge.v2.json`'s 140 albums and the Connection Guesser pool
   (hotlink enrichment against the Discogs API, coordination-host-only, rate-limited).
-- A frozen daily manifest for Connection of the Day, referencing the Guesser's stable
-  real round ids (see ADR 0041, ADR 0043's daily-manifest migration note).
 - Record Routes (`/play/routes/`), a peer mode from the same canonical album catalog.
 - Replace the `/demo/` API-sourced dataset with one derived from CC0 Discogs monthly
   dumps (with provenance, no collection membership) once that pipeline (Milestone 8) is
   built.
+- Extend the committed Connection of the Day schedule
+  (`extend-connection-daily-manifest`) as `2026-10-29` approaches; 210 of the 300 real
+  one-hop rounds remain unscheduled for future extensions.
 
 The Connection Guesser (`public/data/game/*`) is real, not synthetic: it runs on
 `apps/web/public/data/catalog/albums.v1.json`, the same canonical catalog powering the

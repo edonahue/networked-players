@@ -7,8 +7,9 @@
 // answers are checked in memory, and verdict/evidence markup exists only
 // after the round resolves.
 
+import { fetchDailyManifest, resolveDailyRound } from "./dailyManifest";
 import { createEngine, type Engine } from "./engine";
-import { createRng, dailySeed } from "./prng";
+import { createRng } from "./prng";
 import { ratingGlyph, summarizeSet } from "./scoring";
 import {
   load,
@@ -124,13 +125,6 @@ function pickRound(
   );
 }
 
-/** The daily deal: derived from the UTC date alone — the same for everyone. */
-function pickDaily(rounds: GameRound[], isoDate: string): GameRound {
-  const pool = rounds.filter((r) => r.kind === "one_hop");
-  const seed = dailySeed(new Date(`${isoDate}T12:00:00Z`));
-  return createRng(seed).shuffle(pool)[0];
-}
-
 export interface FlagshipOptions {
   /** Connection of the Day: deterministic date round, streaks, no set arc. */
   daily?: boolean;
@@ -149,6 +143,19 @@ async function fetchRounds(): Promise<GameRound[]> {
   return data.rounds;
 }
 
+/** Render a graceful, spoiler-free error/integrity state into the stage
+ * shell shared by every failure mode below (fetch failure, unscheduled
+ * date, missing or content-mismatched round) -- never a thrown error, never
+ * a silent fallback to a derived assignment. */
+function showStageError(message: string, announceText = message): void {
+  const stage = document.querySelector('[data-testid="stage"]');
+  const question = document.querySelector('[data-testid="question"]');
+  if (question) question.textContent = message;
+  stage?.setAttribute("data-phase", "error");
+  const liveAssertive = document.querySelector('[data-testid="live-assertive"]');
+  if (liveAssertive) liveAssertive.textContent = announceText;
+}
+
 export async function initFlagship(
   options: FlagshipOptions = {},
 ): Promise<void> {
@@ -156,13 +163,9 @@ export async function initFlagship(
   try {
     rounds = await fetchRounds();
   } catch {
-    const stage = document.querySelector('[data-testid="stage"]');
-    const question = document.querySelector('[data-testid="question"]');
-    if (question) {
-      question.textContent =
-        "Could not load the round pool right now — try refreshing the page.";
-    }
-    stage?.setAttribute("data-phase", "error");
+    showStageError(
+      "Could not load the round pool right now — try refreshing the page.",
+    );
     return;
   }
   const params = new URLSearchParams(window.location.search);
@@ -193,9 +196,42 @@ export async function initFlagship(
       );
   if (!daily) saveSet(sessionStore(), set);
 
-  const round = daily
-    ? pickDaily(rounds, isoDate)
-    : pickRound(rounds, params, set);
+  let round: GameRound;
+  if (daily) {
+    // Frozen, append-only manifest resolution -- never a date-seeded
+    // derivation. A date the manifest doesn't cover, a round the manifest
+    // points at that no longer exists, or a round whose published content
+    // no longer matches what the manifest expects (round_content_fingerprint)
+    // all fail gracefully rather than silently deriving a substitute
+    // (ADR 0043's corrective-slice-4.6 addendum).
+    let manifest;
+    try {
+      manifest = await fetchDailyManifest();
+    } catch {
+      showStageError(
+        "Could not load today's schedule right now — try refreshing the page.",
+      );
+      return;
+    }
+    const resolution = await resolveDailyRound(manifest, rounds, isoDate);
+    if (!resolution.ok) {
+      if (resolution.reason === "not-scheduled") {
+        showStageError("Today's connection has not been scheduled yet.");
+      } else if (resolution.reason === "missing-round") {
+        showStageError(
+          "Today's connection could not be verified — the scheduled record set is missing. Try refreshing the page.",
+        );
+      } else {
+        showStageError(
+          "Today's connection could not be verified — its record set has changed unexpectedly. Try refreshing the page.",
+        );
+      }
+      return;
+    }
+    round = resolution.round;
+  } else {
+    round = pickRound(rounds, params, set);
+  }
   const stage = $("stage");
   const tray = $("chip-tray");
   const clueButton = $<HTMLButtonElement>("clue-button");

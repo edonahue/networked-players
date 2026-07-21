@@ -265,6 +265,61 @@ once (to add `artifact_version`) and diffed byte-for-byte against the prior
 publish before republishing — every round's content and `pool_version` were
 identical; only the new provenance field changed.
 
+## Addendum: slice 5, frozen Connection of the Day (2026-07-22)
+
+With slice 4.6's `artifact_version`/`round_content_fingerprint` in place,
+slice 5 implements the frozen daily manifest itself:
+`packages/graph-core/.../connection_daily_manifest.py`
+(`data/contracts/connection-daily-manifest-v1.md`) — a **new** module, not a
+reuse of `daily_manifest.py` (see ADR 0041's correction note: that module was
+built and proven against the unrelated Record Routes artifact shape).
+
+- **Explicit eligibility filtering.** The builder only ever schedules
+  `pool == "real-records"` AND `kind == "one_hop"` rounds — never "every id
+  in `rounds.v1.json`."
+- **Content-verified extension.** `extend_connection_daily_manifest`
+  re-verifies every existing entry's `round_fingerprint` against the current
+  rounds artifact before appending anything; a missing round or a changed
+  fingerprint raises rather than extending on top of a broken history.
+- **Deterministic, non-overengineered scheduling.** A seeded pseudo-random
+  permutation (`pool_version`) plus one deterministic forward lookahead-swap
+  pass that avoids the worst adjacent-day repetition (a shared endpoint album
+  or accepted performer two days running) — not a recommendation system;
+  decade/difficulty balance is reported via `schedule_diagnostics`, never
+  optimized for.
+- **No repeats until pool exhaustion**, at which point extension raises with
+  a documented policy error rather than silently cycling.
+- **Frontend**: `apps/web/src/game/dailyManifest.ts::resolveDailyRound`
+  replaces the old date-seeded `pickDaily` (`dailySeed`/`createRng`)
+  entirely. It resolves a date through the manifest, then recomputes
+  `round_content_fingerprint` client-side (`apps/web/src/game/canonical.ts`,
+  the same shared canonical-hashing port slice 4.6 built) and refuses to
+  deal a round whose current content doesn't match what the manifest
+  expects. Four distinct graceful states, all rendered into the existing
+  stage shell (`showStageError`), never a thrown error and never a derived
+  fallback: round-pool fetch failure, manifest fetch failure, date not
+  scheduled, and an integrity error (missing round or content mismatch) —
+  pinned in Playwright via real `page.route` interception, not mocked
+  assumptions.
+- **Storage**: `np.game.v1`'s `daily` map is keyed by ISO date and was never
+  touched by this change — results recorded under the old date-seeded system
+  remain readable untouched; no schema-version bump was needed.
+
+**Real committed manifest**: 90 dates, `2026-08-01` through `2026-10-29`
+(chosen as a near-term date since this branch/PR has not launched — not a
+retroactive assignment of already-passed dates), drawn from 90 of the 300
+real one-hop rounds (210 remain for future `extend-connection-daily-manifest`
+calls, deliberately not consuming the whole pool on the first publish).
+Deterministic regeneration confirmed byte-identical (excluding the
+`generated_at` timestamp); the append-only extension workflow was verified to
+preserve all prior entries byte-for-byte while adding new ones. See the
+corrective-slice PR comment for the full schedule diagnostics.
+
+Validation: `make check` (578 tests, +24 over slice 4.6's 554), `npm run
+check` (0 errors), full Playwright suite (100/100, +15 new in
+`game-daily.spec.ts` replacing the old date-seeded-shuffle tests entirely, +
+1 in `game-canonical.spec.ts` already counted in slice 4.6).
+
 ## Revisit trigger
 
 If a future catalog expansion or policy change admits new candidates, re-run
@@ -277,7 +332,10 @@ without a human pass, and a stale JSON audit will fail
 Routes (slice 6) ever needs to publish its artifact at the same file names
 this ADR's Connection Guesser pool uses, stop and resolve the collision
 explicitly rather than letting the two contracts overwrite each other on
-disk. If a future catalog regeneration changes a round's underlying credit
-data (e.g. an album gets excluded), that round's stable id will change or it
-will vanish from the pool — slice 5's frozen daily manifest needs an explicit
-invalidation path for that case, not just id/fingerprint stability.
+disk. If a future catalog/pool regeneration changes an already-scheduled
+round's underlying content or removes it entirely, `extend_connection_daily_manifest`
+will refuse to extend and the frontend will show an integrity error for that
+date until an operator makes an explicit decision — this is deliberate,
+not a bug to silently patch around. A repeat/cycling policy for after pool
+exhaustion must be an explicit, documented, versioned decision, not a quiet
+code change.

@@ -1,7 +1,27 @@
-# ADR 0041: A frozen, append-only date-to-round manifest for Connection of the Day
+# ADR 0041: A frozen, append-only date-to-round manifest (original design)
 
-- **Status:** Accepted
+- **Status:** Accepted; the mechanism this ADR designed is superseded for
+  Connection of the Day specifically by [ADR 0043](0043-connection-guesser-corrective-slice.md)'s
+  corrective-slice-4.6 addendum. **This ADR's title originally said "for
+  Connection of the Day" — corrected here because it no longer is.**
 - **Date:** 2026-07-19
+
+> **2026-07-22 correction.** `daily_manifest.py` (this ADR's module) was built
+> and proven against PR #43's Record Routes path-shaped `rounds.py` artifact
+> (see this doc's own "172 scheduled dates from a 172-round pool" figure
+> below — that is the Record Routes round count, not the flagship Connection
+> Guesser's). Connection of the Day is now powered by a **different**
+> module, `connection_daily_manifest.py`
+> (`data/contracts/connection-daily-manifest-v1.md`, ADR 0043), with its own
+> contract: `mode` identity, `catalog_version`/`pool_version`/
+> `artifact_version` (not a single top-level `pool_version`), explicit
+> one-hop/real-records filtering, and per-entry `round_fingerprint` content
+> verification. The append-only, never-rewritten design principle described
+> below is still correct and was carried forward unchanged; only the
+> artifact shape and which rounds contract it schedules differ.
+> `daily_manifest.py`'s own CLI commands (`build-daily-manifest` etc.) remain
+> available for a possible future Record Routes daily mode, but are not what
+> currently powers `/play/daily/`.
 
 ## Context
 
