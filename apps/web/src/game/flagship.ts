@@ -8,7 +8,9 @@
 // after the round resolves.
 
 import { fetchDailyManifest, resolveDailyRound } from "./dailyManifest";
+import { isDateOverrideAllowed } from "./dateOverride";
 import { createEngine, type Engine } from "./engine";
+import { localIsoDate } from "./localDate";
 import { createRng } from "./prng";
 import { ratingGlyph, summarizeSet } from "./scoring";
 import {
@@ -32,6 +34,7 @@ import type {
   ContributorRef,
   EngineState,
   GameRound,
+  GameRounds,
   Rating,
   Step,
 } from "./types";
@@ -133,14 +136,19 @@ export interface FlagshipOptions {
 /** The real pool is fetched at runtime, not embedded in the page -- it is
  * well past a reasonable inline-HTML budget at real-launch scale (500 real
  * rounds, ~1.2 MB). Cached by the browser like any other static asset after
- * the first load; nothing here is per-user or per-request. */
-async function fetchRounds(): Promise<GameRound[]> {
+ * the first load; nothing here is per-user or per-request.
+ *
+ * Returns the COMPLETE artifact (schema_version + provenance + rounds), not
+ * just the rounds array -- the daily path needs `provenance` to verify the
+ * fetched pool actually matches what the daily manifest was built against
+ * (corrective slice 5.1); the set-based path below still only reads
+ * `.rounds`. */
+async function fetchRounds(): Promise<GameRounds> {
   const response = await fetch("/data/game/rounds.v1.json");
   if (!response.ok) {
     throw new Error(`failed to load rounds.v1.json: ${response.status}`);
   }
-  const data = (await response.json()) as { rounds: GameRound[] };
-  return data.rounds;
+  return (await response.json()) as GameRounds;
 }
 
 /** Render a graceful, spoiler-free error/integrity state into the stage
@@ -161,15 +169,16 @@ function showStageError(message: string, announceText = message): void {
 export async function initFlagship(
   options: FlagshipOptions = {},
 ): Promise<void> {
-  let rounds: GameRound[];
+  let roundsArtifact: GameRounds;
   try {
-    rounds = await fetchRounds();
+    roundsArtifact = await fetchRounds();
   } catch {
     showStageError(
       "Could not load the round pool right now — try refreshing the page.",
     );
     return;
   }
+  const rounds = roundsArtifact.rounds;
   const params = new URLSearchParams(window.location.search);
   if (
     params.get("motion") === "off" ||
@@ -179,9 +188,15 @@ export async function initFlagship(
   }
 
   const daily = options.daily === true;
-  const isoDate = daily
-    ? (params.get("date") ?? new Date().toISOString().slice(0, 10))
-    : "";
+  // The effective date is the player's own LOCAL calendar date, never UTC
+  // (corrective slice 5.1) -- the committed manifest assigns one ordinary
+  // date label per day, and each browser resolves it against its own local
+  // midnight. The ?date= override is honored only when explicitly allowed
+  // (Playwright/dev), never in a real production deploy -- see
+  // dateOverride.ts.
+  const dateOverride =
+    daily && isDateOverrideAllowed() ? params.get("date") : null;
+  const isoDate = daily ? (dateOverride ?? localIsoDate(new Date())) : "";
 
   const activeKind =
     !daily && params.get("kind") === "two_hop" ? "two_hop" : "one_hop";
@@ -202,10 +217,13 @@ export async function initFlagship(
   if (daily) {
     // Frozen, append-only manifest resolution -- never a date-seeded
     // derivation. A date the manifest doesn't cover, a round the manifest
-    // points at that no longer exists, or a round whose published content
-    // no longer matches what the manifest expects (round_content_fingerprint)
-    // all fail gracefully rather than silently deriving a substitute
-    // (ADR 0043's corrective-slice-4.6 addendum).
+    // points at that no longer exists, one that isn't actually a real
+    // one-hop round, an incompatible/unsupported manifest, a manifest whose
+    // versions don't match the fetched round pool, or a round whose
+    // published content no longer matches what the manifest expects
+    // (round_content_fingerprint) -- all fail gracefully rather than
+    // silently deriving a substitute (ADR 0043's corrective-slice-4.6 and
+    // -5.1 addenda).
     let manifest;
     try {
       manifest = await fetchDailyManifest();
@@ -215,7 +233,11 @@ export async function initFlagship(
       );
       return;
     }
-    const resolution = await resolveDailyRound(manifest, rounds, isoDate);
+    const resolution = await resolveDailyRound(
+      manifest,
+      roundsArtifact,
+      isoDate,
+    );
     if (!resolution.ok) {
       if (resolution.reason === "not-scheduled") {
         showStageError("Today's connection has not been scheduled yet.");
@@ -223,9 +245,21 @@ export async function initFlagship(
         showStageError(
           "Today's connection could not be verified — the scheduled record set is missing. Try refreshing the page.",
         );
-      } else {
+      } else if (resolution.reason === "fingerprint-mismatch") {
         showStageError(
           "Today's connection could not be verified — its record set has changed unexpectedly. Try refreshing the page.",
+        );
+      } else if (resolution.reason === "ineligible-round") {
+        showStageError(
+          "Today's connection could not be verified — the scheduled entry does not point at a valid daily round. Try refreshing the page.",
+        );
+      } else {
+        // unsupported-manifest | wrong-mode | version-mismatch: the
+        // schedule and today's fetched record pool are not a matching
+        // pair -- an integrity condition, never something to silently
+        // paper over by guessing which one to trust.
+        showStageError(
+          "Today's connection could not be verified — the schedule and today's record pool don't match. Try refreshing the page.",
         );
       }
       return;

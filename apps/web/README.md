@@ -19,13 +19,17 @@ versioned static artifacts — no backend, no accounts.
   record: find the bridge credit on each side, then name the record. Rounds play
   in five-round sittings with a needle-drop set summary (● clean / ◐ with help /
   ○ revealed).
-- **Connection of the Day** (`/play/daily/`) — one real one-hop round per UTC
-  date, resolved from a frozen, committed, append-only manifest
+- **Connection of the Day** (`/play/daily/`) — one real one-hop round per
+  LOCAL calendar date (each browser's own midnight, not UTC — see
+  `localDate.ts`), resolved from a frozen, committed, append-only manifest
   (`data/contracts/connection-daily-manifest-v1.md`, ADR 0043) — never a
   date-seeded derivation; local streak; spoiler-free share string (date and
   grooves, never a name); one play per day. A date outside the committed
-  schedule, or a round whose published content no longer matches what the
-  manifest expects, fails gracefully rather than deriving a substitute.
+  schedule, an incompatible/mismatched manifest-and-pool pairing, a round
+  that isn't actually real/one-hop, or a round whose published content no
+  longer matches what the manifest expects all fail gracefully rather than
+  deriving a substitute. `?date=` only works in local dev or under
+  Playwright (`dateOverride.ts`) — production ignores it.
 - **Albums** (`/albums/`, `/albums/<album-id>/`) — browse grid and per-album
   connection pages: **find the connection** / **reveal every path**, evidence at
   every hop, minimal contributor cards, and cross-links into play. (Old

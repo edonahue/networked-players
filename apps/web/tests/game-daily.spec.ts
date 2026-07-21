@@ -49,7 +49,19 @@ async function entryFor(page: Page, date: string): Promise<DailyManifestEntry> {
   return entry;
 }
 
+/** Playwright is the ONE place allowed to enable the ?date= override
+ * (corrective slice 5.1, dateOverride.ts) -- injected via a page-scoped
+ * global before navigation, never a production code path. Production
+ * builds have no way to set this. */
+async function allowDateOverride(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    (window as unknown as Record<string, unknown>).__NP_ALLOW_DATE_OVERRIDE__ =
+      true;
+  });
+}
+
 async function gotoDaily(page: Page, date: string): Promise<void> {
+  await allowDateOverride(page);
   await page.goto(`/play/daily/?date=${date}&motion=off`);
 }
 
@@ -377,5 +389,222 @@ test("an error state announces to the assertive live region", async ({
   await gotoDaily(page, OUT_OF_RANGE_DATE);
   await expect(page.getByTestId("live-assertive")).toContainText(
     "has not been scheduled yet",
+  );
+});
+
+// --- Corrective slice 5.1: full artifact verification -----------------------
+
+/** Intercept the manifest fetch and hand back a version with `mutate`
+ * applied -- for constructing integrity-failure scenarios that don't exist
+ * in the real committed artifact. */
+async function withMutatedManifest(
+  page: Page,
+  mutate: (manifest: DailyManifest) => void,
+): Promise<void> {
+  await page.route("**/data/game/daily-manifest.v1.json", async (route) => {
+    const response = await route.fetch();
+    const body = (await response.json()) as DailyManifest;
+    mutate(body);
+    await route.fulfill({ response, json: body });
+  });
+}
+
+test("a wrong manifest mode is an integrity error, never dealt as a daily round", async ({
+  page,
+}) => {
+  await withMutatedManifest(page, (m) => {
+    m.mode = "record_routes";
+  });
+  await gotoDaily(page, PINNED_DATE_A);
+  await expect(page.getByTestId("stage")).toHaveAttribute(
+    "data-phase",
+    "error",
+  );
+  await expect(page.getByTestId("question")).toContainText("don't match");
+  await expect(page.getByTestId("chip-tray")).toBeHidden();
+});
+
+test("an unsupported manifest schema_version is an integrity error", async ({
+  page,
+}) => {
+  await withMutatedManifest(page, (m) => {
+    (m as unknown as Record<string, unknown>).schema_version = 99;
+  });
+  await gotoDaily(page, PINNED_DATE_A);
+  await expect(page.getByTestId("stage")).toHaveAttribute(
+    "data-phase",
+    "error",
+  );
+  await expect(page.getByTestId("question")).toContainText("don't match");
+});
+
+test("a catalog_version mismatch between manifest and rounds is an integrity error", async ({
+  page,
+}) => {
+  await withMutatedManifest(page, (m) => {
+    (m as unknown as Record<string, unknown>).catalog_version =
+      "catalog-v1-20260601-different";
+  });
+  await gotoDaily(page, PINNED_DATE_A);
+  await expect(page.getByTestId("stage")).toHaveAttribute(
+    "data-phase",
+    "error",
+  );
+  await expect(page.getByTestId("question")).toContainText("don't match");
+});
+
+test("a pool_version mismatch between manifest and rounds is an integrity error", async ({
+  page,
+}) => {
+  await withMutatedManifest(page, (m) => {
+    (m as unknown as Record<string, unknown>).pool_version =
+      "connection-v1-20260601-different";
+  });
+  await gotoDaily(page, PINNED_DATE_A);
+  await expect(page.getByTestId("stage")).toHaveAttribute(
+    "data-phase",
+    "error",
+  );
+  await expect(page.getByTestId("question")).toContainText("don't match");
+});
+
+test("an artifact_version mismatch between manifest and rounds is an integrity error", async ({
+  page,
+}) => {
+  await withMutatedManifest(page, (m) => {
+    (m as unknown as Record<string, unknown>).artifact_version =
+      "connection-artifact-v1-20260601-different";
+  });
+  await gotoDaily(page, PINNED_DATE_A);
+  await expect(page.getByTestId("stage")).toHaveAttribute(
+    "data-phase",
+    "error",
+  );
+  await expect(page.getByTestId("question")).toContainText("don't match");
+});
+
+test("a manifest entry pointing at a real two-hop round is refused, never dealt as a daily", async ({
+  page,
+}) => {
+  const rounds = await fetchRounds(page);
+  const rawRoundsRes = await page.request.get("/data/game/rounds.v1.json");
+  const rawRounds = (await rawRoundsRes.json()) as {
+    rounds: Record<string, unknown>[];
+  };
+  const twoHop = rounds.find((r) => r.kind === "two_hop")!;
+  const twoHopRaw = rawRounds.rounds.find((r) => r.id === twoHop.id)!;
+  const { roundContentFingerprint } = await import("../src/game/canonical");
+  const fingerprint = await roundContentFingerprint(twoHopRaw);
+
+  await withMutatedManifest(page, (m) => {
+    m.schedule[0] = {
+      date: PINNED_DATE_A,
+      round_id: twoHop.id,
+      round_fingerprint: fingerprint,
+    };
+  });
+  await gotoDaily(page, PINNED_DATE_A);
+  await expect(page.getByTestId("stage")).toHaveAttribute(
+    "data-phase",
+    "error",
+  );
+  await expect(page.getByTestId("question")).toContainText(
+    "does not point at a valid daily round",
+  );
+  await expect(page.getByTestId("chip-tray")).toBeHidden();
+});
+
+test("a manifest entry pointing at an injected synthetic round is refused", async ({
+  page,
+}) => {
+  const { roundContentFingerprint } = await import("../src/game/canonical");
+  const syntheticRound = {
+    id: "conn-00000000ff",
+    pool: "synthetic-universe",
+    kind: "one_hop",
+    difficulty: "hard",
+    endpoints: [
+      {
+        id: "syn-a",
+        title: "Synth A",
+        year: 1990,
+        act: "X",
+        label: null,
+        art: null,
+      },
+      {
+        id: "syn-c",
+        title: "Synth C",
+        year: 1991,
+        act: "Y",
+        label: null,
+        art: null,
+      },
+    ],
+    answer_set: [
+      { id: 90000001, name: "Synthetic Performer", role_category: "guitar" },
+    ],
+    distractors: [],
+    clues: [],
+    evidence: [
+      {
+        release_ref: "syn-a",
+        release_title: "Synth A",
+        contributor_id: 90000001,
+        credited_as: "Synthetic Performer",
+        role_text: "Guitar",
+        credit_scope: "release_credit",
+      },
+    ],
+    provenance_note: "test",
+  };
+  const fingerprint = await roundContentFingerprint(syntheticRound);
+
+  await page.route("**/data/game/rounds.v1.json", async (route) => {
+    const response = await route.fetch();
+    const body = await response.json();
+    body.rounds.push(syntheticRound);
+    await route.fulfill({ response, json: body });
+  });
+  await withMutatedManifest(page, (m) => {
+    m.schedule[0] = {
+      date: PINNED_DATE_A,
+      round_id: syntheticRound.id,
+      round_fingerprint: fingerprint,
+    };
+  });
+  await gotoDaily(page, PINNED_DATE_A);
+  await expect(page.getByTestId("stage")).toHaveAttribute(
+    "data-phase",
+    "error",
+  );
+  await expect(page.getByTestId("question")).toContainText(
+    "does not point at a valid daily round",
+  );
+  for (const person of [syntheticRound.answer_set[0]]) {
+    await expect(page.getByTestId("question")).not.toContainText(person.name);
+  }
+});
+
+test("production ignores ?date= entirely -- no override gate, no injected global", async ({
+  page,
+}) => {
+  // Deliberately NOT calling allowDateOverride: this is what a real
+  // production visitor's browser looks like. The pinned date is a real
+  // scheduled date, but without the gate it must never be honored -- the
+  // effective date falls back to the (unscheduled, in this sandbox) real
+  // local date instead of silently trusting the query string.
+  await page.goto(`/play/daily/?date=${PINNED_DATE_A}&motion=off`);
+  const entry = await entryFor(page, PINNED_DATE_A);
+  await expect(page.getByTestId("stage")).not.toHaveAttribute(
+    "data-round",
+    entry.round_id,
+  );
+  // The real sandboxed wall-clock date is well before the manifest's
+  // committed range, so the effective (real, un-overridden) local date
+  // resolves to the graceful not-scheduled state.
+  await expect(page.getByTestId("stage")).toHaveAttribute(
+    "data-phase",
+    "error",
   );
 });

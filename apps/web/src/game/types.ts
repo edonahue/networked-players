@@ -48,12 +48,13 @@ export interface GameProvenance {
    * choice order on an already-selected round; see `artifact_version` for
    * that. Real pool only. */
   pool_version?: string;
-  /** Hash of the COMPLETE published rounds content -- every player-visible
-   * and evidentiary field. Changes on any such edit even with identical
+  /** Hash of the COMPLETE published rounds array IN ITS PUBLISHED ORDER --
+   * every player-visible and evidentiary field, and the array's own order.
+   * Changes on any such edit or reordering, even with identical
    * `pool_version` membership. A frozen daily-manifest entry freezes against
    * a specific round's own content fingerprint
    * (`canonical.ts::roundContentFingerprint`), not this pool-wide value.
-   * Real pool only. See ADR 0043's corrective-slice-4.6 addendum. */
+   * Real pool only. See ADR 0043's corrective-slice-4.6 and -5.1 addenda. */
   artifact_version?: string;
 }
 
