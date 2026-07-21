@@ -1,6 +1,21 @@
-# Game-rounds contract (schema v1)
+# Record Routes rounds contract (schema v1)
 
-This contract describes the flagship game's static artifact pair —
+> **Not the flagship Connection Guesser's contract.** This document describes
+> the **Record Routes** mode's path artifact (album A -> artist X -> album B
+> via a *third* shared release), produced by `build-rounds-from-dump`/
+> `rounds.py`/`rounds_generator.py`. The flagship Connection Guesser's real
+> `universe.v1.json`/`rounds.v1.json` pair (`endpoints`/`answer_set`/
+> `bridge_answer_sets`/`middle` — a performer credited on **both** displayed
+> albums directly) is a genuinely different contract, described in
+> `game-universe-v1.md`/`game-rounds-v1.md`, produced by
+> `build-connection-rounds`/`connection_rounds.py`. Both pairs have
+> historically been published at the same file names in different
+> directories — "rounds.v1" alone never identifies which contract an
+> artifact satisfies (see ADR 0042, ADR 0043). Record Routes has no published
+> public artifact yet (a later slice); this contract currently describes only
+> the shape its generator produces when run.
+
+This contract describes Record Routes' static artifact pair —
 `universe.v1.json` and `rounds.v1.json` — produced by
 `networked-players-catalog build-rounds-from-dump`. Defined in
 `packages/graph-core/src/networked_players_graph_core/rounds.py`

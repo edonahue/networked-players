@@ -1,11 +1,21 @@
 ---
-# Deploys the rounds-artifact-check job body (files/rounds_check_job.py) AND
-# the real universe.v1/rounds.v1 artifacts to Pi workers' persistent RQ jobs
-# directory. Same job-body-plus-artifact pattern as deploy-verify-job.yml
-# (a real job body plus its input data, not a benchmark probe) -- unlike
-# deploy-cohort-check-job.yml, whose artifact is supplied per-invocation
-# because a cohort has no single fixed public artifact path the way the
-# committed game pool does.
+# Deploys the CONNECTION GUESSER rounds-artifact-check job body
+# (files/connection_rounds_check_job.py) AND the real universe.v1/rounds.v1
+# artifacts to Pi workers' persistent RQ jobs directory. Same job-body-plus-
+# artifact pattern as deploy-verify-job.yml (a real job body plus its input
+# data, not a benchmark probe) -- unlike deploy-cohort-check-job.yml, whose
+# artifact is supplied per-invocation because a cohort has no single fixed
+# public artifact path the way the committed game pool does.
+#
+# The default artifact paths (apps/web/public/data/game/{universe,rounds}.v1.json)
+# are the flagship Connection Guesser's real pool (ADR 0042/0043) --
+# `endpoints`/`answer_set`/`bridge_answer_sets`/`middle`, NOT the unrelated
+# Record Routes path contract (`from_album_id`/`hops`, validated by
+# networked_players_contracts.rounds / rounds_check_job.py). Record Routes
+# has no published public artifact yet (slice 6); when it does, deploy it
+# with its own playbook pointed at rounds_check_job.py and its own path --
+# do not reuse this playbook's defaults for it, and do not assume "rounds.v1"
+# alone identifies which contract an artifact satisfies (see ADR 0043).
 #
 # hosts: pi_workers, not the flat `workers` group -- this is Pi-ambient
 # validation work, not x86-worker traversal/scoring work.
@@ -17,7 +27,7 @@
 #   ansible-playbook -i inventories/local/hosts.yml playbooks/deploy-rounds-check-job.yml \
 #     -e universe_artifact_path=apps/web/public/data/game/universe.v1.json \
 #     -e rounds_artifact_path=apps/web/public/data/game/rounds.v1.json
-- name: Deploy the rounds-artifact-check job to Pi workers
+- name: Deploy the Connection Guesser rounds-artifact-check job to Pi workers
   hosts: pi_workers
   gather_facts: true
   vars:
@@ -41,7 +51,7 @@
           - item.stat.exists
         fail_msg: >-
           No artifact at {{ item.item }}. Build one first
-          (uv run networked-players-catalog build-rounds-from-dump ...)
+          (uv run networked-players-catalog build-connection-rounds ...)
           or pass -e universe_artifact_path=<path> -e rounds_artifact_path=<path>.
       loop: "{{ artifact_stat.results }}"
       loop_control:
@@ -55,8 +65,8 @@
 
     - name: Copy the rounds-artifact-check job body (same file every worker gets, unmodified)
       ansible.builtin.copy:
-        src: "{{ playbook_dir }}/../files/rounds_check_job.py"
-        dest: "{{ rq_jobs_dir }}/rounds_check_job.py"
+        src: "{{ playbook_dir }}/../files/connection_rounds_check_job.py"
+        dest: "{{ rq_jobs_dir }}/connection_rounds_check_job.py"
         mode: "0644"
 
     - name: Copy the universe artifact

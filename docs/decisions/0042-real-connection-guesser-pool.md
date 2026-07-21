@@ -1,9 +1,20 @@
 # ADR 0042: A real, Python-generated Connection Guesser pool replaces the synthetic-first one
 
-- **Status:** Accepted
+- **Status:** Accepted; corrected by [ADR 0043](0043-connection-guesser-corrective-slice.md)
 - **Date:** 2026-07-20
 - **Extends:** [ADR 0037](0037-web-game-universe-and-round-engine.md) without reverting it
 - **Relates to:** [ADR 0038](0038-hybrid-album-catalog-assembly.md), [ADR 0039](0039-performer-allowlist-layered-for-game-rounds.md)
+
+> **Corrected 2026-07-21.** A post-ship review found eleven real defects in
+> this slice's generator, frontend, validator, catalog, and docs (incomplete
+> two-hop bridge answers, an unshuffled hidden-middle choice, a frontend bug
+> that showed an empty verdict name on a two-hop give-up, ordinal round ids,
+> an evidence-only universe that couldn't be independently re-verified, two
+> more non-studio catalog leaks, and more). This decision's core architecture
+> (real Python-generated rounds, album-credit-intersection semantics, main's
+> engine as authoritative UI) remains correct and is preserved. See
+> [ADR 0043](0043-connection-guesser-corrective-slice.md) for the full list
+> and fixes; the counts and examples below predate that correction.
 
 ## Context
 

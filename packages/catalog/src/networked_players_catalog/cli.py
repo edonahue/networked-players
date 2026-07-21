@@ -287,10 +287,14 @@ def _parser() -> argparse.ArgumentParser:
     )
     build_connection_rounds.add_argument("--onehop-root", type=Path, required=True)
     build_connection_rounds.add_argument(
-        "--challenge",
+        "--albums",
         type=Path,
         required=True,
-        help="a published challenge.v2.json; its albums[] is the album catalog",
+        help=(
+            "the canonical catalog artifact (apps/web/public/data/catalog/albums.v1.json, "
+            "build-album-catalog's output) -- the same --albums input build-challenge-from-dump "
+            "consumes, so both real public surfaces derive their album set from one source"
+        ),
     )
     build_connection_rounds.add_argument(
         "--artist-family-exclusions",
@@ -404,6 +408,12 @@ def _parser() -> argparse.ArgumentParser:
         default=None,
         help="optional studio-album-master-exclusions-v1.json; curated master-ID deny-list",
     )
+
+    validate_album_catalog = subparsers.add_parser(
+        "validate-album-catalog",
+        help="validate the canonical apps/web/public/data/catalog/albums.v1.json artifact",
+    )
+    validate_album_catalog.add_argument("--input", type=Path, required=True)
 
     fetch_dataset_parser = subparsers.add_parser(
         "fetch-dataset",
@@ -984,11 +994,13 @@ def main(argv: Sequence[str] | None = None) -> int:
             onehop_manifest.get("snapshot_date")
             or onehop_manifest["expansion"]["source_snapshot_date"]
         )
-        albums = json.loads(args.albums.read_text())["albums"]
+        albums_payload = json.loads(args.albums.read_text())
+        albums = albums_payload["albums"]
         # An ID-resolved album (e.g. build-album-catalog's output) carries
         # artist_id directly; re-matching it by name string would reopen the
         # exact collision risk resolving it once already closed.
         albums_are_resolved = bool(albums) and "artist_id" in albums[0]
+        catalog_version = albums_payload.get("catalog_version") if albums_are_resolved else None
 
         is_family_excluded: Callable[[int, int], bool] | None = None
         if args.artist_family_exclusions is not None:
@@ -1041,6 +1053,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                     max_workers=args.max_workers,
                     is_family_excluded=is_family_excluded,
                     max_frontier_expansion=max_frontier_expansion,
+                    catalog_version=catalog_version,
                 )
             else:
                 artifact, report = build_challenge_v2(
@@ -1215,9 +1228,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
         from networked_players_graph_core.graph import CreditGraph
 
-        challenge = json.loads(args.challenge.read_text())
-        albums = challenge["albums"]
-        snapshot_date = challenge["provenance"]["snapshot_date"]
+        catalog = json.loads(args.albums.read_text())
+        albums = catalog["albums"]
+        snapshot_date = catalog["snapshot_date"]
+        catalog_version = catalog["catalog_version"]
 
         connection_is_family_excluded: Callable[[int, int], bool] | None = None
         if args.artist_family_exclusions is not None:
@@ -1234,7 +1248,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             threads=args.threads,
             build_edges=False,
         ) as graph:
-            rounds_json, diagnostics = generate_connection_round_pool(
+            rounds_json, diagnostics, performer_index = generate_connection_round_pool(
                 graph,
                 albums,
                 one_hop_target=args.one_hop_target,
@@ -1249,8 +1263,10 @@ def main(argv: Sequence[str] | None = None) -> int:
             universe, rounds = build_connection_universe_and_rounds(
                 albums,
                 rounds_json,
+                performer_index,
                 snapshot_date=snapshot_date,
                 generated_by=f"networked-players-catalog build-connection-rounds {__version__}",
+                catalog_version=catalog_version,
             )
 
         validate_connection_rounds_artifact(universe, rounds)
@@ -1357,7 +1373,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 0
 
     if args.command == "build-album-catalog":
-        from networked_players_graph_core.analysis import assemble_album_catalog
+        from networked_players_graph_core.analysis import (
+            assemble_album_catalog,
+            validate_album_catalog,
+        )
         from networked_players_graph_core.graph import CreditGraph
 
         from .discogs.release_format_policy import load_master_exclusions
@@ -1369,6 +1388,12 @@ def main(argv: Sequence[str] | None = None) -> int:
             policy_payload = json.loads(args.release_format_policy.read_text())
             allowed_release_ids = frozenset(policy_payload["allowed_release_ids"])
         master_exclusions = load_master_exclusions(args.studio_album_exclusions)
+
+        onehop_manifest = json.loads((args.onehop_root / "manifest.json").read_text())
+        snapshot_date = str(
+            onehop_manifest.get("snapshot_date")
+            or onehop_manifest["expansion"]["source_snapshot_date"]
+        )
 
         with CreditGraph.open(
             args.onehop_root,
@@ -1385,14 +1410,18 @@ def main(argv: Sequence[str] | None = None) -> int:
                 target_count=args.target_count,
                 allowed_release_ids=allowed_release_ids,
                 master_exclusions=master_exclusions,
+                snapshot_date=snapshot_date,
+                generated_by=f"networked-players-catalog build-album-catalog {__version__}",
             )
 
+        validate_album_catalog(catalog)
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(json.dumps(catalog, indent=2) + "\n")
         print(
             json.dumps(
                 {
                     "output": str(args.output),
+                    "catalog_version": catalog["catalog_version"],
                     "editorial_count": catalog["editorial_count"],
                     "editorial_missed": len(catalog["editorial_missed"]),
                     "candidate_count_added": catalog["candidate_count_added"],
@@ -1401,6 +1430,14 @@ def main(argv: Sequence[str] | None = None) -> int:
                 indent=2,
             )
         )
+        return 0
+
+    if args.command == "validate-album-catalog":
+        from networked_players_graph_core.analysis import validate_album_catalog
+
+        catalog = json.loads(args.input.read_text())
+        validate_album_catalog(catalog)
+        print(json.dumps({"ok": True}, indent=2))
         return 0
 
     if args.command == "fetch-dataset":

@@ -267,16 +267,24 @@ export async function initFlagship(
     }
   }
 
-  const answerIds = new Set(round.answer_set.map((a) => a.id));
   let chips: HTMLButtonElement[] = [];
+
+  /** Contributor refs that answer a given step -- one-hop's `answer_set`,
+   * or the relevant side of a two-hop's `bridge_answer_sets`. Two-hop's
+   * `answer_set` is always empty (the connection has no single "the
+   * answer"; each bridge does), so callers must go through this rather
+   * than reading `round.answer_set` directly for a two-hop round. */
+  function answersForStep(step: Step): ContributorRef[] {
+    if (step === "single" || !round.bridge_answer_sets) {
+      return round.answer_set;
+    }
+    const [a, b] = round.bridge_answer_sets;
+    return step === "bridge_a" ? a : b;
+  }
 
   /** Contributor refs for the tray of a given step. */
   function stepRefs(step: Step): ContributorRef[] {
-    if (step === "single" || !round.bridge_answer_sets) {
-      return [...round.answer_set, ...round.distractors];
-    }
-    const [a, b] = round.bridge_answer_sets;
-    return [...(step === "bridge_a" ? a : b), ...round.distractors];
+    return [...answersForStep(step), ...round.distractors];
   }
 
   function questionFor(step: Step): string {
@@ -402,6 +410,26 @@ export async function initFlagship(
     return parts.join(" · ");
   }
 
+  function namesFor(refs: ContributorRef[]): string {
+    return refs.map((r) => r.name).join(" and ");
+  }
+
+  /** The full, honest reveal text: one-hop names every valid answer;
+   * two-hop names both bridges (each may itself have more than one valid
+   * performer) plus the hidden middle record. Never reads from a single
+   * `answer_set` for a two-hop round -- it's always empty there by design
+   * (see `answersForStep`). */
+  function describeAnswer(): string {
+    if (!twoHop || !round.middle || !round.bridge_answer_sets) {
+      return namesFor(round.answer_set);
+    }
+    const [bridgeA, bridgeB] = round.bridge_answer_sets;
+    return (
+      `${namesFor(bridgeA)} on one side and ${namesFor(bridgeB)} on the other, ` +
+      `through the hidden record ${round.middle.album.title}`
+    );
+  }
+
   function announce(message: string, assertive = false): void {
     (assertive ? liveAssertive : livePolite).textContent = message;
   }
@@ -461,13 +489,23 @@ export async function initFlagship(
   }
 
   function finishRound(state: EngineState): void {
+    // trayStep reflects whichever step's tray last rendered -- the step the
+    // player was on when the round resolved (solved, struck out, or gave
+    // up). Its correct-answer set must come from THAT step, never a single
+    // round-wide `answer_set` -- two-hop rounds don't have one (each bridge
+    // does), so using it here was always empty for a two-hop round and no
+    // chip was ever marked correct on a give-up/fail before the middle step.
+    const stepAnswerIds =
+      trayStep === "middle"
+        ? null
+        : new Set(answersForStep(trayStep ?? "single").map((a) => a.id));
     for (const chip of chips) {
       chip.disabled = true;
       const value = chip.dataset.chip ?? "";
       const correct =
         trayStep === "middle"
           ? value === round.middle?.album.id
-          : answerIds.has(Number(value));
+          : (stepAnswerIds?.has(Number(value)) ?? false);
       if (correct) {
         chip.dataset.chipState = "correct";
         chip.setAttribute("aria-checked", "true");
@@ -477,11 +515,7 @@ export async function initFlagship(
       renderSleeve(middleArt, round.middle.album);
       middleCaption.textContent = captionFor(round.middle.album);
     }
-    const names = round.answer_set.map((a) => a.name).join(" and ");
-    const path =
-      twoHop && round.middle
-        ? `${names}, through ${round.middle.album.title}`
-        : names;
+    const path = describeAnswer();
     verdictHeading.textContent = state.solved
       ? `Solved: ${path}`
       : `The answer was ${path}`;

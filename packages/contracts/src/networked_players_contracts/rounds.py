@@ -1,10 +1,24 @@
-"""Canonical, dependency-free game-rounds artifact validation.
+"""Canonical, dependency-free Record Routes rounds-artifact validation.
+
+Validates ONLY the Record Routes **path** contract (`from_album_id`/
+`to_album_id`/`hops`/`from_artist_id`/`to_artist_id` -- album A -> artist X ->
+album B via a shared third release), produced by
+`packages/graph-core/.../rounds.py`/`rounds_generator.py`. It does NOT
+validate the flagship Connection Guesser's `GameUniverse`/`GameRounds` pair
+(`endpoints`/`answer_set`/`bridge_answer_sets`/`middle` -- a performer
+credited on both displayed albums directly, or bridging a hidden middle
+album); that pair has its own dependency-free validator at
+`networked_players_contracts.connection_rounds`. Both pairs have historically
+been published at the same file names (`universe.v1.json`/`rounds.v1.json`,
+in different directories) -- do not assume "rounds.v1" alone identifies which
+contract an artifact satisfies (see ADR 0043).
 
 Mirrors `cohort.py`'s structure: pure-Python, no lxml/pyarrow/duckdb, safe to
 run on the Pi fleet and in the web build for independent verification of an
-already-generated `universe.v1.json` / `rounds.v1.json` pair. Generation-time
-validation lives in `packages/graph-core/.../rounds.py::validate_rounds_artifact`
--- if the two disagree, treat it as a bug in whichever is stricter by mistake.
+already-generated Record Routes `universe.v1.json` / `rounds.v1.json` pair.
+Generation-time validation lives in
+`packages/graph-core/.../rounds.py::validate_rounds_artifact` -- if the two
+disagree, treat it as a bug in whichever is stricter by mistake.
 """
 
 from __future__ import annotations

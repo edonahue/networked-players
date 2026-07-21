@@ -38,6 +38,13 @@ export interface GameProvenance {
   license: string;
   note: string;
   generated_by: string;
+  snapshot_date?: string;
+  /** Names the canonical apps/web/public/data/catalog/albums.v1.json this
+   * pool's album set was resolved from (real pool only; absent for the
+   * synthetic fixture). See ADR 0043. */
+  catalog_version?: string;
+  /** Content hash of this specific round set (real pool only). */
+  pool_version?: string;
 }
 
 export type SleeveArt =

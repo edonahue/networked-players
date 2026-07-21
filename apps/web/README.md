@@ -104,14 +104,19 @@ key (dark default, light/dark toggle).
 
 ## Next steps (not built yet)
 
-- Real cover art for `challenge.v2.json`'s 140 albums (hotlink enrichment against the
-  Discogs API, coordination-host-only, rate-limited).
-- Bring the Connection Guesser game (`public/data/game/*`) onto the same real catalog
-  now powering the album grid — it still runs on the synthetic Meridian Tapes universe
-  plus a handful of real rounds derived from `challenge.v1.json`.
+- Real cover art for `challenge.v2.json`'s 140 albums and the Connection Guesser pool
+  (hotlink enrichment against the Discogs API, coordination-host-only, rate-limited).
+- A frozen daily manifest for Connection of the Day, referencing the Guesser's stable
+  real round ids (see ADR 0041, ADR 0043's daily-manifest migration note).
+- Record Routes (`/play/routes/`), a peer mode from the same canonical album catalog.
 - Replace the `/demo/` API-sourced dataset with one derived from CC0 Discogs monthly
   dumps (with provenance, no collection membership) once that pipeline (Milestone 8) is
   built.
+
+The Connection Guesser (`public/data/game/*`) is real, not synthetic: it runs on
+`apps/web/public/data/catalog/albums.v1.json`, the same canonical catalog powering the
+album grid (ADR 0042, ADR 0043). The synthetic "Meridian Tapes" universe survives only
+as an isolated test fixture under `apps/web/tests/fixtures/`, never played.
 - Producer/engineer-bridge and six-degrees play modes (see `docs/PRODUCT.md`). Any
   live-search/API mode is additive and must fail gracefully — the static-first core
   always works on its own.
