@@ -320,7 +320,13 @@ def _parser() -> argparse.ArgumentParser:
 
     build_daily = subparsers.add_parser(
         "build-daily-manifest",
-        help="build a frozen date->round_id schedule for Connection of the Day",
+        help=(
+            "Record Routes ONLY -- schedules rounds.py's path-shaped rounds (top-level "
+            "pool_version). NOT for the flagship Connection Guesser's Connection of the "
+            "Day: use build-connection-daily-manifest for that (different contract, "
+            "provenance.pool_version not a top-level field, one-hop/real-records "
+            "filtering built in). See ADR 0043's corrective-slice-4.6 addendum."
+        ),
     )
     build_daily.add_argument("--rounds", type=Path, required=True)
     build_daily.add_argument("--start-date", required=True, help="YYYY-MM-DD")
@@ -329,7 +335,10 @@ def _parser() -> argparse.ArgumentParser:
 
     extend_daily = subparsers.add_parser(
         "extend-daily-manifest",
-        help="append new dates to an existing daily manifest without touching history",
+        help=(
+            "Record Routes ONLY (see build-daily-manifest); append new dates to an "
+            "existing daily manifest without touching history"
+        ),
     )
     extend_daily.add_argument("--manifest", type=Path, required=True)
     extend_daily.add_argument("--rounds", type=Path, required=True)
@@ -337,10 +346,60 @@ def _parser() -> argparse.ArgumentParser:
     extend_daily.add_argument("--output", type=Path, required=True)
 
     validate_daily = subparsers.add_parser(
-        "validate-daily-manifest", help="validate a daily-manifest.v1 artifact against its contract"
+        "validate-daily-manifest",
+        help=(
+            "Record Routes ONLY (see build-daily-manifest); validate a daily-manifest.v1 "
+            "artifact against its contract"
+        ),
     )
     validate_daily.add_argument("--manifest", type=Path, required=True)
     validate_daily.add_argument("--rounds", type=Path, required=True)
+
+    build_connection_daily = subparsers.add_parser(
+        "build-connection-daily-manifest",
+        help=(
+            "the flagship Connection Guesser's Connection of the Day: build a frozen, "
+            "append-only date->round schedule from real one-hop rounds only (filters "
+            "out two-hop, Record Routes, and synthetic rounds explicitly; ADR 0043)"
+        ),
+    )
+    build_connection_daily.add_argument(
+        "--rounds", type=Path, required=True, help="apps/web/public/data/game/rounds.v1.json"
+    )
+    build_connection_daily.add_argument("--start-date", required=True, help="YYYY-MM-DD")
+    build_connection_daily.add_argument("--days", type=int, default=90)
+    build_connection_daily.add_argument("--output", type=Path, required=True)
+
+    extend_connection_daily = subparsers.add_parser(
+        "extend-connection-daily-manifest",
+        help=(
+            "append new dates to an existing Connection Guesser daily manifest; "
+            "re-verifies every existing entry's content fingerprint before appending "
+            "anything, and never touches an already-published date"
+        ),
+    )
+    extend_connection_daily.add_argument("--manifest", type=Path, required=True)
+    extend_connection_daily.add_argument("--rounds", type=Path, required=True)
+    extend_connection_daily.add_argument("--days", type=int, default=90)
+    extend_connection_daily.add_argument("--output", type=Path, required=True)
+
+    validate_connection_daily = subparsers.add_parser(
+        "validate-connection-daily-manifest",
+        help="validate a Connection Guesser daily-manifest artifact against its contract",
+    )
+    validate_connection_daily.add_argument("--manifest", type=Path, required=True)
+    validate_connection_daily.add_argument("--rounds", type=Path, required=True)
+
+    connection_daily_diagnostics = subparsers.add_parser(
+        "connection-daily-manifest-diagnostics",
+        help=(
+            "report honest, non-optimizing schedule diagnostics for a Connection "
+            "Guesser daily manifest (endpoint/performer reuse, difficulty/decade "
+            "distribution, repeat streaks)"
+        ),
+    )
+    connection_daily_diagnostics.add_argument("--manifest", type=Path, required=True)
+    connection_daily_diagnostics.add_argument("--rounds", type=Path, required=True)
 
     rank_albums = subparsers.add_parser(
         "rank-album-candidates",
@@ -1421,6 +1480,84 @@ def main(argv: Sequence[str] | None = None) -> int:
         valid_round_ids = {r["id"] for r in rounds["rounds"]}
         validate_daily_manifest(daily_manifest, valid_round_ids=valid_round_ids)
         print(json.dumps({"ok": True}, indent=2))
+        return 0
+
+    if args.command == "build-connection-daily-manifest":
+        from networked_players_graph_core.connection_daily_manifest import (
+            build_connection_daily_manifest,
+            schedule_diagnostics,
+            validate_connection_daily_manifest,
+        )
+
+        conn_rounds = json.loads(args.rounds.read_text())
+        conn_daily_manifest = build_connection_daily_manifest(
+            conn_rounds, start_date=args.start_date, days=args.days
+        )
+        validate_connection_daily_manifest(conn_daily_manifest, conn_rounds)
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(json.dumps(conn_daily_manifest, indent=2) + "\n")
+        print(
+            json.dumps(
+                {
+                    "output": str(args.output),
+                    "days_requested": args.days,
+                    "days_scheduled": len(conn_daily_manifest["schedule"]),
+                    "first_date": conn_daily_manifest["schedule"][0]["date"],
+                    "last_date": conn_daily_manifest["schedule"][-1]["date"],
+                    "diagnostics": schedule_diagnostics(conn_daily_manifest, conn_rounds),
+                },
+                indent=2,
+            )
+        )
+        return 0
+
+    if args.command == "extend-connection-daily-manifest":
+        from networked_players_graph_core.connection_daily_manifest import (
+            extend_connection_daily_manifest,
+            schedule_diagnostics,
+            validate_connection_daily_manifest,
+        )
+
+        conn_daily_manifest = json.loads(args.manifest.read_text())
+        conn_rounds = json.loads(args.rounds.read_text())
+        days_before = len(conn_daily_manifest["schedule"])
+        conn_daily_extended = extend_connection_daily_manifest(
+            conn_daily_manifest, conn_rounds, days=args.days
+        )
+        validate_connection_daily_manifest(conn_daily_extended, conn_rounds)
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(json.dumps(conn_daily_extended, indent=2) + "\n")
+        print(
+            json.dumps(
+                {
+                    "output": str(args.output),
+                    "days_before": days_before,
+                    "days_after": len(conn_daily_extended["schedule"]),
+                    "last_date": conn_daily_extended["schedule"][-1]["date"],
+                    "diagnostics": schedule_diagnostics(conn_daily_extended, conn_rounds),
+                },
+                indent=2,
+            )
+        )
+        return 0
+
+    if args.command == "validate-connection-daily-manifest":
+        from networked_players_graph_core.connection_daily_manifest import (
+            validate_connection_daily_manifest,
+        )
+
+        conn_daily_manifest = json.loads(args.manifest.read_text())
+        conn_rounds = json.loads(args.rounds.read_text())
+        validate_connection_daily_manifest(conn_daily_manifest, conn_rounds)
+        print(json.dumps({"ok": True}, indent=2))
+        return 0
+
+    if args.command == "connection-daily-manifest-diagnostics":
+        from networked_players_graph_core.connection_daily_manifest import schedule_diagnostics
+
+        conn_daily_manifest = json.loads(args.manifest.read_text())
+        conn_rounds = json.loads(args.rounds.read_text())
+        print(json.dumps(schedule_diagnostics(conn_daily_manifest, conn_rounds), indent=2))
         return 0
 
     if args.command == "rank-album-candidates":
