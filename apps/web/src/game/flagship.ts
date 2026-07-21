@@ -291,9 +291,12 @@ export async function initFlagship(
     const [a, b] = round.endpoints;
     switch (step) {
       case "single":
-        return "One person is credited on both of these records. Who?";
+        return "One eligible performer is credited on both of these records. Who?";
       case "bridge_a":
-        return `No one is credited on both of these records — a hidden middle record links them. Who is credited on both ${a.title} and the hidden record?`;
+        // Precise, not "no one": a producer/engineer could still be credited
+        // on both without satisfying the game's performer-only eligibility
+        // rule (instrument/vocal credits only) -- see eligibility.py.
+        return `No eligible performer appears on both of these records — a hidden middle record links them. Who is credited on both ${a.title} and the hidden record?`;
       case "bridge_b":
         return `Now the other side: who is credited on both ${b.title} and the hidden record?`;
       case "middle":

@@ -47,6 +47,12 @@ test("a two-hop round shows the face-down middle slot and never leaks the middle
     "bridge_a",
   );
   await expect(page.getByTestId("step-label")).toContainText("Step 1 of 3");
+  // The premise is performer-specific, not a bare "no one is credited"
+  // claim -- a non-performer credit could still be shared without
+  // satisfying eligibility (corrective slice 4.6).
+  await expect(page.getByTestId("question")).toContainText(
+    "No eligible performer appears on both",
+  );
   const middleSlot = page.getByTestId("middle-slot");
   await expect(middleSlot).toBeVisible();
   await expect(page.getByTestId("caption-middle")).toHaveText("Hidden record");

@@ -32,6 +32,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { expect, test } from "@playwright/test";
 import type { ChallengeV2 } from "../src/data/challenge";
+import { contentHash, roundContentFingerprint } from "../src/game/canonical";
 import type { GameRounds, GameUniverse } from "../src/game/types";
 
 const webRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -323,10 +324,20 @@ test("real pool: round ids are stable, content-derived, and unique", () => {
   }
 });
 
-test("real pool: provenance records catalog_version/pool_version and matches across artifacts", () => {
+test("real pool: provenance records catalog_version/pool_version/artifact_version and matches across artifacts", () => {
   expect(universe.provenance.catalog_version).toBeTruthy();
   expect(universe.provenance.pool_version).toBeTruthy();
+  expect(universe.provenance.artifact_version).toBeTruthy();
   expect(universe.provenance).toEqual(roundsArtifact.provenance);
+});
+
+test("real pool: artifact_version recomputes from the published rounds' content fingerprints", async () => {
+  const fingerprints = await Promise.all(
+    roundsArtifact.rounds.map((r) => roundContentFingerprint(r)),
+  );
+  const digest = await contentHash(fingerprints.sort(), 12);
+  const expected = `connection-artifact-v1-${universe.provenance.snapshot_date}-${digest}`;
+  expect(universe.provenance.artifact_version).toBe(expected);
 });
 
 test("real pool: multi-answer rounds' clues never imply a single exclusive answer", () => {

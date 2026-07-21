@@ -1,9 +1,9 @@
-# ADR 0043: Corrective slice for the real Connection Guesser pool (slice 4.5)
+# ADR 0043: Corrective slice for the real Connection Guesser pool (slices 4.5, 4.6)
 
 - **Status:** Accepted
-- **Date:** 2026-07-21
+- **Date:** 2026-07-21 (slice 4.5); addendum 2026-07-22 (slice 4.6)
 - **Extends:** [ADR 0042](0042-real-connection-guesser-pool.md) without reverting it
-- **Relates to:** [ADR 0038](0038-hybrid-album-catalog-assembly.md)
+- **Relates to:** [ADR 0038](0038-hybrid-album-catalog-assembly.md), [ADR 0041](0041-frozen-append-only-daily-manifest.md)
 
 ## Context
 
@@ -195,13 +195,89 @@ cross-check field alongside `catalog_version`, so a manifest built against
 one pool generation can detect if it's being validated against a
 different one.
 
+## Addendum: corrective slice 4.6 (2026-07-22)
+
+Before implementing the frozen daily manifest (slice 5), a smaller follow-up
+review found five reproducibility/correctness gaps in slice 4.5's own output
+— fixed here, ahead of freezing anything against them.
+
+1. **`pool_version` only ever hashed round ids (membership), never full
+   content.** A clue rewording, a distractor swap, or a middle-choice
+   reshuffle on an already-selected round left `pool_version` unchanged —
+   exactly the kind of silent drift a frozen daily manifest cannot tolerate.
+   Fixed: a new `artifact_version` (`connection_rounds.py::artifact_version`)
+   hashes the round array's COMPLETE published content, built from each
+   round's own `round_content_fingerprint`. Both are canonical-JSON content
+   hashes (sorted keys, no whitespace-sensitivity) via a genuinely shared
+   primitive, `networked_players_contracts.canonical`, ported byte-for-byte
+   to TypeScript in `apps/web/src/game/canonical.ts` (cross-language
+   agreement proven by `apps/web/tests/game-canonical.spec.ts`). Stable round
+   ids (`_stable_id`) are unchanged — they were already semantic-fields-only,
+   correctly excluding presentation. Both validators now recompute and
+   reject a stale `artifact_version`, and recompute a round's own id from its
+   published semantic fields (catching an id that doesn't match its own
+   content, not just a malformed one).
+2. **The production catalog CLI could silently omit every policy input.**
+   `build-album-catalog`'s `--masters-root`/`--release-format-policy`/
+   `--studio-album-exclusions` were all optional, so nothing stopped an
+   under-gated catalog from being built and published by mistake. Fixed: a
+   new `build-public-album-catalog` command makes all three required and
+   cross-checks their `snapshot_date` against the one-hop dataset's, failing
+   immediately on a missing, malformed, empty, or mismatched-snapshot input.
+   `build-album-catalog` is now explicitly documented as exploratory-only,
+   not the way to produce the committed catalog. Regenerating the real
+   catalog through the new command reproduced the exact same
+   `catalog_version` as the currently-published one — proof of no
+   unintended drift, not a reason to republish it.
+3. **The two-hop premise overclaimed.** "No one is credited on both of these
+   records" is false whenever a non-performer (producer, engineer) happens
+   to share both records — the actual, narrower invariant is "no *eligible
+   performer*." Fixed in `flagship.ts`'s `questionFor` (and the one-hop
+   question's "One person" → "One eligible performer," the same imprecision
+   in miniature); pinned in both `game-flagship.spec.ts` and
+   `game-twohop.spec.ts`.
+4. **The two validators' docstrings overclaimed generation-time's power.**
+   Both `validate_connection_rounds_artifact` and its dependency-free mirror
+   in fact operate on the same inputs — the already-built `universe`/`rounds`
+   pair, no live graph connection — so both can (and, after this slice, do)
+   recompute exact intersections, distractor invalidity, "no direct eligible
+   performer between two-hop endpoints" (new: universe-derived, no graph
+   needed), stable ids, and `artifact_version`, all from the universe's
+   complete credits (Finding 7). Neither re-verifies two-hop middle-album
+   uniqueness across the *entire* catalog post-hoc — that guarantee is
+   enforced by construction during discovery, not independently checkable
+   from the smaller published universe. Both docstrings now say exactly
+   this, replacing language that implied generation-time re-queried the
+   source graph at validation time (it does not).
+5. **The prose catalog audit wasn't a provable record.** Nothing confirmed
+   `docs/STUDIO_ALBUM_CATALOG_AUDIT.md` actually covered all 140 albums, or
+   would catch a future catalog drifting from what it described. Fixed: a
+   new committed `docs/data/studio-album-catalog-audit-v1.json`
+   (`networked_players_graph_core.catalog_audit`, `build-album-catalog-audit`
+   / `validate-album-catalog-audit`) — one row per catalog album, tied to a
+   `catalog_version`, cross-validated for exact 1:1 correspondence with the
+   catalog. The prose document now points to it as the machine-checkable
+   companion rather than claiming to be one itself.
+
+Validation: `make check` (554 tests, +34 new), `npm run check` (0 errors),
+full Playwright suite (89/89, +7 new). The real Guesser pool was regenerated
+once (to add `artifact_version`) and diffed byte-for-byte against the prior
+publish before republishing — every round's content and `pool_version` were
+identical; only the new provenance field changed.
+
 ## Revisit trigger
 
 If a future catalog expansion or policy change admits new candidates, re-run
-the audit in `docs/STUDIO_ALBUM_CATALOG_AUDIT.md` — the deny-list categories
-it covers are specifically the ones with no structured Discogs signal, so a
-new candidate can silently reintroduce the same class of leak without a human
-pass. If Record Routes (slice 6) ever needs to publish its artifact at the
-same file names this ADR's Connection Guesser pool uses, stop and resolve the
-collision explicitly rather than letting the two contracts overwrite each
-other on disk.
+the audit in `docs/STUDIO_ALBUM_CATALOG_AUDIT.md` and regenerate
+`docs/data/studio-album-catalog-audit-v1.json` — the deny-list categories the
+prose audit covers are specifically the ones with no structured Discogs
+signal, so a new candidate can silently reintroduce the same class of leak
+without a human pass, and a stale JSON audit will fail
+`validate-album-catalog-audit` against the new `catalog_version`. If Record
+Routes (slice 6) ever needs to publish its artifact at the same file names
+this ADR's Connection Guesser pool uses, stop and resolve the collision
+explicitly rather than letting the two contracts overwrite each other on
+disk. If a future catalog regeneration changes a round's underlying credit
+data (e.g. an album gets excluded), that round's stable id will change or it
+will vanish from the pool — slice 5's frozen daily manifest needs an explicit
+invalidation path for that case, not just id/fingerprint stability.

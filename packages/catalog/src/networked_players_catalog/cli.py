@@ -374,8 +374,11 @@ def _parser() -> argparse.ArgumentParser:
     build_album_catalog = subparsers.add_parser(
         "build-album-catalog",
         help=(
-            "combine the editorial album list with rank-album-candidates output into a "
-            "generated, non-committed --albums input for build-challenge-from-dump (ADR 0038)"
+            "EXPLORATORY/internal only -- policy inputs are optional here, so this can "
+            "silently omit masters/format-policy/exclusions. NOT the correct way to "
+            "produce the committed public catalog (apps/web/public/data/catalog/"
+            "albums.v1.json): use build-public-album-catalog for that, which requires "
+            "every policy input and fails closed if one is missing (ADR 0038, ADR 0043)"
         ),
     )
     build_album_catalog.add_argument("--onehop-root", type=Path, required=True)
@@ -414,6 +417,74 @@ def _parser() -> argparse.ArgumentParser:
         help="validate the canonical apps/web/public/data/catalog/albums.v1.json artifact",
     )
     validate_album_catalog.add_argument("--input", type=Path, required=True)
+
+    build_public_album_catalog = subparsers.add_parser(
+        "build-public-album-catalog",
+        help=(
+            "the ONLY correct way to produce the committed public catalog "
+            "(apps/web/public/data/catalog/albums.v1.json). Every policy input "
+            "(masters, release-format policy, studio-album exclusions) is REQUIRED and "
+            "cross-checked for a matching snapshot_date; fails immediately rather than "
+            "silently building an under-gated catalog (ADR 0038, ADR 0043)"
+        ),
+    )
+    build_public_album_catalog.add_argument("--onehop-root", type=Path, required=True)
+    build_public_album_catalog.add_argument(
+        "--editorial-albums", type=Path, default=Path("data/albums/top-albums-v1.json")
+    )
+    build_public_album_catalog.add_argument(
+        "--candidates", type=Path, required=True, help="rank-album-candidates output"
+    )
+    build_public_album_catalog.add_argument("--target-count", type=int, required=True)
+    build_public_album_catalog.add_argument("--output", type=Path, required=True)
+    build_public_album_catalog.add_argument("--memory-limit", default="1GB")
+    build_public_album_catalog.add_argument("--threads", type=int, default=2)
+    build_public_album_catalog.add_argument(
+        "--release-format-policy",
+        type=Path,
+        required=True,
+        help="release-format-scoring-index.json; REQUIRED, gates every editorial and "
+        "candidate entry -- no fallback that admits an ungated album",
+    )
+    build_public_album_catalog.add_argument(
+        "--masters-root",
+        type=Path,
+        required=True,
+        help="parsed masters snapshot root; REQUIRED for original album years and the "
+        "genre/style non-studio (soundtrack/stage) exclusion",
+    )
+    build_public_album_catalog.add_argument(
+        "--studio-album-exclusions",
+        type=Path,
+        required=True,
+        help="studio-album-master-exclusions-v1.json; REQUIRED curated master-ID deny-list "
+        "(the human-curation backstop for non-studio masters with no structured signal)",
+    )
+
+    build_catalog_audit = subparsers.add_parser(
+        "build-album-catalog-audit",
+        help=(
+            "build a committed, machine-readable, one-row-per-album audit of the canonical "
+            "public catalog (docs/data/studio-album-catalog-audit-v1.json, ADR 0043)"
+        ),
+    )
+    build_catalog_audit.add_argument(
+        "--catalog", type=Path, required=True, help="apps/web/public/data/catalog/albums.v1.json"
+    )
+    build_catalog_audit.add_argument("--onehop-root", type=Path, required=True)
+    build_catalog_audit.add_argument("--masters-root", type=Path, required=True)
+    build_catalog_audit.add_argument("--release-format-policy", type=Path, required=True)
+    build_catalog_audit.add_argument("--studio-album-exclusions", type=Path, required=True)
+    build_catalog_audit.add_argument("--output", type=Path, required=True)
+    build_catalog_audit.add_argument("--memory-limit", default="1GB")
+    build_catalog_audit.add_argument("--threads", type=int, default=2)
+
+    validate_catalog_audit = subparsers.add_parser(
+        "validate-album-catalog-audit",
+        help="prove exact 1:1 correspondence between a catalog and its audit artifact",
+    )
+    validate_catalog_audit.add_argument("--catalog", type=Path, required=True)
+    validate_catalog_audit.add_argument("--audit", type=Path, required=True)
 
     fetch_dataset_parser = subparsers.add_parser(
         "fetch-dataset",
@@ -1437,6 +1508,166 @@ def main(argv: Sequence[str] | None = None) -> int:
 
         catalog = json.loads(args.input.read_text())
         validate_album_catalog(catalog)
+        print(json.dumps({"ok": True}, indent=2))
+        return 0
+
+    if args.command == "build-public-album-catalog":
+        from networked_players_graph_core.analysis import (
+            assemble_album_catalog,
+            validate_album_catalog,
+        )
+        from networked_players_graph_core.graph import CreditGraph
+
+        from .discogs.release_format_policy import load_master_exclusions
+
+        onehop_manifest = json.loads((args.onehop_root / "manifest.json").read_text())
+        snapshot_date = str(
+            onehop_manifest.get("snapshot_date")
+            or onehop_manifest["expansion"]["source_snapshot_date"]
+        )
+
+        if not args.release_format_policy.is_file():
+            raise ValueError(
+                f"--release-format-policy is required and must exist: {args.release_format_policy} "
+                "not found. The public catalog command never falls back to an ungated build."
+            )
+        policy_payload = json.loads(args.release_format_policy.read_text())
+        allowed_release_ids = policy_payload.get("allowed_release_ids")
+        if not allowed_release_ids:
+            raise ValueError(
+                f"--release-format-policy {args.release_format_policy} has no "
+                "allowed_release_ids -- malformed or empty policy, refusing to build an "
+                "effectively-ungated catalog"
+            )
+        policy_snapshot = str(policy_payload.get("snapshot_date") or "")
+        if policy_snapshot and policy_snapshot != snapshot_date:
+            raise ValueError(
+                f"--release-format-policy snapshot_date {policy_snapshot!r} does not match "
+                f"--onehop-root snapshot_date {snapshot_date!r} -- mismatched-snapshot inputs "
+                "refused"
+            )
+
+        if not args.masters_root.is_dir():
+            raise ValueError(
+                f"--masters-root is required and must exist: {args.masters_root} not found. "
+                "The public catalog command never builds without parsed masters (original "
+                "years, genre/style non-studio exclusion)."
+            )
+        masters_manifest_path = args.masters_root / "manifest.json"
+        if masters_manifest_path.is_file():
+            masters_manifest = json.loads(masters_manifest_path.read_text())
+            masters_snapshot = str(masters_manifest.get("snapshot_date") or "")
+            if masters_snapshot and masters_snapshot != snapshot_date:
+                raise ValueError(
+                    f"--masters-root snapshot_date {masters_snapshot!r} does not match "
+                    f"--onehop-root snapshot_date {snapshot_date!r} -- mismatched-snapshot "
+                    "inputs refused"
+                )
+
+        if not args.studio_album_exclusions.is_file():
+            raise ValueError(
+                f"--studio-album-exclusions is required and must exist: "
+                f"{args.studio_album_exclusions} not found. The public catalog command never "
+                "builds without the curated non-studio-master deny-list."
+            )
+        exclusions_payload = json.loads(args.studio_album_exclusions.read_text())
+        exclusions_snapshot = str(exclusions_payload.get("snapshot_date") or "")
+        if exclusions_snapshot and exclusions_snapshot != snapshot_date:
+            raise ValueError(
+                f"--studio-album-exclusions snapshot_date {exclusions_snapshot!r} does not "
+                f"match --onehop-root snapshot_date {snapshot_date!r} -- mismatched-snapshot "
+                "inputs refused"
+            )
+        master_exclusions = load_master_exclusions(args.studio_album_exclusions)
+
+        editorial_albums = json.loads(args.editorial_albums.read_text())["albums"]
+        candidates = json.loads(args.candidates.read_text())
+
+        with CreditGraph.open(
+            args.onehop_root,
+            memory_limit=args.memory_limit,
+            threads=args.threads,
+            build_edges=False,
+        ) as graph:
+            graph.attach_masters(args.masters_root)
+            catalog = assemble_album_catalog(
+                graph,
+                editorial_albums,
+                candidates,
+                target_count=args.target_count,
+                allowed_release_ids=frozenset(allowed_release_ids),
+                master_exclusions=master_exclusions,
+                snapshot_date=snapshot_date,
+                generated_by=(
+                    f"networked-players-catalog build-public-album-catalog {__version__}"
+                ),
+            )
+
+        validate_album_catalog(catalog)
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(json.dumps(catalog, indent=2) + "\n")
+        print(
+            json.dumps(
+                {
+                    "output": str(args.output),
+                    "catalog_version": catalog["catalog_version"],
+                    "editorial_count": catalog["editorial_count"],
+                    "editorial_missed": len(catalog["editorial_missed"]),
+                    "candidate_count_added": catalog["candidate_count_added"],
+                    "total_albums": len(catalog["albums"]),
+                },
+                indent=2,
+            )
+        )
+        return 0
+
+    if args.command == "build-album-catalog-audit":
+        from networked_players_graph_core.catalog_audit import build_album_catalog_audit
+        from networked_players_graph_core.graph import CreditGraph
+
+        from .discogs.release_format_policy import load_master_exclusions
+
+        catalog = json.loads(args.catalog.read_text())
+        policy_payload = json.loads(args.release_format_policy.read_text())
+        allowed_release_ids = frozenset(policy_payload["allowed_release_ids"])
+        master_exclusions = load_master_exclusions(args.studio_album_exclusions)
+
+        with CreditGraph.open(
+            args.onehop_root,
+            memory_limit=args.memory_limit,
+            threads=args.threads,
+            build_edges=False,
+        ) as graph:
+            graph.attach_masters(args.masters_root)
+            audit = build_album_catalog_audit(
+                graph,
+                catalog,
+                allowed_release_ids=allowed_release_ids,
+                master_exclusions=master_exclusions,
+            )
+
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(json.dumps(audit, indent=2) + "\n")
+        flags = sum(1 for row in audit["albums"] if row["automated_flags"])
+        print(
+            json.dumps(
+                {
+                    "output": str(args.output),
+                    "catalog_version": audit["catalog_version"],
+                    "album_count": len(audit["albums"]),
+                    "rows_with_automated_flags": flags,
+                },
+                indent=2,
+            )
+        )
+        return 0
+
+    if args.command == "validate-album-catalog-audit":
+        from networked_players_graph_core.catalog_audit import validate_album_catalog_audit
+
+        catalog = json.loads(args.catalog.read_text())
+        audit = json.loads(args.audit.read_text())
+        validate_album_catalog_audit(catalog, audit)
         print(json.dumps({"ok": True}, indent=2))
         return 0
 

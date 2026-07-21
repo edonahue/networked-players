@@ -7,7 +7,8 @@
     "generated_by": "networked-players-catalog build-connection-rounds 0.1.0",
     "catalog_version": "catalog-v1-20260601-0e7ec70fbb7e",
     "pool_version": "connection-v1-20260601-27f5032ebc16",
-    "note": "Real records, not synthetic. A round's answer is a performer with an explicit, displayable instrument or vocal credit on both displayed albums directly (or, for a two-hop round, on the hidden middle album). The private collection seed used to build the working set this catalog is drawn from is never published. catalog_version identifies the canonical apps/web/public/data/catalog/albums.v1.json this pool's album set was resolved from; pool_version is a content hash of this specific round set (regenerating identical rounds from an identical catalog reproduces the same pool_version)."
+    "artifact_version": "connection-artifact-v1-20260601-881f88e363e6",
+    "note": "Real records, not synthetic. A round's answer is a performer with an explicit, displayable instrument or vocal credit on both displayed albums directly (or, for a two-hop round, on the hidden middle album). The private collection seed used to build the working set this catalog is drawn from is never published. catalog_version identifies the canonical apps/web/public/data/catalog/albums.v1.json this pool's album set was resolved from. pool_version is a hash of round IDS ONLY --  which puzzles are selected (membership); it is unchanged by an edit to a clue, distractor, evidence row, or middle choice order on an already-selected round. artifact_version is a hash of the COMPLETE published rounds content -- every player-visible and evidentiary field -- and changes on any such edit even with identical membership. A frozen daily-manifest entry freezes against a specific round's own content fingerprint (see connection_rounds.round_content_fingerprint), not this pool-wide value; see ADR 0043's corrective-slice-4.6 addendum."
   },
   "rounds": [
     {

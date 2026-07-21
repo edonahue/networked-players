@@ -43,8 +43,18 @@ export interface GameProvenance {
    * pool's album set was resolved from (real pool only; absent for the
    * synthetic fixture). See ADR 0043. */
   catalog_version?: string;
-  /** Content hash of this specific round set (real pool only). */
+  /** Hash of round IDS ONLY -- pool MEMBERSHIP (which puzzles are selected).
+   * Unchanged by an edit to a clue, distractor, evidence row, or middle
+   * choice order on an already-selected round; see `artifact_version` for
+   * that. Real pool only. */
   pool_version?: string;
+  /** Hash of the COMPLETE published rounds content -- every player-visible
+   * and evidentiary field. Changes on any such edit even with identical
+   * `pool_version` membership. A frozen daily-manifest entry freezes against
+   * a specific round's own content fingerprint
+   * (`canonical.ts::roundContentFingerprint`), not this pool-wide value.
+   * Real pool only. See ADR 0043's corrective-slice-4.6 addendum. */
+  artifact_version?: string;
 }
 
 export type SleeveArt =

@@ -5,12 +5,17 @@ from typing import Any
 
 import pytest
 
+from networked_players_contracts.connection_rounds import (
+    round_content_fingerprint as contracts_round_content_fingerprint,
+)
 from networked_players_graph_core.connection_rounds import (
     ConnectionRoundsValidationError,
     _seeded_shuffle,
     _stable_id,
+    artifact_version,
     build_connection_universe_and_rounds,
     generate_connection_round_pool,
+    round_content_fingerprint,
     validate_connection_rounds_artifact,
 )
 from networked_players_graph_core.graph import CreditGraph
@@ -601,4 +606,201 @@ def test_validator_rejects_unstable_round_id(dataset_root: Path) -> None:
     )
     rounds["rounds"][0]["id"] = "conn-000001"
     with pytest.raises(ConnectionRoundsValidationError, match="not a stable content-derived id"):
+        validate_connection_rounds_artifact(universe, rounds)
+
+
+# --- Corrective slice 4.6: pool_version (membership) vs artifact_version ----
+# (complete content) separation, and shared stable-id/fingerprint recomputation
+# between the generation-time and dependency-free validators.
+
+
+def test_content_fingerprint_ignores_json_whitespace_and_key_order() -> None:
+    round_a = {"id": "conn-x", "clues": [{"kind": "years", "text": "1990"}], "answer_set": []}
+    # A dict built with different literal key/insertion order is the same
+    # value -- canonical serialization must hash it identically.
+    round_b = {"answer_set": [], "id": "conn-x", "clues": [{"text": "1990", "kind": "years"}]}
+    assert round_content_fingerprint(round_a) == round_content_fingerprint(round_b)
+
+
+def test_content_fingerprint_changes_on_a_distractor_edit() -> None:
+    base = {"id": "conn-x", "distractors": [{"id": 1, "name": "Alice"}]}
+    edited = {"id": "conn-x", "distractors": [{"id": 1, "name": "Alicia"}]}
+    assert round_content_fingerprint(base) != round_content_fingerprint(edited)
+
+
+def test_content_fingerprint_changes_on_a_clue_edit() -> None:
+    base = {"id": "conn-x", "clues": [{"kind": "role", "text": "Guitar work."}]}
+    edited = {"id": "conn-x", "clues": [{"kind": "role", "text": "Bass work."}]}
+    assert round_content_fingerprint(base) != round_content_fingerprint(edited)
+
+
+def test_content_fingerprint_changes_on_an_evidence_edit() -> None:
+    base = {"id": "conn-x", "evidence": [{"role_text": "Guitar"}]}
+    edited = {"id": "conn-x", "evidence": [{"role_text": "Guitar, Vocals"}]}
+    assert round_content_fingerprint(base) != round_content_fingerprint(edited)
+
+
+def test_content_fingerprint_changes_on_middle_choice_order() -> None:
+    base = {"id": "conn-x", "middle": {"choices": [{"id": "a"}, {"id": "b"}]}}
+    reordered = {"id": "conn-x", "middle": {"choices": [{"id": "b"}, {"id": "a"}]}}
+    assert round_content_fingerprint(base) != round_content_fingerprint(reordered)
+
+
+def test_content_fingerprint_shared_with_dependency_free_mirror() -> None:
+    """Not a structural mirror -- both call the SAME
+    networked_players_contracts.canonical.content_hash primitive, so this
+    test would fail if either side stopped importing the shared module."""
+    sample = {"id": "conn-x", "clues": [{"kind": "role", "text": "Bass work."}]}
+    assert round_content_fingerprint(sample) == contracts_round_content_fingerprint(sample)
+
+
+def test_pool_version_is_membership_only_artifact_version_is_complete_content(
+    dataset_root: Path,
+) -> None:
+    with CreditGraph.open(dataset_root, build_edges=False) as graph:
+        rounds_json, _, performer_index = generate_connection_round_pool(
+            graph,
+            ALBUMS,
+            one_hop_target=10,
+            two_hop_target=10,
+            max_endpoint_share=1.0,
+            max_bridge_share=1.0,
+        )
+    universe, _rounds = build_connection_universe_and_rounds(
+        ALBUMS,
+        rounds_json,
+        performer_index,
+        snapshot_date=SNAPSHOT_DATE,
+        generated_by="test",
+        catalog_version="test-catalog-v1",
+    )
+    original_pool_version = universe["provenance"]["pool_version"]
+    original_artifact_version = universe["provenance"]["artifact_version"]
+
+    # Edit a distractor's display name on one round -- membership (which
+    # round ids are in the pool) is unchanged, so pool_version must be
+    # unchanged; the published content changed, so artifact_version must not
+    # match a fresh recomputation from the edited rounds.
+    edited_rounds = [dict(r) for r in rounds_json]
+    edited_rounds[0] = dict(edited_rounds[0])
+    edited_rounds[0]["distractors"] = [
+        {**d, "name": d["name"] + " Jr."} for d in edited_rounds[0]["distractors"]
+    ]
+    edited_universe, edited_artifact = build_connection_universe_and_rounds(
+        ALBUMS,
+        edited_rounds,
+        performer_index,
+        snapshot_date=SNAPSHOT_DATE,
+        generated_by="test",
+        catalog_version="test-catalog-v1",
+    )
+    assert edited_universe["provenance"]["pool_version"] == original_pool_version
+    assert edited_universe["provenance"]["artifact_version"] != original_artifact_version
+    assert edited_artifact["rounds"][0]["id"] == rounds_json[0]["id"]  # identity unchanged
+
+
+def test_validator_recomputes_and_rejects_stale_artifact_version(dataset_root: Path) -> None:
+    with CreditGraph.open(dataset_root, build_edges=False) as graph:
+        rounds_json, _, performer_index = generate_connection_round_pool(
+            graph, ALBUMS, one_hop_target=10, two_hop_target=10
+        )
+    universe, rounds = build_connection_universe_and_rounds(
+        ALBUMS,
+        rounds_json,
+        performer_index,
+        snapshot_date=SNAPSHOT_DATE,
+        generated_by="test",
+        catalog_version="test-catalog-v1",
+    )
+    rounds["rounds"][0]["distractors"][0]["name"] = "Someone Else"
+    with pytest.raises(ConnectionRoundsValidationError, match="artifact_version"):
+        validate_connection_rounds_artifact(universe, rounds)
+
+
+def test_validator_rejects_round_id_not_matching_its_own_semantic_fields(
+    dataset_root: Path,
+) -> None:
+    with CreditGraph.open(dataset_root, build_edges=False) as graph:
+        rounds_json, _, performer_index = generate_connection_round_pool(
+            graph, ALBUMS, one_hop_target=10, two_hop_target=10
+        )
+    universe, rounds = build_connection_universe_and_rounds(
+        ALBUMS,
+        rounds_json,
+        performer_index,
+        snapshot_date=SNAPSHOT_DATE,
+        generated_by="test",
+        catalog_version="test-catalog-v1",
+    )
+    # A syntactically valid id that just doesn't belong to this round's own
+    # endpoints/answers -- this is the recomputation check, distinct from
+    # the format-only regex check.
+    other_round = next(r for r in rounds["rounds"] if r["id"] != rounds["rounds"][0]["id"])
+    rounds["rounds"][0]["id"] = other_round["id"]
+    with pytest.raises(
+        ConnectionRoundsValidationError, match="does not match its own recomputed content"
+    ):
+        validate_connection_rounds_artifact(universe, rounds)
+
+
+def test_artifact_version_helper_agrees_with_generation(dataset_root: Path) -> None:
+    with CreditGraph.open(dataset_root, build_edges=False) as graph:
+        rounds_json, _, performer_index = generate_connection_round_pool(
+            graph, ALBUMS, one_hop_target=10, two_hop_target=10
+        )
+    universe, _rounds = build_connection_universe_and_rounds(
+        ALBUMS,
+        rounds_json,
+        performer_index,
+        snapshot_date=SNAPSHOT_DATE,
+        generated_by="test",
+        catalog_version="test-catalog-v1",
+    )
+    assert universe["provenance"]["artifact_version"] == artifact_version(
+        rounds_json, SNAPSHOT_DATE
+    )
+
+
+def test_validator_rejects_two_hop_round_whose_endpoints_share_a_direct_performer(
+    dataset_root: Path,
+) -> None:
+    """Universe-derived check (no graph needed, Finding 7): if a two-hop
+    round's own endpoints turn out to share a direct eligible performer per
+    the published universe, the round's whole premise is violated -- it
+    should have been generated as one-hop."""
+    with CreditGraph.open(dataset_root, build_edges=False) as graph:
+        rounds_json, _, performer_index = generate_connection_round_pool(
+            graph, ALBUMS, one_hop_target=10, two_hop_target=10
+        )
+    universe, rounds = build_connection_universe_and_rounds(
+        ALBUMS,
+        rounds_json,
+        performer_index,
+        snapshot_date=SNAPSHOT_DATE,
+        generated_by="test",
+        catalog_version="test-catalog-v1",
+    )
+    two_hop = next(r for r in rounds["rounds"] if r["kind"] == "two_hop")
+    a_id, c_id = two_hop["endpoints"][0]["id"], two_hop["endpoints"][1]["id"]
+    # Manufacture a shared performer between the two endpoints directly.
+    universe["credits"].append(
+        {
+            "release_id": a_id,
+            "contributor_id": 999999,
+            "role_text": "Guitar",
+            "role_category": "guitar",
+            "credit_scope": "release_credit",
+        }
+    )
+    universe["credits"].append(
+        {
+            "release_id": c_id,
+            "contributor_id": 999999,
+            "role_text": "Guitar",
+            "role_category": "guitar",
+            "credit_scope": "release_credit",
+        }
+    )
+    universe["contributors"].append({"id": 999999, "name": "Ringer", "role_category": "guitar"})
+    with pytest.raises(ConnectionRoundsValidationError, match="premise violated"):
         validate_connection_rounds_artifact(universe, rounds)

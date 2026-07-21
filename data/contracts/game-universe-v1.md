@@ -15,7 +15,7 @@ Top-level object:
 | Key | Meaning |
 | --- | --- |
 | `schema_version` | Always `1` |
-| `provenance` | Self-identifies as real in `source`, `license`, and `note` (each field read in isolation); `catalog_version` names the canonical `apps/web/public/data/catalog/albums.v1.json` this universe's album set was resolved from; `pool_version` is a content hash of the paired rounds pool |
+| `provenance` | Self-identifies as real in `source`, `license`, and `note` (each field read in isolation); `catalog_version` names the canonical `apps/web/public/data/catalog/albums.v1.json` this universe's album set was resolved from; `pool_version` is a hash of the paired rounds pool's round **ids only** (membership); `artifact_version` is a hash of the paired rounds pool's **complete published content** (every player-visible and evidentiary field) — see the corrective-slice-4.6 note below |
 | `albums[]` | `{id, title, act, act_id, year, label, art}` — every album actually referenced by a round (endpoint, hidden middle, or a two-hop decoy choice), not the full catalog |
 | `contributors[]` | `{id, name, role_category}` — `name` is always the canonical PAN-resolved artist name, never a release-specific ANV (see `EvidenceRow.credited_as` in `game-rounds-v1.md` for that) |
 | `releases[]` | `{id, album_id, title, year, catalog_stamp}` — one per used album |
@@ -56,6 +56,29 @@ This artifact is real, played content: `pool: "real-records"` on every round
 in the paired `rounds.v1.json`. It is never fetched by any page at runtime
 (only `rounds.v1.json` is) — it exists as a published, contract-validated
 reference index.
+
+## `pool_version` vs `artifact_version` (corrective slice 4.6, ADR 0043)
+
+These answer different questions and must not be conflated:
+
+- **`pool_version`** — a hash of sorted round **ids**. Identifies which
+  puzzles are selected (membership). Unchanged by editing a clue, distractor,
+  evidence row, or middle-choice order on an already-selected round.
+- **`artifact_version`** — a hash of the round array's **complete published
+  content** (`networked_players_graph_core.connection_rounds
+  ::artifact_version`, built from each round's own
+  `round_content_fingerprint`). Changes on ANY published field changing,
+  even with identical `pool_version` membership.
+
+Both are content hashes over canonically-serialized JSON (sorted keys, no
+insignificant whitespace) via the shared
+`networked_players_contracts.canonical` module, ported byte-for-byte to
+TypeScript in `apps/web/src/game/canonical.ts` (`apps/web/tests/
+game-canonical.spec.ts` proves the two agree). A frozen daily-manifest entry
+(see `daily-manifest-v1.md`) freezes against one specific round's own
+`round_content_fingerprint`, not either of these pool-wide values — this pair
+exists so the whole published file can also prove "nothing changed since you
+last saw it" as one number.
 
 ## The synthetic test fixture (not this artifact)
 

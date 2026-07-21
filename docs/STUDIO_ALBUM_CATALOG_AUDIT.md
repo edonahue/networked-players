@@ -13,6 +13,22 @@ deny-list entries (*Hot August Night*, *The Last Waltz*) already documented:
 **zero structured Discogs signal** — no `Live`/`Compilation` format descriptor on
 any working-set pressing, no matching master genre/style.
 
+> **Machine-readable companion (corrective slice 4.6).** This document is a
+> narrative writeup; it is not itself a verifiable, provably-complete record.
+> [`docs/data/studio-album-catalog-audit-v1.json`](data/studio-album-catalog-audit-v1.json)
+> (`networked-players-catalog build-album-catalog-audit`) is the committed,
+> one-row-per-album machine-readable artifact this document summarizes: every
+> current catalog album's `master_id`, `selection_source`
+> (editorial/graph_candidate), `release_format_policy_result`,
+> `master_genre_style_result`, `deny_list_status`, `automated_flags`,
+> `manual_disposition`, and `final_eligibility`, tied to a `catalog_version`.
+> `validate-album-catalog-audit` proves exact 1:1 correspondence with the
+> published catalog at `make check` time — every catalog album has exactly
+> one audit row, every audit-approved album exists in the catalog, no
+> audit-rejected album exists in the catalog. This is a **point-in-time**
+> artifact: a future catalog regeneration (new snapshot, new target count, a
+> policy change) requires a new audit, both this document and the JSON.
+
 ## Method
 
 Automated pass over all 140 albums, cross-referencing:

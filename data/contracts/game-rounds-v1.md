@@ -52,10 +52,16 @@ against the universe's own complete credit index — see `game-universe-v1.md`
 - a two-hop round's eliminate clue never targets a valid answer;
 - two-hop middle is unique across the **entire** eligible catalog (not merely
   among selected rounds) and appears in its own `choices`;
-- round ids are stable, content-derived, and unique;
+- round ids are stable, content-derived, and unique -- recomputable from a
+  round's own published semantic fields (endpoints + accepted answers) by
+  both the generation-time validator and the dependency-free mirror,
+  independent of any presentation-only field (corrective slice 4.6);
 - provenance carries `catalog_version` (which canonical
-  `apps/web/public/data/catalog/albums.v1.json` this pool's albums came from)
-  and `pool_version` (a content hash of this specific round set);
+  `apps/web/public/data/catalog/albums.v1.json` this pool's albums came from),
+  `pool_version` (a hash of this round set's **ids only** -- membership), and
+  `artifact_version` (a hash of this round set's **complete published
+  content** -- every player-visible and evidentiary field; see
+  `game-universe-v1.md`'s corrective-slice-4.6 note for the distinction);
 - forbidden-substring and influence-phrase scans over the serialized
   artifact, including a recursive check for a leaked `seed` key at any depth;
 - a shared credit is described as documented participation on a recording —

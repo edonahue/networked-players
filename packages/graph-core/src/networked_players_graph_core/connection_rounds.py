@@ -34,6 +34,8 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 
+from networked_players_contracts.canonical import content_hash, stable_id_digest
+
 from .eligibility import is_performer_role, performer_role_category
 from .graph import CreditGraph
 
@@ -188,12 +190,20 @@ def _initials_clause(count: int, name: str) -> str:
 
 def _stable_id(*parts: str) -> str:
     """Deterministic, content-derived round id: a sha256 digest of the
-    round's own canonical semantic fields, joined with an unambiguous
-    delimiter. Depends only on WHAT the round is, never on where it lands in
-    the selected pool -- reordering or regenerating the pool around it never
-    changes an unchanged round's id (see ADR 0043)."""
-    digest = hashlib.sha256("|".join(parts).encode()).hexdigest()[:10]
-    return f"conn-{digest}"
+    round's own canonical SEMANTIC fields only (sorted endpoint album ids +
+    sorted accepted answer ids for one-hop; endpoint ids + middle id + sorted
+    bridge answer ids per side for two-hop) -- deliberately never a
+    presentation-only field (clue wording, distractor choice, evidence text,
+    middle choice order/art). Two regenerations that ask the same question
+    with the same accepted answers keep the same id even if unrelated
+    presentation details change; see `round_content_fingerprint` for the
+    complement that DOES change on those. Depends only on WHAT the round is,
+    never on where it lands in the selected pool -- reordering or
+    regenerating the pool around it never changes an unchanged round's id
+    (see ADR 0043). Uses the shared `stable_id_digest` primitive so a
+    dependency-free validator can recompute and verify this without the
+    original Discogs credit graph (corrective slice 4.6)."""
+    return f"conn-{stable_id_digest(*parts)}"
 
 
 def _seeded_shuffle(items: list[dict[str, Any]], seed_text: str) -> None:
@@ -201,6 +211,40 @@ def _seeded_shuffle(items: list[dict[str, Any]], seed_text: str) -> None:
     across regenerations, never insertion order or wall-clock randomness."""
     seed_int = int.from_bytes(hashlib.sha256(seed_text.encode()).digest()[:8], "big")
     random.Random(seed_int).shuffle(items)
+
+
+def round_content_fingerprint(round_json: dict[str, Any]) -> str:
+    """A content hash of the ENTIRE published round -- every player-visible
+    and evidentiary field (distractors, clues, evidence, middle choice order,
+    art, provenance_note), not just its semantic identity.
+
+    Deliberately distinct from `round_json["id"]` (`_stable_id`): the id is a
+    narrow, presentation-independent identity for WHICH puzzle this is
+    (endpoints + accepted answers, or endpoints + middle + bridge answers) --
+    two regenerations that ask the same question with the same accepted
+    answers keep the same id even if, say, a clue's wording or a distractor
+    changes. This fingerprint is the opposite: it changes on ANY published
+    field changing, which is exactly what a frozen daily-manifest entry needs
+    to detect ("has what this date points at silently changed under me?").
+    Uses the shared `networked_players_contracts.canonical` hasher so
+    generation and the dependency-free validator can never drift on what
+    "the same content" means (corrective slice 4.6, ADR 0043)."""
+    return f"rfp-{content_hash(round_json, length=16)}"
+
+
+def artifact_version(rounds_json: list[dict[str, Any]], snapshot_date: str) -> str:
+    """A content hash of the COMPLETE published rounds array -- distinct from
+    `pool_version` (a hash of sorted round *ids* only, i.e. pool membership).
+    `pool_version` is unchanged by a clue/distractor/evidence/choice-order
+    edit to an already-selected round; `artifact_version` is not -- it
+    changes on any player-visible or evidentiary field changing anywhere in
+    the published pool, even with identical membership. A daily-manifest
+    entry freezes against a specific round's own `round_content_fingerprint`,
+    not this pool-wide value; this exists so the whole published pair can
+    also prove, as one number, "nothing in this file changed since the last
+    time you saw it" (corrective slice 4.6, ADR 0043)."""
+    fingerprints = sorted(round_content_fingerprint(r) for r in rounds_json)
+    return f"connection-artifact-v1-{snapshot_date}-{content_hash(fingerprints, length=12)}"
 
 
 @dataclass(slots=True)
@@ -679,6 +723,7 @@ def build_connection_universe_and_rounds(
         "generated_by": generated_by,
         "catalog_version": catalog_version,
         "pool_version": pool_version,
+        "artifact_version": artifact_version(rounds_json, snapshot_date),
         "note": (
             "Real records, not synthetic. A round's answer is a performer with "
             "an explicit, displayable instrument or vocal credit on both "
@@ -687,9 +732,16 @@ def build_connection_universe_and_rounds(
             "working set this catalog is drawn from is never published. "
             "catalog_version identifies the canonical "
             "apps/web/public/data/catalog/albums.v1.json this pool's album set "
-            "was resolved from; pool_version is a content hash of this "
-            "specific round set (regenerating identical rounds from an "
-            "identical catalog reproduces the same pool_version)."
+            "was resolved from. pool_version is a hash of round IDS ONLY --  "
+            "which puzzles are selected (membership); it is unchanged by an "
+            "edit to a clue, distractor, evidence row, or middle choice order "
+            "on an already-selected round. artifact_version is a hash of the "
+            "COMPLETE published rounds content -- every player-visible and "
+            "evidentiary field -- and changes on any such edit even with "
+            "identical membership. A frozen daily-manifest entry freezes "
+            "against a specific round's own content fingerprint (see "
+            "connection_rounds.round_content_fingerprint), not this pool-wide "
+            "value; see ADR 0043's corrective-slice-4.6 addendum."
         ),
     }
 
@@ -727,6 +779,7 @@ _PROVENANCE_REQUIRED_FIELDS = (
     "note",
     "catalog_version",
     "pool_version",
+    "artifact_version",
 )
 
 
@@ -749,6 +802,66 @@ def _find_seed_keys(obj: Any, path: str = "") -> list[str]:
     return found
 
 
+def _recompute_str_ids(items: Any) -> list[str] | None:
+    if not isinstance(items, list):
+        return None
+    out: list[str] = []
+    for item in items:
+        if not isinstance(item, dict) or not isinstance(item.get("id"), str):
+            return None
+        out.append(item["id"])
+    return out
+
+
+def _recompute_int_ids(items: Any) -> list[int] | None:
+    if not isinstance(items, list):
+        return None
+    out: list[int] = []
+    for item in items:
+        if not isinstance(item, dict) or not isinstance(item.get("id"), int):
+            return None
+        out.append(item["id"])
+    return out
+
+
+def _recompute_round_id(round_json: dict[str, Any]) -> str | None:
+    """Recompute a round's stable id from its own published semantic fields
+    -- the same recomputation the dependency-free mirror performs (see
+    `networked_players_contracts.connection_rounds`), included here too so
+    generation-time validation proves self-consistency, not merely a well-
+    formed id (corrective slice 4.6). Returns `None` when the round's shape
+    doesn't support recomputation (caller should treat that as its own,
+    separate shape failure)."""
+    endpoint_ids = _recompute_str_ids(round_json.get("endpoints"))
+    if endpoint_ids is None or len(endpoint_ids) != 2:
+        return None
+    if round_json.get("kind") == "one_hop":
+        answer_ids = _recompute_int_ids(round_json.get("answer_set"))
+        if answer_ids is None:
+            return None
+        answer_part = ",".join(str(a) for a in sorted(answer_ids))
+        return _stable_id("1h", *sorted(endpoint_ids), answer_part)
+    if round_json.get("kind") == "two_hop":
+        middle = round_json.get("middle")
+        bridges = round_json.get("bridge_answer_sets")
+        if not isinstance(middle, dict) or not isinstance(bridges, list) or len(bridges) != 2:
+            return None
+        middle_album = middle.get("album")
+        middle_id = middle_album.get("id") if isinstance(middle_album, dict) else None
+        if not isinstance(middle_id, str):
+            return None
+        bridge_a_ids = _recompute_int_ids(bridges[0])
+        bridge_c_ids = _recompute_int_ids(bridges[1])
+        if bridge_a_ids is None or bridge_c_ids is None:
+            return None
+        bridge_a_part = ",".join(str(i) for i in sorted(bridge_a_ids))
+        bridge_c_part = ",".join(str(i) for i in sorted(bridge_c_ids))
+        return _stable_id(
+            "2h", endpoint_ids[0], endpoint_ids[1], middle_id, bridge_a_part, bridge_c_part
+        )
+    return None
+
+
 def validate_connection_rounds_artifact(universe: dict[str, Any], rounds: dict[str, Any]) -> None:
     """Generation-time validation for the Connection Guesser's real
     `GameUniverse`/`GameRounds` pair. An independent dependency-free mirror
@@ -760,6 +873,29 @@ def validate_connection_rounds_artifact(universe: dict[str, Any], rounds: dict[s
     (`universe.v1.json`/`rounds.v1.json`) in different directories, so do not
     assume "rounds.v1" alone identifies which contract applies (Finding 8/11,
     ADR 0043).
+
+    ## What this validator actually proves (corrective slice 4.6)
+
+    This function takes only the already-built `universe`/`rounds` dicts --
+    no `CreditGraph` connection, run after generation completes. Nearly
+    everything it checks (exact intersections, evidence coverage, distractor
+    invalidity, stable-id and `artifact_version` recomputation, metadata
+    agreement, privacy scans) is therefore "the published pair is internally
+    self-consistent," recomputed from the universe's own complete per-album
+    credit index (Finding 7) -- the SAME thing the dependency-free mirror in
+    `networked_players_contracts.connection_rounds` can prove, since neither
+    needs graph access for it. Do not describe a passing run here as having
+    re-verified anything against the live Discogs graph.
+
+    The one real difference: **two-hop middle-album uniqueness across the
+    entire eligible catalog** is enforced by construction inside
+    `generate_connection_round_pool`'s discovery loop (which searches every
+    album in the input catalog, not just the ~100 that end up referenced by
+    a round) -- it is a property of HOW the pool was built, not something
+    this function re-derives from the smaller published universe after the
+    fact. Neither validator re-verifies it post-hoc; if that guarantee is
+    ever in doubt, the fix is re-running discovery, not strengthening either
+    validator.
     """
     failures: list[str] = []
 
@@ -776,6 +912,21 @@ def validate_connection_rounds_artifact(universe: dict[str, Any], rounds: dict[s
 
     album_ids = {a["id"] for a in universe.get("albums", [])}
     contributor_ids = {c["id"] for c in universe.get("contributors", [])}
+    # Universe-derived, no graph needed: the universe's credits[] is a
+    # COMPLETE per-album eligible-performer index (Finding 7, ADR 0043), so
+    # "does album X share a direct eligible performer with album Y" is
+    # answerable from the published pair alone -- used below to confirm a
+    # two-hop round's premise (no direct performer between its own
+    # endpoints). Middle-uniqueness across the FULL catalog is not checkable
+    # this way (the universe only carries albums a round actually
+    # references, not the whole ~140-album catalog) -- that guarantee is
+    # enforced by construction during discovery, not re-verified here; see
+    # the module docstring's validator-hierarchy note.
+    performers_by_album: dict[str, set[int]] = {a: set() for a in album_ids}
+    for credit in universe.get("credits", []):
+        release_id = credit.get("release_id")
+        if release_id in performers_by_album:
+            performers_by_album[release_id].add(credit.get("contributor_id"))
 
     for album in universe.get("albums", []):
         if album.get("id") not in album_ids:
@@ -789,6 +940,14 @@ def validate_connection_rounds_artifact(universe: dict[str, Any], rounds: dict[s
         round_ids.add(round_id)
         if not isinstance(round_id, str) or not _ROUND_ID_PATTERN.match(round_id):
             failures.append(f"round id {round_id!r} is not a stable content-derived id")
+        else:
+            recomputed_id = _recompute_round_id(round_json)
+            if recomputed_id is not None and recomputed_id != round_id:
+                failures.append(
+                    f"round id {round_id} does not match its own recomputed content "
+                    f"(expected {recomputed_id}) -- id or semantic fields were edited "
+                    f"inconsistently"
+                )
         if round_json.get("pool") != "real-records":
             failures.append(
                 f"round {round_id} pool must be 'real-records', got {round_json.get('pool')!r}"
@@ -841,6 +1000,18 @@ def validate_connection_rounds_artifact(universe: dict[str, Any], rounds: dict[s
                     failures.append(
                         f"round {round_id} distractor {distractor['id']} is a bridge answer"
                     )
+            endpoints = round_json.get("endpoints", [])
+            if len(endpoints) == 2:
+                a_id, c_id = endpoints[0].get("id"), endpoints[1].get("id")
+                direct_shared = performers_by_album.get(a_id, set()) & performers_by_album.get(
+                    c_id, set()
+                )
+                if direct_shared:
+                    failures.append(
+                        f"round {round_id} is two-hop but its own endpoints share a direct "
+                        f"eligible performer {sorted(direct_shared)} -- premise violated, "
+                        f"should have been generated as one-hop"
+                    )
 
     for artifact, name in ((universe, "universe"), (rounds, "rounds")):
         for seed_path in _find_seed_keys(artifact):
@@ -857,6 +1028,26 @@ def validate_connection_rounds_artifact(universe: dict[str, Any], rounds: dict[s
     for field_name in _PROVENANCE_REQUIRED_FIELDS:
         if not universe.get("provenance", {}).get(field_name):
             failures.append(f"universe.provenance.{field_name} is required")
+
+    # Full recomputation from the artifact's own complete data -- this
+    # validator has the whole rounds array, so it can (and must) prove
+    # artifact_version wasn't hand-edited or left stale by a bug, not just
+    # check the field is present (see the validator-hierarchy note in
+    # ADR 0043's corrective-slice-4.6 addendum: only the generation-time
+    # validator can make this claim; the dependency-free mirror recomputes
+    # the same hash but cannot independently prove it against the source
+    # graph).
+    rounds_list = rounds.get("rounds", [])
+    snapshot_date = universe.get("provenance", {}).get("snapshot_date")
+    if isinstance(rounds_list, list) and snapshot_date:
+        expected_artifact_version = artifact_version(rounds_list, snapshot_date)
+        actual_artifact_version = universe.get("provenance", {}).get("artifact_version")
+        if actual_artifact_version != expected_artifact_version:
+            failures.append(
+                f"provenance.artifact_version {actual_artifact_version!r} does not match "
+                f"the rounds array's own recomputed content (expected "
+                f"{expected_artifact_version!r})"
+            )
 
     source = universe.get("provenance", {}).get("source", "").lower()
     generated_by = universe.get("provenance", {}).get("generated_by", "").lower()
