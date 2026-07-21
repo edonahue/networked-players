@@ -761,6 +761,33 @@ def test_artifact_version_helper_agrees_with_generation(dataset_root: Path) -> N
     )
 
 
+# --- Corrective slice 5.1: artifact_version reflects PUBLISHED ORDER --------
+
+
+def test_artifact_version_changes_when_two_rounds_are_swapped() -> None:
+    a = {"id": "conn-a", "clues": [{"kind": "years", "text": "1990"}]}
+    b = {"id": "conn-b", "clues": [{"kind": "years", "text": "1991"}]}
+    forward = artifact_version([a, b], SNAPSHOT_DATE)
+    swapped = artifact_version([b, a], SNAPSHOT_DATE)
+    assert forward != swapped
+
+
+def test_artifact_version_unchanged_by_json_formatting_only() -> None:
+    # Same value, different dict literal insertion order -- canonical
+    # serialization must still agree (see canonical_json).
+    a = [{"id": "conn-a", "clues": [{"kind": "years", "text": "1990"}]}]
+    b = [{"clues": [{"text": "1990", "kind": "years"}], "id": "conn-a"}]
+    assert artifact_version(a, SNAPSHOT_DATE) == artifact_version(b, SNAPSHOT_DATE)
+
+
+def test_artifact_version_unchanged_when_ordered_content_is_unchanged() -> None:
+    rounds = [
+        {"id": "conn-a", "clues": [{"kind": "years", "text": "1990"}]},
+        {"id": "conn-b", "clues": [{"kind": "years", "text": "1991"}]},
+    ]
+    assert artifact_version(rounds, SNAPSHOT_DATE) == artifact_version(rounds, SNAPSHOT_DATE)
+
+
 def test_validator_rejects_two_hop_round_whose_endpoints_share_a_direct_performer(
     dataset_root: Path,
 ) -> None:

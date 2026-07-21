@@ -27,7 +27,8 @@ change to an already-scheduled round is caught, not propagated.
 from __future__ import annotations
 
 import random
-from datetime import UTC, date, datetime, timedelta
+import re
+from datetime import date, datetime, timedelta
 from typing import Any
 
 from .connection_rounds import round_content_fingerprint
@@ -48,6 +49,12 @@ _MANIFEST_TOP_LEVEL_KEYS = frozenset(
     }
 )
 _SCHEDULE_ENTRY_KEYS = frozenset({"date", "round_id", "round_fingerprint"})
+_VERSION_FIELDS = ("catalog_version", "pool_version", "artifact_version")
+
+_ROUND_ID_PATTERN = re.compile(r"^conn-[0-9a-f]{10}$")
+_ROUND_FINGERPRINT_PATTERN = re.compile(r"^rfp-[0-9a-f]{16}$")
+_FORBIDDEN_SUBSTRINGS = ("/home/", "data/private", "local/", "DISCOGS_TOKEN", ".ssh")
+_FORBIDDEN_PHRASES = ("worked with", "collaborated with", "influenced")
 
 
 class ConnectionDailyManifestError(RuntimeError):
@@ -55,9 +62,57 @@ class ConnectionDailyManifestError(RuntimeError):
     operation on it is unsafe."""
 
 
+def _parse_iso_date(value: Any, *, context: str) -> date:
+    if not isinstance(value, str):
+        raise ConnectionDailyManifestError(f"{context} must be a string, got {value!r}")
+    try:
+        return date.fromisoformat(value)
+    except ValueError as exc:
+        raise ConnectionDailyManifestError(f"{context} {value!r} is not a valid date") from exc
+
+
+def _parse_iso_datetime(value: Any, *, context: str) -> datetime:
+    if not isinstance(value, str):
+        raise ConnectionDailyManifestError(f"{context} must be a string, got {value!r}")
+    try:
+        return datetime.fromisoformat(value)
+    except ValueError as exc:
+        raise ConnectionDailyManifestError(f"{context} {value!r} is not a valid datetime") from exc
+
+
 def _dates_from(start_date: str, count: int) -> list[str]:
-    start = date.fromisoformat(start_date)
+    start = _parse_iso_date(start_date, context="start_date")
     return [(start + timedelta(days=i)).isoformat() for i in range(count)]
+
+
+def _version_mismatches(manifest: dict[str, Any], rounds_artifact: dict[str, Any]) -> list[str]:
+    """Schema-v1 rule: a single manifest may only ever contain entries from
+    ONE exact rounds-artifact generation. All three identity fields --
+    `catalog_version`, `pool_version`, `artifact_version` -- must agree
+    exactly between the manifest and the paired rounds artifact before
+    building, validating, or extending. A mismatch on any of the three
+    (including one caused by an unscheduled round's content silently
+    changing, or the rounds array being reordered -- both move
+    `artifact_version` even when `pool_version`/membership is unchanged)
+    means this rounds artifact is a different generation than the one this
+    manifest was built against. Mixing generations inside one manifest is
+    not supported in schema v1: if the pool has genuinely moved on, that is
+    an explicit, documented, versioned migration decision for an operator to
+    make -- never something extension or validation silently papers over
+    (see the module docstring, corrective slice 5.1)."""
+    provenance = rounds_artifact.get("provenance", {})
+    failures: list[str] = []
+    for field_name in _VERSION_FIELDS:
+        manifest_value = manifest.get(field_name)
+        rounds_value = provenance.get(field_name)
+        if manifest_value != rounds_value:
+            failures.append(
+                f"manifest {field_name} {manifest_value!r} does not match the paired rounds "
+                f"artifact's {field_name} {rounds_value!r} -- this manifest was built against "
+                f"a different generation of the rounds artifact; schema v1 does not support "
+                f"mixing generations inside one manifest"
+            )
+    return failures
 
 
 def _eligible_one_hop_rounds(rounds_artifact: dict[str, Any]) -> list[dict[str, Any]]:
@@ -81,7 +136,12 @@ def _conflict_keys(round_json: dict[str, Any]) -> set[str]:
     return keys
 
 
-def _quality_scheduled_order(eligible: list[dict[str, Any]], *, seed: str) -> list[dict[str, Any]]:
+def _quality_scheduled_order(
+    eligible: list[dict[str, Any]],
+    *,
+    seed: str,
+    previous_round: dict[str, Any] | None = None,
+) -> list[dict[str, Any]]:
     """A deterministic pseudo-random permutation (seeded by `seed`, e.g.
     `pool_version` -- reproducible, not live-random, not sorted-by-id order
     so consecutive days don't visibly correlate with generation order),
@@ -91,9 +151,26 @@ def _quality_scheduled_order(eligible: list[dict[str, Any]], *, seed: str) -> li
     swapped with the nearest later round that does not conflict. Bounded,
     single-pass, and deliberately not a recommendation system -- it does not
     optimize decade/difficulty balance, only reports it (see
-    `schedule_diagnostics`)."""
+    `schedule_diagnostics`).
+
+    `previous_round`, when given (extension only), is the manifest's current
+    LAST scheduled round -- the boundary between old and new entries is just
+    as much an "adjacent day" as any internal one, so the first newly
+    ordered round is swapped away from a conflict with it exactly like any
+    internal pair (corrective slice 5.1). `None` for the initial build,
+    where there is no prior day."""
     ordered = list(eligible)
     random.Random(seed).shuffle(ordered)
+
+    if previous_round is not None and ordered:
+        boundary_keys = _conflict_keys(previous_round)
+        if _conflict_keys(ordered[0]) & boundary_keys:
+            for j in range(1, len(ordered)):
+                if not (_conflict_keys(ordered[j]) & boundary_keys):
+                    ordered[0], ordered[j] = ordered[j], ordered[0]
+                    break
+            # If no non-conflicting candidate remains, leave it -- a forced
+            # repeat is honestly reported by diagnostics, not hidden.
 
     for i in range(1, len(ordered)):
         previous_keys = _conflict_keys(ordered[i - 1])
@@ -109,15 +186,24 @@ def _quality_scheduled_order(eligible: list[dict[str, Any]], *, seed: str) -> li
 
 
 def build_connection_daily_manifest(
-    rounds_artifact: dict[str, Any], *, start_date: str, days: int
+    rounds_artifact: dict[str, Any], *, start_date: str, days: int, generated_at: str
 ) -> dict[str, Any]:
     """Build the initial manifest. Never schedules more dates than there are
     eligible one-hop rounds -- the achieved length is
     `min(days, len(eligible))`, reported honestly rather than padded by
     repeating a round across dates (no repeat policy until the whole
-    eligible pool has been used once; see the module docstring)."""
+    eligible pool has been used once; see the module docstring).
+
+    `generated_at` is an explicit caller-supplied ISO datetime, never the
+    wall clock -- so that running this function twice with identical
+    arguments (including `generated_at`) produces a byte-identical
+    manifest, which a committed artifact and its own reproducibility tests
+    require (corrective slice 5.1). Callers that want "now" must pass
+    `datetime.now(UTC).isoformat()` themselves; this function never reads
+    the clock internally."""
     if days <= 0:
         raise ValueError("days must be positive")
+    _parse_iso_datetime(generated_at, context="generated_at")
     provenance = rounds_artifact.get("provenance", {})
     eligible = _eligible_one_hop_rounds(rounds_artifact)
     if not eligible:
@@ -126,6 +212,12 @@ def build_connection_daily_manifest(
         )
 
     pool_version = provenance.get("pool_version")
+    for field_name in _VERSION_FIELDS:
+        if not provenance.get(field_name):
+            raise ConnectionDailyManifestError(
+                f"rounds artifact provenance.{field_name} is required and must be non-empty"
+            )
+
     ordered = _quality_scheduled_order(eligible, seed=str(pool_version))
     scheduled_count = min(days, len(ordered))
     dates = _dates_from(start_date, scheduled_count)
@@ -143,29 +235,46 @@ def build_connection_daily_manifest(
         "catalog_version": provenance.get("catalog_version"),
         "pool_version": pool_version,
         "artifact_version": provenance.get("artifact_version"),
-        "generated_at": datetime.now(UTC).isoformat(),
+        "generated_at": generated_at,
         "start_date": start_date,
         "schedule": schedule,
     }
 
 
 def extend_connection_daily_manifest(
-    manifest: dict[str, Any], rounds_artifact: dict[str, Any], *, days: int
+    manifest: dict[str, Any], rounds_artifact: dict[str, Any], *, days: int, generated_at: str
 ) -> dict[str, Any]:
-    """Append new dates after the manifest's last scheduled date. Every
-    EXISTING entry's `round_fingerprint` is re-verified against
-    `rounds_artifact` before anything is appended -- if a previously-
-    scheduled round is missing or its content has silently changed, this
-    raises rather than extending on top of a corrupted history. New dates
-    are drawn only from eligible one-hop rounds not already anywhere in the
-    schedule; once the eligible pool is exhausted, this raises rather than
-    silently cycling or reshuffling prior dates (no cycling policy is
-    implemented yet -- see the module docstring)."""
+    """Append new dates after the manifest's last scheduled date.
+
+    Before anything else -- before any output is produced -- the manifest's
+    `catalog_version`/`pool_version`/`artifact_version` must agree exactly
+    with the paired `rounds_artifact`'s provenance (`_version_mismatches`,
+    schema-v1's single-generation rule; corrective slice 5.1). Only once
+    that passes does every EXISTING entry's `round_fingerprint` get
+    re-verified against `rounds_artifact` -- if a previously-scheduled round
+    is missing or its content has silently changed, this raises rather than
+    extending on top of a corrupted history. New dates are drawn only from
+    eligible one-hop rounds not already anywhere in the schedule, ordered
+    with the manifest's current last round as adjacency context (so the
+    first appended date also avoids repeating the prior day's endpoint or
+    performer when a non-conflicting candidate exists); once the eligible
+    pool is exhausted, this raises rather than silently cycling or
+    reshuffling prior dates (no cycling policy is implemented yet -- see the
+    module docstring). Metadata is never silently rewritten: only
+    `generated_at` (an explicit caller-supplied value, never the wall clock)
+    and the appended `schedule` entries change -- `catalog_version`/
+    `pool_version`/`artifact_version`/`mode`/`schema_version`/`start_date`
+    are carried over unchanged from the input manifest."""
     if days <= 0:
         raise ValueError("days must be positive")
+    _parse_iso_datetime(generated_at, context="generated_at")
     schedule = manifest.get("schedule")
     if not schedule:
         raise ConnectionDailyManifestError("cannot extend an empty manifest")
+
+    version_failures = _version_mismatches(manifest, rounds_artifact)
+    if version_failures:
+        raise ConnectionDailyManifestError("; ".join(version_failures))
 
     eligible = _eligible_one_hop_rounds(rounds_artifact)
     eligible_by_id = {r["id"]: r for r in eligible}
@@ -197,10 +306,13 @@ def extend_connection_daily_manifest(
             "real round pool or make an explicit, documented decision about cycling"
         )
 
-    last_date = date.fromisoformat(schedule[-1]["date"])
+    last_date = _parse_iso_date(schedule[-1]["date"], context="schedule[-1].date")
     next_start = (last_date + timedelta(days=1)).isoformat()
+    last_round_json = eligible_by_id[schedule[-1]["round_id"]]
 
-    ordered = _quality_scheduled_order(available, seed=str(manifest.get("pool_version")))
+    ordered = _quality_scheduled_order(
+        available, seed=str(manifest.get("pool_version")), previous_round=last_round_json
+    )
     scheduled_count = min(days, len(ordered))
     new_dates = _dates_from(next_start, scheduled_count)
     new_entries = [
@@ -213,7 +325,7 @@ def extend_connection_daily_manifest(
     ]
     return {
         **manifest,
-        "generated_at": datetime.now(UTC).isoformat(),
+        "generated_at": generated_at,
         "schedule": [*schedule, *new_entries],
     }
 
@@ -236,18 +348,45 @@ def _find_seed_keys(obj: Any, path: str = "") -> list[str]:
     return found
 
 
+def _privacy_failures(manifest: dict[str, Any]) -> list[str]:
+    serialized = str(manifest)
+    failures = [
+        f"manifest contains forbidden substring: {forbidden!r}"
+        for forbidden in _FORBIDDEN_SUBSTRINGS
+        if forbidden in serialized
+    ]
+    lowered = serialized.lower()
+    failures.extend(
+        f"manifest contains forbidden phrase: {phrase!r}"
+        for phrase in _FORBIDDEN_PHRASES
+        if phrase in lowered
+    )
+    return failures
+
+
+def _safe_parse(parser: Any, value: str) -> Any:
+    try:
+        return parser(value)
+    except ValueError:
+        return None
+
+
 def validate_connection_daily_manifest(
     manifest: dict[str, Any], rounds_artifact: dict[str, Any]
 ) -> None:
-    """Structural, referential, and content-integrity validation. Every
-    scheduled round must resolve in `rounds_artifact` as a real one-hop
-    round, dates must be contiguous and unique, round ids must not repeat,
-    and every entry's `round_fingerprint` must match a fresh recomputation
-    -- a silently-changed round is a validation failure, not a runtime
-    surprise."""
+    """Structural, referential, version-agreement, and content-integrity
+    validation. Every scheduled round must resolve in `rounds_artifact` as a
+    real one-hop round, dates must be contiguous and unique, round ids must
+    not repeat, every entry's `round_fingerprint` must match a fresh
+    recomputation, and the manifest's own `catalog_version`/`pool_version`/
+    `artifact_version` must agree exactly with the paired rounds artifact
+    (schema v1's single-generation rule, `_version_mismatches`) -- a
+    silently-changed round, a reordered rounds array, or hand-edited
+    manifest metadata are all validation failures, not runtime surprises."""
     failures: list[str] = [
         f"manifest must not have a 'seed' key ({p})" for p in _find_seed_keys(manifest)
     ]
+    failures.extend(_privacy_failures(manifest))
 
     if set(manifest.keys()) != _MANIFEST_TOP_LEVEL_KEYS:
         failures.append(f"manifest has unexpected top-level keys: {sorted(manifest.keys())}")
@@ -255,16 +394,26 @@ def validate_connection_daily_manifest(
         failures.append(f"schema_version must be {CONNECTION_DAILY_MANIFEST_SCHEMA_VERSION}")
     if manifest.get("mode") != CONNECTION_DAILY_MANIFEST_MODE:
         failures.append(f"mode must be {CONNECTION_DAILY_MANIFEST_MODE!r}")
-    for field_name in ("catalog_version", "pool_version", "artifact_version", "start_date"):
+    for field_name in (*_VERSION_FIELDS, "start_date"):
         if not manifest.get(field_name):
             failures.append(f"{field_name} is required")
 
-    provenance = rounds_artifact.get("provenance", {})
-    if manifest.get("pool_version") != provenance.get("pool_version"):
-        failures.append(
-            f"manifest pool_version {manifest.get('pool_version')!r} does not match the "
-            f"rounds artifact's pool_version {provenance.get('pool_version')!r}"
-        )
+    generated_at = manifest.get("generated_at")
+    if not generated_at:
+        failures.append("generated_at is required")
+    elif (
+        not isinstance(generated_at, str)
+        or _safe_parse(datetime.fromisoformat, generated_at) is None
+    ):
+        failures.append(f"generated_at {generated_at!r} is not a valid ISO datetime")
+
+    start_date = manifest.get("start_date")
+    if start_date is not None and (
+        not isinstance(start_date, str) or _safe_parse(date.fromisoformat, start_date) is None
+    ):
+        failures.append(f"start_date {start_date!r} is not a valid ISO date")
+
+    failures.extend(_version_mismatches(manifest, rounds_artifact))
 
     eligible_by_id = {r["id"]: r for r in _eligible_one_hop_rounds(rounds_artifact)}
     all_rounds_by_id = {r["id"]: r for r in rounds_artifact.get("rounds", [])}
@@ -272,48 +421,72 @@ def validate_connection_daily_manifest(
     schedule = manifest.get("schedule", [])
     if not schedule:
         failures.append("schedule must be non-empty")
+    elif start_date is not None and schedule[0].get("date") != start_date:
+        failures.append(
+            f"start_date {start_date!r} does not match schedule[0].date {schedule[0].get('date')!r}"
+        )
 
     seen_dates: set[str] = set()
     seen_round_ids: set[str] = set()
     previous_date: date | None = None
     for entry in schedule:
-        if set(entry.keys()) - {"seed"} != _SCHEDULE_ENTRY_KEYS:
+        if not isinstance(entry, dict):
+            failures.append(f"schedule entry must be an object, got {entry!r}")
+            continue
+        if set(entry.keys()) != _SCHEDULE_ENTRY_KEYS:
             failures.append(f"schedule entry has unexpected keys: {sorted(entry.keys())}")
             continue
 
-        entry_date = date.fromisoformat(entry["date"])
-        if entry["date"] in seen_dates:
-            failures.append(f"duplicate date in schedule: {entry['date']}")
-        seen_dates.add(entry["date"])
+        raw_date = entry.get("date")
+        entry_date = (
+            _safe_parse(date.fromisoformat, raw_date) if isinstance(raw_date, str) else None
+        )
+        if entry_date is None or not isinstance(raw_date, str):
+            failures.append(f"schedule entry date {raw_date!r} is not a valid ISO date")
+            continue
+        entry_date_str: str = raw_date
+        if entry_date_str in seen_dates:
+            failures.append(f"duplicate date in schedule: {entry_date_str}")
+        seen_dates.add(entry_date_str)
         if previous_date is not None and entry_date != previous_date + timedelta(days=1):
-            failures.append(f"schedule has a gap or disorder before {entry['date']}")
+            failures.append(f"schedule has a gap or disorder before {entry_date_str}")
         previous_date = entry_date
 
         round_id = entry["round_id"]
+        if not isinstance(round_id, str) or not _ROUND_ID_PATTERN.match(round_id):
+            failures.append(
+                f"round id {round_id!r} (date {entry_date_str}) is not a stable content-derived id"
+            )
         if round_id in seen_round_ids:
             failures.append(f"round {round_id} is scheduled more than once")
         seen_round_ids.add(round_id)
+
+        fingerprint = entry.get("round_fingerprint")
+        if not isinstance(fingerprint, str) or not _ROUND_FINGERPRINT_PATTERN.match(fingerprint):
+            failures.append(
+                f"round_fingerprint {fingerprint!r} (date {entry_date_str}) is not a "
+                f"well-formed content fingerprint"
+            )
 
         round_json = eligible_by_id.get(round_id)
         if round_json is None:
             if round_id in all_rounds_by_id:
                 failures.append(
-                    f"round {round_id} (date {entry['date']}) is not a real one-hop round "
+                    f"round {round_id} (date {entry_date_str}) is not a real one-hop round "
                     f"(kind={all_rounds_by_id[round_id].get('kind')!r}, "
                     f"pool={all_rounds_by_id[round_id].get('pool')!r})"
                 )
             else:
                 failures.append(
-                    f"round {round_id} (date {entry['date']}) is not in the published pool"
+                    f"round {round_id} (date {entry_date_str}) is not in the published pool"
                 )
             continue
 
         expected_fingerprint = round_content_fingerprint(round_json)
-        if entry["round_fingerprint"] != expected_fingerprint:
+        if fingerprint != expected_fingerprint:
             failures.append(
-                f"round {round_id} (date {entry['date']}) fingerprint mismatch: manifest "
-                f"has {entry['round_fingerprint']!r}, current content is "
-                f"{expected_fingerprint!r}"
+                f"round {round_id} (date {entry_date_str}) fingerprint mismatch: manifest "
+                f"has {fingerprint!r}, current content is {expected_fingerprint!r}"
             )
 
     if failures:

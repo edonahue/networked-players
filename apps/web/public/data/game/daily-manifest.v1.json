@@ -3,8 +3,8 @@
   "mode": "connection_guesser_one_hop",
   "catalog_version": "catalog-v1-20260601-0e7ec70fbb7e",
   "pool_version": "connection-v1-20260601-27f5032ebc16",
-  "artifact_version": "connection-artifact-v1-20260601-881f88e363e6",
-  "generated_at": "2026-07-21T21:06:40.069721+00:00",
+  "artifact_version": "connection-artifact-v1-20260601-e27209c5f7a0",
+  "generated_at": "2026-07-22T00:00:00+00:00",
   "start_date": "2026-08-01",
   "schedule": [
     {

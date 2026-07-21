@@ -97,7 +97,11 @@ def round_content_fingerprint(round_json: dict[str, Any]) -> str:
 
 
 def _artifact_version(rounds_json: list[Any], snapshot_date: str) -> str:
-    fingerprints = sorted(round_content_fingerprint(r) for r in rounds_json if isinstance(r, dict))
+    """Must agree byte-for-byte with the generation-time mirror
+    (`networked_players_graph_core.connection_rounds::artifact_version`):
+    hashes the rounds array in its PUBLISHED ORDER, not sorted -- order is
+    part of the artifact (corrective slice 5.1)."""
+    fingerprints = [round_content_fingerprint(r) for r in rounds_json if isinstance(r, dict)]
     return f"connection-artifact-v1-{snapshot_date}-{content_hash(fingerprints, length=12)}"
 
 

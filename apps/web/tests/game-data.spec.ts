@@ -331,11 +331,14 @@ test("real pool: provenance records catalog_version/pool_version/artifact_versio
   expect(universe.provenance).toEqual(roundsArtifact.provenance);
 });
 
-test("real pool: artifact_version recomputes from the published rounds' content fingerprints", async () => {
+test("real pool: artifact_version recomputes from the published rounds' content fingerprints IN PUBLISHED ORDER", async () => {
+  // Corrective slice 5.1: the array's own order is part of the artifact --
+  // NOT sorted before hashing (a sorted hash would be blind to a
+  // reordering that changes what players actually see).
   const fingerprints = await Promise.all(
     roundsArtifact.rounds.map((r) => roundContentFingerprint(r)),
   );
-  const digest = await contentHash(fingerprints.sort(), 12);
+  const digest = await contentHash(fingerprints, 12);
   const expected = `connection-artifact-v1-${universe.provenance.snapshot_date}-${digest}`;
   expect(universe.provenance.artifact_version).toBe(expected);
 });

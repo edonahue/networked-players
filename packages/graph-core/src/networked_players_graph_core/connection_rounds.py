@@ -233,17 +233,25 @@ def round_content_fingerprint(round_json: dict[str, Any]) -> str:
 
 
 def artifact_version(rounds_json: list[dict[str, Any]], snapshot_date: str) -> str:
-    """A content hash of the COMPLETE published rounds array -- distinct from
-    `pool_version` (a hash of sorted round *ids* only, i.e. pool membership).
-    `pool_version` is unchanged by a clue/distractor/evidence/choice-order
-    edit to an already-selected round; `artifact_version` is not -- it
-    changes on any player-visible or evidentiary field changing anywhere in
-    the published pool, even with identical membership. A daily-manifest
-    entry freezes against a specific round's own `round_content_fingerprint`,
-    not this pool-wide value; this exists so the whole published pair can
-    also prove, as one number, "nothing in this file changed since the last
-    time you saw it" (corrective slice 4.6, ADR 0043)."""
-    fingerprints = sorted(round_content_fingerprint(r) for r in rounds_json)
+    """A content hash of the COMPLETE published rounds array IN ITS PUBLISHED
+    ORDER -- distinct from `pool_version` (a hash of sorted round *ids* only,
+    i.e. pool membership, order-insensitive by design). `pool_version` is
+    unchanged by a clue/distractor/evidence/choice-order edit to an already-
+    selected round, or by reordering the array; `artifact_version` is
+    sensitive to BOTH -- it changes on any player-visible or evidentiary
+    field changing anywhere in the published pool, AND on the array's own
+    order changing, even with identical membership and identical per-round
+    content. Order matters here because `rounds[]`'s published order is
+    itself part of the artifact (it can affect ordinary Connection Guesser
+    set ordering) -- an order-insensitive hash (e.g. sorting fingerprints
+    before hashing, this function's original slice-4.6 form) would silently
+    miss a reordering that changes what players see. A daily-manifest entry
+    freezes against a specific round's own `round_content_fingerprint`, not
+    this pool-wide value; this exists so the whole published pair can also
+    prove, as one number, "nothing in this file -- content OR order --
+    changed since the last time you saw it" (corrective slice 5.1, ADR
+    0043's addendum)."""
+    fingerprints = [round_content_fingerprint(r) for r in rounds_json]
     return f"connection-artifact-v1-{snapshot_date}-{content_hash(fingerprints, length=12)}"
 
 
@@ -736,12 +744,13 @@ def build_connection_universe_and_rounds(
             "which puzzles are selected (membership); it is unchanged by an "
             "edit to a clue, distractor, evidence row, or middle choice order "
             "on an already-selected round. artifact_version is a hash of the "
-            "COMPLETE published rounds content -- every player-visible and "
-            "evidentiary field -- and changes on any such edit even with "
+            "COMPLETE published rounds array IN ITS PUBLISHED ORDER -- every "
+            "player-visible and evidentiary field, and the array's own order "
+            "-- and changes on any such edit, or on a reordering, even with "
             "identical membership. A frozen daily-manifest entry freezes "
             "against a specific round's own content fingerprint (see "
             "connection_rounds.round_content_fingerprint), not this pool-wide "
-            "value; see ADR 0043's corrective-slice-4.6 addendum."
+            "value; see ADR 0043's corrective-slice-4.6 and -5.1 addenda."
         ),
     }
 

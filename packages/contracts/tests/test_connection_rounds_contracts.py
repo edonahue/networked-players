@@ -67,7 +67,10 @@ def _round() -> dict[str, Any]:
 
 
 def _artifact_version(rounds: list[dict[str, Any]]) -> str:
-    fingerprints = sorted(round_content_fingerprint(r) for r in rounds)
+    # Published order, not sorted -- must match
+    # networked_players_contracts.connection_rounds::_artifact_version
+    # (corrective slice 5.1).
+    fingerprints = [round_content_fingerprint(r) for r in rounds]
     digest = content_hash(fingerprints, length=12)
     return f"connection-artifact-v1-{_SNAPSHOT_DATE}-{digest}"
 

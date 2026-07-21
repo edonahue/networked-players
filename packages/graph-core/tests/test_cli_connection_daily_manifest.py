@@ -61,9 +61,16 @@ def _two_hop(round_id: str) -> dict[str, Any]:
     }
 
 
+GENERATED_AT = "2026-07-22T00:00:00+00:00"
+
+
+def _round_id(i: int) -> str:
+    return f"conn-{i:010x}"
+
+
 def _rounds_path(tmp_path: Path, n: int = 10) -> Path:
-    rounds = [_one_hop(f"conn-r{i:03d}", i) for i in range(n)]
-    rounds.append(_two_hop("conn-2h001"))
+    rounds = [_one_hop(_round_id(i), i) for i in range(n)]
+    rounds.append(_two_hop("conn-2222222222"))
     path = tmp_path / "rounds.v1.json"
     path.write_text(json.dumps({"schema_version": 1, "provenance": PROVENANCE, "rounds": rounds}))
     return path
@@ -84,6 +91,8 @@ def test_build_connection_daily_manifest_cli_wiring(tmp_path: Path, capsys) -> N
             "10",
             "--output",
             str(output_path),
+            "--generated-at",
+            GENERATED_AT,
         ]
     )
     assert exit_code == 0
@@ -94,9 +103,10 @@ def test_build_connection_daily_manifest_cli_wiring(tmp_path: Path, capsys) -> N
 
     manifest = json.loads(output_path.read_text())
     assert manifest["mode"] == "connection_guesser_one_hop"
+    assert manifest["generated_at"] == GENERATED_AT
     assert len(manifest["schedule"]) == 10
-    assert all(e["round_id"].startswith("conn-r") for e in manifest["schedule"])
-    assert not any(e["round_id"] == "conn-2h001" for e in manifest["schedule"])
+    assert all(e["round_id"] in {_round_id(i) for i in range(10)} for e in manifest["schedule"])
+    assert not any(e["round_id"] == "conn-2222222222" for e in manifest["schedule"])
 
 
 def test_extend_connection_daily_manifest_cli_wiring(tmp_path: Path, capsys) -> None:
@@ -113,10 +123,13 @@ def test_extend_connection_daily_manifest_cli_wiring(tmp_path: Path, capsys) -> 
             "4",
             "--output",
             str(manifest_path),
+            "--generated-at",
+            GENERATED_AT,
         ]
     )
     capsys.readouterr()
     extended_path = tmp_path / "daily-manifest-extended.v1.json"
+    extended_at = "2026-08-05T00:00:00+00:00"
 
     exit_code = main(
         [
@@ -129,6 +142,8 @@ def test_extend_connection_daily_manifest_cli_wiring(tmp_path: Path, capsys) -> 
             "3",
             "--output",
             str(extended_path),
+            "--generated-at",
+            extended_at,
         ]
     )
     assert exit_code == 0
@@ -139,6 +154,7 @@ def test_extend_connection_daily_manifest_cli_wiring(tmp_path: Path, capsys) -> 
     before = json.loads(manifest_path.read_text())
     after = json.loads(extended_path.read_text())
     assert after["schedule"][:4] == before["schedule"]
+    assert after["generated_at"] == extended_at
 
 
 def test_validate_connection_daily_manifest_cli_wiring(tmp_path: Path, capsys) -> None:
@@ -155,6 +171,8 @@ def test_validate_connection_daily_manifest_cli_wiring(tmp_path: Path, capsys) -
             "6",
             "--output",
             str(manifest_path),
+            "--generated-at",
+            GENERATED_AT,
         ]
     )
     capsys.readouterr()
@@ -186,6 +204,8 @@ def test_connection_daily_manifest_diagnostics_cli_wiring(tmp_path: Path, capsys
             "6",
             "--output",
             str(manifest_path),
+            "--generated-at",
+            GENERATED_AT,
         ]
     )
     capsys.readouterr()
