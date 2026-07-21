@@ -213,13 +213,18 @@ test("every valid bridge performer is marked correct on reveal, not only the one
 }) => {
   const rounds = await fetchTwoHop(page);
   const round = rounds.find(
-    (r) => r.bridge_answer_sets[0].length > 1 || r.bridge_answer_sets[1].length > 1,
+    (r) =>
+      r.bridge_answer_sets[0].length > 1 || r.bridge_answer_sets[1].length > 1,
   );
-  test.skip(!round, "no real two-hop round with more than one valid bridge performer");
+  test.skip(
+    !round,
+    "no real two-hop round with more than one valid bridge performer",
+  );
   if (!round) return;
   await gotoRound(page, round);
   const multiSide = round.bridge_answer_sets[0].length > 1 ? 0 : 1;
-  const single = multiSide === 0 ? round.bridge_answer_sets[1] : round.bridge_answer_sets[0];
+  const single =
+    multiSide === 0 ? round.bridge_answer_sets[1] : round.bridge_answer_sets[0];
 
   if (multiSide === 1) {
     await page.locator(`.chip[data-chip="${single[0].id}"]`).click();
@@ -236,7 +241,10 @@ test("the real hidden middle is not always the first choice across the served po
   page,
 }) => {
   const rounds = await fetchTwoHop(page);
-  test.skip(rounds.length < 10, "too few real two-hop rounds for a distribution check");
+  test.skip(
+    rounds.length < 10,
+    "too few real two-hop rounds for a distribution check",
+  );
   const firstPositionCount = rounds.filter(
     (r) => r.middle.choices[0]?.id === r.middle.album.id,
   ).length;

@@ -262,7 +262,8 @@ test("real pool: answer_set exactly matches the universe's own shared-performer 
 test("real pool: two-hop bridge_answer_sets exactly match the universe's own shared-performer index (first principles, exact)", () => {
   const byAlbum = universePerformersByAlbum();
   for (const round of roundsArtifact.rounds) {
-    if (round.kind !== "two_hop" || !round.middle || !round.bridge_answer_sets) continue;
+    if (round.kind !== "two_hop" || !round.middle || !round.bridge_answer_sets)
+      continue;
     const [a, c] = round.endpoints;
     const middleId = round.middle.album.id;
     const derivedA = sharedPerformers(byAlbum, a.id, middleId);
@@ -353,7 +354,9 @@ test("real pool: multi-answer rounds' clues never imply a single exclusive answe
 });
 
 test("real pool: the hidden middle is not always the first choice", () => {
-  const twoHop = roundsArtifact.rounds.filter((r) => r.kind === "two_hop" && r.middle);
+  const twoHop = roundsArtifact.rounds.filter(
+    (r) => r.kind === "two_hop" && r.middle,
+  );
   expect(twoHop.length).toBeGreaterThanOrEqual(20);
   const firstPositionCount = twoHop.filter(
     (r) => r.middle!.choices[0]?.id === r.middle!.album.id,

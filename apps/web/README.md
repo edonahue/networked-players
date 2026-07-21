@@ -117,6 +117,7 @@ The Connection Guesser (`public/data/game/*`) is real, not synthetic: it runs on
 `apps/web/public/data/catalog/albums.v1.json`, the same canonical catalog powering the
 album grid (ADR 0042, ADR 0043). The synthetic "Meridian Tapes" universe survives only
 as an isolated test fixture under `apps/web/tests/fixtures/`, never played.
+
 - Producer/engineer-bridge and six-degrees play modes (see `docs/PRODUCT.md`). Any
   live-search/API mode is additive and must fail gracefully — the static-first core
   always works on its own.
