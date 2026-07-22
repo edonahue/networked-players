@@ -7,6 +7,7 @@
 // empty map and every album renders the polished placeholder.
 
 import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import type { ReleaseImage } from "./challenge";
 
 const APPROVED_HOSTS = new Set(["i.discogs.com"]);
@@ -25,13 +26,15 @@ function loadRegistry(): Map<string, ReleaseImage> {
   const map = new Map<string, ReleaseImage>();
   let raw: string;
   try {
-    const path = new URL(
-      "../../public/data/catalog/album-art.v1.json",
-      import.meta.url,
+    // Resolve from the build's working directory (apps/web during
+    // `astro build`) rather than import.meta.url, which Vite rewrites to the
+    // bundled chunk location and would not resolve the public asset.
+    raw = readFileSync(
+      join(process.cwd(), "public/data/catalog/album-art.v1.json"),
+      "utf8",
     );
-    raw = readFileSync(path, "utf8");
   } catch {
-    return map; // registry not present yet — all placeholders
+    return map; // registry not present — all placeholders
   }
   let registry: unknown;
   try {
