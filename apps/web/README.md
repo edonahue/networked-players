@@ -119,7 +119,7 @@ key (dark default, light/dark toggle).
   dumps (with provenance, no collection membership) once that pipeline (Milestone 8) is
   built.
 - Extend the committed Connection of the Day schedule
-  (`extend-connection-daily-manifest`) as `2026-10-29` approaches; 210 of the 300 real
+  (`extend-connection-daily-manifest`) as `2026-10-19` approaches; 210 of the 300 real
   one-hop rounds remain unscheduled for future extensions.
 
 The Connection Guesser (`public/data/game/*`) is real, not synthetic: it runs on
