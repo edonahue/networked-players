@@ -262,3 +262,97 @@ test("fingerprint-mismatch: round content changed underneath the entry", async (
   );
   expect(resolution).toEqual({ ok: false, reason: "fingerprint-mismatch" });
 });
+
+// --- Malformed-fetch guards (ADR 0044 pre-merge patch): a malformed fetched
+// artifact must always return a typed integrity failure, never throw. Each
+// test uses a real scheduled entry but corrupts the rounds/schedule shape the
+// resolver dereferences.
+
+test("malformed rounds: a null member never throws", async () => {
+  const r = round();
+  const manifest = await manifestFor([r]);
+  // `rounds: [null]` still contains an entry matching the scheduled id at
+  // index 0 only if it isn't null -- here the only member is null, so no id
+  // matches and the guard must skip it rather than read `.id` off null.
+  const artifact = {
+    schema_version: 1,
+    provenance: PROVENANCE,
+    rounds: [null],
+  };
+  const resolution = await resolveDailyRound(manifest, artifact, "2026-08-01");
+  expect(resolution).toEqual({ ok: false, reason: "missing-round" });
+});
+
+test("malformed rounds: a primitive member never throws", async () => {
+  const r = round();
+  const manifest = await manifestFor([r]);
+  const artifact = { schema_version: 1, provenance: PROVENANCE, rounds: [42] };
+  const resolution = await resolveDailyRound(manifest, artifact, "2026-08-01");
+  expect(resolution).toEqual({ ok: false, reason: "missing-round" });
+});
+
+test("malformed schedule: an entry missing round_id is not scheduled", async () => {
+  const r = round();
+  const manifest = await manifestFor([r]);
+  // Drop round_id from the matching entry -- it must be rejected as an
+  // unusable entry, not dereferenced.
+  const entry = manifest.schedule[0] as Record<string, unknown>;
+  delete entry.round_id;
+  const resolution = await resolveDailyRound(
+    manifest,
+    roundsArtifact([r]),
+    "2026-08-01",
+  );
+  expect(resolution).toEqual({ ok: false, reason: "not-scheduled" });
+});
+
+test("malformed schedule: an entry missing round_fingerprint is not scheduled", async () => {
+  const r = round();
+  const manifest = await manifestFor([r]);
+  const entry = manifest.schedule[0] as Record<string, unknown>;
+  delete entry.round_fingerprint;
+  const resolution = await resolveDailyRound(
+    manifest,
+    roundsArtifact([r]),
+    "2026-08-01",
+  );
+  expect(resolution).toEqual({ ok: false, reason: "not-scheduled" });
+});
+
+test("malformed schedule: a null/primitive entry is skipped, not dereferenced", async () => {
+  const r = round();
+  const manifest = await manifestFor([r]);
+  const badManifest = {
+    ...manifest,
+    schedule: [null, ...manifest.schedule],
+  };
+  // The valid entry still resolves; the null member must not throw during
+  // the schedule scan.
+  const resolution = await resolveDailyRound(
+    badManifest,
+    roundsArtifact([r]),
+    "2026-08-01",
+  );
+  expect(resolution.ok).toBe(true);
+});
+
+test("malformed round shape: fingerprinting an odd round does not throw", async () => {
+  const r = round();
+  const manifest = await manifestFor([r]);
+  // A round that is real-records/one_hop and matches the scheduled id, but
+  // whose endpoints/answer_set are malformed. Fingerprinting is pure JSON
+  // serialization -- it must not throw; the content simply differs.
+  const malformed = {
+    id: r.id,
+    pool: "real-records",
+    kind: "one_hop",
+    endpoints: null,
+    answer_set: null,
+  };
+  const resolution = await resolveDailyRound(
+    manifest,
+    { schema_version: 1, provenance: PROVENANCE, rounds: [malformed] },
+    "2026-08-01",
+  );
+  expect(resolution).toEqual({ ok: false, reason: "fingerprint-mismatch" });
+});

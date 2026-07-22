@@ -92,6 +92,20 @@ export function isDailyManifest(value: unknown): value is DailyManifest {
   return Array.isArray(value.schedule);
 }
 
+/** A schedule entry is only usable if every field the resolver reads is a
+ * present, non-empty string. A malformed member (null, a primitive, or one
+ * missing `round_id`/`round_fingerprint`) is treated as "no entry for this
+ * date" rather than dereferenced -- the browser never throws on bad fetched
+ * JSON, it returns a typed failure. */
+function isScheduleEntry(value: unknown): value is DailyManifestEntry {
+  return (
+    isRecord(value) &&
+    isNonEmptyString(value.date) &&
+    isNonEmptyString(value.round_id) &&
+    isNonEmptyString(value.round_fingerprint)
+  );
+}
+
 function isEligibleRound(
   round: unknown,
 ): round is GameRound & { pool: "real-records"; kind: "one_hop" } {
@@ -164,11 +178,18 @@ export async function resolveDailyRound(
   }
 
   const entry = manifest.schedule.find(
-    (e) => isRecord(e) && e.date === isoDate,
+    (e) => isScheduleEntry(e) && e.date === isoDate,
   );
-  if (!entry) return { ok: false, reason: "not-scheduled" };
+  if (!entry || !isScheduleEntry(entry)) {
+    return { ok: false, reason: "not-scheduled" };
+  }
 
-  const round = roundsArtifact.rounds.find((r) => r.id === entry.round_id);
+  // Guard each member before dereferencing `.id` -- a `null` or primitive in
+  // the fetched `rounds` array must not throw, it must resolve to a typed
+  // integrity failure.
+  const round = roundsArtifact.rounds.find(
+    (r) => isRecord(r) && typeof r.id === "string" && r.id === entry.round_id,
+  );
   if (!round) return { ok: false, reason: "missing-round" };
   if (!isEligibleRound(round)) return { ok: false, reason: "ineligible-round" };
 

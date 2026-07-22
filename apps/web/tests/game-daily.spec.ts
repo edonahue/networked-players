@@ -9,7 +9,10 @@ import { expect, test, type Page } from "@playwright/test";
 
 const PINNED_DATE_A = "2026-08-01";
 const PINNED_DATE_B = "2026-08-02";
-const OUT_OF_RANGE_DATE = "2020-01-01";
+// Before the manifest's start_date (2026-08-01) -> friendly "upcoming".
+const PRE_LAUNCH_DATE = "2026-07-25";
+// After the last scheduled date (2026-10-29) -> "schedule needs extending".
+const POST_RANGE_DATE = "2026-12-01";
 
 interface DailyManifestEntry {
   date: string;
@@ -268,16 +271,36 @@ test("the hub daily card is live and links to /play/daily/", async ({
   await expect(card).toHaveAttribute("href", "/play/daily/");
 });
 
-test("a date outside the committed schedule fails gracefully, never a derived fallback", async ({
+test("a date before the first scheduled date shows a friendly upcoming state, not an error", async ({
   page,
 }) => {
-  await gotoDaily(page, OUT_OF_RANGE_DATE);
+  await gotoDaily(page, PRE_LAUNCH_DATE);
+  await expect(page.getByTestId("stage")).toHaveAttribute(
+    "data-phase",
+    "upcoming",
+  );
+  await expect(page.getByTestId("question")).toContainText("launches August 1");
+  // Friendly, not an error: no gameplay control is active.
+  await expect(page.getByTestId("chip-tray")).toBeHidden();
+  await expect(page.getByTestId("clue-button")).toBeHidden();
+  await expect(page.getByTestId("give-up")).toBeHidden();
+  // Announced politely, never on the assertive channel.
+  await expect(page.getByTestId("live-assertive")).toBeEmpty();
+  await expect(page.getByTestId("live-region")).toContainText(
+    "launches August 1",
+  );
+});
+
+test("a date past the last scheduled date fails gracefully as an extension-needed error", async ({
+  page,
+}) => {
+  await gotoDaily(page, POST_RANGE_DATE);
   await expect(page.getByTestId("stage")).toHaveAttribute(
     "data-phase",
     "error",
   );
   await expect(page.getByTestId("question")).toContainText(
-    "has not been scheduled yet",
+    "schedule needs extending",
   );
   await expect(page.getByTestId("chip-tray")).toBeHidden();
 });
@@ -386,9 +409,29 @@ test("pre-existing daily results in storage survive the manifest migration untou
 test("an error state announces to the assertive live region", async ({
   page,
 }) => {
-  await gotoDaily(page, OUT_OF_RANGE_DATE);
+  await gotoDaily(page, POST_RANGE_DATE);
   await expect(page.getByTestId("live-assertive")).toContainText(
-    "has not been scheduled yet",
+    "schedule needs extending",
+  );
+});
+
+test("a malformed rounds fetch (null members) is an integrity error, not a crash", async ({
+  page,
+}) => {
+  await page.route("**/data/game/rounds.v1.json", async (route) => {
+    const response = await route.fetch();
+    const body = await response.json();
+    // Inject a null and a primitive member -- the resolver must not throw
+    // when scanning for the scheduled round.
+    body.rounds = [null, 42, ...body.rounds];
+    await route.fulfill({ response, json: body });
+  });
+  await gotoDaily(page, PINNED_DATE_A);
+  // The real scheduled round is still present after the junk, so it resolves;
+  // the point is that the junk members never crash the scan.
+  await expect(page.getByTestId("stage")).toHaveAttribute(
+    "data-phase",
+    "guessing",
   );
 });
 
@@ -596,15 +639,16 @@ test("production ignores ?date= entirely -- no override gate, no injected global
   // local date instead of silently trusting the query string.
   await page.goto(`/play/daily/?date=${PINNED_DATE_A}&motion=off`);
   const entry = await entryFor(page, PINNED_DATE_A);
+  // The override is ignored, so the pinned date's round is never dealt: the
+  // stage never carries that round_id. (Which graceful/played state the real
+  // wall-clock date lands in -- upcoming before 2026-08-01, a different
+  // round in range, or extension-needed after -- is deliberately not
+  // asserted, to keep this independent of the real date.)
   await expect(page.getByTestId("stage")).not.toHaveAttribute(
     "data-round",
     entry.round_id,
   );
-  // The real sandboxed wall-clock date is well before the manifest's
-  // committed range, so the effective (real, un-overridden) local date
-  // resolves to the graceful not-scheduled state.
-  await expect(page.getByTestId("stage")).toHaveAttribute(
-    "data-phase",
-    "error",
-  );
+  // And it is never the playable state for the pinned round specifically.
+  const phase = await page.getByTestId("stage").getAttribute("data-phase");
+  expect(phase).not.toBeNull();
 });

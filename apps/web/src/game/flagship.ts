@@ -151,19 +151,74 @@ async function fetchRounds(): Promise<GameRounds> {
   return (await response.json()) as GameRounds;
 }
 
+/** Hide every gameplay control so a non-playable stage state (error or
+ * upcoming) can never present an inert-but-visible clue/give-up button. The
+ * tray is empty in these states (the caller returns before populating it),
+ * but hide it explicitly too rather than relying on emptiness. */
+function hideGameplayControls(): void {
+  for (const testid of ["chip-tray", "clue-button", "give-up"]) {
+    document
+      .querySelector<HTMLElement>(`[data-testid="${testid}"]`)
+      ?.setAttribute("hidden", "");
+  }
+}
+
 /** Render a graceful, spoiler-free error/integrity state into the stage
  * shell shared by every failure mode below (fetch failure, unscheduled
  * date, missing or content-mismatched round) -- never a thrown error, never
- * a silent fallback to a derived assignment. */
+ * a silent fallback to a derived assignment. Because every caller `return`s
+ * before the tray/clue/give-up controls are wired up, no gameplay control is
+ * ever active in this state. */
 function showStageError(message: string, announceText = message): void {
   const stage = document.querySelector('[data-testid="stage"]');
   const question = document.querySelector('[data-testid="question"]');
   if (question) question.textContent = message;
   stage?.setAttribute("data-phase", "error");
+  hideGameplayControls();
   const liveAssertive = document.querySelector(
     '[data-testid="live-assertive"]',
   );
   if (liveAssertive) liveAssertive.textContent = announceText;
+}
+
+const _LAUNCH_MONTHS = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
+
+/** "2026-08-01" -> "August 1". Parses the ISO label by parts (no Date, no
+ * timezone shift); falls back to the raw label if it isn't a plain date. */
+function formatLaunchDate(iso: string): string {
+  const [y, m, d] = iso.split("-").map((part) => Number(part));
+  if (!y || !m || !d || m < 1 || m > 12) return iso;
+  return `${_LAUNCH_MONTHS[m - 1]} ${d}`;
+}
+
+/** The pre-launch state for Connection of the Day: the manifest exists and is
+ * valid, but the player's local date is before its first scheduled date.
+ * This is NOT an error -- it's a friendly "coming soon", a distinct
+ * `data-phase="upcoming"` with a polite (not assertive) announcement, and
+ * (like the error path) it returns before any gameplay control is wired up,
+ * so the tray/clue/give-up stay inert (ADR 0044). */
+function showStageUpcoming(startDate: string): void {
+  const stage = document.querySelector('[data-testid="stage"]');
+  const question = document.querySelector('[data-testid="question"]');
+  const message = `Connection of the Day launches ${formatLaunchDate(startDate)}. Come back then for the first frozen connection.`;
+  if (question) question.textContent = message;
+  stage?.setAttribute("data-phase", "upcoming");
+  hideGameplayControls();
+  const livePolite = document.querySelector('[data-testid="live-region"]');
+  if (livePolite) livePolite.textContent = message;
 }
 
 export async function initFlagship(
@@ -240,7 +295,18 @@ export async function initFlagship(
     );
     if (!resolution.ok) {
       if (resolution.reason === "not-scheduled") {
-        showStageError("Today's connection has not been scheduled yet.");
+        // Distinguish a legitimate pre-launch date (before the manifest's
+        // first scheduled date -> friendly "launching soon") from a date
+        // past the last scheduled one (the calendar needs extending). ISO
+        // date labels compare correctly as strings (ADR 0044).
+        const startDate = manifest.start_date;
+        if (typeof startDate === "string" && isoDate < startDate) {
+          showStageUpcoming(startDate);
+        } else {
+          showStageError(
+            "Today's connection isn't on the calendar yet — the daily schedule needs extending. Check back soon.",
+          );
+        }
       } else if (resolution.reason === "missing-round") {
         showStageError(
           "Today's connection could not be verified — the scheduled record set is missing. Try refreshing the page.",
