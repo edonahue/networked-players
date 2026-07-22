@@ -1,0 +1,778 @@
+{
+  "schema_version": 1,
+  "pool_version": "routes-v1-20260601-056ea65395e3",
+  "provenance": {
+    "source": "Discogs monthly data dump (CC0), one-hop working set",
+    "license": "Derived from the Discogs monthly CC0 data dumps. See docs/DATA_AND_RIGHTS.md.",
+    "snapshot_date": "20260601",
+    "generated_by": "networked-players-catalog build-record-routes 0.1.0",
+    "graph_core_version": "0.1.0",
+    "note": "Derived from a bounded one-hop working set; the private collection seed used to build that working set is never published. Every round's hops require an explicit, displayable instrument/vocal role on both sides.",
+    "catalog_version": "catalog-v1-20260601-0e7ec70fbb7e",
+    "artifact_version": "routes-artifact-v1-20260601-f068e7335a42"
+  },
+  "counts": {
+    "one_hop": 90,
+    "two_hop": 200,
+    "daily_eligible": 290
+  },
+  "albums": [
+    {
+      "id": "master-10362",
+      "master_id": 10362,
+      "main_release_id": 378824,
+      "title": "The Dark Side Of The Moon",
+      "artist_id": 45467,
+      "artist": "Pink Floyd",
+      "year": 1973
+    },
+    {
+      "id": "master-10363",
+      "master_id": 10363,
+      "main_release_id": 6474253,
+      "title": "Yankee Hotel Foxtrot",
+      "artist_id": 102984,
+      "artist": "Wilco",
+      "year": 2002
+    },
+    {
+      "id": "master-104166",
+      "master_id": 104166,
+      "main_release_id": 1395530,
+      "title": "Tapestry",
+      "artist_id": 266352,
+      "artist": "Carole King",
+      "year": 1971
+    },
+    {
+      "id": "master-1046042",
+      "master_id": 1046042,
+      "main_release_id": 25500877,
+      "title": "Blonde",
+      "artist_id": 2013868,
+      "artist": "Frank Ocean",
+      "year": 2016
+    },
+    {
+      "id": "master-105802",
+      "master_id": 105802,
+      "main_release_id": 761153,
+      "title": "Tracy Chapman",
+      "artist_id": 161091,
+      "artist": "Tracy Chapman",
+      "year": 1988
+    },
+    {
+      "id": "master-106274",
+      "master_id": 106274,
+      "main_release_id": 757539,
+      "title": "Genius Loves Company",
+      "artist_id": 30552,
+      "artist": "Ray Charles",
+      "year": 2004
+    },
+    {
+      "id": "master-106396",
+      "master_id": 106396,
+      "main_release_id": 24069521,
+      "title": "The Wild Heart",
+      "artist_id": 13735,
+      "artist": "Stevie Nicks",
+      "year": 1983
+    },
+    {
+      "id": "master-107325",
+      "master_id": 107325,
+      "main_release_id": 4814324,
+      "title": "Elvis Presley",
+      "artist_id": 27518,
+      "artist": "Elvis Presley",
+      "year": 1956
+    },
+    {
+      "id": "master-108242",
+      "master_id": 108242,
+      "main_release_id": 713519,
+      "title": "Silk Degrees",
+      "artist_id": 268583,
+      "artist": "Boz Scaggs",
+      "year": 1976
+    },
+    {
+      "id": "master-113224",
+      "master_id": 113224,
+      "main_release_id": 13679780,
+      "title": "Unforgettable With Love",
+      "artist_id": 12686,
+      "artist": "Natalie Cole",
+      "year": 1991
+    },
+    {
+      "id": "master-113522",
+      "master_id": 113522,
+      "main_release_id": 604619,
+      "title": "Christopher Cross",
+      "artist_id": 48512,
+      "artist": "Christopher Cross",
+      "year": 1979
+    },
+    {
+      "id": "master-122261",
+      "master_id": 122261,
+      "main_release_id": 1449440,
+      "title": "Nina Simone Sings The Blues",
+      "artist_id": 10584,
+      "artist": "Nina Simone",
+      "year": 1967
+    },
+    {
+      "id": "master-13280",
+      "master_id": 13280,
+      "main_release_id": 1451593,
+      "title": "Reckless",
+      "artist_id": 10933,
+      "artist": "Bryan Adams",
+      "year": 1984
+    },
+    {
+      "id": "master-133278",
+      "master_id": 133278,
+      "main_release_id": 530222,
+      "title": "Let's Talk About Love",
+      "artist_id": 19298,
+      "artist": "C\u00e9line Dion",
+      "year": 1997
+    },
+    {
+      "id": "master-13960",
+      "master_id": 13960,
+      "main_release_id": 905265,
+      "title": "Rain Dogs",
+      "artist_id": 82294,
+      "artist": "Tom Waits",
+      "year": 1985
+    },
+    {
+      "id": "master-151766",
+      "master_id": 151766,
+      "main_release_id": 268430,
+      "title": "Voodoo",
+      "artist_id": 44944,
+      "artist": "D'Angelo",
+      "year": 2000
+    },
+    {
+      "id": "master-1561",
+      "master_id": 1561,
+      "main_release_id": 618952,
+      "title": "The Rise And Fall Of Ziggy Stardust And The Spiders From Mars",
+      "artist_id": 10263,
+      "artist": "David Bowie",
+      "year": 1972
+    },
+    {
+      "id": "master-16545",
+      "master_id": 16545,
+      "main_release_id": 1646616,
+      "title": "Faster Than The Speed Of Night",
+      "artist_id": 30344,
+      "artist": "Bonnie Tyler",
+      "year": 1983
+    },
+    {
+      "id": "master-17217",
+      "master_id": 17217,
+      "main_release_id": 367644,
+      "title": "Pet Sounds",
+      "artist_id": 70829,
+      "artist": "The Beach Boys",
+      "year": 1966
+    },
+    {
+      "id": "master-19493",
+      "master_id": 19493,
+      "main_release_id": 31381,
+      "title": "Head Hunters",
+      "artist_id": 3865,
+      "artist": "Herbie Hancock",
+      "year": 1973
+    },
+    {
+      "id": "master-20148",
+      "master_id": 20148,
+      "main_release_id": 3207332,
+      "title": "Illmatic",
+      "artist_id": 50997,
+      "artist": "Nas",
+      "year": 1994
+    },
+    {
+      "id": "master-20387",
+      "master_id": 20387,
+      "main_release_id": 1022835,
+      "title": "Good Girl Gone Bad",
+      "artist_id": 321128,
+      "artist": "Rihanna",
+      "year": 2007
+    },
+    {
+      "id": "master-23069",
+      "master_id": 23069,
+      "main_release_id": 11858130,
+      "title": "Bat Out Of Hell",
+      "artist_id": 254259,
+      "artist": "Meat Loaf",
+      "year": 1977
+    },
+    {
+      "id": "master-26037",
+      "master_id": 26037,
+      "main_release_id": 1542309,
+      "title": "Running On Empty",
+      "artist_id": 200567,
+      "artist": "Jackson Browne",
+      "year": 1977
+    },
+    {
+      "id": "master-26647",
+      "master_id": 26647,
+      "main_release_id": 2879,
+      "title": "Discovery",
+      "artist_id": 1289,
+      "artist": "Daft Punk",
+      "year": 2001
+    },
+    {
+      "id": "master-26725",
+      "master_id": 26725,
+      "main_release_id": 8110043,
+      "title": "Born To Run",
+      "artist_id": 219986,
+      "artist": "Bruce Springsteen",
+      "year": 1975
+    },
+    {
+      "id": "master-27460",
+      "master_id": 27460,
+      "main_release_id": 2047108,
+      "title": "Britney",
+      "artist_id": 15687,
+      "artist": "Britney Spears",
+      "year": 2001
+    },
+    {
+      "id": "master-28680",
+      "master_id": 28680,
+      "main_release_id": 197163,
+      "title": "Hounds Of Love",
+      "artist_id": 85929,
+      "artist": "Kate Bush",
+      "year": 1985
+    },
+    {
+      "id": "master-30577",
+      "master_id": 30577,
+      "main_release_id": 6339359,
+      "title": "Goodbye Yellow Brick Road",
+      "artist_id": 57103,
+      "artist": "Elton John",
+      "year": 1973
+    },
+    {
+      "id": "master-30712",
+      "master_id": 30712,
+      "main_release_id": 11093530,
+      "title": "Toto IV",
+      "artist_id": 68693,
+      "artist": "Toto",
+      "year": 1982
+    },
+    {
+      "id": "master-30926",
+      "master_id": 30926,
+      "main_release_id": 2761237,
+      "title": "The Dude",
+      "artist_id": 17546,
+      "artist": "Quincy Jones",
+      "year": 1981
+    },
+    {
+      "id": "master-32208",
+      "master_id": 32208,
+      "main_release_id": 11786823,
+      "title": "Blue Train",
+      "artist_id": 97545,
+      "artist": "John Coltrane",
+      "year": 1958
+    },
+    {
+      "id": "master-32708",
+      "master_id": 32708,
+      "main_release_id": 586972,
+      "title": "The Dream Of The Blue Turtles",
+      "artist_id": 13961,
+      "artist": "Sting",
+      "year": 1985
+    },
+    {
+      "id": "master-35401",
+      "master_id": 35401,
+      "main_release_id": 1456515,
+      "title": "Blood, Sweat And Tears",
+      "artist_id": 168907,
+      "artist": "Blood, Sweat And Tears",
+      "year": 1969
+    },
+    {
+      "id": "master-35759",
+      "master_id": 35759,
+      "main_release_id": 379036,
+      "title": "So",
+      "artist_id": 11136,
+      "artist": "Peter Gabriel",
+      "year": 1986
+    },
+    {
+      "id": "master-35793",
+      "master_id": 35793,
+      "main_release_id": 4951944,
+      "title": "Apostrophe (')",
+      "artist_id": 92623,
+      "artist": "Frank Zappa",
+      "year": 1974
+    },
+    {
+      "id": "master-37615",
+      "master_id": 37615,
+      "main_release_id": 1044287,
+      "title": "Harvest",
+      "artist_id": 138556,
+      "artist": "Neil Young",
+      "year": 1972
+    },
+    {
+      "id": "master-3878",
+      "master_id": 3878,
+      "main_release_id": 2306941,
+      "title": "Blood On The Tracks",
+      "artist_id": 59792,
+      "artist": "Bob Dylan",
+      "year": 1975
+    },
+    {
+      "id": "master-40048",
+      "master_id": 40048,
+      "main_release_id": 1138123,
+      "title": "Flowers In The Dirt",
+      "artist_id": 35301,
+      "artist": "Paul McCartney",
+      "year": 1989
+    },
+    {
+      "id": "master-403952",
+      "master_id": 403952,
+      "main_release_id": 3365117,
+      "title": "Born To Die",
+      "artist_id": 2445772,
+      "artist": "Lana Del Rey",
+      "year": 2012
+    },
+    {
+      "id": "master-41155",
+      "master_id": 41155,
+      "main_release_id": 19452658,
+      "title": "Blizzard Of Ozz",
+      "artist_id": 59770,
+      "artist": "Ozzy Osbourne",
+      "year": 1980
+    },
+    {
+      "id": "master-44278",
+      "master_id": 44278,
+      "main_release_id": 727363,
+      "title": "Transformer",
+      "artist_id": 11879,
+      "artist": "Lou Reed",
+      "year": 1972
+    },
+    {
+      "id": "master-45720",
+      "master_id": 45720,
+      "main_release_id": 926898,
+      "title": "Lionel Richie",
+      "artist_id": 69722,
+      "artist": "Lionel Richie",
+      "year": 1982
+    },
+    {
+      "id": "master-47744",
+      "master_id": 47744,
+      "main_release_id": 10028381,
+      "title": "Blue",
+      "artist_id": 90233,
+      "artist": "Joni Mitchell",
+      "year": 1971
+    },
+    {
+      "id": "master-49965",
+      "master_id": 49965,
+      "main_release_id": 5376969,
+      "title": "Amused To Death",
+      "artist_id": 110862,
+      "artist": "Roger Waters",
+      "year": 1992
+    },
+    {
+      "id": "master-51607",
+      "master_id": 51607,
+      "main_release_id": 12912700,
+      "title": "Whitney Houston",
+      "artist_id": 30542,
+      "artist": "Whitney Houston",
+      "year": 1985
+    },
+    {
+      "id": "master-52671",
+      "master_id": 52671,
+      "main_release_id": 6891706,
+      "title": "Give Me The Night",
+      "artist_id": 2266,
+      "artist": "George Benson",
+      "year": 1980
+    },
+    {
+      "id": "master-5460",
+      "master_id": 5460,
+      "main_release_id": 6276183,
+      "title": "Kind Of Blue",
+      "artist_id": 23755,
+      "artist": "Miles Davis",
+      "year": 1959
+    },
+    {
+      "id": "master-553",
+      "master_id": 553,
+      "main_release_id": 10775348,
+      "title": "Face Value",
+      "artist_id": 101028,
+      "artist": "Phil Collins",
+      "year": 1981
+    },
+    {
+      "id": "master-55576",
+      "master_id": 55576,
+      "main_release_id": 706094,
+      "title": "Nightclubbing",
+      "artist_id": 13932,
+      "artist": "Grace Jones",
+      "year": 1981
+    },
+    {
+      "id": "master-55658",
+      "master_id": 55658,
+      "main_release_id": 1031388,
+      "title": "Graceland",
+      "artist_id": 106474,
+      "artist": "Paul Simon",
+      "year": 1986
+    },
+    {
+      "id": "master-56036",
+      "master_id": 56036,
+      "main_release_id": 14406326,
+      "title": "All Things Must Pass",
+      "artist_id": 243955,
+      "artist": "George Harrison",
+      "year": 1970
+    },
+    {
+      "id": "master-57029",
+      "master_id": 57029,
+      "main_release_id": 13114025,
+      "title": "The Stranger",
+      "artist_id": 137418,
+      "artist": "Billy Joel",
+      "year": 1977
+    },
+    {
+      "id": "master-57940",
+      "master_id": 57940,
+      "main_release_id": 449189,
+      "title": "The Six Wives Of Henry VIII",
+      "artist_id": 149420,
+      "artist": "Rick Wakeman",
+      "year": 1973
+    },
+    {
+      "id": "master-59538",
+      "master_id": 59538,
+      "main_release_id": 549847,
+      "title": "Journey In Satchidananda",
+      "artist_id": 42058,
+      "artist": "Alice Coltrane",
+      "year": 1971
+    },
+    {
+      "id": "master-60680",
+      "master_id": 60680,
+      "main_release_id": 11255474,
+      "title": "Nilsson Schmilsson",
+      "artist_id": 152685,
+      "artist": "Harry Nilsson",
+      "year": 1971
+    },
+    {
+      "id": "master-60721",
+      "master_id": 60721,
+      "main_release_id": 30066736,
+      "title": "With A Little Help From My Friends",
+      "artist_id": 124497,
+      "artist": "Joe Cocker",
+      "year": 1969
+    },
+    {
+      "id": "master-65826",
+      "master_id": 65826,
+      "main_release_id": 1178973,
+      "title": "The Nightfly",
+      "artist_id": 117225,
+      "artist": "Donald Fagen",
+      "year": 1982
+    },
+    {
+      "id": "master-66510",
+      "master_id": 66510,
+      "main_release_id": 4948161,
+      "title": "Black On Both Sides",
+      "artist_id": 5648,
+      "artist": "Mos Def",
+      "year": 1999
+    },
+    {
+      "id": "master-66631",
+      "master_id": 66631,
+      "main_release_id": 26197826,
+      "title": "What's Going On",
+      "artist_id": 18984,
+      "artist": "Marvin Gaye",
+      "year": 1971
+    },
+    {
+      "id": "master-67405",
+      "master_id": 67405,
+      "main_release_id": 5675046,
+      "title": "America",
+      "artist_id": 249829,
+      "artist": "America (2)",
+      "year": 1971
+    },
+    {
+      "id": "master-67836",
+      "master_id": 67836,
+      "main_release_id": 597222,
+      "title": "True Blue",
+      "artist_id": 8760,
+      "artist": "Madonna",
+      "year": 1986
+    },
+    {
+      "id": "master-68209",
+      "master_id": 68209,
+      "main_release_id": 7166456,
+      "title": "Mud Slide Slim And The Blue Horizon",
+      "artist_id": 262944,
+      "artist": "James Taylor (2)",
+      "year": 1971
+    },
+    {
+      "id": "master-68399",
+      "master_id": 68399,
+      "main_release_id": 864428,
+      "title": "Atlantic Crossing",
+      "artist_id": 11012,
+      "artist": "Rod Stewart",
+      "year": 1975
+    },
+    {
+      "id": "master-69156",
+      "master_id": 69156,
+      "main_release_id": 1136855,
+      "title": "Cher",
+      "artist_id": 17961,
+      "artist": "Cher",
+      "year": 1987
+    },
+    {
+      "id": "master-69859",
+      "master_id": 69859,
+      "main_release_id": 585141,
+      "title": "461 Ocean Boulevard",
+      "artist_id": 17827,
+      "artist": "Eric Clapton",
+      "year": 1974
+    },
+    {
+      "id": "master-72235",
+      "master_id": 72235,
+      "main_release_id": 869077,
+      "title": "Pearl",
+      "artist_id": 120232,
+      "artist": "Janis Joplin",
+      "year": 1971
+    },
+    {
+      "id": "master-72879",
+      "master_id": 72879,
+      "main_release_id": 382877,
+      "title": "Imagine",
+      "artist_id": 46481,
+      "artist": "John Lennon",
+      "year": 1971
+    },
+    {
+      "id": "master-74227",
+      "master_id": 74227,
+      "main_release_id": 1078681,
+      "title": "Guilty",
+      "artist_id": 53248,
+      "artist": "Barbra Streisand",
+      "year": 1980
+    },
+    {
+      "id": "master-750386",
+      "master_id": 750386,
+      "main_release_id": 7089669,
+      "title": "1989",
+      "artist_id": 1124645,
+      "artist": "Taylor Swift",
+      "year": 2014
+    },
+    {
+      "id": "master-79666",
+      "master_id": 79666,
+      "main_release_id": 1247196,
+      "title": "Merry Christmas",
+      "artist_id": 33534,
+      "artist": "Mariah Carey",
+      "year": 1994
+    },
+    {
+      "id": "master-80514",
+      "master_id": 80514,
+      "main_release_id": 3091874,
+      "title": "1100 Bel Air Place",
+      "artist_id": 67331,
+      "artist": "Julio Iglesias",
+      "year": 1984
+    },
+    {
+      "id": "master-81172",
+      "master_id": 81172,
+      "main_release_id": 689570,
+      "title": "Mystery Girl",
+      "artist_id": 145072,
+      "artist": "Roy Orbison",
+      "year": 1989
+    },
+    {
+      "id": "master-81575",
+      "master_id": 81575,
+      "main_release_id": 1917375,
+      "title": "Building The Perfect Beast",
+      "artist_id": 249597,
+      "artist": "Don Henley",
+      "year": 1984
+    },
+    {
+      "id": "master-82337",
+      "master_id": 82337,
+      "main_release_id": 758676,
+      "title": "First Take",
+      "artist_id": 63771,
+      "artist": "Roberta Flack",
+      "year": 1969
+    },
+    {
+      "id": "master-87446",
+      "master_id": 87446,
+      "main_release_id": 174477,
+      "title": "Talking Book",
+      "artist_id": 18956,
+      "artist": "Stevie Wonder",
+      "year": 1972
+    },
+    {
+      "id": "master-8883",
+      "master_id": 8883,
+      "main_release_id": 2911293,
+      "title": "Thriller",
+      "artist_id": 15885,
+      "artist": "Michael Jackson",
+      "year": 1982
+    },
+    {
+      "id": "master-89665",
+      "master_id": 89665,
+      "main_release_id": 507814,
+      "title": "Reload",
+      "artist_id": 51039,
+      "artist": "Tom Jones",
+      "year": 1999
+    },
+    {
+      "id": "master-90844",
+      "master_id": 90844,
+      "main_release_id": 794285,
+      "title": "Futuresex/Lovesounds",
+      "artist_id": 66824,
+      "artist": "Justin Timberlake",
+      "year": 2006
+    },
+    {
+      "id": "master-91767",
+      "master_id": 91767,
+      "main_release_id": 245159,
+      "title": "Private Dancer",
+      "artist_id": 24221,
+      "artist": "Tina Turner",
+      "year": 1984
+    },
+    {
+      "id": "master-92517",
+      "master_id": 92517,
+      "main_release_id": 404855,
+      "title": "Ram",
+      "artist_id": 938844,
+      "artist": "Paul & Linda McCartney",
+      "year": 1971
+    },
+    {
+      "id": "master-92896",
+      "master_id": 92896,
+      "main_release_id": 574854,
+      "title": "Still Bill",
+      "artist_id": 59249,
+      "artist": "Bill Withers",
+      "year": 1972
+    },
+    {
+      "id": "master-9382",
+      "master_id": 9382,
+      "main_release_id": 1787389,
+      "title": "Histoire De Melody Nelson",
+      "artist_id": 5951,
+      "artist": "Serge Gainsbourg",
+      "year": 1971
+    },
+    {
+      "id": "master-99919",
+      "master_id": 99919,
+      "main_release_id": 4271203,
+      "title": "No Secrets",
+      "artist_id": 36603,
+      "artist": "Carly Simon",
+      "year": 1972
+    }
+  ],
+  "mode": "record_routes"
+}

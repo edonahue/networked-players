@@ -29,7 +29,7 @@ import {
   type SetState,
   type StorageLike,
 } from "./store";
-import { sleeveSvg } from "./sleeves";
+import { renderSleeve } from "./sleeveRender";
 import type {
   AlbumRef,
   ContributorRef,
@@ -72,41 +72,8 @@ function poolLabel(round: GameRound): string {
  * registry leaves it empty and every real sleeve renders the placeholder. */
 let artMap: Map<string, ResolvedArt> = new Map();
 
-function renderSleeve(container: HTMLElement, album: AlbumRef): void {
-  container.replaceChildren();
-  // Synthetic albums carry a `generated` marker and render an SVG sleeve;
-  // frozen content never carries a URL (ADR 0045).
-  if (album.art && album.art.kind === "generated") {
-    container.innerHTML = sleeveSvg(album);
-    return;
-  }
-  // Real albums: resolve presentation art by id from the registry. Any miss
-  // (no entry, no registry) falls back to the placeholder -- art never blocks.
-  const art = artMap.get(album.id);
-  if (art) {
-    const img = document.createElement("img");
-    img.src = art.uri150;
-    img.width = 150;
-    img.height = 150;
-    img.alt = `Cover art for ${album.title}`;
-    img.loading = "eager";
-    img.addEventListener("error", () => {
-      container.replaceChildren(placeholderDisc());
-    });
-    container.append(img);
-    return;
-  }
-  container.append(placeholderDisc());
-}
-
-function placeholderDisc(): HTMLElement {
-  const span = document.createElement("span");
-  span.className = "album-card__placeholder sleeve__placeholder";
-  span.setAttribute("aria-hidden", "true");
-  const disc = document.createElement("span");
-  disc.className = "album-card__placeholder-disc";
-  span.append(disc);
-  return span;
+function renderAlbumSleeve(container: HTMLElement, album: AlbumRef): void {
+  renderSleeve(container, album, artMap);
 }
 
 /** The face-down hidden-middle slot: a question mark, never a spoiler. */
@@ -376,8 +343,8 @@ export async function initFlagship(
   stage.dataset.round = round.id;
   $("pool-badge").textContent = poolLabel(round);
   $("difficulty-tag").textContent = round.difficulty;
-  renderSleeve($("sleeve-a"), round.endpoints[0]);
-  renderSleeve($("sleeve-b"), round.endpoints[1]);
+  renderAlbumSleeve($("sleeve-a"), round.endpoints[0]);
+  renderAlbumSleeve($("sleeve-b"), round.endpoints[1]);
   $("caption-a").textContent = captionFor(round.endpoints[0]);
   $("caption-b").textContent = captionFor(round.endpoints[1]);
   if (twoHop) {
@@ -508,7 +475,7 @@ export async function initFlagship(
       const art = document.createElement("span");
       art.className = "chip__sleeve";
       art.setAttribute("aria-hidden", "true");
-      renderSleeve(art, album);
+      renderAlbumSleeve(art, album);
       const name = document.createElement("span");
       name.className = "chip__name";
       name.textContent = album.title;
@@ -668,7 +635,7 @@ export async function initFlagship(
       }
     }
     if (twoHop && round.middle) {
-      renderSleeve(middleArt, round.middle.album);
+      renderAlbumSleeve(middleArt, round.middle.album);
       middleCaption.textContent = captionFor(round.middle.album);
     }
     const path = describeAnswer();

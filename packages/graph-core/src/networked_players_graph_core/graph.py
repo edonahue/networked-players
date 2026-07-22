@@ -918,6 +918,33 @@ class CreditGraph:
         ).fetchall()
         return [dict(zip(_CREDIT_COLUMNS, row, strict=True)) for row in rows]
 
+    def credit_rows_for_release_batch(
+        self, release_ids: Sequence[int]
+    ) -> dict[int, list[dict[str, Any]]]:
+        """Same WHERE-filter semantics as `credit_rows` (no `playable_identity`/
+        not-placeholder narrowing -- callers already know these release/artist
+        pairs are real graph edges) but batched over many release_ids in one
+        query. `credit_rows` issued one query per hop inside round-discovery's
+        candidate loop (up to tens of thousands of hop attempts against the
+        unindexed `credits` view); measured at ~0.5-1s/query on the real
+        corpus, that made two-hop discovery run for tens of minutes without
+        finishing. Callers filter the per-release rows down to the specific
+        artist pair themselves -- see `rounds.build_round_hop`."""
+        if not release_ids:
+            return {}
+        ids = sorted(set(release_ids))
+        placeholders = ", ".join("?" for _ in ids)
+        columns = ", ".join(_CREDIT_COLUMNS)
+        rows = self._connection.execute(
+            f"SELECT {columns} FROM credits WHERE release_id IN ({placeholders}) ORDER BY ALL",
+            ids,
+        ).fetchall()
+        grouped: dict[int, list[dict[str, Any]]] = {rid: [] for rid in ids}
+        for row in rows:
+            record = dict(zip(_CREDIT_COLUMNS, row, strict=True))
+            grouped[int(record["release_id"])].append(record)
+        return grouped
+
     def credit_rows_for_releases(
         self, release_ids: Sequence[int]
     ) -> dict[int, list[dict[str, Any]]]:

@@ -105,6 +105,31 @@ def test_credit_rows_returns_full_evidence(dataset_root: Path) -> None:
     assert {r["credit_scope"] for r in rows} == {"release_artist", "track_artist"}
 
 
+def test_credit_rows_for_release_batch_matches_credit_rows(dataset_root: Path) -> None:
+    with CreditGraph.open(dataset_root) as graph:
+        direct = graph.credit_rows(1, {100, 200})
+        batched = graph.credit_rows_for_release_batch([1])
+    # Same WHERE-filter semantics, batched vs. per-release -- what the
+    # round-discovery hot loop now prefetches instead of querying per hop.
+    filtered = [row for row in batched[1] if row["artist_id"] in {100, 200}]
+    assert filtered == direct
+
+
+def test_credit_rows_for_release_batch_batches_multiple_releases(dataset_root: Path) -> None:
+    with CreditGraph.open(dataset_root) as graph:
+        grouped = graph.credit_rows_for_release_batch([1, 2])
+    assert set(grouped) == {1, 2}
+    assert {r["artist_id"] for r in grouped[1]} == {100, 200}
+    assert {r["artist_id"] for r in grouped[2]} == {200, 300}
+
+
+def test_credit_rows_for_release_batch_empty_input_returns_empty_dict(
+    dataset_root: Path,
+) -> None:
+    with CreditGraph.open(dataset_root) as graph:
+        assert graph.credit_rows_for_release_batch([]) == {}
+
+
 def test_credit_rows_for_releases_batches_and_filters(dataset_root: Path) -> None:
     with CreditGraph.open(dataset_root) as graph:
         grouped = graph.credit_rows_for_releases([1, 7])

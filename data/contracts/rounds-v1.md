@@ -11,14 +11,18 @@
 > `build-connection-rounds`/`connection_rounds.py`. Both pairs have
 > historically been published at the same file names in different
 > directories — "rounds.v1" alone never identifies which contract an
-> artifact satisfies (see ADR 0042, ADR 0043). Record Routes has no published
-> public artifact yet (a later slice); this contract currently describes only
-> the shape its generator produces when run.
+> artifact satisfies (see ADR 0042, ADR 0043). **This document describes the
+> shape this module's discovery/assembly produces; the production Record
+> Routes public artifact (`apps/web/public/data/routes/*`) is the further-
+> refined contract in `data/contracts/record-routes-v1.md`** (content-derived
+> stable ids, explicit `mode`, deterministic `pool_version`/`artifact_version`,
+> art-free albums, ADR 0046) — read that document for the artifact that is
+> actually published.
 
-This contract describes Record Routes' static artifact pair —
-`universe.v1.json` and `rounds.v1.json` — produced by
-`networked-players-catalog build-rounds-from-dump`. Defined in
-`packages/graph-core/src/networked_players_graph_core/rounds.py`
+This document describes the underlying shape `rounds.py`/`rounds_generator.py`
+produce — `universe.v1.json` and `rounds.v1.json` as emitted by the LEGACY/
+exploratory `networked-players-catalog build-rounds-from-dump` command.
+Defined in `packages/graph-core/src/networked_players_graph_core/rounds.py`
 (`build_round_hop`, `build_round_from_path`, `validate_rounds_artifact`,
 `ROUNDS_SCHEMA_VERSION`).
 
@@ -45,12 +49,13 @@ different audiences and eligibility rules:
 - `challenge.v2.json` (the album browser) uses the graph's existing broad
   `credit_edges` eligibility (any collaborative role, per ADR 0035) and shows
   every path the generator finds.
-- `rounds.v1.json` (the flagship game) additionally requires every hop to pass
-  the narrower, fail-closed instrument/vocal performer allowlist
-  (`eligibility.py::is_performer_role`) — see
-  [ADR — performer-role allowlist](../../docs/decisions/) once written. A path
-  that is valid evidence for the album browser may still be excluded from the
-  game if its only connecting credit is non-performer (e.g. a shared producer).
+- `rounds.v1.json` (Record Routes, ADR 0046 — not the flagship Connection
+  Guesser) additionally requires every hop to pass the narrower, fail-closed
+  instrument/vocal performer allowlist (`eligibility.py::is_performer_role`)
+  — see [ADR 0039](../../docs/decisions/0039-performer-allowlist-layered-for-game-rounds.md).
+  A path that is valid evidence for the album browser may still be excluded
+  from Record Routes if its only connecting credit is non-performer (e.g. a
+  shared producer).
 
 ## `universe.v1.json` — top-level shape
 

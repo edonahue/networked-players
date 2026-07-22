@@ -224,8 +224,10 @@ def _parser() -> argparse.ArgumentParser:
     build_rounds = subparsers.add_parser(
         "build-rounds-from-dump",
         help=(
-            "build a real, performer-only universe.v1/rounds.v1 artifact pair "
-            "from a one-hop dataset"
+            "LEGACY/exploratory -- ordinal round ids, no mode field, embedded cover art. "
+            "Use build-record-routes for the production Record Routes artifact pair "
+            "(content-derived ids, mode='record_routes', art-free, ADR 0046). Builds a real "
+            "performer-only universe.v1/rounds.v1 artifact pair from a one-hop dataset"
         ),
     )
     build_rounds.add_argument("--onehop-root", type=Path, required=True)
@@ -317,6 +319,43 @@ def _parser() -> argparse.ArgumentParser:
     )
     validate_connection_rounds.add_argument("--universe", type=Path, required=True)
     validate_connection_rounds.add_argument("--rounds", type=Path, required=True)
+
+    build_record_routes = subparsers.add_parser(
+        "build-record-routes",
+        help=(
+            "build the real Record Routes universe/rounds pair "
+            "(apps/web/public/data/routes/*, the path-guessing mode) -- album->artist->album "
+            "documented credit paths, mode='record_routes', content-derived route ids, "
+            "art-free; NOT the Connection Guesser's game/rounds.v1.json (ADR 0046)"
+        ),
+    )
+    build_record_routes.add_argument("--onehop-root", type=Path, required=True)
+    build_record_routes.add_argument(
+        "--albums",
+        type=Path,
+        required=True,
+        help="the canonical catalog artifact (apps/web/public/data/catalog/albums.v1.json)",
+    )
+    build_record_routes.add_argument("--artist-family-exclusions", type=Path, default=None)
+    build_record_routes.add_argument("--release-format-policy", type=Path, default=None)
+    build_record_routes.add_argument("--studio-album-exclusions", type=Path, default=None)
+    build_record_routes.add_argument("--masters-root", type=Path, default=None)
+    build_record_routes.add_argument("--one-hop-target", type=int, default=150)
+    build_record_routes.add_argument("--two-hop-target", type=int, default=100)
+    build_record_routes.add_argument("--max-endpoint-share", type=float, default=0.15)
+    build_record_routes.add_argument("--max-bridge-share", type=float, default=0.2)
+    build_record_routes.add_argument("--max-artists-per-release", type=int, default=50)
+    build_record_routes.add_argument("--memory-limit", default="1GB")
+    build_record_routes.add_argument("--threads", type=int, default=2)
+    build_record_routes.add_argument("--output-universe", type=Path, required=True)
+    build_record_routes.add_argument("--output-rounds", type=Path, required=True)
+
+    validate_record_routes = subparsers.add_parser(
+        "validate-record-routes",
+        help="validate a Record Routes universe/rounds pair against its contract (ADR 0046)",
+    )
+    validate_record_routes.add_argument("--universe", type=Path, required=True)
+    validate_record_routes.add_argument("--rounds", type=Path, required=True)
 
     build_daily = subparsers.add_parser(
         "build-daily-manifest",
@@ -1471,6 +1510,84 @@ def main(argv: Sequence[str] | None = None) -> int:
         universe = json.loads(args.universe.read_text())
         rounds = json.loads(args.rounds.read_text())
         validate_connection_rounds_artifact(universe, rounds)
+        print(json.dumps({"ok": True}, indent=2))
+        return 0
+
+    if args.command == "build-record-routes":
+        from networked_players_graph_core.challenge import resolved_album_from_dict
+        from networked_players_graph_core.graph import CreditGraph
+        from networked_players_graph_core.record_routes import (
+            build_record_routes_pool,
+            validate_record_routes_artifact,
+        )
+
+        from .discogs.release_format_policy import load_master_exclusions
+
+        catalog = json.loads(args.albums.read_text())
+        rr_albums = catalog["albums"]
+        rr_snapshot = catalog["snapshot_date"]
+        rr_catalog_version = catalog["catalog_version"]
+
+        rr_family_excluded: Callable[[int, int], bool] | None = None
+        if args.artist_family_exclusions is not None:
+            from .discogs.artist_family import is_family_excluded_pair
+
+            rr_exclusions = json.loads(args.artist_family_exclusions.read_text())
+
+            def rr_family_excluded(a: int, b: int) -> bool:
+                return is_family_excluded_pair(a, b, rr_exclusions)
+
+        rr_allowed_release_ids = None
+        if args.release_format_policy is not None:
+            rr_allowed_release_ids = frozenset(
+                json.loads(args.release_format_policy.read_text())["allowed_release_ids"]
+            )
+        rr_master_exclusions = load_master_exclusions(args.studio_album_exclusions)
+
+        with CreditGraph.open(
+            args.onehop_root,
+            memory_limit=args.memory_limit,
+            threads=args.threads,
+            max_artists_per_release=args.max_artists_per_release,
+        ) as graph:
+            if args.masters_root is not None:
+                graph.attach_masters(args.masters_root)
+            rr_matched = [resolved_album_from_dict(a) for a in rr_albums]
+            if rr_allowed_release_ids is not None:
+                rr_matched = [m for m in rr_matched if m.main_release_id in rr_allowed_release_ids]
+            if rr_master_exclusions:
+                rr_matched = [m for m in rr_matched if m.master_id not in rr_master_exclusions]
+            if len(rr_matched) < 2:
+                raise ValueError("need at least 2 matched albums to build Record Routes")
+
+            rr_universe, rr_rounds, rr_diag = build_record_routes_pool(
+                graph,
+                rr_matched,
+                one_hop_target=args.one_hop_target,
+                two_hop_target=args.two_hop_target,
+                snapshot_date=rr_snapshot,
+                generated_by=f"networked-players-catalog build-record-routes {__version__}",
+                catalog_version=rr_catalog_version,
+                is_family_excluded=rr_family_excluded,
+                allowed_release_ids=rr_allowed_release_ids,
+                max_endpoint_share=args.max_endpoint_share,
+                max_bridge_share=args.max_bridge_share,
+            )
+
+        validate_record_routes_artifact(rr_universe, rr_rounds)
+        args.output_universe.parent.mkdir(parents=True, exist_ok=True)
+        args.output_rounds.parent.mkdir(parents=True, exist_ok=True)
+        args.output_universe.write_text(json.dumps(rr_universe, indent=2) + "\n")
+        args.output_rounds.write_text(json.dumps(rr_rounds, indent=2) + "\n")
+        print(json.dumps(rr_diag, indent=2))
+        return 0
+
+    if args.command == "validate-record-routes":
+        from networked_players_graph_core.record_routes import validate_record_routes_artifact
+
+        rr_universe = json.loads(args.universe.read_text())
+        rr_rounds = json.loads(args.rounds.read_text())
+        validate_record_routes_artifact(rr_universe, rr_rounds)
         print(json.dumps({"ok": True}, indent=2))
         return 0
 

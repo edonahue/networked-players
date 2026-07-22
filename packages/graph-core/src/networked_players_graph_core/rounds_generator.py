@@ -12,7 +12,7 @@ randomness, no live re-scoring after publication.
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Any
 
@@ -34,12 +34,40 @@ class _Candidate:
     round_json: dict[str, Any]
 
 
+def _candidate_release_ids(
+    albums_by_artist: dict[int, MatchedAlbum],
+    neighbors: dict[int, dict[int, tuple[int, ...]]],
+) -> set[int]:
+    """Every release_id `_one_hop_candidates`/`_two_hop_candidates` might need
+    evidence rows for, computed purely from the already-fetched `neighbors`
+    batch (no DB access, matches their pair-selection loops but doesn't stop
+    at the first working bridge). Lets the caller prefetch all of it in one
+    query instead of one per candidate hop -- see
+    `CreditGraph.credit_rows_for_release_batch`."""
+    backbone_ids = sorted(albums_by_artist)
+    release_ids: set[int] = set()
+    for artist_a_id in backbone_ids:
+        for artist_b_id, releases in neighbors[artist_a_id].items():
+            if artist_b_id in albums_by_artist and artist_b_id != artist_a_id:
+                release_ids.add(releases[0])
+    for i, artist_a_id in enumerate(backbone_ids):
+        for artist_c_id in backbone_ids[i + 1 :]:
+            bridge_ids = sorted(set(neighbors[artist_a_id]) & set(neighbors[artist_c_id]))
+            for bridge_id in bridge_ids[:_MAX_BRIDGE_ATTEMPTS]:
+                if bridge_id in (artist_a_id, artist_c_id):
+                    continue
+                release_ids.add(neighbors[artist_a_id][bridge_id][0])
+                release_ids.add(neighbors[artist_c_id][bridge_id][0])
+    return release_ids
+
+
 def _one_hop_candidates(
     graph: CreditGraph,
     albums_by_artist: dict[int, MatchedAlbum],
     neighbors: dict[int, dict[int, tuple[int, ...]]],
     *,
     is_family_excluded: Callable[[int, int], bool] | None,
+    credit_rows_by_release: Mapping[int, list[dict[str, Any]]] | None = None,
 ) -> tuple[list[_Candidate], set[tuple[int, int]]]:
     backbone_ids = set(albums_by_artist)
     seen_pairs: set[tuple[int, int]] = set()
@@ -71,6 +99,7 @@ def _one_hop_candidates(
                 round_id="pending",
                 from_album_id=albums_by_artist[pair[0]].album_id,
                 to_album_id=albums_by_artist[pair[1]].album_id,
+                credit_rows_by_release=credit_rows_by_release,
             )
             if round_json is not None:
                 candidates.append(_Candidate(path=path, round_json=round_json))
@@ -85,6 +114,7 @@ def _two_hop_candidates(
     *,
     is_family_excluded: Callable[[int, int], bool] | None,
     allowed_release_ids: frozenset[int] | None,
+    credit_rows_by_release: Mapping[int, list[dict[str, Any]]] | None = None,
 ) -> list[_Candidate]:
     backbone_ids = sorted(albums_by_artist)
     candidates: list[_Candidate] = []
@@ -119,6 +149,7 @@ def _two_hop_candidates(
                     round_id="pending",
                     from_album_id=albums_by_artist[artist_a_id].album_id,
                     to_album_id=albums_by_artist[artist_c_id].album_id,
+                    credit_rows_by_release=credit_rows_by_release,
                 )
                 if round_json is not None:
                     # First working bridge only, in deterministic (sorted)
@@ -235,9 +266,16 @@ def generate_round_pool(
     """
     albums_by_artist = {m.artist_id: m for m in matched_albums}
     neighbors = graph.neighbors_batch(list(albums_by_artist))
+    credit_rows_by_release = graph.credit_rows_for_release_batch(
+        sorted(_candidate_release_ids(albums_by_artist, neighbors))
+    )
 
     one_hop_candidates, one_hop_pairs = _one_hop_candidates(
-        graph, albums_by_artist, neighbors, is_family_excluded=is_family_excluded
+        graph,
+        albums_by_artist,
+        neighbors,
+        is_family_excluded=is_family_excluded,
+        credit_rows_by_release=credit_rows_by_release,
     )
     two_hop_candidates = _two_hop_candidates(
         graph,
@@ -246,6 +284,7 @@ def generate_round_pool(
         one_hop_pairs,
         is_family_excluded=is_family_excluded,
         allowed_release_ids=allowed_release_ids,
+        credit_rows_by_release=credit_rows_by_release,
     )
 
     max_endpoint_uses = max(1, int(len(matched_albums) * max_endpoint_share))

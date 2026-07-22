@@ -356,3 +356,46 @@ became a round endpoint or distractor is correctly absent from the game's own un
 `rounds.v1.json` is fetched at runtime rather than bundled at build time for exactly the
 reason anticipated during planning: at this scale it is already well past a
 reasonable per-page Astro budget.
+
+## Record Routes real-data generation and a real performance fix (2026-07-22)
+
+The first real `build-record-routes` run (slice 6, ADR 0046) against `snapshot=20260601`
+did not finish within 49 minutes and was killed. Instrumented timing (measured locally,
+same host/dataset, 140 matched albums) isolated the cause before any fix: opening the
+graph took ~214-222s (expected, matches every other real generator); `_one_hop_candidates`
+alone took 95.8s for ~106 candidates (~0.5-1s per candidate) because
+`rounds_generator.py`'s discovery loop issued one `CreditGraph.credit_rows` query per
+candidate hop — a single-row scan against the live (unindexed) `credits` view rather than
+the materialized/indexed `credit_edges` table `neighbors_batch` already uses. Two-hop
+discovery evaluates on the order of 9,700 backbone pairs x up to 8 bridge attempts x 2
+hops, so at that per-query cost the run was on track to take hours, not minutes.
+
+**Fix:** a new `CreditGraph.credit_rows_for_release_batch` (mirrors the existing
+`credit_rows_for_releases` batching pattern, but keeps `credit_rows`'s exact filter
+semantics). `generate_round_pool` now computes the full candidate release-id universe from
+the already-fetched `neighbors_batch` result (no DB access) and prefetches every candidate
+hop's credit rows in one query before discovery runs, instead of one query per hop. This
+changes only the database-access pattern, not the discovery algorithm's inputs/outputs
+(candidate pairing, scoring, selection all unchanged; existing determinism/regeneration
+tests confirm identical results). Verified on the same real dataset after the fix: graph
+open ~222s (unchanged, not this fix's target), `generate_round_pool` (one-hop discovery +
+two-hop discovery + scoring + diversified selection, combined) **29.3s**, down from not
+finishing in 49 minutes.
+
+**Real production run**, same day, with the full real release-format policy
+(`local/analysis/release-format-policy-v2/release-format-scoring-index.json`), studio-album
+exclusions, and masters root wired in (gating two-hop bridge releases, the "hidden middle
+record" requirement): completed in ~6 minutes wall clock (started ~07:17, finished 07:23:05
+EDT). Observed output, committed to `apps/web/public/data/routes/`, not projected:
+
+| Artifact | File size | Contents |
+| --- | ---: | --- |
+| `routes/universe.v1.json` | 18.7 KB | 84 albums (only actual route endpoints) |
+| `routes/rounds.v1.json` | 2.9 MB | 290 routes (90 one-hop, 200 two-hop), 326 evidence releases, 263 artists |
+
+The one-hop pool (90 of a 300 target) is a real, reported shortfall for the same reason
+the Connection Guesser's pool landed below target above: the performer-role allowlist plus
+the studio-album format gate plus relationship exclusion, on top of the 140-album
+backbone's own candidate-pair yield, is a genuinely narrower gate than a raw collaboration
+count. The two-hop pool (200) met its target. `rounds.v1.json` is fetched at runtime by
+`/play/routes/`, matching every other real game artifact's static-first loading pattern.
