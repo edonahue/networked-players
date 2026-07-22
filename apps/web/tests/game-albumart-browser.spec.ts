@@ -52,11 +52,26 @@ function registryFor(albumIds: string[], catalogVersion = CATALOG_VERSION) {
   };
 }
 
+// A 1x1 transparent PNG so intercepted cover requests actually load (200)
+// and the <img> stays in the DOM (the error→placeholder handler must not
+// race the assertion).
+const PNG_1x1 = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
+  "base64",
+);
+
+async function serveImages(page: Page): Promise<void> {
+  await page.route("https://i.discogs.com/**", (route) =>
+    route.fulfill({ status: 200, contentType: "image/png", body: PNG_1x1 }),
+  );
+}
+
 test("a resolvable registry renders real cover art in the sleeves", async ({
   page,
 }) => {
   const round = await firstOneHop(page);
   await routeRegistry(page, registryFor(round.endpoints.map((e) => e.id)));
+  await serveImages(page);
   await page.goto(`/play/connection/?round=${round.id}&motion=off`);
   await expect(page.getByTestId("stage")).toHaveAttribute(
     "data-phase",
