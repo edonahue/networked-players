@@ -3,4 +3,5 @@
 # `null, 2` output -- confirmed real drift, not a formatting mistake to fix
 # by hand. Re-run the real generator to update these, never `prettier --write`.
 public/data/game/rounds.v1.json
+public/data/routes/rounds.v1.json
 tests/fixtures/game-rounds.synthetic.v1.json
