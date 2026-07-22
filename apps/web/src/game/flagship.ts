@@ -7,6 +7,7 @@
 // answers are checked in memory, and verdict/evidence markup exists only
 // after the round resolves.
 
+import { fetchAlbumArt, type ResolvedArt } from "./albumArt";
 import { fetchDailyManifest, resolveDailyRound } from "./dailyManifest";
 import { isDateOverrideAllowed } from "./dateOverride";
 import { createEngine, type Engine } from "./engine";
@@ -66,15 +67,25 @@ function poolLabel(round: GameRound): string {
   return round.pool === "real-records" ? "Real records" : "Synthetic universe";
 }
 
+/** Real cover art, resolved by canonical album id from the art registry
+ * (never embedded in frozen content). Populated once at init; a missing
+ * registry leaves it empty and every real sleeve renders the placeholder. */
+let artMap: Map<string, ResolvedArt> = new Map();
+
 function renderSleeve(container: HTMLElement, album: AlbumRef): void {
   container.replaceChildren();
+  // Synthetic albums carry a `generated` marker and render an SVG sleeve;
+  // frozen content never carries a URL (ADR 0045).
   if (album.art && album.art.kind === "generated") {
     container.innerHTML = sleeveSvg(album);
     return;
   }
-  if (album.art && album.art.kind === "hotlink") {
+  // Real albums: resolve presentation art by id from the registry. Any miss
+  // (no entry, no registry) falls back to the placeholder -- art never blocks.
+  const art = artMap.get(album.id);
+  if (art) {
     const img = document.createElement("img");
-    img.src = album.art.uri150;
+    img.src = art.uri150;
     img.width = 150;
     img.height = 150;
     img.alt = `Cover art for ${album.title}`;
@@ -234,6 +245,10 @@ export async function initFlagship(
     return;
   }
   const rounds = roundsArtifact.rounds;
+  // Presentation art, resolved by album id from the registry that belongs to
+  // this pool's catalog_version. Never blocks: a missing/mismatched registry
+  // yields an empty map and every real sleeve renders the placeholder.
+  artMap = await fetchAlbumArt(roundsArtifact.provenance.catalog_version);
   const params = new URLSearchParams(window.location.search);
   if (
     params.get("motion") === "off" ||

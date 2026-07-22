@@ -564,9 +564,11 @@ test("synthetic fixture self-identifies in isolation; ids stay in reserved range
   for (const round of syntheticRounds.rounds) {
     expect(round.pool).toBe("synthetic-universe");
     for (const e of round.endpoints) expect(e.id).toMatch(/^syn-a/);
-    const hotlinked = round.endpoints.some(
-      (e) => e.art !== null && e.art.kind === "hotlink",
+    // Frozen content is art-free (ADR 0045): an endpoint's art is null or a
+    // `generated` marker, never a cover URL.
+    const embedsUrl = round.endpoints.some(
+      (e) => e.art !== null && "uri150" in (e.art as object),
     );
-    expect(hotlinked, `round ${round.id} hotlinks art`).toBe(false);
+    expect(embedsUrl, `round ${round.id} embeds a cover URL`).toBe(false);
   }
 });

@@ -2,17 +2,41 @@
 // append-only date -> round resolution via daily-manifest.v1.json (ADR
 // 0043's corrective-slice-4.6 addendum) -- never a date-seeded derivation.
 // Tests pin ?date= to real dates already committed in the published
-// manifest (2026-08-01 .. 2026-10-29) so nothing here depends on the real
+// manifest (dates pinned via ?date= within the committed range) so nothing depends on the real
 // wall-clock date.
 
 import { expect, test, type Page } from "@playwright/test";
 
 const PINNED_DATE_A = "2026-08-01";
 const PINNED_DATE_B = "2026-08-02";
-// Before the manifest's start_date (2026-08-01) -> friendly "upcoming".
-const PRE_LAUNCH_DATE = "2026-07-25";
-// After the last scheduled date (2026-10-29) -> "schedule needs extending".
-const POST_RANGE_DATE = "2026-12-01";
+// Before the manifest's start_date -> friendly "upcoming". Kept well before
+// any plausible launch date so this stays valid across launch-date migrations.
+const PRE_LAUNCH_DATE = "2020-01-01";
+// After the last scheduled date -> "schedule needs extending".
+const POST_RANGE_DATE = "2030-12-01";
+
+const _MONTHS = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
+
+/** The "Month D" launch label the upcoming state derives from the committed
+ * manifest's own start_date -- never a hardcoded date. */
+async function launchLabel(page: Page): Promise<string> {
+  const manifest = await fetchManifest(page);
+  const [, m, d] = manifest.start_date.split("-").map((n) => Number(n));
+  return `${_MONTHS[m - 1]} ${d}`;
+}
 
 interface DailyManifestEntry {
   date: string;
@@ -75,7 +99,9 @@ test("the manifest is real, one-hop only, and covers the documented range", asyn
   const rounds = await fetchRounds(page);
   const byId = new Map(rounds.map((r) => [r.id, r]));
   expect(manifest.mode).toBe("connection_guesser_one_hop");
-  expect(manifest.start_date).toBe("2026-08-01");
+  // start_date is the (migratable) launch date; assert it equals the first
+  // scheduled entry rather than a hardcoded date.
+  expect(manifest.start_date).toBe(manifest.schedule[0].date);
   expect(manifest.schedule.length).toBeGreaterThanOrEqual(60);
   for (const entry of manifest.schedule) {
     expect(
@@ -274,12 +300,13 @@ test("the hub daily card is live and links to /play/daily/", async ({
 test("a date before the first scheduled date shows a friendly upcoming state, not an error", async ({
   page,
 }) => {
+  const label = await launchLabel(page);
   await gotoDaily(page, PRE_LAUNCH_DATE);
   await expect(page.getByTestId("stage")).toHaveAttribute(
     "data-phase",
     "upcoming",
   );
-  await expect(page.getByTestId("question")).toContainText("launches August 1");
+  await expect(page.getByTestId("question")).toContainText(`launches ${label}`);
   // Friendly, not an error: no gameplay control is active.
   await expect(page.getByTestId("chip-tray")).toBeHidden();
   await expect(page.getByTestId("clue-button")).toBeHidden();
@@ -287,7 +314,7 @@ test("a date before the first scheduled date shows a friendly upcoming state, no
   // Announced politely, never on the assertive channel.
   await expect(page.getByTestId("live-assertive")).toBeEmpty();
   await expect(page.getByTestId("live-region")).toContainText(
-    "launches August 1",
+    `launches ${label}`,
   );
 });
 
@@ -641,7 +668,7 @@ test("production ignores ?date= entirely -- no override gate, no injected global
   const entry = await entryFor(page, PINNED_DATE_A);
   // The override is ignored, so the pinned date's round is never dealt: the
   // stage never carries that round_id. (Which graceful/played state the real
-  // wall-clock date lands in -- upcoming before 2026-08-01, a different
+  // wall-clock date lands in -- upcoming before the start date, a different
   // round in range, or extension-needed after -- is deliberately not
   // asserted, to keep this independent of the real date.)
   await expect(page.getByTestId("stage")).not.toHaveAttribute(

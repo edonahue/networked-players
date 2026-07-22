@@ -20,7 +20,7 @@
       "heading": "Where the project actually is",
       "paragraphs": [
         "This is an early build, not a finished product, but the album grid and evidence-viewer experience now run on real, Discogs monthly-dump-derived data (snapshot 20260601) — 140 studio albums, 250 artists, 300 documented connections, drawn from a bounded working set seeded by a private collection that is never itself published. Album years are the master's original release year, not a reissue edition date, and the catalog fails closed against live albums, soundtracks, compilations, and other non-studio releases.",
-        "The flagship Connection Guesser game (below) is a separate surface and still runs on a small, clearly-labeled synthetic universe plus a handful of real rounds — swapping its pool for the same real catalog above is in progress.",
+        "The flagship Connection Guesser game (below) now runs on the same real catalog: 300 one-hop and 200 two-hop rounds derived from those 140 studio albums and their documented credits — the synthetic universe survives only as an isolated test fixture, never played. Connection of the Day serves one frozen real round per local calendar day from a committed schedule.",
         "The connections demo on this site runs separately, on real Discogs data for a small, curated subset of releases and artist connections — fetched via the Discogs API ahead of the full CC0 dump pipeline (see the project's ADR 0012)."
       ]
     },
@@ -34,7 +34,7 @@
     {
       "heading": "What's next",
       "paragraphs": [
-        "Bringing the Connection Guesser game onto the same real catalog now powering the album grid; real cover art for the album grid (currently placeholder art everywhere — hotlink enrichment is a separate, rate-limited step not yet run); replacing the connections demo's API-sourced dataset with one derived from the CC0 monthly dumps (with full provenance and no collection membership); and, eventually, producer/engineer-bridge and six-degrees play modes. A future live-search mode is additive and must fail gracefully — the static-first core always works on its own."
+        "Real cover art across the album grid and game surfaces (hotlinked from Discogs' CDN via a separately versioned art registry, kept out of the frozen game content so refreshing art never disturbs the daily); replacing the connections demo's API-sourced dataset with one derived from the CC0 monthly dumps (with full provenance and no collection membership); a second Record Routes path-guessing mode; and, eventually, producer/engineer-bridge and six-degrees play modes. A future live-search mode is additive and must fail gracefully — the static-first core always works on its own."
       ]
     }
   ]
