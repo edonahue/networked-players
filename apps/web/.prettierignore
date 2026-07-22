@@ -1,0 +1,6 @@
+# Machine-generated JSON whose nested-array shape trips Prettier's
+# array-collapsing heuristic against Python's/Node's own `indent=2`/
+# `null, 2` output -- confirmed real drift, not a formatting mistake to fix
+# by hand. Re-run the real generator to update these, never `prettier --write`.
+public/data/game/rounds.v1.json
+tests/fixtures/game-rounds.synthetic.v1.json

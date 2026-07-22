@@ -1,15 +1,11 @@
 ---
 import BaseLayout from '../../../layouts/BaseLayout.astro';
 import GameStage from '../../../components/GameStage.astro';
-import type { GameRounds } from '../../../game/types';
-import roundsData from '../../../../public/data/game/rounds.v1.json';
 
-// The full round pool: one-hop rounds are the default deal, two-hop rounds
-// (bridges-then-hidden-middle) deal when ?kind=two_hop is set. The
-// controller keeps every answer check in memory either way.
-const rounds = (roundsData as unknown as GameRounds).rounds;
-const islandJson = JSON.stringify(rounds).replaceAll('<', '\\u003c');
-
+// The full round pool (real launch scale, ~1.2 MB) is fetched at runtime by
+// game/flagship.ts, not embedded here -- one-hop rounds are the default
+// deal, two-hop rounds (bridges-then-hidden-middle) deal when ?kind=two_hop
+// is set. The controller keeps every answer check in memory either way.
 const description =
   'The flagship round: two records land on the counter, one person is credited on both. Guess from the tray, spend clues carefully, then open the liner notes.';
 ---
@@ -35,7 +31,6 @@ const description =
   </section>
 </BaseLayout>
 
-<script type="application/json" id="np-round-data" set:html={islandJson} />
 <script>
   import { initFlagship } from '../../../game/flagship';
   initFlagship();

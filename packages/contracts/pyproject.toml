@@ -6,7 +6,13 @@ build-backend = "setuptools.build_meta"
 name = "networked-players-contracts"
 version = "0.1.0"
 description = "Dependency-free public artifact contracts for Networked Players"
-requires-python = ">=3.12"
+# Deliberately >=3.11, not this monorepo's usual >=3.12 (AGENTS.md): this
+# package's whole purpose is running on the real Pi 3B fleet's constrained
+# worker venv, confirmed live to be Python 3.11.2 (Raspberry Pi OS's system
+# python3), not the coordination host's uv-managed 3.12. The source has no
+# 3.12-only syntax -- verified by installing and running this package's own
+# test suite under a real 3.11 interpreter.
+requires-python = ">=3.11"
 
 [tool.setuptools.packages.find]
 where = ["src"]

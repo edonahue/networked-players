@@ -51,6 +51,13 @@ test("a pinned round deals, presents chips, and never marks the answer before re
   // Both sleeves and captions render, and the tray holds every option.
   await expect(page.getByTestId("caption-a")).not.toBeEmpty();
   await expect(page.getByTestId("caption-b")).not.toBeEmpty();
+
+  // The premise is performer-specific, not a bare "credited on both" claim
+  // (a non-performer credit like producer/engineer wouldn't satisfy it --
+  // see eligibility.py; corrective slice 4.6).
+  await expect(page.getByTestId("question")).toContainText(
+    "eligible performer",
+  );
   const chips = page.locator(".chip");
   await expect(chips).toHaveCount(
     round.answer_set.length + round.distractors.length,

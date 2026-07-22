@@ -20,6 +20,7 @@ from networked_players_catalog import __version__
 from .releases import ParsedRelease
 
 if TYPE_CHECKING:
+    from .artists import ParsedArtistRelations
     from .masters import ParsedMaster
 
 SCHEMA_VERSION = 3
@@ -114,6 +115,19 @@ MASTER_ARTISTS_SCHEMA = pa.schema(
     ]
 )
 MASTER_SCHEMAS = {"masters": MASTERS_SCHEMA, "master_artists": MASTER_ARTISTS_SCHEMA}
+
+ARTIST_RELATIONS_SCHEMA_VERSION = 1
+ARTIST_RELATIONS_SCHEMA = pa.schema(
+    [
+        ("snapshot_date", pa.string()),
+        ("artist_id", pa.int64()),
+        ("related_artist_id", pa.int64()),
+        ("related_name", pa.string()),
+        ("relation", pa.string()),
+        ("source_url", pa.string()),
+    ]
+)
+ARTIST_RELATIONS_SCHEMAS = {"artist_relations": ARTIST_RELATIONS_SCHEMA}
 
 
 def _sha256(path: Path) -> str:
@@ -393,6 +407,128 @@ def write_master_dataset(
         manifest: dict[str, object] = {
             "dataset_manifest_version": 1,
             "schema_version": MASTER_SCHEMA_VERSION,
+            "parser_version": __version__,
+            "source": "Discogs monthly data dumps",
+            "source_url": source_url,
+            "snapshot_date": snapshot_date,
+            "generated_at": datetime.now(UTC).isoformat(),
+            "compression": "zstd",
+            "counts": counts,
+            "files": files,
+        }
+        (staging_root / "manifest.json").write_text(
+            json.dumps(manifest, indent=2, sort_keys=True) + "\n"
+        )
+        if final_root.exists():
+            shutil.rmtree(final_root)
+        staging_root.replace(final_root)
+        return manifest
+    except Exception:
+        shutil.rmtree(staging_root, ignore_errors=True)
+        raise
+
+
+def write_artist_relations_dataset(
+    records: Iterable[ParsedArtistRelations],
+    output_root: Path,
+    *,
+    snapshot_date: str,
+    source_url: str,
+    chunk_artists: int = 50_000,
+    overwrite: bool = False,
+) -> dict[str, object]:
+    """Write a versioned artist-relations dataset -- same staging-dir/atomic-
+    rename/manifest posture as ``write_master_dataset``, one table
+    (``artist_relations``), its own ``ARTIST_RELATIONS_SCHEMA_VERSION``.
+    Every parsed artist record contributes zero or more rows (most artists
+    have neither ``<groups>`` nor ``<members>``), so ``counts["artists_seen"]``
+    (records streamed) and ``counts["artist_relations"]`` (rows written) are
+    tracked separately.
+    """
+
+    if chunk_artists <= 0:
+        raise ValueError("chunk_artists must be positive")
+    final_root = output_root / f"snapshot={snapshot_date}"
+    if final_root.exists() and not overwrite:
+        raise FileExistsError(f"dataset already exists: {final_root}")
+
+    staging_root = output_root / f".snapshot={snapshot_date}.tmp-{uuid.uuid4().hex}"
+    staging_root.mkdir(parents=True, exist_ok=False)
+    counts = {"artists_seen": 0, "artist_relations": 0}
+    files: list[dict[str, object]] = []
+    relation_rows: list[dict[str, object]] = []
+    part = 0
+    pending: Future[list[dict[str, object]]] | None = None
+
+    def _write_relations_chunk(
+        chunk_part: int, chunk_rows: list[dict[str, object]]
+    ) -> list[dict[str, object]]:
+        path = _write_rows(
+            staging_root,
+            "artist_relations",
+            chunk_part,
+            chunk_rows,
+            schemas=ARTIST_RELATIONS_SCHEMAS,
+        )
+        if path is None:
+            return []
+        return [
+            {
+                "path": str(path.relative_to(staging_root)),
+                "size_bytes": path.stat().st_size,
+                "sha256": _sha256(path),
+                "rows": len(chunk_rows),
+            }
+        ]
+
+    try:
+        with ThreadPoolExecutor(max_workers=1) as executor:
+
+            def start_flush() -> None:
+                nonlocal relation_rows, part, pending
+                if pending is not None:
+                    files.extend(pending.result())
+                pending = executor.submit(_write_relations_chunk, part, relation_rows)
+                relation_rows = []
+                part += 1
+
+            for record in records:
+                counts["artists_seen"] += 1
+                relation_rows.extend(record.relations)
+                counts["artist_relations"] += len(record.relations)
+                if len(relation_rows) >= chunk_artists:
+                    start_flush()
+            if relation_rows:
+                start_flush()
+            if pending is not None:
+                files.extend(pending.result())
+        if counts["artists_seen"] == 0:
+            raise ValueError("no artist records were parsed")
+
+        relations_prefix = "table=artist_relations/"
+        if not any(str(item["path"]).startswith(relations_prefix) for item in files):
+            path = _write_rows(
+                staging_root,
+                "artist_relations",
+                0,
+                [],
+                allow_empty=True,
+                schemas=ARTIST_RELATIONS_SCHEMAS,
+            )
+            if path is None:
+                raise AssertionError("failed to create empty artist_relations table")
+            files.append(
+                {
+                    "path": str(path.relative_to(staging_root)),
+                    "size_bytes": path.stat().st_size,
+                    "sha256": _sha256(path),
+                    "rows": 0,
+                }
+            )
+
+        manifest: dict[str, object] = {
+            "dataset_manifest_version": 1,
+            "schema_version": ARTIST_RELATIONS_SCHEMA_VERSION,
             "parser_version": __version__,
             "source": "Discogs monthly data dumps",
             "source_url": source_url,

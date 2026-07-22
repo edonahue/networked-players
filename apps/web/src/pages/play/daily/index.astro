@@ -1,19 +1,19 @@
 ---
 import BaseLayout from '../../../layouts/BaseLayout.astro';
 import GameStage from '../../../components/GameStage.astro';
-import type { GameRounds } from '../../../game/types';
-import roundsData from '../../../../public/data/game/rounds.v1.json';
 
-// The daily deals one deterministic one-hop round per UTC date — the same
-// connection for everyone (docs/WEB_PRODUCT_PLAN.md §5). Only the one-hop
-// pool ships in this page's payload.
-const rounds = (roundsData as unknown as GameRounds).rounds.filter(
-  (round) => round.kind === 'one_hop',
-);
-const islandJson = JSON.stringify(rounds).replaceAll('<', '\\u003c');
-
+// The daily deals one frozen, real one-hop round per LOCAL calendar date
+// (each browser's own midnight, not UTC -- game/localDate.ts) -- the same
+// scheduled connection for everyone on that date label, resolved from a
+// committed, append-only manifest (docs/WEB_PRODUCT_PLAN.md §5; ADR 0043's
+// corrective-slice-4.6 and -5.1 addenda; see game/dailyManifest.ts).
+// game/flagship.ts fetches the full round pool at runtime (shared browser
+// cache with /play/connection/) plus daily-manifest.v1.json, and verifies
+// the complete pairing (schema versions, mode, all three catalog/pool/
+// artifact versions, and the resolved round's published content) before
+// dealing it.
 const description =
-  'Connection of the Day: one documented connection per day, the same for everyone. Keep a streak; share your grooves, never the answer.';
+  'Connection of the Day: one frozen connection per local calendar day, resolved from a committed schedule. Keep a streak; share your grooves, never the answer.';
 ---
 
 <BaseLayout title="Connection of the Day" description={description}>
@@ -28,15 +28,15 @@ const description =
 
   <section class="prose shell" style="padding-top:28px;padding-bottom:72px">
     <p class="lede" style="font-size:0.95rem">
-      The day's round is derived from the date — no account, no server, and your streak
-      stays on this device. The share text carries the date and your grooves, never a
-      name. Every connection is a documented credit: participation on a recording,
-      nothing more.
+      Each day's round is fixed in a committed schedule — the same connection for
+      everyone on that calendar date, resolved at your own local midnight. No account,
+      no server; your streak stays on this device. The share text carries the date and
+      your grooves, never a name. Every connection is a documented credit: participation
+      on a recording, nothing more.
     </p>
   </section>
 </BaseLayout>
 
-<script type="application/json" id="np-round-data" set:html={islandJson} />
 <script>
   import { initFlagship } from '../../../game/flagship';
   initFlagship({ daily: true });

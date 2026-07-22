@@ -33,6 +33,7 @@ Integer, always `2` for this contract.
 | `snapshot_date` | The source dump snapshot the underlying one-hop dataset was expanded from (`YYYYMMDD`). |
 | `generated_by` | Tool + version string that produced the artifact. |
 | `graph_core_version` | `networked_players_graph_core.__version__` at generation time. |
+| `catalog_version` | The canonical `apps/web/public/data/catalog/albums.v1.json` this artifact's album set was resolved from (`--albums` pointed at that file), or `null` for a hand-written `{artist,title}` query list not built from it. See ADR 0043 — that catalog is the single source of truth for which albums exist across every real public surface; this artifact never re-derives its own album set independently. |
 | `note` | Honest caveats: the private collection seed is never published; the album list is editorial, not a ranking. |
 
 No part of the artifact may contain seed identifiers, seed counts, seed hashes, or any

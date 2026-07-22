@@ -1,0 +1,461 @@
+{
+  "schema_version": 1,
+  "mode": "connection_guesser_one_hop",
+  "catalog_version": "catalog-v1-20260601-0e7ec70fbb7e",
+  "pool_version": "connection-v1-20260601-27f5032ebc16",
+  "artifact_version": "connection-artifact-v1-20260601-e27209c5f7a0",
+  "generated_at": "2026-07-22T00:00:00+00:00",
+  "start_date": "2026-08-01",
+  "schedule": [
+    {
+      "date": "2026-08-01",
+      "round_id": "conn-ee058c584f",
+      "round_fingerprint": "rfp-ff7a5e673ab218d7"
+    },
+    {
+      "date": "2026-08-02",
+      "round_id": "conn-bdfbc890d1",
+      "round_fingerprint": "rfp-7911d4d4beebf22d"
+    },
+    {
+      "date": "2026-08-03",
+      "round_id": "conn-5a0b944dd9",
+      "round_fingerprint": "rfp-4a8f97756e415193"
+    },
+    {
+      "date": "2026-08-04",
+      "round_id": "conn-2a8bc67bfc",
+      "round_fingerprint": "rfp-4b796e795705359e"
+    },
+    {
+      "date": "2026-08-05",
+      "round_id": "conn-97647354fe",
+      "round_fingerprint": "rfp-9fe49f966d38632c"
+    },
+    {
+      "date": "2026-08-06",
+      "round_id": "conn-b25c78eab4",
+      "round_fingerprint": "rfp-4b49db3cfa23cf99"
+    },
+    {
+      "date": "2026-08-07",
+      "round_id": "conn-2b544e134a",
+      "round_fingerprint": "rfp-bcc028e7db730001"
+    },
+    {
+      "date": "2026-08-08",
+      "round_id": "conn-2f17f6b5e2",
+      "round_fingerprint": "rfp-7171f08bd3e06d6a"
+    },
+    {
+      "date": "2026-08-09",
+      "round_id": "conn-ce9f76f2ae",
+      "round_fingerprint": "rfp-e966c43afc72d0a3"
+    },
+    {
+      "date": "2026-08-10",
+      "round_id": "conn-b856582233",
+      "round_fingerprint": "rfp-a061c5a740345e4d"
+    },
+    {
+      "date": "2026-08-11",
+      "round_id": "conn-0dd65ae7f4",
+      "round_fingerprint": "rfp-1d03ee89aa10a864"
+    },
+    {
+      "date": "2026-08-12",
+      "round_id": "conn-936885017a",
+      "round_fingerprint": "rfp-53b9e54385df339a"
+    },
+    {
+      "date": "2026-08-13",
+      "round_id": "conn-325550c019",
+      "round_fingerprint": "rfp-8118c8ccfebc8a16"
+    },
+    {
+      "date": "2026-08-14",
+      "round_id": "conn-7b1cef56b9",
+      "round_fingerprint": "rfp-ebe9984671470d2e"
+    },
+    {
+      "date": "2026-08-15",
+      "round_id": "conn-7e07e98ce4",
+      "round_fingerprint": "rfp-7142445a99ed9b53"
+    },
+    {
+      "date": "2026-08-16",
+      "round_id": "conn-d367bce40b",
+      "round_fingerprint": "rfp-d4aa95549d186d6c"
+    },
+    {
+      "date": "2026-08-17",
+      "round_id": "conn-77394e29b2",
+      "round_fingerprint": "rfp-c11a43c4d01e07b4"
+    },
+    {
+      "date": "2026-08-18",
+      "round_id": "conn-c095dd682e",
+      "round_fingerprint": "rfp-1349035e18d7ad90"
+    },
+    {
+      "date": "2026-08-19",
+      "round_id": "conn-ac82d58be0",
+      "round_fingerprint": "rfp-ea6d2ce0aae66aa1"
+    },
+    {
+      "date": "2026-08-20",
+      "round_id": "conn-aa876b7739",
+      "round_fingerprint": "rfp-f640fe3a028fa4b9"
+    },
+    {
+      "date": "2026-08-21",
+      "round_id": "conn-5255830127",
+      "round_fingerprint": "rfp-21e36689b4f85220"
+    },
+    {
+      "date": "2026-08-22",
+      "round_id": "conn-62391a7b15",
+      "round_fingerprint": "rfp-25b50205f2b4c007"
+    },
+    {
+      "date": "2026-08-23",
+      "round_id": "conn-c5da59958b",
+      "round_fingerprint": "rfp-d957d2197737c924"
+    },
+    {
+      "date": "2026-08-24",
+      "round_id": "conn-dce967048e",
+      "round_fingerprint": "rfp-262452c9496170c0"
+    },
+    {
+      "date": "2026-08-25",
+      "round_id": "conn-b476ff1ff8",
+      "round_fingerprint": "rfp-c1bb721ff6dbfd64"
+    },
+    {
+      "date": "2026-08-26",
+      "round_id": "conn-e509b8858f",
+      "round_fingerprint": "rfp-310c87f83236ee1d"
+    },
+    {
+      "date": "2026-08-27",
+      "round_id": "conn-352dcd2fac",
+      "round_fingerprint": "rfp-7fbe07c62349de21"
+    },
+    {
+      "date": "2026-08-28",
+      "round_id": "conn-797cdc5834",
+      "round_fingerprint": "rfp-b740f57d57ed10a1"
+    },
+    {
+      "date": "2026-08-29",
+      "round_id": "conn-8436197fba",
+      "round_fingerprint": "rfp-23e9ec882a41b15b"
+    },
+    {
+      "date": "2026-08-30",
+      "round_id": "conn-e41e2166ce",
+      "round_fingerprint": "rfp-e457e175dfb84cf2"
+    },
+    {
+      "date": "2026-08-31",
+      "round_id": "conn-b6fb6e132c",
+      "round_fingerprint": "rfp-b3ba1a171e53674f"
+    },
+    {
+      "date": "2026-09-01",
+      "round_id": "conn-36b558dfaa",
+      "round_fingerprint": "rfp-da6e020973da9d19"
+    },
+    {
+      "date": "2026-09-02",
+      "round_id": "conn-a19d1727da",
+      "round_fingerprint": "rfp-addf435cc2c5f983"
+    },
+    {
+      "date": "2026-09-03",
+      "round_id": "conn-0e2cb1e5ac",
+      "round_fingerprint": "rfp-5ebb4528979bb76c"
+    },
+    {
+      "date": "2026-09-04",
+      "round_id": "conn-fcf4889313",
+      "round_fingerprint": "rfp-24f2151c9542777b"
+    },
+    {
+      "date": "2026-09-05",
+      "round_id": "conn-92986f9cd6",
+      "round_fingerprint": "rfp-36f042de8f7b0f53"
+    },
+    {
+      "date": "2026-09-06",
+      "round_id": "conn-2e60c7fff9",
+      "round_fingerprint": "rfp-1061c01149e1be25"
+    },
+    {
+      "date": "2026-09-07",
+      "round_id": "conn-12db61d378",
+      "round_fingerprint": "rfp-0532323e4ced5be5"
+    },
+    {
+      "date": "2026-09-08",
+      "round_id": "conn-3577217e05",
+      "round_fingerprint": "rfp-914d856a97e68ed3"
+    },
+    {
+      "date": "2026-09-09",
+      "round_id": "conn-be4aaa008e",
+      "round_fingerprint": "rfp-d41aedd3dd1415fb"
+    },
+    {
+      "date": "2026-09-10",
+      "round_id": "conn-a3b6afbda4",
+      "round_fingerprint": "rfp-fdae7d4cddcdb953"
+    },
+    {
+      "date": "2026-09-11",
+      "round_id": "conn-2c23cc0361",
+      "round_fingerprint": "rfp-25d430886e1f7362"
+    },
+    {
+      "date": "2026-09-12",
+      "round_id": "conn-2ab97b760a",
+      "round_fingerprint": "rfp-46e3fc2b5d7bfb74"
+    },
+    {
+      "date": "2026-09-13",
+      "round_id": "conn-315855a0d9",
+      "round_fingerprint": "rfp-cd0dbe8edf1dd333"
+    },
+    {
+      "date": "2026-09-14",
+      "round_id": "conn-b6a99f6b3e",
+      "round_fingerprint": "rfp-012439bdd3addb81"
+    },
+    {
+      "date": "2026-09-15",
+      "round_id": "conn-cff054c380",
+      "round_fingerprint": "rfp-0d5cd705d61b589c"
+    },
+    {
+      "date": "2026-09-16",
+      "round_id": "conn-9842240263",
+      "round_fingerprint": "rfp-ff7079855c2a5240"
+    },
+    {
+      "date": "2026-09-17",
+      "round_id": "conn-5869d7a73f",
+      "round_fingerprint": "rfp-00392cf4e463d48e"
+    },
+    {
+      "date": "2026-09-18",
+      "round_id": "conn-c398e7b6fa",
+      "round_fingerprint": "rfp-dac67cd72315020b"
+    },
+    {
+      "date": "2026-09-19",
+      "round_id": "conn-6e0d5a8e3f",
+      "round_fingerprint": "rfp-021a5482f2d815f4"
+    },
+    {
+      "date": "2026-09-20",
+      "round_id": "conn-1204b71c1f",
+      "round_fingerprint": "rfp-e071fbb7d4bb7e44"
+    },
+    {
+      "date": "2026-09-21",
+      "round_id": "conn-425095b80e",
+      "round_fingerprint": "rfp-b3e07bb6d7b98721"
+    },
+    {
+      "date": "2026-09-22",
+      "round_id": "conn-898096c452",
+      "round_fingerprint": "rfp-1228cfe0ff924ded"
+    },
+    {
+      "date": "2026-09-23",
+      "round_id": "conn-ee54d9ba80",
+      "round_fingerprint": "rfp-4d43e0fc98257049"
+    },
+    {
+      "date": "2026-09-24",
+      "round_id": "conn-b6c9114e37",
+      "round_fingerprint": "rfp-5d177ba6c7ec8f0b"
+    },
+    {
+      "date": "2026-09-25",
+      "round_id": "conn-68e0c6e3dd",
+      "round_fingerprint": "rfp-fd0547c247b71d7f"
+    },
+    {
+      "date": "2026-09-26",
+      "round_id": "conn-b768047736",
+      "round_fingerprint": "rfp-1cd61add61d272b1"
+    },
+    {
+      "date": "2026-09-27",
+      "round_id": "conn-3b789e715c",
+      "round_fingerprint": "rfp-e460138763329ab6"
+    },
+    {
+      "date": "2026-09-28",
+      "round_id": "conn-61321953d4",
+      "round_fingerprint": "rfp-f54698e380795f41"
+    },
+    {
+      "date": "2026-09-29",
+      "round_id": "conn-059823ac47",
+      "round_fingerprint": "rfp-9869c0226e1d75e1"
+    },
+    {
+      "date": "2026-09-30",
+      "round_id": "conn-573a818519",
+      "round_fingerprint": "rfp-5b6a6b927e5c25ba"
+    },
+    {
+      "date": "2026-10-01",
+      "round_id": "conn-083a625ca5",
+      "round_fingerprint": "rfp-752f1cb1063bcc73"
+    },
+    {
+      "date": "2026-10-02",
+      "round_id": "conn-10ffc436b3",
+      "round_fingerprint": "rfp-750953a072543a55"
+    },
+    {
+      "date": "2026-10-03",
+      "round_id": "conn-9e15a5f411",
+      "round_fingerprint": "rfp-b9fb89e5fd2108ca"
+    },
+    {
+      "date": "2026-10-04",
+      "round_id": "conn-1812b53fec",
+      "round_fingerprint": "rfp-df4c6599cc52fd84"
+    },
+    {
+      "date": "2026-10-05",
+      "round_id": "conn-17bdc58037",
+      "round_fingerprint": "rfp-21f55ba0c0151159"
+    },
+    {
+      "date": "2026-10-06",
+      "round_id": "conn-a67dd08e98",
+      "round_fingerprint": "rfp-b7ce2b55d952b38c"
+    },
+    {
+      "date": "2026-10-07",
+      "round_id": "conn-121c79a59a",
+      "round_fingerprint": "rfp-2f89ed53e7d8c731"
+    },
+    {
+      "date": "2026-10-08",
+      "round_id": "conn-857be47159",
+      "round_fingerprint": "rfp-8416846866cbd22f"
+    },
+    {
+      "date": "2026-10-09",
+      "round_id": "conn-9be30bbcf0",
+      "round_fingerprint": "rfp-cec68500644fd0ab"
+    },
+    {
+      "date": "2026-10-10",
+      "round_id": "conn-0009b2f634",
+      "round_fingerprint": "rfp-fecf93fd4008e751"
+    },
+    {
+      "date": "2026-10-11",
+      "round_id": "conn-155e82914f",
+      "round_fingerprint": "rfp-a0542f6fd3e4db5a"
+    },
+    {
+      "date": "2026-10-12",
+      "round_id": "conn-fa86205d07",
+      "round_fingerprint": "rfp-b42c3cd36ac5ebaa"
+    },
+    {
+      "date": "2026-10-13",
+      "round_id": "conn-f4204e5000",
+      "round_fingerprint": "rfp-4bfcecdcc116ee8f"
+    },
+    {
+      "date": "2026-10-14",
+      "round_id": "conn-dda864149b",
+      "round_fingerprint": "rfp-1dd04b6ecf76fbf5"
+    },
+    {
+      "date": "2026-10-15",
+      "round_id": "conn-de36b3b20d",
+      "round_fingerprint": "rfp-d2946ae326db5570"
+    },
+    {
+      "date": "2026-10-16",
+      "round_id": "conn-ce8028aa8f",
+      "round_fingerprint": "rfp-70288ffe46363c4a"
+    },
+    {
+      "date": "2026-10-17",
+      "round_id": "conn-a1ab592e76",
+      "round_fingerprint": "rfp-899d9fd9d664d1ea"
+    },
+    {
+      "date": "2026-10-18",
+      "round_id": "conn-05af0949e0",
+      "round_fingerprint": "rfp-50e6fa9ae56cefaa"
+    },
+    {
+      "date": "2026-10-19",
+      "round_id": "conn-df29fbe7b3",
+      "round_fingerprint": "rfp-d43352ca6df88559"
+    },
+    {
+      "date": "2026-10-20",
+      "round_id": "conn-f1872e5d44",
+      "round_fingerprint": "rfp-c506076b57d1e298"
+    },
+    {
+      "date": "2026-10-21",
+      "round_id": "conn-4000e8d073",
+      "round_fingerprint": "rfp-da902253bbf1b87a"
+    },
+    {
+      "date": "2026-10-22",
+      "round_id": "conn-6fec21278d",
+      "round_fingerprint": "rfp-8dacf431f6cf4a98"
+    },
+    {
+      "date": "2026-10-23",
+      "round_id": "conn-dfba6d674d",
+      "round_fingerprint": "rfp-c657d7ec5c5cbc72"
+    },
+    {
+      "date": "2026-10-24",
+      "round_id": "conn-25177b3bdf",
+      "round_fingerprint": "rfp-fa2058c0b87cb6c2"
+    },
+    {
+      "date": "2026-10-25",
+      "round_id": "conn-5c30e64b5f",
+      "round_fingerprint": "rfp-504b1ffac66097b3"
+    },
+    {
+      "date": "2026-10-26",
+      "round_id": "conn-77702a77b0",
+      "round_fingerprint": "rfp-6a207471a8b7a628"
+    },
+    {
+      "date": "2026-10-27",
+      "round_id": "conn-3cddfb3ac5",
+      "round_fingerprint": "rfp-d4a41359064d3fa7"
+    },
+    {
+      "date": "2026-10-28",
+      "round_id": "conn-05ea1293cd",
+      "round_fingerprint": "rfp-48bbfb32a3b0c6e5"
+    },
+    {
+      "date": "2026-10-29",
+      "round_id": "conn-d93abba540",
+      "round_fingerprint": "rfp-ce3e7613b8ae8b56"
+    }
+  ]
+}

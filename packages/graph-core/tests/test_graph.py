@@ -105,6 +105,30 @@ def test_credit_rows_returns_full_evidence(dataset_root: Path) -> None:
     assert {r["credit_scope"] for r in rows} == {"release_artist", "track_artist"}
 
 
+def test_credit_rows_for_releases_batches_and_filters(dataset_root: Path) -> None:
+    with CreditGraph.open(dataset_root) as graph:
+        grouped = graph.credit_rows_for_releases([1, 7])
+    # One query for both releases, not one per release.
+    assert set(grouped) == {1, 7}
+    assert {r["artist_id"] for r in grouped[1]} == {100, 200}
+    # Various(194) is a placeholder identity and must never appear, even
+    # though it is a real, linked, playable_identity row in the fixture.
+    assert {r["artist_id"] for r in grouped[7]} == {600}
+
+
+def test_credit_rows_for_releases_empty_input_returns_empty_dict(dataset_root: Path) -> None:
+    with CreditGraph.open(dataset_root) as graph:
+        assert graph.credit_rows_for_releases([]) == {}
+
+
+def test_credit_rows_for_releases_excludes_non_playable_rows(dataset_root: Path) -> None:
+    with CreditGraph.open(dataset_root) as graph:
+        grouped = graph.credit_rows_for_releases([5])
+    # R5 has Alice (playable) plus a non-linked "Session Choir" evidence row
+    # (artist_id=None, playable_identity=False) that must not surface here.
+    assert {r["artist_id"] for r in grouped[5]} == {100}
+
+
 def test_artist_name_returns_canonical_name(dataset_root: Path) -> None:
     with CreditGraph.open(dataset_root) as graph:
         assert graph.artist_name(100) == "Alice"

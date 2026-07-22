@@ -47,6 +47,12 @@ test("a two-hop round shows the face-down middle slot and never leaks the middle
     "bridge_a",
   );
   await expect(page.getByTestId("step-label")).toContainText("Step 1 of 3");
+  // The premise is performer-specific, not a bare "no one is credited"
+  // claim -- a non-performer credit could still be shared without
+  // satisfying eligibility (corrective slice 4.6).
+  await expect(page.getByTestId("question")).toContainText(
+    "No eligible performer appears on both",
+  );
   const middleSlot = page.getByTestId("middle-slot");
   await expect(middleSlot).toBeVisible();
   await expect(page.getByTestId("caption-middle")).toHaveText("Hidden record");
@@ -103,7 +109,9 @@ test("walking bridge_a, bridge_b, then the middle solves the round", async ({
   ).toBeGreaterThanOrEqual(3);
 });
 
-test("failing mid-walk reveals the full path honestly", async ({ page }) => {
+test("failing mid-walk reveals the full path honestly, never an empty name", async ({
+  page,
+}) => {
   const rounds = await fetchTwoHop(page);
   const round = rounds.find((r) => r.distractors.length >= 2);
   if (!round) throw new Error("no two-hop round with two distractors");
@@ -124,16 +132,129 @@ test("failing mid-walk reveals the full path honestly", async ({ page }) => {
     "data-phase",
     "revealed",
   );
+  const heading = await page.getByTestId("verdict-heading").textContent();
   await expect(page.getByTestId("verdict-heading")).toContainText(
     "The answer was",
   );
   await expect(page.getByTestId("verdict-heading")).toContainText(
     round.middle.album.title,
   );
+  // Regression: the old empty `answer_set`-based verdict text read literally
+  // "The answer was , through <title>" for a two-hop round -- both real
+  // bridge names must actually appear, never a blank before the comma.
+  expect(heading).toContain(round.bridge_answer_sets[0][0].name);
+  expect(heading).toContain(round.bridge_answer_sets[1][0].name);
+  expect(heading).not.toMatch(/was\s*,/);
   await expect(page.getByTestId("verdict-rating")).toContainText("Revealed");
   await expect(page.getByTestId("caption-middle")).toContainText(
     round.middle.album.title,
   );
+});
+
+test("giving up immediately at bridge_a reveals both real bridge names, not an empty one", async ({
+  page,
+}) => {
+  const [round] = await fetchTwoHop(page);
+  await gotoRound(page, round);
+  await expect(page.getByTestId("stage")).toHaveAttribute(
+    "data-step",
+    "bridge_a",
+  );
+
+  await page.getByTestId("give-up").click();
+  await expect(page.getByTestId("stage")).toHaveAttribute(
+    "data-phase",
+    "revealed",
+  );
+  const heading = await page.getByTestId("verdict-heading").textContent();
+  expect(heading).toContain("The answer was");
+  expect(heading).toContain(round.bridge_answer_sets[0][0].name);
+  expect(heading).toContain(round.bridge_answer_sets[1][0].name);
+  expect(heading).toContain(round.middle.album.title);
+  expect(heading).not.toMatch(/was\s*,/);
+  // No progress was made -- the bridge_a tray (still on screen at give-up
+  // time) marks its real answer(s) correct, not an arbitrary/empty set.
+  for (const answer of round.bridge_answer_sets[0]) {
+    await expect(
+      page.locator(`.chip[data-chip="${answer.id}"]`),
+    ).toHaveAttribute("data-chip-state", "correct");
+  }
+});
+
+test("giving up at the middle step after solving both bridges marks every bridge chip correct", async ({
+  page,
+}) => {
+  const [round] = await fetchTwoHop(page);
+  await gotoRound(page, round);
+
+  await page
+    .locator(`.chip[data-chip="${round.bridge_answer_sets[0][0].id}"]`)
+    .click();
+  await page
+    .locator(`.chip[data-chip="${round.bridge_answer_sets[1][0].id}"]`)
+    .click();
+  await expect(page.getByTestId("stage")).toHaveAttribute(
+    "data-step",
+    "middle",
+  );
+
+  await page.getByTestId("give-up").click();
+  await expect(page.getByTestId("stage")).toHaveAttribute(
+    "data-phase",
+    "revealed",
+  );
+  const heading = await page.getByTestId("verdict-heading").textContent();
+  expect(heading).toContain("The answer was");
+  expect(heading).toContain(round.bridge_answer_sets[0][0].name);
+  expect(heading).toContain(round.bridge_answer_sets[1][0].name);
+  // The middle tray is what's on screen at give-up time -- its real answer
+  // is marked correct even though the player never picked it.
+  await expect(
+    page.locator(`.chip[data-chip="${round.middle.album.id}"]`),
+  ).toHaveAttribute("data-chip-state", "correct");
+});
+
+test("every valid bridge performer is marked correct on reveal, not only the one clicked", async ({
+  page,
+}) => {
+  const rounds = await fetchTwoHop(page);
+  const round = rounds.find(
+    (r) =>
+      r.bridge_answer_sets[0].length > 1 || r.bridge_answer_sets[1].length > 1,
+  );
+  test.skip(
+    !round,
+    "no real two-hop round with more than one valid bridge performer",
+  );
+  if (!round) return;
+  await gotoRound(page, round);
+  const multiSide = round.bridge_answer_sets[0].length > 1 ? 0 : 1;
+  const single =
+    multiSide === 0 ? round.bridge_answer_sets[1] : round.bridge_answer_sets[0];
+
+  if (multiSide === 1) {
+    await page.locator(`.chip[data-chip="${single[0].id}"]`).click();
+  }
+  await page.getByTestId("give-up").click();
+  for (const answer of round.bridge_answer_sets[multiSide]) {
+    await expect(
+      page.locator(`.chip[data-chip="${answer.id}"]`),
+    ).toHaveAttribute("data-chip-state", "correct");
+  }
+});
+
+test("the real hidden middle is not always the first choice across the served pool", async ({
+  page,
+}) => {
+  const rounds = await fetchTwoHop(page);
+  test.skip(
+    rounds.length < 10,
+    "too few real two-hop rounds for a distribution check",
+  );
+  const firstPositionCount = rounds.filter(
+    (r) => r.middle.choices[0]?.id === r.middle.album.id,
+  ).length;
+  expect(firstPositionCount).toBeLessThan(rounds.length);
 });
 
 test("the kind toggle deals a two-hop round without pinning", async ({

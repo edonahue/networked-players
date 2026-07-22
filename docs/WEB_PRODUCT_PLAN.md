@@ -12,7 +12,8 @@ contracts, ADRs 0002/0012/0026/0027/0031/0035/0036, and an interview with the op
 
 **Build the Connection Guesser** — a mobile-first, quick-round deduction game where two
 record sleeves land on the table and the player identifies the documented contributor
-who links them — **plus a date-seeded Connection of the Day**, on top of the existing
+who links them — **plus a frozen, manifest-driven Connection of the Day** (ADR 0043;
+originally planned as date-seeded, now resolved from a committed schedule), on top of the existing
 static Astro architecture, powered by two clearly-badged content pools: a designed
 synthetic universe and real rounds derived from the existing curated Discogs demo data.
 
@@ -90,7 +91,7 @@ synthetic universe and real rounds derived from the existing curated Discogs dem
 | Mode | Player goal | Interaction | Data needs | Complexity | Verdict |
 | --- | --- | --- | --- | --- | --- |
 | **Connection Guesser** | Name the contributor linking two records (1-hop); solve bridges then the hidden middle record (2-hop) | Choice chips + clue ladder | Rounds w/ answer set + distractors + clues | High (it's the engine) | **Launch flagship** |
-| **Connection of the Day** | Same loop, one deterministic daily round + streak + share | Date-seeded round | Same pool | Low once flagship exists | **Launch** |
+| **Connection of the Day** | Same loop, one frozen daily round + streak + share | Committed manifest, local calendar date (ADR 0043) | Same pool | Low once flagship exists | **Launch** |
 | **Hidden Contributor** | Identify the redacted name across 2–3 credit lists | Choice chips over redacted liner notes | Credit excerpts | Medium (new presentation, same engine) | Phase 2 |
 | **Behind the Boards** | Guesser restricted to non-performer roles | Flagship variant w/ role filter | Role-category tagging | Low-medium | Phase 2 (note: ADR 0027 excludes non-performer-only credits from *graph hops*; this mode presents them as **evidence spotlights**, not path edges) |
 | **Free Explore** | Browse albums/contributors/paths, no score | Album + contributor pages | Existing artifacts | Medium | Phase 2 (grows from `/albums/`) |
@@ -412,9 +413,10 @@ tokens → global → motif → game. Validation: `npm run validate:data` runs
 5. **Clue ladder + scoring + local state:** ladder UI, needle-drop ratings, set flow,
    `np.game.v1` store + migration test, repeat avoidance, stats sheet. *DoD:*
    persistence/migration specs green; casual-fairness review of clue costs.
-6. **Connection of the Day** at `/play/daily/`: date-seeded selection, daily state,
-   streak, spoiler-free ShareResult, empty/error states. *DoD:* same round for a fixed
-   date across builds (test), share string leaks no names (test).
+6. **Connection of the Day** at `/play/daily/`: frozen manifest selection (ADR 0043,
+   superseding the originally-planned date-seeded selection), local-calendar rollover,
+   daily state, streak, spoiler-free ShareResult, upcoming/empty/error states. *DoD:*
+   same round for a fixed date across builds (test), share string leaks no names (test).
 7. **Explore & evidence consolidation:** `/albums/[id]/` upgraded (current play page
    content + connections + "play from here"), minimal contributor cards, EvidencePanel
    replaces PathCard/EvidenceCard everywhere (demo included), cohort pages link into

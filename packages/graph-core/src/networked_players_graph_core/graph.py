@@ -918,6 +918,35 @@ class CreditGraph:
         ).fetchall()
         return [dict(zip(_CREDIT_COLUMNS, row, strict=True)) for row in rows]
 
+    def credit_rows_for_releases(
+        self, release_ids: Sequence[int]
+    ) -> dict[int, list[dict[str, Any]]]:
+        """Every playable, non-placeholder credit row for a batch of releases,
+        grouped by `release_id` -- one query, not one per release. Unlike
+        `credit_rows`, no `artist_ids` filter: the caller doesn't yet know which
+        artists matter (e.g. discovering who performs on an album at all), only
+        which releases. Applies no role-eligibility filter -- that is the game
+        allowlist's job (`eligibility.py`), which this module must never import.
+        """
+        if not release_ids:
+            return {}
+        ids = sorted(set(release_ids))
+        placeholders = ", ".join("?" for _ in ids)
+        columns = ", ".join(_CREDIT_COLUMNS)
+        not_placeholder = _not_placeholder_sql()
+        rows = self._connection.execute(
+            f"SELECT {columns} FROM credits "
+            f"WHERE release_id IN ({placeholders}) "
+            f"AND playable_identity AND artist_id IS NOT NULL AND {not_placeholder} "
+            "ORDER BY ALL",
+            ids,
+        ).fetchall()
+        grouped: dict[int, list[dict[str, Any]]] = {rid: [] for rid in ids}
+        for row in rows:
+            record = dict(zip(_CREDIT_COLUMNS, row, strict=True))
+            grouped[int(record["release_id"])].append(record)
+        return grouped
+
     def release(self, release_id: int) -> dict[str, Any] | None:
         row = self._connection.execute(
             "SELECT * FROM releases WHERE release_id = ?", [release_id]
@@ -1033,13 +1062,29 @@ class CreditGraph:
         }
 
     def master(self, master_id: int) -> dict[str, Any] | None:
-        """Row from the attached masters table, or None if not attached/found."""
+        """Row from the attached masters table, or None if not attached/found.
+
+        Exposes ``main_release_id`` (the master's canonical original pressing --
+        preferred over an arbitrary in-working-set reissue for both the cited
+        evidence release and the display year), ``year`` (the master's original
+        release year, not an edition date), and ``genres``/``styles`` (Discogs'
+        own editorial classification, used to fail-closed exclude soundtracks /
+        stage & screen masters that carry no structured format signal)."""
         if not self._masters_attached:
             return None
         row = self._connection.execute(
-            "SELECT title, year FROM masters WHERE master_id = ?", [master_id]
+            "SELECT title, year, main_release_id, genres, styles FROM masters WHERE master_id = ?",
+            [master_id],
         ).fetchone()
-        return None if row is None else {"title": row[0], "year": row[1]}
+        if row is None:
+            return None
+        return {
+            "title": row[0],
+            "year": row[1],
+            "main_release_id": row[2],
+            "genres": list(row[3]) if row[3] is not None else [],
+            "styles": list(row[4]) if row[4] is not None else [],
+        }
 
     def placeholder_artist_candidates(self) -> list[dict[str, Any]]:
         """Playable identities whose name looks like a placeholder ("Various",

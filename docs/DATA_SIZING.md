@@ -305,3 +305,54 @@ The two cached datasets together are ~7.5 GB — see `docs/HARDWARE.md`'s "Futur
 reconsider Pi dataset-caching scope" for why real free-space headroom on the Pi fleet
 (confirmed comfortably sufficient for this size class, exact figures kept local per ADR
 0018) is relevant background for a future revisit.
+
+## Masters parse, first real run (2026-07-20, coordination host)
+
+The `parse-masters` command (long present, tested, but never run) was executed for the
+first time against the real `20260601` masters dump, to supply original album years and
+Discogs genre/style — the authoritative fix for the reissue-year and soundtrack leaks in
+the generated album catalog (see `docs/RELEASE_FORMAT_RESEARCH.md`). Observed, not
+projected:
+
+| Item | Value |
+| --- | ---: |
+| Compressed masters dump (`.xml.gz`) | 614,336,787 bytes (~614 MB) |
+| Masters parsed | 2,560,991 (matches the DATA_SIZING Jun 2026 count exactly) |
+| Master-artist credit rows parsed | 3,145,466 |
+| Parquet output (`masters` + `master_artists`, zstd) | ~124 MB total (~120 MB on disk) |
+| Wall clock (from raw-file → final-snapshot mtimes) | ~8 minutes |
+| Peak RSS (observed mid-run via `ps`) | ~90 MB (streaming/bounded, consistent with the parser design; not rigorously captured) |
+
+The masters extract keeps only `main_release_id`, `title`, `year`, `genres`, `styles`
+(plus `master_artists`), so the output is an order of magnitude smaller than a
+full-fidelity masters conversion. Stored on the project NVMe (`/mnt/data`), referenced by
+absolute `--masters-root`, so the coordination host's smaller root disk is untouched. The
+existing catalog generation commands already accepted `--masters-root`; the same-day
+catalog/format-policy corrections wired it through `build-album-catalog`,
+`rank-album-candidates`, `build-challenge-from-dump`, and `build-rounds-from-dump`.
+
+## Real-data launch: public game/album artifact sizes (2026-07-19/20)
+
+The first real (non-synthetic) generation of every public game/album artifact, against
+`snapshot=20260601` and the format-corrected `studio-album-v1` policy. Observed directly
+from the committed files under `apps/web/public/data/`, not projected:
+
+| Artifact | File size | Contents |
+| --- | ---: | --- |
+| `challenge.v2.json` | 2.1 MB | 140 albums, 251 artists, 300 evidence paths, 335 releases |
+| `game/universe.v1.json` | 19.6 KB | 79 albums (only those that are an actual round endpoint or distractor) |
+| `game/rounds.v1.json` | 1.79 MB | 172 rounds (72 one-hop, 100 two-hop), 208 evidence releases, 170 artists |
+| `game/daily-manifest.v1.json` | 12.9 KB | 172 scheduled dates, one real round per date, no repeats |
+
+The rounds pool (72 one-hop / 100 two-hop) landed below the plan's original 250-500
+one-hop / 50-150 two-hop target range. This is a real, reported shortfall, not a
+silently-padded number: the allowlist gate (`eligibility.py`, explicit instrument/vocal
+roles only) is deliberately narrower than `credit_edges_sql`'s existing collaboration
+denylist, and both hops of a two-hop round must independently pass it plus the studio-
+album format gate plus relationship exclusion, on top of the 140-album backbone's own
+candidate-pair yield. `universe.v1.json`'s 79-album count (fewer than `challenge.v2`'s
+140) reflects the same real selectivity: an album that matched the backbone but never
+became a round endpoint or distractor is correctly absent from the game's own universe.
+`rounds.v1.json` is fetched at runtime rather than bundled at build time for exactly the
+reason anticipated during planning: at this scale it is already well past a
+reasonable per-page Astro budget.

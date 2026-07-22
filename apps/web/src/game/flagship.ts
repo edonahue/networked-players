@@ -1,14 +1,17 @@
 // Client controller for the flagship Connection Guesser
-// (docs/WEB_PRODUCT_PLAN.md §5). Reads the round pool from the page's JSON
-// island, drives the pure engine, and renders every phase into the static
-// shells in play/connection.astro. One-hop rounds ask a single question;
-// two-hop rounds walk bridge_a → bridge_b → hidden middle, rebuilding the
-// tray per step. Nothing here marks which chip is correct — answers are
-// checked in memory, and verdict/evidence markup exists only after the
-// round resolves.
+// (docs/WEB_PRODUCT_PLAN.md §5). Fetches the round pool at runtime
+// (fetchRounds), drives the pure engine, and renders every phase into the
+// static shells in play/connection.astro. One-hop rounds ask a single
+// question; two-hop rounds walk bridge_a → bridge_b → hidden middle,
+// rebuilding the tray per step. Nothing here marks which chip is correct —
+// answers are checked in memory, and verdict/evidence markup exists only
+// after the round resolves.
 
+import { fetchDailyManifest, resolveDailyRound } from "./dailyManifest";
+import { isDateOverrideAllowed } from "./dateOverride";
 import { createEngine, type Engine } from "./engine";
-import { createRng, dailySeed } from "./prng";
+import { localIsoDate } from "./localDate";
+import { createRng } from "./prng";
 import { ratingGlyph, summarizeSet } from "./scoring";
 import {
   load,
@@ -31,6 +34,7 @@ import type {
   ContributorRef,
   EngineState,
   GameRound,
+  GameRounds,
   Rating,
   Step,
 } from "./types";
@@ -124,22 +128,112 @@ function pickRound(
   );
 }
 
-/** The daily deal: derived from the UTC date alone — the same for everyone. */
-function pickDaily(rounds: GameRound[], isoDate: string): GameRound {
-  const pool = rounds.filter((r) => r.kind === "one_hop");
-  const seed = dailySeed(new Date(`${isoDate}T12:00:00Z`));
-  return createRng(seed).shuffle(pool)[0];
-}
-
 export interface FlagshipOptions {
   /** Connection of the Day: deterministic date round, streaks, no set arc. */
   daily?: boolean;
 }
 
-export function initFlagship(options: FlagshipOptions = {}): void {
-  const island = document.getElementById("np-round-data");
-  if (!island?.textContent) throw new Error("round data island missing");
-  const rounds = JSON.parse(island.textContent) as GameRound[];
+/** The real pool is fetched at runtime, not embedded in the page -- it is
+ * well past a reasonable inline-HTML budget at real-launch scale (500 real
+ * rounds, ~1.2 MB). Cached by the browser like any other static asset after
+ * the first load; nothing here is per-user or per-request.
+ *
+ * Returns the COMPLETE artifact (schema_version + provenance + rounds), not
+ * just the rounds array -- the daily path needs `provenance` to verify the
+ * fetched pool actually matches what the daily manifest was built against
+ * (corrective slice 5.1); the set-based path below still only reads
+ * `.rounds`. */
+async function fetchRounds(): Promise<GameRounds> {
+  const response = await fetch("/data/game/rounds.v1.json");
+  if (!response.ok) {
+    throw new Error(`failed to load rounds.v1.json: ${response.status}`);
+  }
+  return (await response.json()) as GameRounds;
+}
+
+/** Hide every gameplay control so a non-playable stage state (error or
+ * upcoming) can never present an inert-but-visible clue/give-up button. The
+ * tray is empty in these states (the caller returns before populating it),
+ * but hide it explicitly too rather than relying on emptiness. */
+function hideGameplayControls(): void {
+  for (const testid of ["chip-tray", "clue-button", "give-up"]) {
+    document
+      .querySelector<HTMLElement>(`[data-testid="${testid}"]`)
+      ?.setAttribute("hidden", "");
+  }
+}
+
+/** Render a graceful, spoiler-free error/integrity state into the stage
+ * shell shared by every failure mode below (fetch failure, unscheduled
+ * date, missing or content-mismatched round) -- never a thrown error, never
+ * a silent fallback to a derived assignment. Because every caller `return`s
+ * before the tray/clue/give-up controls are wired up, no gameplay control is
+ * ever active in this state. */
+function showStageError(message: string, announceText = message): void {
+  const stage = document.querySelector('[data-testid="stage"]');
+  const question = document.querySelector('[data-testid="question"]');
+  if (question) question.textContent = message;
+  stage?.setAttribute("data-phase", "error");
+  hideGameplayControls();
+  const liveAssertive = document.querySelector(
+    '[data-testid="live-assertive"]',
+  );
+  if (liveAssertive) liveAssertive.textContent = announceText;
+}
+
+const _LAUNCH_MONTHS = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
+
+/** "2026-08-01" -> "August 1". Parses the ISO label by parts (no Date, no
+ * timezone shift); falls back to the raw label if it isn't a plain date. */
+function formatLaunchDate(iso: string): string {
+  const [y, m, d] = iso.split("-").map((part) => Number(part));
+  if (!y || !m || !d || m < 1 || m > 12) return iso;
+  return `${_LAUNCH_MONTHS[m - 1]} ${d}`;
+}
+
+/** The pre-launch state for Connection of the Day: the manifest exists and is
+ * valid, but the player's local date is before its first scheduled date.
+ * This is NOT an error -- it's a friendly "coming soon", a distinct
+ * `data-phase="upcoming"` with a polite (not assertive) announcement, and
+ * (like the error path) it returns before any gameplay control is wired up,
+ * so the tray/clue/give-up stay inert (ADR 0044). */
+function showStageUpcoming(startDate: string): void {
+  const stage = document.querySelector('[data-testid="stage"]');
+  const question = document.querySelector('[data-testid="question"]');
+  const message = `Connection of the Day launches ${formatLaunchDate(startDate)}. Come back then for the first frozen connection.`;
+  if (question) question.textContent = message;
+  stage?.setAttribute("data-phase", "upcoming");
+  hideGameplayControls();
+  const livePolite = document.querySelector('[data-testid="live-region"]');
+  if (livePolite) livePolite.textContent = message;
+}
+
+export async function initFlagship(
+  options: FlagshipOptions = {},
+): Promise<void> {
+  let roundsArtifact: GameRounds;
+  try {
+    roundsArtifact = await fetchRounds();
+  } catch {
+    showStageError(
+      "Could not load the round pool right now — try refreshing the page.",
+    );
+    return;
+  }
+  const rounds = roundsArtifact.rounds;
   const params = new URLSearchParams(window.location.search);
   if (
     params.get("motion") === "off" ||
@@ -149,9 +243,15 @@ export function initFlagship(options: FlagshipOptions = {}): void {
   }
 
   const daily = options.daily === true;
-  const isoDate = daily
-    ? (params.get("date") ?? new Date().toISOString().slice(0, 10))
-    : "";
+  // The effective date is the player's own LOCAL calendar date, never UTC
+  // (corrective slice 5.1) -- the committed manifest assigns one ordinary
+  // date label per day, and each browser resolves it against its own local
+  // midnight. The ?date= override is honored only when explicitly allowed
+  // (Playwright/dev), never in a real production deploy -- see
+  // dateOverride.ts.
+  const dateOverride =
+    daily && isDateOverrideAllowed() ? params.get("date") : null;
+  const isoDate = daily ? (dateOverride ?? localIsoDate(new Date())) : "";
 
   const activeKind =
     !daily && params.get("kind") === "two_hop" ? "two_hop" : "one_hop";
@@ -168,9 +268,72 @@ export function initFlagship(options: FlagshipOptions = {}): void {
       );
   if (!daily) saveSet(sessionStore(), set);
 
-  const round = daily
-    ? pickDaily(rounds, isoDate)
-    : pickRound(rounds, params, set);
+  let round: GameRound;
+  if (daily) {
+    // Frozen, append-only manifest resolution -- never a date-seeded
+    // derivation. A date the manifest doesn't cover, a round the manifest
+    // points at that no longer exists, one that isn't actually a real
+    // one-hop round, an incompatible/unsupported manifest, a manifest whose
+    // versions don't match the fetched round pool, or a round whose
+    // published content no longer matches what the manifest expects
+    // (round_content_fingerprint) -- all fail gracefully rather than
+    // silently deriving a substitute (ADR 0043's corrective-slice-4.6 and
+    // -5.1 addenda).
+    let manifest;
+    try {
+      manifest = await fetchDailyManifest();
+    } catch {
+      showStageError(
+        "Could not load today's schedule right now — try refreshing the page.",
+      );
+      return;
+    }
+    const resolution = await resolveDailyRound(
+      manifest,
+      roundsArtifact,
+      isoDate,
+    );
+    if (!resolution.ok) {
+      if (resolution.reason === "not-scheduled") {
+        // Distinguish a legitimate pre-launch date (before the manifest's
+        // first scheduled date -> friendly "launching soon") from a date
+        // past the last scheduled one (the calendar needs extending). ISO
+        // date labels compare correctly as strings (ADR 0044).
+        const startDate = manifest.start_date;
+        if (typeof startDate === "string" && isoDate < startDate) {
+          showStageUpcoming(startDate);
+        } else {
+          showStageError(
+            "Today's connection isn't on the calendar yet — the daily schedule needs extending. Check back soon.",
+          );
+        }
+      } else if (resolution.reason === "missing-round") {
+        showStageError(
+          "Today's connection could not be verified — the scheduled record set is missing. Try refreshing the page.",
+        );
+      } else if (resolution.reason === "fingerprint-mismatch") {
+        showStageError(
+          "Today's connection could not be verified — its record set has changed unexpectedly. Try refreshing the page.",
+        );
+      } else if (resolution.reason === "ineligible-round") {
+        showStageError(
+          "Today's connection could not be verified — the scheduled entry does not point at a valid daily round. Try refreshing the page.",
+        );
+      } else {
+        // unsupported-manifest | wrong-mode | version-mismatch: the
+        // schedule and today's fetched record pool are not a matching
+        // pair -- an integrity condition, never something to silently
+        // paper over by guessing which one to trust.
+        showStageError(
+          "Today's connection could not be verified — the schedule and today's record pool don't match. Try refreshing the page.",
+        );
+      }
+      return;
+    }
+    round = resolution.round;
+  } else {
+    round = pickRound(rounds, params, set);
+  }
   const stage = $("stage");
   const tray = $("chip-tray");
   const clueButton = $<HTMLButtonElement>("clue-button");
@@ -242,25 +405,36 @@ export function initFlagship(options: FlagshipOptions = {}): void {
     }
   }
 
-  const answerIds = new Set(round.answer_set.map((a) => a.id));
   let chips: HTMLButtonElement[] = [];
+
+  /** Contributor refs that answer a given step -- one-hop's `answer_set`,
+   * or the relevant side of a two-hop's `bridge_answer_sets`. Two-hop's
+   * `answer_set` is always empty (the connection has no single "the
+   * answer"; each bridge does), so callers must go through this rather
+   * than reading `round.answer_set` directly for a two-hop round. */
+  function answersForStep(step: Step): ContributorRef[] {
+    if (step === "single" || !round.bridge_answer_sets) {
+      return round.answer_set;
+    }
+    const [a, b] = round.bridge_answer_sets;
+    return step === "bridge_a" ? a : b;
+  }
 
   /** Contributor refs for the tray of a given step. */
   function stepRefs(step: Step): ContributorRef[] {
-    if (step === "single" || !round.bridge_answer_sets) {
-      return [...round.answer_set, ...round.distractors];
-    }
-    const [a, b] = round.bridge_answer_sets;
-    return [...(step === "bridge_a" ? a : b), ...round.distractors];
+    return [...answersForStep(step), ...round.distractors];
   }
 
   function questionFor(step: Step): string {
     const [a, b] = round.endpoints;
     switch (step) {
       case "single":
-        return "One person is credited on both of these records. Who?";
+        return "One eligible performer is credited on both of these records. Who?";
       case "bridge_a":
-        return `No one is credited on both of these records — a hidden middle record links them. Who is credited on both ${a.title} and the hidden record?`;
+        // Precise, not "no one": a producer/engineer could still be credited
+        // on both without satisfying the game's performer-only eligibility
+        // rule (instrument/vocal credits only) -- see eligibility.py.
+        return `No eligible performer appears on both of these records — a hidden middle record links them. Who is credited on both ${a.title} and the hidden record?`;
       case "bridge_b":
         return `Now the other side: who is credited on both ${b.title} and the hidden record?`;
       case "middle":
@@ -377,6 +551,26 @@ export function initFlagship(options: FlagshipOptions = {}): void {
     return parts.join(" · ");
   }
 
+  function namesFor(refs: ContributorRef[]): string {
+    return refs.map((r) => r.name).join(" and ");
+  }
+
+  /** The full, honest reveal text: one-hop names every valid answer;
+   * two-hop names both bridges (each may itself have more than one valid
+   * performer) plus the hidden middle record. Never reads from a single
+   * `answer_set` for a two-hop round -- it's always empty there by design
+   * (see `answersForStep`). */
+  function describeAnswer(): string {
+    if (!twoHop || !round.middle || !round.bridge_answer_sets) {
+      return namesFor(round.answer_set);
+    }
+    const [bridgeA, bridgeB] = round.bridge_answer_sets;
+    return (
+      `${namesFor(bridgeA)} on one side and ${namesFor(bridgeB)} on the other, ` +
+      `through the hidden record ${round.middle.album.title}`
+    );
+  }
+
   function announce(message: string, assertive = false): void {
     (assertive ? liveAssertive : livePolite).textContent = message;
   }
@@ -436,13 +630,23 @@ export function initFlagship(options: FlagshipOptions = {}): void {
   }
 
   function finishRound(state: EngineState): void {
+    // trayStep reflects whichever step's tray last rendered -- the step the
+    // player was on when the round resolved (solved, struck out, or gave
+    // up). Its correct-answer set must come from THAT step, never a single
+    // round-wide `answer_set` -- two-hop rounds don't have one (each bridge
+    // does), so using it here was always empty for a two-hop round and no
+    // chip was ever marked correct on a give-up/fail before the middle step.
+    const stepAnswerIds =
+      trayStep === "middle"
+        ? null
+        : new Set(answersForStep(trayStep ?? "single").map((a) => a.id));
     for (const chip of chips) {
       chip.disabled = true;
       const value = chip.dataset.chip ?? "";
       const correct =
         trayStep === "middle"
           ? value === round.middle?.album.id
-          : answerIds.has(Number(value));
+          : (stepAnswerIds?.has(Number(value)) ?? false);
       if (correct) {
         chip.dataset.chipState = "correct";
         chip.setAttribute("aria-checked", "true");
@@ -452,11 +656,7 @@ export function initFlagship(options: FlagshipOptions = {}): void {
       renderSleeve(middleArt, round.middle.album);
       middleCaption.textContent = captionFor(round.middle.album);
     }
-    const names = round.answer_set.map((a) => a.name).join(" and ");
-    const path =
-      twoHop && round.middle
-        ? `${names}, through ${round.middle.album.title}`
-        : names;
+    const path = describeAnswer();
     verdictHeading.textContent = state.solved
       ? `Solved: ${path}`
       : `The answer was ${path}`;

@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "policy": "studio-album-v1",
+  "snapshot_date": "20260601",
+  "note": "Human-reviewed backstop deny-list of Discogs master IDs that are NOT studio albums (live albums, soundtracks, etc.) but carry no structured Discogs signal any automated rule can key on -- neither a release format descriptor (confirmed: zero 'Live' descriptors across every working-set pressing) nor a master genre/style. The master genre/style gate (release_format_policy.master_non_studio_reason) already excludes soundtracks and stage-&-screen masters automatically; this file is only for the residual cases that gate cannot see. Each entry is one auditable, reasoned exclusion, in the same spirit as placeholder_artists.json and artist-family-exclusions (ADR 0035's 'human curation is the backstop for un-separable cases', ADR 0036's interim curation filter). Keep it small; prefer a structured signal whenever one exists.",
+  "exclusions": [
+    {
+      "master_id": 128523,
+      "title": "Hot August Night",
+      "artist": "Neil Diamond",
+      "reason": "live album; 0 of 178 working-set pressings carry a 'Live' descriptor, master genres/styles are ['Rock','Pop']/['Pop Rock','Vocal'] with no live signal, and the title contains no 'live' token"
+    },
+    {
+      "master_id": 14495,
+      "title": "The Last Waltz",
+      "artist": "The Band",
+      "reason": "live concert album; 0 of 153 working-set pressings carry a 'Live' descriptor, master genres/styles are ['Rock']/['Folk Rock','Country Rock','Blues Rock'] with no live signal, and the title contains no 'live' token"
+    },
+    {
+      "master_id": 17245,
+      "title": "Eat A Peach",
+      "artist": "The Allman Brothers Band",
+      "reason": "mixed live/studio double album (recorded partly before, partly after Duane Allman's death); 0 of 243 working-set pressings carry a 'Live' descriptor, master genres/styles are ['Rock']/['Blues Rock','Southern Rock'] with no live signal, and the title contains no 'live' token -- caught in a real-catalog audit (corrective slice 4.5, 2026-07-20), not the original review"
+    },
+    {
+      "master_id": 19956,
+      "title": "We Are The World",
+      "artist": "USA For Africa",
+      "reason": "charity single/various-artists project released under the one-off 'USA For Africa' credit, not a studio album by a single act; 0 of 96 working-set pressings carry a 'Compilation' or 'Various' descriptor (all tagged plain 'Album'), master genres/styles are ['Electronic','Rock','Pop']/['Pop Rock','Soft Rock','Ballad','Synth-pop'] with no compilation signal, and 'USA For Africa' is not a 'Various Artists'-style credit token any automated check keys on -- caught in a real-catalog audit (corrective slice 4.5, 2026-07-20), not the original review"
+    },
+    {
+      "master_id": 68141,
+      "title": "Friday Night In San Francisco",
+      "artist": "Paco De Lucía",
+      "reason": "live album (guitar trio concert recording, Warfield Theatre); 0 of 199 working-set pressings carry a 'Live' descriptor, master genres/styles are ['Jazz','Latin']/['Flamenco','Latin Jazz'] with no live signal, and the title contains no 'live' token -- caught in a real-catalog audit (corrective slice 4.5, 2026-07-20), not the original review"
+    },
+    {
+      "master_id": 62619,
+      "title": "Rattle And Hum",
+      "artist": "U2",
+      "reason": "mixed live/studio album released alongside a companion concert documentary film; 0 of 392 working-set pressings carry a 'Live' descriptor, master genres/styles are ['Rock']/['Blues Rock','Pop Rock'] with no live signal, and the title contains no 'live' token -- caught in a real-catalog audit (corrective slice 4.5, 2026-07-20), not the original review"
+    }
+  ]
+}

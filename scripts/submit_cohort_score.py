@@ -49,6 +49,17 @@ def _arguments() -> argparse.Namespace:
     parser.add_argument("--pair-timeout-seconds", type=float, default=180.0)
     parser.add_argument("--max-frontier-expansion", type=int, default=300)
     parser.add_argument("--max-reach-rows", type=int, default=2_000_000)
+    parser.add_argument(
+        "--release-format-policy",
+        type=Path,
+        default=None,
+        help=(
+            "Path to a studio-album-v1 release-format-scoring-index.json "
+            "(see build-release-format-scoring-index). Optional: without it, "
+            "the run falls back to the legacy title-keyword filter, same as "
+            "the local score-cohort-connectivity CLI's own default."
+        ),
+    )
     parser.add_argument("--replace", action="store_true")
     return parser.parse_args()
 
@@ -114,6 +125,18 @@ def _request(args: argparse.Namespace, run_id: str, commit: str) -> tuple[RunReq
         name="resolved",
         contract="album-cohort-resolved-v1",
     )
+    inputs = (resolved_descriptor,)
+    if args.release_format_policy is not None:
+        if not args.release_format_policy.is_file():
+            raise RuntimeError(f"missing release format policy: {args.release_format_policy}")
+        shutil.copy2(args.release_format_policy, input_dir / "release-format-policy.json")
+        policy_descriptor = describe_artifact(
+            input_dir,
+            "release-format-policy.json",
+            name="release_format_policy",
+            contract="release-format-scoring-index-v1",
+        )
+        inputs = (resolved_descriptor, policy_descriptor)
     request = RunRequest(
         schema_version=1,
         run_id=run_id,
@@ -129,7 +152,7 @@ def _request(args: argparse.Namespace, run_id: str, commit: str) -> tuple[RunReq
             min_memory_mb=4096,
             datasets=(dataset_identity,),
         ),
-        inputs=(resolved_descriptor,),
+        inputs=inputs,
         expected_outputs=(
             "connectivity",
             "playable-pairs",
