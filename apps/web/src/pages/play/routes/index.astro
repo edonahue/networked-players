@@ -1,0 +1,33 @@
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import RoutesStage from '../../../components/RoutesStage.astro';
+
+// Record Routes (ADR 0046): the path-guessing mode. The full route pool is
+// fetched at runtime by game/routes.ts, not embedded here -- same runtime-fetch
+// posture as the Connection Guesser's real pool.
+const description =
+  'Record Routes: two real albums land on the counter. Guess how many documented credits separate them, then reveal the full path with evidence at every hop.';
+---
+
+<BaseLayout title="Record Routes" description={description}>
+  <section class="prose shell" style="padding-bottom:0">
+    <p class="eyebrow">Record Routes</p>
+    <h1 style="font-size:clamp(1.9rem,4.5vw,2.8rem)">How many hops connect these records?</h1>
+  </section>
+
+  <RoutesStage />
+
+  <section class="prose shell" style="padding-top:28px;padding-bottom:72px">
+    <p class="lede" style="font-size:0.95rem">
+      Every hop is a documented liner-note credit: two artists sharing a credit on the same
+      release. A one-hop route connects the two shown records directly; a two-hop route
+      passes through one hidden bridging artist, which you can optionally try to name before
+      the reveal. Documented participation on a recording — nothing more is ever claimed.
+    </p>
+  </section>
+</BaseLayout>
+
+<script>
+  import { initRoutes } from '../../../game/routes';
+  initRoutes();
+</script>

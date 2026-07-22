@@ -1,0 +1,86 @@
+---
+// Record Routes stage shell (ADR 0046): static markup only --
+// src/game/routes.ts renders every phase into these data-testid hooks.
+// Deliberately lighter than GameStage (no chip tray, no clue ladder, no
+// sittings): two sleeves, a path-length guess, an optional connecting-artist
+// guess, then the full documented reveal.
+
+interface Props {
+  label?: string;
+}
+
+const { label = "Record Routes round" } = Astro.props;
+---
+
+<section class="shell stage" data-testid="routes-stage" data-phase="idle" aria-label={label}>
+  <noscript>
+    <p class="lede">
+      Record Routes needs JavaScript for the guessing round. The same connections are
+      browsable without it under <a href="/albums/">Albums</a>.
+    </p>
+  </noscript>
+
+  <div class="stage__meta">
+    <span class="stage__badge" data-testid="routes-pool-badge"></span>
+    <span class="stage__badge stage__badge--difficulty" data-testid="routes-difficulty-tag"
+    ></span>
+  </div>
+
+  <div class="stage__counter">
+    <figure class="sleeve">
+      <div class="sleeve__art" data-testid="routes-sleeve-a"></div>
+      <figcaption class="sleeve__caption" data-testid="routes-caption-a"></figcaption>
+    </figure>
+    <span class="stage__ampersand" aria-hidden="true">→</span>
+    <figure class="sleeve">
+      <div class="sleeve__art" data-testid="routes-sleeve-b"></div>
+      <figcaption class="sleeve__caption" data-testid="routes-caption-b"></figcaption>
+    </figure>
+  </div>
+
+  <p class="stage__question" data-testid="routes-question">
+    How many documented-credit hops connect these two records?
+  </p>
+
+  <div class="chip-tray" data-testid="routes-length-tray" role="radiogroup" aria-label="Guess the path length">
+    <button type="button" class="chip" data-length="one_hop">One hop</button>
+    <button type="button" class="chip" data-length="two_hop">Two hops</button>
+  </div>
+
+  <div data-testid="routes-artist-step" hidden>
+    <p class="stage__question" data-testid="routes-artist-question">
+      Optional: name the connecting artist.
+    </p>
+    <div
+      class="chip-tray"
+      data-testid="routes-artist-tray"
+      role="radiogroup"
+      aria-label="Guess the connecting artist"
+    >
+    </div>
+    <button type="button" class="stage__action stage__action--quiet" data-testid="routes-skip-artist">
+      Skip &amp; reveal the route
+    </button>
+  </div>
+
+  <div class="verdict" data-testid="routes-verdict" hidden>
+    <h2 class="verdict__heading" data-testid="routes-verdict-heading" tabindex="-1"></h2>
+    <p class="verdict__rating" data-testid="routes-verdict-rating"></p>
+  </div>
+
+  <div data-testid="routes-evidence-mount"></div>
+  <p class="stamp stage__provenance" data-testid="routes-provenance-note" hidden></p>
+
+  <button type="button" class="stage__action" data-testid="routes-next" hidden>
+    Try another route
+  </button>
+
+  <div class="visually-hidden" aria-live="polite" data-testid="routes-live-region"></div>
+  <div
+    class="visually-hidden"
+    aria-live="assertive"
+    role="alert"
+    data-testid="routes-live-assertive"
+  >
+  </div>
+</section>

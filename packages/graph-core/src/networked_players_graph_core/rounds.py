@@ -1,5 +1,14 @@
-"""Build a rounds.v1/universe.v1 artifact pair: the flagship game's static,
-performer-only evidence pool derived from a real one-hop credit graph.
+"""Build a rounds.v1/universe.v1 artifact pair: the album->artist->album path
+evidence pool derived from a real one-hop credit graph, behind the **Record
+Routes** mode (ADR 0046). The flagship game is the Connection Guesser
+(`connection_rounds.py`) -- a different contract entirely (ADR 0042/0043).
+
+This module's discovery/assembly (`build_round_from_path`, `build_rounds_v1`)
+is reused by the production `record_routes.py` (content-derived stable ids,
+explicit `mode`, deterministic versions, art-free albums); the
+`build-rounds-from-dump` CLI command that calls this module directly is
+LEGACY/exploratory only (ordinal ids, no `mode`) -- use `build-record-routes`
+for the production Record Routes artifact.
 
 Mirrors `challenge.py`'s album-centered, evidence-preserving shape and its
 leak-scanning posture, but adds one further gate `challenge.py` does not
@@ -18,6 +27,7 @@ game-rounds generator's job (`build-rounds-from-dump`), not this module's.
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping
 from typing import Any
 
 from . import __version__
@@ -109,11 +119,29 @@ def _first_performer_role(rows: list[dict[str, Any]]) -> str | None:
     return None
 
 
-def build_round_hop(graph: CreditGraph, hop: Hop) -> dict[str, Any] | None:
+def build_round_hop(
+    graph: CreditGraph,
+    hop: Hop,
+    *,
+    credit_rows_by_release: Mapping[int, list[dict[str, Any]]] | None = None,
+) -> dict[str, Any] | None:
     """Build one hop's game-round evidence, or None if either side lacks an
     explicit, eligible instrument/vocal role text on this release -- the
-    layered allowlist gate described in the module docstring."""
-    rows = graph.credit_rows(hop.release_id, {hop.artist_a_id, hop.artist_b_id})
+    layered allowlist gate described in the module docstring.
+
+    `credit_rows_by_release`, when given, is an already-fetched map (e.g. from
+    `CreditGraph.credit_rows_for_release_batch`) that this hop's release_id is
+    filtered against instead of issuing a fresh per-hop query -- the discovery
+    loop's hot path (see `rounds_generator.py`)."""
+    if credit_rows_by_release is not None:
+        artist_ids = {hop.artist_a_id, hop.artist_b_id}
+        rows = [
+            row
+            for row in credit_rows_by_release.get(hop.release_id, [])
+            if row["artist_id"] in artist_ids
+        ]
+    else:
+        rows = graph.credit_rows(hop.release_id, {hop.artist_a_id, hop.artist_b_id})
     rows_a = [row for row in rows if row["artist_id"] == hop.artist_a_id]
     rows_b = [row for row in rows if row["artist_id"] == hop.artist_b_id]
     role_a = _first_performer_role(rows_a)
@@ -150,16 +178,19 @@ def build_round_from_path(
     from_album_id: str,
     to_album_id: str,
     distractors: list[dict[str, Any]] | None = None,
+    credit_rows_by_release: Mapping[int, list[dict[str, Any]]] | None = None,
 ) -> dict[str, Any] | None:
     """Build a full round from an already-found path, or None if any hop
     fails the performer-eligibility gate -- the whole path is dropped for
-    game purposes, even though it might remain valid album/cohort evidence."""
+    game purposes, even though it might remain valid album/cohort evidence.
+
+    `credit_rows_by_release` is forwarded to `build_round_hop` -- see there."""
     if len(path.hops) not in (1, 2):
         raise ValueError(f"rounds only support 1- or 2-hop paths, got {len(path.hops)}")
 
     hops_json: list[dict[str, Any]] = []
     for hop in path.hops:
-        built = build_round_hop(graph, hop)
+        built = build_round_hop(graph, hop, credit_rows_by_release=credit_rows_by_release)
         if built is None:
             return None
         hops_json.append(built)
