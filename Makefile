@@ -10,7 +10,11 @@
 	cluster-health cluster-benchmark cluster-onboard cluster-swarm-join cluster-smoke-test \
 	cluster-recovery-drill harden-workers equip-workers equip-x86-workers replicate-x86 replicate-pi deploy-jobs-broker deploy-catalog-data cluster-benchmark-distributed \
 	deploy-verify-job verify-challenge-distributed \
-	deploy-rounds-check-job rounds-check-distributed \
+	deploy-connection-rounds-check-job connection-rounds-check-distributed \
+	deploy-record-routes-check-job record-routes-check-distributed \
+	deploy-daily-manifest-check-job daily-manifest-check-distributed \
+	deploy-album-art-check-job album-art-check-distributed \
+	deploy-catalog-check-job catalog-check-distributed \
 	score-cohort-on-worker \
 	platform-build platform-deploy platform-status curator \
 	dask-up dask-down
@@ -137,11 +141,35 @@ deploy-verify-job: ## Deploy the challenge-evidence verification job to Pi worke
 verify-challenge-distributed: ## Re-verify a challenge.v2 artifact's evidence across Pi workers' local caches (ADR 0025); needs deploy-jobs-broker + deploy-verify-job; writes local/jobs/ only
 	./scripts/enqueue-verify-challenge.sh $(ARGS)
 
-deploy-rounds-check-job: ## Deploy the rounds-pool validation job + universe.v1/rounds.v1 artifacts to Pi workers; ARGS="--limit worker-01"
-	./infra/ansible/run-deploy-rounds-check-job-local.sh $(ARGS)
+deploy-connection-rounds-check-job: ## Deploy the Connection Guesser rounds-pool validation job + connection-universe.v1/connection-rounds.v1 artifacts to Pi workers; ARGS="--limit worker-01"
+	./infra/ansible/run-deploy-connection-rounds-check-job-local.sh $(ARGS)
 
-rounds-check-distributed: ## Independently re-validate the published rounds pool across Pi workers; needs deploy-jobs-broker + deploy-rounds-check-job; writes local/jobs/ only
-	./scripts/enqueue-rounds-check.sh $(ARGS)
+connection-rounds-check-distributed: ## Independently re-validate the published Connection Guesser rounds pool across Pi workers; needs deploy-jobs-broker + deploy-connection-rounds-check-job; writes local/jobs/ only
+	./scripts/enqueue-connection-rounds-check.sh $(ARGS)
+
+deploy-record-routes-check-job: ## Deploy the Record Routes validation job + routes-universe.v1/routes-rounds.v1 artifacts to Pi workers; ARGS="--limit worker-01"
+	./infra/ansible/run-deploy-record-routes-check-job-local.sh $(ARGS)
+
+record-routes-check-distributed: ## Independently re-validate the published Record Routes pool across Pi workers; needs deploy-jobs-broker + deploy-record-routes-check-job; writes local/jobs/ only
+	./scripts/enqueue-record-routes-check.sh $(ARGS)
+
+deploy-daily-manifest-check-job: ## Deploy the Connection-daily-manifest validation job + daily-manifest.v1/connection-rounds.v1 artifacts to Pi workers; ARGS="--limit worker-01"
+	./infra/ansible/run-deploy-daily-manifest-check-job-local.sh $(ARGS)
+
+daily-manifest-check-distributed: ## Independently re-validate the published daily manifest across Pi workers; needs deploy-jobs-broker + deploy-daily-manifest-check-job; writes local/jobs/ only
+	./scripts/enqueue-daily-manifest-check.sh $(ARGS)
+
+deploy-album-art-check-job: ## Deploy the album-art-registry validation job + album-art.v1/albums.v1 artifacts to Pi workers; ARGS="--limit worker-01"
+	./infra/ansible/run-deploy-album-art-check-job-local.sh $(ARGS)
+
+album-art-check-distributed: ## Independently re-validate the published album-art registry across Pi workers; needs deploy-jobs-broker + deploy-album-art-check-job; writes local/jobs/ only
+	./scripts/enqueue-album-art-check.sh $(ARGS)
+
+deploy-catalog-check-job: ## Deploy the public-album-catalog validation job + albums.v1 artifact to Pi workers; ARGS="--limit worker-01"
+	./infra/ansible/run-deploy-catalog-check-job-local.sh $(ARGS)
+
+catalog-check-distributed: ## Independently re-validate the published public album catalog across Pi workers; needs deploy-jobs-broker + deploy-catalog-check-job; writes local/jobs/ only
+	./scripts/enqueue-catalog-check.sh $(ARGS)
 
 score-cohort-on-worker: ## Submit whole-cohort scoring to a matching platform worker; needs platform runtime + verified x86 cache; ARGS="--source-id <id> --snapshot-date <date> [--release-format-policy <path>]"
 	./scripts/score-cohort-on-worker.sh $(ARGS)

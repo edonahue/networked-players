@@ -1,0 +1,83 @@
+---
+# Deploys the ALBUM-ART-REGISTRY artifact-check job body
+# (files/album_art_check_job.py) AND the real album-art.v1/albums.v1
+# (catalog) artifacts to Pi workers' persistent RQ jobs directory. Same
+# job-body-plus-artifact pattern as deploy-connection-rounds-check-job.yml/
+# deploy-verify-job.yml.
+#
+# Copies the catalog artifact as albums.v1.json -- a globally-unique
+# filename also used by deploy-catalog-check-job.yml for the identical real
+# file. Deliberately a redundant copy rather than a shared reference: each
+# deploy playbook stays independently runnable (see ADR 0043's slice-8
+# addendum).
+#
+# hosts: pi_workers, not the flat `workers` group -- this is Pi-ambient
+# validation work, not x86-worker traversal/scoring work.
+#
+# Usage (from infra/ansible/, with a real local inventory):
+#   ansible-playbook -i inventories/local/hosts.yml playbooks/deploy-album-art-check-job.yml \
+#     --limit worker-01.example.internal
+#   # override the artifact sources:
+#   ansible-playbook -i inventories/local/hosts.yml playbooks/deploy-album-art-check-job.yml \
+#     -e registry_artifact_path=apps/web/public/data/catalog/album-art.v1.json \
+#     -e catalog_artifact_path=apps/web/public/data/catalog/albums.v1.json
+- name: Deploy the album-art-registry artifact-check job to Pi workers
+  hosts: pi_workers
+  gather_facts: true
+  vars:
+    rq_jobs_dir: "{{ ansible_env.HOME }}/.local/share/networked-players/rq-jobs"
+    registry_artifact_path: apps/web/public/data/catalog/album-art.v1.json
+    catalog_artifact_path: apps/web/public/data/catalog/albums.v1.json
+  tasks:
+    - name: Require the artifacts to exist on the control node
+      ansible.builtin.stat:
+        path: "{{ playbook_dir }}/../../../{{ item }}"
+      register: artifact_stat
+      delegate_to: localhost
+      become: false
+      loop:
+        - "{{ registry_artifact_path }}"
+        - "{{ catalog_artifact_path }}"
+
+    - name: Fail loudly if an artifact is missing
+      ansible.builtin.assert:
+        that:
+          - item.stat.exists
+        fail_msg: >-
+          No artifact at {{ item.item }}. Build one first
+          (uv run networked-players-catalog build-album-art-registry ...)
+          or pass -e registry_artifact_path=<path> -e catalog_artifact_path=<path>.
+      loop: "{{ artifact_stat.results }}"
+      loop_control:
+        label: "{{ item.item }}"
+
+    - name: Create the RQ jobs directory
+      ansible.builtin.file:
+        path: "{{ rq_jobs_dir }}"
+        state: directory
+        mode: "0755"
+
+    - name: Copy the album-art-registry artifact-check job body (same file every worker gets, unmodified)
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../files/album_art_check_job.py"
+        dest: "{{ rq_jobs_dir }}/album_art_check_job.py"
+        mode: "0644"
+
+    - name: Copy the registry artifact
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../../../{{ registry_artifact_path }}"
+        dest: "{{ rq_jobs_dir }}/album-art.v1.json"
+        mode: "0644"
+
+    - name: Copy the catalog artifact
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../../../{{ catalog_artifact_path }}"
+        dest: "{{ rq_jobs_dir }}/albums.v1.json"
+        mode: "0644"
+      register: artifact_copy
+
+    - name: Report deployment
+      ansible.builtin.debug:
+        msg:
+          - "host: {{ inventory_hostname }}"
+          - "job body + artifacts deployed to {{ rq_jobs_dir }}/ (changed={{ artifact_copy.changed }})"

@@ -561,3 +561,38 @@ def schedule_diagnostics(
             lambda r: {a["id"] for a in r.get("answer_set", [])}
         ),
     }
+
+
+def schedule_expiry_status(
+    manifest: dict[str, Any], *, as_of: str, warn_within_days: int = 14
+) -> dict[str, Any]:
+    """How much runway is left before the schedule runs out, given an
+    explicit `as_of` date -- never the wall clock; callers that want "now"
+    pass `datetime.now(UTC).date().isoformat()` themselves, matching this
+    module's convention of never reading the clock internally (this
+    function's own output is neither committed nor published, so an
+    operator-facing default-to-now is fine at the CLI layer, unlike
+    `build_connection_daily_manifest`/`extend_connection_daily_manifest`).
+
+    Purely diagnostic reporting, like `schedule_diagnostics` -- never used
+    to gate generation or extension, and never a substitute for
+    `validate_connection_daily_manifest`/`connection_daily_manifest_failures`
+    (a schedule can be perfectly valid and also about to run out). Only
+    needs the manifest's own last scheduled date, not the paired rounds
+    artifact -- there is nothing here that requires cross-referencing the
+    rounds pool."""
+    schedule = manifest.get("schedule", [])
+    if not schedule:
+        raise ConnectionDailyManifestError("schedule must be non-empty")
+    last_scheduled_date = _parse_iso_date(schedule[-1]["date"], context="schedule[-1].date")
+    as_of_date = _parse_iso_date(as_of, context="as_of")
+    days_remaining = (last_scheduled_date - as_of_date).days
+    return {
+        "last_scheduled_date": schedule[-1]["date"],
+        "as_of": as_of,
+        "total_dates": len(schedule),
+        "days_remaining": days_remaining,
+        "warn_within_days": warn_within_days,
+        "needs_extension_soon": days_remaining <= warn_within_days,
+        "already_expired": days_remaining < 0,
+    }

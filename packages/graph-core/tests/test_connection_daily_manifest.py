@@ -11,6 +11,7 @@ from networked_players_graph_core.connection_daily_manifest import (
     build_connection_daily_manifest,
     extend_connection_daily_manifest,
     schedule_diagnostics,
+    schedule_expiry_status,
     validate_connection_daily_manifest,
 )
 from networked_players_graph_core.connection_rounds import (
@@ -320,6 +321,62 @@ def test_schedule_diagnostics_reports_real_numbers() -> None:
     assert "difficulty_distribution" in diagnostics
     assert "decade_distribution" in diagnostics
     assert diagnostics["longest_adjacent_endpoint_repeat_streak"] >= 0
+
+
+def test_schedule_expiry_status_reports_days_remaining() -> None:
+    pool = _real_pool(10)
+    manifest = build_connection_daily_manifest(
+        pool, start_date="2026-08-01", days=10, generated_at=GENERATED_AT
+    )
+    # schedule spans 2026-08-01..2026-08-10 (10 consecutive dates)
+    status = schedule_expiry_status(manifest, as_of="2026-08-01", warn_within_days=14)
+    assert status["last_scheduled_date"] == "2026-08-10"
+    assert status["total_dates"] == 10
+    assert status["days_remaining"] == 9
+    assert status["needs_extension_soon"] is True  # 9 <= 14
+    assert status["already_expired"] is False
+
+
+def test_schedule_expiry_status_boundary_at_exactly_warn_within_days() -> None:
+    pool = _real_pool(10)
+    manifest = build_connection_daily_manifest(
+        pool, start_date="2026-08-01", days=10, generated_at=GENERATED_AT
+    )
+    # last date 2026-08-10, as_of 2026-07-27 -> exactly 14 days remaining
+    status = schedule_expiry_status(manifest, as_of="2026-07-27", warn_within_days=14)
+    assert status["days_remaining"] == 14
+    assert status["needs_extension_soon"] is True
+
+
+def test_schedule_expiry_status_not_needed_well_before_expiry() -> None:
+    pool = _real_pool(10)
+    manifest = build_connection_daily_manifest(
+        pool, start_date="2026-08-01", days=10, generated_at=GENERATED_AT
+    )
+    status = schedule_expiry_status(manifest, as_of="2026-07-01", warn_within_days=14)
+    assert status["days_remaining"] == 40
+    assert status["needs_extension_soon"] is False
+    assert status["already_expired"] is False
+
+
+def test_schedule_expiry_status_negative_days_remaining_is_expired() -> None:
+    pool = _real_pool(10)
+    manifest = build_connection_daily_manifest(
+        pool, start_date="2026-08-01", days=10, generated_at=GENERATED_AT
+    )
+    status = schedule_expiry_status(manifest, as_of="2026-09-01", warn_within_days=14)
+    assert status["days_remaining"] < 0
+    assert status["already_expired"] is True
+    assert status["needs_extension_soon"] is True
+
+
+def test_schedule_expiry_status_raises_on_empty_schedule() -> None:
+    manifest = build_connection_daily_manifest(
+        _real_pool(10), start_date="2026-08-01", days=10, generated_at=GENERATED_AT
+    )
+    manifest["schedule"] = []
+    with pytest.raises(ConnectionDailyManifestError, match="schedule must be non-empty"):
+        schedule_expiry_status(manifest, as_of="2026-08-01")
 
 
 # --- Corrective slice 5.1: strict single-artifact-version manifest policy ---

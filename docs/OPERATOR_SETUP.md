@@ -652,6 +652,464 @@ mirrors the existing challenge-evidence verification job's exact deploy/enqueue 
 see `infra/ansible/files/cohort_artifact_check_job.py`'s own header comment for why it's a
 hand-maintained mirror rather than a direct import of `networked_players_graph_core`.
 
+## Public catalog regen
+
+**Host: master/coordination only** — needs the full one-hop dataset, parsed masters, and
+the release-format policy locally.
+
+### Preconditions
+
+- Clean tree, latest `main` pulled; `make check` green (optional).
+- A completed one-hop dataset at `local/processed/discogs-onehop/snapshot=<date>`.
+- Parsed masters at `<masters-root>/snapshot=<date>` (see "Masters parse" in
+  `docs/DATA_SIZING.md`).
+- A release-format policy (`release-format-scoring-index.json`) built for the same
+  snapshot (see `docs/RELEASE_FORMAT_RESEARCH.md`).
+- `data/albums/studio-album-master-exclusions-v1.json` (checked in) and
+  `data/albums/top-albums-v1.json` (checked in, the editorial backbone).
+
+### 1. Rank candidates (read-only against the dataset; writes local-only output)
+
+```bash
+uv run networked-players-catalog rank-album-candidates \
+  --dataset local/processed/discogs-onehop/snapshot=20260601 \
+  --output local/analysis/album-catalog-regen/candidates.json \
+  --limit 200 \
+  --release-format-policy <path-to-release-format-scoring-index.json> \
+  --masters-root <masters-root>/snapshot=20260601 \
+  --studio-album-exclusions data/albums/studio-album-master-exclusions-v1.json
+```
+
+### 2. Build the public catalog
+
+```bash
+uv run networked-players-catalog build-public-album-catalog \
+  --onehop-root local/processed/discogs-onehop/snapshot=20260601 \
+  --candidates local/analysis/album-catalog-regen/candidates.json \
+  --target-count 140 \
+  --output apps/web/public/data/catalog/albums.v1.json \
+  --release-format-policy <path-to-release-format-scoring-index.json> \
+  --masters-root <masters-root>/snapshot=20260601 \
+  --studio-album-exclusions data/albums/studio-album-master-exclusions-v1.json
+```
+
+`build-public-album-catalog` requires every policy input and fails closed if one is
+missing or its `snapshot_date` disagrees with the one-hop dataset's — never fall back to
+the EXPLORATORY `build-album-catalog` command for the committed artifact (see its own
+help text).
+
+### 3. Validate
+
+```bash
+uv run networked-players-catalog validate-album-catalog --input apps/web/public/data/catalog/albums.v1.json
+```
+
+Expected: `{"ok": true}`. If you also maintain the inclusion audit
+(`docs/data/studio-album-catalog-inclusion-audit-v1.json`), rebuild and validate it too
+(`build-album-catalog-audit`/`validate-album-catalog-audit`, same policy inputs).
+
+### Stop conditions
+
+- Any policy input's `snapshot_date` disagrees with the one-hop dataset's.
+- `validate-album-catalog` reports any failure.
+- The album count drops well below the prior published catalog without a known, reviewed
+  reason (a policy tightening, a new exclusion) — investigate before publishing.
+
+### Safe-to-stop checkpoints
+
+- After step 1 — `candidates.json` is local-only, safe to leave indefinitely.
+- After step 3 validates clean — safe to stop; the new catalog is not live until it's
+  committed, deployed, and every downstream artifact (Connection Guesser, Record Routes,
+  album-art registry) is regenerated against its new `catalog_version` (see the
+  version-relationship reference below).
+
+### Expected outputs
+
+- `apps/web/public/data/catalog/albums.v1.json`, with a new `catalog_version`.
+- A clean `validate-album-catalog` result.
+
+### Recovery guidance
+
+Fully reproducible from the source dataset plus policy inputs — if something looks wrong,
+re-run rather than hand-editing the output. Re-running with identical inputs is
+deterministic (candidate ranking and catalog assembly are both pure functions of their
+inputs).
+
+### Explicit non-goals for this runbook
+
+A new `catalog_version` invalidates every downstream real artifact's provenance check —
+regenerating the catalog alone does not update the Connection Guesser, Record Routes, or
+album-art registry. Each of those is its own separate runbook below; run them in that
+order (catalog → art registry → Connection Guesser → Record Routes → daily manifest) so
+each regeneration reads the catalog version the one before it just produced.
+
+## Image-enrichment refresh
+
+**Host: master/coordination only** — this is the one runbook here that makes real,
+rate-limited outbound HTTP requests (the Discogs API), so it must never run on a
+Pi/x86 worker or as an unattended fleet job.
+
+### Preconditions
+
+- `DISCOGS_TOKEN` set in the environment (never committed).
+- The canonical catalog (`apps/web/public/data/catalog/albums.v1.json`) already reflects
+  the catalog version you want art for.
+
+### 1. Build the registry (rate-limited, cache-first, resumable)
+
+```bash
+export DISCOGS_TOKEN=<your-token>
+uv run networked-players-catalog build-album-art-registry \
+  --catalog apps/web/public/data/catalog/albums.v1.json \
+  --output apps/web/public/data/catalog/album-art.v1.json \
+  --cache-dir data/private/discogs-api-cache \
+  --generated-at 2026-07-22T00:00:00+00:00
+```
+
+`--generated-at` is explicit, never the wall clock (same convention as the daily
+manifest). The on-disk cache under `--cache-dir` (`data/private/`, git-ignored) makes a
+re-run after an interruption resume rather than re-fetch from scratch — only successful
+payloads are cached, so a transient failure is retried, not silently treated as "no
+image."
+
+### 2. Validate
+
+```bash
+uv run networked-players-catalog validate-album-art-registry \
+  --registry apps/web/public/data/catalog/album-art.v1.json \
+  --catalog apps/web/public/data/catalog/albums.v1.json
+```
+
+Expected: `{"ok": true, "albums_with_art": <n>}`. Compare `<n>` against the catalog's
+total album count for real coverage.
+
+### Stop conditions
+
+- `DISCOGS_TOKEN` missing or rejected (401/403) — do not retry aggressively; check the
+  token before re-running.
+- Sustained 429s well beyond the built-in throttle/backoff — stop and investigate rather
+  than tightening the delay downward.
+- `validate-album-art-registry` reports a `catalog_version` mismatch — the catalog moved
+  since this registry was built; regenerate against the current catalog, don't force it.
+
+### Safe-to-stop checkpoints
+
+- Any time — the on-disk cache means an interrupted run loses no completed work; just
+  re-run the same command to resume.
+
+### Expected outputs
+
+- `apps/web/public/data/catalog/album-art.v1.json`, hotlink URLs only (no image bytes).
+- The raw per-release API cache stays under `data/private/`, never committed, never
+  published.
+
+### Recovery guidance
+
+Delete a specific cached entry under `--cache-dir` to force a refetch of just that
+release; delete the whole cache directory to force a full refetch (still rate-limited).
+
+### Explicit non-goals for this runbook
+
+Never rehost, proxy, or commit image bytes — hotlink URLs only. Never raise the request
+rate to "go faster." Never run this on a schedule without a human watching the first
+completion.
+
+## Connection Guesser regen
+
+**Host: master/coordination only.**
+
+### Preconditions
+
+- A completed one-hop dataset and the current canonical catalog
+  (`apps/web/public/data/catalog/albums.v1.json`), same `catalog_version` you intend to
+  publish against.
+- Optionally, `local/analysis/.../artist-family-exclusions-v1.json` (drops trivial
+  group/frontperson pairs).
+
+### 1. Build
+
+```bash
+uv run networked-players-catalog build-connection-rounds \
+  --onehop-root local/processed/discogs-onehop/snapshot=20260601 \
+  --albums apps/web/public/data/catalog/albums.v1.json \
+  --artist-family-exclusions <path-to-artist-family-exclusions-v1.json> \
+  --one-hop-target 300 --two-hop-target 200 \
+  --memory-limit 2GB --threads 4 \
+  --output-universe apps/web/public/data/game/universe.v1.json \
+  --output-rounds apps/web/public/data/game/rounds.v1.json
+```
+
+Real achieved counts (not padded targets) print as diagnostics — a shortfall against the
+target is expected and honest, not a bug (see `docs/DATA_SIZING.md`'s real-data launch
+section for the reasoning).
+
+### 2. Validate
+
+```bash
+uv run networked-players-catalog validate-connection-rounds \
+  --universe apps/web/public/data/game/universe.v1.json \
+  --rounds apps/web/public/data/game/rounds.v1.json
+```
+
+### 3. Diff against the prior publish before committing
+
+Before replacing the committed artifacts, diff the new pair against the currently
+published one (round ids, endpoints, answer sets, order) — see "Rollback" below for the
+same byte-for-byte-diff discipline this project already uses for corrective regenerations.
+
+### Stop conditions
+
+- `validate-connection-rounds` reports any failure.
+- `catalog_version` in the output provenance doesn't match the catalog you intended to
+  build against.
+- The round count collapses well below the prior publish without a known cause.
+
+### Safe-to-stop checkpoints
+
+- After step 2 validates clean — safe to stop; not live until committed and deployed.
+
+### Expected outputs
+
+- `apps/web/public/data/game/universe.v1.json` / `rounds.v1.json`, with new
+  `pool_version`/`artifact_version`.
+
+### Recovery guidance
+
+Fully reproducible from the same inputs (deterministic given a fixed graph snapshot,
+album list, exclusion artifact). Re-run rather than hand-editing.
+
+### Explicit non-goals for this runbook
+
+A new `rounds.v1.json` invalidates the daily manifest's version-agreement check — the
+daily manifest must be extended (never rebuilt from scratch mid-flight) against the new
+artifact separately; see "Daily-schedule extension" below. Never publish a regenerated
+pool without extending or re-anchoring the daily manifest in the same change.
+
+## Daily-schedule extension
+
+**Host: anywhere** — pure Python, JSON-in/JSON-out, no dataset needed.
+
+### Preconditions
+
+- The currently published `apps/web/public/data/game/daily-manifest.v1.json` and its
+  paired `rounds.v1.json` (same generation — extension fails closed on any version
+  mismatch).
+
+### 1. Check remaining runway (read-only, safe to run any time)
+
+```bash
+uv run networked-players-catalog connection-daily-manifest-status \
+  --manifest apps/web/public/data/game/daily-manifest.v1.json \
+  --warn-within-days 14
+```
+
+Exits 1 only if the schedule has already run out (`already_expired`); exits 0 while
+merely inside the warning window, so this is safe to run as a periodic check without
+treating "getting close" as a hard failure.
+
+### 2. Extend
+
+```bash
+uv run networked-players-catalog extend-connection-daily-manifest \
+  --manifest apps/web/public/data/game/daily-manifest.v1.json \
+  --rounds apps/web/public/data/game/rounds.v1.json \
+  --days 90 \
+  --output apps/web/public/data/game/daily-manifest.v1.json \
+  --generated-at 2026-07-22T00:00:00+00:00
+```
+
+Re-verifies every already-published entry's `round_fingerprint` before appending anything
+— a silently changed round is caught, not propagated. Never touches an already-published
+date. `--generated-at` is explicit, never the wall clock.
+
+### 3. Validate
+
+```bash
+uv run networked-players-catalog validate-connection-daily-manifest \
+  --manifest apps/web/public/data/game/daily-manifest.v1.json \
+  --rounds apps/web/public/data/game/rounds.v1.json
+```
+
+### Stop conditions
+
+- Extension raises on a version mismatch — the paired `rounds.v1.json` is a different
+  generation than the manifest was built against; regenerate the Connection Guesser pool
+  is not the fix here, reconcile which generation is actually live first.
+- Extension raises on pool exhaustion ("no repeat policy is implemented yet") — the
+  eligible one-hop pool needs to grow (regenerate the Connection Guesser pool with a
+  higher `--one-hop-target`) before more dates can be scheduled.
+- `validate-connection-daily-manifest` reports any failure.
+
+### Safe-to-stop checkpoints
+
+- Step 1 is always safe, any time.
+- After step 3 validates clean — safe to stop; the extension only appended new dates,
+  every prior date is byte-for-byte unchanged (confirm with a diff before committing).
+
+### Expected outputs
+
+- An updated `daily-manifest.v1.json`: prior entries unchanged, new entries appended,
+  new `generated_at`.
+
+### Recovery guidance
+
+Confirm `after["schedule"][:len(before)] == before["schedule"]` before committing — the
+existing extension tests assert this invariant; treat any diff outside the appended tail
+as a stop condition, not something to force through.
+
+### Explicit non-goals for this runbook
+
+Never reassign an already-published date. Never rebuild the manifest from scratch to
+"fix" it — extension is the only supported append path once the first daily is live.
+
+## Record Routes regen
+
+**Host: master/coordination only.**
+
+### Preconditions
+
+- A completed one-hop dataset, the current canonical catalog, and (for real two-hop
+  bridge-release gating) the release-format policy and studio-album exclusions used to
+  build the catalog itself — see `docs/DATA_SIZING.md`'s "Record Routes real-data
+  generation" entry for why the format policy matters here (it gates the *hidden* middle
+  record, not just the endpoints).
+
+### 1. Build
+
+```bash
+uv run networked-players-catalog build-record-routes \
+  --onehop-root local/processed/discogs-onehop/snapshot=20260601 \
+  --albums apps/web/public/data/catalog/albums.v1.json \
+  --artist-family-exclusions <path-to-artist-family-exclusions-v1.json> \
+  --release-format-policy <path-to-release-format-scoring-index.json> \
+  --studio-album-exclusions data/albums/studio-album-master-exclusions-v1.json \
+  --masters-root <masters-root>/snapshot=20260601 \
+  --one-hop-target 300 --two-hop-target 200 \
+  --memory-limit 2GB --threads 4 \
+  --output-universe apps/web/public/data/routes/universe.v1.json \
+  --output-rounds apps/web/public/data/routes/rounds.v1.json
+```
+
+### 2. Validate
+
+```bash
+uv run networked-players-catalog validate-record-routes \
+  --universe apps/web/public/data/routes/universe.v1.json \
+  --rounds apps/web/public/data/routes/rounds.v1.json
+```
+
+### Stop conditions
+
+- `validate-record-routes` reports any failure.
+- `catalog_version` in the output provenance doesn't match the catalog you intended to
+  build against.
+- The run takes dramatically longer than `docs/DATA_SIZING.md`'s recorded figure for a
+  comparable dataset size — stop and investigate rather than assuming it will finish;
+  see that doc's "Performance: batched credit-row prefetch" note for the class of bug
+  this project has already hit once here.
+
+### Safe-to-stop checkpoints
+
+- After step 2 validates clean — safe to stop; not live until committed and deployed.
+
+### Expected outputs
+
+- `apps/web/public/data/routes/universe.v1.json` / `rounds.v1.json`, with new
+  `pool_version`/`artifact_version` and content-derived `route-<hash>` ids.
+
+### Recovery guidance
+
+Fully reproducible from the same inputs. Re-run rather than hand-editing.
+
+### Explicit non-goals for this runbook
+
+Record Routes has no daily schedule of its own today (see ADR 0046's revisit trigger) —
+this runbook does not touch `daily-manifest.v1.json`.
+
+## Rollback
+
+There is no scripted revert command for any real artifact in this project — rollback is
+git-history-based, following the exact precedent already used twice for real corrective
+regenerations (ADR 0043's corrective-slice-4.5/4.6 addenda):
+
+1. **Fix the root cause** first (a code bug, a bad exclusion, a stale policy input) —
+   never hand-edit a published artifact to paper over a symptom.
+2. **Regenerate deterministically** using the relevant runbook above.
+3. **Diff the new artifact against the prior publish** on every semantic field (ids,
+   endpoints, answer sets, schedule dates/order, evidence) before committing — a real
+   fix should change only what the fix targets; an unexpected diff elsewhere is a stop
+   condition, not something to force through.
+4. **Publish via a normal PR**, reviewed and merged like any other change. If a bad
+   artifact already reached `main` and deployed, `git revert -m 1 <mergeSHA>` on `main`
+   (never force-push) is the actual rollback mechanism — Cloudflare's auto-deploy then
+   promotes the reverted SHA.
+
+### Explicit non-goals
+
+Never hand-edit a committed artifact's JSON directly. Never reassign an already-published
+daily-manifest date, even to fix a mistake — extend forward instead, and treat the
+mistake as a known, documented gap in that date's history rather than rewriting it.
+
+## Pi ambient artifact checks (Connection Guesser, Record Routes, daily manifest, album-art registry, catalog)
+
+Slice 8 adds four more bounded, validation-only ambient jobs, following the exact same
+pattern as "Pi ambient cohort-artifact checks" above: no dataset, no `CreditGraph`, no
+network, safe to run at any time regardless of when the artifact was produced. Each is a
+second, independent safety check re-running the same dependency-free validator the
+`validate-*` CLI commands above already run locally — never required, and this is also
+where a privacy re-scan happens for free, since every `*_failures` validator already
+includes the forbidden-substring/phrase scan as part of its contract check.
+
+```bash
+# One-time per job: deploy the job body + current published artifacts to the Pi fleet.
+./infra/ansible/run-deploy-connection-rounds-check-job-local.sh --limit pi_workers
+./infra/ansible/run-deploy-record-routes-check-job-local.sh --limit pi_workers
+./infra/ansible/run-deploy-daily-manifest-check-job-local.sh --limit pi_workers
+./infra/ansible/run-deploy-album-art-check-job-local.sh --limit pi_workers
+./infra/ansible/run-deploy-catalog-check-job-local.sh --limit pi_workers
+
+# Re-check whatever was last deployed (re-run the matching deploy-*-local.sh above first
+# if you want to check a freshly regenerated artifact instead of what's already there):
+./infra/swarm/deploy-jobs-broker.sh                     # if not already running
+./scripts/enqueue-connection-rounds-check.sh
+./scripts/enqueue-record-routes-check.sh
+./scripts/enqueue-daily-manifest-check.sh
+./scripts/enqueue-album-art-check.sh
+./scripts/enqueue-catalog-check.sh
+```
+
+Results are written to `local/jobs/<contract>-check-<timestamp>.json` (never committed).
+Each deploy playbook copies its artifacts under a contract-prefixed filename
+(`connection-*`, `routes-*`, `daily-manifest.v1.json`, `album-art.v1.json`/
+`albums.v1.json`) specifically so more than one of these jobs can be deployed to the same
+Pi's `rq_jobs_dir` at once without one silently overwriting another's input — see ADR
+0043's slice-8 addendum for the real bug this closed.
+
+## Public artifact and version-relationship reference
+
+| Artifact | Real path | Version field(s) | Derived from | Dependency-free validator | Pi check-job | Consumers |
+| --- | --- | --- | --- | --- | --- | --- |
+| Public catalog | `apps/web/public/data/catalog/albums.v1.json` | `catalog_version` | One-hop dataset + masters + release-format policy + editorial list | `networked_players_contracts.catalog::public_album_catalog_failures` | `catalog_check_job.py` | Every other real artifact below |
+| Album-art registry | `apps/web/public/data/catalog/album-art.v1.json` | `art_version` (+ `catalog_version` it was built against) | Discogs API, keyed by the catalog's `main_release_id`s | `networked_players_contracts.album_art::album_art_failures` | `album_art_check_job.py` | Album browser, both game modes' frontend art resolution |
+| Connection Guesser | `apps/web/public/data/game/{universe,rounds}.v1.json` | `pool_version`, `artifact_version` (+ `catalog_version`) | One-hop dataset + catalog + artist-family exclusions | `networked_players_contracts.connection_rounds::connection_rounds_failures` | `connection_rounds_check_job.py` | `/play/daily/`, the daily manifest |
+| Connection-daily-manifest | `apps/web/public/data/game/daily-manifest.v1.json` | `pool_version`, `artifact_version` (+ `catalog_version`), all must match the paired rounds artifact exactly | The Connection Guesser rounds artifact, scheduled | `networked_players_contracts.connection_daily_manifest::connection_daily_manifest_failures` | `daily_manifest_check_job.py` | `/play/daily/` |
+| Record Routes | `apps/web/public/data/routes/{universe,rounds}.v1.json` | `pool_version`, `artifact_version` (+ `catalog_version`) | One-hop dataset + catalog + release-format policy (bridge gating) | `networked_players_contracts.record_routes::record_routes_failures` | `record_routes_check_job.py` | `/play/routes/` |
+
+Every `*_version`/`*_failures` pair above follows the same identity model established for
+the Connection Guesser (ADR 0043): a `pool_version` changes only on membership change; an
+`artifact_version` changes on ANY published-field change, including reordering. Regenerate
+in the order the table implies (catalog first, everything else after) whenever the
+catalog itself changes.
+
+## Resource expectations
+
+Real elapsed-time/memory/throughput figures for each of the runbooks above are recorded
+in `docs/DATA_SIZING.md` (public, method + real observed numbers where a real run has
+happened) and, for anything not yet summarized there, in `local/benchmarks/`/`local/jobs/`
+(git-ignored, per ADR 0018 — ad hoc job-result numbers stay local, never transcribed into
+a committed doc). Check `docs/DATA_SIZING.md` first; it is kept current for every real
+generation run referenced by the runbooks above.
+
 ## Replicating datasets to worker caches (ADR 0025)
 
 The master/coordination host's `local/processed/` is always the authoritative
