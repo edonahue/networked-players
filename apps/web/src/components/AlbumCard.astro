@@ -1,12 +1,16 @@
 ---
 import type { AlbumV2 } from '../data/challenge';
+import { coverFor } from '../data/albumArt';
 
 interface Props {
   album: AlbumV2;
 }
 
 const { album } = Astro.props;
-const cover = album.cover_image;
+// Presentation art comes from the album-art registry (ADR 0045), never from
+// frozen artifact fields; fall back to any legacy embedded cover, then to the
+// polished placeholder.
+const cover = coverFor(album.id) ?? album.cover_image;
 ---
 
 <a class="album-card" href={`/albums/${album.id}/`}>

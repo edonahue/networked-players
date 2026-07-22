@@ -58,10 +58,14 @@ export interface GameProvenance {
   artifact_version?: string;
 }
 
-export type SleeveArt =
-  | { kind: "generated" }
-  | { kind: "hotlink"; uri150: string; uri: string }
-  | null;
+/** Frozen game content is art-free (ADR 0044/0045): a real album ref never
+ * embeds a mutable cover-art URL, so refreshing cover art can never change a
+ * round fingerprint or the daily manifest. `generated` marks a synthetic SVG
+ * sleeve (test fixture only); `null` means "resolve a real cover by canonical
+ * album id from the album-art registry" (see `game/albumArt.ts`). There is
+ * deliberately no `hotlink` variant — a URL must never live in frozen
+ * content. */
+export type SleeveArt = { kind: "generated" } | null;
 
 export interface GameAlbum {
   id: string;

@@ -158,6 +158,17 @@ def test_valid_pair_has_no_failures() -> None:
     assert connection_rounds_failures(_universe(), _rounds()) == []
 
 
+def test_rejects_embedded_hotlink_art_in_frozen_rounds() -> None:
+    rounds = _rounds()
+    rounds["rounds"][0]["endpoints"][0]["art"] = {
+        "kind": "hotlink",
+        "uri150": "https://i.discogs.com/x/150.jpg",
+        "uri": "https://i.discogs.com/x/full.jpg",
+    }
+    failures = connection_rounds_failures(_universe(), rounds)
+    assert any("embeds mutable cover art" in f for f in failures)
+
+
 def test_rejects_wrong_pool_label() -> None:
     rounds = _rounds()
     rounds["rounds"][0]["pool"] = "synthetic-universe"

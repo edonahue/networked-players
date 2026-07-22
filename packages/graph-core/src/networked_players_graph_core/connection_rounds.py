@@ -105,15 +105,21 @@ def _contributor_ref(artist_id: int, row: dict[str, Any]) -> dict[str, Any]:
 
 
 def _album_ref(album: dict[str, Any]) -> dict[str, Any]:
-    cover = album.get("cover_image")
-    art = {"kind": "hotlink", "uri150": cover["uri150"], "uri": cover["uri"]} if cover else None
+    # Frozen game content is art-free (ADR 0044/0045): a real album ref never
+    # embeds a mutable cover-art URL, so refreshing cover art can never change
+    # a round fingerprint or the daily manifest. Presentation art is resolved
+    # by canonical album id from the separately versioned album-art registry
+    # (apps/web/public/data/catalog/album-art.v1.json). `art` stays present as
+    # `null` for shape stability -- the synthetic test fixture uses
+    # `{"kind": "generated"}` for its generated SVG sleeves; a real ref is
+    # always null and never a hotlink.
     return {
         "id": album["id"],
         "title": album["title"],
         "year": album["year"],
         "act": album["artist"],
         "label": None,
-        "art": art,
+        "art": None,
     }
 
 
@@ -661,6 +667,9 @@ def build_connection_universe_and_rounds(
                 used_album_ids.add(choice["id"])
 
     album_by_id = {a["id"]: a for a in albums}
+    # Art-free universe (ADR 0044/0045): presentation art is resolved by album
+    # id from the album-art registry, never embedded here where it would enter
+    # a fingerprinted artifact.
     universe_albums = [
         {
             "id": a["id"],
@@ -669,15 +678,7 @@ def build_connection_universe_and_rounds(
             "act_id": int(a["artist_id"]),
             "year": a["year"],
             "label": None,
-            "art": (
-                {
-                    "kind": "hotlink",
-                    "uri150": a["cover_image"]["uri150"],
-                    "uri": a["cover_image"]["uri"],
-                }
-                if a.get("cover_image")
-                else None
-            ),
+            "art": None,
         }
         for a in sorted(album_by_id.values(), key=lambda x: x["id"])
         if a["id"] in used_album_ids
@@ -808,6 +809,27 @@ def _find_seed_keys(obj: Any, path: str = "") -> list[str]:
     elif isinstance(obj, list):
         for index, item in enumerate(obj):
             found.extend(_find_seed_keys(item, f"{path}[{index}]"))
+    return found
+
+
+def _find_embedded_art(obj: Any, path: str = "") -> list[str]:
+    """Recursively collect dotted paths to any album-ref `art` that embeds a
+    mutable cover-art URL -- a dict whose `kind` is ``hotlink`` or which
+    carries a `uri150`/`uri` field. Frozen game content must be art-free
+    (ADR 0045); the only permitted `art` shapes are ``null`` (real, resolved
+    via the registry) or ``{"kind": "generated"}`` (synthetic SVG sleeve).
+    Must agree with the dependency-free mirror in
+    `networked_players_contracts.connection_rounds`."""
+    found: list[str] = []
+    if isinstance(obj, dict):
+        if obj.get("kind") == "hotlink" or "uri150" in obj or "uri" in obj:
+            found.append(path or "<root>")
+        for key, value in obj.items():
+            child = f"{path}.{key}" if path else str(key)
+            found.extend(_find_embedded_art(value, child))
+    elif isinstance(obj, list):
+        for index, item in enumerate(obj):
+            found.extend(_find_embedded_art(item, f"{path}[{index}]"))
     return found
 
 
@@ -1025,6 +1047,11 @@ def validate_connection_rounds_artifact(universe: dict[str, Any], rounds: dict[s
     for artifact, name in ((universe, "universe"), (rounds, "rounds")):
         for seed_path in _find_seed_keys(artifact):
             failures.append(f"{name} must not have a 'seed' key ({seed_path})")
+        for art_path in _find_embedded_art(artifact):
+            failures.append(
+                f"{name} embeds mutable cover art in frozen content ({art_path}) -- art must be "
+                f"resolved by album id from the album-art registry, never embedded (ADR 0045)"
+            )
         serialized = str(artifact)
         for forbidden in _FORBIDDEN_SUBSTRINGS:
             if forbidden in serialized:

@@ -181,6 +181,25 @@ def _seed_key_paths(obj: Any, path: str = "") -> list[str]:
     return found
 
 
+def _embedded_art_paths(obj: Any, path: str = "") -> list[str]:
+    """Recursively collect dotted paths to any album-ref `art` embedding a
+    mutable cover-art URL (a ``hotlink`` kind or a `uri150`/`uri` field).
+    Frozen game content must be art-free (ADR 0045); permitted `art` is
+    ``null`` or ``{"kind": "generated"}``. Must agree with graph-core's mirror
+    (`connection_rounds.py::_find_embedded_art`)."""
+    found: list[str] = []
+    if isinstance(obj, dict):
+        if obj.get("kind") == "hotlink" or "uri150" in obj or "uri" in obj:
+            found.append(path or "<root>")
+        for key, value in obj.items():
+            child = f"{path}.{key}" if path else str(key)
+            found.extend(_embedded_art_paths(value, child))
+    elif isinstance(obj, list):
+        for index, item in enumerate(obj):
+            found.extend(_embedded_art_paths(item, f"{path}[{index}]"))
+    return found
+
+
 def _privacy_failures(artifact: dict[str, Any], *, name: str) -> list[str]:
     serialized = str(artifact)
     failures = [
@@ -312,6 +331,11 @@ def connection_rounds_failures(universe: Any, rounds: Any) -> list[str]:
         failures.extend(
             f"{name} must not have a 'seed' key ({seed_path})"
             for seed_path in _seed_key_paths(artifact)
+        )
+        failures.extend(
+            f"{name} embeds mutable cover art in frozen content ({art_path}) -- art must be "
+            f"resolved by album id from the album-art registry, never embedded (ADR 0045)"
+            for art_path in _embedded_art_paths(artifact)
         )
         failures.extend(_privacy_failures(artifact, name=name))
 

@@ -4,6 +4,7 @@ import EvidencePanel from '../../components/EvidencePanel.astro';
 import RevealControls from '../../components/RevealControls.astro';
 import { buildHopViews } from '../../data/evidence';
 import type { AlbumV2, ChallengeV2 } from '../../data/challenge';
+import { coverFor } from '../../data/albumArt';
 import challengeData from '../../../public/data/challenge.v2.json';
 
 const challenge = challengeData as ChallengeV2;
@@ -27,6 +28,8 @@ interface Props {
 const { album } = Astro.props;
 const { albums, artists, paths, releases } = challenge;
 const albumById = new Map(albums.map((a) => [a.id, a]));
+// Presentation art from the registry (ADR 0045), never a frozen field.
+const albumCover = coverFor(album.id) ?? album.cover_image;
 
 const connectedPaths = paths
   .filter((p) => p.from_album_id === album.id || p.to_album_id === album.id)
@@ -58,10 +61,10 @@ const description = [
   <section class="shell" style="padding-top:40px">
     <div class="play-header">
       {
-        album.cover_image ? (
+        albumCover ? (
           <img
             class="play-header__cover"
-            src={album.cover_image.uri150}
+            src={albumCover.uri150}
             width="96"
             height="96"
             alt={`Cover art for ${album.title}`}
@@ -132,10 +135,10 @@ const description = [
                   >
                     <div class="evidence-card__summary">
                       <div class="evidence-card__endpoint">
-                        {album.cover_image && (
+                        {albumCover && (
                           <img
                             class="cover-thumb"
-                            src={album.cover_image.uri150}
+                            src={albumCover.uri150}
                             width="56"
                             height="56"
                             loading="lazy"
@@ -147,10 +150,10 @@ const description = [
                       </div>
                       <span class="arrow" aria-hidden="true">→</span>
                       <div class="evidence-card__endpoint">
-                        {otherAlbum.cover_image && (
+                        {(coverFor(otherAlbum.id) ?? otherAlbum.cover_image) && (
                           <img
                             class="cover-thumb"
-                            src={otherAlbum.cover_image.uri150}
+                            src={(coverFor(otherAlbum.id) ?? otherAlbum.cover_image)!.uri150}
                             width="56"
                             height="56"
                             loading="lazy"

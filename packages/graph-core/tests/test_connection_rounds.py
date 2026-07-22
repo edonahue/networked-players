@@ -788,6 +788,57 @@ def test_artifact_version_unchanged_when_ordered_content_is_unchanged() -> None:
     assert artifact_version(rounds, SNAPSHOT_DATE) == artifact_version(rounds, SNAPSHOT_DATE)
 
 
+# --- Slice 7A: frozen game content is art-free (ADR 0045) -------------------
+
+
+def test_generated_universe_and_rounds_are_art_free(dataset_root: Path) -> None:
+    with CreditGraph.open(dataset_root, build_edges=False) as graph:
+        rounds_json, _, performer_index = generate_connection_round_pool(
+            graph, ALBUMS, one_hop_target=10, two_hop_target=10
+        )
+    universe, rounds = build_connection_universe_and_rounds(
+        ALBUMS,
+        rounds_json,
+        performer_index,
+        snapshot_date=SNAPSHOT_DATE,
+        generated_by="test",
+        catalog_version="test-catalog-v1",
+    )
+    for album in universe["albums"]:
+        assert album["art"] is None
+    for round_json in rounds["rounds"]:
+        for endpoint in round_json["endpoints"]:
+            assert endpoint["art"] is None
+        middle = round_json.get("middle")
+        if middle:
+            assert middle["album"]["art"] is None
+            for choice in middle["choices"]:
+                assert choice["art"] is None
+    validate_connection_rounds_artifact(universe, rounds)  # does not raise
+
+
+def test_validator_rejects_embedded_hotlink_art(dataset_root: Path) -> None:
+    with CreditGraph.open(dataset_root, build_edges=False) as graph:
+        rounds_json, _, performer_index = generate_connection_round_pool(
+            graph, ALBUMS, one_hop_target=10, two_hop_target=10
+        )
+    universe, rounds = build_connection_universe_and_rounds(
+        ALBUMS,
+        rounds_json,
+        performer_index,
+        snapshot_date=SNAPSHOT_DATE,
+        generated_by="test",
+        catalog_version="test-catalog-v1",
+    )
+    rounds["rounds"][0]["endpoints"][0]["art"] = {
+        "kind": "hotlink",
+        "uri150": "https://i.discogs.com/x/150.jpg",
+        "uri": "https://i.discogs.com/x/full.jpg",
+    }
+    with pytest.raises(ConnectionRoundsValidationError, match="embeds mutable cover art"):
+        validate_connection_rounds_artifact(universe, rounds)
+
+
 def test_validator_rejects_two_hop_round_whose_endpoints_share_a_direct_performer(
     dataset_root: Path,
 ) -> None:

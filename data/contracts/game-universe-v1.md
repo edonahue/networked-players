@@ -41,9 +41,14 @@ Rules (enforced by `validate_connection_rounds_artifact` at generation time,
 - **PAN identity, never conflated with ANV.** `contributors[].name` is the
   canonical artist name; the as-credited spelling on a specific release lives
   only in a round's `EvidenceRow.credited_as`.
-- **`art` is `{kind: "hotlink", uri150, uri}` (Discogs CDN) or `null`** —
-  cover-art enrichment has not yet run for the real pool (a later slice); a
-  `null` album falls back to the polished placeholder sleeve client-side.
+- **`art` is `{kind: "generated"}` (synthetic SVG sleeve) or `null`** — frozen
+  game content is **art-free** (ADR 0045): a real album's `art` is always
+  `null`, and its cover is resolved by canonical album id from the separately
+  versioned album-art registry (`data/contracts/album-art-v1.md`,
+  `apps/web/public/data/catalog/album-art.v1.json`), never embedded here where
+  a mutable URL would enter a fingerprinted artifact. A missing registry entry
+  falls back to the polished placeholder sleeve. There is no `hotlink` art
+  variant in frozen content.
 - **Role vocabulary mirrors the real credits schema:** `role_text` preserves
   the original Discogs display string, `role_category` is the normalized game
   vocabulary (`eligibility.py::performer_role_category`), `credit_scope` is

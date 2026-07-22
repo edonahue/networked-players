@@ -565,6 +565,42 @@ def _parser() -> argparse.ArgumentParser:
     validate_catalog_audit.add_argument("--catalog", type=Path, required=True)
     validate_catalog_audit.add_argument("--audit", type=Path, required=True)
 
+    build_art_registry = subparsers.add_parser(
+        "build-album-art-registry",
+        help=(
+            "OPERATOR/coordination-host only: build the public album-art registry "
+            "(apps/web/public/data/catalog/album-art.v1.json) by hotlinking Discogs cover "
+            "art per canonical album. Rate-limited, cache-first/resumable, hotlink URLs only "
+            "(no image bytes stored); DISCOGS_TOKEN from env. Presentation-only -- never "
+            "embedded in frozen game content (ADR 0044/0045)"
+        ),
+    )
+    build_art_registry.add_argument(
+        "--catalog", type=Path, required=True, help="apps/web/public/data/catalog/albums.v1.json"
+    )
+    build_art_registry.add_argument("--output", type=Path, required=True)
+    build_art_registry.add_argument(
+        "--cache-dir", type=Path, default=Path("data/private/discogs-api-cache")
+    )
+    build_art_registry.add_argument("--request-delay", type=float, default=1.1)
+    build_art_registry.add_argument(
+        "--generated-at",
+        required=True,
+        help="explicit ISO datetime for this build (never the wall clock), e.g. "
+        "2026-07-22T00:00:00+00:00",
+    )
+
+    validate_art_registry = subparsers.add_parser(
+        "validate-album-art-registry",
+        help=(
+            "validate an album-art registry against the canonical catalog it claims to belong "
+            "to (catalog_version agreement, album-id membership, approved https hosts, "
+            "art_version recomputation, no private/token data)"
+        ),
+    )
+    validate_art_registry.add_argument("--registry", type=Path, required=True)
+    validate_art_registry.add_argument("--catalog", type=Path, required=True)
+
     fetch_dataset_parser = subparsers.add_parser(
         "fetch-dataset",
         help="fetch and verify a served dataset into a local, disposable cache (ADR 0025)",
@@ -1888,6 +1924,64 @@ def main(argv: Sequence[str] | None = None) -> int:
         audit = json.loads(args.audit.read_text())
         validate_album_catalog_audit(catalog, audit)
         print(json.dumps({"ok": True}, indent=2))
+        return 0
+
+    if args.command == "build-album-art-registry":
+        from networked_players_contracts.album_art import album_art_failures
+
+        from .discogs.album_art import build_album_art_registry
+        from .discogs.api_client import ApiClient, ReleaseCache, load_token
+
+        art_catalog = json.loads(args.catalog.read_text())
+        art_client = ApiClient(token=load_token(), request_delay_seconds=args.request_delay)
+        art_cache = ReleaseCache(args.cache_dir)
+        registry = build_album_art_registry(
+            art_catalog,
+            client=art_client,
+            cache=art_cache,
+            generated_at=args.generated_at,
+            source=(
+                "Discogs API /releases/{id} images, hotlinked from i.discogs.com "
+                "(no image bytes stored). See docs/DATA_AND_RIGHTS.md."
+            ),
+            license_note=(
+                "Cover art is presentational only, never evidence. Hotlinked from Discogs' "
+                "own CDN; the repository never downloads, stores, or rehosts image bytes."
+            ),
+        )
+        failures = album_art_failures(registry, art_catalog)
+        if failures:
+            raise ValueError(
+                "refusing to write an invalid album-art registry: " + "; ".join(failures)
+            )
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(json.dumps(registry, indent=2) + "\n")
+        total = len(art_catalog["albums"])
+        enriched = len(registry["albums"])
+        print(
+            json.dumps(
+                {
+                    "output": str(args.output),
+                    "catalog_version": registry["catalog_version"],
+                    "art_version": registry["art_version"],
+                    "albums_total": total,
+                    "albums_with_art": enriched,
+                    "coverage_pct": round(100.0 * enriched / total, 1) if total else 0.0,
+                },
+                indent=2,
+            )
+        )
+        return 0
+
+    if args.command == "validate-album-art-registry":
+        from networked_players_contracts.album_art import album_art_failures
+
+        registry = json.loads(args.registry.read_text())
+        art_catalog = json.loads(args.catalog.read_text())
+        failures = album_art_failures(registry, art_catalog)
+        if failures:
+            raise ValueError("; ".join(failures))
+        print(json.dumps({"ok": True, "albums_with_art": len(registry["albums"])}, indent=2))
         return 0
 
     if args.command == "fetch-dataset":
