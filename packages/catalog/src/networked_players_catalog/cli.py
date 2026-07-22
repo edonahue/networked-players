@@ -453,6 +453,22 @@ def _parser() -> argparse.ArgumentParser:
     connection_daily_diagnostics.add_argument("--manifest", type=Path, required=True)
     connection_daily_diagnostics.add_argument("--rounds", type=Path, required=True)
 
+    connection_daily_status = subparsers.add_parser(
+        "connection-daily-manifest-status",
+        help=(
+            "how much schedule runway remains before a Connection Guesser daily "
+            "manifest needs extending; exits 1 only if already expired, 0 while "
+            "merely inside the warning window (a non-alarmist periodic check)"
+        ),
+    )
+    connection_daily_status.add_argument("--manifest", type=Path, required=True)
+    connection_daily_status.add_argument(
+        "--as-of",
+        default=None,
+        help="explicit ISO date to evaluate from; defaults to today (UTC) if omitted",
+    )
+    connection_daily_status.add_argument("--warn-within-days", type=int, default=14)
+
     rank_albums = subparsers.add_parser(
         "rank-album-candidates",
         help="rank master_ids by release-variant count x credit richness (local-only shortlist)",
@@ -1732,6 +1748,17 @@ def main(argv: Sequence[str] | None = None) -> int:
         conn_rounds = json.loads(args.rounds.read_text())
         print(json.dumps(schedule_diagnostics(conn_daily_manifest, conn_rounds), indent=2))
         return 0
+
+    if args.command == "connection-daily-manifest-status":
+        from networked_players_graph_core.connection_daily_manifest import schedule_expiry_status
+
+        conn_daily_manifest = json.loads(args.manifest.read_text())
+        as_of = args.as_of or datetime.now(UTC).date().isoformat()
+        status = schedule_expiry_status(
+            conn_daily_manifest, as_of=as_of, warn_within_days=args.warn_within_days
+        )
+        print(json.dumps(status, indent=2))
+        return 1 if status["already_expired"] else 0
 
     if args.command == "rank-album-candidates":
         from networked_players_graph_core.analysis import rank_album_candidates

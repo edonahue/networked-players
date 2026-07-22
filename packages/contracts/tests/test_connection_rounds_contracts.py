@@ -169,6 +169,20 @@ def test_rejects_embedded_hotlink_art_in_frozen_rounds() -> None:
     assert any("embeds mutable cover art" in f for f in failures)
 
 
+def test_rejects_unexpected_top_level_key_on_universe() -> None:
+    universe = _universe()
+    universe["extra_top_level_key"] = "nope"
+    failures = connection_rounds_failures(universe, _rounds())
+    assert any("universe has unexpected top-level keys" in f for f in failures)
+
+
+def test_rejects_unexpected_top_level_key_on_rounds() -> None:
+    rounds = _rounds()
+    rounds["extra_top_level_key"] = "nope"
+    failures = connection_rounds_failures(_universe(), rounds)
+    assert any("rounds has unexpected top-level keys" in f for f in failures)
+
+
 def test_rejects_wrong_pool_label() -> None:
     rounds = _rounds()
     rounds["rounds"][0]["pool"] = "synthetic-universe"

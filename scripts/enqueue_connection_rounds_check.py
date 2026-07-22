@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Enqueue a single rounds-pool validation check across the joined Pi
-workers, via the jobs broker + RQ. Re-checks the already-published
-universe.v1.json/rounds.v1.json pair deployed alongside the job body by
-deploy-rounds-check-job.yml -- no dataset, no CreditGraph, safe to run at
-any time regardless of when the pool was generated.
+"""Enqueue a single Connection Guesser rounds-pool validation check across
+the joined Pi workers, via the jobs broker + RQ. Re-checks the
+already-published connection-universe.v1.json/connection-rounds.v1.json
+pair deployed alongside the job body by
+deploy-connection-rounds-check-job.yml -- no dataset, no CreditGraph, safe
+to run at any time regardless of when the pool was generated.
 
 Mirrors scripts/enqueue_cohort_check.py's broker-connect, per-worker-queue,
 burst-worker-launch, and wait-and-collect structure; see that file's own
@@ -13,11 +14,13 @@ natural sharding dimension.
 
 Prerequisites (not checked here beyond a clear failure -- each fails loudly
 on its own if skipped): the jobs broker up (deploy-jobs-broker.sh), and the
-check job + artifacts deployed to each targeted Pi (deploy-rounds-check-job.yml).
+check job + artifacts deployed to each targeted Pi
+(deploy-connection-rounds-check-job.yml).
 
-Not meant to be invoked directly -- use scripts/enqueue-rounds-check.sh (or
-`make rounds-check-distributed`), which sources local/jobs-broker.env and
-sets JOBS_BROKER_URL before calling this.
+Not meant to be invoked directly -- use
+scripts/enqueue-connection-rounds-check.sh (or
+`make connection-rounds-check-distributed`), which sources
+local/jobs-broker.env and sets JOBS_BROKER_URL before calling this.
 
 Results are written to local/jobs/ only -- never to a committed doc. See
 docs/decisions/0018-benchmark-results-local-only.md.
@@ -44,21 +47,25 @@ ANSIBLE_DIR = REPO_ROOT / "infra" / "ansible"
 LOCAL_INVENTORY = ANSIBLE_DIR / "inventories" / "local" / "hosts.yml"
 OUTPUT_DIR = REPO_ROOT / "local" / "jobs"
 
-QUEUE_PREFIX = "rounds-check"
+QUEUE_PREFIX = "connection-rounds-check"
 JOB_TIMEOUT_S = 60
 WAIT_TIMEOUT_S = 120.0
-JOB_FUNCTION = "rounds_check_job.check_rounds"
-# Filenames only: deploy-rounds-check-job.yml copies both artifacts into the
-# same persistent rq_jobs_dir as the job body itself, and rounds_check_job.py
-# resolves relative paths against that directory (see its _resolve()).
-UNIVERSE_FILENAME = "universe.v1.json"
-ROUNDS_FILENAME = "rounds.v1.json"
+JOB_FUNCTION = "connection_rounds_check_job.check_connection_rounds"
+# Filenames only: deploy-connection-rounds-check-job.yml copies both
+# artifacts into the same persistent rq_jobs_dir as the job body itself, and
+# connection_rounds_check_job.py resolves relative paths against that
+# directory (see its _resolve()).
+UNIVERSE_FILENAME = "connection-universe.v1.json"
+ROUNDS_FILENAME = "connection-rounds.v1.json"
 
 
 def require_env(name: str) -> str:
     value = os.environ.get(name)
     if not value:
-        print(f"ABORT: set {name} (see scripts/enqueue-rounds-check.sh).", file=sys.stderr)
+        print(
+            f"ABORT: set {name} (see scripts/enqueue-connection-rounds-check.sh).",
+            file=sys.stderr,
+        )
         raise SystemExit(1)
     return value
 
@@ -167,12 +174,12 @@ def main() -> None:
 
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
-    output_path = OUTPUT_DIR / f"rounds-check-{timestamp}.json"
+    output_path = OUTPUT_DIR / f"connection-rounds-check-{timestamp}.json"
     output_path.write_text(json.dumps(record, indent=2, default=str) + "\n")
 
     print(f"==> Wrote {output_path}.")
     if record["ok"]:
-        print("==> PASS: rounds pool is valid.")
+        print("==> PASS: Connection Guesser rounds pool is valid.")
     else:
         failures = result.get("failures", []) if result else []
         print(f"==> FAIL: job_failed={finished_job.is_failed}, failures={failures}")

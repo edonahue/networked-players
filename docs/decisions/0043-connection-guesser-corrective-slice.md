@@ -471,3 +471,59 @@ Playwright suite (124/124, +24 over slice 5's 100: 14 pure-node resolver
 tests in `game-dailyresolver.spec.ts`, 2 in `game-localdate.spec.ts`, and 8
 new browser-level integrity scenarios added to `game-daily.spec.ts`),
 `npm run check` (0 errors).
+
+## Addendum: Pi-fleet check-job wiring, found and fixed again (2026-07-22, slice 8)
+
+Finding 8 above fixed the *job body* mismatch (the wrong validator's default
+paths pointed at real Connection Guesser data) but left a second, narrower
+instance of the same class of bug live: `deploy-rounds-check-job.yml` was
+corrected to deploy `connection_rounds_check_job.py`, but
+`scripts/enqueue_rounds_check.py` (and its `.sh` wrapper and Makefile target)
+were never updated to match — they still enqueued
+`rounds_check_job.check_rounds`, a module the corrected playbook never copies
+to a worker's `rq_jobs_dir`. Running `make deploy-rounds-check-job` followed
+by `make rounds-check-distributed` would have deployed the right job body but
+then failed on the worker with a Python import error trying to run the wrong
+one. Found during slice 8's audit of the check-job pattern before replicating
+it for Record Routes/album-art/daily-manifest/catalog; not previously run for
+real (no completed job-result record exists), so this was caught as a static
+wiring defect, not from a live failure.
+
+Fixed by renaming every file in the chain to match what it actually deploys,
+closing the drift for good rather than patching the mismatch in place:
+`deploy-rounds-check-job.yml` → `deploy-connection-rounds-check-job.yml`
+(artifact filenames also changed from generic `universe.v1.json`/
+`rounds.v1.json` to `connection-universe.v1.json`/`connection-rounds.v1.json`
+-- see the filename-collision note below), `run-deploy-rounds-check-job-local.sh`
+→ `run-deploy-connection-rounds-check-job-local.sh`, `enqueue_rounds_check.py`
+→ `enqueue_connection_rounds_check.py` (`JOB_FUNCTION` corrected to
+`connection_rounds_check_job.check_connection_rounds`), `enqueue-rounds-check.sh`
+→ `enqueue-connection-rounds-check.sh`, and the Makefile's
+`deploy-rounds-check-job`/`rounds-check-distributed` targets to
+`deploy-connection-rounds-check-job`/`connection-rounds-check-distributed`.
+Added the drift-prevention test that should have existed alongside the
+original Finding 8 fix: `test_connection_rounds_check_job_body.py`, loading
+the real `infra/ansible/files/connection_rounds_check_job.py` by path and
+checking it agrees with `connection_rounds.validate_connection_rounds_artifact`
+on the same fixtures (the same pattern `test_cohort_check_job_body.py`/
+`test_rounds_check_job_body.py` already used — its absence is exactly how the
+first fix's follow-through gap went uncaught).
+
+**Filename-collision risk, closed pre-emptively.** The generic
+`universe.v1.json`/`rounds.v1.json` filenames this playbook wrote into the
+shared `rq_jobs_dir` would have collided with slice 8's new
+`deploy-record-routes-check-job.yml` (a genuinely different contract, same
+generic names) the first time both jobs were deployed to the same Pi — one
+playbook's artifact copy silently clobbering the other's. Every check-job
+playbook added in slice 8 now writes contract-prefixed filenames
+(`connection-*`, `routes-*`, or a globally-unique name like `albums.v1.json`)
+specifically so multiple check jobs can coexist in one worker's `rq_jobs_dir`.
+
+`infra/ansible/files/rounds_check_job.py` and its existing
+`test_rounds_check_job_body.py` are unchanged and untouched by this fix --
+that job body still correctly tests the legacy `rounds_failures`/Record-
+Routes-precursor contract behind the marked-legacy `build-rounds-from-dump`
+CLI command, it is just intentionally never deployed to the live fleet (no
+published artifact needs it validated remotely; a one-line comment added to
+the file says so, so a future reader doesn't assume a playbook is merely
+missing by accident).

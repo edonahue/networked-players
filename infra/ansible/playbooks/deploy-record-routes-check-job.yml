@@ -1,0 +1,92 @@
+---
+# Deploys the RECORD ROUTES artifact-check job body
+# (files/record_routes_check_job.py) AND the real universe.v1/rounds.v1
+# artifacts to Pi workers' persistent RQ jobs directory. Same job-body-plus-
+# artifact pattern as deploy-connection-rounds-check-job.yml/
+# deploy-verify-job.yml (a real job body plus its input data, not a
+# benchmark probe).
+#
+# The default artifact paths (apps/web/public/data/routes/{universe,rounds}.v1.json)
+# are Record Routes' real path-guessing pool (ADR 0046) --
+# `from_album_id`/`to_album_id`/`hops`, NOT the flagship Connection Guesser's
+# `endpoints`/`answer_set` contract (deploy-connection-rounds-check-job.yml,
+# `connection_rounds_check_job.py`). Never assume "rounds.v1" alone
+# identifies which contract an artifact satisfies (see ADR 0043 Finding 8).
+#
+# Deployed artifacts are copied under contract-prefixed filenames
+# (routes-universe.v1.json/routes-rounds.v1.json), not the generic
+# universe.v1.json/rounds.v1.json, so this job can coexist in the same flat
+# rq_jobs_dir as deploy-connection-rounds-check-job.yml and
+# deploy-daily-manifest-check-job.yml without one silently overwriting
+# another job's input (see ADR 0043's slice-8 addendum for why this matters).
+#
+# hosts: pi_workers, not the flat `workers` group -- this is Pi-ambient
+# validation work, not x86-worker traversal/scoring work.
+#
+# Usage (from infra/ansible/, with a real local inventory):
+#   ansible-playbook -i inventories/local/hosts.yml playbooks/deploy-record-routes-check-job.yml \
+#     --limit worker-01.example.internal
+#   # override the artifact sources:
+#   ansible-playbook -i inventories/local/hosts.yml playbooks/deploy-record-routes-check-job.yml \
+#     -e universe_artifact_path=apps/web/public/data/routes/universe.v1.json \
+#     -e rounds_artifact_path=apps/web/public/data/routes/rounds.v1.json
+- name: Deploy the Record Routes artifact-check job to Pi workers
+  hosts: pi_workers
+  gather_facts: true
+  vars:
+    rq_jobs_dir: "{{ ansible_env.HOME }}/.local/share/networked-players/rq-jobs"
+    universe_artifact_path: apps/web/public/data/routes/universe.v1.json
+    rounds_artifact_path: apps/web/public/data/routes/rounds.v1.json
+  tasks:
+    - name: Require the artifacts to exist on the control node
+      ansible.builtin.stat:
+        path: "{{ playbook_dir }}/../../../{{ item }}"
+      register: artifact_stat
+      delegate_to: localhost
+      become: false
+      loop:
+        - "{{ universe_artifact_path }}"
+        - "{{ rounds_artifact_path }}"
+
+    - name: Fail loudly if an artifact is missing
+      ansible.builtin.assert:
+        that:
+          - item.stat.exists
+        fail_msg: >-
+          No artifact at {{ item.item }}. Build one first
+          (uv run networked-players-catalog build-record-routes ...)
+          or pass -e universe_artifact_path=<path> -e rounds_artifact_path=<path>.
+      loop: "{{ artifact_stat.results }}"
+      loop_control:
+        label: "{{ item.item }}"
+
+    - name: Create the RQ jobs directory
+      ansible.builtin.file:
+        path: "{{ rq_jobs_dir }}"
+        state: directory
+        mode: "0755"
+
+    - name: Copy the Record Routes artifact-check job body (same file every worker gets, unmodified)
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../files/record_routes_check_job.py"
+        dest: "{{ rq_jobs_dir }}/record_routes_check_job.py"
+        mode: "0644"
+
+    - name: Copy the universe artifact
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../../../{{ universe_artifact_path }}"
+        dest: "{{ rq_jobs_dir }}/routes-universe.v1.json"
+        mode: "0644"
+
+    - name: Copy the rounds artifact
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../../../{{ rounds_artifact_path }}"
+        dest: "{{ rq_jobs_dir }}/routes-rounds.v1.json"
+        mode: "0644"
+      register: artifact_copy
+
+    - name: Report deployment
+      ansible.builtin.debug:
+        msg:
+          - "host: {{ inventory_hostname }}"
+          - "job body + artifacts deployed to {{ rq_jobs_dir }}/ (changed={{ artifact_copy.changed }})"

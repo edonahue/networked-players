@@ -222,3 +222,82 @@ def test_connection_daily_manifest_diagnostics_cli_wiring(tmp_path: Path, capsys
     assert exit_code == 0
     diagnostics = json.loads(capsys.readouterr().out)
     assert diagnostics["total_dates"] == 6
+
+
+def test_connection_daily_manifest_status_cli_wiring(tmp_path: Path, capsys) -> None:
+    rounds_path = _rounds_path(tmp_path, 6)
+    manifest_path = tmp_path / "daily-manifest.v1.json"
+    main(
+        [
+            "build-connection-daily-manifest",
+            "--rounds",
+            str(rounds_path),
+            "--start-date",
+            "2026-08-01",
+            "--days",
+            "6",
+            "--output",
+            str(manifest_path),
+            "--generated-at",
+            GENERATED_AT,
+        ]
+    )
+    capsys.readouterr()
+
+    # Well inside the window: exit 0, not flagged.
+    exit_code = main(
+        [
+            "connection-daily-manifest-status",
+            "--manifest",
+            str(manifest_path),
+            "--as-of",
+            "2026-07-01",
+            "--warn-within-days",
+            "14",
+        ]
+    )
+    assert exit_code == 0
+    status = json.loads(capsys.readouterr().out)
+    assert status["last_scheduled_date"] == "2026-08-06"
+    assert status["needs_extension_soon"] is False
+    assert status["already_expired"] is False
+
+    # Past the last scheduled date: exit 1, flagged expired.
+    exit_code = main(
+        [
+            "connection-daily-manifest-status",
+            "--manifest",
+            str(manifest_path),
+            "--as-of",
+            "2026-09-01",
+        ]
+    )
+    assert exit_code == 1
+    status = json.loads(capsys.readouterr().out)
+    assert status["already_expired"] is True
+
+
+def test_connection_daily_manifest_status_defaults_as_of_to_today(tmp_path: Path, capsys) -> None:
+    rounds_path = _rounds_path(tmp_path, 6)
+    manifest_path = tmp_path / "daily-manifest.v1.json"
+    main(
+        [
+            "build-connection-daily-manifest",
+            "--rounds",
+            str(rounds_path),
+            "--start-date",
+            "2026-08-01",
+            "--days",
+            "6",
+            "--output",
+            str(manifest_path),
+            "--generated-at",
+            GENERATED_AT,
+        ]
+    )
+    capsys.readouterr()
+
+    exit_code = main(["connection-daily-manifest-status", "--manifest", str(manifest_path)])
+    status = json.loads(capsys.readouterr().out)
+    assert exit_code in (0, 1)  # depends on real wall-clock date vs. the fixed 2026-08 schedule
+    assert status.get("as_of")

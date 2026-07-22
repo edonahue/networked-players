@@ -6,6 +6,15 @@ package. This adapter only performs file I/O and returns an RQ-serializable
 result, so worker behavior cannot drift from the catalog CLI's canonical
 validators. Mirrors cohort_artifact_check_job.py exactly, adapted for the
 rounds contract's two-file (universe.v1/rounds.v1) shape.
+
+Intentionally has no deploy playbook / enqueue script on the live fleet
+(unlike its siblings). This validates the legacy `rounds_failures` contract
+behind the marked-legacy `build-rounds-from-dump` CLI command (see
+`rounds.py`'s module docstring); no published public artifact uses that
+contract, so there is nothing real for a Pi to validate remotely. Kept
+(code + `test_rounds_check_job_body.py`) because `build-rounds-from-dump`
+itself is still live tooling, just not production-deployed. See ADR 0043's
+slice-8 addendum.
 """
 
 from __future__ import annotations

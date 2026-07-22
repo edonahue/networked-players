@@ -68,6 +68,14 @@ CONNECTION_ROUNDS_SCHEMA_VERSION = 1
 _ROUND_ID_PATTERN = re.compile(r"^conn-[0-9a-f]{10}$")
 _KINDS = frozenset({"one_hop", "two_hop"})
 _DIFFICULTIES = frozenset({"easy", "medium", "hard"})
+# Must agree with `networked_players_graph_core.connection_rounds`'s own
+# `_UNIVERSE_TOP_LEVEL_KEYS`/`_ROUNDS_TOP_LEVEL_KEYS` -- found missing here
+# (slice 8's connection-rounds check-job drift test caught it) despite ADR
+# 0043 Finding 9 stating this mirror already had the full checklist.
+_UNIVERSE_TOP_LEVEL_KEYS = frozenset(
+    {"schema_version", "provenance", "albums", "contributors", "releases", "credits"}
+)
+_ROUNDS_TOP_LEVEL_KEYS = frozenset({"schema_version", "provenance", "rounds"})
 _FORBIDDEN_SUBSTRINGS = (
     "/" + "home/",
     "data/" + "private",
@@ -224,6 +232,11 @@ def connection_rounds_failures(universe: Any, rounds: Any) -> list[str]:
         return ["universe artifact must be an object"]
     if not isinstance(rounds, dict):
         return ["rounds artifact must be an object"]
+
+    if set(universe.keys()) != _UNIVERSE_TOP_LEVEL_KEYS:
+        failures.append(f"universe has unexpected top-level keys: {sorted(universe)}")
+    if set(rounds.keys()) != _ROUNDS_TOP_LEVEL_KEYS:
+        failures.append(f"rounds has unexpected top-level keys: {sorted(rounds)}")
 
     if universe.get("schema_version") != CONNECTION_ROUNDS_SCHEMA_VERSION:
         failures.append(f"universe schema_version must be {CONNECTION_ROUNDS_SCHEMA_VERSION}")
