@@ -73,7 +73,7 @@ Real dumps, account exports, generated catalogs, and local manifests remain outs
 
 ```bash
 make setup    # uv sync --extra dev
-make check    # lint + format check + type check + tests (mirrors CI)
+make check    # lint + format check + type check + tests + real public-artifact validation (mirrors CI)
 make test     # tests only
 ```
 

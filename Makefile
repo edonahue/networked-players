@@ -5,7 +5,7 @@
 # target maps to a command documented in README.md / AGENTS.md.
 
 .DEFAULT_GOAL := help
-.PHONY: help setup test lint fmt fmt-check typecheck check ingest ingest-check ingest-recovery-check profile-discogs expand-onehop build-challenge export-graph-snapshot \
+.PHONY: help setup test lint fmt fmt-check typecheck validate-public-artifacts check ingest ingest-check ingest-recovery-check profile-discogs expand-onehop build-challenge export-graph-snapshot \
 	backup-coordination restore-coordination backup-swarm-manager restore-swarm-manager \
 	cluster-health cluster-benchmark cluster-onboard cluster-swarm-join cluster-smoke-test \
 	cluster-recovery-drill harden-workers equip-workers equip-x86-workers replicate-x86 replicate-pi deploy-jobs-broker deploy-catalog-data cluster-benchmark-distributed \
@@ -42,7 +42,10 @@ fmt-check: ## Check formatting without writing
 typecheck: ## Type-check with mypy
 	uv run mypy
 
-check: lint fmt-check typecheck test ## Run every gate CI runs (lint + format + types + tests)
+validate-public-artifacts: ## Validate the real committed public artifacts (catalog, art registry, both game modes, daily manifest) against their contracts
+	uv run networked-players-catalog validate-public-artifacts
+
+check: lint fmt-check typecheck test validate-public-artifacts ## Run every gate CI runs (lint + format + types + tests + public-artifact validation)
 
 ingest: ## Run a Discogs ingestion slice (see scripts/run-ingest.sh and docs/OPERATOR_SETUP.md)
 	./scripts/run-ingest.sh

@@ -30,3 +30,5 @@ jobs:
         run: uv run mypy
       - name: Test
         run: uv run pytest
+      - name: Validate real public artifacts
+        run: uv run networked-players-catalog validate-public-artifacts
