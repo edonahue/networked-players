@@ -22,6 +22,7 @@ from .connection_rounds import (
     CONNECTION_ROUNDS_SCHEMA_VERSION,
     connection_rounds_failures,
 )
+from .public_artifacts import PUBLIC_ARTIFACT_GROUPS, public_artifacts_failures
 from .record_routes import (
     RECORD_ROUTES_SCHEMA_VERSION,
     record_routes_failures,
@@ -35,6 +36,7 @@ __all__ = [
     "CONNECTION_ROUNDS_SCHEMA_VERSION",
     "CONNECTIVITY_SCHEMA_VERSION",
     "PLAYABLE_COHORT_SCHEMA_VERSION",
+    "PUBLIC_ARTIFACT_GROUPS",
     "RECORD_ROUTES_SCHEMA_VERSION",
     "ROUNDS_SCHEMA_VERSION",
     "album_art_failures",
@@ -46,6 +48,7 @@ __all__ = [
     "content_hash",
     "playable_cohort_failures",
     "public_album_catalog_failures",
+    "public_artifacts_failures",
     "record_routes_failures",
     "rounds_failures",
     "stable_id_digest",

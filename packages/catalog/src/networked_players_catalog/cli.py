@@ -656,6 +656,49 @@ def _parser() -> argparse.ArgumentParser:
     validate_art_registry.add_argument("--registry", type=Path, required=True)
     validate_art_registry.add_argument("--catalog", type=Path, required=True)
 
+    validate_public_artifacts = subparsers.add_parser(
+        "validate-public-artifacts",
+        help=(
+            "validate the whole real public-artifact publication set in one pass -- "
+            "catalog, album-art registry, Connection Guesser, daily manifest, Record "
+            "Routes -- against their individual contracts. Defaults to the real "
+            "committed paths under apps/web/public/data/; every input is a committed "
+            "public file, never private data, a token, or the home fleet. This is the "
+            "CI gate that catches a defect in an already-committed artifact that no "
+            "other check exercises (npm run check only validates the synthetic test "
+            "fixture, not real published data)."
+        ),
+    )
+    validate_public_artifacts.add_argument(
+        "--catalog", type=Path, default=Path("apps/web/public/data/catalog/albums.v1.json")
+    )
+    validate_public_artifacts.add_argument(
+        "--album-art", type=Path, default=Path("apps/web/public/data/catalog/album-art.v1.json")
+    )
+    validate_public_artifacts.add_argument(
+        "--connection-universe",
+        type=Path,
+        default=Path("apps/web/public/data/game/universe.v1.json"),
+    )
+    validate_public_artifacts.add_argument(
+        "--connection-rounds",
+        type=Path,
+        default=Path("apps/web/public/data/game/rounds.v1.json"),
+    )
+    validate_public_artifacts.add_argument(
+        "--daily-manifest",
+        type=Path,
+        default=Path("apps/web/public/data/game/daily-manifest.v1.json"),
+    )
+    validate_public_artifacts.add_argument(
+        "--routes-universe",
+        type=Path,
+        default=Path("apps/web/public/data/routes/universe.v1.json"),
+    )
+    validate_public_artifacts.add_argument(
+        "--routes-rounds", type=Path, default=Path("apps/web/public/data/routes/rounds.v1.json")
+    )
+
     fetch_dataset_parser = subparsers.add_parser(
         "fetch-dataset",
         help="fetch and verify a served dataset into a local, disposable cache (ADR 0025)",
@@ -2127,6 +2170,22 @@ def main(argv: Sequence[str] | None = None) -> int:
             raise ValueError("; ".join(failures))
         print(json.dumps({"ok": True, "albums_with_art": len(registry["albums"])}, indent=2))
         return 0
+
+    if args.command == "validate-public-artifacts":
+        from networked_players_contracts import public_artifacts_failures
+
+        report = public_artifacts_failures(
+            catalog=json.loads(args.catalog.read_text()),
+            album_art=json.loads(args.album_art.read_text()),
+            connection_universe=json.loads(args.connection_universe.read_text()),
+            connection_rounds=json.loads(args.connection_rounds.read_text()),
+            daily_manifest=json.loads(args.daily_manifest.read_text()),
+            routes_universe=json.loads(args.routes_universe.read_text()),
+            routes_rounds=json.loads(args.routes_rounds.read_text()),
+        )
+        ok = all(not failures for failures in report.values())
+        print(json.dumps({"ok": ok, "failures": report}, indent=2))
+        return 0 if ok else 1
 
     if args.command == "fetch-dataset":
         import sys
