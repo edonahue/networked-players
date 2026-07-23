@@ -248,11 +248,33 @@ def _route() -> dict[str, Any]:
     }
 
 
+def _routes_releases_and_artists(routes: list[dict[str, Any]]) -> tuple[list, list]:
+    """Minimal `rounds.releases[]`/`rounds.artists[]` entries covering every
+    hop reference in `routes` -- record_routes_failures checks every hop's
+    release_id/artist_a_id/artist_b_id resolve against these."""
+    release_ids: set[int] = set()
+    artist_ids: set[int] = set()
+    for route in routes:
+        for hop in route["hops"]:
+            release_ids.add(hop["release_id"])
+            artist_ids.add(hop["artist_a_id"])
+            artist_ids.add(hop["artist_b_id"])
+    releases = [{"release_id": rid, "title": f"Release {rid}"} for rid in sorted(release_ids)]
+    artists = [{"artist_id": aid, "name": f"Artist {aid}"} for aid in sorted(artist_ids)]
+    return releases, artists
+
+
 def _routes_pair() -> tuple[dict[str, Any], dict[str, Any]]:
     routes = [_route()]
+    albums = [
+        _catalog_album("master-1", artist_id=100, main_release_id=1),
+        _catalog_album("master-2", artist_id=200, main_release_id=2),
+    ]
+    releases, artists = _routes_releases_and_artists(routes)
     pool_version = (
         f"routes-v1-{_SNAPSHOT}-{content_hash(sorted(r['id'] for r in routes), length=12)}"
     )
+    payload = {"albums": albums, "rounds": routes, "releases": releases, "artists": artists}
     prov = {
         "source": "Discogs monthly data dump (CC0), one-hop working set",
         "license": "See docs/DATA_AND_RIGHTS.md.",
@@ -261,7 +283,7 @@ def _routes_pair() -> tuple[dict[str, Any], dict[str, Any]]:
         "graph_core_version": "0.1.0",
         "note": "Real path evidence.",
         "catalog_version": _CATALOG_VERSION_STR,
-        "artifact_version": f"routes-artifact-v1-{_SNAPSHOT}-{content_hash(routes, length=12)}",
+        "artifact_version": f"routes-artifact-v1-{_SNAPSHOT}-{content_hash(payload, length=12)}",
     }
     universe = {
         "schema_version": 1,
@@ -269,10 +291,7 @@ def _routes_pair() -> tuple[dict[str, Any], dict[str, Any]]:
         "pool_version": pool_version,
         "provenance": prov,
         "counts": {"one_hop": 1, "two_hop": 0, "daily_eligible": 1},
-        "albums": [
-            _catalog_album("master-1", artist_id=100, main_release_id=1),
-            _catalog_album("master-2", artist_id=200, main_release_id=2),
-        ],
+        "albums": albums,
     }
     rounds = {
         "schema_version": 1,
@@ -280,8 +299,8 @@ def _routes_pair() -> tuple[dict[str, Any], dict[str, Any]]:
         "pool_version": pool_version,
         "provenance": prov,
         "rounds": routes,
-        "releases": [],
-        "artists": [],
+        "releases": releases,
+        "artists": artists,
     }
     return universe, rounds
 
