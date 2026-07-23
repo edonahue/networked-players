@@ -1,16 +1,18 @@
 #!/usr/bin/env python3
-"""Enqueue a single Connection Guesser rounds-pool validation check across
-the joined Pi workers, via the jobs broker + RQ. Re-checks the
-already-published connection-universe.v1.json/connection-rounds.v1.json
-pair deployed alongside the job body by
-deploy-connection-rounds-check-job.yml -- no dataset, no CreditGraph, safe
-to run at any time regardless of when the pool was generated.
+"""Enqueue a Connection Guesser rounds-pool validation check across every
+targeted Pi worker (fanned out one job per worker, aggregated pass/fail),
+via the jobs broker + RQ. Re-checks the already-published
+connection-universe.v1.json/connection-rounds.v1.json pair deployed
+alongside the job body by deploy-connection-rounds-check-job.yml -- no
+dataset, no CreditGraph, safe to run at any time regardless of when the pool
+was generated.
 
-Mirrors scripts/enqueue_cohort_check.py's broker-connect, per-worker-queue,
-burst-worker-launch, and wait-and-collect structure; see that file's own
-comments for the "why per-worker queue" rationale. This script only ever
-enqueues one job (to one worker), since a single-artifact-pair check has no
-natural sharding dimension.
+Fan-out is real, not sharded: every targeted worker independently
+re-validates its own deployed copy of the same artifact pair (proving each
+worker's environment produces the same result), not a split of one job
+across workers. See scripts/_fleet_check.py for the shared per-worker-queue
+enqueue/collect/aggregate logic every enqueue_*_check.py script uses. Pass
+--limit <hostname> to target a single worker for debugging.
 
 Prerequisites (not checked here beyond a clear failure -- each fails loudly
 on its own if skipped): the jobs broker up (deploy-jobs-broker.sh), and the
@@ -28,28 +30,19 @@ docs/decisions/0018-benchmark-results-local-only.md.
 
 from __future__ import annotations
 
-import argparse
-import json
-import os
-import subprocess
 import sys
-import time
-from datetime import UTC, datetime
-from pathlib import Path
-from typing import Any
 
-from redis import Redis
+from _fleet_check import (
+    build_arg_parser,
+    connect_to_broker,
+    enqueue_and_collect,
+    resolve_target_workers,
+    write_report,
+)
 from rq import Queue
-from rq.job import Job
-
-REPO_ROOT = Path(__file__).resolve().parent.parent
-ANSIBLE_DIR = REPO_ROOT / "infra" / "ansible"
-LOCAL_INVENTORY = ANSIBLE_DIR / "inventories" / "local" / "hosts.yml"
-OUTPUT_DIR = REPO_ROOT / "local" / "jobs"
 
 QUEUE_PREFIX = "connection-rounds-check"
 JOB_TIMEOUT_S = 60
-WAIT_TIMEOUT_S = 120.0
 JOB_FUNCTION = "connection_rounds_check_job.check_connection_rounds"
 # Filenames only: deploy-connection-rounds-check-job.yml copies both
 # artifacts into the same persistent rq_jobs_dir as the job body itself, and
@@ -57,133 +50,46 @@ JOB_FUNCTION = "connection_rounds_check_job.check_connection_rounds"
 # directory (see its _resolve()).
 UNIVERSE_FILENAME = "connection-universe.v1.json"
 ROUNDS_FILENAME = "connection-rounds.v1.json"
-
-
-def require_env(name: str) -> str:
-    value = os.environ.get(name)
-    if not value:
-        print(
-            f"ABORT: set {name} (see scripts/enqueue-connection-rounds-check.sh).",
-            file=sys.stderr,
-        )
-        raise SystemExit(1)
-    return value
-
-
-def load_workers(group: str) -> list[str]:
-    if not LOCAL_INVENTORY.exists():
-        print(f"ABORT: no local inventory at {LOCAL_INVENTORY}.", file=sys.stderr)
-        print(
-            "        cp -r infra/ansible/inventories/example infra/ansible/inventories/local",
-            file=sys.stderr,
-        )
-        raise SystemExit(1)
-    result = subprocess.run(
-        ["ansible-inventory", "-i", str(LOCAL_INVENTORY), "--list"],
-        capture_output=True,
-        text=True,
-        check=True,
-    )
-    inventory = json.loads(result.stdout)
-    hosts = inventory.get(group, {}).get("hosts", [])
-    if not hosts:
-        print(f"ABORT: no hosts in the {group!r} inventory group.", file=sys.stderr)
-        raise SystemExit(1)
-    return sorted(hosts)
-
-
-def queue_name_for(prefix: str, host: str) -> str:
-    return f"{prefix}-{host}"
-
-
-def assert_queue_empty(queue: Queue, name: str) -> None:
-    dirty = len(queue) or queue.started_job_registry.count or queue.failed_job_registry.count
-    if dirty:
-        print(
-            f"ABORT: queue {name!r} is not empty (queued/running/failed jobs present). "
-            "Drain it or restart the jobs broker first.",
-            file=sys.stderr,
-        )
-        raise SystemExit(1)
-
-
-def run_burst_workers(limit: str) -> None:
-    cmd = [
-        str(ANSIBLE_DIR / "run-rq-burst-worker-local.sh"),
-        "--limit",
-        limit,
-        "-e",
-        f"rq_queue_name={QUEUE_PREFIX}",
-    ]
-    subprocess.run(cmd, check=True)
-
-
-def wait_for_job(redis_conn: Redis, job_id: str) -> Job:
-    job = Job.fetch(job_id, connection=redis_conn)
-    deadline = time.monotonic() + WAIT_TIMEOUT_S
-    while time.monotonic() < deadline:
-        job.refresh()
-        if job.is_finished or job.is_failed:
-            return job
-        time.sleep(0.5)
-    print(f"ABORT: job {job_id} did not finish within {WAIT_TIMEOUT_S}s.", file=sys.stderr)
-    raise SystemExit(1)
+USAGE_HINT = "scripts/enqueue-connection-rounds-check.sh"
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--workers", default="pi_workers", help="ansible inventory group to target")
+    parser = build_arg_parser(__doc__)
     args = parser.parse_args()
 
-    jobs_broker_url = require_env("JOBS_BROKER_URL")
-    redis_conn = Redis.from_url(jobs_broker_url)
-    try:
-        redis_conn.ping()
-    except Exception as exc:
-        print(f"ABORT: cannot reach the jobs broker at {jobs_broker_url}: {exc}", file=sys.stderr)
-        print("        Start it with ./infra/swarm/deploy-jobs-broker.sh", file=sys.stderr)
-        raise SystemExit(1) from exc
+    redis_conn = connect_to_broker(USAGE_HINT)
+    workers = resolve_target_workers(args.workers, args.limit)
 
-    workers = load_workers(args.workers)
-    worker = workers[0]
-    queue = Queue(queue_name_for(QUEUE_PREFIX, worker), connection=redis_conn)
-    assert_queue_empty(queue, queue.name)
-
-    print(f"==> Checking {UNIVERSE_FILENAME}/{ROUNDS_FILENAME} via {worker}.")
-    job = queue.enqueue(
-        JOB_FUNCTION,
-        UNIVERSE_FILENAME,
-        ROUNDS_FILENAME,
+    print(
+        f"==> Checking {UNIVERSE_FILENAME}/{ROUNDS_FILENAME} across "
+        f"{len(workers)} worker(s): {workers}."
+    )
+    per_worker = enqueue_and_collect(
+        workers=workers,
+        queue_prefix=QUEUE_PREFIX,
+        job_function=JOB_FUNCTION,
+        job_args=(UNIVERSE_FILENAME, ROUNDS_FILENAME),
         job_timeout=JOB_TIMEOUT_S,
+        queue_factory=lambda name: Queue(name, connection=redis_conn),
+    )
+    output_path = write_report(
+        prefix=QUEUE_PREFIX,
+        extra={"universe_artifact": UNIVERSE_FILENAME, "rounds_artifact": ROUNDS_FILENAME},
+        per_worker=per_worker,
     )
 
-    run_burst_workers(limit=args.workers)
-    finished_job = wait_for_job(redis_conn, job.id)
-
-    result = finished_job.result if finished_job.is_finished else None
-    record: dict[str, Any] = {
-        "observed": True,
-        "measured_at_utc": datetime.now(UTC).isoformat(),
-        "universe_artifact": UNIVERSE_FILENAME,
-        "rounds_artifact": ROUNDS_FILENAME,
-        "worker": worker,
-        "job_failed": finished_job.is_failed,
-        "result": result,
-        "ok": (not finished_job.is_failed) and bool(result) and result.get("valid", False),
-    }
-
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
-    output_path = OUTPUT_DIR / f"connection-rounds-check-{timestamp}.json"
-    output_path.write_text(json.dumps(record, indent=2, default=str) + "\n")
-
     print(f"==> Wrote {output_path}.")
-    if record["ok"]:
-        print("==> PASS: Connection Guesser rounds pool is valid.")
+    if all(v["ok"] for v in per_worker.values()):
+        print(
+            f"==> PASS: Connection Guesser rounds pool is valid on all {len(per_worker)} worker(s)."
+        )
     else:
-        failures = result.get("failures", []) if result else []
-        print(f"==> FAIL: job_failed={finished_job.is_failed}, failures={failures}")
-        raise SystemExit(1)
+        failing = {host: v for host, v in per_worker.items() if not v["ok"]}
+        print(f"==> FAIL on {sorted(failing)}:")
+        for host, v in failing.items():
+            failures = v["result"].get("failures", []) if v["result"] else None
+            print(f"    {host}: job_failed={v['job_failed']}, failures={failures}")
+        sys.exit(1)
 
 
 if __name__ == "__main__":
