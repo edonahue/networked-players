@@ -1,0 +1,64 @@
+name: Daily manifest runway check
+
+# Watches the published Connection Guesser daily schedule
+# (apps/web/public/data/game/daily-manifest.v1.json) so running out of
+# scheduled dates is a red check someone sees, not a silent surprise. Only
+# reports/fails -- never extends the schedule itself; extension stays an
+# explicit, reviewed PR (see docs/OPERATOR_SETUP.md).
+#
+# `connection-daily-manifest-status`'s own exit code only reflects
+# already_expired (see its --help); this workflow additionally fails on
+# needs_extension_soon (inside --warn-within-days of running out), which is
+# the earlier signal this check exists for.
+
+on:
+  schedule:
+    - cron: "0 13 * * 1" # every Monday, 13:00 UTC
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install uv
+        run: python -m pip install --disable-pip-version-check uv
+      - name: Install project
+        run: uv sync --extra dev --locked
+      - name: Check Connection Guesser daily-schedule runway
+        run: |
+          set -euo pipefail
+          status_json="$(uv run networked-players-catalog connection-daily-manifest-status \
+            --manifest apps/web/public/data/game/daily-manifest.v1.json \
+            --warn-within-days 14)" || true
+          echo "$status_json"
+          python3 - "$status_json" <<'PYEOF'
+          import json
+          import sys
+
+          status = json.loads(sys.argv[1])
+          if status["already_expired"]:
+              print(
+                  "::error::Connection Guesser daily schedule has EXPIRED "
+                  f"(last scheduled date {status['last_scheduled_date']}, "
+                  f"{status['days_remaining']} day(s) overdue)."
+              )
+              sys.exit(1)
+          if status["needs_extension_soon"]:
+              print(
+                  "::error::Connection Guesser daily schedule needs extending soon "
+                  f"({status['days_remaining']} day(s) of runway left, "
+                  f"warn_within_days={status['warn_within_days']}, "
+                  f"last scheduled date {status['last_scheduled_date']})."
+              )
+              sys.exit(1)
+          print(f"Daily schedule runway is healthy: {status['days_remaining']} day(s) remaining.")
+          PYEOF
