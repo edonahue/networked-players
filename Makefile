@@ -24,10 +24,10 @@ help: ## List available targets
 		| sort \
 		| awk 'BEGIN {FS = ":.*?## "} {printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}'
 
-setup: ## Install Python deps with dev extras (uv sync --extra dev)
-	uv sync --extra dev
+setup: ## Install Python deps with dev + jobs extras (uv sync --extra dev --extra jobs)
+	uv sync --extra dev --extra jobs
 
-test: ## Run the test suite
+test: ## Run the test suite (needs the jobs extra -- see setup)
 	uv run pytest
 
 lint: ## Lint with Ruff
@@ -144,31 +144,31 @@ verify-challenge-distributed: ## Re-verify a challenge.v2 artifact's evidence ac
 deploy-connection-rounds-check-job: ## Deploy the Connection Guesser rounds-pool validation job + connection-universe.v1/connection-rounds.v1 artifacts to Pi workers; ARGS="--limit worker-01"
 	./infra/ansible/run-deploy-connection-rounds-check-job-local.sh $(ARGS)
 
-connection-rounds-check-distributed: ## Independently re-validate the published Connection Guesser rounds pool across Pi workers; needs deploy-jobs-broker + deploy-connection-rounds-check-job; writes local/jobs/ only
+connection-rounds-check-distributed: ## Independently re-validate the published Connection Guesser rounds pool on every Pi worker (one job per worker, pass only if all pass); needs deploy-jobs-broker + deploy-connection-rounds-check-job; writes local/jobs/ only; ARGS="--limit worker-01" to debug one worker
 	./scripts/enqueue-connection-rounds-check.sh $(ARGS)
 
 deploy-record-routes-check-job: ## Deploy the Record Routes validation job + routes-universe.v1/routes-rounds.v1 artifacts to Pi workers; ARGS="--limit worker-01"
 	./infra/ansible/run-deploy-record-routes-check-job-local.sh $(ARGS)
 
-record-routes-check-distributed: ## Independently re-validate the published Record Routes pool across Pi workers; needs deploy-jobs-broker + deploy-record-routes-check-job; writes local/jobs/ only
+record-routes-check-distributed: ## Independently re-validate the published Record Routes pool on every Pi worker (one job per worker, pass only if all pass); needs deploy-jobs-broker + deploy-record-routes-check-job; writes local/jobs/ only; ARGS="--limit worker-01" to debug one worker
 	./scripts/enqueue-record-routes-check.sh $(ARGS)
 
 deploy-daily-manifest-check-job: ## Deploy the Connection-daily-manifest validation job + daily-manifest.v1/connection-rounds.v1 artifacts to Pi workers; ARGS="--limit worker-01"
 	./infra/ansible/run-deploy-daily-manifest-check-job-local.sh $(ARGS)
 
-daily-manifest-check-distributed: ## Independently re-validate the published daily manifest across Pi workers; needs deploy-jobs-broker + deploy-daily-manifest-check-job; writes local/jobs/ only
+daily-manifest-check-distributed: ## Independently re-validate the published daily manifest on every Pi worker (one job per worker, pass only if all pass); needs deploy-jobs-broker + deploy-daily-manifest-check-job; writes local/jobs/ only; ARGS="--limit worker-01" to debug one worker
 	./scripts/enqueue-daily-manifest-check.sh $(ARGS)
 
 deploy-album-art-check-job: ## Deploy the album-art-registry validation job + album-art.v1/albums.v1 artifacts to Pi workers; ARGS="--limit worker-01"
 	./infra/ansible/run-deploy-album-art-check-job-local.sh $(ARGS)
 
-album-art-check-distributed: ## Independently re-validate the published album-art registry across Pi workers; needs deploy-jobs-broker + deploy-album-art-check-job; writes local/jobs/ only
+album-art-check-distributed: ## Independently re-validate the published album-art registry on every Pi worker (one job per worker, pass only if all pass); needs deploy-jobs-broker + deploy-album-art-check-job; writes local/jobs/ only; ARGS="--limit worker-01" to debug one worker
 	./scripts/enqueue-album-art-check.sh $(ARGS)
 
 deploy-catalog-check-job: ## Deploy the public-album-catalog validation job + albums.v1 artifact to Pi workers; ARGS="--limit worker-01"
 	./infra/ansible/run-deploy-catalog-check-job-local.sh $(ARGS)
 
-catalog-check-distributed: ## Independently re-validate the published public album catalog across Pi workers; needs deploy-jobs-broker + deploy-catalog-check-job; writes local/jobs/ only
+catalog-check-distributed: ## Independently re-validate the published public album catalog on every Pi worker (one job per worker, pass only if all pass); needs deploy-jobs-broker + deploy-catalog-check-job; writes local/jobs/ only; ARGS="--limit worker-01" to debug one worker
 	./scripts/enqueue-catalog-check.sh $(ARGS)
 
 score-cohort-on-worker: ## Submit whole-cohort scoring to a matching platform worker; needs platform runtime + verified x86 cache; ARGS="--source-id <id> --snapshot-date <date> [--release-format-policy <path>]"

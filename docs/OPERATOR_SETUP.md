@@ -1060,6 +1060,15 @@ second, independent safety check re-running the same dependency-free validator t
 where a privacy re-scan happens for free, since every `*_failures` validator already
 includes the forbidden-substring/phrase scan as part of its contract check.
 
+**Fan-out is real, not sharded.** Each `enqueue-*-check.sh` enqueues the same check
+independently onto *every* worker in the targeted inventory group (`pi_workers` by
+default) — one job per worker on that worker's own queue, one burst worker launched only
+for the hosts that received a job this run, and the script exits non-zero unless every
+targeted worker's result is valid. This proves each worker's own deployed copy of the job
+body + artifacts independently validates, not just one representative Pi. Pass
+`--limit <hostname>` (e.g. `ARGS="--limit worker-01"` via the `make *-check-distributed`
+targets) to target a single worker instead, for debugging.
+
 ```bash
 # One-time per job: deploy the job body + current published artifacts to the Pi fleet.
 ./infra/ansible/run-deploy-connection-rounds-check-job-local.sh --limit pi_workers
