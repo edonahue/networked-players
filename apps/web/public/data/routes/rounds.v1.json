@@ -9,7 +9,7 @@
     "graph_core_version": "0.1.0",
     "note": "Derived from a bounded one-hop working set; the private collection seed used to build that working set is never published. Every round's hops require an explicit, displayable instrument/vocal role on both sides.",
     "catalog_version": "catalog-v1-20260601-0e7ec70fbb7e",
-    "artifact_version": "routes-artifact-v1-20260601-f068e7335a42"
+    "artifact_version": "routes-artifact-v1-20260601-d0feb3416993"
   },
   "rounds": [
     {

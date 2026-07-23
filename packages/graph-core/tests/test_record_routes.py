@@ -192,12 +192,97 @@ def test_two_hop_route_has_a_real_bridge_artist(routes_dataset_root: Path) -> No
 def test_reordering_the_rounds_array_changes_artifact_version(
     routes_dataset_root: Path,
 ) -> None:
-    _universe, rounds, _diag = _build(routes_dataset_root)
-    forward = record_routes_artifact_version(rounds["rounds"], SNAPSHOT_DATE)
+    universe, rounds, _diag = _build(routes_dataset_root)
+    forward = record_routes_artifact_version(
+        albums=universe["albums"],
+        rounds_json=rounds["rounds"],
+        releases=rounds["releases"],
+        artists=rounds["artists"],
+        snapshot_date=SNAPSHOT_DATE,
+    )
     reversed_version = record_routes_artifact_version(
-        list(reversed(rounds["rounds"])), SNAPSHOT_DATE
+        albums=universe["albums"],
+        rounds_json=list(reversed(rounds["rounds"])),
+        releases=rounds["releases"],
+        artists=rounds["artists"],
+        snapshot_date=SNAPSHOT_DATE,
     )
     assert forward != reversed_version
+
+
+def test_evidence_only_change_moves_artifact_version(routes_dataset_root: Path) -> None:
+    """The exact gap the redefinition closes: a silent edit to a displayed
+    artist name or release title (evidentiary content living in the
+    separate releases[]/artists[] arrays, not inside rounds[] itself) must
+    move artifact_version, not be invisible to it."""
+    universe, rounds, _diag = _build(routes_dataset_root)
+    baseline = record_routes_artifact_version(
+        albums=universe["albums"],
+        rounds_json=rounds["rounds"],
+        releases=rounds["releases"],
+        artists=rounds["artists"],
+        snapshot_date=SNAPSHOT_DATE,
+    )
+
+    renamed_artists = [dict(a) for a in rounds["artists"]]
+    renamed_artists[0]["name"] = renamed_artists[0]["name"] + " (corrected)"
+    artist_renamed = record_routes_artifact_version(
+        albums=universe["albums"],
+        rounds_json=rounds["rounds"],
+        releases=rounds["releases"],
+        artists=renamed_artists,
+        snapshot_date=SNAPSHOT_DATE,
+    )
+    assert artist_renamed != baseline
+
+    retitled_releases = [dict(r) for r in rounds["releases"]]
+    retitled_releases[0]["title"] = retitled_releases[0]["title"] + " (reissue)"
+    release_retitled = record_routes_artifact_version(
+        albums=universe["albums"],
+        rounds_json=rounds["rounds"],
+        releases=retitled_releases,
+        artists=rounds["artists"],
+        snapshot_date=SNAPSHOT_DATE,
+    )
+    assert release_retitled != baseline
+
+    retitled_albums = [dict(a) for a in universe["albums"]]
+    retitled_albums[0]["title"] = retitled_albums[0]["title"] + " (deluxe)"
+    album_retitled = record_routes_artifact_version(
+        albums=retitled_albums,
+        rounds_json=rounds["rounds"],
+        releases=rounds["releases"],
+        artists=rounds["artists"],
+        snapshot_date=SNAPSHOT_DATE,
+    )
+    assert album_retitled != baseline
+
+
+def test_reversed_orientation_is_a_different_id_by_design(
+    routes_dataset_root: Path,
+) -> None:
+    """Pins the documented design decision (stable_route_id's docstring):
+    the same conceptual two-hop path, traversed in the opposite direction
+    (hops reversed), hashes to a DIFFERENT route id. This is intentional --
+    from/to is tied to which album renders as sleeve A vs. B -- not
+    accidental fragility."""
+    _universe, rounds, _diag = _build(routes_dataset_root)
+    two_hop = next(r for r in rounds["rounds"] if r["kind"] == "two_hop")
+    forward_id = stable_route_id(two_hop)
+
+    reversed_route = dict(two_hop)
+    reversed_route["from_album_id"], reversed_route["to_album_id"] = (
+        two_hop["to_album_id"],
+        two_hop["from_album_id"],
+    )
+    reversed_route["from_artist_id"], reversed_route["to_artist_id"] = (
+        two_hop["to_artist_id"],
+        two_hop["from_artist_id"],
+    )
+    reversed_route["hops"] = list(reversed(two_hop["hops"]))
+    reversed_id = stable_route_id(reversed_route)
+
+    assert reversed_id != forward_id
 
 
 def test_pool_version_is_membership_only(routes_dataset_root: Path) -> None:

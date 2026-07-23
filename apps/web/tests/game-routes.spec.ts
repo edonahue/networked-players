@@ -214,6 +214,13 @@ test("a one-hop route deals, guesses length, and reveals with no artist step", a
   await expect(page.getByTestId("routes-evidence-mount")).toContainText(
     "First Light",
   );
+  // The one-hop verdict must name BOTH endpoint artists and the shared
+  // release -- never single out one artist as if they alone "connect" the
+  // pair (the corrected wording; see ADR 0046's slice-9 addendum).
+  const rating = await page.getByTestId("routes-verdict-rating").textContent();
+  expect(rating).toContain("Artist100");
+  expect(rating).toContain("Artist200");
+  expect(rating).toContain("First Light");
 });
 
 test("a two-hop route offers an optional connecting-artist guess before reveal", async ({
@@ -295,4 +302,173 @@ test("the hub card for Record Routes is live and links here", async ({
   await expect(card).toHaveAttribute("href", "/play/routes/");
   await card.click();
   await expect(page).toHaveURL(/\/play\/routes\/$/);
+});
+
+// --- Runtime resolver integrity (routesResolver.ts) --------------------
+// Every one of these serves a structurally malformed pool and asserts the
+// page reaches the same typed error state as the "missing route pool" test
+// above -- never a thrown exception, never a substituted route, never a
+// gameplay control left interactive.
+
+async function expectIntegrityError(page: Page): Promise<void> {
+  await expect(page.getByTestId("routes-stage")).toHaveAttribute(
+    "data-phase",
+    "error",
+  );
+  await expect(page.getByTestId("routes-length-tray")).toBeHidden();
+  await expect(page.getByTestId("routes-artist-step")).toBeHidden();
+}
+
+test("a wrong-mode artifact fails gracefully", async ({ page }) => {
+  const universe = { ...universeFixture(), mode: "connection_guesser_one_hop" };
+  await page.route("**/data/routes/universe.v1.json", (route) =>
+    route.fulfill({ status: 200, json: universe }),
+  );
+  await page.route("**/data/routes/rounds.v1.json", (route) =>
+    route.fulfill({ status: 200, json: roundsFixture() }),
+  );
+  await page.goto("/play/routes/?motion=off");
+  await expectIntegrityError(page);
+});
+
+test("a universe/rounds version mismatch fails gracefully", async ({
+  page,
+}) => {
+  const rounds = {
+    ...roundsFixture(),
+    pool_version: "routes-v1-20260601-different",
+  };
+  await page.route("**/data/routes/universe.v1.json", (route) =>
+    route.fulfill({ status: 200, json: universeFixture() }),
+  );
+  await page.route("**/data/routes/rounds.v1.json", (route) =>
+    route.fulfill({ status: 200, json: rounds }),
+  );
+  await page.goto("/play/routes/?motion=off");
+  await expectIntegrityError(page);
+});
+
+test("an empty route pool (after filtering malformed members) fails gracefully", async ({
+  page,
+}) => {
+  const rounds = { ...roundsFixture(), rounds: [null, "not a route", 42] };
+  await page.route("**/data/routes/universe.v1.json", (route) =>
+    route.fulfill({ status: 200, json: universeFixture() }),
+  );
+  await page.route("**/data/routes/rounds.v1.json", (route) =>
+    route.fulfill({ status: 200, json: rounds }),
+  );
+  await page.goto("/play/routes/?motion=off");
+  await expectIntegrityError(page);
+});
+
+test("a route whose endpoint album isn't in the universe fails gracefully", async ({
+  page,
+}) => {
+  const universe = {
+    ...universeFixture(),
+    albums: universeFixture().albums.filter((a) => a.id !== "master-2"),
+  };
+  await page.route("**/data/routes/universe.v1.json", (route) =>
+    route.fulfill({ status: 200, json: universe }),
+  );
+  await page.route("**/data/routes/rounds.v1.json", (route) =>
+    route.fulfill({ status: 200, json: roundsFixture() }),
+  );
+  await page.goto("/play/routes/?route=route-0000000001&motion=off");
+  await expectIntegrityError(page);
+});
+
+test("a route whose hop references an unpublished artist fails gracefully", async ({
+  page,
+}) => {
+  const rounds = roundsFixture();
+  rounds.artists = rounds.artists.filter((a) => a.artist_id !== 200);
+  await page.route("**/data/routes/universe.v1.json", (route) =>
+    route.fulfill({ status: 200, json: universeFixture() }),
+  );
+  await page.route("**/data/routes/rounds.v1.json", (route) =>
+    route.fulfill({ status: 200, json: rounds }),
+  );
+  await page.goto("/play/routes/?route=route-0000000001&motion=off");
+  await expectIntegrityError(page);
+});
+
+test("a two-hop route with an ambiguous (missing) bridge fails gracefully", async ({
+  page,
+}) => {
+  const rounds = roundsFixture();
+  // roundsFixture()'s `rounds` array holds references to the shared
+  // module-level ONE_HOP_ROUTE/TWO_HOP_ROUTE constants -- deep-clone before
+  // mutating a nested field, or this corrupts every later test in the file
+  // that also deals route-0000000002.
+  const broken = structuredClone(
+    rounds.rounds.find((r) => r.id === "route-0000000002")!,
+  );
+  rounds.rounds = rounds.rounds.map((r) => (r.id === broken.id ? broken : r));
+  // Both hops now share no artist at all with the other -- no bridge.
+  broken.hops[1].artist_a_id = 12345;
+  rounds.artists = [
+    ...rounds.artists,
+    { artist_id: 12345, name: "Disconnected" },
+  ];
+  await page.route("**/data/routes/universe.v1.json", (route) =>
+    route.fulfill({ status: 200, json: universeFixture() }),
+  );
+  await page.route("**/data/routes/rounds.v1.json", (route) =>
+    route.fulfill({ status: 200, json: rounds }),
+  );
+  await page.goto("/play/routes/?route=route-0000000002&motion=off");
+  await expectIntegrityError(page);
+});
+
+// --- Accessibility ------------------------------------------------------
+
+test("a one-hop round plays on a phone-sized screen without sideways scroll", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await routeFixtures(page);
+  await page.goto("/play/routes/?route=route-0000000001&motion=off");
+  await expect(page.getByTestId("routes-stage")).toHaveAttribute(
+    "data-phase",
+    "guessing",
+  );
+  const scrollWidth = await page.evaluate(
+    () => document.documentElement.scrollWidth,
+  );
+  const clientWidth = await page.evaluate(
+    () => document.documentElement.clientWidth,
+  );
+  expect(scrollWidth).toBeLessThanOrEqual(clientWidth + 1);
+});
+
+test("a full two-hop round is completable by keyboard only", async ({
+  page,
+}) => {
+  await routeFixtures(page);
+  await page.goto("/play/routes/?route=route-0000000002&motion=off");
+
+  const lengthTray = page.getByTestId("routes-length-tray");
+  const firstLengthChip = lengthTray.locator(".chip").first();
+  await firstLengthChip.focus();
+  await expect(firstLengthChip).toHaveAttribute("role", "radio");
+  await page.keyboard.press("ArrowRight");
+  const twoHopChip = lengthTray.locator('.chip[data-length="two_hop"]');
+  await expect(twoHopChip).toBeFocused();
+  await page.keyboard.press("Enter");
+
+  await expect(page.getByTestId("routes-artist-step")).toBeVisible();
+  const artistTray = page.getByTestId("routes-artist-tray");
+  const bridgeChip = artistTray.locator('.chip[data-artist="999"]');
+  await bridgeChip.focus();
+  await page.keyboard.press("Enter");
+
+  await expect(page.getByTestId("routes-stage")).toHaveAttribute(
+    "data-phase",
+    "revealed",
+  );
+  await expect(page.getByTestId("routes-verdict-rating")).toContainText(
+    "Clean",
+  );
 });
