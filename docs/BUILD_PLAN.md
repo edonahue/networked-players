@@ -12,7 +12,7 @@ edit ROADMAP's own checkboxes.
 
 ## Where things stand today
 
-Snapshot updated through 2026-07-10. This section is rewritten as work lands; the milestones
+Snapshot updated through 2026-07-22. This section is rewritten as work lands; the milestones
 below are the durable structure. Every claim here has a source — do not extend it
 without one, per AGENTS.md: do not claim an application, service, cluster
 deployment, full dump conversion, benchmark, or public dataset exists until the
@@ -215,6 +215,36 @@ fourth original Pi, plus a separate Pi 3B+, are planned but not yet revived
 — both would join `pi_workers` as Pi-class hardware when they are. See
 `docs/HARDWARE.md` for the full table.
 
+**Real-data launch and Record Routes (2026-07-19 through 2026-07-22).** Following the
+gate-F close, four more real slices shipped in quick succession, all merged to `main`
+and confirmed live via direct smoke testing after each deploy:
+
+- **Phase 1 real-data launch** (PR #44, 2026-07-20): the Connection Guesser's real pool
+  (300 one-hop / 200 two-hop rounds) and a frozen 90-date Connection of the Day
+  schedule replaced the synthetic-first pool.
+- **Album art + daily launch cutover** (PR #45, 2026-07-22): hotlinked Discogs cover art
+  published for all 140 catalog albums via a separately versioned art registry
+  (`apps/web/public/data/catalog/album-art.v1.json`, decoupled from frozen game content
+  per ADR 0044/0045 so refreshing art never disturbs a scheduled daily round), and the
+  daily schedule's real go-live date confirmed same-day (2026-07-22), superseding the
+  earlier placeholder 2026-08-01 date. A same-day build-time art-loading bug was found
+  and fixed in a follow-up (PR #46).
+- **Record Routes** (PR #47, 2026-07-22, ADR 0046): a third real, distinct game mode —
+  album → artist → album path-guessing, `/play/routes/` — productionized from PR #43's
+  legacy path-discovery backend with content-derived stable ids, deterministic versions,
+  and art-free content. A real performance bug in the shared discovery module (one
+  DuckDB query per candidate hop, ~0.5-1s each) was found and fixed
+  (`CreditGraph.credit_rows_for_release_batch`, batched prefetch) before the first real
+  artifact (290 routes) could be generated — see `docs/DATA_SIZING.md`'s "Record Routes
+  real-data generation" entry.
+- **Pi-fleet artifact validation** (PR #48, 2026-07-22, ADR 0043's slice-8 addendum):
+  every real public artifact (catalog, album-art registry, Connection Guesser, daily
+  manifest, Record Routes) now has a dependency-free validator deployable to the Pi
+  fleet as an independent RQ check job; a real, live wiring bug in the existing
+  Connection-Guesser check-job deploy/enqueue pair was found and fixed in the same
+  slice. See `docs/OPERATOR_SETUP.md` for the resulting runbooks. No check job has yet
+  been run for real against the fleet — code, tests, and playbook syntax-checks only.
+
 | Area | State |
 | --- | --- |
 | Discogs release ingestion (code) | Working, tested, synthetic-only; parser hot path fixed (~1.9x) and write/parse overlap added (~4.2%), 2026-07-01 |
@@ -228,7 +258,7 @@ fourth original Pi, plus a separate Pi 3B+, are planned but not yet revived
 | `game-rules` | Placeholder (README only) |
 | `workers` | Placeholder (README only) |
 | `apps/api` | Placeholder (README only) |
-| `apps/web` | Playable game surface shipped (see `docs/WEB_PRODUCT_PLAN.md`, ADR 0037, ADR 0042, ADR 0043): `/play/` hub, flagship Connection Guesser (one-hop + two-hop) in five-round sets, Connection of the Day, `/albums/` browse + evidence pages (old `/play/<album>/` URLs redirect), cohorts, ADR-0012 real curated `/demo/`; `/albums/` browse data (`challenge.v2.json`) and the Connection Guesser's own pool (`public/data/game/*`) are both real and both derived from the same canonical `apps/web/public/data/catalog/albums.v1.json` (140 albums, snapshot 20260601, live gate F closed 2026-07-20); the synthetic Meridian Tapes universe survives only as an isolated test fixture, never played; deploys via Cloudflare Git integration on push to `main`; CI green (format/check/build + Playwright) |
+| `apps/web` | Three real playable game modes shipped (see `docs/WEB_PRODUCT_PLAN.md`, ADR 0037, ADR 0042, ADR 0043, ADR 0046): `/play/` hub, flagship Connection Guesser (one-hop + two-hop) in five-round sets, Connection of the Day (real go-live date 2026-07-22), Record Routes (`/play/routes/`, path-guessing, distinct contract), `/albums/` browse + evidence pages (old `/play/<album>/` URLs redirect), cohorts, ADR-0012 real curated `/demo/`; every real surface (`challenge.v2.json`, the Connection Guesser pool, Record Routes) derives its album set from the same canonical `apps/web/public/data/catalog/albums.v1.json` (140 albums, snapshot 20260601, live gate F closed 2026-07-20) and its cover art from a separately versioned hotlink registry (140/140 real covers, ADR 0044/0045); the synthetic Meridian Tapes universe survives only as an isolated test fixture, never played; deploys via Cloudflare Git integration on push to `main`; CI green (format/check/build + Playwright) |
 | Coordination host OS + inventory | Done (64-bit confirmed, local inventory created) |
 | Coordination host storage | NVMe attached and mounted at `/mnt/data` (916G ext4, ADR 0013); `local/` and coordination volumes relocated; 250 GB bulk-ingest floor met (869 GB free, confirmed) |
 | Coordination host hardening | Done (ADR 0014): persistent journald, hardware watchdog, Docker log rotation, `vm.swappiness` tuning (`infra/ansible/playbooks/harden.yml`) |
@@ -249,7 +279,7 @@ fourth original Pi, plus a separate Pi 3B+, are planned but not yet revived
 | Health playbook | Passing (confirmed 2026-07-01: 869.2 GB free on `/mnt/data`) |
 | Raspberry Pi workers | **3 of 4 joined and smoke-tested, 2026-07-02** (ADR 0015, ADR 0017); fourth remains unreachable; a separate Pi 3B+ is also planned but not yet active |
 | Second ZimaBoard 832 (the "x86 worker," `x86_workers`) | Joined as a real, dedicated x86_64 Swarm worker (ADR 0022/0023); worker-only, never promoted; participates in RQ/Dask fleet work at a higher-capability tier than the Pi's |
-| `networked-players.com` | Registered; **status needs operator confirmation** — Cloudflare Workers Builds report successful production deploys on every push to `main`, which contradicts this row's earlier "not live", but domain reachability could not be verified from a sandboxed session |
+| `networked-players.com` | **Live and confirmed.** Registered; Cloudflare Workers Builds auto-deploys the production Worker on every push to `main`; the deployed site was directly smoke-tested after the PR #44/#45/#47/#48 merges (real covers, all three game modes, daily play, all `/data/*` artifacts 200) — this is a live, playable public product, not a projection |
 
 ## How to use this document
 
@@ -854,13 +884,19 @@ Make the real, one-hop, evidence-backed demo the live public experience.
 Milestone 8.
 
 ### Tasks
-- [ ] Confirm domain control, HTTPS, and static asset delivery independently of
-      the home lab, per ADR 0004's validation step
-- [ ] Run `npm run deploy` (`astro build && wrangler deploy`) [`apps/web`]
-- [ ] Confirm the deployed site works with all home-hosted services disabled
-      (static-first check per ADR 0002 and `docs/PRODUCT.md`)
-- [ ] Update `README.md`'s status line and `docs/PRODUCT.md`'s identity paragraph
-      to reflect that a real application is live — only once it actually is
+- [x] Confirm domain control, HTTPS, and static asset delivery independently of
+      the home lab, per ADR 0004's validation step — confirmed via direct smoke
+      testing of the live domain after each real-data PR merge (#44/#45/#47/#48)
+- [x] Deploy the built site — not via a manual `npm run deploy` as originally
+      envisioned, but via Cloudflare Workers Builds' Git integration, which
+      auto-deploys the production Worker on every push to `main`; confirmed
+      working across every merge in this project's history
+- [x] Confirm the deployed site works with all home-hosted services disabled
+      (static-first check per ADR 0002 and `docs/PRODUCT.md`) — the site is
+      100% static Cloudflare-served assets/JSON; nothing it serves depends on
+      the home lab being reachable
+- [x] Update `README.md`'s status line and `docs/PRODUCT.md`'s identity paragraph
+      to reflect that a real application is live (slice 9 closeout)
 
 ## Milestone 10: MVP checkpoint
 

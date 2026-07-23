@@ -39,10 +39,10 @@ See [docs/BUILD_PLAN.md](BUILD_PLAN.md) for the granular, code-level task breakd
 - [x] Define the smallest private seed import contract
 - [x] Create matching synthetic seed fixtures
 - [x] Run a 10,000-release local slice and record time, memory, and bytes
-- [ ] Extract a private seed and expand one catalog hop (private seed extracted and
-      imported; the one-hop expansion tool exists and is tested, but running it for
-      real over the full snapshot is still a pending operator step — live gate B)
-- [ ] Manually verify at least one evidence path (pending live gate F)
+- [x] Extract a private seed and expand one catalog hop (real run done 2026-07-05,
+      gate B — 1,410,106 releases, validated clean; see `docs/BUILD_PLAN.md`)
+- [x] Manually verify at least one evidence path (gate F closed 2026-07-20;
+      see `docs/BUILD_PLAN.md`)
 
 ## 4. Durable contracts
 
@@ -57,8 +57,8 @@ See [docs/BUILD_PLAN.md](BUILD_PLAN.md) for the granular, code-level task breakd
 
 ## 5. First playable static release
 
-- [ ] Generate one challenge from the verified path (pending live gate F; the album
-      grid currently ships a synthetic placeholder artifact)
+- [x] Generate one challenge from the verified path (real since 2026-07-20 —
+      `challenge.v2.json`, 140 albums, snapshot 20260601; see `docs/BUILD_PLAN.md`)
 - [x] Build a small accessible browser experience
 - [x] Show release-level evidence for every step
 - [ ] Confirm full use with all home services disabled (pending live gate H)

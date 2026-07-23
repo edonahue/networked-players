@@ -15,7 +15,7 @@ experience does not require the home environment to be available.
 | Service orchestration | Reconcile durable containers and cluster membership | Single Docker Swarm manager |
 | Job orchestration | Match bounded jobs to advertised capabilities | Persistent Redis/RQ control plane on the coordination host |
 | Durable state | PostgreSQL, Redis, manifests, canonical snapshots, local run records | Pinned to SSD-backed x86 coordination host |
-| Bounded ARM workers | Validation, cache audits, evidence shards, metadata preparation | Three active Raspberry Pi 3B nodes, one job each |
+| Bounded ARM workers | Validation, cache audits, evidence shards, metadata preparation — including a dependency-free RQ "check job" per real public artifact (catalog, album-art registry, both game modes' pools, the daily manifest) | Three active Raspberry Pi 3B nodes, one job each |
 | Heavy x86 worker | Whole-cohort scoring and reusable data-processing jobs | Dedicated x86 worker with verified local caches |
 | Interactive analysis | Optional notebooks and distributed collections | Dask on demand, outside the production job path |
 | Public delivery | Game, findings, static challenges | Cloudflare static assets built from `main` |

@@ -1,10 +1,15 @@
 # Web product plan: from evidence viewer to playable connections game
 
-Status: **proposed plan** (nothing below exists until its PR lands). Companion to
-`docs/BUILD_PLAN.md` (pipeline/infra track); this document owns the frontend product
-expansion. Grounded in a full inspection of `apps/web` at the current HEAD, the data
-contracts, ADRs 0002/0012/0026/0027/0031/0035/0036, and an interview with the operator
-(decisions recorded in §15).
+Status: **shipped** (2026-07-18 through 2026-07-22, PRs #34-#47). Every PR in §12's
+sequence landed; the flagship Connection Guesser, Connection of the Day, and a later
+third mode (Record Routes, ADR 0046, not originally scoped here) are all live at
+`/play/`. This document is kept as the original design rationale and specification,
+annotated below where real implementation diverged from the plan as written — see
+`docs/PRODUCT.md` and `apps/web/README.md` for the current, living state of the product.
+Companion to `docs/BUILD_PLAN.md` (pipeline/infra track); this document owns the
+frontend product expansion. Grounded in a full inspection of `apps/web` at the plan's
+original HEAD, the data contracts, ADRs 0002/0012/0026/0027/0031/0035/0036, and an
+interview with the operator (decisions recorded in §15).
 
 ---
 
@@ -16,6 +21,10 @@ who links them — **plus a frozen, manifest-driven Connection of the Day** (ADR
 originally planned as date-seeded, now resolved from a committed schedule), on top of the existing
 static Astro architecture, powered by two clearly-badged content pools: a designed
 synthetic universe and real rounds derived from the existing curated Discogs demo data.
+*(As shipped: the real pool ended up derived from the full canonical 140-album catalog,
+not the smaller curated demo dataset described here, and the synthetic universe was
+retired to an isolated test fixture rather than staying a badged, playable pool — see
+§2's status note and §8.)*
 
 - **North-star experience:** the crate-digger-detective thrill — squinting at liner-note
   credits, recognizing a name, and being shown the receipts. One round takes 1–3
@@ -33,7 +42,17 @@ synthetic universe and real rounds derived from the existing curated Discogs dem
   Boards / Path Builder modes, contributor detail pages beyond a minimal card, `/learn/`,
   sound, any live API.
 
-## 2. Current-state assessment (verified at HEAD)
+## 2. Pre-implementation baseline (verified at the plan's original HEAD, 2026-07-18)
+
+**This section is historical.** It describes `apps/web` immediately before this plan's
+PRs began landing — none of the gaps below exist today. For current state: real cover
+art ships (140/140 albums, separately versioned art registry, ADR 0044/0045); the
+"data inversion" is resolved (`challenge.v2.json` and the Connection Guesser pool are
+both real, derived from the canonical catalog, and gate F closed 2026-07-20); the play
+gap is closed (Connection Guesser, Connection of the Day, and Record Routes are all
+real, tested, playable modes); the synthetic universe survives only as an isolated test
+fixture, never shown during real play. See `docs/PRODUCT.md` and `apps/web/README.md`
+for the living description.
 
 - **Architecture:** Astro `^7` static output, `trailingSlash: 'always'`, TypeScript,
   zero UI framework, **zero shipped JS bundles** — four inline scripts total (theme init
@@ -88,18 +107,24 @@ synthetic universe and real rounds derived from the existing curated Discogs dem
 
 ## 4. Mode portfolio (ranked)
 
-| Mode | Player goal | Interaction | Data needs | Complexity | Verdict |
-| --- | --- | --- | --- | --- | --- |
-| **Connection Guesser** | Name the contributor linking two records (1-hop); solve bridges then the hidden middle record (2-hop) | Choice chips + clue ladder | Rounds w/ answer set + distractors + clues | High (it's the engine) | **Launch flagship** |
-| **Connection of the Day** | Same loop, one frozen daily round + streak + share | Committed manifest, local calendar date (ADR 0043) | Same pool | Low once flagship exists | **Launch** |
-| **Hidden Contributor** | Identify the redacted name across 2–3 credit lists | Choice chips over redacted liner notes | Credit excerpts | Medium (new presentation, same engine) | Phase 2 |
-| **Behind the Boards** | Guesser restricted to non-performer roles | Flagship variant w/ role filter | Role-category tagging | Low-medium | Phase 2 (note: ADR 0027 excludes non-performer-only credits from *graph hops*; this mode presents them as **evidence spotlights**, not path edges) |
-| **Free Explore** | Browse albums/contributors/paths, no score | Album + contributor pages | Existing artifacts | Medium | Phase 2 (grows from `/albums/`) |
-| **How Many Hops?** | Guess path length between two records | Single choice | Path lengths | Low | Phase 3 — thin loop alone; good warm-up round type *inside* sets |
-| **Missing Record** | Name the hidden middle given the bridges | Inverse of 2-hop stage 2 | Same | Low | Folded into flagship's 2-hop (stage 2 *is* this) |
-| **Credit Match** | Match credit rows to sleeves | Tap-to-pair | Credit rows | Medium + drag-alternative burden | Parking lot |
-| **Path Builder** | Assemble a valid path from a tray | Ordering | Multi-path data | High | Parking lot |
-| **Curated Journey** | Themed sequence (cohorts!) | Guided set | **Reviewed cohort** (none exists yet — ADR 0031) | Medium | Phase 2/3, unblocks when a real cohort is promoted |
+Status column added post-launch: Connection Guesser, Connection of the Day, and Record
+Routes are all shipped and live at `/play/` (Record Routes was not part of this plan's
+original scope — it shipped later under ADR 0046 as a distinct path-guessing contract,
+not a variant of this engine).
+
+| Mode | Player goal | Interaction | Data needs | Complexity | Verdict | Status |
+| --- | --- | --- | --- | --- | --- | --- |
+| **Connection Guesser** | Name the contributor linking two records (1-hop); solve bridges then the hidden middle record (2-hop) | Choice chips + clue ladder | Rounds w/ answer set + distractors + clues | High (it's the engine) | **Launch flagship** | **Shipped** |
+| **Connection of the Day** | Same loop, one frozen daily round + streak + share | Committed manifest, local calendar date (ADR 0043) | Same pool | Low once flagship exists | **Launch** | **Shipped** |
+| **Record Routes** *(not in original scope)* | Guess hop count (and, for two-hop, the connecting artist) between two records | Length choice + optional artist chips | Distinct path artifact (`data/routes/*`, ADR 0046) | High (separate contract) | n/a — added later | **Shipped** (`/play/routes/`) |
+| **Hidden Contributor** | Identify the redacted name across 2–3 credit lists | Choice chips over redacted liner notes | Credit excerpts | Medium (new presentation, same engine) | Phase 2 | Not built |
+| **Behind the Boards** | Guesser restricted to non-performer roles | Flagship variant w/ role filter | Role-category tagging | Low-medium | Phase 2 (note: ADR 0027 excludes non-performer-only credits from *graph hops*; this mode presents them as **evidence spotlights**, not path edges) | Not built |
+| **Free Explore** | Browse albums/contributors/paths, no score | Album + contributor pages | Existing artifacts | Medium | Phase 2 (grows from `/albums/`) | Not built as its own mode (`/albums/` browse itself shipped) |
+| **How Many Hops?** | Guess path length between two records | Single choice | Path lengths | Low | Phase 3 — thin loop alone; good warm-up round type *inside* sets | Not built |
+| **Missing Record** | Name the hidden middle given the bridges | Inverse of 2-hop stage 2 | Same | Low | Folded into flagship's 2-hop (stage 2 *is* this) | Shipped as part of the flagship's 2-hop beat 2 |
+| **Credit Match** | Match credit rows to sleeves | Tap-to-pair | Credit rows | Medium + drag-alternative burden | Parking lot | Not built |
+| **Path Builder** | Assemble a valid path from a tray | Ordering | Multi-path data | High | Parking lot | Not built |
+| **Curated Journey** | Themed sequence (cohorts!) | Guided set | **Reviewed cohort** (none exists yet — ADR 0031) | Medium | Phase 2/3, unblocks when a real cohort is promoted | Not built; still blocked on ADR 0031 |
 
 ## 5. Flagship specification: Connection Guesser
 
@@ -209,6 +234,7 @@ works, stats silently off); JS disabled (page renders a no-script explanation + 
 /play/               mode hub (flagship, daily; phase-2 modes appear here)
 /play/connection/    flagship Connection Guesser
 /play/daily/         Connection of the Day
+/play/routes/        Record Routes (added later, ADR 0046 — not in this plan's original scope)
 /albums/             album grid (moves from /)
 /albums/[id]/        album detail + its documented connections (evolves /play/[album])
 /play/[album]/       kept as redirect stubs → /albums/[id]/ (no broken links)
@@ -218,7 +244,8 @@ works, stats silently off); JS disabled (page renders a no-script explanation + 
 ```
 
 Navigation: **Play · Albums · Cohorts · About** (+ theme toggle). Sitemap gains cohort
-+ new routes. `aria-current="page"` finally set.
++ new routes. `aria-current="page"` finally set. (`/play/routes/` matches this same
+pattern as shipped — a `ModeCard` on the `/play/` hub, per ADR 0046.)
 
 ## 7. Visual direction
 
@@ -306,14 +333,18 @@ interface GameRound {
 **Round derivation:** *hybrid* — the universe and difficulty/ambiguity structures are
 authored; rounds, valid-answer sets, and distractor pools are derived + validated by
 the build script (throws on any distractor that satisfies the connection, any empty
-answer set, any evidence row that doesn't resolve). The **real pool adapter** derives
-one-hop rounds from `challenge.v1.json`'s paths (each 2-hop artist path A→r1→B→r2→C
-yields the round "which contributor appears on both r1 and r2?" with sleeves r1/r2 and
-answer B) and two-hop rounds where path convergences support them, with distractors
-drawn from the 1,041-row credit pool. Migration path: when gate F delivers real
-`challenge.v2` data or a reviewed cohort lands (ADR 0031), they plug in as additional
-pools under the same `GameRound` shape — cohort `difficulty`/`quality_flags` map
-directly onto round difficulty and evidence caveat chips.
+answer set, any evidence row that doesn't resolve). The **real pool adapter**, as
+originally planned here, derived one-hop rounds from `challenge.v1.json`'s paths — that
+adapter was superseded once gate F closed: the real pool (`build-connection-rounds`,
+`packages/graph-core/.../connection_rounds.py`) is now generated directly from the
+canonical 140-album catalog (`apps/web/public/data/catalog/albums.v1.json`) via a real
+`CreditGraph` over the full one-hop dataset, not derived from the small curated demo
+data described above. The synthetic "Meridian Tapes" universe itself survived the
+transition unchanged, but is no longer badged/playable alongside the real pool — it
+lives only as an isolated Playwright test fixture (`apps/web/tests/fixtures/`), never
+shown to a real player. Migration path for a reviewed cohort (ADR 0031): unchanged —
+still blocked on a human `selection`, and would plug in under the same `GameRound` shape
+if promoted.
 
 ## 9. Technical architecture
 
@@ -392,6 +423,14 @@ tokens → global → motif → game. Validation: `npm run validate:data` runs
 
 ## 12. Implementation sequence (8 PRs)
 
+**Status: PRs 1-7 shipped** (per the real merged PR history — "Game foundations,"
+"Reshape IA," "Ship the flagship," "Deal two-hop rounds," "Play in sittings,"
+"Connection of the Day," "One evidence panel everywhere," 2026-07-18/19). **PR 8
+partially open**: the JS-budget check, image-fallback audit, and phone-viewport spec
+landed ("Final polish," 2026-07-19), but the manual accessibility passes (axe dev scan,
+VoiceOver round, 200% zoom) remain genuinely undone — see `apps/web/README.md`'s
+"Next steps."
+
 1. **Foundations: universe, rounds, engine, ADR.** Authored `universe.v1.json`,
    `gen-sleeves.mjs`, `build-rounds.mjs` + validation, `src/game/*` engine with
    Playwright-runner unit specs (state machine, scoring, PRNG determinism, distractor
@@ -423,9 +462,10 @@ tokens → global → motif → game. Validation: `npm run validate:data` runs
    play. *DoD:* v1/v2/cohort all render through one evidence component; no dead code.
 8. **Polish, a11y/perf audit, docs.** axe pass, reduced-motion audit, JS budget check,
    image fallback audit, `PRODUCT.md` (promote chosen modes from "potential later"),
-   `apps/web/README.md`, `BUILD_PLAN.md` cross-link, resolve the "deployed vs not live"
-   status-table inconsistency with the operator. *DoD:* validation matrix below fully
-   green; subjective play-feel review session done.
+   `apps/web/README.md`, `BUILD_PLAN.md` cross-link. *DoD:* validation matrix below fully
+   green; subjective play-feel review session done. **Status:** JS budget/image-fallback/
+   phone-viewport landed; the manual axe/VoiceOver/200%-zoom passes are still open (see
+   the status note above §12.1).
 
 Each PR: framework-free (except the single dev-only axe addition in PR 8), tests
 included, `npm run build && npx playwright test` green, guardrail scans extended to new
@@ -491,7 +531,20 @@ Boards sequencing within phase 2; `/learn/` page; sound design (default: none);
 contributor-page depth; when gate F's real challenge.v2 and the first reviewed cohort
 plug in as pools (operator-gated); whether the daily eventually rotates pools.
 
-## 16. Implementation prompt for PR 1 (ready to paste)
+**Closing entry (slice 9 closeout, 2026-07-22):** this plan shipped. Gate F closed
+2026-07-20 (real challenge.v2/Connection Guesser pool from the canonical catalog,
+superseding the challenge.v1-derived real-pool adapter this plan originally specified —
+see §8). Real cover art (ADR 0044/0045) and a third mode, Record Routes (ADR 0046, not
+originally scoped here), both shipped afterward. Only PR 8's manual accessibility
+passes (§13: axe, VoiceOver, 200% zoom) remain genuinely open of everything this
+document proposed; the reviewed-cohort pool remains blocked on ADR 0031's human
+`selection`, unchanged.
+
+## 16. Implementation prompt for PR 1 (historical — fulfilled)
+
+This prompt was used to kick off PR 1 and is kept verbatim as a record of exactly what
+was asked for; PR 1 shipped as "Game foundations: Meridian Tapes universe, round
+derivation, engine" (2026-07-18).
 
 > Implement **PR 1 of `docs/WEB_PRODUCT_PLAN.md` (§12.1): game foundations** in
 > `apps/web` on a fresh branch from `main`. Scope: (1) author
