@@ -305,6 +305,42 @@ def _routes_pair() -> tuple[dict[str, Any], dict[str, Any]]:
     return universe, rounds
 
 
+def _challenge_release(release_id: int, title: str) -> dict[str, Any]:
+    return {
+        "snapshot_date": _SNAPSHOT,
+        "release_id": release_id,
+        "status": "Accepted",
+        "title": title,
+        "country": None,
+        "released": "1995",
+        "master_id": None,
+        "master_is_main_release": None,
+        "data_quality": None,
+        "source_url": f"https://example.invalid/release/{release_id}",
+        "credits": [],
+    }
+
+
+def _challenge(catalog: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "schema_version": 2,
+        "provenance": {
+            "source": "Discogs monthly data dump (CC0), one-hop working set",
+            "license": "Derived from the Discogs monthly CC0 data dumps. See "
+            "docs/DATA_AND_RIGHTS.md.",
+            "snapshot_date": _SNAPSHOT,
+            "generated_by": "test",
+            "graph_core_version": "0.1.0",
+            "catalog_version": catalog["catalog_version"],
+            "note": "Derived from a bounded one-hop working set.",
+        },
+        "albums": [_catalog_album("master-1", artist_id=100, main_release_id=1)],
+        "artists": [{"artist_id": 100, "name": "Alice"}],
+        "paths": [],
+        "releases": [_challenge_release(1, "Alpha's Album")],
+    }
+
+
 def _write(path: Path, payload: dict[str, Any]) -> Path:
     path.write_text(json.dumps(payload))
     return path
@@ -323,6 +359,7 @@ def _write_all(tmp_path: Path) -> dict[str, Path]:
         "daily_manifest": _write(tmp_path / "daily-manifest.v1.json", _daily_manifest()),
         "routes_universe": _write(tmp_path / "routes-universe.v1.json", routes_universe),
         "routes_rounds": _write(tmp_path / "routes-rounds.v1.json", routes_rounds),
+        "challenge": _write(tmp_path / "challenge.v2.json", _challenge(catalog)),
     }
 
 
@@ -343,6 +380,8 @@ def _args(paths: dict[str, Path]) -> list[str]:
         str(paths["routes_universe"]),
         "--routes-rounds",
         str(paths["routes_rounds"]),
+        "--challenge",
+        str(paths["challenge"]),
     ]
 
 
@@ -358,6 +397,7 @@ def test_clean_set_exits_zero(tmp_path: Path, capsys) -> None:
         "connection_guesser": [],
         "connection_daily_manifest": [],
         "record_routes": [],
+        "challenge": [],
     }
 
 
@@ -389,6 +429,7 @@ def test_default_paths_point_at_the_real_repo_layout(tmp_path: Path, capsys, mon
         "apps/web/public/data/game/daily-manifest.v1.json": _daily_manifest(),
         "apps/web/public/data/routes/universe.v1.json": routes_universe,
         "apps/web/public/data/routes/rounds.v1.json": routes_rounds,
+        "apps/web/public/data/challenge.v2.json": _challenge(catalog),
     }
     for relative_path, payload in layout.items():
         full_path = tmp_path / relative_path

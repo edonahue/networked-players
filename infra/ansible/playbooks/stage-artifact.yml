@@ -1,0 +1,126 @@
+---
+# Stages (or removes) one ad hoc, operator-supplied artifact under a
+# worker's persistent RQ jobs directory, under a content-addressed
+# filename. Exists because cohort-artifact checks (unlike the five
+# deploy-*-check-job.yml jobs) take a per-invocation artifact path with no
+# fixed, known-in-advance repo location to bundle at deploy time -- there
+# was previously no mechanism that actually put the artifact on a worker's
+# filesystem at all (see ADR notes in docs/OPERATOR_SETUP.md's "Pi ambient
+# cohort-artifact checks" section for the bug this closes).
+#
+# Requires stage_action (`stage` or `unstage`), local_artifact_path (control
+# node), and remote_filename. `stage` additionally requires
+# expected_sha256 (computed by the caller, e.g.
+# scripts/_artifact_staging.py::local_sha256, from the exact bytes about to
+# be copied) and verifies it against the copied file's own remote checksum
+# before returning success -- any_errors_fatal so one worker's mismatch
+# aborts the whole run rather than leaving a partial stage silently
+# enqueue-able.
+#
+# `unstage` is best-effort by design (state: absent on a file that may
+# already be gone is not an error) -- cleanup must never mask whatever the
+# check itself reported.
+#
+# hosts: pi_workers, matching every other check-job playbook's scoping.
+#
+# Usage (from infra/ansible/, with a real local inventory):
+#   ansible-playbook -i inventories/local/hosts.yml playbooks/stage-artifact.yml \
+#     --limit worker-01.example.internal \
+#     -e stage_action=stage \
+#     -e local_artifact_path=/abs/path/to/connectivity.json \
+#     -e remote_filename=cohort-input-<sha256>.json \
+#     -e expected_sha256=<sha256>
+#   ansible-playbook -i inventories/local/hosts.yml playbooks/stage-artifact.yml \
+#     --limit worker-01.example.internal \
+#     -e stage_action=unstage \
+#     -e remote_filename=cohort-input-<sha256>.json
+- name: Stage or unstage an ad hoc artifact on Pi workers
+  hosts: pi_workers
+  gather_facts: true
+  any_errors_fatal: true
+  vars:
+    rq_jobs_dir: "{{ ansible_env.HOME }}/.local/share/networked-players/rq-jobs"
+  tasks:
+    - name: Require stage_action
+      ansible.builtin.assert:
+        that:
+          - stage_action is defined
+          - stage_action in ["stage", "unstage"]
+        fail_msg: "Set -e stage_action=stage or -e stage_action=unstage."
+
+    - name: Require remote_filename
+      ansible.builtin.assert:
+        that:
+          - remote_filename is defined
+        fail_msg: "Set -e remote_filename=<content-addressed filename>."
+
+    - name: Stage the artifact
+      when: stage_action == "stage"
+      block:
+        - name: Require local_artifact_path and expected_sha256
+          ansible.builtin.assert:
+            that:
+              - local_artifact_path is defined
+              - expected_sha256 is defined
+            fail_msg: "Set -e local_artifact_path=<path> -e expected_sha256=<sha256>."
+
+        - name: Require the artifact to exist on the control node
+          ansible.builtin.stat:
+            path: "{{ local_artifact_path }}"
+          register: local_stat
+          delegate_to: localhost
+          become: false
+
+        - name: Fail loudly if the source artifact is missing
+          ansible.builtin.assert:
+            that:
+              - local_stat.stat.exists
+              - local_stat.stat.isreg
+            fail_msg: "No regular file at {{ local_artifact_path }} on the control node."
+
+        - name: Create the RQ jobs directory
+          ansible.builtin.file:
+            path: "{{ rq_jobs_dir }}"
+            state: directory
+            mode: "0755"
+
+        - name: Copy the artifact under its content-addressed filename
+          ansible.builtin.copy:
+            src: "{{ local_artifact_path }}"
+            dest: "{{ rq_jobs_dir }}/{{ remote_filename }}"
+            mode: "0644"
+
+        - name: Checksum the staged copy
+          ansible.builtin.stat:
+            path: "{{ rq_jobs_dir }}/{{ remote_filename }}"
+            checksum_algorithm: sha256
+          register: remote_stat
+
+        - name: Verify the staged copy's checksum matches the source
+          ansible.builtin.assert:
+            that:
+              - remote_stat.stat.checksum == expected_sha256
+            fail_msg: >-
+              Checksum mismatch on {{ inventory_hostname }}:
+              staged {{ remote_stat.stat.checksum }}, expected {{ expected_sha256 }}.
+
+        - name: Report staging
+          ansible.builtin.debug:
+            msg:
+              - "host: {{ inventory_hostname }}"
+              - "staged {{ rq_jobs_dir }}/{{ remote_filename }} (sha256 {{ expected_sha256 }})"
+
+    - name: Unstage the artifact
+      when: stage_action == "unstage"
+      block:
+        - name: Remove the staged artifact, if present
+          ansible.builtin.file:
+            path: "{{ rq_jobs_dir }}/{{ remote_filename }}"
+            state: absent
+          register: removal
+
+        - name: Report cleanup
+          ansible.builtin.debug:
+            msg:
+              - "host: {{ inventory_hostname }}"
+              - "removed {{ rq_jobs_dir }}/{{ remote_filename }} (changed={{ removal.changed }})"

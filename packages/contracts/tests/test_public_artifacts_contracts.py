@@ -327,6 +327,56 @@ def _routes_pair() -> tuple[dict[str, Any], dict[str, Any]]:
     return universe, rounds
 
 
+# --- challenge.v2 --------------------------------------------------------
+
+
+def _challenge_release(release_id: int, title: str) -> dict[str, Any]:
+    return {
+        "snapshot_date": _SNAPSHOT,
+        "release_id": release_id,
+        "status": "Accepted",
+        "title": title,
+        "country": None,
+        "released": "1995",
+        "master_id": None,
+        "master_is_main_release": None,
+        "data_quality": None,
+        "source_url": f"https://example.invalid/release/{release_id}",
+        "credits": [],
+    }
+
+
+def _challenge() -> dict[str, Any]:
+    return {
+        "schema_version": 2,
+        "provenance": {
+            "source": "Discogs monthly data dump (CC0), one-hop working set",
+            "license": "Derived from the Discogs monthly CC0 data dumps. See "
+            "docs/DATA_AND_RIGHTS.md.",
+            "snapshot_date": _SNAPSHOT,
+            "generated_by": "networked-players-catalog build-challenge-from-dump 0.1.0",
+            "graph_core_version": "0.1.0",
+            "catalog_version": _catalog()["catalog_version"],
+            "note": "Derived from a bounded one-hop working set.",
+        },
+        "albums": [
+            _catalog_album("master-1", artist_id=100, main_release_id=1),
+            _catalog_album("master-2", artist_id=200, main_release_id=2),
+        ],
+        "artists": [{"artist_id": 100, "name": "Alice"}, {"artist_id": 200, "name": "Bob"}],
+        "paths": [
+            {
+                "id": "path-1",
+                "hops": [{"release_id": 1, "artist_a_id": 100, "artist_b_id": 200}],
+            }
+        ],
+        "releases": [
+            _challenge_release(1, "Alpha's Album"),
+            _challenge_release(2, "Bravo's Album"),
+        ],
+    }
+
+
 # --- the combined check -------------------------------------------------------
 
 
@@ -340,6 +390,7 @@ def _clean_artifacts() -> dict[str, Any]:
         "daily_manifest": _daily_manifest(),
         "routes_universe": routes_universe,
         "routes_rounds": routes_rounds,
+        "challenge": _challenge(),
     }
 
 
@@ -351,6 +402,7 @@ def test_clean_publication_set_has_no_failures() -> None:
         "connection_guesser": [],
         "connection_daily_manifest": [],
         "record_routes": [],
+        "challenge": [],
     }
 
 
@@ -362,6 +414,7 @@ def test_every_group_key_always_present() -> None:
         "connection_guesser",
         "connection_daily_manifest",
         "record_routes",
+        "challenge",
     }
 
 
@@ -385,6 +438,7 @@ def test_deleted_mode_on_record_routes_is_caught() -> None:
     assert report["album_art_registry"] == []
     assert report["connection_guesser"] == []
     assert report["connection_daily_manifest"] == []
+    assert report["challenge"] == []
 
 
 def test_catalog_defect_is_caught_independently() -> None:
@@ -395,4 +449,24 @@ def test_catalog_defect_is_caught_independently() -> None:
 
     report = public_artifacts_failures(**artifacts)
     assert report["catalog"] != []
+    assert report["record_routes"] == []
+    assert report["challenge"] == []
+
+
+def test_deleted_provenance_field_on_challenge_is_caught() -> None:
+    """Finding B's required regression test: challenge.v2.json was never
+    part of this gate before -- deleting a required provenance field must
+    surface in the combined report, isolated to the challenge group."""
+    artifacts = _clean_artifacts()
+    broken_challenge = deepcopy(artifacts["challenge"])
+    del broken_challenge["provenance"]["license"]
+    artifacts["challenge"] = broken_challenge
+
+    report = public_artifacts_failures(**artifacts)
+    assert report["challenge"] != []
+    assert any("provenance.license" in f for f in report["challenge"])
+    assert report["catalog"] == []
+    assert report["album_art_registry"] == []
+    assert report["connection_guesser"] == []
+    assert report["connection_daily_manifest"] == []
     assert report["record_routes"] == []

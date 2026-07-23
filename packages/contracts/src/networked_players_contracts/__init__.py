@@ -7,6 +7,7 @@ from .album_art import (
 )
 from .canonical import canonical_json, content_hash, stable_id_digest
 from .catalog import public_album_catalog_failures
+from .challenge import CHALLENGE_SCHEMA_VERSION, challenge_failures
 from .cohort import (
     CONNECTIVITY_SCHEMA_VERSION,
     PLAYABLE_COHORT_SCHEMA_VERSION,
@@ -31,6 +32,7 @@ from .rounds import ROUNDS_SCHEMA_VERSION, rounds_failures
 
 __all__ = [
     "ALBUM_ART_SCHEMA_VERSION",
+    "CHALLENGE_SCHEMA_VERSION",
     "CONNECTION_DAILY_MANIFEST_MODE",
     "CONNECTION_DAILY_MANIFEST_SCHEMA_VERSION",
     "CONNECTION_ROUNDS_SCHEMA_VERSION",
@@ -42,6 +44,7 @@ __all__ = [
     "album_art_failures",
     "album_art_version",
     "canonical_json",
+    "challenge_failures",
     "connection_daily_manifest_failures",
     "connection_rounds_failures",
     "connectivity_failures",

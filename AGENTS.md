@@ -6,8 +6,8 @@ This repository is scaffold-first but now contains a small working Discogs inges
 
 - The `Makefile` is the canonical command surface; prefer it over ad-hoc commands.
 - Prerequisites: `uv`, Python 3.12+, and the `libxml2`/`libxslt` dev headers for `lxml` (see `README.md`).
-- `make setup` installs dependencies (`uv sync --extra dev`).
-- `make check` runs every gate CI runs (Ruff lint, Ruff format check, mypy, pytest, and `validate-public-artifacts` against the real committed artifacts under `apps/web/public/data/`). Run it before reporting a change complete, and report anything you did not exercise.
+- `make setup` installs dependencies (`uv sync --extra dev --extra jobs`).
+- `make check` runs every gate CI runs (Ruff lint, Ruff format check, mypy, pytest, `validate-public-artifacts` against the real committed artifacts under `apps/web/public/data/`, and `validate-album-catalog-audit` against the committed inclusion-audit record under `docs/data/`). Run it before reporting a change complete, and report anything you did not exercise.
 - A real Discogs ingestion is operator work: see `docs/OPERATOR_SETUP.md` and `scripts/run-ingest.sh`. Never run a full raw dump as a Pi job.
 
 ## Agent tooling

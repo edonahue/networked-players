@@ -100,6 +100,27 @@ def test_build_challenge_v2_produces_a_valid_artifact(dataset_root: Path) -> Non
     assert report["paths_found"] >= 1
 
 
+def test_validate_challenge_rejects_a_catalog_version_disagreeing_with_the_given_catalog(
+    dataset_root: Path,
+) -> None:
+    """Proves the graph-core delegation to
+    networked_players_contracts.challenge::challenge_failures actually
+    reaches the new catalog_version cross-check, not just the
+    contracts-level unit test."""
+    with CreditGraph.open(dataset_root) as graph:
+        artifact, _report = build_challenge_v2(
+            graph,
+            ALBUMS,
+            snapshot_date="20260601",
+            generated_by="test-suite",
+            catalog_version="catalog-v1-20260601-realvalue",
+        )
+
+    validate_challenge(artifact)  # no catalog given: does not raise
+    with pytest.raises(ChallengeValidationError, match="catalog_version"):
+        validate_challenge(artifact, catalog={"catalog_version": "catalog-v1-20260601-different"})
+
+
 def test_build_challenge_v2_applies_family_exclusion(dataset_root: Path) -> None:
     """Alice(100) and Eve(500) are directly one-hop connected via R4 -- a
     real, trivial-looking pairing this test treats as if it were a band's own
