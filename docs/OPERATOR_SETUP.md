@@ -907,6 +907,12 @@ Exits 1 only if the schedule has already run out (`already_expired`); exits 0 wh
 merely inside the warning window, so this is safe to run as a periodic check without
 treating "getting close" as a hard failure.
 
+`.github/workflows/daily-manifest-status.yml` runs this same check weekly (and on
+`workflow_dispatch`) and additionally fails the workflow — a red check in the Actions tab —
+once `needs_extension_soon` is true, not just once expired: an unattended early-warning
+signal for the runway, so extension (step 2 below) doesn't get discovered only after it's
+already too late. It never extends anything itself.
+
 ### 2. Extend
 
 ```bash
