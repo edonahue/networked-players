@@ -54,7 +54,23 @@ def stable_route_id(round_json: dict[str, Any]) -> str:
     fields -- endpoints + the ordered hop signatures (release + the unordered
     artist pair per hop). Presentation-independent and stable across
     regeneration; two runs that discover the same documented path keep the
-    same id."""
+    same id.
+
+    **Orientation-sensitive by design.** `endpoints` is sorted, so swapping
+    which album is `from`/`to` alone never changes the id -- but the hop
+    *sequence* is not canonicalized, so the same conceptual path traversed
+    in the opposite direction (hops reversed) hashes to a DIFFERENT id. This
+    is intentional, not an oversight: `from_artist_id`/`to_artist_id` are
+    meaningfully tied to which album renders as sleeve A vs. sleeve B, which
+    is itself a real, displayed distinction, not an arbitrary presentation
+    choice to canonicalize away. In practice this never causes an id to
+    drift across a real regeneration: `_two_hop_candidates`' `i < c`
+    backbone-index iteration and artist-id-sorted `from`/`to` assignment
+    mean this generator only ever discovers each unordered artist pair
+    once, in one orientation, on every run (proven by
+    `test_regeneration_is_byte_identical_except_nothing_random`, and by
+    `test_reversed_orientation_is_a_different_id_by_design` pinning the
+    reverse-hop-order case explicitly)."""
     endpoints = sorted((str(round_json["from_album_id"]), str(round_json["to_album_id"])))
     hop_part = ",".join(_hop_signature(h) for h in round_json.get("hops", []))
     return f"route-{stable_id_digest('rr', *endpoints, hop_part)}"
@@ -67,11 +83,34 @@ def record_routes_pool_version(round_ids: list[str], snapshot_date: str) -> str:
     return f"routes-v1-{snapshot_date}-{digest}"
 
 
-def record_routes_artifact_version(rounds_json: list[dict[str, Any]], snapshot_date: str) -> str:
-    """Complete-content hash of the published rounds array IN ORDER -- changes
-    on any published field change or a reordering, even with identical
-    membership (mirrors the Connection Guesser artifact_version, ADR 0045)."""
-    digest = content_hash(rounds_json, length=12)
+def record_routes_artifact_version(
+    *,
+    albums: list[dict[str, Any]],
+    rounds_json: list[dict[str, Any]],
+    releases: list[dict[str, Any]],
+    artists: list[dict[str, Any]],
+    snapshot_date: str,
+) -> str:
+    """Complete-content hash of everything actually published and
+    player-visible -- the ordered rounds array, the universe's album refs,
+    and the evidence releases/artists a route's hop/evidence lookups
+    resolve against. Changes on ANY published field change (a route's own
+    content, an album's title/year, a release's credit role text, an
+    artist's display name) or a reordering of any of the four arrays, even
+    with identical membership.
+
+    Deliberately broader than hashing `rounds_json` alone (the original
+    slice-6 definition, corrected here -- see ADR 0046's slice-9 addendum).
+    The Connection Guesser's `artifact_version` (ADR 0043/0045) can safely
+    hash only its `rounds[]` array because that contract embeds every
+    player-visible/evidentiary field *inside* each round object. Record
+    Routes normalizes evidence into separate `releases[]`/`artists[]`
+    arrays and album refs into `universe.albums[]`, referenced by id --
+    a route's own `rounds[]` entry only carries `hops[].role_a/role_b`
+    inline, so hashing it alone would miss a silent edit to a displayed
+    artist name or album title."""
+    payload = {"albums": albums, "rounds": rounds_json, "releases": releases, "artists": artists}
+    digest = content_hash(payload, length=12)
     return f"routes-artifact-v1-{snapshot_date}-{digest}"
 
 
@@ -126,15 +165,24 @@ def build_record_routes_pool(
         pool_version=pool_version,
     )
 
-    artifact_version = record_routes_artifact_version(rounds["rounds"], snapshot_date)
+    # Art-free: cover art is resolved by album id from the album-art registry
+    # (ADR 0045), never embedded in this artifact. Strip BEFORE computing
+    # artifact_version, so the version reflects the actually-published
+    # (art-free) payload, not a pre-strip intermediate.
+    for album in universe["albums"]:
+        album.pop("cover_image", None)
+
+    artifact_version = record_routes_artifact_version(
+        albums=universe["albums"],
+        rounds_json=rounds["rounds"],
+        releases=rounds["releases"],
+        artists=rounds["artists"],
+        snapshot_date=snapshot_date,
+    )
     for artifact in (universe, rounds):
         artifact["mode"] = RECORD_ROUTES_MODE
         artifact["provenance"]["catalog_version"] = catalog_version
         artifact["provenance"]["artifact_version"] = artifact_version
-    # Art-free: cover art is resolved by album id from the album-art registry
-    # (ADR 0045), never embedded in this artifact.
-    for album in universe["albums"]:
-        album.pop("cover_image", None)
 
     return universe, rounds, diagnostics
 

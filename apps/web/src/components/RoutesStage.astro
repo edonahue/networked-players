@@ -43,8 +43,8 @@ const { label = "Record Routes round" } = Astro.props;
   </p>
 
   <div class="chip-tray" data-testid="routes-length-tray" role="radiogroup" aria-label="Guess the path length">
-    <button type="button" class="chip" data-length="one_hop">One hop</button>
-    <button type="button" class="chip" data-length="two_hop">Two hops</button>
+    <button type="button" class="chip" role="radio" aria-checked="false" tabindex="0" data-length="one_hop">One hop</button>
+    <button type="button" class="chip" role="radio" aria-checked="false" tabindex="-1" data-length="two_hop">Two hops</button>
   </div>
 
   <div data-testid="routes-artist-step" hidden>

@@ -88,7 +88,13 @@ def _album(album_id: str) -> dict[str, Any]:
     }
 
 
-def _provenance(rounds: list[dict[str, Any]]) -> dict[str, Any]:
+def _provenance(
+    routes: list[dict[str, Any]],
+    albums: list[dict[str, Any]],
+    releases: list[dict[str, Any]],
+    artists: list[dict[str, Any]],
+) -> dict[str, Any]:
+    payload = {"albums": albums, "rounds": routes, "releases": releases, "artists": artists}
     return {
         "source": "Discogs monthly data dump (CC0), one-hop working set",
         "license": "See docs/DATA_AND_RIGHTS.md.",
@@ -98,7 +104,7 @@ def _provenance(rounds: list[dict[str, Any]]) -> dict[str, Any]:
         "note": "Real path evidence.",
         "catalog_version": _CATALOG_VERSION,
         "artifact_version": (
-            f"routes-artifact-v1-{_SNAPSHOT_DATE}-{content_hash(rounds, length=12)}"
+            f"routes-artifact-v1-{_SNAPSHOT_DATE}-{content_hash(payload, length=12)}"
         ),
     }
 
@@ -107,14 +113,17 @@ def _pair() -> tuple[dict[str, Any], dict[str, Any]]:
     routes = [_route()]
     ids = sorted(r["id"] for r in routes)
     pool_version = f"routes-v1-{_SNAPSHOT_DATE}-{content_hash(ids, length=12)}"
-    prov = _provenance(routes)
+    albums = [_album("master-1"), _album("master-2")]
+    releases = [{"release_id": 500, "title": "Release 500"}]
+    artists = [{"artist_id": 100, "name": "Artist 100"}, {"artist_id": 200, "name": "Artist 200"}]
+    prov = _provenance(routes, albums, releases, artists)
     universe = {
         "schema_version": 1,
         "mode": "record_routes",
         "pool_version": pool_version,
         "provenance": prov,
         "counts": {"one_hop": 1, "two_hop": 0, "daily_eligible": 1},
-        "albums": [_album("master-1"), _album("master-2")],
+        "albums": albums,
     }
     rounds = {
         "schema_version": 1,
@@ -122,8 +131,8 @@ def _pair() -> tuple[dict[str, Any], dict[str, Any]]:
         "pool_version": pool_version,
         "provenance": prov,
         "rounds": routes,
-        "releases": [],
-        "artists": [],
+        "releases": releases,
+        "artists": artists,
     }
     return universe, rounds
 

@@ -61,17 +61,27 @@ export function buildArtMap(registry: unknown): Map<string, ResolvedArt> {
   return map;
 }
 
-let cached: Promise<Map<string, ResolvedArt>> | null = null;
+// Keyed by the requested `catalogVersion` (an empty string standing in for
+// "no version requested") -- a bare nullable Promise here would let a
+// second call in the same page load with a DIFFERENT catalogVersion
+// incorrectly reuse the first call's result. Every current page only ever
+// calls this once with one version, so this was a latent defect, not an
+// observed one -- fixed anyway since nothing about the cache's own contract
+// promised single-version use.
+const cached = new Map<string, Promise<Map<string, ResolvedArt>>>();
 
-/** Fetch and cache the art registry once per page. A missing or malformed
- * registry resolves to an empty map (all placeholders) — never rejects. If
- * `catalogVersion` is given, a registry whose `catalog_version` disagrees is
- * ignored (empty map): art must belong to the catalog the rounds came from. */
+/** Fetch and cache the art registry once per page per requested
+ * `catalogVersion`. A missing or malformed registry resolves to an empty
+ * map (all placeholders) — never rejects. If `catalogVersion` is given, a
+ * registry whose `catalog_version` disagrees is ignored (empty map): art
+ * must belong to the catalog the rounds came from. */
 export function fetchAlbumArt(
   catalogVersion?: string,
 ): Promise<Map<string, ResolvedArt>> {
-  if (cached) return cached;
-  cached = (async () => {
+  const cacheKey = catalogVersion ?? "";
+  const existing = cached.get(cacheKey);
+  if (existing) return existing;
+  const promise = (async () => {
     try {
       const res = await fetch("/data/catalog/album-art.v1.json");
       if (!res.ok) return new Map<string, ResolvedArt>();
@@ -88,10 +98,11 @@ export function fetchAlbumArt(
       return new Map<string, ResolvedArt>();
     }
   })();
-  return cached;
+  cached.set(cacheKey, promise);
+  return promise;
 }
 
 /** Test-only: reset the per-page fetch cache. */
 export function _resetAlbumArtCache(): void {
-  cached = null;
+  cached.clear();
 }

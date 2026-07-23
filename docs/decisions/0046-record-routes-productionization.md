@@ -133,3 +133,98 @@ If Record Routes ever needs a frozen daily schedule of its own, that is a new,
 explicitly separate manifest (never the Connection Guesser's
 `connection_daily_manifest.py`) — following the same schema-v1
 single-artifact-version rule ADR 0043's slice-5.1 addendum established.
+
+## Addendum: contract hardening and `artifact_version` redefinition (2026-07-23, slice-9 corrective review)
+
+A post-launch corrective review (the same kind of focused audit ADR 0043's
+addenda document for the Connection Guesser) found the Record Routes
+contract validator (`networked_players_contracts.record_routes`) had fallen
+behind the legacy `rounds.py` contract it was built from, and that
+`artifact_version` did not cover everything it claimed to. The specific
+concern that prompted the review — that the *committed* artifact was itself
+missing `mode: "record_routes"` — was directly reproduced against the real
+files and **did not confirm** (both files carried the field, and
+`validate-record-routes` returned `{"ok": true}`); the gaps below are real
+regardless and are what this addendum fixes.
+
+**Reference-integrity checks restored.** `record_routes_failures` never
+checked that a hop's `release_id`/`artist_a_id`/`artist_b_id` resolved
+against the artifact's own `rounds.releases[]`/`rounds.artists[]`, unlike
+`rounds.py`'s equivalent check for the legacy contract. Fixed: added, reusing
+the same resolution-set pattern.
+
+**Album validation restored.** `universe.albums[]` had no per-item exact-
+key-set check and no duplicate-id detection (`rounds.py`'s `_ALBUM_KEYS`
+equivalent). Fixed with a Record-Routes-specific `_ROUTE_ALBUM_KEYS` (7
+keys, no `cover_image` — the legacy set doesn't apply since these albums are
+art-free by contract, ADR 0045).
+
+**Two-hop bridge continuity now checked, not just generation-time-only.**
+Added `_bridge_failures`: a one-hop route's single hop must connect exactly
+its two named endpoints; a two-hop route must have exactly one non-endpoint
+artist shared between its two hops. Unlike the Connection Guesser's real
+middle-uniqueness-across-the-whole-catalog guarantee (which genuinely can't
+be re-derived from a published artifact, ADR 0043), this costs nothing to
+re-check post-hoc, so there was no reason to leave it generation-time-only.
+
+**`artifact_version` redefined — real semantic change, not a bug fix.**
+`record_routes_artifact_version` previously hashed `rounds.rounds[]` alone
+and its docstring claimed this "mirrors the Connection Guesser
+`artifact_version`." That claim didn't hold: the Guesser embeds every
+player-visible/evidentiary field *inside* each round object, so hashing
+`rounds[]` alone genuinely covers everything published. Record Routes
+normalizes evidence into separate `rounds.releases[]`/`rounds.artists[]`
+arrays and album refs into `universe.albums[]`, referenced by id — a route's
+own `rounds[]` entry only carries `hops[].role_a/role_b` inline. A silent
+edit to a displayed artist's name or an album's title would not have moved
+`artifact_version`, even though it changes what a player sees.
+
+Redefined to hash the combined `{albums, rounds, releases, artists}`
+payload (excluding only the version fields themselves, to avoid
+self-reference). `pool_version` (membership-only, sorted route ids) is
+unaffected. Both `packages/graph-core/.../record_routes.py::record_routes_artifact_version`
+and its dependency-free mirror in `packages/contracts` were updated together
+(same rule as always: if the two disagree, it's a bug in whichever is
+stricter by mistake) and a new test
+(`test_evidence_only_change_moves_artifact_version`) proves an artist-name
+or release-title-only edit now moves the version.
+
+**Route-id orientation is intentionally sensitive, now documented.**
+`stable_route_id` sorts `from_album_id`/`to_album_id` before hashing, but
+does not canonicalize hop *order* — the same conceptual two-hop path
+traversed in the reverse direction (hops reversed) hashes to a different id.
+Confirmed by direct construction this was previously undocumented, not
+previously broken: `_two_hop_candidates`' `i < c` backbone-index iteration
+and artist-id-sorted `from`/`to` assignment mean the generator only ever
+discovers each unordered artist pair once, in one orientation, per run.
+Decision: **orientation-sensitive by design**, not a defect to fix —
+`from_artist_id`/`to_artist_id` are tied to which album renders as sleeve A
+vs. sleeve B, a real displayed distinction. Documented in
+`stable_route_id`'s docstring and pinned by
+`test_reversed_orientation_is_a_different_id_by_design`.
+
+**Real artifact regenerated and republished**, since the `artifact_version`
+redefinition changed what the committed file's own version field must equal.
+Proven semantically identical to the prior publish before republishing: same
+290 routes, same ids, same order, every semantic field (`kind`, `difficulty`,
+endpoints, hops, distractors) byte-identical, same `universe.albums`, same
+`rounds.releases`/`rounds.artists`, same `counts`; `pool_version` unchanged
+(membership didn't move); only `provenance.artifact_version` changed, exactly
+as the redefinition intends. Re-validated clean and privacy-scanned before
+publishing.
+
+**Frontend hardened to match.** `apps/web/src/game/routes.ts` previously did
+a raw `fetch` → `as T` type-cast with no runtime validation — no mode check,
+no version-agreement check, no reference-integrity check before dereference,
+and a silent `` `Artist ${id}` `` fallback on any lookup miss. New
+`apps/web/src/game/routesResolver.ts` (`validateRoutesPool`,
+`resolveSelectedRoute`) mirrors `dailyManifest.ts`'s hardened resolver
+pattern: every fetched value is untrusted, every failure mode is a typed,
+spoiler-free integrity state, never a thrown exception, never a substituted
+route. The one-hop reveal's copy was also corrected — it previously named
+only one endpoint artist as if they alone "connect" both records; it now
+names both endpoint artists and the shared release, matching what a one-hop
+route's evidence actually proves. Both chip trays (length, connecting-artist)
+now implement the same `role="radio"`/`aria-checked`/roving-tabindex/arrow-
+key model already used by the Connection Guesser's chip tray, rather than a
+bare `role="radiogroup"` container with plain, non-radio buttons inside it.

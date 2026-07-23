@@ -50,11 +50,63 @@ _PROVENANCE_REQUIRED = (
     "catalog_version",
     "artifact_version",
 )
+# Deliberately NOT rounds.py's `_ALBUM_KEYS` -- that legacy shape carries a
+# `cover_image` field; Record Routes albums are art-free by contract (ADR
+# 0045), so the real published shape has 7 keys, never that one.
+_ROUTE_ALBUM_KEYS = frozenset(
+    {"id", "master_id", "main_release_id", "title", "artist_id", "artist", "year"}
+)
 
 
 def _hop_signature(hop: dict[str, Any]) -> str:
     lo, hi = sorted((int(hop["artist_a_id"]), int(hop["artist_b_id"])))
     return f"{hop.get('release_id')}:{lo}:{hi}"
+
+
+def _bridge_failures(round_json: dict[str, Any], hops: list[Any], *, route_id: Any) -> list[str]:
+    """A one-hop route's single hop must connect exactly its two named
+    endpoints (nothing hidden). A two-hop route must have exactly one
+    artist shared between hop 0 and hop 1 that is NOT one of the two named
+    endpoints -- the unambiguous hidden bridge the frontend optionally asks
+    the player to name (`bridgeArtistId` in `apps/web/src/game/routes.ts`).
+    Both are checked here rather than left generation-time-only, unlike the
+    Connection Guesser's real two-hop-middle-uniqueness-across-the-whole-
+    catalog guarantee (ADR 0043): re-deriving THIS invariant costs nothing
+    given the hops are already published, so there is no reason not to."""
+    if not all(isinstance(h, dict) for h in hops):
+        return []
+    from_artist = round_json.get("from_artist_id")
+    to_artist = round_json.get("to_artist_id")
+    kind = round_json.get("kind")
+    if kind == "one_hop":
+        if len(hops) != 1:
+            return []
+        pair = {hops[0].get("artist_a_id"), hops[0].get("artist_b_id")}
+        if pair != {from_artist, to_artist}:
+            return [
+                f"route {route_id} one-hop route's hop artists {sorted(pair, key=str)} do not "
+                f"match its own endpoints {{from_artist_id: {from_artist}, "
+                f"to_artist_id: {to_artist}}}"
+            ]
+        return []
+    if kind == "two_hop":
+        if len(hops) != 2:
+            return []
+        side0 = {hops[0].get("artist_a_id"), hops[0].get("artist_b_id")}
+        side1 = {hops[1].get("artist_a_id"), hops[1].get("artist_b_id")}
+        failures: list[str] = []
+        if from_artist not in side0:
+            failures.append(f"route {route_id} two-hop hop 0 does not include from_artist_id")
+        if to_artist not in side1:
+            failures.append(f"route {route_id} two-hop hop 1 does not include to_artist_id")
+        bridge_candidates = (side0 & side1) - {from_artist, to_artist}
+        if len(bridge_candidates) != 1:
+            failures.append(
+                f"route {route_id} two-hop route must have exactly one non-endpoint bridge "
+                f"artist shared between its hops, got {sorted(bridge_candidates, key=str)}"
+            )
+        return failures
+    return []
 
 
 def recomputed_route_id(round_json: dict[str, Any]) -> str | None:
@@ -72,8 +124,23 @@ def _pool_version(round_ids: list[str], snapshot_date: str) -> str:
     return f"routes-v1-{snapshot_date}-{content_hash(sorted(round_ids), length=12)}"
 
 
-def _artifact_version(rounds_json: list[Any], snapshot_date: str) -> str:
-    return f"routes-artifact-v1-{snapshot_date}-{content_hash(rounds_json, length=12)}"
+def _artifact_version(
+    *,
+    albums: list[Any],
+    rounds_json: list[Any],
+    releases: list[Any],
+    artists: list[Any],
+    snapshot_date: str,
+) -> str:
+    """Must agree with
+    `networked_players_graph_core.record_routes::record_routes_artifact_version`
+    -- see that function's docstring for why this hashes the combined
+    albums/rounds/releases/artists payload rather than `rounds_json` alone
+    (Record Routes normalizes player-visible content into separate arrays,
+    unlike the Connection Guesser's inline-evidence shape)."""
+    payload = {"albums": albums, "rounds": rounds_json, "releases": releases, "artists": artists}
+    digest = content_hash(payload, length=12)
+    return f"routes-artifact-v1-{snapshot_date}-{digest}"
 
 
 def record_routes_failures(universe: Any, rounds: Any) -> list[str]:
@@ -106,15 +173,40 @@ def record_routes_failures(universe: Any, rounds: Any) -> list[str]:
         if not provenance.get(field_name):
             failures.append(f"provenance.{field_name} is required")
 
-    album_ids = {a.get("id") for a in universe.get("albums", []) if isinstance(a, dict)}
-
-    # Art-free: no cover-art payload may live in this artifact (ADR 0045).
-    for index, album in enumerate(universe.get("albums", [])):
-        if isinstance(album, dict) and ("cover_image" in album or "art" in album):
+    album_ids: set[Any] = set()
+    seen_album_ids: set[Any] = set()
+    albums = universe.get("albums", [])
+    if not isinstance(albums, list):
+        failures.append("universe.albums must be an array")
+        albums = []
+    for album in albums:
+        if not isinstance(album, dict):
+            failures.append("universe.albums entry must be an object")
+            continue
+        # Art-free: no cover-art payload may live in this artifact (ADR 0045).
+        if "cover_image" in album or "art" in album:
             failures.append(
-                f"universe.albums[{index}] must be art-free (resolve cover art by album id "
-                f"from the album-art registry, ADR 0045)"
+                f"universe.albums[{album.get('id')!r}] must be art-free (resolve cover art by "
+                f"album id from the album-art registry, ADR 0045)"
             )
+            continue
+        if set(album) != _ROUTE_ALBUM_KEYS:
+            failures.append(
+                f"universe.albums[{album.get('id')!r}] has unexpected keys: {sorted(album)}"
+            )
+            continue
+        album_id = album.get("id")
+        if album_id in seen_album_ids:
+            failures.append(f"duplicate album id in universe: {album_id}")
+        seen_album_ids.add(album_id)
+        album_ids.add(album_id)
+
+    release_ids: set[Any] = {
+        r.get("release_id") for r in rounds.get("releases", []) if isinstance(r, dict)
+    }
+    artist_ids: set[Any] = {
+        a.get("artist_id") for a in rounds.get("artists", []) if isinstance(a, dict)
+    }
 
     round_entries = rounds.get("rounds")
     if not isinstance(round_entries, list):
@@ -153,6 +245,19 @@ def record_routes_failures(universe: Any, rounds: Any) -> list[str]:
         else:
             for hop in hops:
                 failures.extend(_hop_failures(hop, round_id=route_id))
+                if isinstance(hop, dict):
+                    if hop.get("release_id") not in release_ids:
+                        failures.append(
+                            f"route {route_id} hop references an unpublished release "
+                            f"{hop.get('release_id')!r}"
+                        )
+                    if (
+                        hop.get("artist_a_id") not in artist_ids
+                        or hop.get("artist_b_id") not in artist_ids
+                    ):
+                        failures.append(f"route {route_id} hop references an unpublished artist")
+            if kind in _KINDS:
+                failures.extend(_bridge_failures(round_json, hops, route_id=route_id))
         if round_json.get("from_album_id") == round_json.get("to_album_id"):
             failures.append(f"route {route_id} endpoints must be two different albums")
         for endpoint_field in ("from_album_id", "to_album_id"):
@@ -177,11 +282,18 @@ def record_routes_failures(universe: Any, rounds: Any) -> list[str]:
                 f"pool_version {universe.get('pool_version')!r} does not match the routes' own "
                 f"membership (expected {expected_pool!r})"
             )
-        expected_artifact = _artifact_version(round_entries, snapshot_date)
+        expected_artifact = _artifact_version(
+            albums=albums,
+            rounds_json=round_entries,
+            releases=rounds.get("releases", []),
+            artists=rounds.get("artists", []),
+            snapshot_date=snapshot_date,
+        )
         if provenance.get("artifact_version") != expected_artifact:
             failures.append(
                 f"provenance.artifact_version {provenance.get('artifact_version')!r} does not "
-                f"match the rounds' own ordered content (expected {expected_artifact!r})"
+                f"match the published albums/rounds/releases/artists content "
+                f"(expected {expected_artifact!r})"
             )
 
     source = str(provenance.get("source", "")).lower()
