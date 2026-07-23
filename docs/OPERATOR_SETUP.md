@@ -635,6 +635,11 @@ produced. This is purely a second, independent safety check (the same structural
 leak/tone checks `validate-connectivity`/`validate-playable-cohort` already run locally);
 it is never required, and nothing in the rehearsal above depends on it.
 
+Like the artifact checks below, fan-out is real: every worker in the targeted inventory
+group gets its own job on its own queue, and the check passes only if every targeted
+worker's result is valid. Pass `--limit <hostname>` to target a single worker for
+debugging.
+
 ```bash
 # One-time: deploy the job body to the Pi fleet.
 ./infra/ansible/run-deploy-cohort-check-job-local.sh --limit pi_workers
