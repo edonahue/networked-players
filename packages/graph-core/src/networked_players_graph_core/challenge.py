@@ -10,11 +10,12 @@ and verify the experience, plus full provenance.
 
 from __future__ import annotations
 
-import json
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from typing import Any
+
+from networked_players_contracts.challenge import challenge_failures
 
 from . import __version__
 from .album_policy import master_non_studio_reason
@@ -22,55 +23,9 @@ from .graph import CreditGraph, EvidencePath, FrontierTooLargeError
 
 CHALLENGE_SCHEMA_VERSION = 2
 
-_FORBIDDEN_SUBSTRINGS = ("/home/", "data/private", "local/", "DISCOGS_TOKEN", ".ssh")
-_TOP_LEVEL_KEYS = frozenset(
-    {"schema_version", "provenance", "albums", "artists", "paths", "releases"}
-)
-# The release-table fields per data/contracts/challenge-v2.md (RELEASE_SCHEMA
-# minus `images`, per that contract) plus the `credits` evidence array this
-# builder adds. Checked exactly in validate_challenge so a leaked column
-# (e.g. a DuckDB read_parquet Hive-partition artifact from a `table=X/`
-# directory name) fails validation instead of silently shipping.
-_RELEASE_KEYS = frozenset(
-    {
-        "snapshot_date",
-        "release_id",
-        "status",
-        "title",
-        "country",
-        "released",
-        "master_id",
-        "master_is_main_release",
-        "data_quality",
-        "source_url",
-        "credits",
-    }
-)
-
 
 class ChallengeValidationError(RuntimeError):
     """Raised when a challenge.v2 artifact violates its contract."""
-
-
-def _find_seed_keys(obj: Any, path: str = "") -> list[str]:
-    """Recursively collect dotted paths to any dict key literally named `seed`.
-
-    A substring search over the serialized JSON would also flag the
-    provenance note's deliberate prose use of the word "seed" -- this checks
-    dict keys only, so it catches a real leaked field (e.g. a stray
-    `"seed": [...]`) without tripping on that sentence.
-    """
-    found: list[str] = []
-    if isinstance(obj, dict):
-        for key, value in obj.items():
-            child_path = f"{path}.{key}" if path else str(key)
-            if key == "seed":
-                found.append(child_path)
-            found.extend(_find_seed_keys(value, child_path))
-    elif isinstance(obj, list):
-        for index, item in enumerate(obj):
-            found.extend(_find_seed_keys(item, f"{path}[{index}]"))
-    return found
 
 
 @dataclass(slots=True)
@@ -522,49 +477,13 @@ def build_challenge_v2_from_matched(
     return artifact, report
 
 
-def validate_challenge(artifact: dict[str, Any]) -> None:
-    failures: list[str] = []
-
-    if set(artifact.keys()) != _TOP_LEVEL_KEYS:
-        failures.append(f"unexpected top-level keys: {sorted(artifact.keys())}")
-    if artifact.get("schema_version") != CHALLENGE_SCHEMA_VERSION:
-        failures.append(f"schema_version must be {CHALLENGE_SCHEMA_VERSION}")
-
-    provenance = artifact.get("provenance")
-    if not isinstance(provenance, dict):
-        failures.append("provenance must be an object")
-    else:
-        for field in ("source", "license", "snapshot_date", "generated_by", "graph_core_version"):
-            if not provenance.get(field):
-                failures.append(f"provenance.{field} is required")
-
-    for seed_key_path in _find_seed_keys(artifact):
-        failures.append(f"artifact must not have a 'seed' key ({seed_key_path})")
-
-    release_ids = {r.get("release_id") for r in artifact.get("releases", [])}
-    artist_ids = {a.get("artist_id") for a in artifact.get("artists", [])}
-
-    for release in artifact.get("releases", []):
-        if set(release.keys()) != _RELEASE_KEYS:
-            failures.append(
-                f"release {release.get('release_id')} has unexpected keys: {sorted(release.keys())}"
-            )
-
-    for album in artifact.get("albums", []):
-        if not isinstance(album.get("main_release_id"), int) or album["main_release_id"] <= 0:
-            failures.append(f"album {album.get('id')} has an invalid main_release_id")
-
-    for path in artifact.get("paths", []):
-        for hop in path.get("hops", []):
-            if hop.get("release_id") not in release_ids:
-                failures.append(f"path {path.get('id')} references an unpublished release")
-            if hop.get("artist_a_id") not in artist_ids or hop.get("artist_b_id") not in artist_ids:
-                failures.append(f"path {path.get('id')} references an unpublished artist")
-
+def validate_challenge(artifact: dict[str, Any], catalog: dict[str, Any] | None = None) -> None:
+    """Generation-time validation -- delegates to the same dependency-free
+    checklist the Pi fleet and web build run
+    (`networked_players_contracts.challenge::challenge_failures`), so the
+    two can never drift. `catalog`, if given, is used to cross-check
+    `provenance.catalog_version` when the artifact carries one (see
+    `challenge_failures`'s own docstring for the legitimate `None` case)."""
+    failures = challenge_failures(artifact, catalog)
     if failures:
         raise ChallengeValidationError("; ".join(failures))
-
-    serialized = json.dumps(artifact)
-    for forbidden in _FORBIDDEN_SUBSTRINGS:
-        if forbidden in serialized:
-            raise ChallengeValidationError(f"artifact contains forbidden substring: {forbidden!r}")

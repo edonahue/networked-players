@@ -211,3 +211,46 @@ def test_playable_cohort_broken_artifact_matches(job_body_module, tmp_path: Path
     result = job_body_module.check_playable_cohort(str(path))
     assert result["valid"] is False
     assert result["failures"]
+
+
+# --- staging-related fixes: _resolve() and structured (not uncaught) failures ---
+
+
+def test_a_relative_path_resolves_against_the_job_bodys_own_directory(
+    job_body_module, monkeypatch, tmp_path: Path
+) -> None:
+    """The original bug this closes: a bare `Path(artifact_path).read_text()`
+    resolved against the RQ worker's process CWD, not the persistent
+    rq_jobs_dir the artifact is actually staged into -- see
+    infra/ansible/playbooks/stage-artifact.yml. `_resolve()` reads `__file__`
+    from the module's own globals at call time, so monkeypatching it to a
+    directory under tmp_path simulates "the job body's own directory" being
+    rq_jobs_dir without writing into the real infra/ansible/files/ tree."""
+    fake_job_body_dir = tmp_path / "rq-jobs-dir"
+    fake_job_body_dir.mkdir()
+    monkeypatch.setattr(
+        job_body_module, "__file__", str(fake_job_body_dir / "cohort_artifact_check_job.py")
+    )
+    (fake_job_body_dir / "cohort-input-test.json").write_text(json.dumps(_valid_connectivity()))
+
+    result = job_body_module.check_connectivity("cohort-input-test.json")
+    assert result == {"valid": True, "failures": []}
+
+
+def test_missing_artifact_returns_a_structured_failure_not_a_traceback(
+    job_body_module, tmp_path: Path
+) -> None:
+    result = job_body_module.check_connectivity(str(tmp_path / "does-not-exist.json"))
+    assert result["valid"] is False
+    assert result["failures"]
+    assert "does-not-exist.json" in result["failures"][0]
+
+
+def test_malformed_json_returns_a_structured_failure_not_a_traceback(
+    job_body_module, tmp_path: Path
+) -> None:
+    path = tmp_path / "connectivity.json"
+    path.write_text("{not valid json")
+    result = job_body_module.check_playable_cohort(str(path))
+    assert result["valid"] is False
+    assert result["failures"]

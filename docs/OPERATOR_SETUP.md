@@ -640,11 +640,19 @@ group gets its own job on its own queue, and the check passes only if every targ
 worker's result is valid. Pass `--limit <hostname>` to target a single worker for
 debugging.
 
+Unlike the artifact checks below, the cohort artifact is a per-invocation operator path,
+not a fixed one a deploy playbook can bundle ahead of time — so `--artifact` is always a
+path **on this machine**, and `enqueue-cohort-check.sh` stages it (sha256, copy to every
+targeted worker under a content-addressed filename, verify the remote checksum before
+enqueueing anything) before running the check, then removes the staged copy afterward
+(pass `--keep-staged` to retain it for debugging). See
+`infra/ansible/playbooks/stage-artifact.yml` and `scripts/_artifact_staging.py`.
+
 ```bash
 # One-time: deploy the job body to the Pi fleet.
 ./infra/ansible/run-deploy-cohort-check-job-local.sh --limit pi_workers
 
-# Check an already-produced artifact (paths resolve on the targeted worker, not here):
+# Check an already-produced artifact (a path on THIS machine -- staged automatically):
 ./infra/swarm/deploy-jobs-broker.sh                     # if not already running
 ./scripts/enqueue-cohort-check.sh --kind connectivity \
   --artifact local/analysis/cohorts/<source-id>/connectivity.json

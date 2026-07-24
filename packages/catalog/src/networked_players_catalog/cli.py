@@ -614,11 +614,20 @@ def _parser() -> argparse.ArgumentParser:
         help=(
             "prove exact 1:1 correspondence between a catalog and its INCLUSION audit "
             "artifact -- validates only the one-row-per-included-album guarantee, not "
-            "any claim about excluded candidates"
+            "any claim about excluded candidates. Defaults to the real committed catalog "
+            "and audit paths; the audit lives under docs/data/, not "
+            "apps/web/public/data/, so it is a separate `make check` step from "
+            "validate-public-artifacts rather than folded into it."
         ),
     )
-    validate_catalog_audit.add_argument("--catalog", type=Path, required=True)
-    validate_catalog_audit.add_argument("--audit", type=Path, required=True)
+    validate_catalog_audit.add_argument(
+        "--catalog", type=Path, default=Path("apps/web/public/data/catalog/albums.v1.json")
+    )
+    validate_catalog_audit.add_argument(
+        "--audit",
+        type=Path,
+        default=Path("docs/data/studio-album-catalog-inclusion-audit-v1.json"),
+    )
 
     build_art_registry = subparsers.add_parser(
         "build-album-art-registry",
@@ -661,12 +670,12 @@ def _parser() -> argparse.ArgumentParser:
         help=(
             "validate the whole real public-artifact publication set in one pass -- "
             "catalog, album-art registry, Connection Guesser, daily manifest, Record "
-            "Routes -- against their individual contracts. Defaults to the real "
-            "committed paths under apps/web/public/data/; every input is a committed "
-            "public file, never private data, a token, or the home fleet. This is the "
-            "CI gate that catches a defect in an already-committed artifact that no "
-            "other check exercises (npm run check only validates the synthetic test "
-            "fixture, not real published data)."
+            "Routes, the album-centered challenge -- against their individual contracts. "
+            "Defaults to the real committed paths under apps/web/public/data/; every "
+            "input is a committed public file, never private data, a token, or the home "
+            "fleet. This is the CI gate that catches a defect in an already-committed "
+            "artifact that no other check exercises (npm run check only validates the "
+            "synthetic test fixture, not real published data)."
         ),
     )
     validate_public_artifacts.add_argument(
@@ -697,6 +706,9 @@ def _parser() -> argparse.ArgumentParser:
     )
     validate_public_artifacts.add_argument(
         "--routes-rounds", type=Path, default=Path("apps/web/public/data/routes/rounds.v1.json")
+    )
+    validate_public_artifacts.add_argument(
+        "--challenge", type=Path, default=Path("apps/web/public/data/challenge.v2.json")
     )
 
     fetch_dataset_parser = subparsers.add_parser(
@@ -2182,6 +2194,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             daily_manifest=json.loads(args.daily_manifest.read_text()),
             routes_universe=json.loads(args.routes_universe.read_text()),
             routes_rounds=json.loads(args.routes_rounds.read_text()),
+            challenge=json.loads(args.challenge.read_text()),
         )
         ok = all(not failures for failures in report.values())
         print(json.dumps({"ok": ok, "failures": report}, indent=2))
