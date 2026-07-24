@@ -8,18 +8,21 @@ at any time regardless of when the artifact was produced.
 Unlike the other five enqueue_*_check.py scripts, the artifact here is a
 per-invocation operator path with no fixed, known-in-advance location a
 deploy playbook could have bundled ahead of time -- so this script stages
-it (scripts/_artifact_staging.py: sha256, copy to every targeted worker
-under a content-addressed filename, verify the remote checksum) before
-enqueueing, and removes it afterward by default (pass --keep-staged to
-retain it for debugging). Fan-out itself is real, not sharded: every
-targeted worker independently re-validates its own staged copy (proving
-each worker's environment produces the same result), not a split of one
-job across workers -- unlike scripts/enqueue_verify_challenge.py, which
-genuinely splits a batch of paths across workers and is unrelated to this
-change. See scripts/_fleet_check.py for the shared per-worker-queue
-enqueue/collect/aggregate logic this script shares with the other five
-enqueue_*_check.py scripts. Pass --limit <hostname> to target a single
-worker for debugging.
+it (scripts/_artifact_staging.py: size-bounded local validation, sha256,
+copy to every targeted worker under a content-addressed AND per-invocation
+filename, verify the remote checksum) before enqueueing, and removes it
+afterward by default (pass --keep-staged to retain it for debugging). The
+remote filename and its cleanup are decided BEFORE staging is attempted, so
+cleanup is always attempted even if staging itself fails partway through
+(the try/finally wraps the staging attempt, not just what comes after it).
+Fan-out itself is real, not sharded: every targeted worker independently
+re-validates its own staged copy (proving each worker's environment
+produces the same result), not a split of one job across workers -- unlike
+scripts/enqueue_verify_challenge.py, which genuinely splits a batch of
+paths across workers and is unrelated to this change. See
+scripts/_fleet_check.py for the shared per-worker-queue enqueue/collect/
+aggregate logic this script shares with the other five enqueue_*_check.py
+scripts. Pass --limit <hostname> to target a single worker for debugging.
 
 Prerequisites (not checked here beyond a clear failure -- each fails loudly
 on its own if skipped): the jobs broker up (deploy-jobs-broker.sh), and the
@@ -39,7 +42,14 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-from _artifact_staging import stage_artifact, unstage_artifact, validate_local_artifact
+from _artifact_staging import (
+    local_sha256,
+    new_run_id,
+    remote_filename_for,
+    stage_artifact,
+    unstage_artifact,
+    validate_local_artifact,
+)
 from _fleet_check import (
     build_arg_parser,
     connect_to_broker,
@@ -81,22 +91,37 @@ def main() -> None:
     redis_conn = connect_to_broker(USAGE_HINT)
     workers = resolve_target_workers(args.workers, args.limit)
 
-    print(f"==> Staging {args.artifact} onto {len(workers)} worker(s): {workers}.")
-    staged_filename = stage_artifact(args.artifact, workers)
+    byte_size = args.artifact.stat().st_size
+    sha256 = local_sha256(args.artifact)
+    run_id = new_run_id()
+    remote_filename = remote_filename_for(sha256, run_id)
 
     try:
-        print(f"==> Checking {staged_filename} ({args.kind}) across {len(workers)} worker(s).")
+        print(
+            f"==> Staging {args.artifact} ({byte_size} bytes) as {remote_filename} "
+            f"onto {len(workers)} worker(s): {workers}."
+        )
+        stage_artifact(args.artifact, workers, remote_filename=remote_filename, sha256=sha256)
+
+        print(f"==> Checking {remote_filename} ({args.kind}) across {len(workers)} worker(s).")
         per_worker = enqueue_and_collect(
             workers=workers,
             queue_prefix=QUEUE_PREFIX,
             job_function=JOB_FUNCTIONS[args.kind],
-            job_args=(staged_filename,),
+            job_args=(remote_filename,),
             job_timeout=JOB_TIMEOUT_S,
             queue_factory=lambda name: Queue(name, connection=redis_conn),
         )
         output_path = write_report(
             prefix=QUEUE_PREFIX,
-            extra={"kind": args.kind, "artifact": str(args.artifact)},
+            extra={
+                "kind": args.kind,
+                "artifact": str(args.artifact),
+                "byte_size": byte_size,
+                "sha256": sha256,
+                "run_id": run_id,
+                "remote_filename": remote_filename,
+            },
             per_worker=per_worker,
         )
 
@@ -112,9 +137,9 @@ def main() -> None:
             sys.exit(1)
     finally:
         if args.keep_staged:
-            print(f"==> Kept staged {staged_filename} on {workers} (--keep-staged).")
+            print(f"==> Kept staged {remote_filename} on {workers} (--keep-staged).")
         else:
-            unstage_artifact(staged_filename, workers)
+            unstage_artifact(remote_filename, workers)
 
 
 if __name__ == "__main__":

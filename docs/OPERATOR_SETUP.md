@@ -643,10 +643,21 @@ debugging.
 Unlike the artifact checks below, the cohort artifact is a per-invocation operator path,
 not a fixed one a deploy playbook can bundle ahead of time — so `--artifact` is always a
 path **on this machine**, and `enqueue-cohort-check.sh` stages it (sha256, copy to every
-targeted worker under a content-addressed filename, verify the remote checksum before
-enqueueing anything) before running the check, then removes the staged copy afterward
-(pass `--keep-staged` to retain it for debugging). See
+targeted worker under a content-addressed **and per-invocation** filename
+`cohort-input-<sha256>-<run-id>.json`, verify the remote checksum before enqueueing
+anything) before running the check. The run-id component (a fresh random token per
+invocation) keeps two concurrent checks of byte-identical bytes from colliding on the
+same remote file and one invocation's cleanup removing another's still-in-flight input.
+The staged copy is removed afterward by default — cleanup is attempted even if staging
+itself fails partway through a multi-worker copy, not just after a fully successful one
+— pass `--keep-staged` to retain it for debugging instead. See
 `infra/ansible/playbooks/stage-artifact.yml` and `scripts/_artifact_staging.py`.
+
+**Size bound.** `--artifact` must be at most `MAX_COHORT_ARTIFACT_BYTES` (8 MiB,
+`scripts/_artifact_staging.py`) — checked locally, before any fleet contact, so an
+oversized file is rejected before it ever reaches a Pi's memory-capped burst worker.
+This validator is for bounded, human-reviewed cohorts, not dataset-scale input; there is
+no flag to raise or bypass this limit.
 
 ```bash
 # One-time: deploy the job body to the Pi fleet.

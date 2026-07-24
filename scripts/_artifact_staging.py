@@ -9,8 +9,12 @@ fixed location -- nothing ever put that file on a worker's filesystem before
 this module existed (see infra/ansible/playbooks/stage-artifact.yml's header
 comment for the confirmed bug this closes).
 
-Staging is content-addressed (`cohort-input-<sha256>.json`) so the remote
-filename never depends on the operator's local path, and verified
+Staging is content-addressed **and** per-invocation
+(`cohort-input-<sha256>-<run_id>.json`): the sha256 keeps the staged file
+identifiable, the run_id (a fresh `uuid.uuid4().hex` per call, filename-safe
+by construction) keeps two concurrent stagings of byte-identical bytes from
+colliding on the same remote name -- otherwise one invocation's cleanup
+could remove another's still-in-flight input. Verified
 (`infra/ansible/playbooks/stage-artifact.yml` checksums the copy on every
 target before returning success -- any one worker's mismatch aborts the
 whole run). Cleanup (`unstage_artifact`) is best-effort by design: it must
@@ -23,21 +27,49 @@ import hashlib
 import json
 import subprocess
 import sys
+import uuid
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 ANSIBLE_DIR = REPO_ROOT / "infra" / "ansible"
 
+# Pi-safe upper bound for a staged cohort artifact. This validator is for
+# bounded, human-reviewed cohorts (playable-cohort-v1.json is the reviewed,
+# promoted SUBSET of connectivity.json -- structurally smaller by
+# construction), not dataset-scale input. The only real committed public
+# fixture (apps/web/public/data/cohorts/synthetic-example.playable-v1.json)
+# is 1,853 bytes; 8 MiB is ~4,500x that. At a conservative 3-5x JSON->Python
+# parse-expansion factor, 8 MiB raw JSON tops out around 30-40 MiB parsed --
+# comfortably under the 512 MiB burst-worker MemoryMax
+# (infra/ansible/playbooks/run-rq-burst-worker.yml, ADR 0021's Pi-sized
+# default) on a Pi 3B treated as a constrained 1 GiB ARM64 node (AGENTS.md).
+# Each targeted worker gets its own independent copy under its own 512 MiB
+# cap, so worker count doesn't change this math. No override flag: nothing
+# in this repository's real fixtures or documented cohort sizes justifies
+# one yet.
+MAX_COHORT_ARTIFACT_BYTES = 8 * 1024 * 1024
+
 
 def validate_local_artifact(path: Path) -> None:
-    """Aborts loudly if `path` isn't a regular, valid-JSON file -- checked
-    before anything is staged, not discovered later as an opaque Ansible
-    failure."""
+    """Aborts loudly if `path` isn't a regular, Pi-safely-sized, valid-JSON
+    file -- checked before anything is staged, not discovered later as an
+    opaque Ansible failure or a burst-worker OOM. Size is checked via
+    `stat()` (before any read), so an oversized file is never even fully
+    read locally, let alone copied to the fleet."""
     if not path.exists():
         print(f"ABORT: no artifact at {path}.", file=sys.stderr)
         raise SystemExit(1)
     if not path.is_file():
         print(f"ABORT: {path} is not a regular file.", file=sys.stderr)
+        raise SystemExit(1)
+    size = path.stat().st_size
+    if size > MAX_COHORT_ARTIFACT_BYTES:
+        print(
+            f"ABORT: {path} is {size} bytes, over the {MAX_COHORT_ARTIFACT_BYTES}-byte "
+            "Pi-safe limit for a cohort artifact. This validator is for bounded, "
+            "human-reviewed cohorts, not dataset-scale input.",
+            file=sys.stderr,
+        )
         raise SystemExit(1)
     try:
         json.loads(path.read_text())
@@ -50,20 +82,27 @@ def local_sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def remote_filename_for(sha256: str) -> str:
-    return f"cohort-input-{sha256}.json"
+def new_run_id() -> str:
+    """A fresh, filename-safe, per-invocation token -- no hostname, path,
+    timestamp, or inventory identifier, just enough entropy that two
+    concurrent invocations staging identical bytes never share a remote
+    filename."""
+    return uuid.uuid4().hex
 
 
-def stage_artifact(path: Path, hosts: list[str]) -> str:
-    """Computes the artifact's sha256, copies it to every host's
-    `rq_jobs_dir` under a content-addressed filename, and verifies each
-    host's copy checksums the same before returning. Raises (via
-    `subprocess.run(..., check=True)`) if any host's copy or checksum
-    verification fails -- callers must not enqueue a check job before this
-    returns successfully. Returns the remote filename (identical across
-    every host)."""
-    sha256 = local_sha256(path)
-    remote_filename = remote_filename_for(sha256)
+def remote_filename_for(sha256: str, run_id: str) -> str:
+    return f"cohort-input-{sha256}-{run_id}.json"
+
+
+def stage_artifact(path: Path, hosts: list[str], *, remote_filename: str, sha256: str) -> None:
+    """Copies `path` to every host's `rq_jobs_dir` under `remote_filename`
+    and verifies each host's copy checksums to `sha256` before returning.
+    Raises (via `subprocess.run(..., check=True)`) if any host's copy or
+    checksum verification fails -- callers must not enqueue a check job
+    before this returns successfully. `remote_filename`/`sha256` are
+    supplied by the caller (not computed here) so they're known -- and a
+    cleanup can be attempted against them -- even if this call itself
+    raises partway through."""
     cmd = [
         str(ANSIBLE_DIR / "run-stage-artifact-local.sh"),
         "--limit",
@@ -78,13 +117,14 @@ def stage_artifact(path: Path, hosts: list[str]) -> str:
         f"expected_sha256={sha256}",
     ]
     subprocess.run(cmd, check=True)
-    return remote_filename
 
 
 def unstage_artifact(remote_filename: str, hosts: list[str]) -> None:
     """Best-effort removal from every host -- logs a warning rather than
     raising, since cleanup must never override the check's own already-
-    recorded result."""
+    recorded result. Safe to call even if staging never reached any worker
+    (Ansible's `file: state: absent` on an absent path is a harmless
+    no-op)."""
     cmd = [
         str(ANSIBLE_DIR / "run-stage-artifact-local.sh"),
         "--limit",
