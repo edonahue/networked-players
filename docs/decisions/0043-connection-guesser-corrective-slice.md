@@ -527,3 +527,44 @@ CLI command, it is just intentionally never deployed to the live fleet (no
 published artifact needs it validated remotely; a one-line comment added to
 the file says so, so a future reader doesn't assume a playbook is merely
 missing by accident).
+
+## Addendum: the cohort-artifact check job was never staged (2026-07-23, post-#54)
+
+A third instance of the same class of bug this ADR keeps finding in the
+Pi-fleet check-job wiring: `scripts/enqueue_cohort_check.py`'s per-worker
+fan-out (fixed alongside the other five `enqueue_*_check.py` scripts, see
+tracker issue #53) enqueued jobs correctly, but the cohort artifact itself
+was never actually placed on any worker's filesystem. Unlike the other five
+checks (a fixed, known-in-advance artifact a `deploy-*-check-job.yml`
+playbook bundles at deploy time), cohort checks take a per-invocation
+`--artifact <path>` with no fixed location to bundle ahead of time --
+`deploy-cohort-check-job.yml`'s own header comment says plainly that it
+deploys only the job body for exactly this reason. Compounding it,
+`infra/ansible/files/cohort_artifact_check_job.py` was the one check-job
+body missing the `_resolve()` helper every sibling has (resolves a relative
+path against the job body's own directory, i.e. the persistent
+`rq_jobs_dir`) -- a bare `Path(artifact_path).read_text()` resolved against
+the RQ burst worker's process CWD instead, which is nowhere documented and
+not guaranteed to contain anything. The documented example commands in
+`docs/OPERATOR_SETUP.md` (coordination-host-relative paths like
+`local/analysis/cohorts/<source-id>/connectivity.json`) would have failed
+with `FileNotFoundError` on a real, normally-provisioned worker -- caught
+by inspection before any real fleet run happened, not from a live failure
+(no real check job has run against the fleet yet, per issue #53).
+
+Fixed with a real per-invocation stage -> enqueue -> verify -> cleanup
+flow rather than a deploy-time bundle, since the artifact path is only
+known at enqueue time: `infra/ansible/playbooks/stage-artifact.yml`
+copies the operator's local file to every targeted worker's `rq_jobs_dir`
+under a content-addressed filename (`cohort-input-<sha256>.json`,
+`any_errors_fatal: true` so one worker's checksum mismatch aborts before
+anything is enqueued); `scripts/_artifact_staging.py` wraps that from
+Python; `enqueue_cohort_check.py` stages, enqueues, and always removes the
+staged copy afterward (`try`/`finally`, `--keep-staged` to retain it for
+debugging). `cohort_artifact_check_job.py` gained the missing `_resolve()`
+and now returns a structured `{"valid": false, "failures": [...]}` on a
+missing or malformed file instead of an uncaught RQ traceback.
+
+`scripts/enqueue_verify_challenge.py` was deliberately left untouched --
+it already splits a batch of paths across workers (a genuinely different,
+already-correct sharding pattern), unrelated to this bug.

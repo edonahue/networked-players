@@ -1122,12 +1122,13 @@ Pi's `rq_jobs_dir` at once without one silently overwriting another's input — 
 | Connection Guesser | `apps/web/public/data/game/{universe,rounds}.v1.json` | `pool_version`, `artifact_version` (+ `catalog_version`) | One-hop dataset + catalog + artist-family exclusions | `networked_players_contracts.connection_rounds::connection_rounds_failures` | `connection_rounds_check_job.py` | `/play/daily/`, the daily manifest |
 | Connection-daily-manifest | `apps/web/public/data/game/daily-manifest.v1.json` | `pool_version`, `artifact_version` (+ `catalog_version`), all must match the paired rounds artifact exactly | The Connection Guesser rounds artifact, scheduled | `networked_players_contracts.connection_daily_manifest::connection_daily_manifest_failures` | `daily_manifest_check_job.py` | `/play/daily/` |
 | Record Routes | `apps/web/public/data/routes/{universe,rounds}.v1.json` | `pool_version`, `artifact_version` (+ `catalog_version`) | One-hop dataset + catalog + release-format policy (bridge gating) | `networked_players_contracts.record_routes::record_routes_failures` | `record_routes_check_job.py` | `/play/routes/` |
+| Album-centered challenge | `apps/web/public/data/challenge.v2.json` | `catalog_version` only -- no `pool_version`/`artifact_version` (a one-shot static artifact, not a scored pool) | One-hop dataset + catalog (or a hand-written `{artist,title}` query list, `catalog_version: null`) | `networked_players_contracts.challenge::challenge_failures` | none -- validated via `validate-public-artifacts` (CI/`make check`) only, no per-artifact Pi check job | Homepage, `/albums/` grid + detail pages |
 
-Every `*_version`/`*_failures` pair above follows the same identity model established for
-the Connection Guesser (ADR 0043): a `pool_version` changes only on membership change; an
-`artifact_version` changes on ANY published-field change, including reordering. Regenerate
-in the order the table implies (catalog first, everything else after) whenever the
-catalog itself changes.
+Every `pool_version`/`artifact_version` pair above (the challenge artifact has neither)
+follows the same identity model established for the Connection Guesser (ADR 0043): a
+`pool_version` changes only on membership change; an `artifact_version` changes on ANY
+published-field change, including reordering. Regenerate in the order the table implies
+(catalog first, everything else after) whenever the catalog itself changes.
 
 ## Resource expectations
 

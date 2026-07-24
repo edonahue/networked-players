@@ -3,10 +3,16 @@
 This contract describes the album-centered static challenge artifact produced by
 `networked-players-catalog build-challenge-from-dump`, defined in
 `packages/graph-core/src/networked_players_graph_core/challenge.py`
-(`CHALLENGE_SCHEMA_VERSION`, `build_challenge_v2`, `validate_challenge`).
+(`CHALLENGE_SCHEMA_VERSION`, `build_challenge_v2`, `validate_challenge`). The actual
+structural checks live in the dependency-free
+`networked_players_contracts.challenge::challenge_failures` (no lxml/pyarrow/duckdb) --
+`validate_challenge` delegates to it so the two can never drift, same pattern as Record
+Routes (`data/contracts/record-routes-v1.md`, ADR 0046). `validate-public-artifacts`
+(`make check`) also runs it against the real committed
+`apps/web/public/data/challenge.v2.json` on every change.
 
-> **Source of truth.** `challenge.py` is authoritative. If this document and the code
-> disagree, the code wins and this file should be updated.
+> **Source of truth.** `challenge_failures` (contracts) is authoritative. If this
+> document and the code disagree, the code wins and this file should be updated.
 
 v2 evolves the de-facto v1 artifact (`apps/web/src/data/challenge.ts`,
 `public/data/challenge.v1.json`, ADR 0012) from artist-path-centered to
@@ -33,7 +39,7 @@ Integer, always `2` for this contract.
 | `snapshot_date` | The source dump snapshot the underlying one-hop dataset was expanded from (`YYYYMMDD`). |
 | `generated_by` | Tool + version string that produced the artifact. |
 | `graph_core_version` | `networked_players_graph_core.__version__` at generation time. |
-| `catalog_version` | The canonical `apps/web/public/data/catalog/albums.v1.json` this artifact's album set was resolved from (`--albums` pointed at that file), or `null` for a hand-written `{artist,title}` query list not built from it. See ADR 0043 — that catalog is the single source of truth for which albums exist across every real public surface; this artifact never re-derives its own album set independently. |
+| `catalog_version` | The canonical `apps/web/public/data/catalog/albums.v1.json` this artifact's album set was resolved from (`--albums` pointed at that file), or `null` for a hand-written `{artist,title}` query list not built from it. See ADR 0043 — that catalog is the single source of truth for which albums exist across every real public surface; this artifact never re-derives its own album set independently. When a caller passes the canonical catalog into `challenge_failures`/`validate_challenge` and this field is non-`null`, it must equal the catalog's own `catalog_version` exactly -- `null` is never itself a failure (it's the documented hand-written-list case above). |
 | `note` | Honest caveats: the private collection seed is never published; the album list is editorial, not a ranking. |
 
 No part of the artifact may contain seed identifiers, seed counts, seed hashes, or any
@@ -116,5 +122,11 @@ schema-version bump when a real need appears.
 `networked-players-catalog validate-challenge --input <path>`: structural checks
 (exact top-level keys, `schema_version == 2`, required provenance fields, every hop's
 `release_id`/artist IDs resolve into `releases`/`artists`, every album's
-`main_release_id` positive) plus the leak scan described above. `build-challenge-from-dump`
+`main_release_id` positive, the `catalog_version` cross-check above when a catalog is
+given) plus the leak scan described above. `build-challenge-from-dump`
 always calls this before writing.
+
+`networked-players-catalog validate-public-artifacts` (`make check`) re-runs the same
+dependency-free checklist against the real committed `challenge.v2.json`, cross-checked
+against the real committed catalog -- the CI gate that catches a defect in an
+already-published artifact that no other check exercises.
