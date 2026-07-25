@@ -42,7 +42,7 @@
           "release_id": 9001,
           "artist_a_id": 9001,
           "artist_b_id": 9002,
-          "quality_flags": ["co_billed_release_artists"]
+          "quality_flags": ["co_billed_release_artists", "release_scope_credit"]
         }
       ],
       "warnings": []
@@ -59,13 +59,13 @@
           "release_id": 9002,
           "artist_a_id": 9002,
           "artist_b_id": 9099,
-          "quality_flags": ["performer_credit"]
+          "quality_flags": ["performer_credit", "release_scope_credit"]
         },
         {
           "release_id": 9003,
           "artist_a_id": 9099,
           "artist_b_id": 9003,
-          "quality_flags": ["co_billed_release_artists"]
+          "quality_flags": ["co_billed_release_artists", "release_scope_credit"]
         }
       ],
       "warnings": []
