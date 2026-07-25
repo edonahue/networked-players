@@ -1124,6 +1124,18 @@ Each deploy playbook copies its artifacts under a contract-prefixed filename
 Pi's `rq_jobs_dir` at once without one silently overwriting another's input — see ADR
 0043's slice-8 addendum for the real bug this closed.
 
+### First real fleet observation (2026-07-25)
+
+Both of the above (the five fixed-artifact checks and "Pi ambient cohort-artifact
+checks") were run for real, not just described, at commit `13d90de` on the 3 active Pi
+workers (`worker-01`, `worker-02`, `worker-03`; the fleet's known-unreachable fourth Pi
+was not targeted). All five validators passed independently on every targeted worker.
+Cohort-artifact staging was exercised for the first time against the real fleet, using
+the committed `synthetic-example.playable-v1.json` fixture, and passed on all three
+workers with per-worker checksum agreement and per-run cleanup confirmed on each. This is
+an observed result for this date and this worker set, not a standing uptime guarantee —
+see [ADR 0018](decisions/0018-benchmark-results-local-only.md).
+
 ## Public artifact and version-relationship reference
 
 | Artifact | Real path | Version field(s) | Derived from | Dependency-free validator | Pi check-job | Consumers |
