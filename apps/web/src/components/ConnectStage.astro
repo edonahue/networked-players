@@ -1,0 +1,54 @@
+---
+// Connect Two Records (ADR 0051): pick any two albums in the pathfinding
+// graph's scope and search for a documented route between them. Markup
+// shell only -- all wiring lives in game/connect.ts (initConnect()),
+// matching RoutesStage.astro's split.
+---
+
+<div class="connect-stage" data-testid="connect-stage">
+  <div class="connect-picker-row">
+    <div class="connect-picker" data-picker="a">
+      <label for="connect-input-a">First record</label>
+      <input
+        id="connect-input-a"
+        type="text"
+        autocomplete="off"
+        placeholder="Search an album or artist…"
+        data-picker-input
+      />
+      <ul class="connect-picker__results" data-picker-results hidden></ul>
+      <div class="connect-picker__selected" data-picker-selected hidden></div>
+    </div>
+    <span class="connect-stage__arrow" aria-hidden="true">→</span>
+    <div class="connect-picker" data-picker="b">
+      <label for="connect-input-b">Second record</label>
+      <input
+        id="connect-input-b"
+        type="text"
+        autocomplete="off"
+        placeholder="Search an album or artist…"
+        data-picker-input
+      />
+      <ul class="connect-picker__results" data-picker-results hidden></ul>
+      <div class="connect-picker__selected" data-picker-selected hidden></div>
+    </div>
+  </div>
+
+  <button type="button" class="button primary" data-connect-search disabled>
+    Find the connection
+  </button>
+
+  <div class="connect-status" data-connect-status role="status" aria-live="polite" hidden></div>
+
+  <div class="connect-results" data-connect-results hidden>
+    <section data-connect-result="shortest">
+      <p class="eyebrow">Shortest documented route</p>
+      <div data-connect-hops></div>
+    </section>
+    <section data-connect-result="musical" hidden>
+      <p class="eyebrow">More musical route</p>
+      <p class="connect-explain" data-connect-explain></p>
+      <div data-connect-hops-musical></div>
+    </section>
+  </div>
+</div>

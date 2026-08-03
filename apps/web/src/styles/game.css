@@ -584,3 +584,124 @@ a.contributor-card:focus-visible {
 :root[data-motion="off"] .chip:focus-visible {
   transform: none;
 }
+
+/* Connect Two Records (ADR 0051) ------------------------------------------ */
+.connect-stage {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding-block: 24px;
+}
+.connect-picker-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.connect-picker {
+  position: relative;
+  flex: 1 1 260px;
+  min-width: 220px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.connect-picker label {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.connect-picker input {
+  min-height: 44px;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 1rem;
+}
+.connect-picker__results {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 5;
+  margin: 4px 0 0;
+  padding: 4px;
+  list-style: none;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  max-height: 260px;
+  overflow-y: auto;
+}
+.connect-picker__results button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.connect-picker__results button:hover,
+.connect-picker__results button:focus-visible {
+  background: var(--surface-soft);
+}
+.connect-picker__selected {
+  font-size: 0.88rem;
+  color: var(--accent-strong);
+}
+.connect-stage__arrow {
+  align-self: center;
+  margin-top: 30px;
+  color: var(--muted);
+}
+.connect-status {
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+.connect-results:not([hidden]) {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+.connect-hop {
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  margin-bottom: 10px;
+}
+.connect-hop p {
+  margin: 0 0 6px;
+}
+.connect-hop__role {
+  color: var(--muted);
+}
+.connect-hop__source {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.connect-explain {
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+@media (max-width: 640px) {
+  .connect-picker-row {
+    flex-direction: column;
+  }
+  .connect-stage__arrow {
+    align-self: flex-start;
+    margin-top: 0;
+    transform: rotate(90deg);
+  }
+}

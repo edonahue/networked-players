@@ -1,0 +1,96 @@
+// Connect Two Records (ADR 0051) integration tests against the real
+// committed pathfinding graph. "Discovery" (Daft Punk) and "The Joshua
+// Tree" (U2) are a real, directly-connected pair in the committed artifact
+// (verified against apps/web/public/data/pathfinding/graph.v1.json) --
+// picked from the artifact itself, not hardcoded blindly, so this survives
+// a future regeneration only if that specific edge remains; if it doesn't,
+// this test's failure is itself a useful signal to pick a new real pair.
+
+import { expect, test } from "@playwright/test";
+
+async function selectAlbum(
+  page: import("@playwright/test").Page,
+  picker: string,
+  query: string,
+) {
+  const input = page.locator(`[data-picker="${picker}"] input`);
+  await input.fill(query);
+  await page
+    .locator(`[data-picker="${picker}"] [data-picker-results] button`)
+    .first()
+    .click();
+}
+
+test("a real connected pair finds a documented route with evidence", async ({
+  page,
+}) => {
+  await page.goto("/play/connect/");
+  await selectAlbum(page, "a", "Discovery");
+  await selectAlbum(page, "b", "Joshua Tree");
+
+  const searchButton = page.locator("[data-connect-search]");
+  await expect(searchButton).toBeEnabled();
+  await searchButton.click();
+
+  await expect(page.locator("[data-connect-results]")).toBeVisible({
+    timeout: 15000,
+  });
+  await expect(
+    page.locator("[data-connect-hops] .connect-hop").first(),
+  ).toBeVisible();
+  await expect(
+    page.locator("[data-connect-hops] a[href*='discogs.com/release/']").first(),
+  ).toBeVisible();
+});
+
+test("search button stays disabled until two different albums are picked", async ({
+  page,
+}) => {
+  await page.goto("/play/connect/");
+  await expect(page.locator("[data-connect-search]")).toBeDisabled();
+  await selectAlbum(page, "a", "Discovery");
+  await expect(page.locator("[data-connect-search]")).toBeDisabled();
+});
+
+test("picking the same album twice keeps the search disabled", async ({
+  page,
+}) => {
+  await page.goto("/play/connect/");
+  await selectAlbum(page, "a", "Discovery");
+  await selectAlbum(page, "b", "Discovery");
+  await expect(page.locator("[data-connect-search]")).toBeDisabled();
+});
+
+test("a fetch failure for the pathfinding graph degrades gracefully", async ({
+  page,
+}) => {
+  await page.route("**/data/pathfinding/graph.v1.json", (route) =>
+    route.abort(),
+  );
+  await page.goto("/play/connect/");
+  await selectAlbum(page, "a", "Discovery");
+  await selectAlbum(page, "b", "Joshua Tree");
+  await page.locator("[data-connect-search]").click();
+
+  await expect(page.locator("[data-connect-status]")).toBeVisible();
+  await expect(page.locator("[data-connect-status]")).toContainText(
+    /couldn't fetch/i,
+  );
+  await expect(page.locator("[data-connect-results]")).toBeHidden();
+});
+
+test("the rest of the page keeps working after a failed search", async ({
+  page,
+}) => {
+  await page.route("**/data/pathfinding/graph.v1.json", (route) =>
+    route.abort(),
+  );
+  await page.goto("/play/connect/");
+  await selectAlbum(page, "a", "Discovery");
+  await selectAlbum(page, "b", "Joshua Tree");
+  await page.locator("[data-connect-search]").click();
+  await expect(page.locator("[data-connect-status]")).toBeVisible();
+
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  await expect(page.getByRole("link", { name: "About" })).toBeVisible();
+});

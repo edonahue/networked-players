@@ -14,6 +14,7 @@ from networked_players_contracts.canonical import content_hash, stable_id_digest
 from networked_players_contracts.catalog import _catalog_version
 from networked_players_contracts.connection_rounds import round_content_fingerprint
 from networked_players_contracts.contributor_index import contributor_index_version
+from networked_players_contracts.pathfinding_graph import pathfinding_graph_version
 
 _SNAPSHOT = "20260601"
 _CATALOG_VERSION = "catalog-v1-20260601-abc123abc123"
@@ -418,6 +419,31 @@ def _contributor_index() -> dict[str, Any]:
     }
 
 
+# --- pathfinding graph -------------------------------------------------------
+
+
+def _pathfinding_graph() -> dict[str, Any]:
+    catalog_version = _catalog()["catalog_version"]
+    # A tiny two-node CSR graph: artist 100 <-> artist 200, one edge.
+    payload: dict[str, Any] = {
+        "schema_version": 1,
+        "catalog_version": catalog_version,
+        "snapshot_date": _SNAPSHOT,
+        "generated_at": "2026-08-03T00:00:00+00:00",
+        "source": "Discogs monthly data dump (CC0), one-hop working set.",
+        "license": "See docs/DATA_AND_RIGHTS.md.",
+        "node_ids": [100, 200],
+        "names": ["Alice", "Bob"],
+        "offsets": [0, 1, 2],
+        "neighbors": [1, 0],
+        "evidence_release_ids": [1, 1],
+        "edge_role_a": ["Guitar", "Bass"],
+        "edge_role_b": ["Bass", "Guitar"],
+    }
+    payload["pathfinding_graph_version"] = pathfinding_graph_version(payload, _SNAPSHOT)
+    return payload
+
+
 # --- the combined check -------------------------------------------------------
 
 
@@ -433,6 +459,7 @@ def _clean_artifacts() -> dict[str, Any]:
         "routes_rounds": routes_rounds,
         "challenge": _challenge(),
         "contributor_index": _contributor_index(),
+        "pathfinding_graph": _pathfinding_graph(),
     }
 
 
@@ -446,6 +473,7 @@ def test_clean_publication_set_has_no_failures() -> None:
         "record_routes": [],
         "challenge": [],
         "contributor_index": [],
+        "pathfinding_graph": [],
     }
 
 
@@ -459,6 +487,7 @@ def test_every_group_key_always_present() -> None:
         "record_routes",
         "challenge",
         "contributor_index",
+        "pathfinding_graph",
     }
 
 
@@ -484,6 +513,7 @@ def test_deleted_mode_on_record_routes_is_caught() -> None:
     assert report["connection_daily_manifest"] == []
     assert report["challenge"] == []
     assert report["contributor_index"] == []
+    assert report["pathfinding_graph"] == []
 
 
 def test_catalog_defect_is_caught_independently() -> None:
@@ -497,6 +527,7 @@ def test_catalog_defect_is_caught_independently() -> None:
     assert report["record_routes"] == []
     assert report["challenge"] == []
     assert report["contributor_index"] == []
+    assert report["pathfinding_graph"] == []
 
 
 def test_deleted_provenance_field_on_challenge_is_caught() -> None:
@@ -517,6 +548,7 @@ def test_deleted_provenance_field_on_challenge_is_caught() -> None:
     assert report["connection_daily_manifest"] == []
     assert report["record_routes"] == []
     assert report["contributor_index"] == []
+    assert report["pathfinding_graph"] == []
 
 
 def test_contributor_index_defect_is_caught_independently() -> None:
@@ -530,3 +562,17 @@ def test_contributor_index_defect_is_caught_independently() -> None:
     assert report["catalog"] == []
     assert report["challenge"] == []
     assert report["record_routes"] == []
+    assert report["pathfinding_graph"] == []
+
+
+def test_pathfinding_graph_defect_is_caught_independently() -> None:
+    artifacts = _clean_artifacts()
+    broken_graph = deepcopy(artifacts["pathfinding_graph"])
+    del broken_graph["node_ids"][0]
+    artifacts["pathfinding_graph"] = broken_graph
+
+    report = public_artifacts_failures(**artifacts)
+    assert report["pathfinding_graph"] != []
+    assert report["catalog"] == []
+    assert report["challenge"] == []
+    assert report["contributor_index"] == []

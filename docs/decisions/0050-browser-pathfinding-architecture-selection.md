@@ -54,6 +54,23 @@ exploration tier needs reach this architecture cannot cover — they are not
 rejected, only not yet needed given the evidence for the scope Slice F
 actually targets.
 
+## Addendum (Slice F, 2026-08-03): real built-artifact size correction
+
+Once Slice F actually built the real `pathfinding-graph-v1` artifact for the
+140-album catalog's scope (`data/contracts/pathfinding-graph-v1.md`), its
+real gzip size (~1.8 MB) was notably larger than this ADR's own qualitative
+"smaller than the largest artifact already shipped" framing suggested. That
+framing measured only bare CSR topology (node/offset/neighbor arrays);
+per-edge role text and per-node display names — both necessary for
+rendering evidence without a second fetch — add real, substantial size this
+ADR's benchmark pass did not account for. The parallel-array serialization
+Slice F used (rather than an array of `{key: value}` objects per edge/node)
+measurably avoided a much larger regression (roughly 15x smaller than the
+object-shaped alternative at this graph's real size), but did not make the
+artifact as small as the topology-only estimate implied. The architecture
+decision above (bounded, small-scope browser-local CSR) still stands; the
+absolute size expectation is corrected here rather than left stale.
+
 ## Consequences
 
 - Slice F's first version is scoped conservatively (comparable to today's
