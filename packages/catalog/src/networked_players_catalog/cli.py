@@ -98,6 +98,23 @@ def _parser() -> argparse.ArgumentParser:
     format_shadow.add_argument("--policy", type=Path, required=True)
     format_shadow.add_argument("--output", type=Path, required=True)
 
+    classify_roles = subparsers.add_parser(
+        "classify-roles",
+        help=(
+            "corpus coverage diagnostic for the role taxonomy: % of role_text "
+            "classified and the unknown-role frequency distribution -- never "
+            "a filter or a build step, and never published"
+        ),
+    )
+    classify_roles.add_argument("--dataset", type=Path, required=True)
+    classify_roles.add_argument(
+        "--output",
+        type=Path,
+        default=None,
+        help="optional JSON report path (local-only, e.g. local/analysis/role-taxonomy/)",
+    )
+    classify_roles.add_argument("--top-unknown", type=int, default=50)
+
     format_index = subparsers.add_parser(
         "build-release-format-scoring-index",
         help="write a compact allowed-release index from a review policy",
@@ -1166,6 +1183,18 @@ def main(argv: Sequence[str] | None = None) -> int:
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n")
         print(json.dumps({"output": str(args.output), "counts": report["counts"]}, indent=2))
+        return 0
+
+    if args.command == "classify-roles":
+        from networked_players_graph_core.role_taxonomy import (
+            corpus_coverage_report_from_dataset,
+        )
+
+        report = corpus_coverage_report_from_dataset(args.dataset, top_unknown=args.top_unknown)
+        if args.output is not None:
+            args.output.parent.mkdir(parents=True, exist_ok=True)
+            args.output.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n")
+        print(json.dumps(report, indent=2, sort_keys=True))
         return 0
 
     if args.command == "build-release-format-scoring-index":
