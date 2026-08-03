@@ -682,6 +682,53 @@ def _parser() -> argparse.ArgumentParser:
     validate_art_registry.add_argument("--registry", type=Path, required=True)
     validate_art_registry.add_argument("--catalog", type=Path, required=True)
 
+    build_contributor_index = subparsers.add_parser(
+        "build-contributor-index",
+        help=(
+            "build the public contributor index "
+            "(apps/web/public/data/contributors/index.v1.json) entirely from two "
+            "already-published artifacts (challenge.v2.json + routes/{universe,rounds}.v1.json) "
+            "-- no fresh full-corpus graph query. Deterministic given the same inputs "
+            "(ADR 0048)"
+        ),
+    )
+    build_contributor_index.add_argument(
+        "--challenge", type=Path, required=True, help="apps/web/public/data/challenge.v2.json"
+    )
+    build_contributor_index.add_argument(
+        "--routes-universe",
+        type=Path,
+        required=True,
+        help="apps/web/public/data/routes/universe.v1.json",
+    )
+    build_contributor_index.add_argument(
+        "--routes-rounds",
+        type=Path,
+        required=True,
+        help="apps/web/public/data/routes/rounds.v1.json",
+    )
+    build_contributor_index.add_argument(
+        "--catalog", type=Path, required=True, help="apps/web/public/data/catalog/albums.v1.json"
+    )
+    build_contributor_index.add_argument("--output", type=Path, required=True)
+    build_contributor_index.add_argument(
+        "--generated-at",
+        required=True,
+        help="explicit ISO datetime for this build (never the wall clock), e.g. "
+        "2026-08-03T00:00:00+00:00",
+    )
+
+    validate_contributor_index = subparsers.add_parser(
+        "validate-contributor-index",
+        help=(
+            "validate a contributor index against the canonical catalog it claims to "
+            "belong to (catalog_version agreement, album-id membership, "
+            "contributor_index_version recomputation, no private/inference-implying data)"
+        ),
+    )
+    validate_contributor_index.add_argument("--index", type=Path, required=True)
+    validate_contributor_index.add_argument("--catalog", type=Path, required=True)
+
     validate_public_artifacts = subparsers.add_parser(
         "validate-public-artifacts",
         help=(
@@ -726,6 +773,11 @@ def _parser() -> argparse.ArgumentParser:
     )
     validate_public_artifacts.add_argument(
         "--challenge", type=Path, default=Path("apps/web/public/data/challenge.v2.json")
+    )
+    validate_public_artifacts.add_argument(
+        "--contributor-index",
+        type=Path,
+        default=Path("apps/web/public/data/contributors/index.v1.json"),
     )
 
     fetch_dataset_parser = subparsers.add_parser(
@@ -2212,6 +2264,49 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(json.dumps({"ok": True, "albums_with_art": len(registry["albums"])}, indent=2))
         return 0
 
+    if args.command == "build-contributor-index":
+        from networked_players_contracts.contributor_index import contributor_index_failures
+        from networked_players_graph_core.contributor_index import build_contributor_index
+
+        catalog = json.loads(args.catalog.read_text())
+        index = build_contributor_index(
+            challenge=json.loads(args.challenge.read_text()),
+            routes_universe=json.loads(args.routes_universe.read_text()),
+            routes_rounds=json.loads(args.routes_rounds.read_text()),
+            catalog=catalog,
+            generated_at=args.generated_at,
+        )
+        failures = contributor_index_failures(index, catalog)
+        if failures:
+            raise ValueError(
+                "refusing to write an invalid contributor index: " + "; ".join(failures)
+            )
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(json.dumps(index, indent=2) + "\n")
+        print(
+            json.dumps(
+                {
+                    "output": str(args.output),
+                    "catalog_version": index["catalog_version"],
+                    "contributor_index_version": index["contributor_index_version"],
+                    "contributors": len(index["contributors"]),
+                },
+                indent=2,
+            )
+        )
+        return 0
+
+    if args.command == "validate-contributor-index":
+        from networked_players_contracts.contributor_index import contributor_index_failures
+
+        index = json.loads(args.index.read_text())
+        catalog = json.loads(args.catalog.read_text())
+        failures = contributor_index_failures(index, catalog)
+        if failures:
+            raise ValueError("; ".join(failures))
+        print(json.dumps({"ok": True, "contributors": len(index["contributors"])}, indent=2))
+        return 0
+
     if args.command == "validate-public-artifacts":
         from networked_players_contracts import public_artifacts_failures
 
@@ -2224,6 +2319,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             routes_universe=json.loads(args.routes_universe.read_text()),
             routes_rounds=json.loads(args.routes_rounds.read_text()),
             challenge=json.loads(args.challenge.read_text()),
+            contributor_index=json.loads(args.contributor_index.read_text()),
         )
         ok = all(not failures for failures in report.values())
         print(json.dumps({"ok": ok, "failures": report}, indent=2))

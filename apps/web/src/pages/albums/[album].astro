@@ -5,9 +5,15 @@ import RevealControls from '../../components/RevealControls.astro';
 import { buildHopViews } from '../../data/evidence';
 import type { AlbumV2, ChallengeV2 } from '../../data/challenge';
 import { coverFor } from '../../data/albumArt';
+import type { ContributorIndex } from '../../data/contributors';
 import challengeData from '../../../public/data/challenge.v2.json';
+import contributorIndexData from '../../../public/data/contributors/index.v1.json';
 
 const challenge = challengeData as ChallengeV2;
+const contributorIndex = contributorIndexData as ContributorIndex;
+const contributorIdsWithPages = new Set(
+  contributorIndex.contributors.map((c) => c.artist_id),
+);
 
 export function getStaticPaths() {
   const data = challengeData as ChallengeV2;
@@ -42,8 +48,12 @@ const connectedPaths = paths
     Boolean(entry.otherAlbum),
   );
 
-// Minimal contributor cards (plan §6/§12.7): the linked identities that carry
-// this album's documented connections. Names only — deliberately not pages.
+// Contributor cards (plan §6/§12.7): the linked identities that carry this
+// album's documented connections. Links to each contributor's own page
+// (Phase 2 Slice C, ADR 0048) when one exists in the published contributor
+// index -- not every linked artist in a path necessarily clears that
+// index's own inclusion rule, so this falls back to a plain (non-linked)
+// card rather than a dangling href.
 const contributorIds = new Set(
   connectedPaths.flatMap(({ path }) =>
     path.hops.flatMap((hop) => [hop.artist_a_id, hop.artist_b_id]),
@@ -178,14 +188,25 @@ const description = [
                   The names carrying these connections
                 </p>
                 <div class="contributor-grid">
-                  {contributors.map((artist) => (
-                    <div class="contributor-card">
-                      <span class="contributor-card__name">{artist.name}</span>
-                      <span class="contributor-card__id">
-                        #{artist.artist_id} · linked identity
-                      </span>
-                    </div>
-                  ))}
+                  {
+                    contributors.map((artist) =>
+                      contributorIdsWithPages.has(artist.artist_id) ? (
+                        <a class="contributor-card" href={`/contributors/${artist.artist_id}/`}>
+                          <span class="contributor-card__name">{artist.name}</span>
+                          <span class="contributor-card__id">
+                            #{artist.artist_id} · linked identity
+                          </span>
+                        </a>
+                      ) : (
+                        <div class="contributor-card">
+                          <span class="contributor-card__name">{artist.name}</span>
+                          <span class="contributor-card__id">
+                            #{artist.artist_id} · linked identity
+                          </span>
+                        </div>
+                      ),
+                    )
+                  }
                 </div>
               </section>
             )

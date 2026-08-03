@@ -500,7 +500,8 @@ a.mode-card:focus-visible {
   color: var(--muted);
 }
 
-/* Minimal contributor cards on album pages — names, never pages. */
+/* Contributor cards on album/contributor pages. Anchors when a contributor
+   page exists (Phase 2 Slice C); plain, non-interactive cards otherwise. */
 .contributor-grid {
   display: flex;
   flex-wrap: wrap;
@@ -514,6 +515,13 @@ a.mode-card:focus-visible {
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
   background: var(--surface);
+  text-decoration: none;
+  color: inherit;
+  transition: background-color 150ms ease;
+}
+a.contributor-card:hover,
+a.contributor-card:focus-visible {
+  background: var(--surface-soft);
 }
 .contributor-card__name {
   font-weight: 600;

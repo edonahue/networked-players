@@ -25,6 +25,14 @@ const cohortPaths = cohortManifest.cohorts.map(
   (cohort: { cohort_id: string }) => `/cohorts/${cohort.cohort_id}/`,
 );
 
+import type { ContributorIndex } from "../data/contributors";
+import contributorIndexData from "../../public/data/contributors/index.v1.json";
+
+const contributorIndex = contributorIndexData as ContributorIndex;
+const contributorPaths = contributorIndex.contributors.map(
+  (contributor) => `/contributors/${contributor.artist_id}/`,
+);
+
 const paths = [
   "/",
   "/play/",
@@ -37,6 +45,7 @@ const paths = [
   "/cohorts/",
   ...cohortPaths,
   ...albumPaths,
+  ...contributorPaths,
 ];
 
 export const GET: APIRoute = async ({ site }) => {
