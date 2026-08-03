@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 test("home renders hero, nav, and the album grid", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByRole("heading", { level: 1 })).toContainText(
-    "Pick an album",
+    "Explore the hidden network",
   );
   await expect(
     page.getByRole("link", { name: "Browse the albums" }).first(),
@@ -257,9 +257,29 @@ test("primary nav marks the current section with aria-current", async ({
   await page.goto("/albums/");
   await expect(
     page.locator("nav[aria-label='Primary'] a[aria-current='page']"),
-  ).toHaveText("Albums");
-  await page.goto("/play/");
+  ).toHaveText("Browse");
+  await page.goto("/play/daily/");
   await expect(
     page.locator("nav[aria-label='Primary'] a[aria-current='page']"),
-  ).toHaveText("Play");
+  ).toHaveText("Today's Connection");
+  await page.goto("/play/connection/");
+  await expect(
+    page.locator("nav[aria-label='Primary'] a[aria-current='page']"),
+  ).toHaveText("Find a Connection");
+});
+
+test("sitemap includes every play mode, including record routes", async ({
+  request,
+}) => {
+  const res = await request.get("/sitemap.xml");
+  const body = await res.text();
+  for (const path of [
+    "/play/",
+    "/play/connection/",
+    "/play/daily/",
+    "/play/routes/",
+  ]) {
+    expect(body).toContain(`<loc>`);
+    expect(body).toContain(path);
+  }
 });

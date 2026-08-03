@@ -19,7 +19,7 @@
     {
       "heading": "Where the project actually is",
       "paragraphs": [
-        "This is an early build, not a finished product, but the album grid and evidence-viewer experience now run on real, Discogs monthly-dump-derived data (snapshot 20260601) — 140 studio albums, 250 artists, 300 documented connections, drawn from a bounded working set seeded by a private collection that is never itself published. Album years are the master's original release year, not a reissue edition date, and the catalog fails closed against live albums, soundtracks, compilations, and other non-studio releases.",
+        "The album grid and evidence-viewer experience run on real, Discogs monthly-dump-derived data (snapshot 20260601) — 140 studio albums, 250 artists, 300 documented connections, drawn from a bounded working set seeded by a private collection that is never itself published. Album years are the master's original release year, not a reissue edition date, and the catalog fails closed against live albums, soundtracks, compilations, and other non-studio releases.",
         "The flagship Connection Guesser game (below) now runs on the same real catalog: 300 one-hop and 200 two-hop rounds derived from those 140 studio albums and their documented credits — the synthetic universe survives only as an isolated test fixture, never played. Connection of the Day serves one frozen real round per local calendar day from a committed schedule. Record Routes is a third, distinct mode on the same catalog: guess how many documented-credit hops connect two records, and, for two-hop routes, who bridges them.",
         "The connections demo on this site runs separately, on real Discogs data for a small, curated subset of releases and artist connections — fetched via the Discogs API ahead of the full CC0 dump pipeline (see the project's ADR 0012)."
       ]
@@ -34,7 +34,8 @@
     {
       "heading": "What's next",
       "paragraphs": [
-        "Replacing the connections demo's API-sourced dataset with one derived from the CC0 monthly dumps (with full provenance and no collection membership); and, eventually, producer/engineer-bridge and six-degrees play modes. A future live-search mode is additive and must fail gracefully — the static-first core always works on its own. (Real cover art and Record Routes, both mentioned here previously, have since shipped.)"
+        "Phase 2 is underway: a first-class role taxonomy for credits (producer, engineer, performer, and more, alongside the original role text), contributor pages that make the people behind these records as navigable as the albums themselves, and a measured, larger exploration graph for open-ended path search between records. None of this commits to a specific future catalog size in advance — every expansion is measured against the project's existing data-quality rules before anything ships.",
+        "Replacing the connections demo's API-sourced dataset with one derived from the CC0 monthly dumps (with full provenance and no collection membership) remains on the list, alongside producer/engineer-bridge and six-degrees play modes once the role taxonomy and a larger graph make them meaningful. A future live-search mode is additive and must fail gracefully — the static-first core always works on its own."
       ]
     }
   ]
