@@ -134,6 +134,7 @@ export function findPath(
   fromArtistId: number,
   toArtistId: number,
   maxHops = 4,
+  edgeFilter?: (roleA: string, roleB: string) => boolean,
 ): PathfindingResult {
   const start = artistIndex.get(fromArtistId);
   const goal = artistIndex.get(toArtistId);
@@ -154,6 +155,12 @@ export function findPath(
       for (let slot = begin; slot < end; slot++) {
         const neighbor = graph.neighbors[slot];
         if (visited.has(neighbor)) continue;
+        if (
+          edgeFilter &&
+          !edgeFilter(graph.edge_role_a[slot], graph.edge_role_b[slot])
+        ) {
+          continue;
+        }
         visited.add(neighbor);
         parentOf.set(neighbor, { parent: node, slot });
         if (neighbor === goal) {
