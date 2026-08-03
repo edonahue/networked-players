@@ -65,16 +65,18 @@ const albums = challenge.albums.filter((album) => connectedAlbumIds.has(album.id
 
   <section class="section shell" aria-labelledby="state-title">
     <div class="section-heading">
-      <p class="eyebrow">Honest status</p>
-      <h2 id="state-title">An early build, not a finished product.</h2>
+      <p class="eyebrow">What's real here</p>
+      <h2 id="state-title">Documented, not inferred.</h2>
       <p class="lede">
         The album grid above and its evidence viewer run on real, Discogs monthly-dump-derived
         data (snapshot {challenge.provenance.snapshot_date}) — {albums.length} studio albums
         connected by {challenge.paths.length} documented credit paths, not a synthetic
-        placeholder. The connections demo (linked below) runs on a small, curated subset of
-        <strong>real</strong> Discogs data, fetched via the Discogs API ahead of the full CC0
-        dump pipeline — an earlier, smaller slice kept during the transition, not the primary
-        real dataset anymore.
+        placeholder. Phase 2 is measuring a larger exploration graph, a role taxonomy for
+        credits, and real path search between records — see <a href="/about/">the full
+        picture</a> for what's shipped and what's still being measured. The connections demo
+        (linked below) runs on a small, curated subset of <strong>real</strong> Discogs data,
+        fetched via the Discogs API ahead of the full CC0 dump pipeline — an earlier, smaller
+        slice kept during the transition, not the primary real dataset anymore.
       </p>
     </div>
     <div class="hero-actions" style="margin-top:0">

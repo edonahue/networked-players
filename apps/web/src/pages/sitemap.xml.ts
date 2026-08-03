@@ -30,6 +30,7 @@ const paths = [
   "/play/",
   "/play/connection/",
   "/play/daily/",
+  "/play/routes/",
   "/albums/",
   "/about/",
   "/demo/",

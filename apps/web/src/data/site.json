@@ -6,12 +6,12 @@
   "repositoryUrl": "https://github.com/edonahue/networked-players",
   "authorUrl": "https://erichdonahue.com",
   "hero": {
-    "eyebrow": "Early build · evidence-first",
-    "headline": "Pick an album. Find its documented connections.",
-    "lede": "Every album below is a door into the credit graph. Guess who links it to another album, then step through the evidence — the release, the role, the credit scope — that proves the connection.",
+    "eyebrow": "Evidence-first · a real credit graph",
+    "headline": "Explore the hidden network behind recorded music.",
+    "lede": "Every album, contributor, and connection here is real, sourced, and versioned. Play today's connection, guess who links two records, or step straight into the credit graph — the evidence for every hop is one click away.",
     "ctaPrimary": {
-      "label": "Open the play hub",
-      "href": "/play/"
+      "label": "Play today's connection",
+      "href": "/play/daily/"
     },
     "ctaSecondary": {
       "label": "Browse the albums",
