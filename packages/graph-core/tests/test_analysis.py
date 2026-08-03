@@ -5,7 +5,12 @@ from pathlib import Path
 
 import pytest
 
-from networked_players_graph_core.analysis import assemble_album_catalog, rank_album_candidates
+from networked_players_graph_core.analysis import (
+    _catalog_version,
+    assemble_album_catalog,
+    exploration_corpus_version,
+    rank_album_candidates,
+)
 from networked_players_graph_core.graph import CreditGraph
 
 
@@ -98,6 +103,24 @@ def test_assemble_album_catalog_never_pads_past_available_candidates(dataset_roo
 
     # Only 2 non-Alice artists exist among the ranked candidates (Cara, Dan) --
     # can't reach 100 no matter the target, and must not fabricate entries.
+    assert len(catalog["albums"]) == 3
+    assert catalog["candidate_count_added"] == 2
+
+
+@pytest.mark.parametrize("target_count", [500, 1000])
+def test_assemble_album_catalog_at_exploration_tier_scale_still_never_pads(
+    dataset_root: Path, target_count: int
+) -> None:
+    """Fixture-scale stand-in for Slice D's 500/1000-album exploration tiers
+    (docs/EXPLORATION_TIER_COMPARISON.md, ADR 0049) -- proves the existing
+    ranking/assembly pipeline is already parametric at these target counts
+    without requiring the private one-hop dataset in CI."""
+    editorial = [{"artist": "Alice", "title": "First Light"}]
+    with CreditGraph.open(dataset_root) as graph:
+        candidates = rank_album_candidates(dataset_root)
+        catalog = assemble_album_catalog(graph, editorial, candidates, target_count=target_count)
+
+    assert catalog["target_count"] == target_count
     assert len(catalog["albums"]) == 3
     assert catalog["candidate_count_added"] == 2
 
@@ -311,3 +334,36 @@ def test_rank_album_candidates_excludes_placeholder_artists(tmp_path: Path) -> N
     candidates = rank_album_candidates(root)
     assert {c["artist_id"] for c in candidates} == {100}
     assert 194 not in {c["artist_id"] for c in candidates}
+
+
+def test_exploration_corpus_version_uses_a_distinct_prefix_from_catalog_version(
+    dataset_root: Path,
+) -> None:
+    """ADR 0049: an exploration tier's version must never collide with, or be
+    mistakable for, the real editorial catalog's catalog_version -- same
+    fingerprint shape, deliberately different prefix."""
+    editorial = [{"artist": "Alice", "title": "First Light"}]
+    with CreditGraph.open(dataset_root) as graph:
+        candidates = rank_album_candidates(dataset_root)
+        catalog = assemble_album_catalog(graph, editorial, candidates, target_count=500)
+
+    albums = catalog["albums"]
+    snapshot_date = "20260601"
+    explore_version = exploration_corpus_version(albums, snapshot_date)
+    catalog_version = _catalog_version(albums, snapshot_date)
+
+    assert explore_version.startswith(f"explore-v1-{snapshot_date}-")
+    assert catalog_version.startswith(f"catalog-v1-{snapshot_date}-")
+    assert explore_version != catalog_version
+    # The two share the same digest (same album set), only the prefix differs.
+    assert explore_version.rsplit("-", 1)[-1] == catalog_version.rsplit("-", 1)[-1]
+
+
+def test_exploration_corpus_version_is_deterministic() -> None:
+    albums = [
+        {"artist_id": 1, "main_release_id": 10, "master_id": 100, "year": 1990},
+        {"artist_id": 2, "main_release_id": 20, "master_id": 200, "year": 2000},
+    ]
+    assert exploration_corpus_version(albums, "20260601") == exploration_corpus_version(
+        list(reversed(albums)), "20260601"
+    )
