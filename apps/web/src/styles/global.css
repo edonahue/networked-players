@@ -314,7 +314,13 @@ h2 {
   .site-header {
     flex-wrap: wrap;
   }
+  .site-header__right {
+    flex-wrap: wrap;
+    row-gap: 10px;
+  }
   .site-header nav {
+    flex-wrap: wrap;
+    row-gap: 8px;
     gap: 14px;
   }
   .site-footer {
