@@ -6,7 +6,7 @@
 import type { Rating } from "./types";
 
 export const STORAGE_KEY = "np.game.v1";
-export const STORE_VERSION = 1;
+export const STORE_VERSION = 2;
 
 export interface StorageLike {
   getItem(key: string): string | null;
@@ -27,7 +27,12 @@ export interface GameStore {
     lastDailyDate: string | null;
   };
   seenRounds: string[];
-  daily: Record<string, string>;
+  daily: Record<string, DailyEntry>;
+}
+
+export interface DailyEntry {
+  shareString: string;
+  rating: Rating;
 }
 
 export function emptyStore(): GameStore {
@@ -40,6 +45,21 @@ export function emptyStore(): GameStore {
   };
 }
 
+const RATING_VALUES: readonly Rating[] = ["clean", "with_clues", "revealed"];
+
+function isRating(value: unknown): value is Rating {
+  return typeof value === "string" && RATING_VALUES.includes(value as Rating);
+}
+
+function isDailyEntry(value: unknown): value is DailyEntry {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    typeof (value as { shareString?: unknown }).shareString === "string" &&
+    isRating((value as { rating?: unknown }).rating)
+  );
+}
+
 /**
  * Migrate any previously stored shape to the current version. Unknown or
  * corrupt input falls back to a fresh store rather than throwing — losing
@@ -47,7 +67,10 @@ export function emptyStore(): GameStore {
  */
 export function migrate(raw: unknown): GameStore {
   if (typeof raw !== "object" || raw === null) return emptyStore();
-  const candidate = raw as Partial<GameStore> & { version?: number };
+  const candidate = raw as Partial<GameStore> & {
+    version?: number;
+    daily?: unknown;
+  };
   if (candidate.version === STORE_VERSION) {
     const base = emptyStore();
     return {
@@ -60,11 +83,39 @@ export function migrate(raw: unknown): GameStore {
       daily:
         typeof candidate.daily === "object" && candidate.daily !== null
           ? Object.fromEntries(
-              Object.entries(candidate.daily).filter(
-                ([, value]) => typeof value === "string",
+              Object.entries(candidate.daily).filter(([, value]) =>
+                isDailyEntry(value),
               ),
             )
           : {},
+    };
+  }
+  // Version 1 stored `daily` as a bare share string per date, with no
+  // recorded rating. Historical entries can't be recovered as clean/
+  // with_clues after the fact, so they're conservatively marked
+  // "revealed" -- the archive (Slice I) must never show a past miss as a
+  // clean solve just because the rating wasn't tracked yet.
+  if (candidate.version === 1) {
+    const base = emptyStore();
+    const legacyDaily =
+      typeof candidate.daily === "object" && candidate.daily !== null
+        ? (candidate.daily as Record<string, unknown>)
+        : {};
+    return {
+      version: STORE_VERSION,
+      totals: { ...base.totals, ...(candidate.totals ?? {}) },
+      streak: { ...base.streak, ...(candidate.streak ?? {}) },
+      seenRounds: Array.isArray(candidate.seenRounds)
+        ? candidate.seenRounds.filter((id) => typeof id === "string")
+        : [],
+      daily: Object.fromEntries(
+        Object.entries(legacyDaily)
+          .filter(([, value]) => typeof value === "string")
+          .map(([date, shareString]) => [
+            date,
+            { shareString: shareString as string, rating: "revealed" as const },
+          ]),
+      ),
     };
   }
   // Version 0 (pre-release experiments) stored only { plays: number }.
@@ -211,7 +262,7 @@ export function recordDaily(
   shareString: string,
 ): GameStore {
   const next = recordRound(store, `daily-${isoDate}`, rating);
-  next.daily[isoDate] = shareString;
+  next.daily[isoDate] = { shareString, rating };
   const solved = rating !== "revealed";
   const previous = next.streak.lastDailyDate;
   if (solved) {

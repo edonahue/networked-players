@@ -783,3 +783,46 @@ a.contributor-card:focus-visible {
 :root[data-motion="off"] .explorer-node circle {
   transition: none;
 }
+
+/* Connection of the Day archive (Slice I) ---------------------------------- */
+.archive-stats {
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.archive-status {
+  color: var(--muted);
+}
+.archive-calendar {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 10px;
+  list-style: none;
+  margin: 16px 0 0;
+  padding: 0;
+}
+.archive-day {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.archive-day[data-status="future"] {
+  opacity: 0.55;
+  border-style: dashed;
+}
+.archive-day__date {
+  font-family: var(--mono);
+  font-size: 0.8rem;
+}
+.archive-day__glyph {
+  font-size: 1.2rem;
+  color: var(--gold);
+}
+.archive-day__status {
+  font-size: 0.78rem;
+  color: var(--muted);
+}

@@ -1,0 +1,33 @@
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+
+// Connection of the Day archive (Slice I): a calendar view over the public,
+// frozen daily-manifest.v1.json schedule, cross-referenced against the
+// local progression store. Future dates never render round content -- the
+// manifest itself carries only date/round_id/round_fingerprint for every
+// entry, so there is nothing to leak; see game/dailyArchive.ts.
+const description =
+  'Connection of the Day archive: your local streak and which scheduled dates you have played, calendar-style.';
+---
+
+<BaseLayout title="Connection of the Day — Archive" description={description}>
+  <section class="prose shell" style="padding-bottom:0">
+    <p class="eyebrow">Connection of the Day</p>
+    <h1 style="font-size:clamp(1.9rem,4.5vw,2.8rem)">Your archive</h1>
+    <p class="lede" style="font-size:0.95rem">
+      Every scheduled date, and whether you've played it yet. Local to this
+      device only — no account, no server.
+    </p>
+  </section>
+
+  <section class="prose shell" data-testid="daily-archive" style="padding-top:12px;padding-bottom:72px">
+    <p class="archive-stats" data-archive-stats></p>
+    <p class="archive-status" data-archive-status role="status" aria-live="polite" hidden></p>
+    <ul class="archive-calendar" data-archive-calendar></ul>
+  </section>
+</BaseLayout>
+
+<script>
+  import { initDailyArchive } from '../../../game/dailyArchiveStage';
+  initDailyArchive();
+</script>

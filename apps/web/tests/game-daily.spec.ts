@@ -219,7 +219,8 @@ test("solving the daily records a streak and builds a spoiler-free share string"
     (await page.evaluate(() => window.localStorage.getItem("np.game.v1"))) ??
       "{}",
   );
-  expect(stored.daily[PINNED_DATE_A]).toContain(PINNED_DATE_A);
+  expect(stored.daily[PINNED_DATE_A].shareString).toContain(PINNED_DATE_A);
+  expect(stored.daily[PINNED_DATE_A].rating).toBe("clean");
   expect(stored.streak.current).toBe(1);
 });
 
