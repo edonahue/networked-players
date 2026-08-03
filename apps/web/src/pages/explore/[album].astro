@@ -1,0 +1,57 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import NetworkExplorer from '../../components/NetworkExplorer.astro';
+import type { AlbumV2, ChallengeV2 } from '../../data/challenge';
+import challengeData from '../../../public/data/challenge.v2.json';
+
+// Network Explorer (Phase 2 Slice G, ADR 0052): centers on one album's
+// primary artist and shows a bounded, real neighborhood from the same
+// pathfinding graph Connect Two Records uses -- never the whole graph.
+export function getStaticPaths() {
+  const data = challengeData as ChallengeV2;
+  const connectedAlbumIds = new Set<string>();
+  for (const path of data.paths) {
+    connectedAlbumIds.add(path.from_album_id);
+    connectedAlbumIds.add(path.to_album_id);
+  }
+  return data.albums
+    .filter((album) => connectedAlbumIds.has(album.id))
+    .map((album) => ({ params: { album: album.id }, props: { album } }));
+}
+
+interface Props {
+  album: AlbumV2;
+}
+
+const { album } = Astro.props;
+const description = `Explore the documented credit network around ${album.title}.`;
+---
+
+<BaseLayout title={`Explore: ${album.title}`} description={description}>
+  <section class="prose shell" style="padding-bottom:0">
+    <p class="eyebrow">Explore</p>
+    <h1 style="font-size:clamp(1.9rem,4.5vw,2.6rem)">{album.title}</h1>
+    <p class="lede" style="font-size:0.95rem">
+      {album.artist}
+      {album.year ? ` · ${album.year}` : ''} — click any contributor to recenter the network
+      around them. Filter by role to fade everything else without hiding it.
+    </p>
+  </section>
+
+  <div class="shell">
+    <NetworkExplorer initialArtistId={album.artist_id} initialLabel={album.artist} />
+  </div>
+
+  <section class="prose shell" style="padding-top:20px;padding-bottom:72px">
+    <p class="lede" style="font-size:0.92rem">
+      This view shows a bounded neighborhood, not the whole credit graph — the same scope
+      <a href="/play/connect/">Connect Two Records</a> searches. A shared credit proves
+      documented participation, never friendship, influence, or artistic lineage.
+    </p>
+  </section>
+</BaseLayout>
+
+<script>
+  import { initExplorerStage } from '../../game/explorerStage';
+  initExplorerStage();
+</script>
