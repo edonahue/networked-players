@@ -1,6 +1,9 @@
 ---
 // Connect Two Records (ADR 0051): pick any two albums in the pathfinding
-// graph's scope and search for a documented route between them. Markup
+// graph's scope and search for a documented route between them. The
+// "Behind the Glass" checkbox (ADR 0053) restricts the same search to
+// producer/engineer/mixer credits only -- reusing this page and the same
+// published pathfinding graph rather than a separate mode/page. Markup
 // shell only -- all wiring lives in game/connect.ts (initConnect()),
 // matching RoutesStage.astro's split.
 ---
@@ -33,6 +36,11 @@
       <div class="connect-picker__selected" data-picker-selected hidden></div>
     </div>
   </div>
+
+  <label class="connect-mode-toggle">
+    <input type="checkbox" data-connect-behind-the-glass />
+    Behind the Glass — only follow producer/engineer/mixer credits
+  </label>
 
   <button type="button" class="button primary" data-connect-search disabled>
     Find the connection

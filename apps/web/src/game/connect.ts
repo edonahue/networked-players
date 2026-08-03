@@ -13,6 +13,7 @@ import {
   type PathHop,
 } from "./pathfindingGraph";
 import { explainScore, scorePath } from "./routeQuality";
+import { behindTheGlassEdgeFilter } from "./roleTaxonomy";
 import type { Contributor, ContributorIndex } from "../data/contributors";
 
 interface CatalogAlbum {
@@ -114,6 +115,9 @@ export async function initConnect(): Promise<void> {
     "[data-connect-result='musical']",
   );
   const explainEl = stage.querySelector<HTMLElement>("[data-connect-explain]");
+  const behindTheGlassToggle = stage.querySelector<HTMLInputElement>(
+    "[data-connect-behind-the-glass]",
+  );
   if (!searchButton || !statusEl || !resultsEl || !hopsEl) return;
 
   const setStatus = (message: string | null) => {
@@ -185,19 +189,23 @@ export async function initConnect(): Promise<void> {
       graph.node_ids.map((id, i) => [id, graph.names[i]]),
     );
 
+    const behindTheGlass = behindTheGlassToggle?.checked ?? false;
     const pathResult = findPath(
       graph,
       artistIndex,
       fromAlbum.artist_id,
       toAlbum.artist_id,
       4,
+      behindTheGlass ? behindTheGlassEdgeFilter : undefined,
     );
     if (!pathResult.ok) {
       const messages: Record<string, string> = {
         "unknown-album":
           "One of these records isn't in the documented connection graph yet.",
         inconclusive: "The search was inconclusive within the current bounds.",
-        "no-path": `No documented connection was found between these two records within 4 hops.`,
+        "no-path": behindTheGlass
+          ? "No producer/engineer-only connection was found between these two records within 4 hops."
+          : "No documented connection was found between these two records within 4 hops.",
       };
       setStatus(messages[pathResult.reason] ?? "No connection found.");
       updateButton();
@@ -206,13 +214,19 @@ export async function initConnect(): Promise<void> {
 
     setStatus(null);
     resultsEl.hidden = false;
+    if (behindTheGlass && musicalSection) musicalSection.hidden = true;
     hopsEl.innerHTML = pathResult.hops
       .map((hop) => renderHop(hop, nameById))
       .join("");
 
     // "More musical route" needs contributor role/degree data -- fetched
-    // only now, so a plain shortest-path result never pays for it.
-    if (musicalHopsAvailable(hopsMusicalEl, musicalSection)) {
+    // only now, so a plain shortest-path result never pays for it. Skipped
+    // in Behind the Glass mode: every hop is already producer/engineer-only
+    // by construction, so a role-signal re-ranking has nothing to add.
+    if (
+      !behindTheGlass &&
+      musicalHopsAvailable(hopsMusicalEl, musicalSection)
+    ) {
       try {
         const contributorResponse = await fetch(
           "/data/contributors/index.v1.json",

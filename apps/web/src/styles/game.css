@@ -667,6 +667,13 @@ a.contributor-card:focus-visible {
   color: var(--muted);
   font-size: 0.95rem;
 }
+.connect-mode-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
 .connect-results:not([hidden]) {
   display: flex;
   flex-direction: column;

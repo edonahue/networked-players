@@ -486,6 +486,23 @@ def _parser() -> argparse.ArgumentParser:
     )
     connection_daily_status.add_argument("--warn-within-days", type=int, default=14)
 
+    measure_role_modes = subparsers.add_parser(
+        "measure-role-mode-candidates",
+        help=(
+            "MEASUREMENT ONLY (Phase 2 Slice H, ADR 0053): real one-hop/two-hop candidate "
+            "counts per role-aware game mode (Behind the Glass, Rhythm Section, Guitar "
+            "Paths) against a real album catalog, BEFORE building any of them. Output is "
+            "local-only diagnostics, never published."
+        ),
+    )
+    measure_role_modes.add_argument("--onehop-root", type=Path, required=True)
+    measure_role_modes.add_argument(
+        "--albums", type=Path, required=True, help="apps/web/public/data/catalog/albums.v1.json"
+    )
+    measure_role_modes.add_argument("--output", type=Path, default=None)
+    measure_role_modes.add_argument("--memory-limit", default="1GB")
+    measure_role_modes.add_argument("--threads", type=int, default=2)
+
     rank_albums = subparsers.add_parser(
         "rank-album-candidates",
         help="rank master_ids by release-variant count x credit richness (local-only shortlist)",
@@ -1978,6 +1995,27 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
         print(json.dumps(status, indent=2))
         return 1 if status["already_expired"] else 0
+
+    if args.command == "measure-role-mode-candidates":
+        from networked_players_graph_core.graph import CreditGraph
+        from networked_players_graph_core.role_mode_candidates import measure_candidates
+
+        catalog = json.loads(args.albums.read_text())
+        albums = catalog["albums"]
+
+        with CreditGraph.open(
+            args.onehop_root,
+            memory_limit=args.memory_limit,
+            threads=args.threads,
+            build_edges=False,
+        ) as graph:
+            report = measure_candidates(graph, albums)
+
+        if args.output is not None:
+            args.output.parent.mkdir(parents=True, exist_ok=True)
+            args.output.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n")
+        print(json.dumps(report, indent=2, sort_keys=True))
+        return 0
 
     if args.command == "rank-album-candidates":
         from networked_players_graph_core.analysis import rank_album_candidates

@@ -94,3 +94,49 @@ test("the rest of the page keeps working after a failed search", async ({
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   await expect(page.getByRole("link", { name: "About" })).toBeVisible();
 });
+
+// Behind the Glass (ADR 0053): restricts the same search to producer/
+// engineer/mixer-only credits. Ziggy Stardust (David Bowie) <-> A Night
+// At The Opera (Queen) is a real, directly-connected pair in the committed
+// artifact bridged by a shared "Producer" credit -- verified against
+// apps/web/public/data/pathfinding/graph.v1.json.
+test("Behind the Glass finds a real producer-only connection", async ({
+  page,
+}) => {
+  await page.goto("/play/connect/");
+  await selectAlbum(page, "a", "Ziggy Stardust");
+  await selectAlbum(page, "b", "A Night At The Opera");
+  await page.locator("[data-connect-behind-the-glass]").check();
+  await page.locator("[data-connect-search]").click();
+
+  await expect(page.locator("[data-connect-results]")).toBeVisible({
+    timeout: 15000,
+  });
+  const hop = page.locator("[data-connect-hops] .connect-hop").first();
+  await expect(hop).toBeVisible();
+  await expect(hop).toContainText(/producer/i);
+  // No role-signal re-ranking section in this mode -- every hop is already
+  // producer/engineer-only by construction.
+  await expect(page.locator("[data-connect-result='musical']")).toBeHidden();
+});
+
+// Discovery <-> Joshua Tree's real direct edge is a plain "Credited
+// artist" credit, not a producer/engineer credit, and there is no
+// producer/engineer-only bridge between them within 4 hops either
+// (verified against the committed artifact) -- a real negative case for
+// the filtered search, distinct from "no-path" in the unfiltered mode.
+test("Behind the Glass reports no connection when the real path doesn't qualify", async ({
+  page,
+}) => {
+  await page.goto("/play/connect/");
+  await selectAlbum(page, "a", "Discovery");
+  await selectAlbum(page, "b", "Joshua Tree");
+  await page.locator("[data-connect-behind-the-glass]").check();
+  await page.locator("[data-connect-search]").click();
+
+  await expect(page.locator("[data-connect-status]")).toBeVisible();
+  await expect(page.locator("[data-connect-status]")).toContainText(
+    /no producer\/engineer-only connection/i,
+  );
+  await expect(page.locator("[data-connect-results]")).toBeHidden();
+});
