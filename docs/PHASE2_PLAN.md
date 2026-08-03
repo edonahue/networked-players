@@ -1,6 +1,9 @@
 # Phase 2 plan: from static games to an explorable credit network
 
-Status: **in progress**. Companion to `docs/BUILD_PLAN.md` (pipeline/infra track) and
+Status: **complete**. All nine slices (A–I) shipped; see
+`docs/PHASE2_REPORT.md` for the closing report (what shipped, what was
+measured, rejected approaches, remaining risks). Companion to
+`docs/BUILD_PLAN.md` (pipeline/infra track) and
 `docs/WEB_PRODUCT_PLAN.md` (the Phase 1 game-launch plan, now shipped). This document
 owns the Phase 2 product expansion: making contributors first-class, formalizing role
 semantics, measuring a larger exploration graph, and building real path search between
