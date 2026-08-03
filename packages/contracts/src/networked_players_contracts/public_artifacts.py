@@ -34,6 +34,7 @@ from .challenge import challenge_failures
 from .connection_daily_manifest import connection_daily_manifest_failures
 from .connection_rounds import connection_rounds_failures
 from .contributor_index import contributor_index_failures
+from .pathfinding_graph import pathfinding_graph_failures
 from .record_routes import record_routes_failures
 
 # Keys match the checked-in game/routes namespaces, not `packages/contracts`
@@ -47,6 +48,7 @@ PUBLIC_ARTIFACT_GROUPS = (
     "record_routes",
     "challenge",
     "contributor_index",
+    "pathfinding_graph",
 )
 
 
@@ -61,6 +63,7 @@ def public_artifacts_failures(
     routes_rounds: Any,
     challenge: Any,
     contributor_index: Any,
+    pathfinding_graph: Any,
 ) -> dict[str, list[str]]:
     """Every contract failure across the whole real-artifact publication set,
     grouped by artifact. Every key in `PUBLIC_ARTIFACT_GROUPS` is always
@@ -76,4 +79,5 @@ def public_artifacts_failures(
         "record_routes": record_routes_failures(routes_universe, routes_rounds),
         "challenge": challenge_failures(challenge, catalog),
         "contributor_index": contributor_index_failures(contributor_index, catalog),
+        "pathfinding_graph": pathfinding_graph_failures(pathfinding_graph, catalog),
     }

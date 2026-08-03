@@ -16,6 +16,7 @@ from networked_players_contracts.canonical import content_hash, stable_id_digest
 from networked_players_contracts.catalog import _catalog_version
 from networked_players_contracts.connection_rounds import round_content_fingerprint
 from networked_players_contracts.contributor_index import contributor_index_version
+from networked_players_contracts.pathfinding_graph import pathfinding_graph_version
 
 _SNAPSHOT = "20260601"
 _CATALOG_VERSION_STR = "catalog-v1-20260601-abc123abc123"
@@ -367,6 +368,26 @@ def _contributor_index(catalog: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _pathfinding_graph(catalog: dict[str, Any]) -> dict[str, Any]:
+    payload: dict[str, Any] = {
+        "schema_version": 1,
+        "catalog_version": catalog["catalog_version"],
+        "snapshot_date": _SNAPSHOT,
+        "generated_at": "2026-08-03T00:00:00+00:00",
+        "source": "Discogs monthly data dump (CC0), one-hop working set.",
+        "license": "See docs/DATA_AND_RIGHTS.md.",
+        "node_ids": [100],
+        "names": ["Alice"],
+        "offsets": [0, 0],
+        "neighbors": [],
+        "evidence_release_ids": [],
+        "edge_role_a": [],
+        "edge_role_b": [],
+    }
+    payload["pathfinding_graph_version"] = pathfinding_graph_version(payload, _SNAPSHOT)
+    return payload
+
+
 def _write(path: Path, payload: dict[str, Any]) -> Path:
     path.write_text(json.dumps(payload))
     return path
@@ -388,6 +409,9 @@ def _write_all(tmp_path: Path) -> dict[str, Path]:
         "challenge": _write(tmp_path / "challenge.v2.json", _challenge(catalog)),
         "contributor_index": _write(
             tmp_path / "contributor-index.v1.json", _contributor_index(catalog)
+        ),
+        "pathfinding_graph": _write(
+            tmp_path / "pathfinding-graph.v1.json", _pathfinding_graph(catalog)
         ),
     }
 
@@ -413,6 +437,8 @@ def _args(paths: dict[str, Path]) -> list[str]:
         str(paths["challenge"]),
         "--contributor-index",
         str(paths["contributor_index"]),
+        "--pathfinding-graph",
+        str(paths["pathfinding_graph"]),
     ]
 
 
@@ -430,6 +456,7 @@ def test_clean_set_exits_zero(tmp_path: Path, capsys) -> None:
         "record_routes": [],
         "challenge": [],
         "contributor_index": [],
+        "pathfinding_graph": [],
     }
 
 
@@ -463,6 +490,7 @@ def test_default_paths_point_at_the_real_repo_layout(tmp_path: Path, capsys, mon
         "apps/web/public/data/routes/rounds.v1.json": routes_rounds,
         "apps/web/public/data/challenge.v2.json": _challenge(catalog),
         "apps/web/public/data/contributors/index.v1.json": _contributor_index(catalog),
+        "apps/web/public/data/pathfinding/graph.v1.json": _pathfinding_graph(catalog),
     }
     for relative_path, payload in layout.items():
         full_path = tmp_path / relative_path

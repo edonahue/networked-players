@@ -1,0 +1,34 @@
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import ConnectStage from '../../../components/ConnectStage.astro';
+
+// Connect Two Records (ADR 0051): the first search UI in the app -- pick
+// any two albums in the pathfinding graph's scope and search for a
+// documented route between them, rather than playing a pre-dealt round.
+const description =
+  'Pick any two albums and search for a documented credit route between them, with evidence at every hop.';
+---
+
+<BaseLayout title="Connect Two Records" description={description}>
+  <section class="prose shell" style="padding-bottom:0">
+    <p class="eyebrow">Connect Two Records</p>
+    <h1 style="font-size:clamp(1.9rem,4.5vw,2.8rem)">How are these two records connected?</h1>
+  </section>
+
+  <ConnectStage />
+
+  <section class="prose shell" style="padding-top:28px;padding-bottom:72px">
+    <p class="lede" style="font-size:0.95rem">
+      Search covers a bounded, documented neighborhood around the catalog above — not the
+      entire Discogs graph (see <a href="/about/">the full picture</a>). Most pairs of unrelated
+      records genuinely have no documented connection within a few hops, and that is itself an
+      honest, correct result — not every search finds a path. A shared credit proves documented
+      participation on a recording, never friendship, influence, or artistic lineage.
+    </p>
+  </section>
+</BaseLayout>
+
+<script>
+  import { initConnect } from '../../../game/connect';
+  initConnect();
+</script>
