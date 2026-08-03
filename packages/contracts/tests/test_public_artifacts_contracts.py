@@ -13,6 +13,7 @@ from networked_players_contracts.album_art import album_art_version
 from networked_players_contracts.canonical import content_hash, stable_id_digest
 from networked_players_contracts.catalog import _catalog_version
 from networked_players_contracts.connection_rounds import round_content_fingerprint
+from networked_players_contracts.contributor_index import contributor_index_version
 
 _SNAPSHOT = "20260601"
 _CATALOG_VERSION = "catalog-v1-20260601-abc123abc123"
@@ -377,6 +378,46 @@ def _challenge() -> dict[str, Any]:
     }
 
 
+# --- contributor index -----------------------------------------------------
+
+
+def _contributor_index() -> dict[str, Any]:
+    catalog_version = _catalog()["catalog_version"]
+    contributors = [
+        {
+            "artist_id": 100,
+            "name": "Alice",
+            "role_categories": ["strings"],
+            "role_text_examples": ["Guitar"],
+            "albums": ["master-1", "master-2"],
+            "decade_activity": [1990],
+            "connection_count": 1,
+            "neighboring_contributor_ids": [200],
+            "evidence": [{"release_id": 1, "role_text": "Guitar"}],
+        },
+        {
+            "artist_id": 200,
+            "name": "Bob",
+            "role_categories": ["strings"],
+            "role_text_examples": ["Bass"],
+            "albums": ["master-1", "master-2"],
+            "decade_activity": [1990],
+            "connection_count": 1,
+            "neighboring_contributor_ids": [100],
+            "evidence": [{"release_id": 1, "role_text": "Bass"}],
+        },
+    ]
+    return {
+        "schema_version": 1,
+        "catalog_version": catalog_version,
+        "contributor_index_version": contributor_index_version(contributors, _SNAPSHOT),
+        "generated_at": "2026-08-03T00:00:00+00:00",
+        "source": "Derived from challenge.v2.json and routes/{universe,rounds}.v1.json.",
+        "license": "See docs/DATA_AND_RIGHTS.md.",
+        "contributors": contributors,
+    }
+
+
 # --- the combined check -------------------------------------------------------
 
 
@@ -391,6 +432,7 @@ def _clean_artifacts() -> dict[str, Any]:
         "routes_universe": routes_universe,
         "routes_rounds": routes_rounds,
         "challenge": _challenge(),
+        "contributor_index": _contributor_index(),
     }
 
 
@@ -403,6 +445,7 @@ def test_clean_publication_set_has_no_failures() -> None:
         "connection_daily_manifest": [],
         "record_routes": [],
         "challenge": [],
+        "contributor_index": [],
     }
 
 
@@ -415,6 +458,7 @@ def test_every_group_key_always_present() -> None:
         "connection_daily_manifest",
         "record_routes",
         "challenge",
+        "contributor_index",
     }
 
 
@@ -439,6 +483,7 @@ def test_deleted_mode_on_record_routes_is_caught() -> None:
     assert report["connection_guesser"] == []
     assert report["connection_daily_manifest"] == []
     assert report["challenge"] == []
+    assert report["contributor_index"] == []
 
 
 def test_catalog_defect_is_caught_independently() -> None:
@@ -451,6 +496,7 @@ def test_catalog_defect_is_caught_independently() -> None:
     assert report["catalog"] != []
     assert report["record_routes"] == []
     assert report["challenge"] == []
+    assert report["contributor_index"] == []
 
 
 def test_deleted_provenance_field_on_challenge_is_caught() -> None:
@@ -469,4 +515,18 @@ def test_deleted_provenance_field_on_challenge_is_caught() -> None:
     assert report["album_art_registry"] == []
     assert report["connection_guesser"] == []
     assert report["connection_daily_manifest"] == []
+    assert report["record_routes"] == []
+    assert report["contributor_index"] == []
+
+
+def test_contributor_index_defect_is_caught_independently() -> None:
+    artifacts = _clean_artifacts()
+    broken_index = deepcopy(artifacts["contributor_index"])
+    del broken_index["contributors"][0]["name"]
+    artifacts["contributor_index"] = broken_index
+
+    report = public_artifacts_failures(**artifacts)
+    assert report["contributor_index"] != []
+    assert report["catalog"] == []
+    assert report["challenge"] == []
     assert report["record_routes"] == []

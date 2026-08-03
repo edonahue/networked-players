@@ -1,0 +1,251 @@
+"""Build the public contributor index from already-published public
+artifacts -- `challenge.v2.json` and `routes/{universe,rounds}.v1.json` --
+never a fresh full-corpus graph query. This is what keeps the index
+deterministic, small, and safely publishable through the same discipline as
+every other artifact under `apps/web/public/data/**`, without introducing a
+new dependency on the private one-hop working set.
+
+Every field traces to content already published in one of the two source
+artifacts:
+
+- `challenge.v2.json`: `paths[].hops[]` (artist_a_id/artist_b_id/release_id)
+  and `releases[].credits[]` (verbatim role_text, looked up by
+  (release_id, artist_id)).
+- `routes/rounds.v1.json`: `rounds[].hops[]`, which already carry
+  `role_a`/`role_b` inline.
+
+Deliberately excludes anything that would require the private full/one-hop
+corpus: a contributor's real full-corpus degree, or full-corpus role-text
+frequency (that diagnostic lives in `role_taxonomy.py`'s local-only
+`corpus_coverage_report`, never here).
+"""
+
+from __future__ import annotations
+
+from collections import Counter, defaultdict
+from typing import Any
+
+from networked_players_contracts.canonical import content_hash
+
+from .role_taxonomy import RoleCategory, classify_role
+
+_MAX_ROLE_TEXT_EXAMPLES = 5
+_MAX_EVIDENCE_ENTRIES = 10
+_MAX_NEIGHBORS = 20
+
+
+def contributor_index_version(contributors: list[dict[str, Any]], snapshot_date: str) -> str:
+    """Order-insensitive content hash (this is a lookup index, like
+    `album_art_version`, not a fingerprinted content pool): only the
+    load-bearing identity fields move the version, not incidental list
+    ordering."""
+    identity = sorted(
+        (
+            {
+                "artist_id": c["artist_id"],
+                "name": c["name"],
+                "role_categories": c["role_categories"],
+                "albums": c["albums"],
+                "evidence": c["evidence"],
+            }
+            for c in contributors
+        ),
+        key=lambda c: c["artist_id"],
+    )
+    digest = content_hash(identity, length=12)
+    return f"contributor-index-v1-{snapshot_date}-{digest}"
+
+
+def _credit_role_lookup(releases: list[dict[str, Any]]) -> dict[tuple[Any, int], list[str]]:
+    """(release_id, artist_id) -> verbatim role_text values from linked
+    credits on that release, in `challenge.v2.json`'s `releases[]` shape."""
+    lookup: dict[tuple[Any, int], list[str]] = defaultdict(list)
+    for release in releases:
+        release_id = release.get("release_id")
+        for credit in release.get("credits", []):
+            if not credit.get("is_linked"):
+                continue
+            artist_id = credit.get("artist_id")
+            role_text = credit.get("role_text")
+            if artist_id is None or role_text is None:
+                continue
+            lookup[(release_id, artist_id)].append(role_text)
+    return lookup
+
+
+def _decade(year: int) -> int:
+    return (year // 10) * 10
+
+
+def build_contributor_index(
+    *,
+    challenge: dict[str, Any],
+    routes_universe: dict[str, Any],
+    routes_rounds: dict[str, Any],
+    catalog: dict[str, Any],
+    generated_at: str,
+) -> dict[str, Any]:
+    """Deterministic given the same four already-published artifacts. Raises
+    `ValueError` if the challenge/routes artifacts don't agree with the
+    catalog's own `catalog_version` -- a contributor index belongs to exactly
+    one catalog generation, the same rule `album_art_failures` enforces."""
+    catalog_version = catalog["catalog_version"]
+    snapshot_date = catalog["snapshot_date"]
+
+    for label, artifact in (
+        ("challenge", challenge),
+        ("routes_universe", routes_universe),
+        ("routes_rounds", routes_rounds),
+    ):
+        artifact_catalog_version = artifact.get("provenance", {}).get("catalog_version")
+        if artifact_catalog_version != catalog_version:
+            raise ValueError(
+                f"{label}'s catalog_version {artifact_catalog_version!r} does not match "
+                f"the catalog's catalog_version {catalog_version!r}"
+            )
+
+    album_years: dict[str, int | None] = {
+        str(a["id"]): a.get("year") for a in catalog.get("albums", [])
+    }
+
+    names: dict[int, str] = {}
+    for artist in challenge.get("artists", []):
+        names[int(artist["artist_id"])] = str(artist["name"])
+    for artist in routes_rounds.get("artists", []):
+        names.setdefault(int(artist["artist_id"]), str(artist["name"]))
+
+    role_texts: dict[int, Counter[str]] = defaultdict(Counter)
+    albums_by_artist: dict[int, set[str]] = defaultdict(set)
+    evidence_by_artist: dict[int, set[tuple[Any, str]]] = defaultdict(set)
+    neighbor_counts: dict[int, Counter[int]] = defaultdict(Counter)
+
+    challenge_role_lookup = _credit_role_lookup(challenge.get("releases", []))
+
+    def record_hop(
+        from_album_id: str,
+        to_album_id: str,
+        artist_a: int,
+        artist_b: int,
+        release_id: Any,
+        role_a: str | None,
+        role_b: str | None,
+    ) -> None:
+        for artist_id in (artist_a, artist_b):
+            albums_by_artist[artist_id].add(from_album_id)
+            albums_by_artist[artist_id].add(to_album_id)
+        neighbor_counts[artist_a][artist_b] += 1
+        neighbor_counts[artist_b][artist_a] += 1
+
+        for artist_id, role, other_id in (
+            (artist_a, role_a, artist_b),
+            (artist_b, role_b, artist_a),
+        ):
+            del other_id
+            role_candidates = (
+                [role]
+                if role is not None
+                else challenge_role_lookup.get((release_id, artist_id), [])
+            )
+            for role_text in role_candidates:
+                role_texts[artist_id][role_text] += 1
+                evidence_by_artist[artist_id].add((release_id, role_text))
+
+    for path in challenge.get("paths", []):
+        for hop in path.get("hops", []):
+            record_hop(
+                str(path["from_album_id"]),
+                str(path["to_album_id"]),
+                int(hop["artist_a_id"]),
+                int(hop["artist_b_id"]),
+                hop.get("release_id"),
+                role_a=None,
+                role_b=None,
+            )
+
+    for round_ in routes_rounds.get("rounds", []):
+        for hop in round_.get("hops", []):
+            record_hop(
+                str(round_["from_album_id"]),
+                str(round_["to_album_id"]),
+                int(hop["artist_a_id"]),
+                int(hop["artist_b_id"]),
+                hop.get("release_id"),
+                role_a=hop.get("role_a"),
+                role_b=hop.get("role_b"),
+            )
+
+    # Only artists both nameable and associated with at least one album --
+    # an artist_id appearing in a hop but absent from every artists[] list
+    # would otherwise be unrenderable; skip rather than publish a nameless page.
+    all_artist_ids = sorted(set(albums_by_artist) & set(names))
+
+    contributors: list[dict[str, Any]] = []
+    for artist_id in all_artist_ids:
+        role_counter = role_texts.get(artist_id, Counter())
+        categories: set[RoleCategory] = set()
+        for role_text in role_counter:
+            categories.update(classify_role(role_text))
+        known_categories = categories - {RoleCategory.UNKNOWN}
+        role_categories = (
+            known_categories if known_categories else categories or {RoleCategory.UNKNOWN}
+        )
+
+        role_text_examples = [
+            text
+            for text, _count in sorted(role_counter.items(), key=lambda item: (-item[1], item[0]))[
+                :_MAX_ROLE_TEXT_EXAMPLES
+            ]
+        ]
+
+        albums = sorted(albums_by_artist[artist_id])
+        years = [album_years[a] for a in albums if album_years.get(a) is not None]
+        decades = sorted({_decade(year) for year in years if year is not None})
+
+        neighbors = neighbor_counts.get(artist_id, Counter())
+        neighboring_contributor_ids = [
+            neighbor_id
+            for neighbor_id, _count in sorted(
+                neighbors.items(), key=lambda item: (-item[1], item[0])
+            )[:_MAX_NEIGHBORS]
+        ]
+
+        evidence = [
+            {"release_id": release_id, "role_text": role_text}
+            for release_id, role_text in sorted(
+                evidence_by_artist.get(artist_id, set()), key=lambda e: (str(e[0]), e[1])
+            )[:_MAX_EVIDENCE_ENTRIES]
+        ]
+
+        contributors.append(
+            {
+                "artist_id": artist_id,
+                "name": names[artist_id],
+                "role_categories": sorted(c.value for c in role_categories),
+                "role_text_examples": role_text_examples,
+                "albums": albums,
+                "decade_activity": decades,
+                "connection_count": len(neighbors),
+                "neighboring_contributor_ids": neighboring_contributor_ids,
+                "evidence": evidence,
+            }
+        )
+
+    contributors.sort(key=lambda c: c["artist_id"])
+    index_version = contributor_index_version(contributors, snapshot_date)
+
+    return {
+        "schema_version": 1,
+        "catalog_version": catalog_version,
+        "contributor_index_version": index_version,
+        "generated_at": generated_at,
+        "source": (
+            "Derived from apps/web/public/data/challenge.v2.json and "
+            "apps/web/public/data/routes/{universe,rounds}.v1.json -- no fresh "
+            "full-corpus graph query. See docs/DATA_AND_RIGHTS.md."
+        ),
+        "license": (
+            "Derived from the Discogs monthly CC0 data dumps via the two published "
+            "artifacts above. See docs/DATA_AND_RIGHTS.md."
+        ),
+        "contributors": contributors,
+    }

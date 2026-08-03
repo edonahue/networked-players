@@ -15,6 +15,7 @@ from networked_players_contracts.album_art import album_art_version
 from networked_players_contracts.canonical import content_hash, stable_id_digest
 from networked_players_contracts.catalog import _catalog_version
 from networked_players_contracts.connection_rounds import round_content_fingerprint
+from networked_players_contracts.contributor_index import contributor_index_version
 
 _SNAPSHOT = "20260601"
 _CATALOG_VERSION_STR = "catalog-v1-20260601-abc123abc123"
@@ -341,6 +342,31 @@ def _challenge(catalog: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _contributor_index(catalog: dict[str, Any]) -> dict[str, Any]:
+    contributors = [
+        {
+            "artist_id": 100,
+            "name": "Alice",
+            "role_categories": ["strings"],
+            "role_text_examples": ["Guitar"],
+            "albums": ["master-1"],
+            "decade_activity": [1990],
+            "connection_count": 0,
+            "neighboring_contributor_ids": [],
+            "evidence": [{"release_id": 1, "role_text": "Guitar"}],
+        }
+    ]
+    return {
+        "schema_version": 1,
+        "catalog_version": catalog["catalog_version"],
+        "contributor_index_version": contributor_index_version(contributors, _SNAPSHOT),
+        "generated_at": "2026-08-03T00:00:00+00:00",
+        "source": "Derived from challenge.v2.json and routes artifacts.",
+        "license": "See docs/DATA_AND_RIGHTS.md.",
+        "contributors": contributors,
+    }
+
+
 def _write(path: Path, payload: dict[str, Any]) -> Path:
     path.write_text(json.dumps(payload))
     return path
@@ -360,6 +386,9 @@ def _write_all(tmp_path: Path) -> dict[str, Path]:
         "routes_universe": _write(tmp_path / "routes-universe.v1.json", routes_universe),
         "routes_rounds": _write(tmp_path / "routes-rounds.v1.json", routes_rounds),
         "challenge": _write(tmp_path / "challenge.v2.json", _challenge(catalog)),
+        "contributor_index": _write(
+            tmp_path / "contributor-index.v1.json", _contributor_index(catalog)
+        ),
     }
 
 
@@ -382,6 +411,8 @@ def _args(paths: dict[str, Path]) -> list[str]:
         str(paths["routes_rounds"]),
         "--challenge",
         str(paths["challenge"]),
+        "--contributor-index",
+        str(paths["contributor_index"]),
     ]
 
 
@@ -398,6 +429,7 @@ def test_clean_set_exits_zero(tmp_path: Path, capsys) -> None:
         "connection_daily_manifest": [],
         "record_routes": [],
         "challenge": [],
+        "contributor_index": [],
     }
 
 
@@ -430,6 +462,7 @@ def test_default_paths_point_at_the_real_repo_layout(tmp_path: Path, capsys, mon
         "apps/web/public/data/routes/universe.v1.json": routes_universe,
         "apps/web/public/data/routes/rounds.v1.json": routes_rounds,
         "apps/web/public/data/challenge.v2.json": _challenge(catalog),
+        "apps/web/public/data/contributors/index.v1.json": _contributor_index(catalog),
     }
     for relative_path, payload in layout.items():
         full_path = tmp_path / relative_path
