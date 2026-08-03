@@ -562,6 +562,50 @@ def _parser() -> argparse.ArgumentParser:
     )
     validate_album_catalog.add_argument("--input", type=Path, required=True)
 
+    rank_exploration_tier = subparsers.add_parser(
+        "rank-exploration-tier",
+        help=(
+            "MEASUREMENT ONLY -- assembles a candidate exploration-graph tier at a given "
+            "--target-count for measurement (Phase 2 Slice D, ADR 0049). Reuses the same "
+            "assemble_album_catalog ranking as build-album-catalog, but stamps the result "
+            "with exploration_corpus_version (a distinct explore-v1- prefix), never "
+            "catalog_version, so a tier can never be confused with or accidentally "
+            "validated against the real editorial/game catalog. --output must be under "
+            "local/ -- this command refuses to write anywhere under apps/web/public/ or "
+            "any other path, since a tier is never a publication candidate on its own."
+        ),
+    )
+    rank_exploration_tier.add_argument("--onehop-root", type=Path, required=True)
+    rank_exploration_tier.add_argument(
+        "--editorial-albums", type=Path, default=Path("data/albums/top-albums-v1.json")
+    )
+    rank_exploration_tier.add_argument(
+        "--candidates", type=Path, required=True, help="rank-album-candidates output"
+    )
+    rank_exploration_tier.add_argument("--target-count", type=int, required=True)
+    rank_exploration_tier.add_argument("--output", type=Path, required=True)
+    rank_exploration_tier.add_argument("--memory-limit", default="3GB")
+    rank_exploration_tier.add_argument("--threads", type=int, default=2)
+    rank_exploration_tier.add_argument(
+        "--release-format-policy",
+        type=Path,
+        default=None,
+        help="optional release-format-scoring-index.json; also gates the editorial entries",
+    )
+    rank_exploration_tier.add_argument(
+        "--masters-root",
+        type=Path,
+        default=None,
+        help="optional parsed masters snapshot root; original album year + genre/style "
+        "non-studio exclusion for both the editorial and candidate sides",
+    )
+    rank_exploration_tier.add_argument(
+        "--studio-album-exclusions",
+        type=Path,
+        default=None,
+        help="optional studio-album-master-exclusions-v1.json; curated master-ID deny-list",
+    )
+
     build_public_album_catalog = subparsers.add_parser(
         "build-public-album-catalog",
         help=(
@@ -1982,6 +2026,85 @@ def main(argv: Sequence[str] | None = None) -> int:
         catalog = json.loads(args.input.read_text())
         validate_album_catalog(catalog)
         print(json.dumps({"ok": True}, indent=2))
+        return 0
+
+    if args.command == "rank-exploration-tier":
+        from networked_players_graph_core.analysis import (
+            assemble_album_catalog,
+            exploration_corpus_version,
+        )
+        from networked_players_graph_core.graph import CreditGraph
+
+        from .discogs.release_format_policy import load_master_exclusions
+
+        output_str = str(args.output)
+        if not (output_str.startswith("local/") or "/local/" in output_str):
+            raise ValueError(
+                f"rank-exploration-tier refuses to write outside local/: {output_str!r} -- "
+                "an exploration tier is a measurement-only artifact, never a publication "
+                "candidate on its own (ADR 0049)"
+            )
+
+        editorial_albums = json.loads(args.editorial_albums.read_text())["albums"]
+        candidates = json.loads(args.candidates.read_text())
+        allowed_release_ids = None
+        if args.release_format_policy is not None:
+            policy_payload = json.loads(args.release_format_policy.read_text())
+            allowed_release_ids = frozenset(policy_payload["allowed_release_ids"])
+        master_exclusions = load_master_exclusions(args.studio_album_exclusions)
+
+        onehop_manifest = json.loads((args.onehop_root / "manifest.json").read_text())
+        snapshot_date = str(
+            onehop_manifest.get("snapshot_date")
+            or onehop_manifest["expansion"]["source_snapshot_date"]
+        )
+
+        with CreditGraph.open(
+            args.onehop_root,
+            memory_limit=args.memory_limit,
+            threads=args.threads,
+            build_edges=False,
+        ) as graph:
+            if args.masters_root is not None:
+                graph.attach_masters(args.masters_root)
+            tier = assemble_album_catalog(
+                graph,
+                editorial_albums,
+                candidates,
+                target_count=args.target_count,
+                allowed_release_ids=allowed_release_ids,
+                master_exclusions=master_exclusions,
+                snapshot_date=snapshot_date,
+                generated_by=f"networked-players-catalog rank-exploration-tier {__version__}",
+            )
+
+        # Never catalog_version -- an exploration tier must never be
+        # confused with, or accidentally pass validation against, the real
+        # editorial/game catalog (ADR 0049).
+        del tier["catalog_version"]
+        tier["exploration_corpus_version"] = exploration_corpus_version(
+            tier["albums"], snapshot_date
+        )
+        tier["note"] = (
+            "MEASUREMENT ONLY. Never published under apps/web/public/data/. "
+            "See ADR 0049 and docs/EXPLORATION_TIER_COMPARISON.md."
+        )
+
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(json.dumps(tier, indent=2) + "\n")
+        print(
+            json.dumps(
+                {
+                    "output": str(args.output),
+                    "exploration_corpus_version": tier["exploration_corpus_version"],
+                    "editorial_count": tier["editorial_count"],
+                    "editorial_missed": len(tier["editorial_missed"]),
+                    "candidate_count_added": tier["candidate_count_added"],
+                    "total_albums": len(tier["albums"]),
+                },
+                indent=2,
+            )
+        )
         return 0
 
     if args.command == "build-public-album-catalog":

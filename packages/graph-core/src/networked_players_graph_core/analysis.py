@@ -170,6 +170,25 @@ def _catalog_version(albums: list[dict[str, Any]], snapshot_date: str | None) ->
     return f"{prefix}-{digest}"
 
 
+def exploration_corpus_version(albums: list[dict[str, Any]], snapshot_date: str | None) -> str:
+    """The exploration-tier sibling of `_catalog_version` -- same fingerprint
+    shape, deliberately different prefix (`explore-v1-` vs `catalog-v1-`) so
+    an exploration-tier artifact can never be confused with, or accidentally
+    validated against, the real editorial/game catalog (mirrors the
+    Record-Routes-vs-Connection-Guesser non-collision discipline in ADR
+    0046). Exploration tiers are local-only measurement artifacts (ADR 0049);
+    this version identifies a tier run, it does not make one publishable."""
+    fingerprint = "|".join(
+        sorted(
+            f"{a['artist_id']}:{a['main_release_id']}:{a.get('master_id')}:{a['year']}"
+            for a in albums
+        )
+    )
+    digest = hashlib.sha256(fingerprint.encode()).hexdigest()[:12]
+    prefix = f"explore-v1-{snapshot_date}" if snapshot_date else "explore-v1"
+    return f"{prefix}-{digest}"
+
+
 def assemble_album_catalog(
     graph: CreditGraph,
     editorial_albums: list[dict[str, str]],
