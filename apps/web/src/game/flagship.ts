@@ -372,15 +372,15 @@ export async function initFlagship(
   // Replay guard: the daily is one play per day. A recorded result renders
   // the stored spoiler-free card instead of re-dealing the round.
   if (daily) {
-    const playedShare = load(storage()).daily[isoDate];
-    if (playedShare) {
+    const playedEntry = load(storage()).daily[isoDate];
+    if (playedEntry) {
       tray.hidden = true;
       attempts.hidden = true;
       clueButton.hidden = true;
       giveUp.hidden = true;
       $("question").textContent = "You've already played today's connection.";
       stage.dataset.phase = "played";
-      buildDailyPanel(playedShare, load(storage()).streak, true);
+      buildDailyPanel(playedEntry.shareString, load(storage()).streak, true);
       dailyPanel.hidden = false;
       announce("You've already played today's connection. Come back tomorrow.");
       return;

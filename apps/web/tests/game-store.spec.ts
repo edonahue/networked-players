@@ -44,7 +44,7 @@ test("round-trips through storage under the versioned key", () => {
 
 test("migrates the v0 experimental shape and rejects garbage", () => {
   const migrated = migrate({ plays: 7 });
-  expect(migrated.version).toBe(1);
+  expect(migrated.version).toBe(2);
   expect(migrated.totals.played).toBe(7);
   expect(migrate("not an object")).toEqual(emptyStore());
   expect(migrate(null)).toEqual(emptyStore());
@@ -95,4 +95,47 @@ test("daily streak counts consecutive solved days and resets on a miss", () => {
     "2026-07-19",
     "2026-07-20",
   ]);
+});
+
+test("recordDaily stores the rating alongside the share string", () => {
+  let store = emptyStore();
+  store = recordDaily(store, "2026-07-16", "clean", "●");
+  expect(store.daily["2026-07-16"]).toEqual({
+    shareString: "●",
+    rating: "clean",
+  });
+});
+
+test("migrates a v1 store (bare share strings) to v2, conservatively rating every historical entry as revealed", () => {
+  const migrated = migrate({
+    version: 1,
+    totals: { played: 3, solved: 2, clean: 1, revealed: 1 },
+    streak: { current: 2, best: 4, lastDailyDate: "2026-01-05" },
+    seenRounds: ["conn-old-example"],
+    daily: {
+      "2026-01-04": "old share text",
+      "2026-01-05": "old share text 2",
+    },
+  });
+  expect(migrated.version).toBe(2);
+  expect(migrated.totals.played).toBe(3);
+  expect(migrated.streak.best).toBe(4);
+  expect(migrated.daily).toEqual({
+    "2026-01-04": { shareString: "old share text", rating: "revealed" },
+    "2026-01-05": { shareString: "old share text 2", rating: "revealed" },
+  });
+});
+
+test("v2 migration discards a malformed daily entry rather than throwing", () => {
+  const migrated = migrate({
+    version: 2,
+    daily: {
+      "2026-01-04": { shareString: "ok", rating: "clean" },
+      "2026-01-05": { shareString: "bad rating" },
+      "2026-01-06": "not even an object",
+    },
+  });
+  expect(migrated.daily).toEqual({
+    "2026-01-04": { shareString: "ok", rating: "clean" },
+  });
 });
