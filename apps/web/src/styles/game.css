@@ -705,3 +705,74 @@ a.contributor-card:focus-visible {
     transform: rotate(90deg);
   }
 }
+
+/* Network Explorer (Phase 2 Slice G, ADR 0052) ---------------------------- */
+.explorer-stage {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-block: 20px;
+}
+.explorer-role-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.explorer-role-filter .chip[aria-pressed="true"] {
+  border-color: var(--accent);
+  color: var(--accent-strong);
+}
+.explorer-status {
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+.explorer-svg {
+  width: 100%;
+  max-width: 640px;
+  height: auto;
+  margin-inline: auto;
+  aspect-ratio: 1;
+  overflow: visible;
+}
+.explorer-edge {
+  stroke: var(--line);
+  stroke-width: 1.5;
+}
+.explorer-node circle {
+  fill: var(--surface);
+  stroke: var(--accent);
+  stroke-width: 2;
+  cursor: pointer;
+  transition:
+    opacity 150ms ease,
+    fill 150ms ease;
+}
+.explorer-node[data-is-center="true"] circle {
+  fill: var(--accent);
+  stroke: var(--accent-strong);
+}
+.explorer-node text {
+  font-family: var(--mono);
+  font-size: 8px;
+  fill: var(--ink);
+  pointer-events: none;
+}
+.explorer-node:focus-visible circle {
+  outline: 2px solid var(--accent-strong);
+  outline-offset: 2px;
+}
+.explorer-node--dimmed circle {
+  opacity: 0.25;
+}
+.explorer-node--dimmed text {
+  opacity: 0.35;
+}
+.explorer-truncated-note {
+  font-size: 0.82rem;
+  color: var(--muted);
+  text-align: center;
+}
+
+:root[data-motion="off"] .explorer-node circle {
+  transition: none;
+}

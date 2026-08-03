@@ -18,6 +18,9 @@ const connectedAlbumIds = new Set(
 const albumPaths = challenge.albums
   .filter((album) => connectedAlbumIds.has(album.id))
   .map((album) => `/albums/${album.id}/`);
+const explorePaths = challenge.albums
+  .filter((album) => connectedAlbumIds.has(album.id))
+  .map((album) => `/explore/${album.id}/`);
 
 import cohortManifest from "../../public/data/cohorts/index.json";
 
@@ -41,11 +44,13 @@ const paths = [
   "/play/routes/",
   "/play/connect/",
   "/albums/",
+  "/explore/",
   "/about/",
   "/demo/",
   "/cohorts/",
   ...cohortPaths,
   ...albumPaths,
+  ...explorePaths,
   ...contributorPaths,
 ];
 

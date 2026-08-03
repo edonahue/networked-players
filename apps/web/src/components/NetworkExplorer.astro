@@ -1,0 +1,41 @@
+---
+// Network Explorer (Phase 2 Slice G, ADR 0052): a focused, bounded,
+// non-force-directed expandable graph. SVG, not Canvas -- see ADR 0052 for
+// why (bounded node counts, real focusable/labeled DOM elements for
+// accessibility, no physics-simulation dependency). Markup shell only; all
+// data/layout/interaction wiring lives in game/networkExplorer.ts +
+// the page's own script (matching RoutesStage.astro/ConnectStage.astro's
+// split).
+interface Props {
+  initialArtistId: number;
+  initialLabel: string;
+}
+const { initialArtistId, initialLabel } = Astro.props;
+---
+
+<div
+  class="explorer-stage"
+  data-testid="explorer-stage"
+  data-initial-artist-id={initialArtistId}
+  data-initial-label={initialLabel}
+>
+  <div class="explorer-role-filter" data-explorer-role-filter role="group" aria-label="Filter by role">
+  </div>
+
+  <div class="explorer-status" data-explorer-status role="status" aria-live="polite" hidden></div>
+
+  <svg
+    class="explorer-svg"
+    data-explorer-svg
+    viewBox="0 0 320 320"
+    role="img"
+    aria-label="Network explorer graph"
+  >
+    <g data-explorer-edges></g>
+    <g data-explorer-nodes></g>
+  </svg>
+
+  <p class="explorer-truncated-note" data-explorer-truncated hidden>
+    Showing the most-connected neighbors only — not every documented connection.
+  </p>
+</div>
