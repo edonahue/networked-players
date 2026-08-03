@@ -92,9 +92,21 @@ correctness on a small fixture graph, mirroring
 
 ## Revisit trigger
 
-The Python (`compact_graph_bench.py`) and TypeScript (`pathfindingGraph.ts`)
+~~The Python (`compact_graph_bench.py`) and TypeScript (`pathfindingGraph.ts`)
 BFS implementations currently have no shared, cross-language parity test —
-unlike `canonical.py`/`canonical.ts`, which are proven byte-identical. If a
-BFS behavior bug is ever found in only one implementation, add a shared
-fixture-based parity test at that point rather than trusting manual
-inspection indefinitely.
+unlike `canonical.py`/`canonical.ts`, which are proven byte-identical.~~
+**Addendum (Phase 2 follow-up, Slice J):** closed, using the same pattern
+`canonical.py`/`canonical.ts` already established — a manually-pinned
+golden value, not an automated cross-runner harness. `apps/web/tests/
+pathfinding-bfs-parity.spec.ts` runs a real `bfs_over_csr` invocation once
+(the exact command is preserved as a comment in that file) and hardcodes
+its output as TS assertions against `findPath` on the byte-identical CSR
+fixture. This covers hop-list shape/values on a found path and no-path/
+same-artist agreement. It does **not** cover: role text (Python's bench
+module carries no `edge_role_a`/`edge_role_b` equivalent at all),
+`findPath`'s `edgeFilter` parameter (no Python analog), or
+`FrontierTooLargeBench`/`"inconclusive"` (Python signals this via a raised
+exception, TS via a typed union member no code path produces today, since
+this graph's bounded scope makes an in-memory BFS cheap regardless of
+degree). If a future change makes `"inconclusive"` reachable in either
+implementation, extend the parity test to cover it at that point.
