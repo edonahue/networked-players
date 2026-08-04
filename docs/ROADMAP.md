@@ -73,6 +73,10 @@ See [docs/BUILD_PLAN.md](BUILD_PLAN.md) for the granular, code-level task breakd
       `scripts/enqueue_*_check.py` fleet-validation family still uses the
       pre-0034 hostname/inventory-group pattern, not yet migrated onto it)
 - [ ] Measure snapshot size, transfer, memory, and execution limits on each hardware class
+      (Phase 3 Slice E measured one real case -- a bounded validation-class job's
+      locality/transfer/compute cost on x86 vs. a real Pi 3B, see
+      `docs/RESEARCH_COMPUTE_LOCALITY_METHOD.md` -- not yet a comprehensive
+      per-hardware-class measurement)
 - [ ] Expand challenge generation and public findings
 - [ ] Verify repeated publication and rollback
 
