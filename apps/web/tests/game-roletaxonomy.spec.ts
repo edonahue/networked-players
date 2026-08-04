@@ -1,11 +1,18 @@
-// Unit specs for the "Behind the Glass" role filter (ADR 0053) -- the TS
-// port of role_taxonomy.py's PRODUCTION/ENGINEERING token sets, plus
-// findPath's edgeFilter parameter. No browser or fetch needed.
+// Unit specs for the role-filtered Connect Two Records modes -- Behind the
+// Glass (ADR 0053), Rhythm Section, and Guitar Paths (both added in a
+// Phase 2 follow-up slice once role_mode_candidates.py's real measurement
+// cleared the launch floor). TS ports of real eligibility.py/role_taxonomy.py
+// token sets, plus findPath's edgeFilter parameter. No browser or fetch
+// needed.
 
 import { expect, test } from "@playwright/test";
 import {
   behindTheGlassEdgeFilter,
+  guitarPathsEdgeFilter,
   isEngineeringOrProductionRole,
+  isGuitarRole,
+  isRhythmSectionRole,
+  rhythmSectionEdgeFilter,
 } from "../src/game/roleTaxonomy";
 import {
   buildArtistIndex,
@@ -47,6 +54,71 @@ test.describe("behindTheGlassEdgeFilter", () => {
     expect(behindTheGlassEdgeFilter("Producer", "Mixed By")).toBe(true);
     expect(behindTheGlassEdgeFilter("Producer", "Guitar")).toBe(false);
     expect(behindTheGlassEdgeFilter("Guitar", "Bass")).toBe(false);
+  });
+});
+
+test.describe("isRhythmSectionRole", () => {
+  test("recognizes real drums/bass role strings, including bracketed qualifiers", () => {
+    for (const role of [
+      "Drums",
+      "Bass",
+      "Bass Guitar",
+      "Double Bass",
+      "Upright Bass",
+      "Bass [Fretless]",
+    ]) {
+      expect(isRhythmSectionRole(role)).toBe(true);
+    }
+  });
+
+  test("excludes percussion, a separate display category from drums", () => {
+    expect(isRhythmSectionRole("Percussion")).toBe(false);
+  });
+
+  test("does not classify unrelated roles", () => {
+    for (const role of ["Vocals", "Guitar", "Producer"]) {
+      expect(isRhythmSectionRole(role)).toBe(false);
+    }
+  });
+
+  test("is fail-closed for empty text", () => {
+    expect(isRhythmSectionRole("")).toBe(false);
+  });
+});
+
+test.describe("isGuitarRole", () => {
+  test("recognizes real guitar role variants", () => {
+    for (const role of [
+      "Guitar",
+      "Acoustic Guitar",
+      "Electric Guitar",
+      "Lead Guitar",
+      "Rhythm Guitar",
+      "Slide Guitar",
+      "Steel Guitar",
+      "Pedal Steel",
+      "Guitar [12-String]",
+    ]) {
+      expect(isGuitarRole(role)).toBe(true);
+    }
+  });
+
+  test("does not classify bass or unrelated roles", () => {
+    for (const role of ["Bass", "Vocals", "Drums"]) {
+      expect(isGuitarRole(role)).toBe(false);
+    }
+  });
+});
+
+test.describe("rhythmSectionEdgeFilter / guitarPathsEdgeFilter", () => {
+  test("rhythm section requires both endpoints to be drums/bass", () => {
+    expect(rhythmSectionEdgeFilter("Drums", "Bass")).toBe(true);
+    expect(rhythmSectionEdgeFilter("Drums", "Guitar")).toBe(false);
+  });
+
+  test("guitar paths requires both endpoints to be guitar", () => {
+    expect(guitarPathsEdgeFilter("Guitar", "Lead Guitar")).toBe(true);
+    expect(guitarPathsEdgeFilter("Guitar", "Bass")).toBe(false);
   });
 });
 

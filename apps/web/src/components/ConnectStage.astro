@@ -1,11 +1,14 @@
 ---
 // Connect Two Records (ADR 0051): pick any two albums in the pathfinding
-// graph's scope and search for a documented route between them. The
-// "Behind the Glass" checkbox (ADR 0053) restricts the same search to
-// producer/engineer/mixer credits only -- reusing this page and the same
-// published pathfinding graph rather than a separate mode/page. Markup
-// shell only -- all wiring lives in game/connect.ts (initConnect()),
-// matching RoutesStage.astro's split.
+// graph's scope and search for a documented route between them. The role
+// filter radio group (ADR 0053, extended in a Phase 2 follow-up slice)
+// restricts the same search to a specific kind of credit end to end --
+// Behind the Glass (producer/engineer/mixer), Rhythm Section (drums/bass),
+// or Guitar Paths (guitar) -- reusing this page and the same published
+// pathfinding graph rather than a separate mode/page per filter. Radio
+// buttons, not independent checkboxes: only one filter (or none) applies
+// per search. Markup shell only -- all wiring lives in game/connect.ts
+// (initConnect()), matching RoutesStage.astro's split.
 ---
 
 <div class="connect-stage" data-testid="connect-stage">
@@ -37,10 +40,46 @@
     </div>
   </div>
 
-  <label class="connect-mode-toggle">
-    <input type="checkbox" data-connect-behind-the-glass />
-    Behind the Glass — only follow producer/engineer/mixer credits
-  </label>
+  <fieldset class="connect-mode-toggle-group" data-connect-mode-group>
+    <legend>Route filter</legend>
+    <label class="connect-mode-toggle">
+      <input
+        type="radio"
+        name="connect-mode"
+        value="none"
+        data-connect-mode-option
+        checked
+      />
+      Any documented route
+    </label>
+    <label class="connect-mode-toggle">
+      <input
+        type="radio"
+        name="connect-mode"
+        value="behind-the-glass"
+        data-connect-mode-option
+      />
+      Behind the Glass — only producer/engineer/mixer credits
+    </label>
+    <label class="connect-mode-toggle">
+      <input
+        type="radio"
+        name="connect-mode"
+        value="rhythm-section"
+        data-connect-mode-option
+      />
+      Rhythm Section — only drums/bass credits
+    </label>
+    <label class="connect-mode-toggle">
+      <input
+        type="radio"
+        name="connect-mode"
+        value="guitar-paths"
+        data-connect-mode-option
+      />
+      Guitar Paths — only guitar credits
+    </label>
+  </fieldset>
 
   <button type="button" class="button primary" data-connect-search disabled>
     Find the connection

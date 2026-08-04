@@ -13,7 +13,11 @@ import {
   type PathHop,
 } from "./pathfindingGraph";
 import { explainScore, scorePath } from "./routeQuality";
-import { behindTheGlassEdgeFilter } from "./roleTaxonomy";
+import {
+  behindTheGlassEdgeFilter,
+  guitarPathsEdgeFilter,
+  rhythmSectionEdgeFilter,
+} from "./roleTaxonomy";
 import type { Contributor, ContributorIndex } from "../data/contributors";
 
 interface CatalogAlbum {
@@ -23,6 +27,33 @@ interface CatalogAlbum {
   artist_id: number;
   year: number | null;
 }
+
+// One entry per role-filtered search mode (ADR 0053, extended for Rhythm
+// Section/Guitar Paths). "none" -- the unfiltered default -- is
+// deliberately absent from this table; it's the fallback when no entry
+// matches the checked radio's value.
+interface RoleFilterMode {
+  edgeFilter: (roleA: string, roleB: string) => boolean;
+  noPathMessage: string;
+}
+
+const ROLE_FILTER_MODES: Record<string, RoleFilterMode> = {
+  "behind-the-glass": {
+    edgeFilter: behindTheGlassEdgeFilter,
+    noPathMessage:
+      "No producer/engineer-only connection was found between these two records within 4 hops.",
+  },
+  "rhythm-section": {
+    edgeFilter: rhythmSectionEdgeFilter,
+    noPathMessage:
+      "No drums/bass-only connection was found between these two records within 4 hops.",
+  },
+  "guitar-paths": {
+    edgeFilter: guitarPathsEdgeFilter,
+    noPathMessage:
+      "No guitar-only connection was found between these two records within 4 hops.",
+  },
+};
 
 function sessionStorageOrNull(): Storage | null {
   try {
@@ -115,9 +146,6 @@ export async function initConnect(): Promise<void> {
     "[data-connect-result='musical']",
   );
   const explainEl = stage.querySelector<HTMLElement>("[data-connect-explain]");
-  const behindTheGlassToggle = stage.querySelector<HTMLInputElement>(
-    "[data-connect-behind-the-glass]",
-  );
   if (!searchButton || !statusEl || !resultsEl || !hopsEl) return;
 
   const setStatus = (message: string | null) => {
@@ -189,23 +217,27 @@ export async function initConnect(): Promise<void> {
       graph.node_ids.map((id, i) => [id, graph.names[i]]),
     );
 
-    const behindTheGlass = behindTheGlassToggle?.checked ?? false;
+    const selectedModeValue =
+      stage.querySelector<HTMLInputElement>(
+        "[data-connect-mode-option]:checked",
+      )?.value ?? "none";
+    const roleFilterMode = ROLE_FILTER_MODES[selectedModeValue];
     const pathResult = findPath(
       graph,
       artistIndex,
       fromAlbum.artist_id,
       toAlbum.artist_id,
       4,
-      behindTheGlass ? behindTheGlassEdgeFilter : undefined,
+      roleFilterMode?.edgeFilter,
     );
     if (!pathResult.ok) {
       const messages: Record<string, string> = {
         "unknown-album":
           "One of these records isn't in the documented connection graph yet.",
         inconclusive: "The search was inconclusive within the current bounds.",
-        "no-path": behindTheGlass
-          ? "No producer/engineer-only connection was found between these two records within 4 hops."
-          : "No documented connection was found between these two records within 4 hops.",
+        "no-path":
+          roleFilterMode?.noPathMessage ??
+          "No documented connection was found between these two records within 4 hops.",
       };
       setStatus(messages[pathResult.reason] ?? "No connection found.");
       updateButton();
@@ -214,17 +246,18 @@ export async function initConnect(): Promise<void> {
 
     setStatus(null);
     resultsEl.hidden = false;
-    if (behindTheGlass && musicalSection) musicalSection.hidden = true;
+    if (roleFilterMode && musicalSection) musicalSection.hidden = true;
     hopsEl.innerHTML = pathResult.hops
       .map((hop) => renderHop(hop, nameById))
       .join("");
 
     // "More musical route" needs contributor role/degree data -- fetched
     // only now, so a plain shortest-path result never pays for it. Skipped
-    // in Behind the Glass mode: every hop is already producer/engineer-only
-    // by construction, so a role-signal re-ranking has nothing to add.
+    // in any role-filtered mode: every hop already matches that mode's
+    // credit type by construction, so a role-signal re-ranking has nothing
+    // to add.
     if (
-      !behindTheGlass &&
+      !roleFilterMode &&
       musicalHopsAvailable(hopsMusicalEl, musicalSection)
     ) {
       try {
