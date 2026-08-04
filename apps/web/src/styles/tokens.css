@@ -17,7 +17,10 @@
   --accent: #78aaa0; /* teal */
   --accent-strong: #9bc9be;
   --focus: #df624d;
-  --warm: #c9553f; /* rust */
+  --warm: #d2715f; /* rust -- lightened from #c9553f (4.19:1 against
+    --surface, the tightest of --warm's real text-on-dark-surface use
+    sites) to clear WCAG AA's 4.5:1 threshold against --bg (5.68:1),
+    --surface (5.09:1), and --surface-soft (4.7:1) alike */
   --gold: #c0a568; /* gold */
   --shadow: 0 18px 48px rgba(0, 0, 0, 0.34);
   --shadow-strong: 0 24px 64px rgba(0, 0, 0, 0.48);
@@ -48,7 +51,8 @@
   --accent: #3f756e;
   --accent-strong: #285c55;
   --focus: #b94732;
-  --warm: #a94a36;
+  --warm: #9d4532; /* rust -- darkened from #a94a36 (4.48:1 against
+    --surface-soft, just under WCAG AA) to 5.0:1 against the same */
   --gold: #9c8248;
   --shadow: 0 16px 40px rgba(41, 39, 34, 0.12);
   --shadow-strong: 0 24px 58px rgba(41, 39, 34, 0.18);

@@ -148,13 +148,17 @@ export async function initExplorerStage(): Promise<void> {
       })
       .join("");
 
+    // Roving tabindex (matching flagship.ts's chip-tray pattern): only the
+    // center node is a tab stop on a fresh render -- arrow keys move both
+    // the roving position and real DOM focus among neighbors from there,
+    // instead of every node being its own independent tab stop.
     const renderNode = (node: ExplorerNode) => {
       const pos = nodePositions.get(node.artistId)!;
       const dimmed = isDimmed(node, activeCategories);
       const r = node.isCenter ? CENTER_NODE_RADIUS : NODE_RADIUS;
       return (
         `<g class="explorer-node${dimmed ? " explorer-node--dimmed" : ""}" ` +
-        `data-artist-id="${node.artistId}" data-is-center="${node.isCenter}" tabindex="0" role="button" ` +
+        `data-artist-id="${node.artistId}" data-is-center="${node.isCenter}" tabindex="${node.isCenter ? "0" : "-1"}" role="button" ` +
         `aria-label="${escapeHtml(node.name)}${node.isCenter ? " (center)" : ""}">` +
         `<circle cx="${pos.x}" cy="${pos.y}" r="${r}" />` +
         `<text x="${pos.x}" y="${pos.y + r + 12}" text-anchor="middle">${escapeHtml(node.name)}</text>` +
@@ -169,7 +173,11 @@ export async function initExplorerStage(): Promise<void> {
 
   let currentView: ExplorerView | null = null;
 
-  function centerOn(artistId: number, label?: string) {
+  function centerOn(
+    artistId: number,
+    label?: string,
+    options: { moveFocus?: boolean } = {},
+  ) {
     const view = buildView(graph, artistIndex, contributorByArtistId, artistId);
     if (!view) {
       setStatus(
@@ -177,11 +185,21 @@ export async function initExplorerStage(): Promise<void> {
       );
       return;
     }
-    setStatus(null);
     activeCategories = new Set();
     currentView = view;
     renderRoleFilter(view);
     renderView(view);
+    // Announce the new center -- rebuilding the SVG destroys whatever was
+    // previously focused, so without this a screen reader gets no signal
+    // the view changed at all.
+    setStatus(`Centered on ${view.center.name}.`);
+    if (options.moveFocus) {
+      nodesLayer!
+        .querySelector<SVGGElement>(
+          `[data-artist-id="${view.center.artistId}"]`,
+        )
+        ?.focus();
+    }
   }
 
   nodesLayer.addEventListener("click", (event) => {
@@ -189,16 +207,36 @@ export async function initExplorerStage(): Promise<void> {
       "[data-artist-id]",
     );
     if (!target || target.dataset.artistId === undefined) return;
-    centerOn(Number(target.dataset.artistId));
+    centerOn(Number(target.dataset.artistId), undefined, { moveFocus: true });
   });
   nodesLayer.addEventListener("keydown", (event) => {
-    if (event.key !== "Enter" && event.key !== " ") return;
-    const target = (event.target as Element).closest<SVGGElement>(
-      "[data-artist-id]",
-    );
-    if (!target) return;
+    if (event.key === "Enter" || event.key === " ") {
+      const target = (event.target as Element).closest<SVGGElement>(
+        "[data-artist-id]",
+      );
+      if (!target) return;
+      event.preventDefault();
+      centerOn(Number(target.dataset.artistId), undefined, {
+        moveFocus: true,
+      });
+      return;
+    }
+
+    const arrowKeys = ["ArrowRight", "ArrowDown", "ArrowLeft", "ArrowUp"];
+    if (!arrowKeys.includes(event.key)) return;
     event.preventDefault();
-    centerOn(Number(target.dataset.artistId));
+    const nodes = [
+      ...nodesLayer!.querySelectorAll<SVGGElement>("[data-artist-id]"),
+    ];
+    if (nodes.length === 0) return;
+    const current = document.activeElement as SVGGElement | null;
+    const index = Math.max(0, nodes.indexOf(current as SVGGElement));
+    const delta =
+      event.key === "ArrowRight" || event.key === "ArrowDown" ? 1 : -1;
+    const next = nodes[(index + delta + nodes.length) % nodes.length];
+    for (const node of nodes) node.tabIndex = -1;
+    next.tabIndex = 0;
+    next.focus();
   });
 
   roleFilterEl.addEventListener("click", (event) => {
