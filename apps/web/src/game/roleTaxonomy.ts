@@ -13,10 +13,16 @@
 // since role_taxonomy.py's coarser STRINGS/PERCUSSION_KEYS buckets bundle
 // guitar with bass/banjo/violin and drums with keys/organ -- too broad for
 // an instrument-specific mode. Keep every token set in lockstep with its
-// Python source by inspection until a shared cross-language fixture exists
-// (mirroring pathfindingGraph.ts's own noted BFS-parity gap, now closed
-// for BFS itself in pathfinding-bfs-parity.spec.ts but not yet extended to
-// these token sets).
+// Python source by inspection -- a real 2026-08-04 gap where this drifted
+// (Python's role_taxonomy.py gained "programmed by"/"drum programming"
+// without this file being updated, silently changing real Behind-the-Glass
+// eligibility Python-side while the shipped client stayed stale) is now
+// covered by pinned parity cases in apps/web/tests/game-roletaxonomy.spec.ts,
+// mirroring pathfindingGraph.ts's own BFS-parity pattern
+// (pathfinding-bfs-parity.spec.ts) -- a manually-pinned golden value, not an
+// automated cross-runner harness, so it still requires updating both sides
+// by hand, but a forgotten update now fails a real test instead of silently
+// shipping.
 
 const PRODUCTION_AND_ENGINEERING_TOKENS = new Set([
   "producer",
@@ -26,6 +32,13 @@ const PRODUCTION_AND_ENGINEERING_TOKENS = new Set([
   "mixed by",
   "mastered by",
   "recorded by",
+  // Added 2026-08-04 from a real Jamiroquai-corpus role_taxonomy.py coverage
+  // run (packages/graph-core role_taxonomy.py's _ENGINEERING_TOKENS) --
+  // "conductor" was added to Python's ARRANGEMENT category in the same run
+  // but deliberately does NOT belong here, since ARRANGEMENT isn't part of
+  // eligibility_engineering.py's PRODUCTION/ENGINEERING gate either.
+  "programmed by",
+  "drum programming",
 ]);
 
 // eligibility.py's _ROLE_CATEGORY_BY_TOKEN entries mapping to "drums" or

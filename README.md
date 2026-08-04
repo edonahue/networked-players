@@ -72,7 +72,7 @@ Real dumps, account exports, generated catalogs, and local manifests remain outs
 **Common commands** (the [`Makefile`](Makefile) is the canonical command surface):
 
 ```bash
-make setup    # uv sync --extra dev --extra jobs
+make setup    # uv sync --extra dev --extra jobs --extra graph
 make check    # lint + format check + type check + tests + real public-artifact + catalog-audit validation (mirrors CI)
 make test     # tests only
 ```

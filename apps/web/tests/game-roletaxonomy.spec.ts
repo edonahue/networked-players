@@ -47,6 +47,26 @@ test.describe("isEngineeringOrProductionRole", () => {
   test("is fail-closed for empty text", () => {
     expect(isEngineeringOrProductionRole("")).toBe(false);
   });
+
+  // Pinned parity cases against Python's role_taxonomy.py/
+  // eligibility_engineering.py (see roleTaxonomy.ts's own header comment).
+  // Reproduce with:
+  //   uv run python3 -c "
+  //   from networked_players_graph_core.eligibility_engineering import is_engineering_or_production_role
+  //   print(is_engineering_or_production_role('Programmed By'))   # True
+  //   print(is_engineering_or_production_role('Drum Programming')) # True
+  //   print(is_engineering_or_production_role('Conductor'))        # False
+  //   "
+  // Real 2026-08-04 finding: "Programmed By"/"Drum Programming" were added
+  // to role_taxonomy.py's ENGINEERING tokens from a real corpus coverage
+  // run, silently changing Python-side Behind-the-Glass eligibility while
+  // this file stayed stale -- these two cases are the fix, and the
+  // "Conductor" case pins the real negative (ARRANGEMENT isn't gated here).
+  test("real 2026-08-04 token additions: matches Python's current behavior", () => {
+    expect(isEngineeringOrProductionRole("Programmed By")).toBe(true);
+    expect(isEngineeringOrProductionRole("Drum Programming")).toBe(true);
+    expect(isEngineeringOrProductionRole("Conductor")).toBe(false);
+  });
 });
 
 test.describe("behindTheGlassEdgeFilter", () => {

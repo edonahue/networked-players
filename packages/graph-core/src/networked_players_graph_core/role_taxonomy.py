@@ -21,6 +21,20 @@ gate. Classifying a role here does not change whether it creates a
 `credit_edges` row or whether it counts as a performer credit for the
 flagship game; it only labels it.
 
+Real, live exception to "it only labels it": `eligibility_engineering.py`
+(the "Behind the Glass" role-aware game mode, ADR 0053) is a thin wrapper
+over `classify_role` that turns PRODUCTION/ENGINEERING category membership
+directly into gameplay eligibility -- and `apps/web/src/game/roleTaxonomy.ts`
+independently hand-mirrors that same token set for the live client-side
+pathfinding UI. **Adding or removing a PRODUCTION/ENGINEERING/ARRANGEMENT
+token here changes real Behind-the-Glass eligibility and must be mirrored
+in both `eligibility_engineering.py`'s own tests and `roleTaxonomy.ts`
+(kept in sync by inspection, checked by `apps/web/tests/
+game-roletaxonomy.spec.ts`'s pinned-value parity cases) -- it is not a
+display-only change for that one mode.** Rhythm Section/Guitar Paths are
+unaffected -- they use `eligibility.py`'s separate, finer-grained token map
+instead of this module.
+
 `UNKNOWN` is an explicit, first-class category. A role that doesn't match any
 known token is UNKNOWN, never silently folded into an adjacent category --
 `docs/discogs-data/one-hop-hub-artists.md` observed 3,115 distinct role-text
