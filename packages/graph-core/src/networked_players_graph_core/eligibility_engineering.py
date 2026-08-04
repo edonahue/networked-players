@@ -14,7 +14,11 @@ Real measurement (`role_mode_candidates.py`, ADR 0053) found this the
 best-supported role-aware candidate against the real 140-album catalog: 202
 one-hop / 429 two-hop candidate pairs, with 137 of 140 albums carrying at
 least one eligible credit -- comfortably above ADR 0043's launch-floor
-precedent (>=50 one-hop / >=20 two-hop).
+precedent (>=50 one-hop / >=20 two-hop). Re-measured 2026-08-04 after
+role_taxonomy.py's ENGINEERING tokens gained "Programmed By"/"Drum
+Programming" from a real coverage run: 205 one-hop / 447 two-hop candidate
+pairs, still 137 of 140 albums -- a real, small, measured increase, not
+re-estimated.
 """
 
 from __future__ import annotations

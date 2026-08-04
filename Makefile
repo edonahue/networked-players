@@ -26,8 +26,8 @@ help: ## List available targets
 		| sort \
 		| awk 'BEGIN {FS = ":.*?## "} {printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}'
 
-setup: ## Install Python deps with dev + jobs extras across every workspace member (uv sync --all-packages --extra dev --extra jobs)
-	uv sync --all-packages --extra dev --extra jobs
+setup: ## Install Python deps with dev + jobs + graph extras across every workspace member (uv sync --all-packages --extra dev --extra jobs --extra graph); matches CI exactly so `make check` doesn't silently skip the graph-benchmark tests
+	uv sync --all-packages --extra dev --extra jobs --extra graph
 
 test: ## Run the test suite (needs the jobs extra -- see setup)
 	uv run pytest
