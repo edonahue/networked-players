@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import importlib.metadata
 import json
 from collections.abc import Callable
@@ -77,6 +78,56 @@ def _artifact_validate_handler(
     )
 
 
+def _research_corpus_check_handler(
+    request: RunRequest, input_dir: Path, output_dir: Path
+) -> tuple[ArtifactDescriptor, ...]:
+    """Verify a topic corpus's real on-disk checksums/sizes against its own
+    `manifest.json` (Phase 3 Slice E) -- a bounded schema/checksum audit,
+    the same "small-partition audit" class of work every Pi job in this
+    project is restricted to. Deliberately pure stdlib (`hashlib`/`json`
+    only, like `artifact.validate` above) so it ships to every worker,
+    Pi included, the moment the platform runtime itself is redeployed --
+    no `networked-players-research`/DuckDB install needed on the Pi fleet
+    for this workload specifically."""
+    del request
+    manifest_path = input_dir / "manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    failures: list[str] = []
+    for entry in manifest.get("files", []):
+        relative_path = entry["path"]
+        file_path = input_dir / relative_path
+        if not file_path.is_file():
+            failures.append(f"missing file: {relative_path}")
+            continue
+        digest = hashlib.sha256()
+        with file_path.open("rb") as handle:
+            for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+                digest.update(chunk)
+        if digest.hexdigest() != entry["sha256"]:
+            failures.append(f"checksum mismatch: {relative_path}")
+        if file_path.stat().st_size != entry["size_bytes"]:
+            failures.append(f"size mismatch: {relative_path}")
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    report = {
+        "schema_version": 1,
+        "valid": not failures,
+        "failures": failures,
+        "file_count": len(manifest.get("files", [])),
+    }
+    (output_dir / "corpus-check-report.json").write_text(
+        json.dumps(report, indent=2, sort_keys=True) + "\n"
+    )
+    return (
+        describe_artifact(
+            output_dir,
+            "corpus-check-report.json",
+            name="corpus-check-report",
+            contract="platform-research-corpus-check-report-v1",
+        ),
+    )
+
+
 def discover_workloads() -> dict[str, RegisteredWorkload]:
     workloads = {
         "platform.self-test": RegisteredWorkload(
@@ -101,6 +152,20 @@ def discover_workloads() -> dict[str, RegisteredWorkload]:
                 ),
             ),
             handler=_artifact_validate_handler,
+        ),
+        "research.corpus-check": RegisteredWorkload(
+            spec=WorkloadSpec(
+                workload_id="research.corpus-check",
+                version="1",
+                default_timeout_seconds=120,
+                max_retries=1,
+                capabilities=CapabilityRequirement(
+                    architectures=("aarch64", "x86_64"),
+                    tags=("validation",),
+                    min_memory_mb=128,
+                ),
+            ),
+            handler=_research_corpus_check_handler,
         ),
     }
     for entry_point in importlib.metadata.entry_points(group="networked_players.workloads"):

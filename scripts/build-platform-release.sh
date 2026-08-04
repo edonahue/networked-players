@@ -19,6 +19,7 @@ mkdir -p "${WHEELS_DIR}"
 uv build --package networked-players-contracts --wheel --out-dir "${WHEELS_DIR}"
 uv build --package networked-players-platform --wheel --out-dir "${WHEELS_DIR}"
 uv build --package networked-players-catalog --wheel --out-dir "${WHEELS_DIR}"
+uv build --package networked-players-research --wheel --out-dir "${WHEELS_DIR}"
 
 (
   cd "${WHEELS_DIR}"

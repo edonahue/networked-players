@@ -378,6 +378,7 @@ dependencies = [
     { name = "duckdb" },
     { name = "networked-players-catalog" },
     { name = "networked-players-contracts" },
+    { name = "networked-players-platform" },
 ]
 
 [package.optional-dependencies]
@@ -392,6 +393,7 @@ requires-dist = [
     { name = "duckdb", specifier = ">=1.2,<2" },
     { name = "networked-players-catalog", editable = "." },
     { name = "networked-players-contracts", editable = "packages/contracts" },
+    { name = "networked-players-platform", editable = "packages/platform" },
     { name = "networkx", marker = "extra == 'graph'", specifier = ">=3,<4" },
     { name = "python-igraph", marker = "extra == 'graph'", specifier = ">=0.11,<1" },
     { name = "rustworkx", marker = "extra == 'graph'", specifier = ">=0.15,<1" },
