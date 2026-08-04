@@ -38,7 +38,7 @@ networked-players-catalog = "networked_players_catalog.cli:main"
 cohort-score = "networked_players_catalog.platform_jobs:cohort_score_workload"
 
 [tool.uv.workspace]
-members = ["packages/contracts", "packages/platform"]
+members = ["packages/contracts", "packages/platform", "packages/research"]
 
 [tool.uv.sources]
 networked-players-contracts = { workspace = true }
@@ -67,6 +67,7 @@ testpaths = [
   "packages/contracts/tests",
   "packages/graph-core/tests",
   "packages/platform/tests",
+  "packages/research/tests",
   "scripts/tests",
 ]
 addopts = "-ra"
@@ -83,6 +84,8 @@ src = [
   "packages/graph-core/tests",
   "packages/platform/src",
   "packages/platform/tests",
+  "packages/research/src",
+  "packages/research/tests",
 ]
 
 [tool.ruff.lint]
@@ -99,12 +102,14 @@ packages = [
   "networked_players_contracts",
   "networked_players_graph_core",
   "networked_players_platform",
+  "networked_players_research",
 ]
 mypy_path = [
   "packages/catalog/src",
   "packages/contracts/src",
   "packages/graph-core/src",
   "packages/platform/src",
+  "packages/research/src",
 ]
 warn_unused_ignores = true
 

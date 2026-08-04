@@ -48,8 +48,9 @@ See [docs/BUILD_PLAN.md](BUILD_PLAN.md) for the granular, code-level task breakd
 
 - [ ] Version normalized artist, master, label, identifier, format, and company schemas as needed
       (masters done; artist/label remain embedded in credits, not standalone schemas)
-- [ ] Preserve source role text while defining a role taxonomy (role text preserved
-      verbatim everywhere; a taxonomy is deliberately not yet defined)
+- [x] Preserve source role text while defining a role taxonomy (role text preserved
+      verbatim everywhere; taxonomy defined as a third orthogonal classification layer,
+      `role_taxonomy.py`, ADR 0047, Phase 2 Slice B)
 - [x] Define snapshot retention, free-space guardrails, and recovery automation
 - [x] Define graph-snapshot and static-challenge contracts
 - [ ] Add mutable registry or search state only when the vertical slice requires it
@@ -68,6 +69,9 @@ See [docs/BUILD_PLAN.md](BUILD_PLAN.md) for the granular, code-level task breakd
 
 - [x] Add repeatable RQ worker jobs over immutable partitions
 - [ ] Consolidate those jobs behind the ADR 0034 capability and provenance runtime
+      (the runtime itself is implemented, `packages/platform`; the older
+      `scripts/enqueue_*_check.py` fleet-validation family still uses the
+      pre-0034 hostname/inventory-group pattern, not yet migrated onto it)
 - [ ] Measure snapshot size, transfer, memory, and execution limits on each hardware class
 - [ ] Expand challenge generation and public findings
 - [ ] Verify repeated publication and rollback
