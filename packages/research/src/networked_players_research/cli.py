@@ -71,6 +71,24 @@ def _parser() -> argparse.ArgumentParser:
     run.add_argument("--research-root", type=Path, default=RESEARCH_ROOT)
     run.add_argument("--overwrite-corpus", action="store_true")
 
+    graph_benchmark = subparsers.add_parser(
+        "research-graph-benchmark",
+        help=(
+            "compare NetworkX/igraph/rustworkx at topic-corpus scale "
+            "(docs/RESEARCH_GRAPH_BENCHMARK_METHOD.md); requires the "
+            "'graph' extra (uv sync --package networked-players-research --extra graph)"
+        ),
+    )
+    graph_benchmark.add_argument(
+        "--corpus-snapshot",
+        type=Path,
+        required=True,
+        help="a built topic corpus's snapshot=<date>/ dir",
+    )
+    graph_benchmark.add_argument(
+        "--output", type=Path, default=None, help="optional JSON report path (local-only)"
+    )
+
     return parser
 
 
@@ -251,6 +269,16 @@ def main(argv: list[str] | None = None) -> int:
                 finished_at=finished_at,
             )
             print(json.dumps({"run_id": run_id, "run_root": str(run_paths.root)}, indent=2))
+            return 0
+
+        if args.command == "research-graph-benchmark":
+            from .graph_bench import run_benchmark
+
+            report = run_benchmark(args.corpus_snapshot)
+            if args.output is not None:
+                args.output.parent.mkdir(parents=True, exist_ok=True)
+                args.output.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n")
+            print(json.dumps(report, indent=2, sort_keys=True))
             return 0
 
         raise AssertionError(f"unhandled command: {args.command}")
