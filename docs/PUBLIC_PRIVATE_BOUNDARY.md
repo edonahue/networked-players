@@ -51,6 +51,11 @@ measurement yourself.
 3. Inspect files and metadata for addresses, usernames, paths, tokens, and account identifiers.
 4. Verify that example configuration cannot reach the real environment.
 5. Record provenance, schema, and snapshot versions.
+6. Diff the freshly regenerated candidate against the currently-committed artifact with
+   `networked-players-catalog diff-artifact-version --old <committed> --new <candidate>`
+   (`packages/contracts/.../artifact_diff.py`) — review every reported version-field
+   change and structural diff before committing, rather than eyeballing a byte-for-byte
+   diff by hand.
 
 A curated cohort source's extracted-candidates, resolved, and connectivity JSON
 (`data/contracts/album-cohort-extracted-v1.md`, `album-cohort-resolved-v1.md`,

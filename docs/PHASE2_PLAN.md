@@ -58,7 +58,7 @@ Status as of Phase 2 (updated as slices land):
 | snapshot / parse / build (one-hop) | Real, unchanged by Phase 2 (`manifest`, `download`, `parse-releases`, `expand-one-hop`) |
 | classify roles | New in Slice B: `classify-roles` diagnostic — a coverage report, deliberately not a build gate |
 | candidate catalog | Slice D extends `rank_album_candidates`/`assemble_album_catalog` to larger tiers via `rank-exploration-tier`, still a manual, measurement-only invocation |
-| semantic diff | Not built in Phase 2 — today this is a manual byte-for-byte diff against the prior publish (ADR 0043/0046 practice); a `diff-artifact-version` command would close this gap but is out of scope here |
+| semantic diff | Real, in a Phase 2 follow-up slice: `diff-artifact-version` (`packages/contracts/.../artifact_diff.py`) replaces the manual byte-for-byte diff with a real command — version-field changes called out specifically, plus a full structural diff. Referenced in `docs/PUBLIC_PRIVATE_BOUNDARY.md`'s pre-publication checklist. Still a manually-run step, not full CI automation. |
 | regenerate artifacts | Real (`build-connection-rounds`, `build-record-routes`, and Slice C's `build-contributor-index`) |
 | validate | Real, comprehensive (`validate-public-artifacts`) |
 | fleet canary | Playbooks/scripts exist (`enqueue_cohort_check.py` and siblings) but per issue #53 have never been dispatched for every new artifact type in production — an ops task, explicitly out of scope for this plan |
