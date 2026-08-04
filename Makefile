@@ -15,6 +15,8 @@
 	deploy-daily-manifest-check-job daily-manifest-check-distributed \
 	deploy-album-art-check-job album-art-check-distributed \
 	deploy-catalog-check-job catalog-check-distributed \
+	deploy-contributor-index-check-job contributor-index-check-distributed \
+	deploy-pathfinding-graph-check-job pathfinding-graph-check-distributed \
 	score-cohort-on-worker \
 	platform-build platform-deploy platform-status curator \
 	dask-up dask-down
@@ -176,6 +178,18 @@ deploy-catalog-check-job: ## Deploy the public-album-catalog validation job + al
 
 catalog-check-distributed: ## Independently re-validate the published public album catalog on every Pi worker (one job per worker, pass only if all pass); needs deploy-jobs-broker + deploy-catalog-check-job; writes local/jobs/ only; ARGS="--limit worker-01" to debug one worker
 	./scripts/enqueue-catalog-check.sh $(ARGS)
+
+deploy-contributor-index-check-job: ## Deploy the contributor-index validation job + contributor-index.v1/albums.v1 artifacts to Pi workers; ARGS="--limit worker-01"
+	./infra/ansible/run-deploy-contributor-index-check-job-local.sh $(ARGS)
+
+contributor-index-check-distributed: ## Independently re-validate the published contributor index on every Pi worker (one job per worker, pass only if all pass); needs deploy-jobs-broker + deploy-contributor-index-check-job; writes local/jobs/ only; ARGS="--limit worker-01" to debug one worker
+	./scripts/enqueue-contributor-index-check.sh $(ARGS)
+
+deploy-pathfinding-graph-check-job: ## Deploy the pathfinding-graph validation job + graph.v1/albums.v1 artifacts to Pi workers; ARGS="--limit worker-01"
+	./infra/ansible/run-deploy-pathfinding-graph-check-job-local.sh $(ARGS)
+
+pathfinding-graph-check-distributed: ## Independently re-validate the published pathfinding graph on every Pi worker (one job per worker, pass only if all pass); needs deploy-jobs-broker + deploy-pathfinding-graph-check-job; writes local/jobs/ only; ARGS="--limit worker-01" to debug one worker
+	./scripts/enqueue-pathfinding-graph-check.sh $(ARGS)
 
 score-cohort-on-worker: ## Submit whole-cohort scoring to a matching platform worker; needs platform runtime + verified x86 cache; ARGS="--source-id <id> --snapshot-date <date> [--release-format-policy <path>]"
 	./scripts/score-cohort-on-worker.sh $(ARGS)
