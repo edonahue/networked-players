@@ -23,6 +23,8 @@ from .connection_rounds import (
     CONNECTION_ROUNDS_SCHEMA_VERSION,
     connection_rounds_failures,
 )
+from .contributor_index import CONTRIBUTOR_INDEX_SCHEMA_VERSION, contributor_index_failures
+from .pathfinding_graph import PATHFINDING_GRAPH_SCHEMA_VERSION, pathfinding_graph_failures
 from .public_artifacts import PUBLIC_ARTIFACT_GROUPS, public_artifacts_failures
 from .record_routes import (
     RECORD_ROUTES_SCHEMA_VERSION,
@@ -37,6 +39,8 @@ __all__ = [
     "CONNECTION_DAILY_MANIFEST_SCHEMA_VERSION",
     "CONNECTION_ROUNDS_SCHEMA_VERSION",
     "CONNECTIVITY_SCHEMA_VERSION",
+    "CONTRIBUTOR_INDEX_SCHEMA_VERSION",
+    "PATHFINDING_GRAPH_SCHEMA_VERSION",
     "PLAYABLE_COHORT_SCHEMA_VERSION",
     "PUBLIC_ARTIFACT_GROUPS",
     "RECORD_ROUTES_SCHEMA_VERSION",
@@ -49,6 +53,8 @@ __all__ = [
     "connection_rounds_failures",
     "connectivity_failures",
     "content_hash",
+    "contributor_index_failures",
+    "pathfinding_graph_failures",
     "playable_cohort_failures",
     "public_album_catalog_failures",
     "public_artifacts_failures",

@@ -17,7 +17,11 @@ from networked_players_platform.models import (
 )
 from networked_players_platform.scheduler import NoEligibleWorkerError, select_worker
 from networked_players_platform.staging import describe_artifact, publish_completed_run
-from networked_players_platform.workloads import _research_corpus_check_handler, discover_workloads
+from networked_players_platform.workloads import (
+    _artifact_validate_handler,
+    _research_corpus_check_handler,
+    discover_workloads,
+)
 
 COMMIT = "a" * 40
 MANIFEST_HASH = "b" * 64
@@ -283,3 +287,102 @@ def test_executor_runs_dependency_free_artifact_validation(
     report = json.loads((run_dir / "completed" / "validation-report.json").read_text())
     assert report["valid"] is False
     assert report["validator"] == "connectivity"
+
+
+def test_artifact_validate_handles_a_real_single_input_validator(tmp_path: Path) -> None:
+    """ADR-0034 consolidation: `catalog` is one of the seven real validators
+    migrated from the old scripts/enqueue_*_check.py fleet-validation
+    scripts onto this generalized handler (Phase 3 follow-up)."""
+    input_dir = tmp_path / "input"
+    input_dir.mkdir()
+    (input_dir / "catalog.json").write_text('{"albums": []}\n')
+    descriptor = describe_artifact(
+        input_dir, "catalog.json", name="catalog", contract="synthetic-json-v1"
+    )
+    request = RunRequest(
+        schema_version=1,
+        run_id="validation-catalog-001",
+        workload_id="artifact.validate",
+        workload_version="1",
+        submitted_at="2026-08-04T00:00:00+00:00",
+        runtime_commit=COMMIT,
+        timeout_seconds=120,
+        max_retries=1,
+        capabilities=CapabilityRequirement(),
+        inputs=(descriptor,),
+        expected_outputs=("validation-report",),
+        parameters={"validator": "catalog"},
+    )
+    output_dir = tmp_path / "output"
+
+    outputs = _artifact_validate_handler(request, input_dir, output_dir)
+
+    report = json.loads((output_dir / "validation-report.json").read_text())
+    assert report["validator"] == "catalog"
+    assert report["valid"] is False
+    assert outputs[0].name == "validation-report"
+
+
+def test_artifact_validate_handles_a_real_two_input_validator(tmp_path: Path) -> None:
+    """`album-art` is one of the six real two-artifact validators migrated
+    from the old fleet scripts -- input order (registry, catalog) must
+    match what the old job body passed as job_args, not be arbitrary."""
+    input_dir = tmp_path / "input"
+    input_dir.mkdir()
+    (input_dir / "registry.json").write_text('{"entries": []}\n')
+    (input_dir / "catalog.json").write_text('{"albums": []}\n')
+    registry_descriptor = describe_artifact(
+        input_dir, "registry.json", name="registry", contract="synthetic-json-v1"
+    )
+    catalog_descriptor = describe_artifact(
+        input_dir, "catalog.json", name="catalog", contract="synthetic-json-v1"
+    )
+    request = RunRequest(
+        schema_version=1,
+        run_id="validation-album-art-001",
+        workload_id="artifact.validate",
+        workload_version="1",
+        submitted_at="2026-08-04T00:00:00+00:00",
+        runtime_commit=COMMIT,
+        timeout_seconds=120,
+        max_retries=1,
+        capabilities=CapabilityRequirement(),
+        inputs=(registry_descriptor, catalog_descriptor),
+        expected_outputs=("validation-report",),
+        parameters={"validator": "album-art"},
+    )
+    output_dir = tmp_path / "output"
+
+    outputs = _artifact_validate_handler(request, input_dir, output_dir)
+
+    report = json.loads((output_dir / "validation-report.json").read_text())
+    assert report["validator"] == "album-art"
+    assert outputs[0].name == "validation-report"
+
+
+def test_artifact_validate_rejects_the_wrong_input_count(tmp_path: Path) -> None:
+    input_dir = tmp_path / "input"
+    input_dir.mkdir()
+    (input_dir / "catalog.json").write_text('{"albums": []}\n')
+    descriptor = describe_artifact(
+        input_dir, "catalog.json", name="catalog", contract="synthetic-json-v1"
+    )
+    # "album-art" requires 2 inputs; only 1 is provided here.
+    request = RunRequest(
+        schema_version=1,
+        run_id="validation-arity-001",
+        workload_id="artifact.validate",
+        workload_version="1",
+        submitted_at="2026-08-04T00:00:00+00:00",
+        runtime_commit=COMMIT,
+        timeout_seconds=120,
+        max_retries=1,
+        capabilities=CapabilityRequirement(),
+        inputs=(descriptor,),
+        expected_outputs=("validation-report",),
+        parameters={"validator": "album-art"},
+    )
+    output_dir = tmp_path / "output"
+
+    with pytest.raises(ValueError, match="requires exactly 2 input"):
+        _artifact_validate_handler(request, input_dir, output_dir)

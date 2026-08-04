@@ -37,27 +37,74 @@ def _self_test_handler(
     )
 
 
+def _artifact_validators() -> dict[str, tuple[Callable[..., list[str]], int]]:
+    """name -> (validator function, input arity). Every function comes from
+    `networked_players_contracts` (already a hard dependency of this
+    package). Input order matters and must match `request.inputs`'
+    order exactly -- this is what each of the old, now-migrated
+    `scripts/enqueue_*_check.py` scripts passed as `job_args`, verified
+    against the real job bodies during the ADR-0034 consolidation, not
+    guessed:
+
+    - album-art: (registry, catalog)
+    - connection-rounds: (universe, rounds)
+    - contributor-index: (index, catalog)
+    - daily-manifest: (manifest, rounds)
+    - pathfinding-graph: (graph, catalog)
+    - record-routes: (universe, rounds)
+    """
+    from networked_players_contracts import (
+        album_art_failures,
+        connection_daily_manifest_failures,
+        connection_rounds_failures,
+        connectivity_failures,
+        contributor_index_failures,
+        pathfinding_graph_failures,
+        playable_cohort_failures,
+        public_album_catalog_failures,
+        record_routes_failures,
+    )
+
+    return {
+        "connectivity": (connectivity_failures, 1),
+        "playable-cohort": (playable_cohort_failures, 1),
+        "catalog": (public_album_catalog_failures, 1),
+        "album-art": (album_art_failures, 2),
+        "connection-rounds": (connection_rounds_failures, 2),
+        "contributor-index": (contributor_index_failures, 2),
+        "daily-manifest": (connection_daily_manifest_failures, 2),
+        "pathfinding-graph": (pathfinding_graph_failures, 2),
+        "record-routes": (record_routes_failures, 2),
+    }
+
+
 def _artifact_validate_handler(
     request: RunRequest, input_dir: Path, output_dir: Path
 ) -> tuple[ArtifactDescriptor, ...]:
-    """Validate one JSON artifact using the dependency-free public contracts."""
-    from networked_players_contracts import connectivity_failures, playable_cohort_failures
-
+    """Validate one or two JSON artifacts using the dependency-free public
+    contracts. Generalizes across every real Pi-fleet artifact check this
+    project has (see `_artifact_validators`) -- the ADR-0034 consolidation
+    of what used to be 8 separate `scripts/enqueue_*_check.py` scripts,
+    each with its own pre-deployed job body. Content-addressed staging via
+    `request.inputs` replaces the old pre-deployed-artifact pattern
+    entirely; nothing needs to be copied to a worker ahead of time."""
+    validators = _artifact_validators()
     validator = request.parameters.get("validator")
-    validators = {
-        "connectivity": connectivity_failures,
-        "playable-cohort": playable_cohort_failures,
-    }
     if validator not in validators:
-        raise ValueError("validator must be connectivity or playable-cohort")
-    if len(request.inputs) != 1:
-        raise ValueError("artifact.validate requires exactly one input")
+        raise ValueError(f"validator must be one of {sorted(validators)}")
+    validate, arity = validators[validator]
+    if len(request.inputs) != arity:
+        raise ValueError(f"validator {validator!r} requires exactly {arity} input(s)")
 
-    input_path = input_dir / request.inputs[0].relative_path
-    artifact = json.loads(input_path.read_text())
-    if not isinstance(artifact, dict):
-        raise ValueError("validation input must be a JSON object")
-    failures = validators[validator](artifact)
+    artifacts = []
+    for descriptor in request.inputs:
+        input_path = input_dir / descriptor.relative_path
+        artifact = json.loads(input_path.read_text())
+        if not isinstance(artifact, dict):
+            raise ValueError("every validation input must be a JSON object")
+        artifacts.append(artifact)
+
+    failures = validate(*artifacts)
     output_dir.mkdir(parents=True, exist_ok=True)
     report = {
         "schema_version": 1,
