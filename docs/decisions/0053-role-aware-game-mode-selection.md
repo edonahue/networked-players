@@ -113,7 +113,47 @@ distinct from the unfiltered no-path/fetch-failure copy.
 
 ## Revisit trigger
 
-If a future slice adds a second role-filtered mode (e.g. Rhythm Section),
+~~If a future slice adds a second role-filtered mode (e.g. Rhythm Section),
 and the toggle-per-mode pattern starts feeling cramped on a single page,
 that's the signal to extract a shared "filtered connect" component rather
-than adding a third checkbox to this one.
+than adding a third checkbox to this one.~~
+
+**Addendum (Phase 2 follow-up slice): this trigger fired.** Rhythm Section
+and Guitar Paths shipped, using their already-measured counts from the
+table above (170/455 and 109/196), which clear ADR 0043's launch floor by
+the same wide margin Behind the Glass did. The call: **stay on one page,
+switch checkboxes for a radio group** rather than extracting a shared
+component or splitting into separate pages. Reasoning — all three modes
+are the exact same mechanic (a role-filtered BFS over the identical
+published graph) with only the edge predicate and copy differing; a
+four-line `Record<string, RoleFilterMode>` table in `connect.ts` (label →
+`edgeFilter` → no-path message) captures that difference without
+duplicating the search/render/failure-handling logic three times. A radio
+group (not independent checkboxes) makes "exactly one filter active, or
+none" the HTML's own invariant rather than something `connect.ts` has to
+enforce by hand. If a future mode needs meaningfully different UI (e.g. a
+mode that isn't just "restrict this edge predicate," but changes what a
+hop even renders), that's the next, different trigger to revisit this
+decision — not simply "a fourth mode exists."
+
+- `apps/web/src/game/roleTaxonomy.ts` gained `isRhythmSectionRole`/
+  `isGuitarRole` (wrapping `eligibility.py`'s fine-grained
+  `_ROLE_CATEGORY_BY_TOKEN` display-category tokens for drums/bass/guitar
+  specifically — the same reason Rhythm Section/Guitar Paths needed
+  `_fine_grained_role_predicate` rather than `role_taxonomy.classify_role`
+  in the measurement tool, per the Context section above) and matching
+  `rhythmSectionEdgeFilter`/`guitarPathsEdgeFilter`.
+- `packages/graph-core/.../eligibility_rhythm_section.py` and
+  `eligibility_guitar_paths.py` (new) — Python-side mirrors, same
+  "not currently called by any builder" caveat as `eligibility_engineering.py`.
+- Real test pairs (found by walking the committed pathfinding graph
+  directly, same method used for the original Bowie/Queen pair): Rhythm
+  Section has no direct one-hop pair among the 140 catalog albums' main
+  artists — "Face Value" (Phil Collins) ↔ "Talking Book" (Stevie Wonder) is
+  a real two-hop path bridged by Nathan East (bass/drums on both hops).
+  Guitar Paths has a real one-hop pair: "Blood On The Tracks" (Bob Dylan)
+  ↔ "Harvest" (Neil Young), a shared "Guitar, Vocals" credit. Discovery ↔
+  The Joshua Tree (the original Behind the Glass negative case) has no
+  rhythm-section- or guitar-only bridge within 4 hops either, confirmed
+  directly against the artifact — reused as the negative case for both new
+  modes too.

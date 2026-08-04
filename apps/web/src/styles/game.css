@@ -667,6 +667,22 @@ a.contributor-card:focus-visible {
   color: var(--muted);
   font-size: 0.95rem;
 }
+.connect-mode-toggle-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  margin: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+.connect-mode-toggle-group legend {
+  padding: 0 6px;
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
 .connect-mode-toggle {
   display: flex;
   align-items: center;

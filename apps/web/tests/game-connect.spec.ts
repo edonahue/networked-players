@@ -21,6 +21,13 @@ async function selectAlbum(
     .click();
 }
 
+async function selectRouteFilter(
+  page: import("@playwright/test").Page,
+  value: "none" | "behind-the-glass" | "rhythm-section" | "guitar-paths",
+) {
+  await page.locator(`[data-connect-mode-option][value="${value}"]`).check();
+}
+
 test("a real connected pair finds a documented route with evidence", async ({
   page,
 }) => {
@@ -106,7 +113,7 @@ test("Behind the Glass finds a real producer-only connection", async ({
   await page.goto("/play/connect/");
   await selectAlbum(page, "a", "Ziggy Stardust");
   await selectAlbum(page, "b", "A Night At The Opera");
-  await page.locator("[data-connect-behind-the-glass]").check();
+  await selectRouteFilter(page, "behind-the-glass");
   await page.locator("[data-connect-search]").click();
 
   await expect(page.locator("[data-connect-results]")).toBeVisible({
@@ -131,7 +138,7 @@ test("Behind the Glass reports no connection when the real path doesn't qualify"
   await page.goto("/play/connect/");
   await selectAlbum(page, "a", "Discovery");
   await selectAlbum(page, "b", "Joshua Tree");
-  await page.locator("[data-connect-behind-the-glass]").check();
+  await selectRouteFilter(page, "behind-the-glass");
   await page.locator("[data-connect-search]").click();
 
   await expect(page.locator("[data-connect-status]")).toBeVisible();
@@ -139,4 +146,85 @@ test("Behind the Glass reports no connection when the real path doesn't qualify"
     /no producer\/engineer-only connection/i,
   );
   await expect(page.locator("[data-connect-results]")).toBeHidden();
+});
+
+// Rhythm Section: restricts the search to drums/bass-only credits.
+// "Face Value" (Phil Collins) <-> "Talking Book" (Stevie Wonder) is a
+// real, two-hop path bridged by Nathan East (Bass/Drums both hops) --
+// verified against the committed pathfinding graph artifact. No direct
+// one-hop rhythm-section pair exists among the 140-album catalog's main
+// artists, so this is a genuine multi-hop case, unlike Behind the Glass's
+// one-hop pair.
+test("Rhythm Section finds a real drums/bass-only connection", async ({
+  page,
+}) => {
+  await page.goto("/play/connect/");
+  await selectAlbum(page, "a", "Face Value");
+  await selectAlbum(page, "b", "Talking Book");
+  await selectRouteFilter(page, "rhythm-section");
+  await page.locator("[data-connect-search]").click();
+
+  await expect(page.locator("[data-connect-results]")).toBeVisible({
+    timeout: 15000,
+  });
+  const hops = page.locator("[data-connect-hops] .connect-hop");
+  await expect(hops).toHaveCount(2);
+  await expect(hops.first()).toContainText(/drums|bass/i);
+  await expect(page.locator("[data-connect-result='musical']")).toBeHidden();
+});
+
+// Guitar Paths: restricts the search to guitar-only credits. "Blood On
+// The Tracks" (Bob Dylan) <-> "Harvest" (Neil Young) is a real, directly-
+// connected pair bridged by a shared "Guitar, Vocals" credit -- verified
+// against the committed artifact.
+test("Guitar Paths finds a real guitar-only connection", async ({ page }) => {
+  await page.goto("/play/connect/");
+  await selectAlbum(page, "a", "Blood On The Tracks");
+  await selectAlbum(page, "b", "Harvest");
+  await selectRouteFilter(page, "guitar-paths");
+  await page.locator("[data-connect-search]").click();
+
+  await expect(page.locator("[data-connect-results]")).toBeVisible({
+    timeout: 15000,
+  });
+  const hop = page.locator("[data-connect-hops] .connect-hop").first();
+  await expect(hop).toBeVisible();
+  await expect(hop).toContainText(/guitar/i);
+});
+
+// Discovery <-> Joshua Tree has no rhythm-section- or guitar-only bridge
+// within 4 hops either (verified against the committed artifact) -- the
+// same real negative case reused across every filtered mode.
+test("Rhythm Section and Guitar Paths report no connection for the same real non-matching pair", async ({
+  page,
+}) => {
+  await page.goto("/play/connect/");
+  await selectAlbum(page, "a", "Discovery");
+  await selectAlbum(page, "b", "Joshua Tree");
+
+  await selectRouteFilter(page, "rhythm-section");
+  await page.locator("[data-connect-search]").click();
+  await expect(page.locator("[data-connect-status]")).toContainText(
+    /no drums\/bass-only connection/i,
+  );
+
+  await selectRouteFilter(page, "guitar-paths");
+  await page.locator("[data-connect-search]").click();
+  await expect(page.locator("[data-connect-status]")).toContainText(
+    /no guitar-only connection/i,
+  );
+});
+
+// The radio group is mutually exclusive by construction -- selecting a
+// second filter must deselect the first, never leave two checked.
+test("only one route filter can be selected at a time", async ({ page }) => {
+  await page.goto("/play/connect/");
+  await selectRouteFilter(page, "behind-the-glass");
+  await selectRouteFilter(page, "guitar-paths");
+  await expect(
+    page.locator('[data-connect-mode-option][value="behind-the-glass"]'),
+  ).not.toBeChecked();
+  await expect(
+    page.locator('[data-connect-mode-option][value="guitar-paths"]'),
+  ).toBeChecked();
 });
