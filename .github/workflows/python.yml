@@ -23,8 +23,10 @@ jobs:
       - name: Install project
         # --extra jobs: redis/rq, needed to import scripts/_fleet_check.py
         # (scripts/tests/test_fleet_check.py) even though the tests never
-        # touch a real broker.
-        run: uv sync --extra dev --extra jobs --locked
+        # touch a real broker. --all-packages: packages/research is a leaf
+        # workspace member (nothing depends on it, unlike platform/contracts),
+        # so a bare `uv sync` never installs it.
+        run: uv sync --all-packages --extra dev --extra jobs --locked
       - name: Lint
         run: uv run ruff check .
       - name: Format

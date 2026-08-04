@@ -18,6 +18,25 @@ without one, per AGENTS.md: do not claim an application, service, cluster
 deployment, full dump conversion, benchmark, or public dataset exists until the
 repository contains evidence for it.
 
+**Update, 2026-08-04: Phase 2 (nine slices, PRs #57–66) plus a follow-up round
+(five more slices, PRs #67–72) shipped and are live.** This section's detail
+below stops at Milestone 8/the 2026-07-22 real-data launch; everything since —
+role taxonomy (`role_taxonomy.py`, ADR 0047), a contributor index and
+`/contributors/[id]/` pages (ADR 0048), measured exploration-tier policy (ADR
+0049), a compact browser pathfinding graph and Connect Two Records (ADR
+0050/0051), Network Explorer (ADR 0052), role-restricted search modes —
+Behind the Glass, Rhythm Section, Guitar Paths (ADR 0053), the daily
+archive/calendar, a Python/TypeScript BFS parity test, `diff-artifact-version`
+tooling, an automated accessibility scan (with two real fixes: a contrast bug
+and an invalid nested-interactive ARIA role), and Pi-fleet canary dispatch
+*code* for the two newest artifacts (not yet run against real hardware) — is
+recorded in `docs/PHASE2_PLAN.md` and `docs/PHASE2_REPORT.md`, not
+re-narrated here. `apps/web`'s row in the status table below and the
+`game-rules`/`workers`/`apps/api` placeholder rows are otherwise still
+accurate as of this update. Phase 3 (the research-platform pivot: topic
+corpora, graph analytics, heterogeneous compute) tracks in
+`docs/PHASE3_REPORT.md` once it ships, following the same pattern.
+
 **Catalog ingestion (`packages/catalog`).** Working and tested, and — as of
 2026-07-01 — proven against real data on real hardware. The `manifest`, `download`,
 `parse-releases`, and `validate` CLI commands are implemented and covered by
