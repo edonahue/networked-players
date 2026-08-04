@@ -25,8 +25,11 @@ jobs:
         # (scripts/tests/test_fleet_check.py) even though the tests never
         # touch a real broker. --all-packages: packages/research is a leaf
         # workspace member (nothing depends on it, unlike platform/contracts),
-        # so a bare `uv sync` never installs it.
-        run: uv sync --all-packages --extra dev --extra jobs --locked
+        # so a bare `uv sync` never installs it. --extra graph: networkx/
+        # igraph/rustworkx (packages/research's optional graph-benchmark
+        # extra) -- installed in CI too so test_graph_bench.py actually runs
+        # instead of silently skipping via pytest.importorskip.
+        run: uv sync --all-packages --extra dev --extra jobs --extra graph --locked
       - name: Lint
         run: uv run ruff check .
       - name: Format

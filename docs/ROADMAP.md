@@ -79,9 +79,15 @@ See [docs/BUILD_PLAN.md](BUILD_PLAN.md) for the granular, code-level task breakd
 ## 7. Graph benchmark gate
 
 - [x] Keep readable fixtures as the correctness oracle
-- [ ] Compare compact arrays with at least one optimized graph library
-- [ ] Record hardware, dataset version, method, and results
-- [ ] Select the production representation only after measurement
+- [x] Compare compact arrays with at least one optimized graph library
+      (NetworkX/igraph/rustworkx vs. DuckDB/CSR at topic-corpus scale, Phase 3
+      Slice C; see `docs/RESEARCH_GRAPH_BENCHMARK_METHOD.md` and ADR 0055)
+- [x] Record hardware, dataset version, method, and results (method public,
+      real numbers in `local/benchmarks/` per ADR 0018)
+- [x] Select the production representation only after measurement (igraph
+      selected for offline research analytics, ADR 0055 -- `graph.py`'s
+      DuckDB-backed production traversal path is unchanged; this gate was
+      about research/offline analytics, not the public game's own path)
 
 ## 8. Full scale
 

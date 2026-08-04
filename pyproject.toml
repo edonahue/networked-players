@@ -116,3 +116,9 @@ warn_unused_ignores = true
 [[tool.mypy.overrides]]
 module = ["duckdb", "pyarrow", "pyarrow.parquet"]
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+# Graph-benchmark-only libraries (packages/research's optional "graph"
+# extra) -- none ship inline type hints or a py.typed marker.
+module = ["networkx", "networkx.algorithms.community", "igraph", "rustworkx"]
+ignore_missing_imports = true
