@@ -156,11 +156,18 @@ def build_topic_corpus(
     if not source_manifest_path.is_file():
         raise TopicCorpusError(f"no manifest.json under {dataset_root} -- not a parsed snapshot")
     source_manifest = json.loads(source_manifest_path.read_text())
-    if source_manifest.get("schema_version") not in (None, SCHEMA_VERSION):
-        raise TopicCorpusError(
-            f"source snapshot has schema_version={source_manifest.get('schema_version')!r}; "
-            f"this builder understands schema_version={SCHEMA_VERSION} only"
-        )
+    # Only the *presence* of releases/tracks/credits matters here, not an
+    # exact schema_version match: v2 -> v3 only ADDED the optional
+    # release_formats table (confirmed against the real parser history --
+    # RELEASE_SCHEMA/TRACK_SCHEMA/CREDIT_SCHEMA themselves are unchanged),
+    # and this builder already treats release_formats as optional via
+    # `has_formats` below. A real schema_version=2 dataset (predating
+    # release_formats) is a legitimate, byte-compatible input.
+    for required_table in ("releases", "tracks", "credits"):
+        if not (dataset_root / f"table={required_table}").is_dir():
+            raise TopicCorpusError(
+                f"no table={required_table}/ under {dataset_root} -- not a usable parsed snapshot"
+            )
     snapshot_date = str(source_manifest["snapshot_date"])
 
     final_root = output_root / f"snapshot={snapshot_date}"
