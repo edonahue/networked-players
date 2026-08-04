@@ -70,9 +70,13 @@ See [docs/BUILD_PLAN.md](BUILD_PLAN.md) for the granular, code-level task breakd
 
 - [x] Add repeatable RQ worker jobs over immutable partitions
 - [ ] Consolidate those jobs behind the ADR 0034 capability and provenance runtime
-      (the runtime itself is implemented, `packages/platform`; the older
-      `scripts/enqueue_*_check.py` fleet-validation family still uses the
-      pre-0034 hostname/inventory-group pattern, not yet migrated onto it)
+      (the runtime itself is implemented, `packages/platform`, and as of 2026-08-04
+      all three Pi workers plus the x86 worker are real, live participants in it
+      -- `worker-arm-01/02/03` at 384MB max job memory, real dispatch confirmed via
+      `research.corpus-check` end to end; the older `scripts/enqueue_*_check.py`
+      fleet-validation family still uses the pre-0034 hostname/inventory-group
+      pattern and has not been migrated onto the new runtime -- that migration,
+      not fleet onboarding, is what remains open here)
 - [ ] Measure snapshot size, transfer, memory, and execution limits on each hardware class
       (Phase 3 Slice E measured one real case -- a bounded validation-class job's
       locality/transfer/compute cost on x86 vs. a real Pi 3B, see
