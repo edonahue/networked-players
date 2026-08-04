@@ -22,6 +22,7 @@ from typing import Any
 
 _PERSONNEL_TIMELINE_DISPLAY_LIMIT = 30
 _BRIDGE_DISPLAY_LIMIT = 15
+_MOST_CONNECTED_DISPLAY_LIMIT = 15
 
 # Same discipline as graph-core's connection_rounds.py/analysis.py and
 # contracts' contributor_index.py: any generated text that smuggles in a
@@ -154,6 +155,38 @@ def write_promotion_candidates(path: Path, candidates: list[dict[str, Any]] | No
     )
 
 
+def _discography_overview(analysis_results: dict[str, dict[str, Any]]) -> str | None:
+    """A one-paragraph, at-a-glance summary stitched from whichever
+    analyses ran -- every number here is a direct read of an analysis's
+    own output, never a new computation, so it carries no additional
+    fact-vs-interpretation risk beyond what each analysis already
+    established."""
+    parts: list[str] = []
+    timeline = analysis_results.get("personnel_timeline")
+    if timeline is not None:
+        parts.append(f"{len(timeline['albums'])} release(s) in this 1-hop corpus")
+    network = analysis_results.get("contributor_network")
+    if network is not None:
+        parts.append(
+            f"{len(network['nodes'])} co-credited contributor(s) connected by "
+            f"{len(network['edges'])} edge(s)"
+        )
+    community = analysis_results.get("community_detection")
+    if community is not None:
+        parts.append(
+            f"{community['community_count']} community/communities under {community['algorithm']}"
+        )
+    role_distribution = analysis_results.get("role_distribution")
+    if role_distribution is not None and role_distribution["overall"]:
+        top_category, top_count = max(
+            role_distribution["overall"].items(), key=lambda pair: pair[1]
+        )
+        parts.append(f"most-classified role category: {top_category} ({top_count})")
+    if not parts:
+        return None
+    return "; ".join(parts) + "."
+
+
 def render_markdown_report(
     *,
     topic: str,
@@ -166,6 +199,12 @@ def render_markdown_report(
     if questions:
         lines.append("## Questions")
         lines.extend(f"- {q}" for q in questions)
+        lines.append("")
+
+    overview = _discography_overview(analysis_results)
+    if overview:
+        lines.append("## Discography overview")
+        lines.append(overview)
         lines.append("")
 
     lines.append("## Findings")
@@ -219,6 +258,20 @@ def render_markdown_report(
             f"{community['community_count']} communit(ies) via "
             f"{community['algorithm']} ({community['params']})."
         )
+        lines.append("")
+
+    network = analysis_results.get("contributor_network")
+    if network is not None:
+        lines.append("## Most-connected contributors")
+        lines.append(
+            "Ranked by raw co-credit degree (distinct contributors sharing a "
+            "recording, release, or co-performer credit) -- a different, "
+            "simpler signal than bridge_analysis's betweenness ranking below:"
+        )
+        ranked_nodes = sorted(network["nodes"], key=lambda node: node["degree"], reverse=True)
+        for node in ranked_nodes[:_MOST_CONNECTED_DISPLAY_LIMIT]:
+            if node.get("name"):
+                lines.append(f"- {node['name']} (degree {node['degree']})")
         lines.append("")
 
     bridge = analysis_results.get("bridge_analysis")
