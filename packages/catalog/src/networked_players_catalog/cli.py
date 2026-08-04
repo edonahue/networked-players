@@ -880,6 +880,24 @@ def _parser() -> argparse.ArgumentParser:
         default=Path("apps/web/public/data/pathfinding/graph.v1.json"),
     )
 
+    diff_artifact_version = subparsers.add_parser(
+        "diff-artifact-version",
+        help=(
+            "structurally diff two artifact JSON files -- the publication train's "
+            "semantic-diff step (docs/PUBLIC_PRIVATE_BOUNDARY.md's pre-publication "
+            "checklist), replacing a manual byte-for-byte diff against the prior "
+            "committed file with a real command. Never fetches anything live -- both "
+            "inputs are local paths, typically the currently-committed artifact and a "
+            "freshly regenerated candidate."
+        ),
+    )
+    diff_artifact_version.add_argument(
+        "--old", type=Path, required=True, help="the currently-committed artifact"
+    )
+    diff_artifact_version.add_argument(
+        "--new", type=Path, required=True, help="a freshly regenerated candidate artifact"
+    )
+
     fetch_dataset_parser = subparsers.add_parser(
         "fetch-dataset",
         help="fetch and verify a served dataset into a local, disposable cache (ADR 0025)",
@@ -2578,6 +2596,15 @@ def main(argv: Sequence[str] | None = None) -> int:
         ok = all(not failures for failures in report.values())
         print(json.dumps({"ok": ok, "failures": report}, indent=2))
         return 0 if ok else 1
+
+    if args.command == "diff-artifact-version":
+        from networked_players_contracts.artifact_diff import artifact_diff
+
+        old = json.loads(args.old.read_text())
+        new = json.loads(args.new.read_text())
+        report = artifact_diff(old, new)
+        print(json.dumps(report, indent=2, sort_keys=True))
+        return 0 if report["identical"] else 1
 
     if args.command == "fetch-dataset":
         import sys
