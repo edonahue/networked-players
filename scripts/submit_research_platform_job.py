@@ -3,11 +3,12 @@
 through the ADR 0034 capability platform (Phase 3 Slice E).
 
 Mirrors submit_cohort_score.py's real dispatch shape (stage inputs via
-Ansible, enqueue via RQ, wait, fetch and verify outputs) but simplified:
-a topic corpus is small and bounded (a few MB, see corpus.py), so it is
-staged directly as run inputs rather than requiring a pre-replicated
-worker-local dataset cache (ADR 0023) the way cohort.score's full
-canonical dataset does.
+Ansible, enqueue via RQ, wait, fetch and verify outputs) -- shared with
+that script and submit_artifact_check.py via _platform_client.py -- but
+simplified: a topic corpus is small and bounded (a few MB, see
+corpus.py), so it is staged directly as run inputs rather than requiring
+a pre-replicated worker-local dataset cache (ADR 0023) the way
+cohort.score's full canonical dataset does.
 
 `research.corpus-check` is validation-class (tags=("validation",),
 min_memory_mb=128) -- eligible on the Pi fleet as well as x86, matching
@@ -25,20 +26,26 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import shutil
-import subprocess
-import time
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from _platform_client import (
+    current_commit,
+    enqueue_and_wait,
+    fetch_and_verify,
+    inventory_hostvars,
+    remove_remote_run,
+    require_broker_url,
+    require_clean_checkout,
+    resolve_inventory_host,
+    stage_run,
+)
 from redis import Redis
-from rq import Queue
-from rq.job import JobStatus
 
-from networked_players_platform.broker import queue_name, read_advertisements
+from networked_players_platform.broker import read_advertisements
 from networked_players_platform.models import ArtifactDescriptor, CapabilityRequirement, RunRequest
 from networked_players_platform.scheduler import select_worker
 from networked_players_platform.staging import describe_artifact
@@ -73,33 +80,12 @@ def _arguments() -> argparse.Namespace:
     parser.add_argument("--workload", required=True, choices=sorted(_WORKLOADS))
     parser.add_argument("--topic", required=True, help="topic slug, e.g. jamiroquai")
     parser.add_argument("--worker-id", help="restrict dispatch to one advertised worker_id")
+    parser.add_argument(
+        "--keep-remote",
+        action="store_true",
+        help="do not delete the remote run directory after a successful fetch (debugging)",
+    )
     return parser.parse_args()
-
-
-def _run(*command: str, capture: bool = False) -> str:
-    completed = subprocess.run(
-        command, cwd=REPO_ROOT, check=True, text=True, capture_output=capture
-    )
-    return completed.stdout if capture else ""
-
-
-def _inventory_host(worker_id: str) -> str:
-    inventory = json.loads(
-        _run("uv", "run", "ansible-inventory", "-i", str(INVENTORY), "--list", capture=True)
-    )
-    hostvars = inventory.get("_meta", {}).get("hostvars", {})
-    matches = [
-        host for host, values in hostvars.items() if values.get("platform_worker_id") == worker_id
-    ]
-    if len(matches) != 1:
-        raise RuntimeError(
-            f"worker_id {worker_id!r} does not map to exactly one private inventory host"
-        )
-    return str(matches[0])
-
-
-def _ansible(host: str, module: str, arguments: str) -> None:
-    _run("uv", "run", "ansible", host, "-i", str(INVENTORY), "-m", module, "-a", arguments)
 
 
 def _corpus_snapshot_dir(topic_slug: str) -> Path:
@@ -139,40 +125,10 @@ def _stage_inputs(
     return tuple(descriptors)
 
 
-def _fetch_and_verify(host: str, remote_run: str, local_run: Path, result: dict[str, Any]) -> Path:
-    partial = local_run / ".completed.partial"
-    partial.mkdir()
-    _ansible(
-        host,
-        "fetch",
-        f"src={remote_run}/completed/result.json dest={partial / 'result.json'} flat=yes",
-    )
-    for output in result["outputs"]:
-        descriptor = ArtifactDescriptor(**output)
-        destination = partial / descriptor.relative_path
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        _ansible(
-            host,
-            "fetch",
-            f"src={remote_run}/completed/{descriptor.relative_path} dest={destination} flat=yes",
-        )
-        actual = describe_artifact(
-            partial, descriptor.relative_path, name=descriptor.name, contract=descriptor.contract
-        )
-        if actual.sha256 != descriptor.sha256 or actual.size_bytes != descriptor.size_bytes:
-            raise RuntimeError(f"fetched output {descriptor.name!r} failed verification")
-    completed = local_run / "completed"
-    os.replace(partial, completed)
-    return completed
-
-
 def main() -> int:
     args = _arguments()
-    if not INVENTORY.is_file():
-        raise RuntimeError("private Ansible inventory is missing")
-    if _run("git", "status", "--short", capture=True).strip():
-        raise RuntimeError("submit a research platform job only from a clean checkout")
-    commit = _run("git", "rev-parse", "HEAD", capture=True).strip()
+    require_clean_checkout(REPO_ROOT)
+    commit = current_commit(REPO_ROOT)
     spec = _WORKLOADS[args.workload]
     snapshot_dir = _corpus_snapshot_dir(args.topic)
 
@@ -198,9 +154,7 @@ def main() -> int:
         json.dumps(request.to_dict(), indent=2, sort_keys=True) + "\n"
     )
 
-    broker_url = os.environ.get("JOBS_BROKER_URL", "")
-    if not broker_url:
-        raise RuntimeError("JOBS_BROKER_URL is required")
+    broker_url = require_broker_url()
     broker = Redis.from_url(broker_url)
     workers = read_advertisements(broker)
     if args.worker_id:
@@ -212,39 +166,36 @@ def main() -> int:
         workload_version=request.workload_version,
         runtime_commit=request.runtime_commit,
     )
-    host = _inventory_host(worker.worker_id)
+    hostvars = inventory_hostvars(INVENTORY, REPO_ROOT)
+    host = resolve_inventory_host(hostvars, worker.worker_id)
     remote_run = f"~/.local/share/networked-players/platform/runs/{run_id}"
-    _ansible(host, "file", f"path={remote_run}/input state=directory mode=0755")
-    _ansible(
-        host, "copy", f"src={local_run / 'request.json'} dest={remote_run}/request.json mode=0644"
+    stage_run(
+        inventory_path=INVENTORY,
+        repo_root=REPO_ROOT,
+        host=host,
+        remote_run=remote_run,
+        local_run=local_run,
     )
-    _ansible(host, "copy", f"src={local_run / 'input'}/ dest={remote_run}/input/ mode=0644")
 
-    queue = Queue(queue_name(worker.worker_id), connection=broker)
-    job = queue.enqueue(
-        "networked_players_platform.executor.execute_run",
-        remote_run,
-        job_id=run_id,
-        job_timeout=request.timeout_seconds,
-        result_ttl=604800,
-        failure_ttl=2592000,
-        retry=None,
+    result = enqueue_and_wait(
+        broker=broker,
+        worker_id=worker.worker_id,
+        remote_run=remote_run,
+        run_id=run_id,
+        timeout_seconds=request.timeout_seconds,
     )
-    deadline = time.monotonic() + request.timeout_seconds + 60
-    while time.monotonic() < deadline:
-        status = job.get_status(refresh=True)
-        if status == JobStatus.FINISHED:
-            break
-        if status in {JobStatus.FAILED, JobStatus.CANCELED, JobStatus.STOPPED}:
-            raise RuntimeError(f"remote run ended with status {status.value}: {job.exc_info}")
-        time.sleep(2)
-    else:
-        raise RuntimeError("timed out waiting for remote run completion")
-
-    result = job.result
-    if not isinstance(result, dict) or result.get("status") != "succeeded":
-        raise RuntimeError("remote run returned no valid success manifest")
-    completed = _fetch_and_verify(host, remote_run, local_run, result)
+    completed = fetch_and_verify(
+        inventory_path=INVENTORY,
+        repo_root=REPO_ROOT,
+        host=host,
+        remote_run=remote_run,
+        local_run=local_run,
+        result=result,
+    )
+    if not args.keep_remote:
+        remove_remote_run(
+            inventory_path=INVENTORY, repo_root=REPO_ROOT, host=host, remote_run=remote_run
+        )
     print(
         json.dumps(
             {
