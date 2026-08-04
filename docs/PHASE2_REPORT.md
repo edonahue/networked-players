@@ -1,8 +1,11 @@
 # Phase 2 report: from static games to an explorable credit network
 
-**Status: complete.** All nine planned slices (A–I) shipped, each as its own
-branch/PR, auto-merged once CI (backend `make check` + frontend `npm run
-check`/`format:check`/`test:smoke`) was green. This report is the closing
+**Status: complete, plus a closed follow-up round.** All nine planned
+slices (A–I) shipped, each as its own branch/PR, auto-merged once CI
+(backend `make check` + frontend `npm run check`/`format:check`/
+`test:smoke`) was green. A follow-up round (Slices J–N) then closed four
+of the five items this report originally listed as "not exercised" /
+"remaining risk" — see "Follow-up" below. This report is the closing
 summary the `/goal` mandate asked for: what shipped, what was measured, what
 was rejected, and what's left.
 
@@ -88,31 +91,58 @@ methodology and catalog-quality facts are public.
   Network Explorer's truncation; a real played daily date and a real future
   scheduled date for the new archive page.
 
-## Not exercised (explicitly out of scope, consistent with the plan)
+## Not exercised at Phase 2's close (explicitly out of scope at the time)
 
 - Real Pi-fleet dispatch of any new artifact's validator (issue #53's fleet
-  gaps predate this plan and remain open).
+  gaps predate this plan and remained open).
 - A manual accessibility pass (also issue #53).
 - `diff-artifact-version` tooling for the publication train's "semantic
   diff" stage — still a manual byte-for-byte diff against the prior
   publish, as documented in `docs/PHASE2_PLAN.md`'s spine table.
 - A cross-language BFS parity test between `compact_graph_bench.py` and
-  `pathfindingGraph.ts` — both ADR 0050 and ADR 0051 flag this as a real,
+  `pathfindingGraph.ts` — both ADR 0050 and ADR 0051 flagged this as a real,
   open gap, revisit-triggered by any future BFS bug found in only one
   implementation.
 
-## Remaining risks / highest-leverage next work
+## Follow-up (Slices J–N)
 
-1. **BFS parity gap** (above) — low current risk (both implementations are
-   independently tested against the same fixture shapes) but a real latent
-   inconsistency risk if either is modified without the other.
-2. **Fleet canary dispatch** (issue #53) — every new artifact type added in
-   Phase 2 (contributor index, pathfinding graph) has never been validated
-   through the real Pi fleet pipeline, only locally and in CI.
-3. **Exploration tier growth** — Slice D's policy and Slice H's extra
-   measured candidates (Rhythm Section, Guitar Paths) are ready to build on
-   whenever a larger album tier ships; that's the natural next expansion
-   rather than new architecture work.
-4. **Accessibility pass** — deferred consistently across G and prior slices;
-   now touches more surface area (Network Explorer, contributor pages,
-   Connect Two Records) than before Phase 2, raising the value of doing it.
+A second round, sequenced the same way (one branch/PR per slice, continuous
+auto-merge on green CI), closed four of this report's original five
+"remaining risk" items:
+
+| Slice | PR | What it closed |
+|---|---|---|
+| J | [#67](https://github.com/edonahue/networked-players/pull/67) | BFS cross-language parity test — closed using `canonical.py`/`canonical.ts`'s existing precedent (a manually-pinned golden value, not an automated cross-runner harness). Covers hop-shape and no-path/same-artist agreement; does not cover role text, `edgeFilter`, or the still-unreachable `FrontierTooLargeBench`/`"inconclusive"` path (documented explicitly in ADR 0051's addendum). |
+| K | [#68](https://github.com/edonahue/networked-players/pull/68) | Rhythm Section + Guitar Paths — the two Slice H candidates that already cleared the launch floor (170/455 and 109/196 real pairs), shipped as two more toggles on Connect Two Records (ADR 0053 addendum). Real test pairs found by walking the committed graph directly. |
+| L | [#69](https://github.com/edonahue/networked-players/pull/69) | `diff-artifact-version` CLI command — replaces the manual byte-for-byte diff with a real command (`packages/contracts/.../artifact_diff.py`), wired into `PUBLIC_PRIVATE_BOUNDARY.md`'s pre-publication checklist. Still a manually-run step, not a CI gate. |
+| M | [#70](https://github.com/edonahue/networked-players/pull/70) | Accessibility — installed `@axe-core/playwright`, scanned 7 key pages. Found and *fixed* (not allowlisted) two real violations: `--warm` text-color contrast (4.19–4.4:1, under WCAG AA's 4.5:1) and Network Explorer's `<svg role="img">` illegally containing focusable children (changed to `role="group"`). Also added roving tabindex, focus-on-recenter, and OS-level `prefers-reduced-motion` coverage to the Network Explorer. |
+| N | [#71](https://github.com/edonahue/networked-players/pull/71) | Pi-fleet canary dispatch *code* — a check-job adapter, two deploy playbooks, and enqueue scripts for `contributor_index`/`pathfinding_graph`, mirroring the six existing job types exactly. Code and docs only; actually running it against real hardware stays explicit operator work. |
+
+Backend at 888 passing tests / frontend at 238 Playwright tests after this
+round (up from 867/213 at Phase 2's original close).
+
+**Exploration tier growth (the fifth original item) was deliberately not
+attempted** — it's a bigger product commitment (actually growing the
+catalog past 140 albums) than the other four, and the original plan's own
+tripwire against pre-announcing a tier number still applies. Rhythm
+Section/Guitar Paths (Slice K) captured the smaller, already-measured value
+without forcing that decision.
+
+## Remaining, after both rounds
+
+1. **Actual Pi-fleet dispatch** — Slice N shipped the code/playbooks, but
+   `enqueue-contributor-index-check.sh`/`enqueue-pathfinding-graph-check.sh`
+   have never been run against real hardware. Still operator work (issue
+   #53 stays open on this specific point).
+2. **BFS parity test's remaining gaps** — role text, `edgeFilter`, and the
+   `FrontierTooLargeBench`/`"inconclusive"` path are still untested
+   cross-language (ADR 0051's addendum documents this as the known
+   remainder, not a silent gap).
+3. **Accessibility's manual-human checklist** — VoiceOver, 200% zoom, and
+   image-failure fallback still need a human pass; automation closed only
+   the automatable, code-level gaps (issue #53).
+4. **Exploration tier growth** — still deferred, unchanged from Phase 2's
+   original close; see above.
+5. **`diff-artifact-version` isn't a CI gate** — it's a real command a
+   publisher can run, not something `make check`/`validate-public-artifacts`
+   invokes automatically.
