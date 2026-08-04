@@ -629,52 +629,35 @@ expansion has, since none of these steps run long enough to need it.
 ## Pi ambient cohort-artifact checks
 
 A bounded, validation-only ambient job re-checks an already-produced
-`connectivity.json` or `playable-cohort-v1.json` on the Pi fleet — no dataset, no
+`connectivity.json` or `playable-cohort-v1.json` on the fleet — no dataset, no
 `CreditGraph`, no network, safe to run at any time regardless of when the artifact was
 produced. This is purely a second, independent safety check (the same structural and
 leak/tone checks `validate-connectivity`/`validate-playable-cohort` already run locally);
 it is never required, and nothing in the rehearsal above depends on it.
 
-Like the artifact checks below, fan-out is real: every worker in the targeted inventory
-group gets its own job on its own queue, and the check passes only if every targeted
-worker's result is valid. Pass `--limit <hostname>` to target a single worker for
-debugging.
+Runs through the ADR 0034 capability platform's `artifact.validate` workload
+(`connectivity`/`playable-cohort` validators) via `scripts/submit_artifact_check.py` —
+see "Pi ambient artifact checks" below for the shared mechanics (fan-out, dispatch,
+results). The cohort artifact is a per-invocation operator path, not a fixed one known in
+advance, so `--artifact` is always a path **on this machine**, staged fresh (content-
+addressed, verified) for that one run — no separate deploy step, unlike the fixed-artifact
+checks below.
 
-Unlike the artifact checks below, the cohort artifact is a per-invocation operator path,
-not a fixed one a deploy playbook can bundle ahead of time — so `--artifact` is always a
-path **on this machine**, and `enqueue-cohort-check.sh` stages it (sha256, copy to every
-targeted worker under a content-addressed **and per-invocation** filename
-`cohort-input-<sha256>-<run-id>.json`, verify the remote checksum before enqueueing
-anything) before running the check. The run-id component (a fresh random token per
-invocation) keeps two concurrent checks of byte-identical bytes from colliding on the
-same remote file and one invocation's cleanup removing another's still-in-flight input.
-The staged copy is removed afterward by default — cleanup is attempted even if staging
-itself fails partway through a multi-worker copy, not just after a fully successful one
-— pass `--keep-staged` to retain it for debugging instead. See
-`infra/ansible/playbooks/stage-artifact.yml` and `scripts/_artifact_staging.py`.
-
-**Size bound.** `--artifact` must be at most `MAX_COHORT_ARTIFACT_BYTES` (8 MiB,
-`scripts/_artifact_staging.py`) — checked locally, before any fleet contact, so an
-oversized file is rejected before it ever reaches a Pi's memory-capped burst worker.
-This validator is for bounded, human-reviewed cohorts, not dataset-scale input; there is
-no flag to raise or bypass this limit.
+**Size bound.** `--artifact` must be at most 8 MiB (`scripts/submit_artifact_check.py`'s
+`MAX_AD_HOC_ARTIFACT_BYTES`) — checked locally, before any fleet contact, so an oversized
+file is rejected before it ever reaches a worker. This validator is for bounded,
+human-reviewed cohorts, not dataset-scale input; there is no flag to raise or bypass this
+limit.
 
 ```bash
-# One-time: deploy the job body to the Pi fleet.
-./infra/ansible/run-deploy-cohort-check-job-local.sh --limit pi_workers
-
-# Check an already-produced artifact (a path on THIS machine -- staged automatically):
 ./infra/swarm/deploy-jobs-broker.sh                     # if not already running
-./scripts/enqueue-cohort-check.sh --kind connectivity \
+./scripts/submit_artifact_check.py --validator connectivity \
   --artifact local/analysis/cohorts/<source-id>/connectivity.json
-./scripts/enqueue-cohort-check.sh --kind playable-cohort \
+./scripts/submit_artifact_check.py --validator playable-cohort \
   --artifact data/albums/cohorts/<source-id>-playable-v1.json
 ```
 
-Results are written to `local/jobs/cohort-check-<timestamp>.json` (never committed). This
-mirrors the existing challenge-evidence verification job's exact deploy/enqueue pattern —
-see `infra/ansible/files/cohort_artifact_check_job.py`'s own header comment for why it's a
-hand-maintained mirror rather than a direct import of `networked_players_graph_core`.
+Results are written to `local/jobs/<validator>-check-<timestamp>.json` (never committed).
 
 ## Public catalog regen
 
@@ -1080,74 +1063,71 @@ Never hand-edit a committed artifact's JSON directly. Never reassign an already-
 daily-manifest date, even to fix a mistake — extend forward instead, and treat the
 mistake as a known, documented gap in that date's history rather than rewriting it.
 
-## Pi ambient artifact checks (Connection Guesser, Record Routes, daily manifest, album-art registry, catalog)
+## Pi ambient artifact checks (catalog, album-art, Connection Guesser, daily manifest, Record Routes, contributor index, pathfinding graph)
 
-Slice 8 adds four more bounded, validation-only ambient jobs, following the exact same
-pattern as "Pi ambient cohort-artifact checks" above: no dataset, no `CreditGraph`, no
+Seven more bounded, validation-only ambient jobs, all dispatched through the ADR 0034
+capability platform's `artifact.validate` workload (`packages/platform`, see
+[ADR 0056](decisions/0056-unify-pi-fleet-checks-onto-capability-platform.md)) via
+`scripts/submit_artifact_check.py --validator <name>`: no dataset, no `CreditGraph`, no
 network, safe to run at any time regardless of when the artifact was produced. Each is a
 second, independent safety check re-running the same dependency-free validator the
 `validate-*` CLI commands above already run locally — never required, and this is also
 where a privacy re-scan happens for free, since every `*_failures` validator already
 includes the forbidden-substring/phrase scan as part of its contract check.
 
-**Fan-out is real, not sharded.** Each `enqueue-*-check.sh` enqueues the same check
+**Fan-out is real, not sharded.** `submit_artifact_check.py` dispatches the same check
 independently onto *every* worker in the targeted inventory group (`pi_workers` by
-default) — one job per worker on that worker's own queue, one burst worker launched only
-for the hosts that received a job this run, and the script exits non-zero unless every
-targeted worker's result is valid. This proves each worker's own deployed copy of the job
-body + artifacts independently validates, not just one representative Pi. Pass
-`--limit <hostname>` (e.g. `ARGS="--limit worker-01"` via the `make *-check-distributed`
-targets) to target a single worker instead, for debugging.
+default) — one `RunRequest` per worker, and the script exits non-zero unless every
+targeted worker's result is valid. This proves each worker's own environment
+independently validates, not just one representative Pi. Pass `--limit <hostname>` (e.g.
+`ARGS="--limit worker-01"` via the `make *-check-distributed` targets) to target a single
+worker instead, for debugging. No separate deploy step exists any more — the current
+published artifact(s) are staged fresh (content-addressed, checksum-verified) for each
+run, so there is nothing to keep in sync between a "deploy" step and a "check" step.
 
 ```bash
-# One-time per job: deploy the job body + current published artifacts to the Pi fleet.
-./infra/ansible/run-deploy-connection-rounds-check-job-local.sh --limit pi_workers
-./infra/ansible/run-deploy-record-routes-check-job-local.sh --limit pi_workers
-./infra/ansible/run-deploy-daily-manifest-check-job-local.sh --limit pi_workers
-./infra/ansible/run-deploy-album-art-check-job-local.sh --limit pi_workers
-./infra/ansible/run-deploy-catalog-check-job-local.sh --limit pi_workers
-
-# Re-check whatever was last deployed (re-run the matching deploy-*-local.sh above first
-# if you want to check a freshly regenerated artifact instead of what's already there):
 ./infra/swarm/deploy-jobs-broker.sh                     # if not already running
-./scripts/enqueue-connection-rounds-check.sh
-./scripts/enqueue-record-routes-check.sh
-./scripts/enqueue-daily-manifest-check.sh
-./scripts/enqueue-album-art-check.sh
-./scripts/enqueue-catalog-check.sh
+./scripts/submit_artifact_check.py --validator catalog
+./scripts/submit_artifact_check.py --validator album-art
+./scripts/submit_artifact_check.py --validator connection-rounds
+./scripts/submit_artifact_check.py --validator daily-manifest
+./scripts/submit_artifact_check.py --validator record-routes
+./scripts/submit_artifact_check.py --validator contributor-index
+./scripts/submit_artifact_check.py --validator pathfinding-graph
+
+# or via make (same ARGS="--limit worker-01" pattern for debugging one worker):
+make catalog-check-distributed
 ```
 
-Results are written to `local/jobs/<contract>-check-<timestamp>.json` (never committed).
-Each deploy playbook copies its artifacts under a contract-prefixed filename
-(`connection-*`, `routes-*`, `daily-manifest.v1.json`, `album-art.v1.json`/
-`albums.v1.json`) specifically so more than one of these jobs can be deployed to the same
-Pi's `rq_jobs_dir` at once without one silently overwriting another's input — see ADR
-0043's slice-8 addendum for the real bug this closed.
+Every validator except `catalog` reads two artifacts; the real default paths (matching
+the published artifact locations exactly) live in `submit_artifact_check.py`'s
+`_DEFAULT_ARTIFACTS` table — pass `--artifact <path>` (twice, in order) to override for a
+not-yet-published candidate. Results are written to
+`local/jobs/<validator>-check-<timestamp>.json` (never committed).
 
-### First real fleet observation (2026-07-25)
+### First real fleet observations
 
-Both of the above (the five fixed-artifact checks and "Pi ambient cohort-artifact
-checks") were run for real, not just described, at commit `13d90de` on the 3 active Pi
-workers (`worker-01`, `worker-02`, `worker-03`; the fleet's known-unreachable fourth Pi
-was not targeted). All five validators passed independently on every targeted worker.
-Cohort-artifact staging was exercised for the first time against the real fleet, using
-the committed `synthetic-example.playable-v1.json` fixture, and passed on all three
-workers with per-worker checksum agreement and per-run cleanup confirmed on each. This is
-an observed result for this date and this worker set, not a standing uptime guarantee —
-see [ADR 0018](decisions/0018-benchmark-results-local-only.md).
+The five original fixed-artifact checks (catalog, album-art, connection-rounds,
+daily-manifest, record-routes) plus cohort-artifact staging were first run for real at
+commit `13d90de` (2026-07-25) on the 3 active Pi workers, all passing independently. The
+migration onto the ADR 0034 capability platform (2026-08-04) was itself real-verified the
+same way: all 7 fixed-artifact validators plus one ad hoc validator dispatched for real
+against the live fleet, including a real redundant-fan-out run of `catalog` across all 3
+Pi workers independently. These are observed results for their date and worker set, not a
+standing uptime guarantee — see [ADR 0018](decisions/0018-benchmark-results-local-only.md).
 
 ## Public artifact and version-relationship reference
 
-| Artifact | Real path | Version field(s) | Derived from | Dependency-free validator | Pi check-job | Consumers |
+| Artifact | Real path | Version field(s) | Derived from | Dependency-free validator | `artifact.validate` name | Consumers |
 | --- | --- | --- | --- | --- | --- | --- |
-| Public catalog | `apps/web/public/data/catalog/albums.v1.json` | `catalog_version` | One-hop dataset + masters + release-format policy + editorial list | `networked_players_contracts.catalog::public_album_catalog_failures` | `catalog_check_job.py` | Every other real artifact below |
-| Album-art registry | `apps/web/public/data/catalog/album-art.v1.json` | `art_version` (+ `catalog_version` it was built against) | Discogs API, keyed by the catalog's `main_release_id`s | `networked_players_contracts.album_art::album_art_failures` | `album_art_check_job.py` | Album browser, both game modes' frontend art resolution |
-| Connection Guesser | `apps/web/public/data/game/{universe,rounds}.v1.json` | `pool_version`, `artifact_version` (+ `catalog_version`) | One-hop dataset + catalog + artist-family exclusions | `networked_players_contracts.connection_rounds::connection_rounds_failures` | `connection_rounds_check_job.py` | `/play/daily/`, the daily manifest |
-| Connection-daily-manifest | `apps/web/public/data/game/daily-manifest.v1.json` | `pool_version`, `artifact_version` (+ `catalog_version`), all must match the paired rounds artifact exactly | The Connection Guesser rounds artifact, scheduled | `networked_players_contracts.connection_daily_manifest::connection_daily_manifest_failures` | `daily_manifest_check_job.py` | `/play/daily/` |
-| Record Routes | `apps/web/public/data/routes/{universe,rounds}.v1.json` | `pool_version`, `artifact_version` (+ `catalog_version`) | One-hop dataset + catalog + release-format policy (bridge gating) | `networked_players_contracts.record_routes::record_routes_failures` | `record_routes_check_job.py` | `/play/routes/` |
-| Album-centered challenge | `apps/web/public/data/challenge.v2.json` | `catalog_version` only -- no `pool_version`/`artifact_version` (a one-shot static artifact, not a scored pool) | One-hop dataset + catalog (or a hand-written `{artist,title}` query list, `catalog_version: null`) | `networked_players_contracts.challenge::challenge_failures` | none -- validated via `validate-public-artifacts` (CI/`make check`) only, no per-artifact Pi check job | Homepage, `/albums/` grid + detail pages |
-| Contributor index | `apps/web/public/data/contributors/index.v1.json` | `contributor_index_version` (+ `catalog_version`) | Already-published `challenge.v2.json` + Record Routes artifacts | `networked_players_contracts.contributor_index::contributor_index_failures` | `public_artifact_check_job.py::check_contributor_index` | `/contributors/[id]/` pages, album page contributor links |
-| Pathfinding graph | `apps/web/public/data/pathfinding/graph.v1.json` | `pathfinding_graph_version` (+ `catalog_version`) | One-hop dataset + catalog, scoped to the catalog's 1-hop ego network | `networked_players_contracts.pathfinding_graph::pathfinding_graph_failures` | `public_artifact_check_job.py::check_pathfinding_graph` | Connect Two Records, Network Explorer |
+| Public catalog | `apps/web/public/data/catalog/albums.v1.json` | `catalog_version` | One-hop dataset + masters + release-format policy + editorial list | `networked_players_contracts.catalog::public_album_catalog_failures` | `catalog` | Every other real artifact below |
+| Album-art registry | `apps/web/public/data/catalog/album-art.v1.json` | `art_version` (+ `catalog_version` it was built against) | Discogs API, keyed by the catalog's `main_release_id`s | `networked_players_contracts.album_art::album_art_failures` | `album-art` | Album browser, both game modes' frontend art resolution |
+| Connection Guesser | `apps/web/public/data/game/{universe,rounds}.v1.json` | `pool_version`, `artifact_version` (+ `catalog_version`) | One-hop dataset + catalog + artist-family exclusions | `networked_players_contracts.connection_rounds::connection_rounds_failures` | `connection-rounds` | `/play/daily/`, the daily manifest |
+| Connection-daily-manifest | `apps/web/public/data/game/daily-manifest.v1.json` | `pool_version`, `artifact_version` (+ `catalog_version`), all must match the paired rounds artifact exactly | The Connection Guesser rounds artifact, scheduled | `networked_players_contracts.connection_daily_manifest::connection_daily_manifest_failures` | `daily-manifest` | `/play/daily/` |
+| Record Routes | `apps/web/public/data/routes/{universe,rounds}.v1.json` | `pool_version`, `artifact_version` (+ `catalog_version`) | One-hop dataset + catalog + release-format policy (bridge gating) | `networked_players_contracts.record_routes::record_routes_failures` | `record-routes` | `/play/routes/` |
+| Album-centered challenge | `apps/web/public/data/challenge.v2.json` | `catalog_version` only -- no `pool_version`/`artifact_version` (a one-shot static artifact, not a scored pool) | One-hop dataset + catalog (or a hand-written `{artist,title}` query list, `catalog_version: null`) | `networked_players_contracts.challenge::challenge_failures` | none -- validated via `validate-public-artifacts` (CI/`make check`) only, no per-artifact Pi check | Homepage, `/albums/` grid + detail pages |
+| Contributor index | `apps/web/public/data/contributors/index.v1.json` | `contributor_index_version` (+ `catalog_version`) | Already-published `challenge.v2.json` + Record Routes artifacts | `networked_players_contracts.contributor_index::contributor_index_failures` | `contributor-index` | `/contributors/[id]/` pages, album page contributor links |
+| Pathfinding graph | `apps/web/public/data/pathfinding/graph.v1.json` | `pathfinding_graph_version` (+ `catalog_version`) | One-hop dataset + catalog, scoped to the catalog's 1-hop ego network | `networked_players_contracts.pathfinding_graph::pathfinding_graph_failures` | `pathfinding-graph` | Connect Two Records, Network Explorer |
 
 Every `pool_version`/`artifact_version` pair above (the challenge artifact has neither)
 follows the same identity model established for the Connection Guesser (ADR 0043): a

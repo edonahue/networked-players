@@ -1,21 +1,21 @@
 #!/usr/bin/env bash
 #
-# Enqueue a single pathfinding-graph validation check across the joined Pi
-# workers. Thin wrapper: sources local/jobs-broker.env (written by
-# infra/swarm/deploy-jobs-broker.sh) to build JOBS_BROKER_URL, then runs the
-# actual driver (scripts/enqueue_pathfinding_graph_check.py).
+# Thin wrapper for scripts/submit_artifact_check.py: sources
+# local/jobs-broker.env (written by infra/swarm/deploy-jobs-broker.sh) to
+# build JOBS_BROKER_URL, then runs the actual driver via `uv run` (needed
+# for the redis/rq `jobs` extra and a real Python 3.12+, not whatever
+# `python3` resolves to on this host -- see
+# docs/decisions/0056-unify-pi-fleet-checks-onto-capability-platform.md).
 #
 # Prerequisites (not checked here -- each fails loudly on its own if
-# skipped):
-#   - infra/swarm/deploy-jobs-broker.sh already running (jobs broker up)
-#   - infra/ansible/run-deploy-pathfinding-graph-check-job-local.sh already
-#     run once (job body + artifacts deployed to each targeted Pi's
-#     rq-jobs directory)
+# skipped): infra/swarm/deploy-jobs-broker.sh already running (jobs broker
+# up), and the ADR 0034 platform runtime already deployed to every targeted
+# worker (infra/ansible/run-deploy-platform-runtime-local.sh).
 #
 # Results are written to local/jobs/ only -- see
 # docs/decisions/0018-benchmark-results-local-only.md.
 #
-# Usage:  ./scripts/enqueue-pathfinding-graph-check.sh
+# Usage: ./scripts/submit-artifact-check.sh --validator <name> [--limit <hostname>] [...]
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -35,4 +35,4 @@ source "${ENV_FILE}"
 
 export JOBS_BROKER_URL="redis://:${JOBS_BROKER_PASSWORD}@${JOBS_BROKER_BIND_IP}:${JOBS_BROKER_PORT}/0"
 
-exec uv run --extra jobs python3 "${REPO_ROOT}/scripts/enqueue_pathfinding_graph_check.py" "$@"
+exec uv run --extra jobs python3 "${REPO_ROOT}/scripts/submit_artifact_check.py" "$@"

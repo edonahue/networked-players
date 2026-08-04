@@ -69,7 +69,6 @@ testpaths = [
   "packages/graph-core/tests",
   "packages/platform/tests",
   "packages/research/tests",
-  "scripts/tests",
 ]
 addopts = "-ra"
 
