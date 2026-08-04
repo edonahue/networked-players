@@ -116,7 +116,17 @@ _PERFORMANCE_SUBCATEGORY: dict[str, RoleCategory] = {
 # "Recorded By", "Arranged By" all appear there as edge-eligible-but-
 # uncategorized) and in eligibility.py's ROLE_PARITY_CASES test fixtures.
 # "Co-producer" is a real observed string (test_graph.py, cohort_connectivity
-# .py, onehop.py, ADR 0035). Deliberately narrow to start -- expand only via
+# .py, onehop.py, ADR 0035). "Programmed By"/"Drum Programming"/"Conductor"
+# were added 2026-08-04 from the real `classify-roles` coverage report run
+# against the Jamiroquai topic corpus (Phase 3 Slice G follow-up):
+# "Programmed By" alone was the single largest non-empty UNKNOWN role string
+# (304 occurrences), with "Programmed By [Keyboard Programming By]" and
+# similar bracket-suffixed variants adding more (bracket-stripping already
+# collapses those into the same base token); "Drum Programming" (14) is the
+# same kind of electronic-sequencing work under a different literal string.
+# "Conductor" (part of "Score [Strings], Conductor [Strings]", 94
+# occurrences, plus standalone) is musical-direction work closely related to
+# "Arranged By". Deliberately narrow to start -- expand only via
 # `classify-roles`' unknown-role diagnostic, per the module docstring.
 _PRODUCTION_TOKENS = frozenset(
     {
@@ -131,11 +141,14 @@ _ENGINEERING_TOKENS = frozenset(
         "mixed by",
         "mastered by",
         "recorded by",
+        "programmed by",
+        "drum programming",
     }
 )
 _ARRANGEMENT_TOKENS = frozenset(
     {
         "arranged by",
+        "conductor",
     }
 )
 
@@ -195,6 +208,32 @@ _PACKAGING_BUSINESS_TOKENS = frozenset(
         "other",
     }
 )
+
+# Real, frequent role strings from the same 2026-08-04 `classify-roles` run
+# that were deliberately NOT added, and why: `_COMPOSITION_TOKENS`/
+# `_REWORK_TOKENS`/`_PACKAGING_BUSINESS_TOKENS` must exactly partition
+# `graph.py`'s `_NON_COLLABORATIVE_ROLE_TOKENS` denylist
+# (`test_non_collaborative_tokens_are_fully_partitioned`) -- adding a token
+# to any of the three without also adding it to that denylist would break
+# the invariant, and adding it to the denylist changes the flagship game's
+# actual credit-edge traversal, a materially bigger and differently-risked
+# change than a display-only classification tweak. So "Compiled By" (205),
+# "Concept By" (17), "Graphic Design" (17), "Product Manager" (15),
+# "Promotion" (~31 combined), "Commissioned By" (85), and "Score" (part of
+# the 94-count "Score [Strings], Conductor [Strings]") all stay UNKNOWN,
+# correctly, until a future change deliberately re-measures and touches
+# `graph.py`'s denylist too. "Featuring" (2,375, the single largest
+# non-empty UNKNOWN string) stays UNKNOWN for a different reason: it is not
+# an `eligibility.py` performer token either (deliberately fail-closed
+# there -- it names a billing relationship, not an instrument/vocal type),
+# and this module's `_PERFORMANCE_SUBCATEGORY` only remaps categories
+# `eligibility.py` already recognizes, never invents new performance
+# tokens independently. Several other frequent strings (Film Director,
+# Director Of Photography, Film Producer, Film Editor, Video Editor,
+# Presenter, Interviewee) are film/video-production roles this taxonomy's
+# ten music-contribution categories have no honest home for -- inventing a
+# new category for them is a real design decision, not a coverage-fix
+# detail, and is left for a future pass if it's ever justified.
 
 # Token -> category, built once at import time. Order matters only in that a
 # token must not appear in two of these source dicts (tested explicitly).
