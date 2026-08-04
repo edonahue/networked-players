@@ -40,6 +40,11 @@ ROLE_PARITY_CASES = [
     "Mastered By",
     "Recorded By",
     "Arranged By",
+    "Programmed By",
+    "Programmed By [Keyboard Programming By]",
+    "Drum Programming",
+    "Conductor",
+    "Score [Strings], Conductor [Strings]",
     "Design",
     "Art Direction",
     "Executive-Producer",
@@ -89,6 +94,30 @@ def test_studio_roles_classify_distinctly_from_performer_roles() -> None:
         RoleCategory.PRODUCTION,
         RoleCategory.ENGINEERING,
     )
+
+
+def test_real_2026_08_04_coverage_additions_classify_correctly() -> None:
+    """Tokens added from the real `classify-roles` run against the
+    Jamiroquai topic corpus (Phase 3 Slice G follow-up) -- see
+    role_taxonomy.py's own comment for the real counts."""
+    assert classify_role("Programmed By") == (RoleCategory.ENGINEERING,)
+    assert classify_role("Programmed By [Keyboard Programming By]") == (RoleCategory.ENGINEERING,)
+    assert classify_role("Drum Programming") == (RoleCategory.ENGINEERING,)
+    assert classify_role("Conductor") == (RoleCategory.ARRANGEMENT,)
+    # Bracket-stripping applies per comma-separated component: "Score
+    # [Strings]" strips to the still-unrecognized "Score" (UNKNOWN, left
+    # deliberately unclassified -- see role_taxonomy.py's comment on why),
+    # "Conductor [Strings]" strips to the now-recognized "Conductor".
+    assert classify_role("Score [Strings], Conductor [Strings]") == (
+        RoleCategory.UNKNOWN,
+        RoleCategory.ARRANGEMENT,
+    )
+    # Genuinely frequent real strings deliberately left UNKNOWN (see
+    # role_taxonomy.py's comment): "Featuring" is not an eligibility.py
+    # performer token either, and "Compiled By" would require also
+    # extending graph.py's denylist, which this module alone must not do.
+    assert classify_role("Featuring") == (RoleCategory.UNKNOWN,)
+    assert classify_role("Compiled By") == (RoleCategory.UNKNOWN,)
 
 
 def test_performer_roles_map_into_coarser_taxonomy_buckets() -> None:
