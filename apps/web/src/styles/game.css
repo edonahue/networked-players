@@ -561,7 +561,8 @@ a.contributor-card:focus-visible {
 @media (prefers-reduced-motion: reduce) {
   .mode-card,
   .stage *,
-  .chip {
+  .chip,
+  .explorer-node circle {
     animation: none !important;
     transition: none !important;
   }

@@ -76,6 +76,70 @@ test("toggling a role filter dims non-matching nodes without removing them", asy
   expect(dimmedCount).toBeGreaterThanOrEqual(0);
 });
 
+test("only the center node is a tab stop on a fresh render (roving tabindex)", async ({
+  page,
+}) => {
+  await page.goto("/explore/master-107325/");
+  const nodes = page.locator("[data-explorer-nodes] .explorer-node");
+  await expect(nodes.first()).toBeVisible({ timeout: 15000 });
+
+  const tabIndexes = await nodes.evaluateAll((elements) =>
+    elements.map((el) => el.getAttribute("tabindex")),
+  );
+  expect(tabIndexes.filter((t) => t === "0")).toHaveLength(1);
+  const center = page.locator(
+    "[data-explorer-nodes] .explorer-node[data-is-center='true']",
+  );
+  await expect(center).toHaveAttribute("tabindex", "0");
+});
+
+test("arrow keys move the roving tab stop between nodes", async ({ page }) => {
+  await page.goto("/explore/master-107325/");
+  const center = page.locator(
+    "[data-explorer-nodes] .explorer-node[data-is-center='true']",
+  );
+  await expect(center).toBeVisible({ timeout: 15000 });
+
+  await center.focus();
+  await page.keyboard.press("ArrowRight");
+
+  const focused = page.locator("[data-explorer-nodes] .explorer-node:focus");
+  await expect(focused).toHaveCount(1);
+  await expect(focused).toHaveAttribute("data-is-center", "false");
+  await expect(focused).toHaveAttribute("tabindex", "0");
+  // The center is no longer a tab stop once focus has roved away.
+  await expect(center).toHaveAttribute("tabindex", "-1");
+});
+
+test("a keyboard-activated recenter moves focus to the new center and announces it", async ({
+  page,
+}) => {
+  await page.goto("/explore/master-107325/");
+  const center = page.locator(
+    "[data-explorer-nodes] .explorer-node[data-is-center='true']",
+  );
+  await expect(center).toBeVisible({ timeout: 15000 });
+
+  await center.focus();
+  await page.keyboard.press("ArrowRight");
+  const neighbor = page.locator("[data-explorer-nodes] .explorer-node:focus");
+  const neighborId = await neighbor.getAttribute("data-artist-id");
+  const neighborName = await neighbor.locator("text").first().textContent();
+
+  await page.keyboard.press("Enter");
+
+  const newCenter = page.locator(
+    "[data-explorer-nodes] .explorer-node[data-is-center='true']",
+  );
+  await expect(newCenter).toHaveAttribute("data-artist-id", neighborId ?? "");
+  // Focus lands on the new center -- rebuilding the SVG must not silently
+  // drop focus back to <body>.
+  await expect(newCenter).toBeFocused();
+  await expect(page.locator("[data-explorer-status]")).toContainText(
+    new RegExp(`Centered on ${neighborName}`, "i"),
+  );
+});
+
 test("an unknown artist id shows a graceful message instead of a blank graph", async ({
   page,
 }) => {
