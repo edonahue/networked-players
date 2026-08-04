@@ -26,7 +26,12 @@ from .corpus import (
     build_topic_corpus,
     resolve_artist_seed,
 )
-from .report import render_markdown_report, write_findings, write_promotion_candidates
+from .report import (
+    ResearchReportError,
+    render_markdown_report,
+    write_findings,
+    write_promotion_candidates,
+)
 from .request import ResearchRequest, ResearchRequestError, load_request
 from .runs import RESEARCH_ROOT, corpus_root, new_run_id, new_run_paths, write_run_manifest
 
@@ -282,6 +287,12 @@ def main(argv: list[str] | None = None) -> int:
             return 0
 
         raise AssertionError(f"unhandled command: {args.command}")
-    except (ResearchRequestError, TopicCorpusError, AmbiguousSeedError, NoSeedMatchError) as exc:
+    except (
+        ResearchRequestError,
+        TopicCorpusError,
+        AmbiguousSeedError,
+        NoSeedMatchError,
+        ResearchReportError,
+    ) as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 1
