@@ -17,7 +17,7 @@ from networked_players_platform.models import (
 )
 from networked_players_platform.scheduler import NoEligibleWorkerError, select_worker
 from networked_players_platform.staging import describe_artifact, publish_completed_run
-from networked_players_platform.workloads import discover_workloads
+from networked_players_platform.workloads import _research_corpus_check_handler, discover_workloads
 
 COMMIT = "a" * 40
 MANIFEST_HASH = "b" * 64
@@ -186,6 +186,64 @@ def test_executor_records_runtime_mismatch_without_completed_output(
         execute_run(str(run_dir))
     assert (run_dir / "failed.json").exists()
     assert not (run_dir / "completed").exists()
+
+
+def test_installed_research_corpus_check_workload_is_discoverable() -> None:
+    workload = discover_workloads()["research.corpus-check"]
+    assert workload.spec.version == "1"
+    assert workload.spec.capabilities.architectures == ("aarch64", "x86_64")
+    assert workload.spec.capabilities.tags == ("validation",)
+    assert workload.spec.capabilities.min_memory_mb == 128
+
+
+def test_research_corpus_check_flags_a_real_checksum_mismatch(tmp_path: Path) -> None:
+    input_dir = tmp_path / "input"
+    input_dir.mkdir()
+    (input_dir / "table=releases").mkdir()
+    data_path = input_dir / "table=releases" / "part-00000.parquet"
+    data_path.write_bytes(b"real content")
+    real_descriptor = describe_artifact(
+        input_dir, "table=releases/part-00000.parquet", name="releases", contract="synthetic-v1"
+    )
+    (input_dir / "manifest.json").write_text(
+        json.dumps(
+            {
+                "files": [
+                    {
+                        "path": "table=releases/part-00000.parquet",
+                        "sha256": real_descriptor.sha256,
+                        "size_bytes": real_descriptor.size_bytes,
+                    },
+                    {
+                        "path": "table=credits/part-00000.parquet",
+                        "sha256": "c" * 64,
+                        "size_bytes": 1,
+                    },
+                ]
+            }
+        )
+    )
+    output_dir = tmp_path / "output"
+
+    request = RunRequest(
+        schema_version=1,
+        run_id="corpus-check-001",
+        workload_id="research.corpus-check",
+        workload_version="1",
+        submitted_at="2026-08-04T00:00:00+00:00",
+        runtime_commit=COMMIT,
+        timeout_seconds=120,
+        max_retries=1,
+        capabilities=CapabilityRequirement(),
+        inputs=(),
+        expected_outputs=("corpus-check-report",),
+        parameters={},
+    )
+    outputs = _research_corpus_check_handler(request, input_dir, output_dir)
+    report = json.loads((output_dir / "corpus-check-report.json").read_text())
+    assert report["valid"] is False
+    assert any("missing file" in failure for failure in report["failures"])
+    assert outputs[0].name == "corpus-check-report"
 
 
 def test_executor_runs_dependency_free_artifact_validation(

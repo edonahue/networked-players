@@ -11,6 +11,7 @@ dependencies = [
   "duckdb>=1.2,<2",
   "networked-players-catalog",
   "networked-players-contracts",
+  "networked-players-platform",
 ]
 
 # Graph-library benchmark/analytics dependencies (Slice C) -- deliberately
@@ -26,9 +27,13 @@ graph = [
 [project.scripts]
 networked-players-research = "networked_players_research.cli:main"
 
+[project.entry-points."networked_players.workloads"]
+research-graph-metrics = "networked_players_research.platform_jobs:graph_metrics_workload"
+
 [tool.uv.sources]
 networked-players-catalog = { workspace = true }
 networked-players-contracts = { workspace = true }
+networked-players-platform = { workspace = true }
 
 [tool.setuptools.packages.find]
 where = ["src"]

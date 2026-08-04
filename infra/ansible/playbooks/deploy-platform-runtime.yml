@@ -90,6 +90,21 @@
       changed_when: "'Installed' in platform_catalog_install.stdout"
       when: platform_install_catalog | default(false) | bool
 
+    - name: Install research graph-metrics workload on capable x86 workers
+      ansible.builtin.command:
+        argv:
+          - "{{ ansible_env.HOME }}/.local/bin/uv"
+          - pip
+          - install
+          - --python
+          - "{{ platform_venv }}/bin/python"
+          - --find-links
+          - "{{ platform_release_root }}/wheels"
+          - networked-players-research==0.1.0
+      register: platform_research_install
+      changed_when: "'Installed' in platform_research_install.stdout"
+      when: platform_install_research | default(false) | bool
+
     - name: Verify deployed imports and CLI
       ansible.builtin.command:
         argv:
