@@ -35,4 +35,7 @@ Only commit data that is synthetic, intentionally public, or clearly redistribut
 
 ## Licensing
 
-No open-source license has been selected. Contributions should not be submitted with the expectation that the repository is already licensed for general reuse or redistribution.
+Code is licensed under the [MIT License](LICENSE). By submitting a
+contribution, you agree it is licensed under the same terms. This does not
+cover Discogs-derived catalog data or generated artifacts — see
+[docs/DATA_AND_RIGHTS.md](docs/DATA_AND_RIGHTS.md).

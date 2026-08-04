@@ -7,6 +7,7 @@ name = "networked-players-catalog"
 version = "0.1.0"
 description = "Evidence-preserving catalog ingestion tools for Networked Players"
 requires-python = ">=3.12"
+license = "MIT"
 dependencies = [
   "duckdb>=1.2,<2",
   "lxml>=5.3,<7",

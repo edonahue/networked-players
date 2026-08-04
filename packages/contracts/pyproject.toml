@@ -13,6 +13,7 @@ description = "Dependency-free public artifact contracts for Networked Players"
 # 3.12-only syntax -- verified by installing and running this package's own
 # test suite under a real 3.11 interpreter.
 requires-python = ">=3.11"
+license = "MIT"
 
 [tool.setuptools.packages.find]
 where = ["src"]
