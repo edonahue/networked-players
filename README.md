@@ -155,4 +155,11 @@ This is currently a personal learning and portfolio project, but constructive is
 
 ## License
 
-No open-source license has been selected yet. This repository is public for learning, documentation, and project transparency. All rights are reserved unless stated otherwise.
+Code in this repository is licensed under the [MIT License](LICENSE). This
+covers the application and package source only — it does not license
+Discogs-derived catalog data or generated artifacts, which follow their own
+sourcing and rights discipline documented in
+[docs/DATA_AND_RIGHTS.md](docs/DATA_AND_RIGHTS.md) (Discogs' monthly dumps
+are CC0; API-sourced and account-associated data follow Discogs' own terms).
+Nothing in this repository grants rights to the "Networked Players" name or
+branding.

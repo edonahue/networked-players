@@ -11,7 +11,8 @@ See [docs/BUILD_PLAN.md](BUILD_PLAN.md) for the granular, code-level task breakd
 - [x] Create the public monorepo
 - [x] Establish public/private and rights boundaries
 - [x] Record the initial product and architecture direction
-- [ ] Select a license before inviting reusable code contributions
+- [x] Select a license before inviting reusable code contributions (MIT, 2026-08-04 — code only,
+      not Discogs-derived data/artifacts; see `docs/DATA_AND_RIGHTS.md`)
 
 ## 1. Baseline hardware
 
