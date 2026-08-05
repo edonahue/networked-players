@@ -12,8 +12,9 @@ same shape of work: read 1 or 2 already-public JSON artifacts, call one
 `select_worker()` pick), this is deliberately REDUNDANT fan-out: the same
 check is dispatched independently to every targeted worker, proving each
 worker's own environment produces the same result -- not a shard of one
-job across workers. Mirrors submit_research_platform_job.py's real
-stage/dispatch/fetch/verify shape, looped per worker.
+job across workers. Shares its stage/dispatch/fetch/verify machinery with
+submit_cohort_score.py/submit_research_platform_job.py via
+_platform_client.py, looped per worker here.
 
 Results are written to local/jobs/<validator>-<timestamp>.json only --
 never a committed doc (ADR 0018).
@@ -23,21 +24,28 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import shutil
-import subprocess
 import sys
-import time
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from _platform_client import (
+    PlatformClientError,
+    current_commit,
+    enqueue_and_wait,
+    fetch_and_verify,
+    inventory_group_hosts,
+    inventory_hostvars,
+    remove_remote_run,
+    require_broker_url,
+    require_clean_checkout,
+    stage_run,
+)
 from redis import Redis
-from rq import Queue
-from rq.job import JobStatus
 
-from networked_players_platform.broker import queue_name, read_advertisements
+from networked_players_platform.broker import read_advertisements
 from networked_players_platform.models import ArtifactDescriptor, CapabilityRequirement, RunRequest
 from networked_players_platform.scheduler import NoEligibleWorkerError, select_worker
 from networked_players_platform.staging import describe_artifact
@@ -108,34 +116,18 @@ def _arguments() -> argparse.Namespace:
     )
     parser.add_argument("--workers", default="pi_workers", help="ansible inventory group to target")
     parser.add_argument("--limit", help="debug: target only this single inventory hostname")
+    parser.add_argument(
+        "--keep-remote",
+        action="store_true",
+        help="do not delete a worker's remote run directory after a successful fetch (debugging)",
+    )
     return parser.parse_args()
-
-
-def _run(*command: str, capture: bool = False) -> str:
-    completed = subprocess.run(
-        command, cwd=REPO_ROOT, check=True, text=True, capture_output=capture
-    )
-    return completed.stdout if capture else ""
-
-
-def _inventory_hostvars() -> dict[str, dict[str, Any]]:
-    if not INVENTORY.is_file():
-        print(f"ABORT: no local inventory at {INVENTORY}.", file=sys.stderr)
-        raise SystemExit(1)
-    inventory = json.loads(
-        _run("uv", "run", "ansible-inventory", "-i", str(INVENTORY), "--list", capture=True)
-    )
-    hostvars: dict[str, dict[str, Any]] = inventory.get("_meta", {}).get("hostvars", {})
-    return hostvars
 
 
 def _target_hosts(
     group: str, limit: str | None, *, hostvars: dict[str, dict[str, Any]]
 ) -> list[str]:
-    inventory = json.loads(
-        _run("uv", "run", "ansible-inventory", "-i", str(INVENTORY), "--list", capture=True)
-    )
-    hosts = sorted(inventory.get(group, {}).get("hosts", []))
+    hosts = inventory_group_hosts(INVENTORY, REPO_ROOT, group)
     if not hosts:
         print(f"ABORT: no hosts in the {group!r} inventory group.", file=sys.stderr)
         raise SystemExit(1)
@@ -193,10 +185,6 @@ def _resolve_artifact_paths(validator: str, artifact_args: list[str]) -> list[Pa
     return paths
 
 
-def _ansible(host: str, module: str, arguments: str) -> None:
-    _run("uv", "run", "ansible", host, "-i", str(INVENTORY), "-m", module, "-a", arguments)
-
-
 def _stage_inputs(artifact_paths: list[Path], input_dir: Path) -> tuple[ArtifactDescriptor, ...]:
     input_dir.mkdir(parents=True)
     descriptors = []
@@ -212,30 +200,6 @@ def _stage_inputs(artifact_paths: list[Path], input_dir: Path) -> tuple[Artifact
             )
         )
     return tuple(descriptors)
-
-
-def _fetch_and_verify(
-    host: str, remote_run: str, local_run: Path, result: dict[str, Any]
-) -> dict[str, Any]:
-    partial = local_run / ".completed.partial"
-    partial.mkdir()
-    for output in result["outputs"]:
-        descriptor = ArtifactDescriptor(**output)
-        destination = partial / descriptor.relative_path
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        _ansible(
-            host,
-            "fetch",
-            f"src={remote_run}/completed/{descriptor.relative_path} dest={destination} flat=yes",
-        )
-        actual = describe_artifact(
-            partial, descriptor.relative_path, name=descriptor.name, contract=descriptor.contract
-        )
-        if actual.sha256 != descriptor.sha256 or actual.size_bytes != descriptor.size_bytes:
-            raise RuntimeError(f"fetched output {descriptor.name!r} failed verification")
-    report: dict[str, Any] = json.loads((partial / "validation-report.json").read_text())
-    os.replace(partial, local_run / "completed")
-    return report
 
 
 def _worker_record(
@@ -269,6 +233,7 @@ def _check_one_worker(
     artifact_paths: list[Path],
     commit: str,
     broker: Redis,
+    keep_remote: bool,
 ) -> dict[str, Any]:
     run_id = f"artifact-check-{validator}-{datetime.now(UTC):%Y%m%dt%H%M%Sz}-{uuid.uuid4().hex[:8]}"
     local_run = OUTPUT_DIR / ".runs" / run_id
@@ -314,62 +279,51 @@ def _check_one_worker(
         )
 
     remote_run = f"~/.local/share/networked-players/platform/runs/{run_id}"
-    _ansible(host, "file", f"path={remote_run}/input state=directory mode=0755")
-    _ansible(
-        host, "copy", f"src={local_run / 'request.json'} dest={remote_run}/request.json mode=0644"
+    stage_run(
+        inventory_path=INVENTORY,
+        repo_root=REPO_ROOT,
+        host=host,
+        remote_run=remote_run,
+        local_run=local_run,
     )
-    _ansible(host, "copy", f"src={local_run / 'input'}/ dest={remote_run}/input/ mode=0644")
 
-    queue = Queue(queue_name(worker.worker_id), connection=broker)
-    job = queue.enqueue(
-        "networked_players_platform.executor.execute_run",
-        remote_run,
-        job_id=run_id,
-        job_timeout=request.timeout_seconds,
-        result_ttl=604800,
-        failure_ttl=2592000,
-        retry=None,
-    )
-    deadline = time.monotonic() + request.timeout_seconds + 60
-    while time.monotonic() < deadline:
-        status = job.get_status(refresh=True)
-        if status == JobStatus.FINISHED:
-            break
-        if status in {JobStatus.FAILED, JobStatus.CANCELED, JobStatus.STOPPED}:
-            return _worker_record(
-                job_id=job.id,
-                started_at=started_at,
-                finished_at=datetime.now(UTC).isoformat(),
-                job_failed=True,
-                result=None,
-                ok=False,
-            )
-        time.sleep(2)
-    else:
-        return _worker_record(
-            job_id=job.id,
-            started_at=started_at,
-            finished_at=datetime.now(UTC).isoformat(),
-            job_failed=True,
-            result=None,
-            ok=False,
-            error="timed out",
+    try:
+        result = enqueue_and_wait(
+            broker=broker,
+            worker_id=worker.worker_id,
+            remote_run=remote_run,
+            run_id=run_id,
+            timeout_seconds=request.timeout_seconds,
         )
-
-    finished_at = datetime.now(UTC).isoformat()
-    result = job.result
-    if not isinstance(result, dict) or result.get("status") != "succeeded":
+    except PlatformClientError as exc:
+        finished_at = datetime.now(UTC).isoformat()
         return _worker_record(
-            job_id=job.id,
+            job_id=run_id,
             started_at=started_at,
             finished_at=finished_at,
             job_failed=True,
-            result=result,
+            result=None,
             ok=False,
+            error=str(exc),
         )
-    report = _fetch_and_verify(host, remote_run, local_run, result)
+
+    finished_at = datetime.now(UTC).isoformat()
+    completed = fetch_and_verify(
+        inventory_path=INVENTORY,
+        repo_root=REPO_ROOT,
+        host=host,
+        remote_run=remote_run,
+        local_run=local_run,
+        result=result,
+        save_result_json=False,
+    )
+    report: dict[str, Any] = json.loads((completed / "validation-report.json").read_text())
+    if not keep_remote:
+        remove_remote_run(
+            inventory_path=INVENTORY, repo_root=REPO_ROOT, host=host, remote_run=remote_run
+        )
     return _worker_record(
-        job_id=job.id,
+        job_id=run_id,
         started_at=started_at,
         finished_at=finished_at,
         job_failed=False,
@@ -380,18 +334,13 @@ def _check_one_worker(
 
 def main() -> int:
     args = _arguments()
-    if not INVENTORY.is_file():
-        raise RuntimeError("private Ansible inventory is missing")
-    if _run("git", "status", "--short", capture=True).strip():
-        raise RuntimeError("submit an artifact check only from a clean checkout")
-    commit = _run("git", "rev-parse", "HEAD", capture=True).strip()
+    require_clean_checkout(REPO_ROOT)
+    commit = current_commit(REPO_ROOT)
     artifact_paths = _resolve_artifact_paths(args.validator, args.artifact)
-    hostvars = _inventory_hostvars()
+    hostvars = inventory_hostvars(INVENTORY, REPO_ROOT)
     hosts = _target_hosts(args.workers, args.limit, hostvars=hostvars)
 
-    broker_url = os.environ.get("JOBS_BROKER_URL", "")
-    if not broker_url:
-        raise RuntimeError("JOBS_BROKER_URL is required")
+    broker_url = require_broker_url()
     broker = Redis.from_url(broker_url)
 
     per_worker: dict[str, dict[str, Any]] = {}
@@ -405,6 +354,7 @@ def main() -> int:
             artifact_paths=artifact_paths,
             commit=commit,
             broker=broker,
+            keep_remote=args.keep_remote,
         )
 
     def _display_path(path: Path) -> str:
