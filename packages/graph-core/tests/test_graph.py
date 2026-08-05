@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import duckdb
 import pytest
 
 from networked_players_graph_core.graph import CreditGraph, FrontierTooLargeError, GraphError
@@ -323,6 +324,39 @@ def test_open_honors_explicit_temp_dir(dataset_root: Path, tmp_path: Path) -> No
     assert setting is not None
     assert str(custom) in setting[0]
     assert custom.is_dir()
+
+
+def test_open_leaves_max_temp_directory_size_unset_by_default(dataset_root: Path) -> None:
+    """Regression test: without an explicit ceiling, DuckDB's own spill
+    limit implicitly tracks whatever free disk exists at connect time --
+    on a shared host, a single heavy query can spill until the disk hits
+    zero bytes free. Default behavior is preserved for every existing
+    caller; only cohort.score sets this explicitly (ADR follow-up to the
+    zimaworker1 disk-full incident)."""
+    with CreditGraph.open(dataset_root) as graph:
+        setting = graph._connection.execute(
+            "SELECT current_setting('max_temp_directory_size')"
+        ).fetchone()
+    assert setting is not None
+    # DuckDB's own unset/default representation -- asserting it was never
+    # overridden by this call, not asserting a specific DuckDB default value.
+    default_setting = (
+        duckdb.connect(database=":memory:")
+        .execute("SELECT current_setting('max_temp_directory_size')")
+        .fetchone()
+    )
+    assert setting[0] == default_setting[0]
+
+
+def test_open_honors_explicit_max_temp_directory_size(dataset_root: Path) -> None:
+    with CreditGraph.open(dataset_root, max_temp_directory_size="512MB") as graph:
+        setting = graph._connection.execute(
+            "SELECT current_setting('max_temp_directory_size')"
+        ).fetchone()
+    assert setting is not None
+    # DuckDB echoes the value back reformatted (binary units), not verbatim --
+    # assert the reported size, not the exact input string.
+    assert "488.2 MiB" == setting[0]
 
 
 def test_interrupt_is_a_safe_no_op_when_no_query_is_running(dataset_root: Path) -> None:

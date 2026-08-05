@@ -40,6 +40,7 @@ from _platform_client import (
     remove_remote_run,
     require_broker_url,
     require_clean_checkout,
+    require_free_disk,
     resolve_inventory_host,
     stage_run,
 )
@@ -80,6 +81,16 @@ def _arguments() -> argparse.Namespace:
     parser.add_argument("--workload", required=True, choices=sorted(_WORKLOADS))
     parser.add_argument("--topic", required=True, help="topic slug, e.g. jamiroquai")
     parser.add_argument("--worker-id", help="restrict dispatch to one advertised worker_id")
+    parser.add_argument(
+        "--min-free-disk-gb",
+        type=float,
+        default=2.0,
+        help=(
+            "refuse to dispatch if the target worker has less than this much "
+            "free disk (preflight, checked read-only right before staging; "
+            "see the zimaworker1 disk-full incident)"
+        ),
+    )
     parser.add_argument(
         "--keep-remote",
         action="store_true",
@@ -168,6 +179,12 @@ def main() -> int:
     )
     hostvars = inventory_hostvars(INVENTORY, REPO_ROOT)
     host = resolve_inventory_host(hostvars, worker.worker_id)
+    require_free_disk(
+        inventory_path=INVENTORY,
+        repo_root=REPO_ROOT,
+        host=host,
+        min_free_gb=args.min_free_disk_gb,
+    )
     remote_run = f"~/.local/share/networked-players/platform/runs/{run_id}"
     stage_run(
         inventory_path=INVENTORY,

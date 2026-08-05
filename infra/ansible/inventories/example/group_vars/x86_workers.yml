@@ -27,6 +27,16 @@ platform_max_job_memory_mb: 4096
 platform_systemd_memory_max: 5G
 platform_install_catalog: true
 
+# "Disk not full" floor (playbooks/health.yml), overriding group_vars/all.yml's
+# generic min_free_gb: 1. 1 GB is not a safe floor for this group: cohort.score's
+# DuckDB spill ceiling defaults to 3 GB (scripts/submit_cohort_score.py's
+# --max-temp-directory-size), so a host could sit at 1 GB free, report
+# "healthy," and still have nowhere for a real job's spill directory to grow.
+# Found the hard way -- a real x86 worker hit 0 bytes free in 2026-08 while
+# this floor was still inherited at 1 GB (see the zimaworker1 storage ADR).
+# Set with margin above the DuckDB ceiling, not just above zero.
+min_free_gb: 6
+
 # playbooks/replicate-dataset-x86.yml (ADR 0025). Root directory for this
 # worker's disposable, read-only, verified dataset cache -- NOT the same as
 # the coordination host's authoritative local/processed/. Set a real

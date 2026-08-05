@@ -544,6 +544,7 @@ class CreditGraph:
         threads: int = 2,
         max_artists_per_release: int = 50,
         temp_dir: Path | None = None,
+        max_temp_directory_size: str | None = None,
         build_edges: bool = True,
         release_format_policy: Path | None = None,
     ) -> CreditGraph:
@@ -573,6 +574,15 @@ class CreditGraph:
         connection.execute(f"SET memory_limit = '{memory_limit}'")
         connection.execute(f"SET threads = {int(threads)}")
         connection.execute(f"SET temp_directory = '{spill_dir}'")
+        if max_temp_directory_size is not None:
+            # Without this, DuckDB's own spill ceiling implicitly tracks
+            # whatever free disk exists at connect time -- on a shared host
+            # (e.g. a worker also running other services on the same
+            # filesystem), a heavy query can spill until the disk hits zero
+            # bytes free, taking down everything else on that filesystem
+            # too. An explicit cap makes a run's worst-case footprint
+            # predictable and bounded, like memory_limit already does for RAM.
+            connection.execute(f"SET max_temp_directory_size = '{max_temp_directory_size}'")
 
         try:
             connection.execute(

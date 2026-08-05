@@ -102,6 +102,34 @@ def test_cohort_score_handler_without_release_format_policy(
     assert calls[0]["release_format_policy"] is None
 
 
+def test_cohort_score_handler_max_temp_directory_size_defaults_to_none(
+    handler_context: tuple[RunRequest, Path, Path, list[dict[str, Any]]],
+) -> None:
+    """Regression test for the zimaworker1 disk-full incident: without an
+    explicit ceiling, DuckDB's spill directory can grow until the shared
+    disk hits 0 bytes free. `cohort.score` requests without the parameter
+    (e.g. an older submission script) must still resolve to `None` --
+    unchanged, unbounded default DuckDB behavior -- not silently error."""
+    request, input_dir, output_dir, calls = handler_context
+
+    platform_jobs._cohort_score_handler(request, input_dir, output_dir)
+
+    assert len(calls) == 1
+    assert calls[0]["max_temp_directory_size"] is None
+
+
+def test_cohort_score_handler_forwards_max_temp_directory_size(
+    handler_context: tuple[RunRequest, Path, Path, list[dict[str, Any]]],
+) -> None:
+    request, input_dir, output_dir, calls = handler_context
+    request.parameters["max_temp_directory_size"] = "3GB"
+
+    platform_jobs._cohort_score_handler(request, input_dir, output_dir)
+
+    assert len(calls) == 1
+    assert calls[0]["max_temp_directory_size"] == "3GB"
+
+
 def test_cohort_score_handler_forwards_release_format_policy(
     handler_context: tuple[RunRequest, Path, Path, list[dict[str, Any]]],
 ) -> None:

@@ -41,6 +41,7 @@ from _platform_client import (
     remove_remote_run,
     require_broker_url,
     require_clean_checkout,
+    require_free_disk,
     stage_run,
 )
 from redis import Redis
@@ -116,6 +117,17 @@ def _arguments() -> argparse.Namespace:
     )
     parser.add_argument("--workers", default="pi_workers", help="ansible inventory group to target")
     parser.add_argument("--limit", help="debug: target only this single inventory hostname")
+    parser.add_argument(
+        "--min-free-disk-gb",
+        type=float,
+        default=0.5,
+        help=(
+            "refuse to dispatch to a worker with less than this much free "
+            "disk (preflight, checked read-only right before staging; see "
+            "the zimaworker1 disk-full incident). Lower than the other "
+            "submission scripts' default since these payloads are KB-scale."
+        ),
+    )
     parser.add_argument(
         "--keep-remote",
         action="store_true",
@@ -234,6 +246,7 @@ def _check_one_worker(
     commit: str,
     broker: Redis,
     keep_remote: bool,
+    min_free_disk_gb: float,
 ) -> dict[str, Any]:
     run_id = f"artifact-check-{validator}-{datetime.now(UTC):%Y%m%dt%H%M%Sz}-{uuid.uuid4().hex[:8]}"
     local_run = OUTPUT_DIR / ".runs" / run_id
@@ -270,6 +283,24 @@ def _check_one_worker(
     except NoEligibleWorkerError as exc:
         return _worker_record(
             job_id=None,
+            started_at=started_at,
+            finished_at=None,
+            job_failed=True,
+            result=None,
+            ok=False,
+            error=str(exc),
+        )
+
+    try:
+        require_free_disk(
+            inventory_path=INVENTORY,
+            repo_root=REPO_ROOT,
+            host=host,
+            min_free_gb=min_free_disk_gb,
+        )
+    except PlatformClientError as exc:
+        return _worker_record(
+            job_id=run_id,
             started_at=started_at,
             finished_at=None,
             job_failed=True,
@@ -355,6 +386,7 @@ def main() -> int:
             commit=commit,
             broker=broker,
             keep_remote=args.keep_remote,
+            min_free_disk_gb=args.min_free_disk_gb,
         )
 
     def _display_path(path: Path) -> str:

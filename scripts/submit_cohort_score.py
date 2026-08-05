@@ -20,6 +20,7 @@ from _platform_client import (
     remove_remote_run,
     require_broker_url,
     require_clean_checkout,
+    require_free_disk,
     resolve_inventory_host,
     stage_run,
 )
@@ -46,6 +47,18 @@ def _arguments() -> argparse.Namespace:
     parser.add_argument("--snapshot-date", required=True)
     parser.add_argument("--worker-id")
     parser.add_argument("--memory-limit", default="2GB")
+    parser.add_argument(
+        "--max-temp-directory-size",
+        default="3GB",
+        help=(
+            "explicit ceiling on DuckDB's spill directory, so a heavy run's "
+            "worst-case disk footprint is bounded instead of implicitly "
+            "tracking whatever free space exists on the worker at connect "
+            "time (a shared host can otherwise be driven to 0 bytes free "
+            "by a single spilling query). Pass '' to fall back to DuckDB's "
+            "own default behavior."
+        ),
+    )
     parser.add_argument("--threads", type=int, default=3)
     parser.add_argument("--pair-timeout-seconds", type=float, default=180.0)
     parser.add_argument("--max-frontier-expansion", type=int, default=300)
@@ -59,6 +72,16 @@ def _arguments() -> argparse.Namespace:
             "(see build-release-format-scoring-index). Optional: without it, "
             "the run falls back to the legacy title-keyword filter, same as "
             "the local score-cohort-connectivity CLI's own default."
+        ),
+    )
+    parser.add_argument(
+        "--min-free-disk-gb",
+        type=float,
+        default=2.0,
+        help=(
+            "refuse to dispatch if the target worker has less than this much "
+            "free disk (preflight, checked read-only right before staging; "
+            "see the zimaworker1 disk-full incident)"
         ),
     )
     parser.add_argument("--replace", action="store_true")
@@ -137,6 +160,7 @@ def _request(args: argparse.Namespace, run_id: str, commit: str) -> tuple[RunReq
         ),
         parameters={
             "memory_limit": args.memory_limit,
+            "max_temp_directory_size": args.max_temp_directory_size or None,
             "threads": args.threads,
             "pair_timeout_seconds": args.pair_timeout_seconds,
             "max_frontier_expansion": args.max_frontier_expansion,
@@ -186,6 +210,12 @@ def main() -> int:
     )
     hostvars = inventory_hostvars(INVENTORY, REPO_ROOT)
     host = resolve_inventory_host(hostvars, worker.worker_id)
+    require_free_disk(
+        inventory_path=INVENTORY,
+        repo_root=REPO_ROOT,
+        host=host,
+        min_free_gb=args.min_free_disk_gb,
+    )
     remote_run = f"~/.local/share/networked-players/platform/runs/{run_id}"
     stage_run(
         inventory_path=INVENTORY,

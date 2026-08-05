@@ -100,8 +100,16 @@ def resolve_inventory_host(hostvars: dict[str, dict[str, Any]], worker_id: str) 
     return matches[0]
 
 
-def ansible(inventory_path: Path, repo_root: Path, host: str, module: str, arguments: str) -> None:
-    run(
+def ansible(
+    inventory_path: Path,
+    repo_root: Path,
+    host: str,
+    module: str,
+    arguments: str,
+    *,
+    capture: bool = False,
+) -> str:
+    return run(
         "uv",
         "run",
         "ansible",
@@ -113,7 +121,46 @@ def ansible(inventory_path: Path, repo_root: Path, host: str, module: str, argum
         "-a",
         arguments,
         cwd=repo_root,
+        capture=capture,
     )
+
+
+def require_free_disk(
+    *,
+    inventory_path: Path,
+    repo_root: Path,
+    host: str,
+    min_free_gb: float,
+    mount: str = "/",
+) -> None:
+    """Read-only free-space preflight, run before every dispatch. The
+    zimaworker1 disk-full incident happened with no check at all between
+    "the worker looked schedulable" and "the job wrote to an already
+    critically full disk" -- this refuses to submit rather than dispatching
+    into that gap. Uses the same read-only `df` primitive as
+    `playbooks/health.yml`'s own floor check, just invoked ad hoc instead
+    of via `gather_facts`, so this and the health playbook can drift out of
+    sync in value but never in method."""
+    output = ansible(
+        inventory_path,
+        repo_root,
+        host,
+        "command",
+        f"df --output=avail -B1 {mount}",
+        capture=True,
+    )
+    lines = [line.strip() for line in output.splitlines() if line.strip()]
+    try:
+        available_bytes = int(lines[-1])
+    except (IndexError, ValueError) as exc:
+        raise PlatformClientError(f"could not parse free-disk check output: {output!r}") from exc
+    min_free_bytes = min_free_gb * 1024**3
+    if available_bytes < min_free_bytes:
+        available_gb = available_bytes / 1024**3
+        raise PlatformClientError(
+            f"{host} has {available_gb:.1f} GB free on {mount}, below the "
+            f"{min_free_gb:g} GB preflight floor -- refusing to dispatch"
+        )
 
 
 def stage_run(

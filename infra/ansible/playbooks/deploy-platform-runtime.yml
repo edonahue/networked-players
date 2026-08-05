@@ -10,6 +10,11 @@
     platform_release_root: "{{ platform_runtime_root }}/releases/{{ platform_runtime_commit }}"
     platform_venv: "{{ platform_release_root }}/venv"
     platform_user_unit_dir: "{{ ansible_env.HOME }}/.config/systemd/user"
+    # Versioned release bundles previously accumulated forever under
+    # platform_runtime_root/releases -- a real, slow disk-space leak found
+    # during the zimaworker1 storage investigation. Keep this release plus
+    # the N-1 most recent others (rollback headroom), prune the rest.
+    platform_release_keep_count: 3
   tasks:
     - name: Require private platform deployment variables
       ansible.builtin.assert:
@@ -200,6 +205,27 @@
       loop:
         - networked-players-platform-worker.service
         - networked-players-platform-heartbeat.timer
+
+    - name: Discover existing release bundles for pruning
+      ansible.builtin.find:
+        paths: "{{ platform_runtime_root }}/releases"
+        file_type: directory
+        depth: 1
+      register: platform_existing_releases
+
+    - name: Prune release bundles beyond the keep-last-N policy
+      ansible.builtin.file:
+        path: "{{ item.path }}"
+        state: absent
+      loop: >-
+        {{
+          (platform_existing_releases.files
+            | rejectattr('path', 'equalto', platform_release_root)
+            | sort(attribute='mtime', reverse=true))
+          [platform_release_keep_count - 1:]
+        }}
+      loop_control:
+        label: "{{ item.path }}"
 
     - name: Report deployed runtime without private connection data
       ansible.builtin.debug:
