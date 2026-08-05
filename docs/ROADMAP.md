@@ -51,7 +51,8 @@ See [docs/BUILD_PLAN.md](BUILD_PLAN.md) for the granular, code-level task breakd
       (masters done; artist/label remain embedded in credits, not standalone schemas)
 - [x] Preserve source role text while defining a role taxonomy (role text preserved
       verbatim everywhere; taxonomy defined as a third orthogonal classification layer,
-      `role_taxonomy.py`, ADR 0047, Phase 2 Slice B)
+      `role_taxonomy.py`, ADR 0047, Phase 2 Slice B; real coverage extended 2026-08-04
+      from a Jamiroquai-corpus measurement, `docs/PHASE3_REPORT.md`'s follow-up section)
 - [x] Define snapshot retention, free-space guardrails, and recovery automation
 - [x] Define graph-snapshot and static-challenge contracts
 - [ ] Add mutable registry or search state only when the vertical slice requires it

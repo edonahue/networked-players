@@ -149,3 +149,22 @@ artist) are in this document or the public docs.
 3. **Whether any research finding eventually earns public promotion** —
    deliberately left an open, human decision; nothing here forces a
    future phase's hand.
+
+## Post-Phase-3 follow-up, 2026-08-04
+
+Everything below shipped *after* this report's original close (all three
+"Remaining" items above were addressed at least in part), plus a
+separate cleanup pass. This section documents what changed since the
+close above — the close itself was accurate for its own point in time
+and is left as written, not rewritten.
+
+**Four real follow-up changes** (each its own PR, all merged same-day):
+
+- **`role_taxonomy.py` coverage fix** ([#78](https://github.com/edonahue/networked-players/pull/78)) — closes "Remaining" item 2 above. Ran the `classify-roles` diagnostic against the real Jamiroquai corpus and added three real, evidence-backed tokens ("Programmed By"/"Drum Programming" → ENGINEERING, "Conductor" → ARRANGEMENT). Real measured effect: `classified_pct` moved from 35.23% to 35.59% — small and honest, not a dramatic fix, since most other frequent unknown strings would require also touching `graph.py`'s denylist (out of scope for a display-classification change; documented in the module itself).
+- **MIT License selected** ([#79](https://github.com/edonahue/networked-players/pull/79)) — closes `docs/ROADMAP.md` §0's open item. Code only; Discogs-derived data/artifacts explicitly stay outside the grant (`docs/DATA_AND_RIGHTS.md`, unchanged).
+- **Real Pi fleet onboarding onto the ADR 0034 capability platform** ([#80](https://github.com/edonahue/networked-players/pull/80)) — closes "Remaining" item 1 above and this report's own "Rejected or descoped" note that it was deliberately not attempted during Phase 3 proper. All three Pi workers are now real, live `select_worker()`/RQ participants, confirmed via a real end-to-end `research.corpus-check` dispatch. The missing prerequisites Slice E's investigation had made concrete (`platform_worker_id`, memory-limit config) were the actual fix — systemd linger was already correctly enabled fleet-wide.
+- **Migration of the 8 fleet artifact validators onto `artifact.validate`, and full retirement of the older `enqueue_*_check.py` pattern** ([#81](https://github.com/edonahue/networked-players/pull/81) added the new path; retirement landed as commit [`25f1117`](https://github.com/edonahue/networked-players/commit/25f111713261b969edc1e3b4c7b7e9665c65e696), pushed directly to `main` rather than through a PR — a real process slip, noted here rather than glossed over) — closes `docs/ROADMAP.md` §6's consolidation item. `packages/platform/workloads.py`'s `artifact.validate` workload now covers all 8 real checks (previously hardcoded to 2); the old 8 scripts, their job bodies, and deploy playbooks (~30 files) were deleted once the new path was real-verified against the live fleet, including redundant fan-out across all 3 Pis. See ADR 0056.
+
+**A separate, subsequent cleanup pass** (three more PRs: [#82](https://github.com/edonahue/networked-players/pull/82), [#83](https://github.com/edonahue/networked-players/pull/83), and this docs/tracker reconciliation) found and fixed two further real gaps this report's own close didn't know about yet: a live Python/TypeScript behavioral drift in "Behind the Glass" role eligibility (the `role_taxonomy.py` fix above silently changed real gameplay eligibility; the TS mirror had gone stale with no automated parity check), and a real gap between what `make check`/README/AGENTS.md claimed ("mirrors CI") and what the canonical local setup actually ran (missing `--extra graph`, silently skipping the graph-benchmark tests locally). Also consolidated the three platform-submission scripts' duplicated plumbing into a shared `scripts/_platform_client.py`, and added real run-directory retention (nothing pruned worker-side run directories before this; confirmed via live measurement).
+
+**Current real state, as of this addendum**: 867 backend tests (0 skipped with the canonical `make setup`, which now installs the `graph` extra — previously 928 counted tests included coverage later removed by the fleet-validation retirement, so the raw number going down is expected, not a regression). All 4 workers (3 Pi + x86) live on the capability platform. See `docs/NEXT_PATH_BRIEF.md` for the decision-readiness picture this cleanup pass leaves behind.
