@@ -49,14 +49,17 @@ def _arguments() -> argparse.Namespace:
     parser.add_argument("--memory-limit", default="2GB")
     parser.add_argument(
         "--max-temp-directory-size",
-        default="3GB",
+        default="5GB",
         help=(
             "explicit ceiling on DuckDB's spill directory, so a heavy run's "
             "worst-case disk footprint is bounded instead of implicitly "
             "tracking whatever free space exists on the worker at connect "
             "time (a shared host can otherwise be driven to 0 bytes free "
-            "by a single spilling query). Pass '' to fall back to DuckDB's "
-            "own default behavior."
+            "by a single spilling query). 5GB by real measurement, not a "
+            "guess: a real whole-catalog rescore against zimaworker1 failed "
+            "at a 3GB ceiling (~2.9GB actually needed) and succeeded at 5GB "
+            "(ADR 0057). Pass '' to fall back to DuckDB's own default "
+            "behavior."
         ),
     )
     parser.add_argument("--threads", type=int, default=3)

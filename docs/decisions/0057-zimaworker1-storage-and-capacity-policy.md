@@ -63,11 +63,20 @@ operator sign-off (see Validation).
 `CreditGraph.open()` gained a `max_temp_directory_size` parameter (unset by
 default — every existing caller's behavior is unchanged); `cohort.score`'s
 platform path (worker handler → `submit_cohort_score.py`'s new
-`--max-temp-directory-size`, default `3GB`) sets it explicitly. This
-matters beyond just fixing this incident: without a ceiling, a single heavy
-query could in principle spill until a *shared* disk hits zero bytes free,
-degrading CasaOS's own operation on the same filesystem, not just failing
-its own job.
+`--max-temp-directory-size`) sets it explicitly. This matters beyond just
+fixing this incident: without a ceiling, a single heavy query could in
+principle spill until a *shared* disk hits zero bytes free, degrading
+CasaOS's own operation on the same filesystem, not just failing its own
+job. The default was real-measured, not guessed: an initial `3GB` default
+was tried against a real whole-catalog rescore on zimaworker1 post-
+remediation and failed cleanly with DuckDB's own out-of-memory-class error
+(real usage ~2.9GB at the point of failure); raised to `5GB` and the same
+real rescore succeeded end to end (153.8s wall, 327.7MB peak RSS, well
+within the 2GB `--memory-limit`, spill directory empty afterward). The
+first attempt is exactly the mechanism working as designed — it stopped
+the run at a predictable, chosen ceiling instead of letting it silently
+consume the shared disk — just calibrated too low; the fix was retrying
+with the existing `--max-temp-directory-size` flag, not a code change.
 
 **Release bundles are now pruned.** `deploy-platform-runtime.yml` never
 deleted old versioned releases under `platform_release_root`. Added a
@@ -105,15 +114,14 @@ manages, prunes, or budgets against it — any future storage budget for
 this host must simply account for it as a real, independently-growing
 consumer this project does not control.
 
-**No hardware change is required to unblock `cohort.score`.** Software
-remediation (dataset removal, log cleanup, the DuckDB ceiling) plausibly
-recovers most of the 27.7G disk, and the same workload already succeeded on
-this exact hardware once before at far less headroom than that. A small
-dedicated data drive (reusing ADR 0013's proven `/mnt/data` pattern —
-external drive, ext4, bind-mounted onto `local/`) remains a reasonable
-optional follow-up if margin is still tight after remediation, permanently
-separating this project's footprint from CasaOS's own — not committed to
-here.
+**No hardware change was required to unblock `cohort.score` — confirmed,
+not just projected.** Dataset removal alone took real free space from
+0.8G to 7.3G; the previously-failing workload then completed for real at
+that headroom. A small dedicated data drive (reusing ADR 0013's proven
+`/mnt/data` pattern — external drive, ext4, bind-mounted onto `local/`)
+remains a reasonable optional future upgrade to permanently separate this
+project's footprint from CasaOS's own, but is not needed to close this
+incident and is not committed to here.
 
 ## Consequences
 
@@ -124,85 +132,81 @@ footprint instead of an implicit one tied to ambient free space.
 Submission scripts gained one more required round-trip (the preflight) per
 dispatch — a few hundred milliseconds of `df` over SSH, not a measurable
 cost against jobs that run for minutes. The `min_free_gb` floor change
-means `make cluster-health` now correctly reports zimaworker1 unhealthy at
-its current real free space until the remediation below completes — this
-is the guard doing its job, confirmed live (see Validation).
+means `make cluster-health` correctly reported zimaworker1 unhealthy at
+its pre-remediation free space and correctly reports it healthy now — the
+guard doing its job in both directions, confirmed live.
 
-**Not yet closed by this ADR at time of writing**: `/var/log`'s exact spam
-source (needs root log access, gated on operator action); the full
-`discogs` replica's actual removal (gated on explicit operator sign-off);
-a real end-to-end `cohort.score` dispatch proving the fix against the real
-failure mode. This ADR's mechanism/policy decisions (dataset call,
-DuckDB ceiling, release pruning, health floor, preflight) are final and
-implemented; this section will be updated with the closing real-hardware
-validation once those land.
+The incident is closed: the exact workload that failed
+(`cohort.score` against the real `discogs-community-best-albums` cohort)
+now completes end to end on the same real hardware, with disk and RAM both
+comfortably bounded. **Not yet closed**: `/var/log`'s exact spam source —
+non-privileged diagnosis narrowed the candidate set (see Validation) but
+confirming and fixing it needs root log access this session could not
+obtain. This is real remaining technical debt, tracked by this ADR's own
+Revisit trigger, not a blocker to anything else in this decision.
 
 ## Validation
 
-`make check` green with the new tests (`test_open_leaves_max_temp_directory_size_unset_by_default`,
+`make check` green (871 passed) with the new tests
+(`test_open_leaves_max_temp_directory_size_unset_by_default`,
 `test_open_honors_explicit_max_temp_directory_size` in `test_graph.py`;
 `test_cohort_score_handler_max_temp_directory_size_defaults_to_none`,
 `test_cohort_score_handler_forwards_max_temp_directory_size` in
 `test_platform_jobs.py`). `deploy-platform-runtime.yml` syntax-checked
-against the example inventory. Real, live-verified against zimaworker1
-(read-only where noted):
+against the example inventory. Merged via PR #85 with CI green; platform
+runtime rebuilt and redeployed to all 4 real workers at the merged commit.
+Real, live-verified against zimaworker1:
 
-- The raised health floor correctly fails right now, before any
-  remediation: `ansible-playbook health.yml --limit zimaworker1` reports
-  "zimaworker1 has 0.8 GB free on /, below the 6 GB floor" — confirming
-  the floor would have caught the original incident had it been set
-  correctly beforehand.
-- The new preflight correctly refuses a real dispatch to zimaworker1 at
-  its current free space, and correctly passes against a healthy Pi
-  worker (no false positive).
-- The full `discogs` replica's `.verified.json`/`manifest.json` timestamps
-  (2026-07-03/04) confirm it was fetched through the official checksummed
-  path, not ad hoc — real evidence for the dataset-decision reasoning
-  above, not an assumption.
-
-**Pending real validation** (to be added here once complete): `/var/log`
-root-caused and reduced; full `discogs` replica removed; a real
-`research.graph-metrics` and a real full `cohort.score` dispatch both
-succeeding end to end against zimaworker1 post-remediation.
-
-Non-privileged diagnosis narrowed the `/var/log` candidate set without yet
-confirming it (log content itself needs root, gated on operator action):
-this host runs a full desktop CasaOS image (`gdm`/`gnome-shell` session,
-`cups`/`cups-browsed`, `ModemManager`, `samba` `nmbd`/`smbd`,
-`switcheroo-control`, `colord`, `packagekit`) alongside its compute-worker
-role — `systemctl --failed` reports clean (no crash-looping unit), so the
-volume more likely comes from routine chatter across several
-desktop/peripheral-support daemons a headless worker doesn't need, not a
-single broken service. Disabling the unneeded ones is a real, concrete
-candidate action once log content confirms it, and separately reduces
-future log volume regardless of the immediate cleanup.
-
-**Dataset removal: done, real, operator-authorized.** The operator gave
-explicit go-ahead; the full `discogs` replica was deleted from zimaworker1
-(`ansible ... -m file ... state=absent`, the exact `local/cache/discogs`
-path only). Verified immediately after: `discogs-onehop` untouched at
-2.2G, root filesystem free space rose from 0.8G to 7.3G, and
-`playbooks/health.yml`'s raised `min_free_gb: 6` floor now passes cleanly
-against this host (previously correctly failing). This alone resolved the
-disk-full state; `/var/log`'s exact root cause (Slice A) remains a
-separate, smaller open item — see below.
-
-**Still open at time of writing**: `/var/log`'s exact root cause (Slice A,
-blocked on interactive root log access — the available non-interactive
-mechanisms in this environment could not supply a sudo password) and a
-real post-remediation `cohort.score`/`research.graph-metrics` dispatch
-(Slice E, now unblocked by the dataset removal and safe to attempt). C, D,
-and B are real, tested, and live-verified. This ADR's mechanism/policy
-decisions stand as Accepted; this Consequences section is being updated in
-place as each remaining item closes, rather than superseded by a new ADR.
+- **Health floor**: failed correctly pre-remediation ("zimaworker1 has 0.8
+  GB free on /, below the 6 GB floor") and passed cleanly post-remediation.
+- **Preflight**: correctly refused a real dispatch to zimaworker1 at low
+  free space, and correctly passed against a healthy Pi worker (no false
+  positive).
+- **Dataset removal**: operator-authorized, executed
+  (`ansible ... -m file ... state=absent` against exactly
+  `local/cache/discogs`), `discogs-onehop` confirmed untouched at 2.2G,
+  free space rose 0.8G → 7.3G. `.verified.json`/`manifest.json` timestamps
+  (2026-07-03/04) independently confirmed the removed replica was fetched
+  through the official checksummed path, matching the dataset-decision
+  reasoning above.
+- **Release-bundle pruning**: real deploy to all 4 workers exercised the
+  new prune step live — zimaworker1 had a large backlog of old release
+  directories (accumulated since the platform's introduction, never
+  pruned before) cleared in the same run that deployed this fix.
+- **`research.graph-metrics`**: real dispatch against the Jamiroquai
+  corpus succeeded end to end (stage, dispatch, fetch, verify, retention
+  cleanup all real).
+- **`cohort.score`**: real dispatch against `discogs-community-best-albums`
+  first failed at the initial `3GB` ceiling exactly as designed (a clean,
+  named DuckDB error, not a disk-full crash), then succeeded at `5GB` --
+  153.8s wall, 25 seeds, 118,222 reach rows, 327.7MB peak RSS, spill
+  directory empty afterward. Free space actually *rose* to 8.7G after this
+  run (retention cleaned up more accumulated old runs), directly
+  confirming no disk leak under the fixed workload.
+- **`/var/log`** (non-privileged diagnosis only — root access to confirm
+  content was not available this session): this host runs a full desktop
+  CasaOS image (`gdm`/`gnome-shell` session, `cups`/`cups-browsed`,
+  `ModemManager`, `samba` `nmbd`/`smbd`, `switcheroo-control`, `colord`,
+  `packagekit`) alongside its compute-worker role; `systemctl --failed`
+  reports clean (no crash-looping unit), so the volume more likely comes
+  from routine chatter across several desktop/peripheral-support daemons a
+  headless worker doesn't need, not one broken service. Disabling the
+  unneeded ones is the concrete next action once log content confirms it.
 
 ## Revisit trigger
 
-Revisit if, after full remediation, a real `cohort.score` run still fails
-on disk/spill grounds — that would be real evidence this hardware cannot
-host this workload's worst case even when properly governed, and the
-honest next step is the ADR 0013-pattern hardware upgrade, not further
-software tightening. Revisit `min_free_gb: 6` / the preflight defaults
-once real post-remediation headroom is measured, if they turn out to be
-miscalibrated in either direction. Revisit `platform_release_keep_count: 3`
-if rollback ever needs to reach further back than that.
+**Open**: revisit once root log access to zimaworker1 is available —
+confirm `/var/log`'s real spam source among the desktop/peripheral daemon
+candidates named above, fix at the source (most likely disabling unneeded
+services on what should be a headless compute worker), and record the real
+before/after size here.
+
+Revisit `--max-temp-directory-size 5GB` if a future cohort larger than the
+25-seed `discogs-community-best-albums` set needs materially more spill
+room than this measurement covered. Revisit `min_free_gb: 6` / the
+preflight defaults if real headroom trends tighter again as CasaOS's own
+footprint or dataset replicas grow. Revisit `platform_release_keep_count: 3`
+if rollback ever needs to reach further back than that. Revisit the "no
+hardware needed" conclusion only if disk pressure returns after this real
+fix — at that point a dedicated data drive (ADR 0013's pattern) is the
+next real option, not further software tightening.
