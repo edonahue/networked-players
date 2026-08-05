@@ -14,6 +14,9 @@
 # host_vars/coordinator.example.internal.yml) and never applies to a worker, which
 # per docs/HARDWARE.md and docs/DISCOGS_INGESTION.md only ever handles bounded,
 # checksummed partitions (normally well under 256 MB), never a raw dump.
+# This reasoning is Pi-specific. x86_workers.yml overrides min_free_gb for the
+# dedicated x86 worker, which runs disk-spilling DuckDB jobs a Pi never does --
+# see that file for why 1 GB is not a safe floor there.
 
 # Bootstrap SSH user for initial onboarding. A dedicated `deploy` automation
 # account is a possible later hardening step (see infra/ansible/README.md)

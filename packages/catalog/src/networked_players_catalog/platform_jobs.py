@@ -63,6 +63,7 @@ def _cohort_score_handler(
         memory_limit=str(parameters.get("memory_limit", "2GB")),
         threads=int(parameters.get("threads", 3)),
         max_artists_per_release=int(parameters.get("max_artists_per_release", 500)),
+        max_temp_directory_size=parameters.get("max_temp_directory_size"),
         max_hops=int(parameters.get("max_hops", 3)),
         max_pairs=int(parameters.get("max_pairs", 1000)),
         max_frontier_expansion=int(parameters.get("max_frontier_expansion", 300)),

@@ -25,6 +25,7 @@ def score_cohort_to_directory(
     threads: int = 3,
     max_artists_per_release: int = 500,
     temp_dir: Path | None = None,
+    max_temp_directory_size: str | None = None,
     max_hops: int = 3,
     max_pairs: int = 1000,
     max_frontier_expansion: int | None = 300,
@@ -47,6 +48,7 @@ def score_cohort_to_directory(
         threads=threads,
         max_artists_per_release=max_artists_per_release,
         temp_dir=temp_dir,
+        max_temp_directory_size=max_temp_directory_size,
         release_format_policy=release_format_policy,
     ) as graph:
         connectivity_artifact = build_connectivity_cohort(
@@ -63,6 +65,7 @@ def score_cohort_to_directory(
                 "memory_limit": memory_limit,
                 "threads": threads,
                 "custom_temp_dir": temp_dir is not None,
+                "max_temp_directory_size": max_temp_directory_size,
                 "release_format_policy": policy_name,
             },
             diagnostics=diagnostics,
