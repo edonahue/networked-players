@@ -183,15 +183,29 @@ Real, live-verified against zimaworker1:
   directory empty afterward. Free space actually *rose* to 8.7G after this
   run (retention cleaned up more accumulated old runs), directly
   confirming no disk leak under the fixed workload.
-- **`/var/log`** (non-privileged diagnosis only — root access to confirm
-  content was not available this session): this host runs a full desktop
-  CasaOS image (`gdm`/`gnome-shell` session, `cups`/`cups-browsed`,
+- **`/var/log` — stop condition triggered, formally.** This work's own
+  plan named exactly this possibility in advance: "sudo/root log access to
+  zimaworker1 isn't available to diagnose `/var/log` → Slice A blocked;
+  fall back to a coarser fix ... without full root cause, and flag the gap
+  honestly rather than guessing at the spam source." That is the real
+  outcome here: no interactive terminal available to this work could
+  supply the sudo password (a real, repeatedly-confirmed environment
+  constraint, not a skipped step — `ansible -b -K` and the `usermod`
+  group-membership workaround were both attempted and both failed
+  non-interactively; `id erich`/`sudo -n -l` before and after confirm
+  nothing changed). The "coarser fix" the plan names
+  (`journalctl --vacuum-size=`, tightening `SystemMaxUse=`) *also* requires
+  root, so even that fallback could not be applied this session — this is
+  recorded here as a real, root-access-gated gap, not silently dropped.
+  Non-privileged diagnosis (`ps`, `systemctl --failed`, process listing)
+  narrowed the candidate set without confirming it: this host runs a full
+  desktop CasaOS image (`gdm`/`gnome-shell`, `cups`/`cups-browsed`,
   `ModemManager`, `samba` `nmbd`/`smbd`, `switcheroo-control`, `colord`,
   `packagekit`) alongside its compute-worker role; `systemctl --failed`
   reports clean (no crash-looping unit), so the volume more likely comes
   from routine chatter across several desktop/peripheral-support daemons a
   headless worker doesn't need, not one broken service. Disabling the
-  unneeded ones is the concrete next action once log content confirms it.
+  unneeded ones is the concrete next action once root access is available.
 
 ## Revisit trigger
 
