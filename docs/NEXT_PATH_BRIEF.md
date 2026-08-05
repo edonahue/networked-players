@@ -74,23 +74,21 @@ deliberately untouched by this pass, real remaining migration surface.
 - *Prerequisite measurement*: none — this is mostly known, bounded work.
 - *What not to build yet*: don't build a new scheduler; reuse what's there.
 
-**zimaworker1 disk capacity.** Real, current finding from this cleanup
-pass: zimaworker1 was measured at 100% disk usage (0 bytes free),
-partially remediated (safe caches + a stale dataset replica cleared, with
-explicit owner sign-off) but a full real whole-catalog `cohort.score` run
-still hits a DuckDB temp-memory ceiling with the remaining headroom. The
-6.6G full `discogs` dataset replica (not required by `cohort.score`
-itself) was deliberately left in place, unauthorized to delete.
-- *User value*: unblocks real cohort-scoring dispatch reliably; currently
-  a real operational risk (a full disk broke basic Ansible connectivity
-  to this host during this pass).
-- *Backend leverage*: none needed — this is capacity/storage, not code.
-- *Biggest uncertainty*: whether the full `discogs` replica is still
-  needed for anything real, or safe to remove/re-fetch on demand.
-- *Prerequisite measurement*: an owner-led audit of what actually still
-  depends on the full replica, or simply adding storage.
-- *What not to build yet*: n/a — this is an operational decision, not a
-  build.
+**zimaworker1 disk capacity — resolved (ADR 0057, 2026-08-05).** The
+100%-full incident named here previously is closed: root-caused as
+structural (unbounded dataset replicas, unpruned platform release
+bundles, and `/var/log` growth all sharing one small partition with no
+governance), not one oversized dataset. Fixed with an explicit,
+real-measured DuckDB spill ceiling, release-bundle pruning, a raised
+health-check floor, a dispatch preflight, and operator-authorized removal
+of the unused full `discogs` replica. Real, confirmed end to end: the
+exact `cohort.score` run that originally failed now completes on the same
+hardware (free space actually rose after the run, not fell). No hardware
+change was needed. One small item remains open, tracked by ADR 0057's own
+Revisit trigger, not re-listed here as a next direction: `/var/log`'s
+exact spam source still needs root access to confirm (non-privileged
+diagnosis narrowed it to routine chatter from unneeded desktop/peripheral
+daemons on what should be a headless worker).
 
 ## Public product
 
