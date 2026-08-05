@@ -263,6 +263,13 @@ and confirmed live via direct smoke testing after each deploy:
   Connection-Guesser check-job deploy/enqueue pair was found and fixed in the same
   slice. See `docs/OPERATOR_SETUP.md` for the resulting runbooks. No check job has yet
   been run for real against the fleet — code, tests, and playbook syntax-checks only.
+  **Update, 2026-08-04: this whole per-artifact-deploy-playbook architecture is
+  retired.** All Pi-fleet fleet checks were run for real against the live fleet
+  (2026-07-25), then the entire pattern described above was migrated onto the ADR 0034
+  capability platform's `artifact.validate` workload (now covering all 8 real
+  validators, including contributor-index/pathfinding-graph, which this paragraph never
+  mentions) and the old scripts/job-bodies/deploy-playbooks were deleted — see ADR 0056
+  and `docs/OPERATOR_SETUP.md`'s current runbooks.
 
 | Area | State |
 | --- | --- |
