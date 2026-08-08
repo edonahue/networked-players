@@ -1,7 +1,7 @@
 // Connect Two Records (ADR 0051) integration tests against the real
 // committed pathfinding graph. "Discovery" (Daft Punk) and "The Joshua
 // Tree" (U2) are a real, directly-connected pair in the committed artifact
-// (verified against apps/web/public/data/pathfinding/graph.v1.json) --
+// (verified against apps/web/public/data/pathfinding/graph.v2.json) --
 // picked from the artifact itself, not hardcoded blindly, so this survives
 // a future regeneration only if that specific edge remains; if it doesn't,
 // this test's failure is itself a useful signal to pick a new real pair.
@@ -50,6 +50,38 @@ test("a real connected pair finds a documented route with evidence", async ({
   ).toBeVisible();
 });
 
+// "More musical route" (ADR 0058 Slice 7): a real second bounded search
+// that hard-excludes the first route's own edges. Discovery <-> Joshua
+// Tree's real committed data has a genuinely distinct alternate route
+// within the same hop budget (verified against
+// apps/web/public/data/pathfinding/graph.v2.json) -- this directly
+// regression-guards the pre-Slice-7 bug where the "musical route" section
+// silently re-rendered the same hop list under a second heading.
+test("the musical route section renders content genuinely distinct from the documented route", async ({
+  page,
+}) => {
+  await page.goto("/play/connect/");
+  await selectAlbum(page, "a", "Discovery");
+  await selectAlbum(page, "b", "Joshua Tree");
+  await page.locator("[data-connect-search]").click();
+
+  await expect(page.locator("[data-connect-results]")).toBeVisible({
+    timeout: 15000,
+  });
+  const musicalSection = page.locator("[data-connect-result='musical']");
+  await expect(musicalSection).toBeVisible();
+
+  const documentedHtml = await page.locator("[data-connect-hops]").innerHTML();
+  const musicalHtml = await page
+    .locator("[data-connect-hops-musical]")
+    .innerHTML();
+  expect(musicalHtml.length).toBeGreaterThan(0);
+  expect(musicalHtml).not.toBe(documentedHtml);
+  await expect(page.locator("[data-connect-explain]")).not.toContainText(
+    /no distinct alternate route/i,
+  );
+});
+
 test("search button stays disabled until two different albums are picked", async ({
   page,
 }) => {
@@ -71,7 +103,7 @@ test("picking the same album twice keeps the search disabled", async ({
 test("a fetch failure for the pathfinding graph degrades gracefully", async ({
   page,
 }) => {
-  await page.route("**/data/pathfinding/graph.v1.json", (route) =>
+  await page.route("**/data/pathfinding/graph.v2.json", (route) =>
     route.abort(),
   );
   await page.goto("/play/connect/");
@@ -89,7 +121,7 @@ test("a fetch failure for the pathfinding graph degrades gracefully", async ({
 test("the rest of the page keeps working after a failed search", async ({
   page,
 }) => {
-  await page.route("**/data/pathfinding/graph.v1.json", (route) =>
+  await page.route("**/data/pathfinding/graph.v2.json", (route) =>
     route.abort(),
   );
   await page.goto("/play/connect/");
@@ -106,7 +138,7 @@ test("the rest of the page keeps working after a failed search", async ({
 // engineer/mixer-only credits. Ziggy Stardust (David Bowie) <-> A Night
 // At The Opera (Queen) is a real, directly-connected pair in the committed
 // artifact bridged by a shared "Producer" credit -- verified against
-// apps/web/public/data/pathfinding/graph.v1.json.
+// apps/web/public/data/pathfinding/graph.v2.json.
 test("Behind the Glass finds a real producer-only connection", async ({
   page,
 }) => {
@@ -127,17 +159,20 @@ test("Behind the Glass finds a real producer-only connection", async ({
   await expect(page.locator("[data-connect-result='musical']")).toBeHidden();
 });
 
-// Discovery <-> Joshua Tree's real direct edge is a plain "Credited
-// artist" credit, not a producer/engineer credit, and there is no
-// producer/engineer-only bridge between them within 4 hops either
-// (verified against the committed artifact) -- a real negative case for
-// the filtered search, distinct from "no-path" in the unfiltered mode.
+// "Time Out" (Dave Brubeck) <-> "Rumours" (Fleetwood Mac) has a real
+// unfiltered connection in the committed artifact but no producer/
+// engineer-only bridge within 4 hops from ANY of either album's credited
+// contributors (verified against apps/web/public/data/pathfinding/graph.v2.json,
+// re-checked against v2's multi-source-contributor search specifically --
+// Discovery <-> Joshua Tree, this test's pre-v2 negative pair, stopped
+// being a real negative case once search started from every credited
+// contributor on an album instead of only its primary artist).
 test("Behind the Glass reports no connection when the real path doesn't qualify", async ({
   page,
 }) => {
   await page.goto("/play/connect/");
-  await selectAlbum(page, "a", "Discovery");
-  await selectAlbum(page, "b", "Joshua Tree");
+  await selectAlbum(page, "a", "Time Out");
+  await selectAlbum(page, "b", "Rumours");
   await selectRouteFilter(page, "behind-the-glass");
   await page.locator("[data-connect-search]").click();
 
@@ -192,15 +227,16 @@ test("Guitar Paths finds a real guitar-only connection", async ({ page }) => {
   await expect(hop).toContainText(/guitar/i);
 });
 
-// Discovery <-> Joshua Tree has no rhythm-section- or guitar-only bridge
-// within 4 hops either (verified against the committed artifact) -- the
-// same real negative case reused across every filtered mode.
+// Time Out <-> Rumours has no rhythm-section- or guitar-only bridge within
+// 4 hops either (verified against the committed artifact, from any
+// credited contributor on either album) -- the same real negative case
+// reused across every filtered mode.
 test("Rhythm Section and Guitar Paths report no connection for the same real non-matching pair", async ({
   page,
 }) => {
   await page.goto("/play/connect/");
-  await selectAlbum(page, "a", "Discovery");
-  await selectAlbum(page, "b", "Joshua Tree");
+  await selectAlbum(page, "a", "Time Out");
+  await selectAlbum(page, "b", "Rumours");
 
   await selectRouteFilter(page, "rhythm-section");
   await page.locator("[data-connect-search]").click();
