@@ -23,6 +23,7 @@ comparison is meaningful.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 
 
@@ -55,15 +56,24 @@ class CompactGraph:
         return self.offsets[index + 1] - self.offsets[index]
 
 
-def build_csr_adjacency(edges: list[tuple[int, int, int]]) -> CompactGraph:
+def build_csr_adjacency(
+    edges: list[tuple[int, int, int]], *, extra_node_ids: Iterable[int] = ()
+) -> CompactGraph:
     """Build a `CompactGraph` from `(artist_a_id, artist_b_id, release_id)`
     triples -- one row per undirected edge (do not pre-duplicate both
     directions; this function adds both). Deterministic: `node_ids` is
     sorted, and each node's neighbor slice is sorted by neighbor node index,
     so two calls with the same edge set (in any order) produce byte-identical
     arrays -- the property the actual published payload's reproducibility
-    depends on."""
-    node_id_set: set[int] = set()
+    depends on.
+
+    `extra_node_ids`: node ids to include even if they appear in no edge at
+    all (degree 0). Without this, a node with zero edges is simply absent
+    from the graph rather than present-but-isolated -- the pathfinding
+    graph's virtual album-anchor nodes (ADR 0058) need the latter for an
+    album with no in-scope credited contributors, so the endpoint search
+    can report a real "no-path" rather than "unknown-album"."""
+    node_id_set: set[int] = set(extra_node_ids)
     for a, b, _release_id in edges:
         node_id_set.add(a)
         node_id_set.add(b)

@@ -32,7 +32,7 @@ from .evidence_release_registry import (
     EVIDENCE_RELEASE_REGISTRY_SCHEMA_VERSION,
     evidence_release_registry_failures,
 )
-from .pathfinding_graph import PATHFINDING_GRAPH_SCHEMA_VERSION, pathfinding_graph_failures
+from .pathfinding_graph import PATHFINDING_GRAPH_SCHEMA_VERSIONS, pathfinding_graph_failures
 from .public_artifacts import PUBLIC_ARTIFACT_GROUPS, public_artifacts_failures
 from .record_routes import (
     RECORD_ROUTES_SCHEMA_VERSION,
@@ -50,7 +50,7 @@ __all__ = [
     "CONNECTIVITY_SCHEMA_VERSION",
     "CONTRIBUTOR_INDEX_SCHEMA_VERSION",
     "EVIDENCE_RELEASE_REGISTRY_SCHEMA_VERSION",
-    "PATHFINDING_GRAPH_SCHEMA_VERSION",
+    "PATHFINDING_GRAPH_SCHEMA_VERSIONS",
     "PLAYABLE_COHORT_SCHEMA_VERSION",
     "PUBLIC_ARTIFACT_GROUPS",
     "RECORD_ROUTES_SCHEMA_VERSION",

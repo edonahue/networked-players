@@ -15,6 +15,21 @@ worse than repeated short values in a flat array. This is the same
 compactness principle `compact_graph_bench.py`'s typed-array CSR arrays
 already apply, extended to the evidence fields.
 
+**v2 (ADR 0058): virtual album-anchor nodes.** For each catalog album, a
+synthetic node (negative `virtual_artist_id`, disjoint from every real
+positive Discogs artist id) is bidirectionally zero-cost-edge-connected to
+every one of that album's real credited contributors (`album_credit_membership`,
+Slice 2) already present in the bounded ego network. This turns a
+record-to-record search into an ordinary single-source/single-sink BFS
+between two virtual nodes -- the BFS core itself (`bfs_over_csr`/
+`findPath`) needs no changes, only graph construction. An album with zero
+in-scope credited contributors still gets a real, isolated virtual node
+(`compact_graph_bench.build_csr_adjacency`'s `extra_node_ids`), so a search
+against it is a confirmed "no-path," never a crash or a false
+"unknown-album." New top-level field `album_virtual_nodes` gives the
+frontend an explicit `album_id -> virtual_artist_id` map instead of
+relying on the sign convention alone.
+
 This is an OPERATOR-run build (like `build-album-art-registry`): it needs
 the real one-hop working set on disk (`CreditGraph.open`, `build_edges=True`)
 and is never run as part of `make check` or CI. The resulting artifact is
@@ -23,6 +38,8 @@ small enough to commit and fetch client-side.
 
 from __future__ import annotations
 
+from collections import defaultdict
+from collections.abc import Iterable
 from typing import Any
 
 from networked_players_contracts.canonical import content_hash
@@ -32,43 +49,30 @@ from .graph import CreditGraph
 
 _MAX_JOINED_ROLE_LEN = 200
 
+# Never rendered -- apps/web/tests/game-connect-endpoints.spec.ts (Slice 7)
+# asserts this string never reaches the DOM. Kept identical to the
+# duplicated copy in networked_players_contracts.pathfinding_graph
+# (that package stays dependency-free of graph-core, the same split every
+# other contract/builder pair in this project already uses).
+ALBUM_ANCHOR_SENTINEL = "__np_album_anchor__"
 
-def _joined_roles(rows: list[dict[str, Any]]) -> str:
-    """Every distinct non-null role_text among an artist's credit rows on
-    one release, joined in the order first seen -- not just the first role
-    found (that was real, silent data loss: a producer/engineer/performer
-    on the same release previously lost every role but one, truncated to
-    60 characters besides). A generic fallback covers a bare release-artist
-    billing (edge-eligible per `credit_edges_sql`, but with no descriptive
-    role text).
 
+def _join_role_texts(texts: Iterable[str]) -> str:
+    """Every distinct non-null role text, joined in the order first seen,
+    bounded to `_MAX_JOINED_ROLE_LEN` total characters (a real measurement
+    against the full corpus found a rare but genuine long tail -- an artist
+    credited with dozens of near-duplicate role combinations across a large
+    multi-track release joined to a 2,639-character string unbounded).
     Joined with ", " -- the same separator Discogs' own role_text already
-    uses for multiple components within a single credit (e.g. "Producer,
-    Engineer, Mixed By"), and the exact separator both role-taxonomy
-    classifiers (`role_taxonomy.classify_role`, `roleTaxonomy.ts`'s
-    `matchesAnyComponent`) split on. A different separator (e.g. "; ") is a
-    real, confirmed regression: both classifiers split on "," only and
-    check each component for an *exact* token match, so a component
-    straddling a non-comma separator (e.g. "Guitar; Producer" as one
-    component, no internal comma) silently fails to match "producer" even
-    though the role is plainly present -- caught by a real end-to-end
-    Playwright test against the rebuilt artifact
-    (apps/web/tests/game-connect.spec.ts's "Behind the Glass" case), not by
-    any unit test in this package, since this module has no awareness of
-    either classifier.
-
-    The joined string itself is still bounded (`_MAX_JOINED_ROLE_LEN`): a
-    real measurement against the full corpus found a rare but genuine long
-    tail -- an artist credited with dozens of near-duplicate role
-    combinations across a large multi-track release joined to a 2,639-
-    character string. Truncating the final joined text (never a single
-    role's own text) keeps the common case fully intact while bounding
-    that tail, rather than reintroducing per-role truncation."""
+    uses for multiple components within a single credit, and the exact
+    separator both role-taxonomy classifiers
+    (`role_taxonomy.classify_role`, `roleTaxonomy.ts`'s
+    `matchesAnyComponent`) split on; a different separator is a real,
+    confirmed regression (see git history on this function)."""
     seen: dict[str, None] = {}
-    for row in rows:
-        role_text = row.get("role_text")
-        if role_text:
-            seen.setdefault(str(role_text), None)
+    for text in texts:
+        if text:
+            seen.setdefault(str(text), None)
     if not seen:
         return "Credited artist"
     joined = ", ".join(seen)
@@ -77,13 +81,44 @@ def _joined_roles(rows: list[dict[str, Any]]) -> str:
     return joined[:_MAX_JOINED_ROLE_LEN].rsplit(", ", 1)[0] + "…"
 
 
+def _joined_roles(rows: list[dict[str, Any]]) -> str:
+    """`_join_role_texts` over a batch of raw `credit_rows_for_release_batch`
+    rows for one artist on one release."""
+    texts = (row.get("role_text") for row in rows)
+    return _join_role_texts(text for text in texts if isinstance(text, str))
+
+
+def _membership_roles_by_album(
+    membership_by_album_id: dict[str, dict[str, Any]],
+) -> dict[tuple[str, int], str]:
+    """`(album_id, artist_id) -> joined role text`, computed directly from
+    `album_credit_membership`'s own already-computed credits -- never a
+    fresh graph lookup (Slice 2's artifact is the single canonical source
+    for "who's credited on album X" and what role they held there)."""
+    texts_by_key: dict[tuple[str, int], list[str]] = defaultdict(list)
+    artist_ids_by_album: dict[str, set[int]] = defaultdict(set)
+    for album_id, membership in membership_by_album_id.items():
+        for credit in membership.get("credits", []):
+            artist_id = int(credit["artist_id"])
+            artist_ids_by_album[album_id].add(artist_id)
+            role_text = credit.get("role_text")
+            if role_text:
+                texts_by_key[(album_id, artist_id)].append(str(role_text))
+    return {
+        (album_id, artist_id): _join_role_texts(texts_by_key.get((album_id, artist_id), []))
+        for album_id, artist_ids in artist_ids_by_album.items()
+        for artist_id in artist_ids
+    }
+
+
 def pathfinding_graph_version(payload: dict[str, Any], snapshot_date: str) -> str:
     """Content hash over everything player-visible: node ids/names and the
     full CSR adjacency plus per-slot evidence -- changes on any published-
     field change, not just membership (mirrors
     `record_routes_artifact_version`'s "hash everything actually published"
-    rule, ADR 0046's slice-9 addendum)."""
-    identity = {
+    rule, ADR 0046's slice-9 addendum). v2 additionally hashes
+    `album_virtual_nodes`."""
+    identity: dict[str, Any] = {
         "node_ids": payload["node_ids"],
         "names": payload["names"],
         "offsets": payload["offsets"],
@@ -92,22 +127,27 @@ def pathfinding_graph_version(payload: dict[str, Any], snapshot_date: str) -> st
         "edge_role_a": payload["edge_role_a"],
         "edge_role_b": payload["edge_role_b"],
     }
+    schema_version = int(payload.get("schema_version", 1))
+    if schema_version >= 2:
+        identity["album_virtual_nodes"] = payload["album_virtual_nodes"]
     digest = content_hash(identity, length=12)
-    return f"pathfinding-graph-v1-{snapshot_date}-{digest}"
+    return f"pathfinding-graph-v{schema_version}-{snapshot_date}-{digest}"
 
 
 def build_pathfinding_graph(
     graph: CreditGraph,
     catalog: dict[str, Any],
+    album_credit_membership: dict[str, Any],
     *,
     snapshot_date: str,
     generated_at: str,
 ) -> dict[str, Any]:
-    """Deterministic given the same real one-hop dataset and catalog: a
-    1-hop ego network around `catalog["albums"][].artist_id`, serialized as
-    a CSR adjacency plus parallel-array names/edge-role evidence (so the
-    frontend never needs a second fetch to render evidence for a found
-    path)."""
+    """Deterministic given the same real one-hop dataset, catalog, and
+    album-credit-membership artifact: a 1-hop ego network around
+    `catalog["albums"][].artist_id`, plus one virtual album-anchor node per
+    catalog album (v2, ADR 0058), serialized as a CSR adjacency plus
+    parallel-array names/edge-role evidence (so the frontend never needs a
+    second fetch to render evidence for a found path)."""
     seed_artist_ids = sorted({int(a["artist_id"]) for a in catalog["albums"]})
     if not seed_artist_ids:
         raise ValueError("catalog has no albums to seed the pathfinding graph from")
@@ -123,17 +163,65 @@ def build_pathfinding_graph(
         a, b = int(a), int(b)
         key = (min(a, b), max(a, b), int(release_id))
         seen_pairs.add(key)
-    edges = sorted(seen_pairs)
-    if not edges:
+    real_edges = sorted(seen_pairs)
+    if not real_edges:
         raise ValueError("no edges found for this catalog's seed artists in the one-hop dataset")
 
-    compact = build_csr_adjacency(edges)
+    real_node_id_set: set[int] = set()
+    for a, b, _release_id in real_edges:
+        real_node_id_set.add(a)
+        real_node_id_set.add(b)
 
-    release_ids = sorted({release_id for _a, _b, release_id in edges})
-    credit_rows_by_release = graph.credit_rows_for_release_batch(release_ids)
+    # --- virtual album-anchor nodes (ADR 0058) ------------------------------
+    catalog_albums = sorted(catalog.get("albums", []), key=lambda a: str(a["id"]))
+    membership_by_album_id = {
+        str(m["album_id"]): m for m in album_credit_membership.get("albums", [])
+    }
+    membership_roles = _membership_roles_by_album(membership_by_album_id)
+
+    album_virtual_nodes: list[dict[str, Any]] = []
+    virtual_edges: list[tuple[int, int, int]] = []
+    virtual_names: dict[int, str] = {}
+    for index, album in enumerate(catalog_albums):
+        album_id = str(album["id"])
+        main_release_id = int(album["main_release_id"])
+        virtual_id = -(index + 1)
+        album_virtual_nodes.append(
+            {
+                "album_id": album_id,
+                "virtual_artist_id": virtual_id,
+                "main_release_id": main_release_id,
+            }
+        )
+        virtual_names[virtual_id] = f"{album.get('title', album_id)} (album anchor)"
+        membership = membership_by_album_id.get(album_id)
+        if membership is None:
+            continue  # no membership entry -- isolated virtual node, real edge case
+        credited_artist_ids = {int(c["artist_id"]) for c in membership.get("credits", [])}
+        for artist_id in sorted(credited_artist_ids):
+            if artist_id in real_node_id_set:
+                virtual_edges.append((virtual_id, artist_id, main_release_id))
+
+    all_edges = sorted(set(real_edges) | set(virtual_edges))
+    virtual_ids = [vn["virtual_artist_id"] for vn in album_virtual_nodes]
+    compact = build_csr_adjacency(all_edges, extra_node_ids=virtual_ids)
+
+    # --- per-slot role text --------------------------------------------------
+    real_release_ids = sorted({release_id for _a, _b, release_id in real_edges})
+    credit_rows_by_release = graph.credit_rows_for_release_batch(real_release_ids)
+    album_id_by_main_release_id = {
+        vn["main_release_id"]: vn["album_id"] for vn in album_virtual_nodes
+    }
     role_cache: dict[tuple[int, int], str] = {}
 
-    def role_for(artist_id: int, release_id: int) -> str:
+    def role_for(artist_id: int, neighbor_id: int, release_id: int) -> str:
+        if artist_id < 0:
+            return ALBUM_ANCHOR_SENTINEL
+        if neighbor_id < 0:
+            album_id = album_id_by_main_release_id.get(release_id)
+            if album_id is None:
+                return "Credited artist"
+            return membership_roles.get((album_id, artist_id), "Credited artist")
         key = (artist_id, release_id)
         cached = role_cache.get(key)
         if cached is not None:
@@ -157,27 +245,33 @@ def build_pathfinding_graph(
             neighbor_index = compact.neighbors[slot]
             artist_b_id = compact.node_ids[neighbor_index]
             release_id = compact.evidence_release_ids[slot]
-            edge_role_a.append(role_for(artist_a_id, release_id))
-            edge_role_b.append(role_for(artist_b_id, release_id))
+            edge_role_a.append(role_for(artist_a_id, artist_b_id, release_id))
+            edge_role_b.append(role_for(artist_b_id, artist_a_id, release_id))
 
-    name_rows = graph._connection.execute(
-        "SELECT DISTINCT artist_id, name FROM linked_credits "
-        f"WHERE artist_id IN ({', '.join(str(i) for i in compact.node_ids)})"
-    ).fetchall()
+    real_ids_for_name_query = [nid for nid in compact.node_ids if nid > 0]
     name_by_id: dict[int, str] = {}
-    for artist_id, name in name_rows:
-        name_by_id.setdefault(int(artist_id), str(name))
-    names = [name_by_id.get(node_id, f"Artist {node_id}") for node_id in compact.node_ids]
+    if real_ids_for_name_query:
+        name_rows = graph._connection.execute(
+            "SELECT DISTINCT artist_id, name FROM linked_credits "
+            f"WHERE artist_id IN ({', '.join(str(i) for i in real_ids_for_name_query)})"
+        ).fetchall()
+        for artist_id, name in name_rows:
+            name_by_id.setdefault(int(artist_id), str(name))
+    names = [
+        virtual_names[node_id] if node_id < 0 else name_by_id.get(node_id, f"Artist {node_id}")
+        for node_id in compact.node_ids
+    ]
 
     payload: dict[str, Any] = {
-        "schema_version": 1,
+        "schema_version": 2,
         "catalog_version": catalog["catalog_version"],
         "snapshot_date": snapshot_date,
         "generated_at": generated_at,
         "source": (
             "Discogs monthly data dump (CC0), one-hop working set, scoped to a "
             "1-hop ego network around the canonical catalog's primary artists "
-            "(ADR 0050). See docs/DATA_AND_RIGHTS.md."
+            "(ADR 0050), plus one virtual album-anchor node per catalog album "
+            "(ADR 0058). See docs/DATA_AND_RIGHTS.md."
         ),
         "license": "Derived from the Discogs monthly CC0 data dumps. See docs/DATA_AND_RIGHTS.md.",
         "node_ids": compact.node_ids,
@@ -187,6 +281,7 @@ def build_pathfinding_graph(
         "evidence_release_ids": compact.evidence_release_ids,
         "edge_role_a": edge_role_a,
         "edge_role_b": edge_role_b,
+        "album_virtual_nodes": album_virtual_nodes,
     }
     payload["pathfinding_graph_version"] = pathfinding_graph_version(payload, snapshot_date)
     return payload

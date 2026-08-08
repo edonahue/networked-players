@@ -392,6 +392,34 @@ def _pathfinding_graph(catalog: dict[str, Any]) -> dict[str, Any]:
     return payload
 
 
+_PATHFINDING_ANCHOR_SENTINEL = "__np_album_anchor__"
+
+
+def _pathfinding_graph_v2(catalog: dict[str, Any]) -> dict[str, Any]:
+    """master-1's virtual anchor (-1) connected to its sole credited
+    contributor, Alice (100)."""
+    payload: dict[str, Any] = {
+        "schema_version": 2,
+        "catalog_version": catalog["catalog_version"],
+        "snapshot_date": _SNAPSHOT,
+        "generated_at": "2026-08-08T00:00:00+00:00",
+        "source": "Discogs monthly data dump (CC0), one-hop working set.",
+        "license": "See docs/DATA_AND_RIGHTS.md.",
+        "node_ids": [-1, 100],
+        "names": ["First Light (album anchor)", "Alice"],
+        "offsets": [0, 1, 2],
+        "neighbors": [1, 0],
+        "evidence_release_ids": [1, 1],
+        "edge_role_a": [_PATHFINDING_ANCHOR_SENTINEL, "Guitar"],
+        "edge_role_b": ["Guitar", _PATHFINDING_ANCHOR_SENTINEL],
+        "album_virtual_nodes": [
+            {"album_id": "master-1", "virtual_artist_id": -1, "main_release_id": 1}
+        ],
+    }
+    payload["pathfinding_graph_version"] = pathfinding_graph_version(payload, _SNAPSHOT)
+    return payload
+
+
 def _album_credit_membership(catalog: dict[str, Any]) -> dict[str, Any]:
     albums = [
         {
@@ -471,6 +499,9 @@ def _write_all(tmp_path: Path) -> dict[str, Path]:
         "pathfinding_graph": _write(
             tmp_path / "pathfinding-graph.v1.json", _pathfinding_graph(catalog)
         ),
+        "pathfinding_graph_v2": _write(
+            tmp_path / "pathfinding-graph.v2.json", _pathfinding_graph_v2(catalog)
+        ),
         "album_credit_membership": _write(
             tmp_path / "album-credit-membership.v1.json", _album_credit_membership(catalog)
         ),
@@ -503,6 +534,8 @@ def _args(paths: dict[str, Path]) -> list[str]:
         str(paths["contributor_index"]),
         "--pathfinding-graph",
         str(paths["pathfinding_graph"]),
+        "--pathfinding-graph-v2",
+        str(paths["pathfinding_graph_v2"]),
         "--album-credit-membership",
         str(paths["album_credit_membership"]),
         "--evidence-release-registry",
@@ -525,6 +558,7 @@ def test_clean_set_exits_zero(tmp_path: Path, capsys) -> None:
         "challenge": [],
         "contributor_index": [],
         "pathfinding_graph": [],
+        "pathfinding_graph_v2": [],
         "album_credit_membership": [],
         "evidence_release_registry": [],
     }
@@ -561,6 +595,7 @@ def test_default_paths_point_at_the_real_repo_layout(tmp_path: Path, capsys, mon
         "apps/web/public/data/challenge.v2.json": _challenge(catalog),
         "apps/web/public/data/contributors/index.v1.json": _contributor_index(catalog),
         "apps/web/public/data/pathfinding/graph.v1.json": _pathfinding_graph(catalog),
+        "apps/web/public/data/pathfinding/graph.v2.json": _pathfinding_graph_v2(catalog),
         "apps/web/public/data/albums/credit-membership.v1.json": _album_credit_membership(catalog),
         "apps/web/public/data/evidence/release-registry.v1.json": _evidence_release_registry(
             catalog

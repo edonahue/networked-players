@@ -51,6 +51,7 @@ PUBLIC_ARTIFACT_GROUPS = (
     "challenge",
     "contributor_index",
     "pathfinding_graph",
+    "pathfinding_graph_v2",
     "album_credit_membership",
     "evidence_release_registry",
 )
@@ -68,13 +69,20 @@ def public_artifacts_failures(
     challenge: Any,
     contributor_index: Any,
     pathfinding_graph: Any,
+    pathfinding_graph_v2: Any,
     album_credit_membership: Any,
     evidence_release_registry: Any,
 ) -> dict[str, list[str]]:
     """Every contract failure across the whole real-artifact publication set,
     grouped by artifact. Every key in `PUBLIC_ARTIFACT_GROUPS` is always
     present, with an empty list when that artifact is clean -- callers can
-    report "N/N clean" without special-casing an absent key."""
+    report "N/N clean" without special-casing an absent key.
+
+    `pathfinding_graph` (v1) and `pathfinding_graph_v2` are validated as two
+    independent groups against the same `pathfinding_graph_failures`
+    (schema-version-aware) -- both real files are live simultaneously during
+    the ADR 0058 transition window (v1 until Connect Two Records cuts over
+    to v2, then v1 retires)."""
     return {
         "catalog": public_album_catalog_failures(catalog),
         "album_art_registry": album_art_failures(album_art, catalog),
@@ -86,6 +94,7 @@ def public_artifacts_failures(
         "challenge": challenge_failures(challenge, catalog),
         "contributor_index": contributor_index_failures(contributor_index, catalog),
         "pathfinding_graph": pathfinding_graph_failures(pathfinding_graph, catalog),
+        "pathfinding_graph_v2": pathfinding_graph_failures(pathfinding_graph_v2, catalog),
         "album_credit_membership": album_credit_membership_failures(
             album_credit_membership, catalog
         ),
