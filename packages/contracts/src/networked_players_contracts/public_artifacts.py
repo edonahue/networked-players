@@ -29,6 +29,7 @@ from __future__ import annotations
 from typing import Any
 
 from .album_art import album_art_failures
+from .album_credit_membership import album_credit_membership_failures
 from .catalog import public_album_catalog_failures
 from .challenge import challenge_failures
 from .connection_daily_manifest import connection_daily_manifest_failures
@@ -49,6 +50,7 @@ PUBLIC_ARTIFACT_GROUPS = (
     "challenge",
     "contributor_index",
     "pathfinding_graph",
+    "album_credit_membership",
 )
 
 
@@ -64,6 +66,7 @@ def public_artifacts_failures(
     challenge: Any,
     contributor_index: Any,
     pathfinding_graph: Any,
+    album_credit_membership: Any,
 ) -> dict[str, list[str]]:
     """Every contract failure across the whole real-artifact publication set,
     grouped by artifact. Every key in `PUBLIC_ARTIFACT_GROUPS` is always
@@ -80,4 +83,7 @@ def public_artifacts_failures(
         "challenge": challenge_failures(challenge, catalog),
         "contributor_index": contributor_index_failures(contributor_index, catalog),
         "pathfinding_graph": pathfinding_graph_failures(pathfinding_graph, catalog),
+        "album_credit_membership": album_credit_membership_failures(
+            album_credit_membership, catalog
+        ),
     }

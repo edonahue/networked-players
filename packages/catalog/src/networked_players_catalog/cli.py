@@ -824,6 +824,41 @@ def _parser() -> argparse.ArgumentParser:
     validate_pathfinding_graph.add_argument("--graph", type=Path, required=True)
     validate_pathfinding_graph.add_argument("--catalog", type=Path, required=True)
 
+    build_album_credit_membership = subparsers.add_parser(
+        "build-album-credit-membership",
+        help=(
+            "OPERATOR/coordination-host only: build the public album-credit-membership "
+            "artifact (apps/web/public/data/albums/credit-membership.v1.json) -- the "
+            "single canonical answer to 'who's credited on album X', reusing each "
+            "catalog album's own main_release_id verbatim (ADR 0058). Needs the real "
+            "one-hop working set with edges built (--onehop-root); never a Pi job"
+        ),
+    )
+    build_album_credit_membership.add_argument("--onehop-root", type=Path, required=True)
+    build_album_credit_membership.add_argument(
+        "--catalog", type=Path, required=True, help="apps/web/public/data/catalog/albums.v1.json"
+    )
+    build_album_credit_membership.add_argument("--output", type=Path, required=True)
+    build_album_credit_membership.add_argument("--memory-limit", default="3GB")
+    build_album_credit_membership.add_argument("--threads", type=int, default=4)
+    build_album_credit_membership.add_argument(
+        "--generated-at",
+        required=True,
+        help="explicit ISO datetime for this build (never the wall clock)",
+    )
+
+    validate_album_credit_membership = subparsers.add_parser(
+        "validate-album-credit-membership",
+        help=(
+            "validate an album-credit-membership artifact against the canonical catalog "
+            "it claims to belong to (catalog_version agreement, main_release_id "
+            "agreement, album_credit_membership_version recomputation, no private/"
+            "inference-implying data)"
+        ),
+    )
+    validate_album_credit_membership.add_argument("--membership", type=Path, required=True)
+    validate_album_credit_membership.add_argument("--catalog", type=Path, required=True)
+
     validate_public_artifacts = subparsers.add_parser(
         "validate-public-artifacts",
         help=(
@@ -878,6 +913,11 @@ def _parser() -> argparse.ArgumentParser:
         "--pathfinding-graph",
         type=Path,
         default=Path("apps/web/public/data/pathfinding/graph.v1.json"),
+    )
+    validate_public_artifacts.add_argument(
+        "--album-credit-membership",
+        type=Path,
+        default=Path("apps/web/public/data/albums/credit-membership.v1.json"),
     )
 
     diff_artifact_version = subparsers.add_parser(
@@ -2578,6 +2618,59 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
         return 0
 
+    if args.command == "build-album-credit-membership":
+        from networked_players_contracts.album_credit_membership import (
+            album_credit_membership_failures,
+        )
+        from networked_players_graph_core.album_credit_membership import (
+            build_album_credit_membership,
+        )
+        from networked_players_graph_core.graph import CreditGraph
+
+        catalog = json.loads(args.catalog.read_text())
+        with CreditGraph.open(
+            args.onehop_root, memory_limit=args.memory_limit, threads=args.threads
+        ) as graph:
+            membership = build_album_credit_membership(
+                graph, catalog, generated_at=args.generated_at
+            )
+
+        failures = album_credit_membership_failures(membership, catalog)
+        if failures:
+            raise ValueError(
+                "refusing to write an invalid album-credit-membership artifact: "
+                + "; ".join(failures)
+            )
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(json.dumps(membership, indent=2) + "\n")
+        print(
+            json.dumps(
+                {
+                    "output": str(args.output),
+                    "catalog_version": membership["catalog_version"],
+                    "album_credit_membership_version": membership[
+                        "album_credit_membership_version"
+                    ],
+                    "albums": len(membership["albums"]),
+                },
+                indent=2,
+            )
+        )
+        return 0
+
+    if args.command == "validate-album-credit-membership":
+        from networked_players_contracts.album_credit_membership import (
+            album_credit_membership_failures,
+        )
+
+        membership = json.loads(args.membership.read_text())
+        catalog = json.loads(args.catalog.read_text())
+        failures = album_credit_membership_failures(membership, catalog)
+        if failures:
+            raise ValueError("; ".join(failures))
+        print(json.dumps({"ok": True, "albums": len(membership["albums"])}, indent=2))
+        return 0
+
     if args.command == "validate-public-artifacts":
         from networked_players_contracts import public_artifacts_failures
 
@@ -2592,6 +2685,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             challenge=json.loads(args.challenge.read_text()),
             contributor_index=json.loads(args.contributor_index.read_text()),
             pathfinding_graph=json.loads(args.pathfinding_graph.read_text()),
+            album_credit_membership=json.loads(args.album_credit_membership.read_text()),
         )
         ok = all(not failures for failures in report.values())
         print(json.dumps({"ok": ok, "failures": report}, indent=2))

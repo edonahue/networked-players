@@ -52,9 +52,11 @@ def _artifact_validators() -> dict[str, tuple[Callable[..., list[str]], int]]:
     - daily-manifest: (manifest, rounds)
     - pathfinding-graph: (graph, catalog)
     - record-routes: (universe, rounds)
+    - album-credit-membership: (membership, catalog)
     """
     from networked_players_contracts import (
         album_art_failures,
+        album_credit_membership_failures,
         connection_daily_manifest_failures,
         connection_rounds_failures,
         connectivity_failures,
@@ -75,6 +77,7 @@ def _artifact_validators() -> dict[str, tuple[Callable[..., list[str]], int]]:
         "daily-manifest": (connection_daily_manifest_failures, 2),
         "pathfinding-graph": (pathfinding_graph_failures, 2),
         "record-routes": (record_routes_failures, 2),
+        "album-credit-membership": (album_credit_membership_failures, 2),
     }
 
 
