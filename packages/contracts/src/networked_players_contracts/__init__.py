@@ -5,10 +5,6 @@ from .album_art import (
     album_art_failures,
     album_art_version,
 )
-from .album_credit_membership import (
-    ALBUM_CREDIT_MEMBERSHIP_SCHEMA_VERSION,
-    album_credit_membership_failures,
-)
 from .canonical import canonical_json, content_hash, stable_id_digest
 from .catalog import public_album_catalog_failures
 from .challenge import CHALLENGE_SCHEMA_VERSION, challenge_failures
@@ -42,7 +38,6 @@ from .rounds import ROUNDS_SCHEMA_VERSION, rounds_failures
 
 __all__ = [
     "ALBUM_ART_SCHEMA_VERSION",
-    "ALBUM_CREDIT_MEMBERSHIP_SCHEMA_VERSION",
     "CHALLENGE_SCHEMA_VERSION",
     "CONNECTION_DAILY_MANIFEST_MODE",
     "CONNECTION_DAILY_MANIFEST_SCHEMA_VERSION",
@@ -57,7 +52,6 @@ __all__ = [
     "ROUNDS_SCHEMA_VERSION",
     "album_art_failures",
     "album_art_version",
-    "album_credit_membership_failures",
     "canonical_json",
     "challenge_failures",
     "connection_daily_manifest_failures",

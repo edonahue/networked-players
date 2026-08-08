@@ -29,7 +29,6 @@ from __future__ import annotations
 from typing import Any
 
 from .album_art import album_art_failures
-from .album_credit_membership import album_credit_membership_failures
 from .catalog import public_album_catalog_failures
 from .challenge import challenge_failures
 from .connection_daily_manifest import connection_daily_manifest_failures
@@ -52,7 +51,6 @@ PUBLIC_ARTIFACT_GROUPS = (
     "contributor_index",
     "pathfinding_graph",
     "pathfinding_graph_v2",
-    "album_credit_membership",
     "evidence_release_registry",
 )
 
@@ -70,7 +68,6 @@ def public_artifacts_failures(
     contributor_index: Any,
     pathfinding_graph: Any,
     pathfinding_graph_v2: Any,
-    album_credit_membership: Any,
     evidence_release_registry: Any,
 ) -> dict[str, list[str]]:
     """Every contract failure across the whole real-artifact publication set,
@@ -95,9 +92,6 @@ def public_artifacts_failures(
         "contributor_index": contributor_index_failures(contributor_index, catalog),
         "pathfinding_graph": pathfinding_graph_failures(pathfinding_graph, catalog),
         "pathfinding_graph_v2": pathfinding_graph_failures(pathfinding_graph_v2, catalog),
-        "album_credit_membership": album_credit_membership_failures(
-            album_credit_membership, catalog
-        ),
         "evidence_release_registry": evidence_release_registry_failures(
             evidence_release_registry, catalog
         ),
