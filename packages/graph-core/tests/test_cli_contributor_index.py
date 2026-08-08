@@ -68,6 +68,10 @@ def _challenge() -> dict[str, Any]:
     }
 
 
+def _evidence_release_registry() -> dict[str, Any]:
+    return {"release_ids": [501], "years": [1979]}
+
+
 def _routes_universe() -> dict[str, Any]:
     return {"provenance": {"catalog_version": _CATALOG_VERSION}, "albums": []}
 
@@ -88,12 +92,14 @@ def artifact_paths(tmp_path: Path) -> dict[str, Path]:
         "challenge": tmp_path / "challenge.json",
         "routes_universe": tmp_path / "routes-universe.json",
         "routes_rounds": tmp_path / "routes-rounds.json",
+        "evidence_release_registry": tmp_path / "release-registry.v1.json",
         "output": tmp_path / "contributors" / "index.v1.json",
     }
     paths["catalog"].write_text(json.dumps(_catalog()))
     paths["challenge"].write_text(json.dumps(_challenge()))
     paths["routes_universe"].write_text(json.dumps(_routes_universe()))
     paths["routes_rounds"].write_text(json.dumps(_routes_rounds()))
+    paths["evidence_release_registry"].write_text(json.dumps(_evidence_release_registry()))
     return paths
 
 
@@ -111,6 +117,8 @@ def test_build_contributor_index_cli_wiring(
             str(artifact_paths["routes_rounds"]),
             "--catalog",
             str(artifact_paths["catalog"]),
+            "--evidence-release-registry",
+            str(artifact_paths["evidence_release_registry"]),
             "--output",
             str(artifact_paths["output"]),
             "--generated-at",
@@ -140,6 +148,8 @@ def test_validate_contributor_index_cli_wiring(
             str(artifact_paths["routes_rounds"]),
             "--catalog",
             str(artifact_paths["catalog"]),
+            "--evidence-release-registry",
+            str(artifact_paths["evidence_release_registry"]),
             "--output",
             str(artifact_paths["output"]),
             "--generated-at",

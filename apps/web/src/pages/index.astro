@@ -5,14 +5,21 @@ import AlbumCard from '../components/AlbumCard.astro';
 import site from '../data/site.json';
 import type { ChallengeV2 } from '../data/challenge';
 import challengeData from '../../public/data/challenge.v2.json';
+import { connectedCatalogAlbums } from '../data/connectedAlbums';
 
 const { hero, focus } = site;
 
 const challenge = challengeData as ChallengeV2;
-const connectedAlbumIds = new Set(
-  challenge.paths.flatMap((p) => [p.from_album_id, p.to_album_id]),
-);
-const albums = challenge.albums.filter((album) => connectedAlbumIds.has(album.id));
+const albums = connectedCatalogAlbums(challenge);
+
+// Deterministic, not random: challenge.paths[0] is a real documented route,
+// content-hash versioned along with the rest of challenge.v2.json (ADR
+// 0043) -- its position in the array is the artifact's own stable order,
+// not a pick made at render time.
+const featuredPath = challenge.paths[0];
+const albumsById = new Map(challenge.albums.map((album) => [album.id, album]));
+const featuredFrom = albumsById.get(featuredPath.from_album_id);
+const featuredTo = albumsById.get(featuredPath.to_album_id);
 ---
 
 <BaseLayout>
@@ -29,19 +36,63 @@ const albums = challenge.albums.filter((album) => connectedAlbumIds.has(album.id
     <SpinningRecord />
   </section>
 
-  <section class="section shell" id="albums" aria-labelledby="albums-title">
+  <section class="section shell" id="ways-to-explore" aria-labelledby="ways-title">
     <div class="section-heading">
       <p class="eyebrow">Start here</p>
-      <h2 id="albums-title">Albums</h2>
+      <h2 id="ways-title">Four ways into the graph.</h2>
       <p class="lede">
-        Open an album to find who connects it to another — a shared session player, producer, or
-        engineer, documented credit by credit. The full shelf lives at
-        <a href="/albums/">/albums/</a>.
+        Every mode below runs on the same real, documented credit data — pick the one that
+        matches what you're curious about.
+      </p>
+    </div>
+    <div class="feature-grid">
+      <a class="feature-card" data-tone="teal" href="/play/daily/">
+        <span class="kicker">One a day</span>
+        <h3>Today's Connection</h3>
+        <p>A frozen, shared daily route between two records — the same one for everyone.</p>
+      </a>
+      <a class="feature-card" data-tone="gold" href="/play/connect/">
+        <span class="kicker">Pick any two</span>
+        <h3>Connect Two Records</h3>
+        <p>Choose any two albums and search for a real, documented route between them.</p>
+      </a>
+      <a class="feature-card" data-tone="rust" href="/play/routes/">
+        <span class="kicker">Guided</span>
+        <h3>Record Routes</h3>
+        <p>Curated multi-hop routes between records, with the evidence for every step.</p>
+      </a>
+      <a class="feature-card" data-tone="teal" href="/explore/">
+        <span class="kicker">Open-ended</span>
+        <h3>Explore</h3>
+        <p>Step into one album's bounded credit network and follow it wherever it leads.</p>
+      </a>
+    </div>
+  </section>
+
+  <section class="section shell" id="albums" aria-labelledby="albums-title">
+    <div class="section-heading">
+      <p class="eyebrow">A real connection</p>
+      <h2 id="albums-title">{featuredPath.label}</h2>
+      <p class="lede">
+        {featuredPath.description} Not a random pick — the first route in the current, versioned
+        challenge dataset. Search it yourself, or any other pair, at
+        <a href="/play/connect/">Connect Two Records</a>.
       </p>
     </div>
     <div class="album-grid">
-      {albums.map((album) => <AlbumCard album={album} />)}
+      {featuredFrom && <AlbumCard album={featuredFrom} />}
+      {featuredTo && <AlbumCard album={featuredTo} />}
     </div>
+    <p class="lede" style="margin-top:24px">
+      <strong>An editorial pick:</strong> <em>Ziggy Stardust</em> (David Bowie) and
+      <em>A Night At The Opera</em> (Queen) share a documented producer credit — a real
+      <a href="/play/connect/">Behind the Glass</a> route, one of three role-restricted search
+      modes that look only at a specific kind of credit (producer/engineer, drums/bass, or
+      guitar) instead of any documented one.
+    </p>
+    <p class="lede">
+      The full shelf of {albums.length} connected albums lives at <a href="/albums/">/albums/</a>.
+    </p>
   </section>
 
   <section class="section shell" aria-labelledby="how-title">
@@ -71,9 +122,9 @@ const albums = challenge.albums.filter((album) => connectedAlbumIds.has(album.id
         The album grid above and its evidence viewer run on real, Discogs monthly-dump-derived
         data (snapshot {challenge.provenance.snapshot_date}) — {albums.length} studio albums
         connected by {challenge.paths.length} documented credit paths, not a synthetic
-        placeholder. Phase 2 is measuring a larger exploration graph, a role taxonomy for
-        credits, and real path search between records — see <a href="/about/">the full
-        picture</a> for what's shipped and what's still being measured. The connections demo
+        placeholder. A role taxonomy for credits, real path search between any two records, and
+        an open-ended network explorer have all since shipped — see <a href="/about/">the full
+        picture</a> for what's live today and what's still ahead. The connections demo
         (linked below) runs on a small, curated subset of <strong>real</strong> Discogs data,
         fetched via the Discogs API ahead of the full CC0 dump pipeline — an earlier, smaller
         slice kept during the transition, not the primary real dataset anymore.

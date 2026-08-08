@@ -1,11 +1,13 @@
 """Build the public contributor index from already-published public
-artifacts -- `challenge.v2.json` and `routes/{universe,rounds}.v1.json` --
-never a fresh full-corpus graph query. This is what keeps the index
-deterministic, small, and safely publishable through the same discipline as
-every other artifact under `apps/web/public/data/**`, without introducing a
-new dependency on the private one-hop working set.
+artifacts -- `challenge.v2.json`, `routes/{universe,rounds}.v1.json`, and
+(ADR 0058 Slice 8) `evidence/release-registry.v1.json` -- never a fresh
+full-corpus graph query. This is what keeps the index deterministic, small,
+and safely publishable through the same discipline as every other artifact
+under `apps/web/public/data/**`, without introducing a new dependency on
+the private one-hop working set: the evidence registry is itself an
+already-published artifact, not a fresh corpus query.
 
-Every field traces to content already published in one of the two source
+Every field traces to content already published in one of the source
 artifacts:
 
 - `challenge.v2.json`: `paths[].hops[]` (artist_a_id/artist_b_id/release_id)
@@ -13,6 +15,10 @@ artifacts:
   (release_id, artist_id)).
 - `routes/rounds.v1.json`: `rounds[].hops[]`, which already carry
   `role_a`/`role_b` inline.
+- `evidence/release-registry.v1.json`: `release_ids[]`/`years[]`, looked up
+  per evidence release to derive `decade_activity` from each contributor's
+  own documented releases -- not the `year` of whichever connected catalog
+  album happens to anchor the hop.
 
 Deliberately excludes anything that would require the private full/one-hop
 corpus: a contributor's real full-corpus degree, or full-corpus role-text
@@ -83,12 +89,21 @@ def build_contributor_index(
     routes_universe: dict[str, Any],
     routes_rounds: dict[str, Any],
     catalog: dict[str, Any],
+    evidence_release_registry: dict[str, Any],
     generated_at: str,
 ) -> dict[str, Any]:
-    """Deterministic given the same four already-published artifacts. Raises
+    """Deterministic given the same five already-published artifacts. Raises
     `ValueError` if the challenge/routes artifacts don't agree with the
     catalog's own `catalog_version` -- a contributor index belongs to exactly
-    one catalog generation, the same rule `album_art_failures` enforces."""
+    one catalog generation, the same rule `album_art_failures` enforces.
+
+    `evidence_release_registry` (ADR 0058 Slice 3, itself an already-published
+    artifact -- this doesn't touch the private one-hop corpus) supplies each
+    contributor's `decade_activity`: their own evidence releases' real years,
+    not the `year` of whichever connected catalog album happens to anchor the
+    hop. A contributor whose only documented evidence predates or postdates
+    the anchor album's own release year previously got bucketed under the
+    wrong decade; see `test_contributor_index.py`'s year-mismatch fixture."""
     catalog_version = catalog["catalog_version"]
     snapshot_date = catalog["snapshot_date"]
 
@@ -104,9 +119,13 @@ def build_contributor_index(
                 f"the catalog's catalog_version {catalog_version!r}"
             )
 
-    album_years: dict[str, int | None] = {
-        str(a["id"]): a.get("year") for a in catalog.get("albums", [])
-    }
+    release_years: dict[Any, int | None] = dict(
+        zip(
+            evidence_release_registry.get("release_ids", []),
+            evidence_release_registry.get("years", []),
+            strict=True,
+        )
+    )
 
     names: dict[int, str] = {}
     for artist in challenge.get("artists", []):
@@ -198,7 +217,14 @@ def build_contributor_index(
         ]
 
         albums = sorted(albums_by_artist[artist_id])
-        years = [album_years[a] for a in albums if album_years.get(a) is not None]
+        evidence_release_ids = {
+            release_id for release_id, _role_text in evidence_by_artist.get(artist_id, set())
+        }
+        years = [
+            release_years[release_id]
+            for release_id in evidence_release_ids
+            if release_years.get(release_id) is not None
+        ]
         decades = sorted({_decade(year) for year in years if year is not None})
 
         neighbors = neighbor_counts.get(artist_id, Counter())
@@ -239,12 +265,13 @@ def build_contributor_index(
         "contributor_index_version": index_version,
         "generated_at": generated_at,
         "source": (
-            "Derived from apps/web/public/data/challenge.v2.json and "
-            "apps/web/public/data/routes/{universe,rounds}.v1.json -- no fresh "
-            "full-corpus graph query. See docs/DATA_AND_RIGHTS.md."
+            "Derived from apps/web/public/data/challenge.v2.json, "
+            "apps/web/public/data/routes/{universe,rounds}.v1.json, and "
+            "apps/web/public/data/evidence/release-registry.v1.json (decade_activity only) "
+            "-- no fresh full-corpus graph query. See docs/DATA_AND_RIGHTS.md."
         ),
         "license": (
-            "Derived from the Discogs monthly CC0 data dumps via the two published "
+            "Derived from the Discogs monthly CC0 data dumps via the three published "
             "artifacts above. See docs/DATA_AND_RIGHTS.md."
         ),
         "contributors": contributors,

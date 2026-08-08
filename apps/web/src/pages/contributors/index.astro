@@ -1,0 +1,35 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import ContributorsDirectory from '../../components/ContributorsDirectory.astro';
+
+// Contributors directory (ADR 0058 Slice 8): search, role-category filter
+// chips, and a most-connected list over the public contributor index --
+// zero new backend, reusing the index's already-public connection_count
+// field. Not attempting a betweenness-based "bridge contributors" list
+// here; that needs the private one-hop corpus, not this published index.
+const description =
+  'Search and filter every contributor in the Networked Players credit graph, or browse the most connected.';
+---
+
+<BaseLayout title="Contributors" description={description}>
+  <section class="prose shell" style="padding-bottom:0">
+    <p class="eyebrow">Contributors</p>
+    <h1 style="font-size:clamp(1.9rem,4.5vw,2.8rem)">
+      The people behind the documented connections.
+    </h1>
+    <p class="lede">
+      Every name here is credited on at least one documented release in the catalog. A shared
+      credit proves documented participation — never friendship, influence, or artistic
+      lineage.
+    </p>
+  </section>
+
+  <section class="shell" style="padding-top:28px;padding-bottom:72px">
+    <ContributorsDirectory />
+  </section>
+</BaseLayout>
+
+<script>
+  import { initContributorsDirectory } from '../../game/contributorsDirectory';
+  initContributorsDirectory();
+</script>

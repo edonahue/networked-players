@@ -65,6 +65,16 @@ def _challenge() -> dict[str, Any]:
     }
 
 
+def _evidence_release_registry() -> dict[str, Any]:
+    # Deliberately different decades than the connected catalog albums
+    # (master-1=1995, master-2=2001, master-3=1988) -- this is the whole
+    # point of the fixture: decade_activity must key off these real
+    # per-release years, not the catalog album's own year. Only the two
+    # fields build_contributor_index actually reads are populated; a real
+    # registry carries more (titles, countries, ...), irrelevant here.
+    return {"release_ids": [501, 900], "years": [1979, 2015]}
+
+
 def _routes_universe() -> dict[str, Any]:
     return {"provenance": {"catalog_version": _CATALOG_VERSION}, "albums": []}
 
@@ -101,6 +111,7 @@ def _build() -> dict[str, Any]:
         routes_universe=_routes_universe(),
         routes_rounds=_routes_rounds(),
         catalog=_catalog(),
+        evidence_release_registry=_evidence_release_registry(),
         generated_at="2026-08-03T00:00:00+00:00",
     )
 
@@ -139,16 +150,23 @@ def test_albums_are_the_endpoints_of_every_path_or_round_the_contributor_appears
     assert bob["albums"] == ["master-1", "master-2", "master-3"]
 
 
-def test_decade_activity_derived_from_catalog_years() -> None:
-    # Alice appears only on the master-1<->master-2 path, so she's associated
-    # with both of that path's endpoint albums (1995 and 2001).
+def test_decade_activity_derived_from_the_contributors_own_evidence_release_years() -> None:
+    # Alice is credited only via release 501 (real year 1979, per the
+    # evidence-release registry fixture) -- her decade must be [1970], not
+    # the connected albums' own years (master-1=1995, master-2=2001), which
+    # is what the pre-Slice-8 album-year-based computation would have
+    # produced ([1990, 2000]).
     index = _build()
     alice = next(c for c in index["contributors"] if c["artist_id"] == 100)
-    assert alice["decade_activity"] == [1990, 2000]
-    # Bob bridges both the master-1<->master-2 path and the master-2<->
-    # master-3 round, so all three albums' decades apply to him.
+    assert alice["decade_activity"] == [1970]
+    # Bob is credited via both release 501 (1979) and release 900 (2015) --
+    # his real evidence spans those two decades, not the three connected
+    # albums' years (1980s/1990s/2000s) the old computation would have used.
     bob = next(c for c in index["contributors"] if c["artist_id"] == 200)
-    assert bob["decade_activity"] == [1980, 1990, 2000]
+    assert bob["decade_activity"] == [1970, 2010]
+    # Carol is credited only via release 900 (2015).
+    carol = next(c for c in index["contributors"] if c["artist_id"] == 300)
+    assert carol["decade_activity"] == [2010]
 
 
 def test_connection_count_and_neighbors_reflect_published_hops_only() -> None:
@@ -179,5 +197,6 @@ def test_mismatched_catalog_version_raises() -> None:
             routes_universe=_routes_universe(),
             routes_rounds=_routes_rounds(),
             catalog=_catalog(),
+            evidence_release_registry=_evidence_release_registry(),
             generated_at="2026-08-03T00:00:00+00:00",
         )

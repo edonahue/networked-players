@@ -23,13 +23,16 @@ const fullTitle = title === site.title ? title : `${title} · ${site.title}`;
 // Primary navigation with aria-current on the active section. A link is
 // current when the page lives under its path (so /albums/syn-a01/ lights up
 // "Browse" and /play/daily/ lights up "Today's Connection"). Ordered by the
-// intended repeat-visit hierarchy (Phase 2 Slice A), not alphabetically.
+// intended repeat-visit hierarchy (Phase 2 Slice A; Connect Two Records and
+// Record Routes added ADR 0058 Slice 8). Cohorts lives in the footer, not
+// here, while its content stays synthetic (see site-footer below).
 const navLinks = [
   { href: '/play/daily/', label: "Today's Connection" },
+  { href: '/play/connect/', label: 'Connect Two Records' },
+  { href: '/play/routes/', label: 'Record Routes' },
   { href: '/play/connection/', label: 'Find a Connection' },
   { href: '/explore/', label: 'Explore' },
   { href: '/albums/', label: 'Browse' },
-  { href: '/cohorts/', label: 'Cohorts' },
   { href: '/about/', label: 'About' },
 ];
 const currentPath = Astro.url.pathname;
@@ -152,7 +155,9 @@ const isCurrent = (href: string) =>
     <footer class="site-footer shell">
       <p>An evidence-first project by <a href={site.authorUrl}>Erich Donahue</a>.</p>
       <p>
-        <a href="/demo/" title="An earlier artist-path demo, kept during the album-centered transition">Archive: first demo</a>
+        <a href="/contributors/">Contributors</a>
+        · <a href="/cohorts/" title="Cohorts are a synthetic, unreviewed grouping — not editorial curation">Cohorts</a>
+        · <a href="/demo/" title="An earlier artist-path demo, kept during the album-centered transition">Archive: first demo</a>
         · <a href={site.repositoryUrl}>View source on GitHub</a>
       </p>
     </footer>

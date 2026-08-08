@@ -106,3 +106,31 @@ If a future feature (the exploration graph, Connect Two Records) needs
 contributor data beyond what `challenge.v2.json`/`routes/*.json` cover, extend
 those two source artifacts first, or add an explicitly versioned `v2` index —
 never silently widen `contributor-index-v1` into a private-corpus dependency.
+
+## Addendum (ADR 0058 Slice 8): decade_activity now keys off real evidence-release years
+
+The original `decade_activity` derivation used the `year` field of whichever
+connected catalog album anchored a contributor's hop -- not necessarily the
+year of the release the contributor is actually credited on. A contributor
+whose only documented evidence predates or postdates the anchor album's own
+release could be bucketed under the wrong decade.
+
+`build_contributor_index` now takes a third already-published artifact,
+`apps/web/public/data/evidence/release-registry.v1.json` (ADR 0058 Slice 3),
+and derives each contributor's `decade_activity` from the real years of their
+own `evidence[].release_id` entries via the registry's `release_ids`/`years`
+parallel arrays -- never the catalog album's year, and never a fresh
+full-corpus query (the registry is itself a published, static artifact, same
+discipline this ADR's original decision established for the first two source
+artifacts). `connection_count`/`neighboring_contributor_ids` are unaffected --
+those remain scoped to `challenge.v2.json`/`routes/rounds.v1.json` only, as
+originally decided above. `contributor_index_version`'s hash inputs are also
+unaffected (`decade_activity` was never one of the hashed identity fields);
+the real committed artifact's version changed on this slice's rebuild only
+because the underlying `challenge.v2.json`/`routes/*.json` inputs had already
+moved since the index was last regenerated, not because of this fix itself.
+
+See `data/contracts/contributor-index-v1.md` (updated) and
+`packages/graph-core/tests/test_contributor_index.py`'s
+`test_decade_activity_derived_from_the_contributors_own_evidence_release_years`
+(a real year-mismatch fixture asserting the fix).
