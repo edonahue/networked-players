@@ -35,6 +35,7 @@ from .challenge import challenge_failures
 from .connection_daily_manifest import connection_daily_manifest_failures
 from .connection_rounds import connection_rounds_failures
 from .contributor_index import contributor_index_failures
+from .evidence_release_registry import evidence_release_registry_failures
 from .pathfinding_graph import pathfinding_graph_failures
 from .record_routes import record_routes_failures
 
@@ -51,6 +52,7 @@ PUBLIC_ARTIFACT_GROUPS = (
     "contributor_index",
     "pathfinding_graph",
     "album_credit_membership",
+    "evidence_release_registry",
 )
 
 
@@ -67,6 +69,7 @@ def public_artifacts_failures(
     contributor_index: Any,
     pathfinding_graph: Any,
     album_credit_membership: Any,
+    evidence_release_registry: Any,
 ) -> dict[str, list[str]]:
     """Every contract failure across the whole real-artifact publication set,
     grouped by artifact. Every key in `PUBLIC_ARTIFACT_GROUPS` is always
@@ -85,5 +88,8 @@ def public_artifacts_failures(
         "pathfinding_graph": pathfinding_graph_failures(pathfinding_graph, catalog),
         "album_credit_membership": album_credit_membership_failures(
             album_credit_membership, catalog
+        ),
+        "evidence_release_registry": evidence_release_registry_failures(
+            evidence_release_registry, catalog
         ),
     }

@@ -15,6 +15,9 @@ from networked_players_contracts.canonical import content_hash, stable_id_digest
 from networked_players_contracts.catalog import _catalog_version
 from networked_players_contracts.connection_rounds import round_content_fingerprint
 from networked_players_contracts.contributor_index import contributor_index_version
+from networked_players_contracts.evidence_release_registry import (
+    evidence_release_registry_version,
+)
 from networked_players_contracts.pathfinding_graph import pathfinding_graph_version
 
 _SNAPSHOT = "20260601"
@@ -493,6 +496,35 @@ def _album_credit_membership() -> dict[str, Any]:
     }
 
 
+# --- evidence-release registry ------------------------------------------------
+
+
+def _evidence_release_registry() -> dict[str, Any]:
+    catalog_version = _catalog()["catalog_version"]
+    fields = {
+        "release_ids": [1, 2],
+        "titles": ["First Light", "Second Wave"],
+        "years": [1995, 1998],
+        "countries": ["US", "US"],
+        "master_ids": [None, None],
+        "source_urls": ["https://data.discogs.com/?download=fake"] * 2,
+        "cover_uri150s": [None, None],
+        "relation_to_catalog_album_ids": ["master-1", "master-2"],
+    }
+    registry = {
+        "schema_version": 1,
+        "catalog_version": catalog_version,
+        "generated_at": "2026-08-07T00:00:00+00:00",
+        "source": "Union of challenge/routes/pathfinding-graph release ids.",
+        "license": "See docs/DATA_AND_RIGHTS.md.",
+        **fields,
+    }
+    registry["evidence_release_registry_version"] = evidence_release_registry_version(
+        registry, _SNAPSHOT
+    )
+    return registry
+
+
 # --- the combined check -------------------------------------------------------
 
 
@@ -510,6 +542,7 @@ def _clean_artifacts() -> dict[str, Any]:
         "contributor_index": _contributor_index(),
         "pathfinding_graph": _pathfinding_graph(),
         "album_credit_membership": _album_credit_membership(),
+        "evidence_release_registry": _evidence_release_registry(),
     }
 
 
@@ -525,6 +558,7 @@ def test_clean_publication_set_has_no_failures() -> None:
         "contributor_index": [],
         "pathfinding_graph": [],
         "album_credit_membership": [],
+        "evidence_release_registry": [],
     }
 
 
@@ -540,6 +574,7 @@ def test_every_group_key_always_present() -> None:
         "contributor_index",
         "pathfinding_graph",
         "album_credit_membership",
+        "evidence_release_registry",
     }
 
 

@@ -993,6 +993,28 @@ class CreditGraph:
         columns = [d[0] for d in self._connection.description]
         return dict(zip(columns, row, strict=True))
 
+    def releases_for_ids(self, release_ids: Sequence[int]) -> dict[int, dict[str, Any]]:
+        """Batched sibling to `release`, same relationship
+        `credit_rows_for_release_batch` has to `credit_rows`: one query for
+        many release ids instead of one query per id. Built for
+        `evidence_release_registry.py`, which needs release-level metadata
+        (title/year/country/source_url) for tens of thousands of ids that
+        appear only as pathfinding-graph evidence, never in a smaller
+        already-published release list -- one query per id at that scale
+        would dominate build time."""
+        if not release_ids:
+            return {}
+        ids = sorted(set(release_ids))
+        placeholders = ", ".join("?" for _ in ids)
+        rows = self._connection.execute(
+            f"SELECT * FROM releases WHERE release_id IN ({placeholders})", ids
+        ).fetchall()
+        columns = [d[0] for d in self._connection.description]
+        return {
+            int(record["release_id"]): record
+            for record in (dict(zip(columns, row, strict=True)) for row in rows)
+        }
+
     def find_release_by_title_artist(self, title: str, artist_name: str) -> dict[str, Any] | None:
         """The release-artist-scope playable credit matching an exact title + name/ANV.
 
