@@ -34,6 +34,23 @@ versioned static artifacts — no backend, no accounts.
   connection pages: **find the connection** / **reveal every path**, evidence at
   every hop, minimal contributor cards, and cross-links into play. (Old
   `/play/<album-id>/` URLs redirect here.)
+- **Connect Two Records** (`/play/connect/`, ADR 0058) — pick any two catalog
+  albums and search a real record-to-record route between them: virtual
+  album-anchor nodes on the pathfinding graph turn the search into an ordinary
+  single-source/single-sink BFS over every credited contributor on each album
+  (not just its primary artist), with real endpoint/evidence cards and optional
+  Behind the Glass / Rhythm Section / Guitar Paths role filters (ADR 0053).
+- **Record Routes** (`/play/routes/`, ADR 0046) — a peer path-guessing mode on
+  the same canonical catalog: guess the hop count and, for two-hop routes, the
+  connecting artist, before the path is revealed.
+- **Explore** (`/explore/`, `/explore/<album-id>/`, ADR 0052) — an open-ended,
+  bounded network view of one album's documented credit neighborhood; click any
+  name to recenter, filter by role to fade the rest without hiding it.
+- **Contributors** (`/contributors/`, `/contributors/<artist-id>/`, ADR 0058
+  Slice 8) — a searchable, role-filterable directory of every contributor in
+  the contributor index, plus a most-connected list from its public
+  `connection_count` field, and a per-contributor detail page (albums,
+  neighboring contributors, evidence).
 - **Cohorts** (`/cohorts/`, `/cohorts/<cohort-id>/`) — a static manifest-driven index
   and detail pages for reviewed playable cohorts. The committed cohort fixture is
   synthetic and clearly labeled until a real, human-reviewed `playable-cohort-v1`
@@ -133,8 +150,7 @@ The Connection Guesser (`public/data/game/*`) is real, not synthetic: it runs on
 album grid (ADR 0042, ADR 0043). The synthetic "Meridian Tapes" universe survives only
 as an isolated test fixture under `apps/web/tests/fixtures/`, never played.
 
-- Producer/engineer-bridge and six-degrees play modes (see `docs/PRODUCT.md`). Any
-  live-search/API mode is additive and must fail gracefully — the static-first core
-  always works on its own.
+- Any future live-search/API mode is additive and must fail gracefully — the
+  static-first core always works on its own.
 - Operator accessibility passes from `docs/WEB_PRODUCT_PLAN.md` §13: axe dev scan,
   manual VoiceOver round, 200 % zoom.

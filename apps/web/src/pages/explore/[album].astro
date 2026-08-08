@@ -3,20 +3,17 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import NetworkExplorer from '../../components/NetworkExplorer.astro';
 import type { AlbumV2, ChallengeV2 } from '../../data/challenge';
 import challengeData from '../../../public/data/challenge.v2.json';
+import { connectedCatalogAlbums } from '../../data/connectedAlbums';
 
 // Network Explorer (Phase 2 Slice G, ADR 0052): centers on one album's
 // primary artist and shows a bounded, real neighborhood from the same
 // pathfinding graph Connect Two Records uses -- never the whole graph.
 export function getStaticPaths() {
   const data = challengeData as ChallengeV2;
-  const connectedAlbumIds = new Set<string>();
-  for (const path of data.paths) {
-    connectedAlbumIds.add(path.from_album_id);
-    connectedAlbumIds.add(path.to_album_id);
-  }
-  return data.albums
-    .filter((album) => connectedAlbumIds.has(album.id))
-    .map((album) => ({ params: { album: album.id }, props: { album } }));
+  return connectedCatalogAlbums(data).map((album) => ({
+    params: { album: album.id },
+    props: { album },
+  }));
 }
 
 interface Props {

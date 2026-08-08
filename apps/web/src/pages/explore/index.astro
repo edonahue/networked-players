@@ -1,14 +1,12 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import AlbumCard from '../../components/AlbumCard.astro';
 import type { ChallengeV2 } from '../../data/challenge';
-import { coverFor } from '../../data/albumArt';
 import challengeData from '../../../public/data/challenge.v2.json';
+import { connectedCatalogAlbums } from '../../data/connectedAlbums';
 
 const challenge = challengeData as ChallengeV2;
-const connectedAlbumIds = new Set(
-  challenge.paths.flatMap((p) => [p.from_album_id, p.to_album_id]),
-);
-const albums = challenge.albums.filter((album) => connectedAlbumIds.has(album.id));
+const albums = connectedCatalogAlbums(challenge);
 
 const description =
   'Pick an album to open a focused, bounded network view of its documented contributors — click any name to recenter, filter by role to fade the rest.';
@@ -27,35 +25,7 @@ const description =
 
   <section class="shell" aria-label="Album grid" style="padding-bottom:72px">
     <div class="album-grid" data-testid="explore-album-grid">
-      {
-        albums.map((album) => {
-          const cover = coverFor(album.id) ?? album.cover_image;
-          return (
-            <a class="album-card" href={`/explore/${album.id}/`}>
-              {cover ? (
-                <img
-                  class="album-card__cover"
-                  src={cover.uri150}
-                  width="150"
-                  height="150"
-                  loading="lazy"
-                  alt={`Cover art for ${album.title}`}
-                  data-art-fallback="disc"
-                />
-              ) : (
-                <span class="album-card__placeholder" aria-hidden="true">
-                  <span class="album-card__placeholder-disc" />
-                </span>
-              )}
-              <span class="album-card__title">{album.title}</span>
-              <span class="album-card__meta">
-                {album.artist}
-                {album.year ? ` · ${album.year}` : ''}
-              </span>
-            </a>
-          );
-        })
-      }
+      {albums.map((album) => <AlbumCard album={album} hrefBase="/explore/" />)}
     </div>
   </section>
 </BaseLayout>

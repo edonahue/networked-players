@@ -32,10 +32,15 @@
       ]
     },
     {
+      "heading": "What's shipped since Phase 1",
+      "paragraphs": [
+        "A first-class role taxonomy for credits (producer, engineer, performer, and more, alongside the original role text), a searchable contributors directory that makes the people behind these records as navigable as the albums themselves, and a real record-to-record search — Connect Two Records — over every credited contributor on any two catalog albums, not just their primary artists. Explore adds an open-ended, bounded network view of one album's documented credit neighborhood, and three role-restricted search modes (Behind the Glass, Rhythm Section, Guitar Paths) narrow a search to a specific kind of credit."
+      ]
+    },
+    {
       "heading": "What's next",
       "paragraphs": [
-        "Phase 2 is underway: a first-class role taxonomy for credits (producer, engineer, performer, and more, alongside the original role text), contributor pages that make the people behind these records as navigable as the albums themselves, and a measured, larger exploration graph for open-ended path search between records. None of this commits to a specific future catalog size in advance — every expansion is measured against the project's existing data-quality rules before anything ships.",
-        "Replacing the connections demo's API-sourced dataset with one derived from the CC0 monthly dumps (with full provenance and no collection membership) remains on the list, alongside producer/engineer-bridge and six-degrees play modes once the role taxonomy and a larger graph make them meaningful. A future live-search mode is additive and must fail gracefully — the static-first core always works on its own."
+        "Replacing the connections demo's API-sourced dataset with one derived from the CC0 monthly dumps (with full provenance and no collection membership) remains on the list. A future live-search mode is additive and must fail gracefully — the static-first core always works on its own."
       ]
     }
   ]

@@ -1,6 +1,7 @@
 import type { APIRoute } from "astro";
 import type { ChallengeV2 } from "../data/challenge";
 import challengeData from "../../public/data/challenge.v2.json";
+import { connectedCatalogAlbums } from "../data/connectedAlbums";
 
 export const prerender = true;
 
@@ -12,15 +13,9 @@ const escapeXml = (value: string) =>
     .replaceAll('"', "&quot;");
 
 const challenge = challengeData as ChallengeV2;
-const connectedAlbumIds = new Set(
-  challenge.paths.flatMap((p) => [p.from_album_id, p.to_album_id]),
-);
-const albumPaths = challenge.albums
-  .filter((album) => connectedAlbumIds.has(album.id))
-  .map((album) => `/albums/${album.id}/`);
-const explorePaths = challenge.albums
-  .filter((album) => connectedAlbumIds.has(album.id))
-  .map((album) => `/explore/${album.id}/`);
+const connectedAlbums = connectedCatalogAlbums(challenge);
+const albumPaths = connectedAlbums.map((album) => `/albums/${album.id}/`);
+const explorePaths = connectedAlbums.map((album) => `/explore/${album.id}/`);
 
 import cohortManifest from "../../public/data/cohorts/index.json";
 
@@ -49,6 +44,7 @@ const paths = [
   "/about/",
   "/demo/",
   "/cohorts/",
+  "/contributors/",
   ...cohortPaths,
   ...albumPaths,
   ...explorePaths,

@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
   "catalog_version": "catalog-v1-20260601-0e7ec70fbb7e",
-  "contributor_index_version": "contributor-index-v1-20260601-3a8bb28d3992",
-  "generated_at": "2026-08-03T00:00:00+00:00",
-  "source": "Derived from apps/web/public/data/challenge.v2.json and apps/web/public/data/routes/{universe,rounds}.v1.json -- no fresh full-corpus graph query. See docs/DATA_AND_RIGHTS.md.",
-  "license": "Derived from the Discogs monthly CC0 data dumps via the two published artifacts above. See docs/DATA_AND_RIGHTS.md.",
+  "contributor_index_version": "contributor-index-v1-20260601-c57aee819b6f",
+  "generated_at": "2026-08-08T00:00:00+00:00",
+  "source": "Derived from apps/web/public/data/challenge.v2.json, apps/web/public/data/routes/{universe,rounds}.v1.json, and apps/web/public/data/evidence/release-registry.v1.json (decade_activity only) -- no fresh full-corpus graph query. See docs/DATA_AND_RIGHTS.md.",
+  "license": "Derived from the Discogs monthly CC0 data dumps via the three published artifacts above. See docs/DATA_AND_RIGHTS.md.",
   "contributors": [
     {
       "artist_id": 634,
@@ -15,7 +15,7 @@
         "Synthesizer [Splinter Mini Moog]"
       ],
       "albums": ["master-1561", "master-55576"],
-      "decade_activity": [1970, 1980],
+      "decade_activity": [1990, 2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [10263, 13932],
       "evidence": [
@@ -39,7 +39,7 @@
         "Producer"
       ],
       "albums": ["master-1046042", "master-107325"],
-      "decade_activity": [1950, 2010],
+      "decade_activity": [2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [27518, 673305],
       "evidence": [
@@ -79,7 +79,7 @@
         "master-26647",
         "master-59538"
       ],
-      "decade_activity": [1970, 1980, 1990, 2000, 2010],
+      "decade_activity": [2010],
       "connection_count": 5,
       "neighboring_contributor_ids": [74169, 272435, 310251, 514448, 2515275],
       "evidence": [
@@ -107,7 +107,7 @@
       "role_categories": ["composition", "production"],
       "role_text_examples": ["Producer", "Written-By"],
       "albums": ["master-105802", "master-45922"],
-      "decade_activity": [1980, 1990],
+      "decade_activity": [1980, 2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [3268, 12615],
       "evidence": [
@@ -143,7 +143,7 @@
         "master-32708",
         "master-55281"
       ],
-      "decade_activity": [1970, 1980, 2010],
+      "decade_activity": [1970, 1990, 2010],
       "connection_count": 5,
       "neighboring_contributor_ids": [303390, 3865, 13961, 17546, 156347],
       "evidence": [
@@ -180,7 +180,7 @@
         "master-52671",
         "master-55576"
       ],
-      "decade_activity": [1970, 1980, 2010],
+      "decade_activity": [1980, 1990, 2000],
       "connection_count": 4,
       "neighboring_contributor_ids": [2266, 11879, 13932, 24220],
       "evidence": [
@@ -228,7 +228,7 @@
         "master-59538",
         "master-87446"
       ],
-      "decade_activity": [1950, 1960, 1970, 1980, 2010],
+      "decade_activity": [1970, 1980, 2000],
       "connection_count": 12,
       "neighboring_contributor_ids": [
         23755, 35301, 2264, 3865, 8279, 10079, 10620, 18956, 41237, 84145,
@@ -283,7 +283,7 @@
       "role_categories": ["composition"],
       "role_text_examples": ["Written-By"],
       "albums": ["master-1046042", "master-5863"],
-      "decade_activity": [1970, 2010],
+      "decade_activity": [2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [79704, 81013],
       "evidence": [
@@ -303,7 +303,7 @@
         "Producer [Additional Demo Preproduction]"
       ],
       "albums": ["master-20135", "master-28680"],
-      "decade_activity": [1980],
+      "decade_activity": [1980, 2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [85929, 124535],
       "evidence": [
@@ -327,7 +327,7 @@
       "role_categories": ["strings"],
       "role_text_examples": ["Guitar"],
       "albums": ["master-1046042", "master-35706"],
-      "decade_activity": [1960, 2010],
+      "decade_activity": [1980],
       "connection_count": 2,
       "neighboring_contributor_ids": [20661, 229621],
       "evidence": [
@@ -359,7 +359,7 @@
         "master-4300",
         "master-44278"
       ],
-      "decade_activity": [1970, 1980, 1990, 2010],
+      "decade_activity": [1980, 2000, 2010, 2020],
       "connection_count": 9,
       "neighboring_contributor_ids": [
         365794, 83080, 3479, 28972, 3857, 10263, 11879, 13911, 34278
@@ -425,7 +425,7 @@
         "Vocals"
       ],
       "albums": ["master-105802", "master-55576"],
-      "decade_activity": [1980],
+      "decade_activity": [2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [13932, 39600],
       "evidence": [
@@ -497,7 +497,7 @@
         "master-57279",
         "master-8357"
       ],
-      "decade_activity": [1970, 1980, 1990, 2010],
+      "decade_activity": [1980, 2000, 2010],
       "connection_count": 8,
       "neighboring_contributor_ids": [
         170365, 1781, 4091, 29923, 35848, 42627, 57103, 144998
@@ -546,7 +546,7 @@
         "Producer, Arranged By, Written-By"
       ],
       "albums": ["master-20135", "master-20137", "master-31755"],
-      "decade_activity": [1980],
+      "decade_activity": [1980, 2010],
       "connection_count": 2,
       "neighboring_contributor_ids": [2768, 1999233],
       "evidence": [
@@ -566,7 +566,7 @@
       "role_categories": ["unknown"],
       "role_text_examples": [],
       "albums": ["master-1046042", "master-105802", "master-3719"],
-      "decade_activity": [1980, 1990, 2010],
+      "decade_activity": [],
       "connection_count": 2,
       "neighboring_contributor_ids": [2768, 20661],
       "evidence": []
@@ -607,7 +607,7 @@
         "master-87446",
         "master-8883"
       ],
-      "decade_activity": [1950, 1970, 1980, 1990, 2010],
+      "decade_activity": [1970, 1980, 1990, 2000],
       "connection_count": 15,
       "neighboring_contributor_ids": [
         18956, 1818, 2266, 12686, 16797, 17546, 23755, 29981, 33708, 37735,
@@ -662,7 +662,7 @@
       "role_categories": ["percussion_keys"],
       "role_text_examples": ["Keyboards"],
       "albums": ["master-20135", "master-27765"],
-      "decade_activity": [1970, 1980],
+      "decade_activity": [1990],
       "connection_count": 2,
       "neighboring_contributor_ids": [10783, 136984],
       "evidence": [
@@ -683,7 +683,7 @@
         "Executive-Producer"
       ],
       "albums": ["master-1046042", "master-105802", "master-8357"],
-      "decade_activity": [1980, 2010],
+      "decade_activity": [2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [3268, 5648],
       "evidence": [
@@ -718,7 +718,7 @@
         "Remix, Producer"
       ],
       "albums": ["master-1046042", "master-39248"],
-      "decade_activity": [1980, 2010],
+      "decade_activity": [1990, 2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [7987, 12332],
       "evidence": [
@@ -738,7 +738,7 @@
       "role_categories": ["vocals"],
       "role_text_examples": ["Backing Vocals"],
       "albums": ["master-30712", "master-30926"],
-      "decade_activity": [1980],
+      "decade_activity": [1980, 2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [17546, 68693],
       "evidence": [
@@ -770,7 +770,7 @@
         "master-37615",
         "master-38175"
       ],
-      "decade_activity": [1970, 1980, 1990, 2010],
+      "decade_activity": [2000, 2010],
       "connection_count": 4,
       "neighboring_contributor_ids": [2013868, 39600, 18844, 138556],
       "evidence": [
@@ -813,7 +813,7 @@
         "master-90844",
         "master-99919"
       ],
-      "decade_activity": [1970, 1980, 1990, 2000, 2010],
+      "decade_activity": [1990, 2000],
       "connection_count": 7,
       "neighboring_contributor_ids": [
         122792, 4091, 8279, 21658, 33708, 35646, 72461
@@ -871,7 +871,7 @@
         "master-60680",
         "master-9382"
       ],
-      "decade_activity": [1970, 1980, 2010],
+      "decade_activity": [1980, 2000],
       "connection_count": 5,
       "neighboring_contributor_ids": [147878, 51849, 180664, 325903, 548816],
       "evidence": [
@@ -923,7 +923,7 @@
       "role_categories": ["unknown"],
       "role_text_examples": [],
       "albums": ["master-1046042", "master-81172"],
-      "decade_activity": [1980, 2010],
+      "decade_activity": [],
       "connection_count": 2,
       "neighboring_contributor_ids": [145072, 1967268],
       "evidence": []
@@ -934,7 +934,7 @@
       "role_categories": ["composition"],
       "role_text_examples": ["Music By"],
       "albums": ["master-1046042", "master-105802", "master-64290"],
-      "decade_activity": [1980, 2010],
+      "decade_activity": [2010],
       "connection_count": 2,
       "neighboring_contributor_ids": [42610, 161091],
       "evidence": [
@@ -950,7 +950,7 @@
       "role_categories": ["packaging_business", "strings"],
       "role_text_examples": ["Electric Guitar", "Executive-Producer"],
       "albums": ["master-20135", "master-26725"],
-      "decade_activity": [1970, 1980],
+      "decade_activity": [2010, 2020],
       "connection_count": 2,
       "neighboring_contributor_ids": [219986, 237914],
       "evidence": [
@@ -970,7 +970,7 @@
       "role_categories": ["packaging_business", "vocals"],
       "role_text_examples": ["Executive-Producer", "Vocals"],
       "albums": ["master-105802", "master-30926"],
-      "decade_activity": [1980],
+      "decade_activity": [1990],
       "connection_count": 2,
       "neighboring_contributor_ids": [17546, 106415],
       "evidence": [
@@ -990,7 +990,7 @@
       "role_categories": ["arrangement", "engineering", "production"],
       "role_text_examples": ["Arranged By", "Mixed By", "Producer"],
       "albums": ["master-1046042", "master-105802", "master-39248"],
-      "decade_activity": [1980, 2010],
+      "decade_activity": [2020],
       "connection_count": 2,
       "neighboring_contributor_ids": [4719, 79096],
       "evidence": [
@@ -1018,7 +1018,7 @@
         "Drums, Percussion"
       ],
       "albums": ["master-1046042", "master-15841"],
-      "decade_activity": [1970, 2010],
+      "decade_activity": [1970, 1990],
       "connection_count": 2,
       "neighboring_contributor_ids": [8887, 262691],
       "evidence": [
@@ -1054,7 +1054,7 @@
         "Backing Vocals"
       ],
       "albums": ["master-1046042", "master-52671", "master-66510"],
-      "decade_activity": [1980, 1990, 2010],
+      "decade_activity": [2000],
       "connection_count": 3,
       "neighboring_contributor_ids": [245423, 2266, 5648],
       "evidence": [
@@ -1102,7 +1102,7 @@
       "role_categories": ["vocals"],
       "role_text_examples": ["Backing Vocals", "Vocals"],
       "albums": ["master-49965", "master-68399"],
-      "decade_activity": [1970, 1990],
+      "decade_activity": [1970],
       "connection_count": 2,
       "neighboring_contributor_ids": [11012, 110862],
       "evidence": [
@@ -1138,7 +1138,7 @@
         "master-30926",
         "master-67836"
       ],
-      "decade_activity": [1970, 1980, 1990, 2000, 2010],
+      "decade_activity": [1980, 1990, 2000, 2020],
       "connection_count": 8,
       "neighboring_contributor_ids": [
         11831, 23825, 43745, 46163, 101883, 144589, 266403, 273591
@@ -1192,7 +1192,7 @@
       "role_categories": ["unknown"],
       "role_text_examples": [],
       "albums": ["master-1046042", "master-105802", "master-15841"],
-      "decade_activity": [1970, 1980, 2010],
+      "decade_activity": [],
       "connection_count": 2,
       "neighboring_contributor_ids": [8211, 345004],
       "evidence": []
@@ -1203,7 +1203,7 @@
       "role_categories": ["percussion_keys"],
       "role_text_examples": ["Keyboards"],
       "albums": ["master-55576", "master-60721"],
-      "decade_activity": [1960, 1980],
+      "decade_activity": [1980],
       "connection_count": 2,
       "neighboring_contributor_ids": [13932, 124497],
       "evidence": [
@@ -1223,7 +1223,7 @@
       "role_categories": ["vocals"],
       "role_text_examples": ["Backing Vocals"],
       "albums": ["master-105802", "master-16921"],
-      "decade_activity": [1970, 1980],
+      "decade_activity": [1990],
       "connection_count": 2,
       "neighboring_contributor_ids": [160906, 317140],
       "evidence": [
@@ -1249,7 +1249,7 @@
         "Performer [The Show]"
       ],
       "albums": ["master-1046042", "master-37401"],
-      "decade_activity": [1980, 2010],
+      "decade_activity": [2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [170365, 219213],
       "evidence": [
@@ -1292,7 +1292,7 @@
         "Featuring, Vocals"
       ],
       "albums": ["master-60721", "master-82337"],
-      "decade_activity": [1960],
+      "decade_activity": [1970, 1980],
       "connection_count": 2,
       "neighboring_contributor_ids": [63771, 124497],
       "evidence": [
@@ -1315,7 +1315,7 @@
         "Tenor Saxophone, Flute, Composed By, Alto Flute"
       ],
       "albums": ["master-52671", "master-59538"],
-      "decade_activity": [1970, 1980],
+      "decade_activity": [1970],
       "connection_count": 2,
       "neighboring_contributor_ids": [2266, 42058],
       "evidence": [
@@ -1335,7 +1335,7 @@
       "role_categories": ["brass_woodwind"],
       "role_text_examples": ["Alto Saxophone", "Tenor Saxophone"],
       "albums": ["master-106274", "master-82337"],
-      "decade_activity": [1960, 2000],
+      "decade_activity": [1960],
       "connection_count": 2,
       "neighboring_contributor_ids": [30552, 63771],
       "evidence": [
@@ -1383,7 +1383,7 @@
         "master-91767",
         "master-9382"
       ],
-      "decade_activity": [1970, 1980, 1990, 2010],
+      "decade_activity": [1980, 1990, 2000, 2010],
       "connection_count": 12,
       "neighboring_contributor_ids": [
         24221, 46481, 634, 2768, 11879, 23760, 136198, 147878, 149420, 253548,
@@ -1452,7 +1452,7 @@
         "Executive-Producer"
       ],
       "albums": ["master-1046042", "master-31598", "master-66631"],
-      "decade_activity": [1970, 2010],
+      "decade_activity": [2000],
       "connection_count": 3,
       "neighboring_contributor_ids": [330380, 18984, 30724],
       "evidence": [
@@ -1504,7 +1504,7 @@
       "role_categories": ["strings"],
       "role_text_examples": ["Acoustic Guitar"],
       "albums": ["master-105802", "master-72235"],
-      "decade_activity": [1970, 1980],
+      "decade_activity": [1970, 1990],
       "connection_count": 2,
       "neighboring_contributor_ids": [120232, 161091],
       "evidence": [
@@ -1524,7 +1524,7 @@
       "role_categories": ["brass_woodwind"],
       "role_text_examples": ["Tenor Saxophone", "Tenor Saxophone, Soloist"],
       "albums": ["master-32208", "master-35793"],
-      "decade_activity": [1950, 1970],
+      "decade_activity": [1980, 1990],
       "connection_count": 2,
       "neighboring_contributor_ids": [92623, 97545],
       "evidence": [
@@ -1550,7 +1550,7 @@
         "Musician [Musicians]"
       ],
       "albums": ["master-1046042", "master-20135", "master-32208"],
-      "decade_activity": [1950, 1980, 2010],
+      "decade_activity": [2000, 2010],
       "connection_count": 3,
       "neighboring_contributor_ids": [97545, 61430, 347691],
       "evidence": [
@@ -1586,7 +1586,7 @@
       "role_categories": ["vocals"],
       "role_text_examples": ["Backing Vocals"],
       "albums": ["master-57029", "master-60721"],
-      "decade_activity": [1960, 1970],
+      "decade_activity": [1970, 1980],
       "connection_count": 2,
       "neighboring_contributor_ids": [124497, 137418],
       "evidence": [
@@ -1627,7 +1627,7 @@
         "master-52671",
         "master-57029"
       ],
-      "decade_activity": [1960, 1970, 1980, 2010],
+      "decade_activity": [2000, 2020],
       "connection_count": 8,
       "neighboring_contributor_ids": [
         37079, 112836, 135850, 139508, 252996, 255276, 255796, 386834
@@ -1661,7 +1661,7 @@
       "role_categories": ["percussion_keys"],
       "role_text_examples": ["Piano", "Piano [Acoustic]"],
       "albums": ["master-32208", "master-52671"],
-      "decade_activity": [1950, 1980],
+      "decade_activity": [1980],
       "connection_count": 2,
       "neighboring_contributor_ids": [2266, 97545],
       "evidence": [
@@ -1681,7 +1681,7 @@
       "role_categories": ["vocals"],
       "role_text_examples": ["Vocals"],
       "albums": ["master-47744", "master-74227"],
-      "decade_activity": [1970, 1980],
+      "decade_activity": [1990, 2020],
       "connection_count": 2,
       "neighboring_contributor_ids": [53248, 90233],
       "evidence": [
@@ -1701,7 +1701,7 @@
       "role_categories": ["production"],
       "role_text_examples": ["Producer"],
       "albums": ["master-1046042", "master-35276"],
-      "decade_activity": [1960, 2010],
+      "decade_activity": [2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [12208, 39766],
       "evidence": [
@@ -1761,7 +1761,7 @@
         "master-35006",
         "master-35276"
       ],
-      "decade_activity": [1950, 1960, 1970, 1980, 1990, 2000, 2010],
+      "decade_activity": [1980, 1990, 2000, 2010],
       "connection_count": 22,
       "neighboring_contributor_ids": [
         237914, 1999233, 13151, 35848, 36647, 122381, 266431, 3880, 16661,
@@ -1840,7 +1840,7 @@
         "master-52671",
         "master-59538"
       ],
-      "decade_activity": [1970, 1980, 2000, 2010],
+      "decade_activity": [1990, 2000, 2010],
       "connection_count": 7,
       "neighboring_contributor_ids": [
         177516, 12387, 84145, 114977, 253545, 271392, 276418
@@ -1910,7 +1910,7 @@
         "master-66631",
         "master-68399"
       ],
-      "decade_activity": [1960, 1970, 1980, 1990, 2010],
+      "decade_activity": [1970, 1980, 2000, 2010],
       "connection_count": 8,
       "neighboring_contributor_ids": [
         8718, 76605, 106415, 169574, 219420, 292813, 297977, 1815429
@@ -1972,7 +1972,7 @@
         "master-8883",
         "master-99919"
       ],
-      "decade_activity": [1960, 1970, 1980, 2010],
+      "decade_activity": [1980, 1990, 2000],
       "connection_count": 12,
       "neighboring_contributor_ids": [
         13961, 30212, 35199, 59795, 69722, 85929, 90154, 90233, 161091, 215920,
@@ -2024,7 +2024,7 @@
         "master-20135",
         "master-25303"
       ],
-      "decade_activity": [1980, 1990, 2010],
+      "decade_activity": [1990, 2000],
       "connection_count": 3,
       "neighboring_contributor_ids": [14743, 25495, 253791],
       "evidence": [
@@ -2053,7 +2053,7 @@
         "Written-By"
       ],
       "albums": ["master-105802", "master-57970"],
-      "decade_activity": [1980, 1990],
+      "decade_activity": [1980, 2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [11831, 65049],
       "evidence": [
@@ -2158,7 +2158,7 @@
         "master-68399",
         "master-69859"
       ],
-      "decade_activity": [1960, 1970, 1980, 2010],
+      "decade_activity": [1970, 1980, 1990, 2000],
       "connection_count": 10,
       "neighboring_contributor_ids": [
         2264, 2768, 10263, 72308, 106909, 149420, 219420, 254878, 311577, 328530
@@ -2212,7 +2212,7 @@
       "role_categories": ["vocals"],
       "role_text_examples": ["Backing Vocals"],
       "albums": ["master-113522", "master-32708"],
-      "decade_activity": [1970, 1980],
+      "decade_activity": [1980],
       "connection_count": 2,
       "neighboring_contributor_ids": [13961, 48512],
       "evidence": [
@@ -2237,7 +2237,7 @@
         "master-45432",
         "master-72879"
       ],
-      "decade_activity": [1960, 1970, 2010],
+      "decade_activity": [2000],
       "connection_count": 4,
       "neighboring_contributor_ids": [1942059, 10664, 46481, 56798],
       "evidence": [
@@ -2253,7 +2253,7 @@
       "role_categories": ["composition", "engineering", "production"],
       "role_text_examples": ["Mixed By", "Producer", "Written-By, Producer"],
       "albums": ["master-1046042", "master-39248"],
-      "decade_activity": [1980, 2010],
+      "decade_activity": [2000, 2020],
       "connection_count": 2,
       "neighboring_contributor_ids": [4719, 961049],
       "evidence": [
@@ -2280,7 +2280,7 @@
         "Piano [Acoustic]"
       ],
       "albums": ["master-106396", "master-13280"],
-      "decade_activity": [1980],
+      "decade_activity": [2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [10933, 13735],
       "evidence": [
@@ -2300,7 +2300,7 @@
       "role_categories": ["vocals"],
       "role_text_examples": ["Featuring, Rap", "Vocals"],
       "albums": ["master-105802", "master-45922"],
-      "decade_activity": [1980, 1990],
+      "decade_activity": [2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [1781, 252346],
       "evidence": [
@@ -2336,7 +2336,7 @@
         "master-8883",
         "master-99919"
       ],
-      "decade_activity": [1950, 1970, 1980, 1990, 2000, 2010],
+      "decade_activity": [1980, 1990],
       "connection_count": 9,
       "neighboring_contributor_ids": [
         3865, 12803, 120623, 144589, 170807, 255445, 284968, 310251, 313820
@@ -2367,13 +2367,13 @@
     {
       "artist_id": 12803,
       "name": "George Duke",
-      "role_categories": ["percussion_keys"],
+      "role_categories": ["engineering", "percussion_keys"],
       "role_text_examples": [
         "Keyboards",
         "Programmed By [Synthesizer], Synthesizer"
       ],
       "albums": ["master-113224", "master-8883"],
-      "decade_activity": [1980, 1990],
+      "decade_activity": [1970],
       "connection_count": 2,
       "neighboring_contributor_ids": [12686, 15885],
       "evidence": [
@@ -2390,7 +2390,12 @@
     {
       "artist_id": 13151,
       "name": "Kurtis Blow",
-      "role_categories": ["composition", "percussion_keys", "rework"],
+      "role_categories": [
+        "composition",
+        "engineering",
+        "percussion_keys",
+        "rework"
+      ],
       "role_text_examples": [
         "Written-By",
         "Performer [Tough]",
@@ -2399,7 +2404,7 @@
         "Keyboards"
       ],
       "albums": ["master-20135", "master-23069", "master-32708"],
-      "decade_activity": [1970, 1980],
+      "decade_activity": [1980, 1990],
       "connection_count": 3,
       "neighboring_contributor_ids": [10783, 18977, 110387],
       "evidence": [
@@ -2443,7 +2448,7 @@
         "Scratches [Deconstructed Scratch]"
       ],
       "albums": ["master-105802", "master-66631"],
-      "decade_activity": [1970, 1980],
+      "decade_activity": [1990, 2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [18984, 63084],
       "evidence": [
@@ -2489,7 +2494,7 @@
         "master-750386",
         "master-87446"
       ],
-      "decade_activity": [1970, 1980, 1990, 2010],
+      "decade_activity": [1980, 1990, 2000, 2010, 2020],
       "connection_count": 9,
       "neighboring_contributor_ids": [
         12387, 57103, 62920, 72308, 252196, 253548, 255445, 256225, 482142
@@ -2539,7 +2544,7 @@
       "role_categories": ["unknown"],
       "role_text_examples": [],
       "albums": ["master-105802", "master-20137"],
-      "decade_activity": [1980],
+      "decade_activity": [],
       "connection_count": 2,
       "neighboring_contributor_ids": [2768, 170807],
       "evidence": []
@@ -2565,7 +2570,7 @@
         "master-89665",
         "master-99919"
       ],
-      "decade_activity": [1960, 1970, 1980, 1990, 2010],
+      "decade_activity": [1980, 2000],
       "connection_count": 8,
       "neighboring_contributor_ids": [
         634, 2264, 3140, 9051, 30419, 30420, 132290, 273594
@@ -2638,7 +2643,7 @@
         "master-74227",
         "master-87446"
       ],
-      "decade_activity": [1950, 1970, 1980, 2000, 2010],
+      "decade_activity": [1980, 1990, 2000, 2010, 2020],
       "connection_count": 14,
       "neighboring_contributor_ids": [
         17827, 18956, 23755, 101028, 161091, 1818, 11136, 12142, 18977, 24651,
@@ -2693,7 +2698,7 @@
       "role_categories": ["percussion_keys"],
       "role_text_examples": ["Cuica, Percussion", "Percussion"],
       "albums": ["master-5460", "master-91767"],
-      "decade_activity": [1950, 1980],
+      "decade_activity": [1970, 1990],
       "connection_count": 2,
       "neighboring_contributor_ids": [23755, 24221],
       "evidence": [
@@ -2713,7 +2718,7 @@
       "role_categories": ["unknown"],
       "role_text_examples": ["Featuring"],
       "albums": ["master-20135", "master-25303"],
-      "decade_activity": [1980, 1990],
+      "decade_activity": [2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [11213, 237914],
       "evidence": [
@@ -2729,7 +2734,7 @@
       "role_categories": ["percussion_keys"],
       "role_text_examples": ["Electric Piano [Fender Rhodes]", "Piano"],
       "albums": ["master-60680", "master-60721"],
-      "decade_activity": [1960, 1970],
+      "decade_activity": [1970],
       "connection_count": 2,
       "neighboring_contributor_ids": [124497, 152685],
       "evidence": [
@@ -2749,7 +2754,7 @@
       "role_categories": ["brass_woodwind", "vocals"],
       "role_text_examples": ["Harmonica", "Vocals"],
       "albums": ["master-69859", "master-72235"],
-      "decade_activity": [1970],
+      "decade_activity": [1990, 2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [17827, 120232],
       "evidence": [
@@ -2781,7 +2786,7 @@
         "master-27460",
         "master-30577"
       ],
-      "decade_activity": [1970, 1980, 2000, 2010],
+      "decade_activity": [2000, 2020],
       "connection_count": 4,
       "neighboring_contributor_ids": [57103, 173838, 270195, 489089],
       "evidence": [
@@ -2840,7 +2845,7 @@
         "master-8883",
         "master-89665"
       ],
-      "decade_activity": [1970, 1980, 1990, 2010],
+      "decade_activity": [1970, 1980, 1990, 2000],
       "connection_count": 8,
       "neighboring_contributor_ids": [
         12803, 29981, 90492, 112806, 215920, 256804, 350510, 447673
@@ -2883,7 +2888,7 @@
     {
       "artist_id": 15900,
       "name": "Ennio Morricone",
-      "role_categories": ["composition", "packaging_business"],
+      "role_categories": ["arrangement", "composition", "packaging_business"],
       "role_text_examples": [
         "Composed By [Composition By]",
         "Liner Notes [Quote In Booklet (English)]",
@@ -2891,7 +2896,7 @@
         "Written-By [\"The Good, The Bad And The Ugly\"]"
       ],
       "albums": ["master-105802", "master-403952", "master-6495"],
-      "decade_activity": [1980, 2010],
+      "decade_activity": [1980, 2010, 2020],
       "connection_count": 3,
       "neighboring_contributor_ids": [63084, 18839, 2445772],
       "evidence": [
@@ -2922,7 +2927,7 @@
         "Performer [The Dust Brothers Are]"
       ],
       "albums": ["master-20135", "master-26436"],
-      "decade_activity": [1980],
+      "decade_activity": [1980, 1990],
       "connection_count": 2,
       "neighboring_contributor_ids": [10783, 74166],
       "evidence": [
@@ -2948,7 +2953,7 @@
         "master-31598",
         "master-51607"
       ],
-      "decade_activity": [1970, 1980, 1990],
+      "decade_activity": [1980, 1990, 2000],
       "connection_count": 5,
       "neighboring_contributor_ids": [161091, 3865, 19298, 30542, 30724],
       "evidence": [
@@ -3007,7 +3012,7 @@
         "master-87446",
         "master-91767"
       ],
-      "decade_activity": [1950, 1970, 1980, 2010],
+      "decade_activity": [1970, 1980, 1990, 2000, 2010, 2020],
       "connection_count": 12,
       "neighboring_contributor_ids": [
         1818, 3865, 4800, 7699, 18956, 23755, 35848, 46163, 60451, 114977,
@@ -3085,7 +3090,7 @@
         "master-87446",
         "master-92517"
       ],
-      "decade_activity": [1950, 1970, 1980, 1990, 2010],
+      "decade_activity": [1970, 1980, 2000, 2010],
       "connection_count": 14,
       "neighboring_contributor_ids": [
         13961, 101028, 110862, 15158, 21363, 30212, 59792, 69722, 92623, 106909,
@@ -3148,7 +3153,7 @@
         "master-80514",
         "master-99919"
       ],
-      "decade_activity": [1970, 1980, 2010],
+      "decade_activity": [1970, 2000],
       "connection_count": 6,
       "neighboring_contributor_ids": [
         11831, 22757, 152685, 162614, 193582, 252409
@@ -3184,7 +3189,7 @@
         "Drums"
       ],
       "albums": ["master-1046042", "master-73013"],
-      "decade_activity": [1980, 2010],
+      "decade_activity": [2000, 2010],
       "connection_count": 2,
       "neighboring_contributor_ids": [59795, 451329],
       "evidence": [
@@ -3224,7 +3229,7 @@
       "role_categories": ["unknown"],
       "role_text_examples": ["Featuring"],
       "albums": ["master-20135", "master-26647"],
-      "decade_activity": [1980, 2000],
+      "decade_activity": [1990],
       "connection_count": 2,
       "neighboring_contributor_ids": [10783, 74169],
       "evidence": [
@@ -3255,7 +3260,7 @@
         "Producer"
       ],
       "albums": ["master-1046042", "master-23684"],
-      "decade_activity": [1980, 2010],
+      "decade_activity": [2020],
       "connection_count": 2,
       "neighboring_contributor_ids": [103687, 1034811],
       "evidence": [
@@ -3287,7 +3292,7 @@
       "role_categories": ["packaging_business", "production"],
       "role_text_examples": ["Design Concept [Cover]", "Producer"],
       "albums": ["master-1046042", "master-105802", "master-6495"],
-      "decade_activity": [1980, 2010],
+      "decade_activity": [2010],
       "connection_count": 2,
       "neighboring_contributor_ids": [15900, 515349],
       "evidence": [
@@ -3307,7 +3312,7 @@
       "role_categories": ["composition", "vocals"],
       "role_text_examples": ["Lyrics By [Additional Lyrics By]", "Vocals"],
       "albums": ["master-1046042", "master-105802", "master-38175"],
-      "decade_activity": [1970, 1980, 2010],
+      "decade_activity": [1990],
       "connection_count": 3,
       "neighboring_contributor_ids": [39770, 4854, 39600],
       "evidence": [
@@ -3359,7 +3364,7 @@
         "master-87446",
         "master-91767"
       ],
-      "decade_activity": [1950, 1970, 1980, 1990, 2010],
+      "decade_activity": [1970, 1980, 1990, 2000, 2010, 2020],
       "connection_count": 13,
       "neighboring_contributor_ids": [
         30542, 3865, 13961, 35301, 2266, 17546, 49624, 72461, 79096, 152685,
@@ -3414,7 +3419,7 @@
       "role_categories": ["percussion_keys"],
       "role_text_examples": ["Organ [Hammond]", "Piano"],
       "albums": ["master-20135", "master-32708"],
-      "decade_activity": [1980],
+      "decade_activity": [1980, 1990],
       "connection_count": 2,
       "neighboring_contributor_ids": [13151, 13961],
       "evidence": [
@@ -3456,7 +3461,7 @@
         "master-82337",
         "master-99919"
       ],
-      "decade_activity": [1960, 1970, 1980, 1990, 2000, 2010],
+      "decade_activity": [1970, 1980, 2000],
       "connection_count": 8,
       "neighboring_contributor_ids": [
         10421, 13247, 112808, 169574, 211633, 255752, 265119, 293896
@@ -3486,7 +3491,7 @@
       "role_categories": ["engineering", "production"],
       "role_text_examples": ["Mixed By", "Engineer", "Producer [Produced By]"],
       "albums": ["master-105802", "master-20135"],
-      "decade_activity": [1980],
+      "decade_activity": [1980, 2020],
       "connection_count": 2,
       "neighboring_contributor_ids": [10783, 122792],
       "evidence": [
@@ -3526,7 +3531,7 @@
         "master-66631",
         "master-67836"
       ],
-      "decade_activity": [1970, 1980, 1990, 2000, 2010],
+      "decade_activity": [1990, 2000, 2010],
       "connection_count": 9,
       "neighboring_contributor_ids": [
         16797, 19696, 23760, 23825, 105620, 266352, 270195, 293896, 340100
@@ -3588,7 +3593,7 @@
       "role_categories": ["production"],
       "role_text_examples": ["Producer"],
       "albums": ["master-1046042", "master-105802", "master-43063"],
-      "decade_activity": [1980, 2010],
+      "decade_activity": [1980, 2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [339644, 369955],
       "evidence": [
@@ -3624,7 +3629,7 @@
         "master-35706",
         "master-3719"
       ],
-      "decade_activity": [1960, 1980, 1990, 2010],
+      "decade_activity": [1980, 2000, 2020],
       "connection_count": 4,
       "neighboring_contributor_ids": [2714, 3857, 220565, 365794],
       "evidence": [
@@ -3681,7 +3686,7 @@
         "master-20135",
         "master-30303"
       ],
-      "decade_activity": [1970, 1980, 2010],
+      "decade_activity": [],
       "connection_count": 3,
       "neighboring_contributor_ids": [36647, 52230, 62920],
       "evidence": []
@@ -3692,7 +3697,7 @@
       "role_categories": ["production"],
       "role_text_examples": ["Electric Organ [Hammond Organ]", "Producer"],
       "albums": ["master-1046042", "master-69859"],
-      "decade_activity": [1970, 2010],
+      "decade_activity": [2010],
       "connection_count": 2,
       "neighboring_contributor_ids": [17827, 1293126],
       "evidence": [
@@ -3712,7 +3717,7 @@
       "role_categories": ["packaging_business", "strings"],
       "role_text_examples": ["Bass", "Bass, Other [Groitaz Beauty]"],
       "albums": ["master-66510", "master-99919"],
-      "decade_activity": [1970, 1990],
+      "decade_activity": [1990, 2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [5648, 36603],
       "evidence": [
@@ -3732,7 +3737,7 @@
       "role_categories": ["vocals"],
       "role_text_examples": ["Backing Vocals"],
       "albums": ["master-69156", "master-99919"],
-      "decade_activity": [1970, 1980],
+      "decade_activity": [1970, 1990],
       "connection_count": 2,
       "neighboring_contributor_ids": [17961, 36603],
       "evidence": [
@@ -3757,7 +3762,7 @@
         "master-20135",
         "master-25688"
       ],
-      "decade_activity": [1980, 2010],
+      "decade_activity": [1970, 1980],
       "connection_count": 3,
       "neighboring_contributor_ids": [23524, 241495, 266431],
       "evidence": [
@@ -3785,6 +3790,7 @@
       "role_categories": [
         "arrangement",
         "composition",
+        "engineering",
         "percussion_keys",
         "production",
         "strings",
@@ -3798,7 +3804,7 @@
         "Cello"
       ],
       "albums": ["master-105802", "master-25688"],
-      "decade_activity": [1980],
+      "decade_activity": [2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [22854, 395978],
       "evidence": [
@@ -3876,7 +3882,7 @@
         "master-87446",
         "master-91767"
       ],
-      "decade_activity": [1950, 1970, 1980, 2000, 2010],
+      "decade_activity": [1950, 1970, 1980, 1990, 2010, 2020],
       "connection_count": 10,
       "neighboring_contributor_ids": [
         2266, 13961, 25809, 3865, 14068, 17546, 30721, 63084, 97545, 3293196
@@ -3930,7 +3936,7 @@
       "role_categories": ["percussion_keys"],
       "role_text_examples": ["Drums"],
       "albums": ["master-133278", "master-1561"],
-      "decade_activity": [1970, 1990],
+      "decade_activity": [1990, 2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [10263, 19298],
       "evidence": [
@@ -3950,7 +3956,7 @@
       "role_categories": ["percussion_keys"],
       "role_text_examples": ["Keyboards"],
       "albums": ["master-133278", "master-67836"],
-      "decade_activity": [1980, 1990],
+      "decade_activity": [2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [8760, 19298],
       "evidence": [
@@ -3966,7 +3972,7 @@
       "role_categories": ["unknown"],
       "role_text_examples": [],
       "albums": ["master-1046042", "master-55576"],
-      "decade_activity": [1980, 2010],
+      "decade_activity": [],
       "connection_count": 2,
       "neighboring_contributor_ids": [2264, 25809],
       "evidence": []
@@ -3996,7 +4002,7 @@
         "master-87446",
         "master-91767"
       ],
-      "decade_activity": [1950, 1970, 1980, 2010],
+      "decade_activity": [1970, 1980, 1990, 2010],
       "connection_count": 10,
       "neighboring_contributor_ids": [
         10263, 11831, 14068, 37082, 49624, 60451, 92623, 101028, 192112, 270195
@@ -4046,7 +4052,7 @@
       "role_categories": ["brass_woodwind"],
       "role_text_examples": ["Trombone"],
       "albums": ["master-20387", "master-32708"],
-      "decade_activity": [1980, 2000],
+      "decade_activity": [2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [13961, 321128],
       "evidence": [
@@ -4112,7 +4118,7 @@
         "master-55576",
         "master-59538"
       ],
-      "decade_activity": [1950, 1970, 1980, 1990, 2010],
+      "decade_activity": [1990, 2000, 2010],
       "connection_count": 6,
       "neighboring_contributor_ids": [
         2013868, 23755, 24220, 77354, 253394, 284968
@@ -4166,7 +4172,7 @@
       "role_categories": ["brass_woodwind"],
       "role_text_examples": ["Harmonica"],
       "albums": ["master-1046042", "master-26436"],
-      "decade_activity": [1980, 2010],
+      "decade_activity": [1990, 2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [60480, 301244],
       "evidence": [
@@ -4200,7 +4206,7 @@
         "master-60721",
         "master-69859"
       ],
-      "decade_activity": [1950, 1960, 1970, 1980, 1990, 2010],
+      "decade_activity": [1990, 2010],
       "connection_count": 7,
       "neighboring_contributor_ids": [
         1003, 175395, 229494, 229781, 253431, 255405, 313820
@@ -4230,7 +4236,7 @@
       "role_categories": ["vocals"],
       "role_text_examples": ["Backing Vocals"],
       "albums": ["master-30577", "master-80514"],
-      "decade_activity": [1970, 1980],
+      "decade_activity": [1980, 2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [57103, 67331],
       "evidence": [
@@ -4255,7 +4261,7 @@
         "master-20135",
         "master-31755"
       ],
-      "decade_activity": [1980, 2010],
+      "decade_activity": [],
       "connection_count": 2,
       "neighboring_contributor_ids": [2768, 46063],
       "evidence": []
@@ -4266,7 +4272,7 @@
       "role_categories": ["unknown"],
       "role_text_examples": ["Performer [Nappy Dugout]"],
       "albums": ["master-1046042", "master-105802", "master-16158"],
-      "decade_activity": [1970, 1980, 2010],
+      "decade_activity": [2010],
       "connection_count": 2,
       "neighboring_contributor_ids": [3268, 301570],
       "evidence": [
@@ -4302,7 +4308,7 @@
       "role_categories": ["vocals"],
       "role_text_examples": ["Backing Vocals", "Backing Vocals, Vocals"],
       "albums": ["master-35759", "master-69859"],
-      "decade_activity": [1970, 1980],
+      "decade_activity": [2000, 2010],
       "connection_count": 2,
       "neighboring_contributor_ids": [11136, 17827],
       "evidence": [
@@ -4333,7 +4339,7 @@
         "master-72879",
         "master-89665"
       ],
-      "decade_activity": [1960, 1970, 1980, 1990, 2010],
+      "decade_activity": [1970, 1980, 1990, 2000],
       "connection_count": 8,
       "neighboring_contributor_ids": [
         149420, 54212, 237914, 254878, 255796, 256225, 257415, 262270
@@ -4363,7 +4369,7 @@
       "role_categories": ["percussion_keys"],
       "role_text_examples": ["Drums", "Drums [And Syndrums]"],
       "albums": ["master-55576", "master-99919"],
-      "decade_activity": [1970, 1980],
+      "decade_activity": [1980],
       "connection_count": 2,
       "neighboring_contributor_ids": [13932, 36603],
       "evidence": [
@@ -4383,7 +4389,7 @@
       "role_categories": ["strings"],
       "role_text_examples": ["Bass", "Bass Guitar"],
       "albums": ["master-32708", "master-55576"],
-      "decade_activity": [1980],
+      "decade_activity": [1980, 2010],
       "connection_count": 2,
       "neighboring_contributor_ids": [13932, 13961],
       "evidence": [
@@ -4427,7 +4433,7 @@
         "master-82337",
         "master-87446"
       ],
-      "decade_activity": [1950, 1960, 1970, 1980, 1990, 2010],
+      "decade_activity": [1980, 1990, 2020],
       "connection_count": 8,
       "neighboring_contributor_ids": [
         18956, 33534, 16797, 30721, 34858, 77354, 252118, 273594
@@ -4495,7 +4501,7 @@
         "master-68209",
         "master-82337"
       ],
-      "decade_activity": [1960, 1970, 1980, 1990, 2000, 2010],
+      "decade_activity": [1960, 1990, 2000],
       "connection_count": 10,
       "neighboring_contributor_ids": [
         10096, 19696, 37729, 44566, 54650, 137418, 262944, 265119, 266403,
@@ -4559,7 +4565,7 @@
         "master-20135",
         "master-31598"
       ],
-      "decade_activity": [1970, 1980, 2010],
+      "decade_activity": [1990],
       "connection_count": 3,
       "neighboring_contributor_ids": [10421, 16797, 36647],
       "evidence": [
@@ -4580,7 +4586,7 @@
         "master-58313",
         "master-92517"
       ],
-      "decade_activity": [1970, 1980, 2010],
+      "decade_activity": [1980, 1990, 2000],
       "connection_count": 4,
       "neighboring_contributor_ids": [54650, 938844, 56621, 124907],
       "evidence": [
@@ -4608,7 +4614,7 @@
       "role_categories": ["unknown"],
       "role_text_examples": [],
       "albums": ["master-105802", "master-151766"],
-      "decade_activity": [1980, 2000],
+      "decade_activity": [],
       "connection_count": 2,
       "neighboring_contributor_ids": [44944, 79096],
       "evidence": []
@@ -4623,7 +4629,7 @@
         "Vocals [Vocal]"
       ],
       "albums": ["master-105802", "master-4424"],
-      "decade_activity": [1980],
+      "decade_activity": [2000, 2020],
       "connection_count": 2,
       "neighboring_contributor_ids": [39600, 190949],
       "evidence": [
@@ -4647,7 +4653,7 @@
       "role_categories": ["unknown"],
       "role_text_examples": ["Chorus Master", "Musician"],
       "albums": ["master-1046042", "master-57940"],
-      "decade_activity": [1970, 2010],
+      "decade_activity": [1990, 2010],
       "connection_count": 2,
       "neighboring_contributor_ids": [149420, 350510],
       "evidence": [
@@ -4684,7 +4690,7 @@
         "master-79666",
         "master-87446"
       ],
-      "decade_activity": [1970, 1980, 1990, 2010],
+      "decade_activity": [1990, 2000, 2020],
       "connection_count": 8,
       "neighboring_contributor_ids": [
         30542, 53248, 90037, 200785, 211619, 253965, 253974, 339644
@@ -4730,7 +4736,7 @@
       "role_categories": ["rework"],
       "role_text_examples": ["DJ Mix"],
       "albums": ["master-1046042", "master-406634"],
-      "decade_activity": [1960, 2010],
+      "decade_activity": [2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [70828, 429108],
       "evidence": [
@@ -4749,7 +4755,7 @@
         "Synthesizer, Organ, Lead Vocals"
       ],
       "albums": ["master-19493", "master-66510"],
-      "decade_activity": [1970, 1990],
+      "decade_activity": [1990, 2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [3865, 5648],
       "evidence": [
@@ -4769,7 +4775,7 @@
       "role_categories": ["vocals"],
       "role_text_examples": ["Backing Vocals"],
       "albums": ["master-105802", "master-65826"],
-      "decade_activity": [1980],
+      "decade_activity": [1990],
       "connection_count": 2,
       "neighboring_contributor_ids": [117225, 317140],
       "evidence": [
@@ -4789,7 +4795,7 @@
       "role_categories": ["unknown"],
       "role_text_examples": [],
       "albums": ["master-1046042", "master-105802", "master-4300"],
-      "decade_activity": [1970, 1980, 2010],
+      "decade_activity": [],
       "connection_count": 2,
       "neighboring_contributor_ids": [2768, 60149],
       "evidence": []
@@ -4797,14 +4803,14 @@
     {
       "artist_id": 34858,
       "name": "Hubert Eaves III",
-      "role_categories": ["percussion_keys"],
+      "role_categories": ["engineering", "percussion_keys"],
       "role_text_examples": [
         "Synthesizer",
         "Electric Piano",
         "Keyboards, Synthesizer, Drum Programming"
       ],
       "albums": ["master-1046042", "master-51607", "master-82337"],
-      "decade_activity": [1960, 1980, 2010],
+      "decade_activity": [1970, 1980, 1990],
       "connection_count": 3,
       "neighboring_contributor_ids": [63771, 30542, 135926],
       "evidence": [
@@ -4896,7 +4902,7 @@
         "master-92896",
         "master-99919"
       ],
-      "decade_activity": [1950, 1970, 1980, 2010],
+      "decade_activity": [1970, 1980, 2000, 2010, 2020],
       "connection_count": 11,
       "neighboring_contributor_ids": [
         2266, 18956, 36603, 53248, 55029, 79751, 87519, 101883, 106415, 137418,
@@ -4959,7 +4965,7 @@
         "master-66510",
         "master-90844"
       ],
-      "decade_activity": [1980, 1990, 2000],
+      "decade_activity": [1990, 2000, 2010],
       "connection_count": 5,
       "neighboring_contributor_ids": [170807, 66824, 5648, 50997, 321128],
       "evidence": [
@@ -5023,7 +5029,7 @@
         "Keyboards"
       ],
       "albums": ["master-20135", "master-30577", "master-30926"],
-      "decade_activity": [1970, 1980],
+      "decade_activity": [1990, 2010],
       "connection_count": 3,
       "neighboring_contributor_ids": [10783, 3268, 17546],
       "evidence": [
@@ -5102,7 +5108,7 @@
         "master-92517",
         "master-99919"
       ],
-      "decade_activity": [1960, 1970, 1980, 1990, 2010],
+      "decade_activity": [1970, 1980, 1990, 2000],
       "connection_count": 14,
       "neighboring_contributor_ids": [
         200567, 938844, 21658, 22757, 30419, 35199, 35301, 62920, 63771, 120623,
@@ -5161,7 +5167,7 @@
         "Written-By"
       ],
       "albums": ["master-20135", "master-30303", "master-31598"],
-      "decade_activity": [1970, 1980],
+      "decade_activity": [1980, 1990],
       "connection_count": 3,
       "neighboring_contributor_ids": [10783, 20991, 30724],
       "evidence": [
@@ -5189,7 +5195,7 @@
       "role_categories": ["brass_woodwind", "vocals"],
       "role_text_examples": ["Backing Vocals", "Saxophone [Sax]"],
       "albums": ["master-72879", "master-82337"],
-      "decade_activity": [1960, 1970],
+      "decade_activity": [1970],
       "connection_count": 2,
       "neighboring_contributor_ids": [46481, 63771],
       "evidence": [
@@ -5209,7 +5215,7 @@
       "role_categories": ["vocals"],
       "role_text_examples": ["Backing Vocals"],
       "albums": ["master-122261", "master-57029"],
-      "decade_activity": [1960, 1970],
+      "decade_activity": [1980],
       "connection_count": 2,
       "neighboring_contributor_ids": [10584, 137418],
       "evidence": [
@@ -5229,7 +5235,7 @@
       "role_categories": ["vocals"],
       "role_text_examples": ["Backing Vocals"],
       "albums": ["master-113522", "master-91767"],
-      "decade_activity": [1970, 1980],
+      "decade_activity": [1990],
       "connection_count": 2,
       "neighboring_contributor_ids": [24221, 48512],
       "evidence": [
@@ -5259,7 +5265,7 @@
         "master-49965",
         "master-65826"
       ],
-      "decade_activity": [1980, 1990, 2000, 2010],
+      "decade_activity": [1990, 2000, 2010],
       "connection_count": 3,
       "neighboring_contributor_ids": [2013868, 50077, 44944],
       "evidence": [
@@ -5291,7 +5297,7 @@
       "role_categories": ["strings"],
       "role_text_examples": ["Guitar"],
       "albums": ["master-106274", "master-151766"],
-      "decade_activity": [2000],
+      "decade_activity": [1990, 2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [30552, 44944],
       "evidence": [
@@ -5314,7 +5320,7 @@
         "Guitar"
       ],
       "albums": ["master-104166", "master-19493"],
-      "decade_activity": [1970],
+      "decade_activity": [1980],
       "connection_count": 2,
       "neighboring_contributor_ids": [3865, 266352],
       "evidence": [
@@ -5334,7 +5340,7 @@
       "role_categories": ["vocals"],
       "role_text_examples": ["Backing Vocals", "Guest, Vocals"],
       "albums": ["master-113522", "master-74227"],
-      "decade_activity": [1970, 1980],
+      "decade_activity": [1970, 2010],
       "connection_count": 2,
       "neighboring_contributor_ids": [48512, 53248],
       "evidence": [
@@ -5354,7 +5360,7 @@
       "role_categories": ["engineering", "production"],
       "role_text_examples": ["Co-producer", "Mixed By", "Producer"],
       "albums": ["master-1046042", "master-105802", "master-12236"],
-      "decade_activity": [1980, 2000, 2010],
+      "decade_activity": [2010],
       "connection_count": 2,
       "neighboring_contributor_ids": [330380, 449712],
       "evidence": [
@@ -5401,7 +5407,7 @@
         "master-4424",
         "master-55576"
       ],
-      "decade_activity": [1960, 1970, 1980, 1990, 2000, 2010],
+      "decade_activity": [1990, 2000, 2010, 2020],
       "connection_count": 10,
       "neighboring_contributor_ids": [
         161091, 4854, 82294, 125246, 3140, 18844, 31844, 76605, 270964, 287868
@@ -5461,7 +5467,7 @@
         "Written-By"
       ],
       "albums": ["master-105802", "master-24047"],
-      "decade_activity": [1960, 1980],
+      "decade_activity": [1980, 1990],
       "connection_count": 2,
       "neighboring_contributor_ids": [82730, 428789],
       "evidence": [
@@ -5505,7 +5511,7 @@
         "master-20135",
         "master-35276"
       ],
-      "decade_activity": [1960, 1980, 2010],
+      "decade_activity": [2000],
       "connection_count": 3,
       "neighboring_contributor_ids": [10664, 253021, 270964],
       "evidence": [
@@ -5525,7 +5531,7 @@
       "role_categories": ["unknown"],
       "role_text_examples": ["Guest [Musical Guest:]"],
       "albums": ["master-1046042", "master-105802", "master-38175"],
-      "decade_activity": [1970, 1980, 2010],
+      "decade_activity": [2000],
       "connection_count": 1,
       "neighboring_contributor_ids": [18844],
       "evidence": [
@@ -5559,7 +5565,7 @@
         "master-37401",
         "master-70584"
       ],
-      "decade_activity": [1970, 1980, 2010],
+      "decade_activity": [2000, 2010],
       "connection_count": 5,
       "neighboring_contributor_ids": [515349, 110253, 219213, 253548, 261760],
       "evidence": [
@@ -5611,7 +5617,7 @@
       "role_categories": ["vocals"],
       "role_text_examples": ["Backing Vocals", "Vocals"],
       "albums": ["master-26725", "master-52671"],
-      "decade_activity": [1970, 1980],
+      "decade_activity": [1980, 2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [2266, 219986],
       "evidence": [
@@ -5631,7 +5637,7 @@
       "role_categories": ["vocals"],
       "role_text_examples": ["Backing Vocals"],
       "albums": ["master-20387", "master-3878"],
-      "decade_activity": [1970, 2000],
+      "decade_activity": [2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [59792, 321128],
       "evidence": [
@@ -5651,7 +5657,7 @@
       "role_categories": ["unknown"],
       "role_text_examples": [],
       "albums": ["master-105802", "master-57279"],
-      "decade_activity": [1980, 1990],
+      "decade_activity": [],
       "connection_count": 2,
       "neighboring_contributor_ids": [42627, 122792],
       "evidence": []
@@ -5662,7 +5668,7 @@
       "role_categories": ["engineering", "production"],
       "role_text_examples": ["Mixed By", "Producer"],
       "albums": ["master-20135", "master-26436"],
-      "decade_activity": [1980],
+      "decade_activity": [1980, 2020],
       "connection_count": 2,
       "neighboring_contributor_ids": [60480, 74166],
       "evidence": [
@@ -5704,7 +5710,7 @@
         "master-68399",
         "master-91767"
       ],
-      "decade_activity": [1950, 1970, 1980, 2000, 2010],
+      "decade_activity": [1970, 1980, 2000],
       "connection_count": 7,
       "neighboring_contributor_ids": [
         177516, 97545, 10079, 192112, 253394, 272435, 297977
@@ -5768,7 +5774,7 @@
         "master-64290",
         "master-73013"
       ],
-      "decade_activity": [1980, 2010],
+      "decade_activity": [2000, 2010],
       "connection_count": 3,
       "neighboring_contributor_ids": [2013868, 59795, 6520],
       "evidence": [
@@ -5796,7 +5802,7 @@
       "role_categories": ["vocals"],
       "role_text_examples": ["Vocals"],
       "albums": ["master-1046042", "master-105802", "master-57279"],
-      "decade_activity": [1980, 1990, 2010],
+      "decade_activity": [1990],
       "connection_count": 2,
       "neighboring_contributor_ids": [3268, 41441],
       "evidence": [
@@ -5815,7 +5821,7 @@
         "Backing Vocals [Background Vocals]"
       ],
       "albums": ["master-108242", "master-67836"],
-      "decade_activity": [1970, 1980],
+      "decade_activity": [1980],
       "connection_count": 2,
       "neighboring_contributor_ids": [8760, 268583],
       "evidence": [
@@ -5839,7 +5845,7 @@
         "Trumpet, Organ"
       ],
       "albums": ["master-105802", "master-106274"],
-      "decade_activity": [1980, 2000],
+      "decade_activity": [2000, 2010],
       "connection_count": 2,
       "neighboring_contributor_ids": [30552, 62920],
       "evidence": [
@@ -5883,7 +5889,7 @@
         "master-5460",
         "master-74227"
       ],
-      "decade_activity": [1950, 1980, 2000, 2010],
+      "decade_activity": [1990, 2000, 2010],
       "connection_count": 5,
       "neighboring_contributor_ids": [31752, 37565, 37729, 211643, 3293196],
       "evidence": [
@@ -5931,7 +5937,7 @@
         "Producer"
       ],
       "albums": ["master-105802", "master-31755", "master-67405"],
-      "decade_activity": [1970, 1980],
+      "decade_activity": [1990, 2000],
       "connection_count": 3,
       "neighboring_contributor_ids": [317140, 28972, 249829],
       "evidence": [
@@ -5999,7 +6005,7 @@
         "master-82337",
         "master-91767"
       ],
-      "decade_activity": [1960, 1970, 1980, 2010],
+      "decade_activity": [1970, 1980, 1990, 2000],
       "connection_count": 8,
       "neighboring_contributor_ids": [
         10263, 12208, 36862, 92623, 170807, 194118, 204600, 262270
@@ -6053,7 +6059,7 @@
       "role_categories": ["production"],
       "role_text_examples": ["Producer"],
       "albums": ["master-1046042", "master-105802", "master-38722"],
-      "decade_activity": [1970, 1980, 2010],
+      "decade_activity": [1980],
       "connection_count": 2,
       "neighboring_contributor_ids": [50702, 261837],
       "evidence": [
@@ -6084,7 +6090,7 @@
         "Producer [Album Produced By]"
       ],
       "albums": ["master-105802", "master-34081"],
-      "decade_activity": [1950, 1980],
+      "decade_activity": [1980],
       "connection_count": 2,
       "neighboring_contributor_ids": [251689, 279174],
       "evidence": [
@@ -6112,7 +6118,7 @@
       "role_categories": ["composition"],
       "role_text_examples": ["Written-By"],
       "albums": ["master-1046042", "master-105802", "master-49058"],
-      "decade_activity": [1960, 1980, 2010],
+      "decade_activity": [1970],
       "connection_count": 2,
       "neighboring_contributor_ids": [250892, 533034],
       "evidence": [
@@ -6128,7 +6134,7 @@
       "role_categories": ["arrangement", "production"],
       "role_text_examples": ["Arranged By", "Producer"],
       "albums": ["master-1046042", "master-105802", "master-37145"],
-      "decade_activity": [1980, 2010],
+      "decade_activity": [1970],
       "connection_count": 2,
       "neighboring_contributor_ids": [62920, 237914],
       "evidence": [
@@ -6246,7 +6252,7 @@
       "role_categories": ["composition"],
       "role_text_examples": ["Written-By"],
       "albums": ["master-1046042", "master-49965", "master-65826"],
-      "decade_activity": [1980, 1990, 2010],
+      "decade_activity": [1990],
       "connection_count": 3,
       "neighboring_contributor_ids": [37565, 110862, 117225],
       "evidence": [
@@ -6267,7 +6273,7 @@
         "master-20135",
         "master-35006"
       ],
-      "decade_activity": [1970, 1980, 2010],
+      "decade_activity": [1980],
       "connection_count": 3,
       "neighboring_contributor_ids": [76605, 221444, 366507],
       "evidence": [
@@ -6293,7 +6299,7 @@
         "master-3878",
         "master-41155"
       ],
-      "decade_activity": [1970, 1980],
+      "decade_activity": [1980, 1990, 2000],
       "connection_count": 4,
       "neighboring_contributor_ids": [161091, 47333, 59770, 59792],
       "evidence": [
@@ -6332,7 +6338,7 @@
         "master-20148",
         "master-90844"
       ],
-      "decade_activity": [1980, 1990, 2000, 2010],
+      "decade_activity": [1990, 2000, 2010],
       "connection_count": 4,
       "neighboring_contributor_ids": [10783, 35125, 35646, 170365],
       "evidence": [
@@ -6373,7 +6379,7 @@
         "master-8883",
         "master-89665"
       ],
-      "decade_activity": [1980, 1990, 2010],
+      "decade_activity": [1990, 2000, 2010],
       "connection_count": 7,
       "neighboring_contributor_ids": [
         54212, 112806, 112851, 132290, 157838, 309111, 321127
@@ -6432,7 +6438,7 @@
         "master-30303",
         "master-68469"
       ],
-      "decade_activity": [1960, 1970, 1980, 2010],
+      "decade_activity": [1970, 1980, 2000, 2020],
       "connection_count": 6,
       "neighboring_contributor_ids": [
         482142, 20991, 82730, 85929, 196766, 268583
@@ -6490,7 +6496,7 @@
         "master-74227",
         "master-79666"
       ],
-      "decade_activity": [1970, 1980, 1990, 2000, 2010],
+      "decade_activity": [1970, 1990, 2010, 2020],
       "connection_count": 11,
       "neighboring_contributor_ids": [
         33534, 59792, 10643, 13961, 35301, 38258, 89675, 183231, 211643, 253203,
@@ -6533,7 +6539,7 @@
       "role_categories": ["vocals"],
       "role_text_examples": ["Backing Vocals"],
       "albums": ["master-16545", "master-89665"],
-      "decade_activity": [1980, 1990],
+      "decade_activity": [1990, 2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [30344, 51039],
       "evidence": [
@@ -6558,7 +6564,7 @@
         "master-58313",
         "master-92517"
       ],
-      "decade_activity": [1970, 1980, 2000, 2010],
+      "decade_activity": [1990],
       "connection_count": 3,
       "neighboring_contributor_ids": [978936, 31213, 30552],
       "evidence": [
@@ -6602,7 +6608,7 @@
       "role_categories": ["arrangement", "production"],
       "role_text_examples": ["Producer", "Arranged By"],
       "albums": ["master-1046042", "master-105802", "master-58313"],
-      "decade_activity": [1980, 2010],
+      "decade_activity": [1980],
       "connection_count": 2,
       "neighboring_contributor_ids": [31213, 60621],
       "evidence": [
@@ -6626,7 +6632,7 @@
       "role_categories": ["unknown"],
       "role_text_examples": ["Writer"],
       "albums": ["master-1046042", "master-105802", "master-45432"],
-      "decade_activity": [1970, 1980, 2010],
+      "decade_activity": [2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [12208, 274429],
       "evidence": [
@@ -6670,7 +6676,7 @@
         "master-80514",
         "master-9382"
       ],
-      "decade_activity": [1970, 1980, 2000, 2010],
+      "decade_activity": [1970, 1980, 1990, 2000, 2010, 2020],
       "connection_count": 15,
       "neighboring_contributor_ids": [
         138556, 149420, 243955, 3268, 13735, 15687, 28630, 51849, 59792, 62920,
@@ -6725,7 +6731,7 @@
       "role_categories": ["production"],
       "role_text_examples": ["Producer"],
       "albums": ["master-1046042", "master-105802", "master-47868"],
-      "decade_activity": [1960, 1980, 2010],
+      "decade_activity": [1980],
       "connection_count": 2,
       "neighboring_contributor_ids": [253548, 399028],
       "evidence": [
@@ -6764,7 +6770,7 @@
         "master-81575",
         "master-92896"
       ],
-      "decade_activity": [1970, 1980, 1990, 2010],
+      "decade_activity": [1970, 1980, 2000, 2010],
       "connection_count": 7,
       "neighboring_contributor_ids": [
         249597, 60454, 79751, 90595, 129663, 201472, 335434
@@ -6833,7 +6839,7 @@
         "master-57940",
         "master-750386"
       ],
-      "decade_activity": [1970, 1980, 2010],
+      "decade_activity": [1980, 1990, 2020],
       "connection_count": 7,
       "neighboring_contributor_ids": [
         149420, 50702, 208220, 253111, 339644, 3237636, 5262065
@@ -6905,7 +6911,7 @@
         "master-74227",
         "master-79666"
       ],
-      "decade_activity": [1970, 1980, 1990, 2000, 2010],
+      "decade_activity": [1990, 2000, 2010, 2020],
       "connection_count": 10,
       "neighboring_contributor_ids": [
         53248, 17827, 41266, 50702, 57103, 109822, 138556, 251634, 257415,
@@ -6954,7 +6960,7 @@
         "Organ"
       ],
       "albums": ["master-1046042", "master-35759", "master-73013"],
-      "decade_activity": [1980, 2010],
+      "decade_activity": [2000],
       "connection_count": 3,
       "neighboring_contributor_ids": [42610, 11136, 18552],
       "evidence": [
@@ -6999,7 +7005,7 @@
         "Bass [10 String], Mandola [Electric], Software Instrument [Kyma]"
       ],
       "albums": ["master-105802", "master-4300"],
-      "decade_activity": [1970, 1980],
+      "decade_activity": [1990],
       "connection_count": 2,
       "neighboring_contributor_ids": [34278, 344842],
       "evidence": [
@@ -7054,7 +7060,7 @@
         "Piano, Synthesizer"
       ],
       "albums": ["master-30926", "master-91767"],
-      "decade_activity": [1980],
+      "decade_activity": [1970, 1980],
       "connection_count": 2,
       "neighboring_contributor_ids": [17546, 24221],
       "evidence": [
@@ -7086,7 +7092,7 @@
         "Vocals [Chant]"
       ],
       "albums": ["master-105802", "master-92896"],
-      "decade_activity": [1970, 1980],
+      "decade_activity": [1970, 2010],
       "connection_count": 2,
       "neighboring_contributor_ids": [59249, 567737],
       "evidence": [
@@ -7127,7 +7133,7 @@
         "master-20135",
         "master-26436"
       ],
-      "decade_activity": [1980, 2010],
+      "decade_activity": [],
       "connection_count": 3,
       "neighboring_contributor_ids": [25884, 41642, 60621],
       "evidence": []
@@ -7147,7 +7153,7 @@
         "master-406634",
         "master-58313"
       ],
-      "decade_activity": [1960, 1980],
+      "decade_activity": [1970, 1980],
       "connection_count": 4,
       "neighboring_contributor_ids": [141624, 56621, 60480, 70828],
       "evidence": [
@@ -7175,7 +7181,7 @@
       "role_categories": ["production"],
       "role_text_examples": ["Musician [Musicians]", "Producer"],
       "albums": ["master-1046042", "master-32208"],
-      "decade_activity": [1950, 2010],
+      "decade_activity": [1990, 2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [10578, 429108],
       "evidence": [
@@ -7214,7 +7220,7 @@
         "master-81172",
         "master-99919"
       ],
-      "decade_activity": [1960, 1970, 1980, 2000],
+      "decade_activity": [1980, 1990, 2000, 2010],
       "connection_count": 12,
       "neighboring_contributor_ids": [
         161091, 13735, 20991, 36603, 44566, 48424, 57103, 70829, 124497, 145072,
@@ -7288,7 +7294,7 @@
         "master-6495",
         "master-66631"
       ],
-      "decade_activity": [1950, 1970, 1980, 2010],
+      "decade_activity": [1980, 1990, 2010],
       "connection_count": 5,
       "neighboring_contributor_ids": [161091, 15900, 13247, 23755, 135478],
       "evidence": [
@@ -7364,7 +7370,7 @@
         "master-82337",
         "master-99919"
       ],
-      "decade_activity": [1960, 1970, 1980, 2000, 2010],
+      "decade_activity": [1960, 1970, 1980],
       "connection_count": 8,
       "neighboring_contributor_ids": [
         34858, 9746, 10096, 36603, 36862, 90492, 211633, 244728
@@ -7430,7 +7436,7 @@
         "Keyboards"
       ],
       "albums": ["master-1046042", "master-750386"],
-      "decade_activity": [2010],
+      "decade_activity": [2000, 2010],
       "connection_count": 2,
       "neighboring_contributor_ids": [429108, 1124645],
       "evidence": [
@@ -7470,7 +7476,7 @@
       "role_categories": ["unknown"],
       "role_text_examples": [],
       "albums": ["master-1046042", "master-105802", "master-57970"],
-      "decade_activity": [1980, 1990, 2010],
+      "decade_activity": [],
       "connection_count": 2,
       "neighboring_contributor_ids": [11449, 174616],
       "evidence": []
@@ -7504,7 +7510,7 @@
         "master-81575",
         "master-90844"
       ],
-      "decade_activity": [1980, 1990, 2000, 2010],
+      "decade_activity": [2000, 2010],
       "connection_count": 6,
       "neighboring_contributor_ids": [
         35646, 35125, 69433, 119840, 321128, 472046
@@ -7558,7 +7564,7 @@
       "role_categories": ["unknown"],
       "role_text_examples": ["Performer [Original]"],
       "albums": ["master-1046042", "master-105802", "master-4424"],
-      "decade_activity": [1980, 2010],
+      "decade_activity": [2000],
       "connection_count": 1,
       "neighboring_contributor_ids": [190949],
       "evidence": [
@@ -7580,7 +7586,7 @@
         "master-69156",
         "master-80514"
       ],
-      "decade_activity": [1970, 1980, 2010],
+      "decade_activity": [1980],
       "connection_count": 4,
       "neighboring_contributor_ids": [28630, 80387, 193582, 255368],
       "evidence": [
@@ -7596,7 +7602,7 @@
       "role_categories": ["composition", "production"],
       "role_text_examples": ["Written-By", "Producer"],
       "albums": ["master-20135", "master-302"],
-      "decade_activity": [1970, 1980],
+      "decade_activity": [2010],
       "connection_count": 2,
       "neighboring_contributor_ids": [10783, 144998],
       "evidence": [
@@ -7639,7 +7645,7 @@
         "master-47744",
         "master-72879"
       ],
-      "decade_activity": [1970, 1980, 2010],
+      "decade_activity": [1990, 2000],
       "connection_count": 6,
       "neighboring_contributor_ids": [
         177374, 4800, 136179, 142837, 204600, 280706
@@ -7669,7 +7675,7 @@
       "role_categories": ["arrangement", "vocals"],
       "role_text_examples": ["Backing Vocals, Arranged By [Vocals]", "Vocals"],
       "albums": ["master-553", "master-90844"],
-      "decade_activity": [1980, 2000],
+      "decade_activity": [1990, 2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [66824, 101028],
       "evidence": [
@@ -7689,7 +7695,7 @@
       "role_categories": ["brass_woodwind"],
       "role_text_examples": ["Saxophone"],
       "albums": ["master-104166", "master-60721"],
-      "decade_activity": [1960, 1970],
+      "decade_activity": [1970, 2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [124497, 266352],
       "evidence": [
@@ -7733,7 +7739,7 @@
         "master-81172",
         "master-92896"
       ],
-      "decade_activity": [1970, 1980, 2010],
+      "decade_activity": [1980, 1990, 2000, 2010],
       "connection_count": 10,
       "neighboring_contributor_ids": [
         11136, 17827, 90233, 90595, 106415, 252993, 253490, 270195, 277531,
@@ -7780,7 +7786,7 @@
         "Producer"
       ],
       "albums": ["master-1046042", "master-105802", "master-406634"],
-      "decade_activity": [1960, 1980, 2010],
+      "decade_activity": [1980, 2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [33591, 60621],
       "evidence": [
@@ -7810,7 +7816,7 @@
         "master-44278",
         "master-57029"
       ],
-      "decade_activity": [1960, 1970, 1980, 2010],
+      "decade_activity": [1990, 2000],
       "connection_count": 4,
       "neighboring_contributor_ids": [62920, 252395, 311936, 328530],
       "evidence": [
@@ -7833,7 +7839,7 @@
         "Vocals, Guitar"
       ],
       "albums": ["master-106396", "master-44278"],
-      "decade_activity": [1970, 1980],
+      "decade_activity": [1990, 2010],
       "connection_count": 2,
       "neighboring_contributor_ids": [11879, 13735],
       "evidence": [
@@ -7853,7 +7859,7 @@
       "role_categories": ["strings", "vocals"],
       "role_text_examples": ["Guitar, Bass", "Vocals"],
       "albums": ["master-66510", "master-87446"],
-      "decade_activity": [1970, 1990],
+      "decade_activity": [2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [5648, 18956],
       "evidence": [
@@ -7873,7 +7879,7 @@
       "role_categories": ["arrangement", "engineering", "production"],
       "role_text_examples": ["Mixed By, Arranged By [Horns]", "Producer"],
       "albums": ["master-20135", "master-26436"],
-      "decade_activity": [1980],
+      "decade_activity": [2020],
       "connection_count": 2,
       "neighboring_contributor_ids": [16661, 41642],
       "evidence": [
@@ -7893,7 +7899,7 @@
       "role_categories": ["composition", "engineering"],
       "role_text_examples": ["Written-By", "Engineer [Recording Engineer]"],
       "albums": ["master-20135", "master-26647"],
-      "decade_activity": [1980, 2000],
+      "decade_activity": [1990],
       "connection_count": 2,
       "neighboring_contributor_ids": [1289, 18684],
       "evidence": [
@@ -7923,7 +7929,7 @@
         "master-47744",
         "master-67405"
       ],
-      "decade_activity": [1970, 2010],
+      "decade_activity": [1990, 2010],
       "connection_count": 4,
       "neighboring_contributor_ids": [429108, 90233, 246650, 249829],
       "evidence": [
@@ -7955,6 +7961,7 @@
       "role_categories": [
         "arrangement",
         "composition",
+        "engineering",
         "packaging_business",
         "percussion_keys",
         "strings"
@@ -7967,7 +7974,7 @@
         "Keyboards"
       ],
       "albums": ["master-1046042", "master-122261"],
-      "decade_activity": [1960, 2010],
+      "decade_activity": [2010, 2020],
       "connection_count": 2,
       "neighboring_contributor_ids": [112836, 1763131],
       "evidence": [
@@ -8024,7 +8031,7 @@
         "master-35006",
         "master-68399"
       ],
-      "decade_activity": [1970, 1980],
+      "decade_activity": [1980, 1990],
       "connection_count": 4,
       "neighboring_contributor_ids": [11012, 39600, 50263, 266352],
       "evidence": [
@@ -8057,7 +8064,7 @@
         "Lead Vocals"
       ],
       "albums": ["master-1046042", "master-51607"],
-      "decade_activity": [1980, 2010],
+      "decade_activity": [2000, 2020],
       "connection_count": 2,
       "neighboring_contributor_ids": [25809, 30542],
       "evidence": [
@@ -8097,7 +8104,7 @@
         "master-47744",
         "master-87446"
       ],
-      "decade_activity": [1970, 1980, 2000],
+      "decade_activity": [1990, 2000, 2020],
       "connection_count": 5,
       "neighboring_contributor_ids": [161091, 7987, 18956, 31752, 90233],
       "evidence": [
@@ -8137,7 +8144,7 @@
       "role_categories": ["production", "rework"],
       "role_text_examples": ["Producer", "Remix, Producer [Additional]"],
       "albums": ["master-1046042", "master-5863"],
-      "decade_activity": [1970, 2010],
+      "decade_activity": [1990, 2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [2494, 330380],
       "evidence": [
@@ -8161,7 +8168,7 @@
       "role_categories": ["arrangement", "percussion_keys"],
       "role_text_examples": ["Arranged By, Keyboards [All]", "Keyboards"],
       "albums": ["master-40048", "master-92896"],
-      "decade_activity": [1970, 1980],
+      "decade_activity": [1980],
       "connection_count": 2,
       "neighboring_contributor_ids": [35301, 59249],
       "evidence": [
@@ -8190,7 +8197,7 @@
         "master-57029",
         "master-80514"
       ],
-      "decade_activity": [1970, 1980],
+      "decade_activity": [1980, 1990],
       "connection_count": 4,
       "neighboring_contributor_ids": [161091, 67331, 106474, 137418],
       "evidence": [
@@ -8222,7 +8229,7 @@
         "Producer"
       ],
       "albums": ["master-1046042", "master-105802", "master-5863"],
-      "decade_activity": [1970, 1980, 2010],
+      "decade_activity": [1990, 2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [2494, 164557],
       "evidence": [
@@ -8246,7 +8253,7 @@
       "role_categories": ["percussion_keys"],
       "role_text_examples": ["Percussion"],
       "albums": ["master-30577", "master-60680"],
-      "decade_activity": [1970],
+      "decade_activity": [1970, 1980],
       "connection_count": 2,
       "neighboring_contributor_ids": [57103, 152685],
       "evidence": [
@@ -8288,7 +8295,7 @@
         "master-51607",
         "master-8883"
       ],
-      "decade_activity": [1960, 1970, 1980, 2010],
+      "decade_activity": [1990, 2010],
       "connection_count": 6,
       "neighboring_contributor_ids": [
         39600, 251634, 252118, 252996, 304095, 447673
@@ -8347,7 +8354,7 @@
         "master-20135",
         "master-24047"
       ],
-      "decade_activity": [1960, 1980, 2010],
+      "decade_activity": [2010],
       "connection_count": 3,
       "neighboring_contributor_ids": [39765, 52230, 1999233],
       "evidence": [
@@ -8368,7 +8375,7 @@
         "master-20135",
         "master-20137"
       ],
-      "decade_activity": [1980, 2010],
+      "decade_activity": [],
       "connection_count": 1,
       "neighboring_contributor_ids": [2768],
       "evidence": []
@@ -8379,7 +8386,7 @@
       "role_categories": ["strings"],
       "role_text_examples": ["Electric Guitar", "Guitar"],
       "albums": ["master-13280", "master-52671"],
-      "decade_activity": [1980],
+      "decade_activity": [2000, 2010],
       "connection_count": 2,
       "neighboring_contributor_ids": [2266, 10933],
       "evidence": [
@@ -8413,7 +8420,7 @@
         "Backing Vocals, Bass, Orchestrated By [Orchestrations], Programmed By [Programmimg]"
       ],
       "albums": ["master-1046042", "master-38712"],
-      "decade_activity": [1970, 2010],
+      "decade_activity": [1980, 2010],
       "connection_count": 2,
       "neighboring_contributor_ids": [285408, 339644],
       "evidence": [
@@ -8489,7 +8496,7 @@
         "master-89665",
         "master-9382"
       ],
-      "decade_activity": [1970, 1980, 1990, 2010],
+      "decade_activity": [1970, 1980, 1990, 2000, 2010],
       "connection_count": 10,
       "neighboring_contributor_ids": [
         2656, 11136, 52230, 57103, 112851, 125660, 253111, 258118, 311577,
@@ -8569,7 +8576,7 @@
         "Engineer, Mixed By"
       ],
       "albums": ["master-105802", "master-49058", "master-74227"],
-      "decade_activity": [1960, 1980],
+      "decade_activity": [1970, 1990, 2000],
       "connection_count": 3,
       "neighboring_contributor_ids": [161091, 53248, 533034],
       "evidence": [
@@ -8594,13 +8601,13 @@
     {
       "artist_id": 90037,
       "name": "Pharrell Williams",
-      "role_categories": ["percussion_keys", "vocals"],
+      "role_categories": ["engineering", "percussion_keys", "vocals"],
       "role_text_examples": [
         "Keyboards, Programmed By [Additional Programming]",
         "Vocals [Additional]"
       ],
       "albums": ["master-1046042", "master-79666"],
-      "decade_activity": [1990, 2010],
+      "decade_activity": [2000, 2010],
       "connection_count": 2,
       "neighboring_contributor_ids": [33534, 2013868],
       "evidence": [
@@ -8623,7 +8630,7 @@
         "Vocals, Backing Vocals [Background Vocal], Guitar"
       ],
       "albums": ["master-35759", "master-37615"],
-      "decade_activity": [1970, 1980],
+      "decade_activity": [1980, 2020],
       "connection_count": 2,
       "neighboring_contributor_ids": [11136, 138556],
       "evidence": [
@@ -8674,7 +8681,7 @@
         "master-79666",
         "master-81575"
       ],
-      "decade_activity": [1970, 1980, 1990, 2010],
+      "decade_activity": [1970, 1980, 1990, 2020],
       "connection_count": 14,
       "neighboring_contributor_ids": [
         200567, 3865, 10643, 11136, 69722, 74213, 79096, 87519, 136179, 138556,
@@ -8729,7 +8736,7 @@
       "role_categories": ["percussion_keys"],
       "role_text_examples": ["Percussion"],
       "albums": ["master-105802", "master-82337", "master-8883"],
-      "decade_activity": [1960, 1980],
+      "decade_activity": [1980, 1990],
       "connection_count": 3,
       "neighboring_contributor_ids": [161091, 15885, 63771],
       "evidence": [
@@ -8756,7 +8763,7 @@
         "Electric Piano [Fender Rhodes]"
       ],
       "albums": ["master-45720", "master-92896"],
-      "decade_activity": [1970, 1980],
+      "decade_activity": [2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [59249, 69722],
       "evidence": [
@@ -8780,7 +8787,7 @@
         "Producer [Surround Sound Program]"
       ],
       "albums": ["master-105802", "master-35706", "master-76678"],
-      "decade_activity": [1960, 1970, 1980],
+      "decade_activity": [2000, 2020],
       "connection_count": 3,
       "neighboring_contributor_ids": [122792, 110252, 229621],
       "evidence": [
@@ -8828,7 +8835,7 @@
         "master-82337",
         "master-91767"
       ],
-      "decade_activity": [1950, 1960, 1970, 1980, 2010],
+      "decade_activity": [1980, 1990, 2010],
       "connection_count": 9,
       "neighboring_contributor_ids": [
         280706, 10514, 17827, 24221, 46481, 153219, 244728, 252993, 253203
@@ -8918,7 +8925,7 @@
         "master-59538",
         "master-60680"
       ],
-      "decade_activity": [1950, 1970, 1980, 2010],
+      "decade_activity": [1970, 1980, 2010],
       "connection_count": 7,
       "neighboring_contributor_ids": [
         10578, 42058, 10514, 10620, 23755, 298002, 304307
@@ -8956,7 +8963,7 @@
       "role_categories": ["brass_woodwind"],
       "role_text_examples": ["Tenor Saxophone", "Saxophone"],
       "albums": ["master-1046042", "master-27765"],
-      "decade_activity": [1970, 2010],
+      "decade_activity": [1970, 1980],
       "connection_count": 2,
       "neighboring_contributor_ids": [232157, 670257],
       "evidence": [
@@ -9000,7 +9007,7 @@
         "master-91767",
         "master-92896"
       ],
-      "decade_activity": [1970, 1980, 1990, 2000, 2010],
+      "decade_activity": [1980, 1990, 2000],
       "connection_count": 10,
       "neighboring_contributor_ids": [
         13961, 17827, 243955, 24221, 69433, 129663, 162614, 208234, 253965,
@@ -9073,7 +9080,7 @@
         "master-403952",
         "master-67836"
       ],
-      "decade_activity": [1980, 2000, 2010],
+      "decade_activity": [2010, 2020],
       "connection_count": 5,
       "neighboring_contributor_ids": [2013868, 8760, 35301, 321128, 2445772],
       "evidence": [
@@ -9130,7 +9137,7 @@
         "master-20135",
         "master-23684"
       ],
-      "decade_activity": [1980, 2010],
+      "decade_activity": [],
       "connection_count": 3,
       "neighboring_contributor_ids": [18836, 170807, 175760],
       "evidence": []
@@ -9141,7 +9148,7 @@
       "role_categories": ["strings"],
       "role_text_examples": ["Acoustic Guitar", "Guitar"],
       "albums": ["master-133278", "master-49965"],
-      "decade_activity": [1990],
+      "decade_activity": [1990, 2010],
       "connection_count": 2,
       "neighboring_contributor_ids": [19298, 110862],
       "evidence": [
@@ -9173,7 +9180,7 @@
         "master-52671",
         "master-68399"
       ],
-      "decade_activity": [1970, 1980],
+      "decade_activity": [1980, 1990, 2000],
       "connection_count": 6,
       "neighboring_contributor_ids": [161091, 2266, 7699, 11012, 35301, 69722],
       "evidence": [
@@ -9234,7 +9241,7 @@
         "master-79666",
         "master-92896"
       ],
-      "decade_activity": [1950, 1970, 1980, 1990, 2010],
+      "decade_activity": [1970, 1980, 2000, 2010],
       "connection_count": 9,
       "neighboring_contributor_ids": [
         3865, 80387, 201472, 211619, 229494, 243955, 253433, 258118, 470007
@@ -9308,7 +9315,7 @@
       "role_categories": ["percussion_keys"],
       "role_text_examples": ["Keyboards", "Piano"],
       "albums": ["master-108242", "master-68209"],
-      "decade_activity": [1970],
+      "decade_activity": [2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [262944, 268583],
       "evidence": [
@@ -9328,7 +9335,7 @@
       "role_categories": ["composition", "production"],
       "role_text_examples": ["Producer", "Songwriter"],
       "albums": ["master-105802", "master-59501"],
-      "decade_activity": [1980],
+      "decade_activity": [2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [204275, 255680],
       "evidence": [
@@ -9352,7 +9359,7 @@
       "role_categories": ["percussion_keys"],
       "role_text_examples": ["Keyboards", "Organ"],
       "albums": ["master-23069", "master-3878"],
-      "decade_activity": [1970],
+      "decade_activity": [1990, 2010],
       "connection_count": 2,
       "neighboring_contributor_ids": [59792, 254259],
       "evidence": [
@@ -9372,7 +9379,7 @@
       "role_categories": ["arrangement", "production"],
       "role_text_examples": ["Producer", "Producer, Arranged By"],
       "albums": ["master-1046042", "master-105802", "master-76678"],
-      "decade_activity": [1970, 1980, 2010],
+      "decade_activity": [2010],
       "connection_count": 2,
       "neighboring_contributor_ids": [92471, 134633],
       "evidence": [
@@ -9392,7 +9399,7 @@
       "role_categories": ["production"],
       "role_text_examples": ["Producer [Produced By]"],
       "albums": ["master-1046042", "master-105802", "master-17249"],
-      "decade_activity": [1970, 1980, 2010],
+      "decade_activity": [2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [40916, 173104],
       "evidence": [
@@ -9412,7 +9419,7 @@
         "Engineer [Recording Engineer]"
       ],
       "albums": ["master-20135", "master-23069"],
-      "decade_activity": [1970, 1980],
+      "decade_activity": [1980, 1990],
       "connection_count": 2,
       "neighboring_contributor_ids": [13151, 254259],
       "evidence": [
@@ -9459,7 +9466,7 @@
         "master-89665",
         "master-92896"
       ],
-      "decade_activity": [1970, 1980, 1990, 2010],
+      "decade_activity": [1980, 1990, 2010],
       "connection_count": 8,
       "neighboring_contributor_ids": [
         17827, 249597, 8718, 50077, 105620, 185751, 302594, 309111
@@ -9501,7 +9508,7 @@
       "role_categories": ["unknown"],
       "role_text_examples": ["Featuring"],
       "albums": ["master-20135", "master-20387"],
-      "decade_activity": [1980, 2000],
+      "decade_activity": [2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [237914, 321128],
       "evidence": [
@@ -9517,7 +9524,7 @@
       "role_categories": ["vocals"],
       "role_text_examples": ["Backing Vocals"],
       "albums": ["master-8883", "master-89665"],
-      "decade_activity": [1980, 1990],
+      "decade_activity": [2000, 2010],
       "connection_count": 2,
       "neighboring_contributor_ids": [15885, 51039],
       "evidence": [
@@ -9557,7 +9564,7 @@
       "role_categories": ["engineering"],
       "role_text_examples": ["Mastered By", "Restoration, Mastered By"],
       "albums": ["master-1046042", "master-122261"],
-      "decade_activity": [1960, 2010],
+      "decade_activity": [2010, 2020],
       "connection_count": 2,
       "neighboring_contributor_ids": [10584, 74286],
       "evidence": [
@@ -9577,7 +9584,7 @@
       "role_categories": ["brass_woodwind"],
       "role_text_examples": ["Trumpet"],
       "albums": ["master-28680", "master-89665"],
-      "decade_activity": [1980, 1990],
+      "decade_activity": [1990],
       "connection_count": 2,
       "neighboring_contributor_ids": [51039, 85929],
       "evidence": [
@@ -9597,7 +9604,7 @@
       "role_categories": ["unknown"],
       "role_text_examples": [],
       "albums": ["master-1046042", "master-105802", "master-48605"],
-      "decade_activity": [1980, 2010],
+      "decade_activity": [],
       "connection_count": 2,
       "neighboring_contributor_ids": [208220, 515349],
       "evidence": []
@@ -9611,7 +9618,7 @@
         "Piano [Acoustic], Synthesizer [Strings]"
       ],
       "albums": ["master-13280", "master-30926"],
-      "decade_activity": [1980],
+      "decade_activity": [1980, 1990],
       "connection_count": 2,
       "neighboring_contributor_ids": [10933, 17546],
       "evidence": [
@@ -9646,7 +9653,7 @@
         "master-65826",
         "master-81172"
       ],
-      "decade_activity": [1970, 1980, 2010],
+      "decade_activity": [1990, 2000],
       "connection_count": 7,
       "neighboring_contributor_ids": [
         34181, 50077, 168059, 173865, 253490, 261834, 332625
@@ -9693,7 +9700,7 @@
         "master-16921",
         "master-553"
       ],
-      "decade_activity": [1970, 1980, 2010],
+      "decade_activity": [2000, 2010],
       "connection_count": 4,
       "neighboring_contributor_ids": [2013868, 271389, 342235, 401308],
       "evidence": [
@@ -9716,7 +9723,7 @@
         "Vocals, Electric Piano [Wurlitzer]"
       ],
       "albums": ["master-81575", "master-90844"],
-      "decade_activity": [1980, 2000],
+      "decade_activity": [1980, 2010],
       "connection_count": 2,
       "neighboring_contributor_ids": [66824, 249597],
       "evidence": [
@@ -9750,7 +9757,7 @@
         "master-69859",
         "master-72235"
       ],
-      "decade_activity": [1970, 1980, 2010],
+      "decade_activity": [1970, 1990, 2000],
       "connection_count": 7,
       "neighboring_contributor_ids": [
         10463, 15158, 173805, 201685, 251877, 259384, 600317
@@ -9796,7 +9803,7 @@
       "role_categories": ["production", "vocals"],
       "role_text_examples": ["Backing Vocals", "Producer"],
       "albums": ["master-105802", "master-41722"],
-      "decade_activity": [1970, 1980],
+      "decade_activity": [1980, 1990],
       "connection_count": 2,
       "neighboring_contributor_ids": [153073, 157838],
       "evidence": [
@@ -9816,7 +9823,7 @@
       "role_categories": ["brass_woodwind"],
       "role_text_examples": ["Harmonica", "Soloist, Harmonica"],
       "albums": ["master-113224", "master-99919"],
-      "decade_activity": [1970, 1990],
+      "decade_activity": [1990],
       "connection_count": 2,
       "neighboring_contributor_ids": [12686, 36603],
       "evidence": [
@@ -9842,7 +9849,7 @@
         "Flute, Piccolo Flute [Alto], Flute [Alto, Bass]"
       ],
       "albums": ["master-20135", "master-24535", "master-30712"],
-      "decade_activity": [1960, 1980],
+      "decade_activity": [1970, 1990],
       "connection_count": 3,
       "neighboring_contributor_ids": [10783, 142837, 253216],
       "evidence": [
@@ -9897,7 +9904,7 @@
         "master-76678",
         "master-8357"
       ],
-      "decade_activity": [1960, 1970, 1980, 1990],
+      "decade_activity": [1990, 2000, 2020],
       "connection_count": 5,
       "neighboring_contributor_ids": [161091, 5648, 92471, 19134, 41441],
       "evidence": [
@@ -9957,7 +9964,7 @@
         "master-60721",
         "master-82337"
       ],
-      "decade_activity": [1950, 1960, 1970, 1980, 2010],
+      "decade_activity": [1970, 1980, 1990, 2000],
       "connection_count": 8,
       "neighboring_contributor_ids": [
         9051, 9746, 10582, 15152, 62920, 69621, 255405, 429108
@@ -9991,7 +9998,7 @@
       "role_categories": ["production"],
       "role_text_examples": ["Producer"],
       "albums": ["master-20135", "master-28680"],
-      "decade_activity": [1980],
+      "decade_activity": [2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [2656, 209519],
       "evidence": [
@@ -10007,7 +10014,7 @@
       "role_categories": ["arrangement", "production"],
       "role_text_examples": ["Producer", "Arranged By"],
       "albums": ["master-105802", "master-92517"],
-      "decade_activity": [1970, 1980],
+      "decade_activity": [1980],
       "connection_count": 2,
       "neighboring_contributor_ids": [31213, 157838],
       "evidence": [
@@ -10031,7 +10038,7 @@
       "role_categories": ["unknown"],
       "role_text_examples": [],
       "albums": ["master-1046042", "master-105802", "master-13814"],
-      "decade_activity": [1980, 1990, 2010],
+      "decade_activity": [],
       "connection_count": 1,
       "neighboring_contributor_ids": [39600],
       "evidence": []
@@ -10042,7 +10049,7 @@
       "role_categories": ["engineering"],
       "role_text_examples": ["Mixed By", "Engineer"],
       "albums": ["master-105802", "master-28680"],
-      "decade_activity": [1980],
+      "decade_activity": [1980, 1990],
       "connection_count": 2,
       "neighboring_contributor_ids": [85929, 317140],
       "evidence": [
@@ -10067,7 +10074,7 @@
         "master-55281",
         "master-68469"
       ],
-      "decade_activity": [1960, 1970, 1980],
+      "decade_activity": [1970, 2000],
       "connection_count": 4,
       "neighboring_contributor_ids": [200805, 196766, 252102, 255672],
       "evidence": [
@@ -10091,7 +10098,7 @@
       "role_categories": ["engineering", "production"],
       "role_text_examples": ["Co-producer", "Mixed By", "Producer"],
       "albums": ["master-105802", "master-107325"],
-      "decade_activity": [1950, 1980],
+      "decade_activity": [2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [161091, 175395],
       "evidence": [
@@ -10115,7 +10122,7 @@
       "role_categories": ["vocals"],
       "role_text_examples": ["Backing Vocals", "Vocals [Ad Lib]"],
       "albums": ["master-553", "master-92896"],
-      "decade_activity": [1970, 1980],
+      "decade_activity": [1980],
       "connection_count": 2,
       "neighboring_contributor_ids": [59249, 101028],
       "evidence": [
@@ -10132,13 +10139,13 @@
     {
       "artist_id": 132290,
       "name": "Ed Baden Powell",
-      "role_categories": ["percussion_keys", "strings"],
+      "role_categories": ["engineering", "percussion_keys", "strings"],
       "role_text_examples": [
         "Guitar",
         "Programmed By, Bass, Keyboards, Guitar, Drum Programming"
       ],
       "albums": ["master-55576", "master-89665"],
-      "decade_activity": [1980, 1990],
+      "decade_activity": [1990, 2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [13932, 51039],
       "evidence": [
@@ -10158,7 +10165,7 @@
       "role_categories": ["engineering"],
       "role_text_examples": ["Mixed By", "Mixed By [5.1 Surround Mix]"],
       "albums": ["master-1046042", "master-76678"],
-      "decade_activity": [1970, 2010],
+      "decade_activity": [2000, 2010],
       "connection_count": 2,
       "neighboring_contributor_ids": [110252, 292535],
       "evidence": [
@@ -10178,7 +10185,7 @@
       "role_categories": ["composition", "packaging_business"],
       "role_text_examples": ["Executive-Producer", "Written-By"],
       "albums": ["master-1046042", "master-105802", "master-39341"],
-      "decade_activity": [1970, 1980, 2010],
+      "decade_activity": [1990],
       "connection_count": 2,
       "neighboring_contributor_ids": [63084, 241495],
       "evidence": [
@@ -10198,7 +10205,7 @@
       "role_categories": ["brass_woodwind"],
       "role_text_examples": ["Tenor Saxophone"],
       "albums": ["master-26725", "master-68209"],
-      "decade_activity": [1970],
+      "decade_activity": [2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [219986, 262944],
       "evidence": [
@@ -10218,7 +10225,7 @@
       "role_categories": ["strings"],
       "role_text_examples": ["Guitar"],
       "albums": ["master-122261", "master-52671"],
-      "decade_activity": [1960, 1980],
+      "decade_activity": [1970],
       "connection_count": 2,
       "neighboring_contributor_ids": [2266, 10584],
       "evidence": [
@@ -10238,7 +10245,7 @@
       "role_categories": ["unknown"],
       "role_text_examples": [],
       "albums": ["master-1046042", "master-82337"],
-      "decade_activity": [1960, 2010],
+      "decade_activity": [],
       "connection_count": 2,
       "neighboring_contributor_ids": [34858, 245423],
       "evidence": []
@@ -10249,7 +10256,7 @@
       "role_categories": ["strings"],
       "role_text_examples": ["Electric Guitar", "Guitar"],
       "albums": ["master-30712", "master-47744"],
-      "decade_activity": [1970, 1980],
+      "decade_activity": [1970, 1990],
       "connection_count": 2,
       "neighboring_contributor_ids": [68693, 90233],
       "evidence": [
@@ -10269,7 +10276,7 @@
       "role_categories": ["percussion_keys"],
       "role_text_examples": ["Congas, Percussion", "Percussion"],
       "albums": ["master-1561", "master-30926"],
-      "decade_activity": [1970, 1980],
+      "decade_activity": [1990, 2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [10263, 17546],
       "evidence": [
@@ -10289,7 +10296,7 @@
       "role_categories": ["strings"],
       "role_text_examples": ["Bass", "Bass Guitar"],
       "albums": ["master-20135", "master-27765"],
-      "decade_activity": [1970, 1980],
+      "decade_activity": [2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [3880, 232157],
       "evidence": [
@@ -10331,7 +10338,7 @@
         "master-57029",
         "master-60721"
       ],
-      "decade_activity": [1950, 1960, 1970, 1980, 1990, 2000, 2010],
+      "decade_activity": [1980, 1990, 2000],
       "connection_count": 9,
       "neighboring_contributor_ids": [
         10582, 30552, 35301, 37079, 80387, 177374, 185751, 252395, 253431
@@ -10421,7 +10428,7 @@
         "master-72235",
         "master-72879"
       ],
-      "decade_activity": [1970, 1980, 2010],
+      "decade_activity": [1980, 1990, 2000, 2010, 2020],
       "connection_count": 10,
       "neighboring_contributor_ids": [
         161091, 57103, 4854, 17827, 59792, 90154, 90233, 173865, 194118, 600317
@@ -10475,7 +10482,7 @@
       "role_categories": ["arrangement", "engineering", "production"],
       "role_text_examples": ["Arranged By, Conductor", "Mixed By", "Producer"],
       "albums": ["master-105802", "master-122261"],
-      "decade_activity": [1960, 1980],
+      "decade_activity": [1970, 2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [10584, 267872],
       "evidence": [
@@ -10505,7 +10512,7 @@
         "master-58313",
         "master-5863"
       ],
-      "decade_activity": [1960, 1970, 1980],
+      "decade_activity": [1970, 2010],
       "connection_count": 3,
       "neighboring_contributor_ids": [161091, 60621, 164557],
       "evidence": [
@@ -10532,7 +10539,7 @@
         "Technician"
       ],
       "albums": ["master-20135", "master-30712"],
-      "decade_activity": [1980],
+      "decade_activity": [1980, 1990],
       "connection_count": 2,
       "neighboring_contributor_ids": [68693, 122381],
       "evidence": [
@@ -10552,7 +10559,7 @@
       "role_categories": ["percussion_keys"],
       "role_text_examples": ["Percussion"],
       "albums": ["master-113224", "master-67836"],
-      "decade_activity": [1980, 1990],
+      "decade_activity": [1980],
       "connection_count": 2,
       "neighboring_contributor_ids": [8760, 12686],
       "evidence": [
@@ -10577,7 +10584,7 @@
         "master-20135",
         "master-302"
       ],
-      "decade_activity": [1970, 1980, 2010],
+      "decade_activity": [2010],
       "connection_count": 3,
       "neighboring_contributor_ids": [3268, 68211, 157838],
       "evidence": [
@@ -10609,7 +10616,7 @@
         "master-68209",
         "master-81172"
       ],
-      "decade_activity": [1970, 1980, 2010],
+      "decade_activity": [1980, 1990, 2010],
       "connection_count": 8,
       "neighboring_contributor_ids": [
         6092, 55029, 62920, 96036, 137927, 200567, 261834, 277531
@@ -10651,7 +10658,7 @@
       "role_categories": ["engineering"],
       "role_text_examples": ["Mastered By"],
       "albums": ["master-105802", "master-57940"],
-      "decade_activity": [1970, 1980],
+      "decade_activity": [1970, 1990],
       "connection_count": 2,
       "neighboring_contributor_ids": [149420, 220565],
       "evidence": [
@@ -10671,7 +10678,7 @@
       "role_categories": ["vocals"],
       "role_text_examples": ["Chorus", "Backing Vocals", "Choir"],
       "albums": ["master-105802", "master-1561", "master-9382"],
-      "decade_activity": [1970, 1980],
+      "decade_activity": [1980, 1990],
       "connection_count": 3,
       "neighboring_contributor_ids": [5951, 10263, 317140],
       "evidence": [
@@ -10718,7 +10725,7 @@
         "master-56036",
         "master-57940"
       ],
-      "decade_activity": [1970, 1980, 1990, 2010],
+      "decade_activity": [1970, 1980, 1990, 2000],
       "connection_count": 9,
       "neighboring_contributor_ids": [
         30344, 57103, 59770, 10263, 11879, 32216, 147827, 325232, 340100
@@ -10768,7 +10775,7 @@
       "role_categories": ["engineering", "production"],
       "role_text_examples": ["Engineer [Re-mix]", "Producer"],
       "albums": ["master-1046042", "master-34081"],
-      "decade_activity": [1950, 2010],
+      "decade_activity": [1970],
       "connection_count": 2,
       "neighboring_contributor_ids": [251689, 670257],
       "evidence": [
@@ -10788,7 +10795,7 @@
       "role_categories": ["composition"],
       "role_text_examples": ["Beats", "Composed By"],
       "albums": ["master-1046042", "master-23684"],
-      "decade_activity": [1980, 2010],
+      "decade_activity": [2010],
       "connection_count": 2,
       "neighboring_contributor_ids": [1034811, 2013868],
       "evidence": [
@@ -10833,7 +10840,7 @@
         "master-87446",
         "master-9382"
       ],
-      "decade_activity": [1950, 1960, 1970, 1980, 2010],
+      "decade_activity": [1970, 2000, 2010],
       "connection_count": 10,
       "neighboring_contributor_ids": [
         15152, 17961, 18956, 81857, 96036, 170807, 243955, 304307, 470007,
@@ -10888,7 +10895,7 @@
       "role_categories": ["unknown"],
       "role_text_examples": [],
       "albums": ["master-1046042", "master-105802", "master-41722"],
-      "decade_activity": [1970, 1980, 2010],
+      "decade_activity": [],
       "connection_count": 2,
       "neighboring_contributor_ids": [120496, 332112],
       "evidence": []
@@ -10904,7 +10911,7 @@
         "Mixed By"
       ],
       "albums": ["master-105802", "master-35793"],
-      "decade_activity": [1970, 1980],
+      "decade_activity": [1990, 2010],
       "connection_count": 2,
       "neighboring_contributor_ids": [92623, 317140],
       "evidence": [
@@ -10929,10 +10936,10 @@
     {
       "artist_id": 154225,
       "name": "Jeff Bova",
-      "role_categories": ["percussion_keys"],
+      "role_categories": ["engineering", "percussion_keys"],
       "role_text_examples": ["Synthesizer", "Synthesizer, Programmed By"],
       "albums": ["master-19493", "master-23069"],
-      "decade_activity": [1970],
+      "decade_activity": [1990],
       "connection_count": 2,
       "neighboring_contributor_ids": [3865, 254259],
       "evidence": [
@@ -10952,7 +10959,7 @@
       "role_categories": ["engineering", "production", "rework"],
       "role_text_examples": ["Edited By, Engineer, Producer", "Engineer"],
       "albums": ["master-1046042", "master-55281"],
-      "decade_activity": [1970, 2010],
+      "decade_activity": [1970, 1980],
       "connection_count": 2,
       "neighboring_contributor_ids": [1818, 252102],
       "evidence": [
@@ -10984,7 +10991,7 @@
         "master-89665",
         "master-92517"
       ],
-      "decade_activity": [1970, 1980, 1990],
+      "decade_activity": [1980, 1990],
       "connection_count": 5,
       "neighboring_contributor_ids": [161091, 51039, 120496, 124907, 144998],
       "evidence": [
@@ -11024,7 +11031,7 @@
       "role_categories": ["unknown"],
       "role_text_examples": [],
       "albums": ["master-1046042", "master-105802", "master-16921"],
-      "decade_activity": [1970, 1980, 2010],
+      "decade_activity": [],
       "connection_count": 2,
       "neighboring_contributor_ids": [9079, 401308],
       "evidence": []
@@ -11188,7 +11195,7 @@
         "master-9382",
         "master-99919"
       ],
-      "decade_activity": [1950, 1960, 1970, 1980, 1990, 2000, 2010],
+      "decade_activity": [1980, 1990, 2000, 2010],
       "connection_count": 52,
       "neighboring_contributor_ids": [
         62920, 170807, 39600, 317140, 122792, 63084, 106415, 11831, 16797,
@@ -11244,7 +11251,7 @@
       "role_categories": ["vocals"],
       "role_text_examples": ["Backing Vocals", "Vocals"],
       "albums": ["master-553", "master-69156"],
-      "decade_activity": [1980],
+      "decade_activity": [1970, 1990],
       "connection_count": 2,
       "neighboring_contributor_ids": [17961, 101028],
       "evidence": [
@@ -11264,7 +11271,7 @@
       "role_categories": ["composition"],
       "role_text_examples": ["Performer [Original]", "Written-By"],
       "albums": ["master-1046042", "master-4424"],
-      "decade_activity": [1980, 2010],
+      "decade_activity": [2000, 2010],
       "connection_count": 2,
       "neighboring_contributor_ids": [190949, 470007],
       "evidence": [
@@ -11284,7 +11291,7 @@
       "role_categories": ["engineering", "production"],
       "role_text_examples": ["Engineer", "Producer"],
       "albums": ["master-105802", "master-5863"],
-      "decade_activity": [1970, 1980],
+      "decade_activity": [1990, 2010],
       "connection_count": 2,
       "neighboring_contributor_ids": [81013, 141624],
       "evidence": [
@@ -11304,7 +11311,7 @@
       "role_categories": ["strings"],
       "role_text_examples": ["Guitar"],
       "albums": ["master-23069", "master-65826"],
-      "decade_activity": [1970, 1980],
+      "decade_activity": [1980, 2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [117225, 254259],
       "evidence": [
@@ -11329,7 +11336,7 @@
         "master-35401",
         "master-68399"
       ],
-      "decade_activity": [1960, 1970, 1980, 2010],
+      "decade_activity": [1970],
       "connection_count": 3,
       "neighboring_contributor_ids": [229987, 292813, 308343],
       "evidence": [
@@ -11345,7 +11352,7 @@
       "role_categories": ["unknown"],
       "role_text_examples": ["Author", "Orchestrated By"],
       "albums": ["master-105802", "master-27765"],
-      "decade_activity": [1970, 1980],
+      "decade_activity": [2000, 2010],
       "connection_count": 2,
       "neighboring_contributor_ids": [232157, 13943914],
       "evidence": [
@@ -11365,7 +11372,7 @@
       "role_categories": ["strings"],
       "role_text_examples": ["Guitar"],
       "albums": ["master-66631", "master-68399"],
-      "decade_activity": [1970],
+      "decade_activity": [1970, 2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [11012, 18984],
       "evidence": [
@@ -11394,7 +11401,7 @@
         "master-57279",
         "master-8357"
       ],
-      "decade_activity": [1970, 1980, 1990, 2010],
+      "decade_activity": [2010],
       "connection_count": 4,
       "neighboring_contributor_ids": [2013868, 3268, 9741, 50997],
       "evidence": [
@@ -11432,7 +11439,7 @@
         "master-81575",
         "master-90844"
       ],
-      "decade_activity": [1970, 1980, 1990, 2000],
+      "decade_activity": [1970, 1980, 1990, 2010],
       "connection_count": 9,
       "neighboring_contributor_ids": [
         161091, 35646, 12686, 13911, 46481, 103687, 152685, 249597, 254259
@@ -11492,7 +11499,7 @@
         "master-26037",
         "master-56036"
       ],
-      "decade_activity": [1970, 1980],
+      "decade_activity": [1990, 2000, 2020],
       "connection_count": 4,
       "neighboring_contributor_ids": [161091, 110253, 200567, 243955],
       "evidence": [
@@ -11528,7 +11535,7 @@
       "role_categories": ["production"],
       "role_text_examples": ["Producer", "Producer [P]"],
       "albums": ["master-1046042", "master-72235"],
-      "decade_activity": [1970, 2010],
+      "decade_activity": [1990],
       "connection_count": 2,
       "neighboring_contributor_ids": [120232, 292542],
       "evidence": [
@@ -11548,7 +11555,7 @@
       "role_categories": ["engineering"],
       "role_text_examples": ["Mixed By"],
       "albums": ["master-20135", "master-27460"],
-      "decade_activity": [1980, 2000],
+      "decade_activity": [2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [10783, 15687],
       "evidence": [
@@ -11568,7 +11575,7 @@
       "role_categories": ["percussion_keys", "vocals"],
       "role_text_examples": ["Drums", "Drums, Synthesizer, Vocals"],
       "albums": ["master-37615", "master-65826"],
-      "decade_activity": [1970, 1980],
+      "decade_activity": [2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [117225, 138556],
       "evidence": [
@@ -11588,7 +11595,7 @@
       "role_categories": ["strings"],
       "role_text_examples": ["Bass", "Performer, Bass"],
       "albums": ["master-26725", "master-750386"],
-      "decade_activity": [1970, 2010],
+      "decade_activity": [1990, 2010],
       "connection_count": 2,
       "neighboring_contributor_ids": [219986, 1124645],
       "evidence": [
@@ -11608,7 +11615,7 @@
       "role_categories": ["production"],
       "role_text_examples": ["Producer"],
       "albums": ["master-1046042", "master-57970"],
-      "decade_activity": [1990, 2010],
+      "decade_activity": [2000, 2010],
       "connection_count": 2,
       "neighboring_contributor_ids": [65049, 2013868],
       "evidence": [
@@ -11628,7 +11635,7 @@
       "role_categories": ["production"],
       "role_text_examples": ["Producer"],
       "albums": ["master-105802", "master-107325"],
-      "decade_activity": [1950, 1980],
+      "decade_activity": [2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [27518, 129495],
       "evidence": [
@@ -11644,7 +11651,7 @@
       "role_categories": ["engineering", "production", "strings"],
       "role_text_examples": ["Guitar", "Producer, Engineer"],
       "albums": ["master-20135", "master-23684"],
-      "decade_activity": [1980],
+      "decade_activity": [1970, 2010],
       "connection_count": 2,
       "neighboring_contributor_ids": [103687, 266431],
       "evidence": [
@@ -11678,7 +11685,7 @@
         "master-57029",
         "master-68209"
       ],
-      "decade_activity": [1970, 1980, 2010],
+      "decade_activity": [1980, 1990, 2010],
       "connection_count": 7,
       "neighboring_contributor_ids": [
         161091, 68693, 350510, 137418, 262944, 268583, 285408
@@ -11729,7 +11736,13 @@
     {
       "artist_id": 177516,
       "name": "Lili Haydn",
-      "role_categories": ["percussion_keys", "production", "strings", "vocals"],
+      "role_categories": [
+        "engineering",
+        "percussion_keys",
+        "production",
+        "strings",
+        "vocals"
+      ],
       "role_text_examples": [
         "Musician [Additional Musician], Violin",
         "Violin, Vocals, Keyboards, Programmed By",
@@ -11742,7 +11755,7 @@
         "master-32208",
         "master-59538"
       ],
-      "decade_activity": [1950, 1970, 1980],
+      "decade_activity": [1990, 2000],
       "connection_count": 3,
       "neighboring_contributor_ids": [42058, 161091, 10933],
       "evidence": [
@@ -11770,7 +11783,7 @@
       "role_categories": ["composition", "vocals"],
       "role_text_examples": ["Performer", "Vocals", "Written-By, Lyrics By"],
       "albums": ["master-1046042", "master-9382"],
-      "decade_activity": [1970, 2010],
+      "decade_activity": [1980, 2010],
       "connection_count": 2,
       "neighboring_contributor_ids": [5951, 266264],
       "evidence": [
@@ -11799,7 +11812,7 @@
         "Remix"
       ],
       "albums": ["master-1046042", "master-74227", "master-99919"],
-      "decade_activity": [1970, 1980, 2010],
+      "decade_activity": [1990, 2000],
       "connection_count": 3,
       "neighboring_contributor_ids": [330380, 36603, 53248],
       "evidence": [
@@ -11827,7 +11840,7 @@
       "role_categories": ["brass_woodwind"],
       "role_text_examples": ["Alto Saxophone", "Saxophone"],
       "albums": ["master-49965", "master-57029"],
-      "decade_activity": [1970, 1990],
+      "decade_activity": [1980],
       "connection_count": 2,
       "neighboring_contributor_ids": [110862, 137418],
       "evidence": [
@@ -11847,7 +11860,7 @@
       "role_categories": ["unknown"],
       "role_text_examples": [],
       "albums": ["master-1046042", "master-105802", "master-4424"],
-      "decade_activity": [1980, 2010],
+      "decade_activity": [],
       "connection_count": 3,
       "neighboring_contributor_ids": [66916, 31844, 163505],
       "evidence": []
@@ -11878,7 +11891,7 @@
       "role_categories": ["percussion_keys"],
       "role_text_examples": ["Piano", "Synthesizer"],
       "albums": ["master-69156", "master-80514"],
-      "decade_activity": [1980],
+      "decade_activity": [1970, 1980],
       "connection_count": 2,
       "neighboring_contributor_ids": [17961, 67331],
       "evidence": [
@@ -11898,7 +11911,7 @@
       "role_categories": ["percussion_keys"],
       "role_text_examples": ["Drums", "Drums, Percussion"],
       "albums": ["master-37615", "master-72879"],
-      "decade_activity": [1970],
+      "decade_activity": [1970, 2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [46481, 138556],
       "evidence": [
@@ -11918,7 +11931,7 @@
       "role_categories": ["unknown"],
       "role_text_examples": [],
       "albums": ["master-1046042", "master-105802", "master-68469"],
-      "decade_activity": [1970, 1980, 2010],
+      "decade_activity": [],
       "connection_count": 2,
       "neighboring_contributor_ids": [52230, 129348],
       "evidence": []
@@ -11955,7 +11968,7 @@
         "master-92517",
         "master-99919"
       ],
-      "decade_activity": [1970, 1980, 2010],
+      "decade_activity": [1970, 1980, 1990, 2010],
       "connection_count": 11,
       "neighboring_contributor_ids": [
         36603, 90233, 62920, 145072, 173104, 215471, 219823, 249597, 258114,
@@ -12010,7 +12023,7 @@
       "role_categories": ["percussion_keys"],
       "role_text_examples": ["Drums"],
       "albums": ["master-104166", "master-56036"],
-      "decade_activity": [1970],
+      "decade_activity": [1990, 2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [243955, 266352],
       "evidence": [
@@ -12030,7 +12043,7 @@
       "role_categories": ["strings"],
       "role_text_examples": ["Bass"],
       "albums": ["master-113522", "master-79666"],
-      "decade_activity": [1970, 1990],
+      "decade_activity": [1990, 2010],
       "connection_count": 2,
       "neighboring_contributor_ids": [33534, 48512],
       "evidence": [
@@ -12058,7 +12071,7 @@
         "master-55281",
         "master-68469"
       ],
-      "decade_activity": [1960, 1970, 1980],
+      "decade_activity": [1990],
       "connection_count": 2,
       "neighboring_contributor_ids": [129348, 161091],
       "evidence": [
@@ -12078,7 +12091,7 @@
       "role_categories": ["vocals"],
       "role_text_examples": ["Backing Vocals"],
       "albums": ["master-55658", "master-92896"],
-      "decade_activity": [1970, 1980],
+      "decade_activity": [1980],
       "connection_count": 2,
       "neighboring_contributor_ids": [59249, 106474],
       "evidence": [
@@ -12101,7 +12114,7 @@
         "Mixed By [Festival Express concert material]"
       ],
       "albums": ["master-105802", "master-72235"],
-      "decade_activity": [1970, 1980],
+      "decade_activity": [1990, 2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [120232, 317140],
       "evidence": [
@@ -12125,7 +12138,7 @@
         "Written-By [Headless Heroes]"
       ],
       "albums": ["master-20135", "master-35006"],
-      "decade_activity": [1970, 1980],
+      "decade_activity": [1970, 1990],
       "connection_count": 2,
       "neighboring_contributor_ids": [10783, 221444],
       "evidence": [
@@ -12152,7 +12165,7 @@
         "Engineer [Assistant Engineer At Scream Studios]"
       ],
       "albums": ["master-105802", "master-59501"],
-      "decade_activity": [1980],
+      "decade_activity": [1990, 2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [108722, 161091],
       "evidence": [
@@ -12172,7 +12185,7 @@
       "role_categories": ["percussion_keys", "vocals"],
       "role_text_examples": ["Backing Vocals", "Drums, Backing Vocals"],
       "albums": ["master-30712", "master-72879"],
-      "decade_activity": [1970, 1980],
+      "decade_activity": [1980, 2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [46481, 68693],
       "evidence": [
@@ -12202,7 +12215,7 @@
         "master-48605",
         "master-56036"
       ],
-      "decade_activity": [1970, 1980],
+      "decade_activity": [1980, 1990, 2000],
       "connection_count": 4,
       "neighboring_contributor_ids": [59770, 113655, 243955, 260670],
       "evidence": [
@@ -12253,7 +12266,7 @@
         "Engineer [Assistant Engineers]"
       ],
       "albums": ["master-20135", "master-28680"],
-      "decade_activity": [1980],
+      "decade_activity": [1980, 2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [10783, 124535],
       "evidence": [
@@ -12273,7 +12286,7 @@
       "role_categories": ["strings"],
       "role_text_examples": ["Guitar"],
       "albums": ["master-55658", "master-79666"],
-      "decade_activity": [1980, 1990],
+      "decade_activity": [1970, 1990],
       "connection_count": 2,
       "neighboring_contributor_ids": [33534, 106474],
       "evidence": [
@@ -12293,7 +12306,7 @@
       "role_categories": ["strings"],
       "role_text_examples": ["Guitar"],
       "albums": ["master-66631", "master-82337"],
-      "decade_activity": [1960, 1970],
+      "decade_activity": [1970],
       "connection_count": 2,
       "neighboring_contributor_ids": [18984, 63771],
       "evidence": [
@@ -12313,7 +12326,7 @@
       "role_categories": ["percussion_keys"],
       "role_text_examples": ["Drums"],
       "albums": ["master-151766", "master-74227"],
-      "decade_activity": [1980, 2000],
+      "decade_activity": [2010],
       "connection_count": 2,
       "neighboring_contributor_ids": [44944, 53248],
       "evidence": [
@@ -12333,7 +12346,7 @@
       "role_categories": ["arrangement", "production"],
       "role_text_examples": ["Arranged By", "Producer"],
       "albums": ["master-20135", "master-26037"],
-      "decade_activity": [1970, 1980],
+      "decade_activity": [1990],
       "connection_count": 2,
       "neighboring_contributor_ids": [200567, 925545],
       "evidence": [
@@ -12378,7 +12391,7 @@
         "Producer [Album Producer]"
       ],
       "albums": ["master-1046042", "master-105802", "master-37401"],
-      "decade_activity": [1980, 2010],
+      "decade_activity": [2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [9741, 40916],
       "evidence": [
@@ -12406,7 +12419,7 @@
       "role_categories": ["strings"],
       "role_text_examples": ["Guitar", "Rhythm Guitar"],
       "albums": ["master-44278", "master-68399"],
-      "decade_activity": [1970],
+      "decade_activity": [1980],
       "connection_count": 2,
       "neighboring_contributor_ids": [11012, 11879],
       "evidence": [
@@ -12426,7 +12439,7 @@
       "role_categories": ["vocals"],
       "role_text_examples": ["Backing Vocals"],
       "albums": ["master-26037", "master-30926"],
-      "decade_activity": [1970, 1980],
+      "decade_activity": [1980, 1990],
       "connection_count": 2,
       "neighboring_contributor_ids": [17546, 200567],
       "evidence": [
@@ -12471,7 +12484,7 @@
         "master-68209",
         "master-750386"
       ],
-      "decade_activity": [1970, 1980, 2010],
+      "decade_activity": [1990, 2000, 2010],
       "connection_count": 10,
       "neighboring_contributor_ids": [
         6952, 13961, 41237, 135847, 161091, 174046, 243955, 273591, 306264,
@@ -12535,7 +12548,7 @@
         "Percussion"
       ],
       "albums": ["master-105802", "master-3719", "master-57940"],
-      "decade_activity": [1970, 1980, 1990],
+      "decade_activity": [1990, 2000],
       "connection_count": 3,
       "neighboring_contributor_ids": [161091, 20661, 147827],
       "evidence": [
@@ -12587,7 +12600,7 @@
       "role_categories": ["production"],
       "role_text_examples": ["Producer"],
       "albums": ["master-20135", "master-35006"],
-      "decade_activity": [1970, 1980],
+      "decade_activity": [1970],
       "connection_count": 2,
       "neighboring_contributor_ids": [50263, 202252],
       "evidence": [
@@ -12607,7 +12620,7 @@
       "role_categories": ["percussion_keys"],
       "role_text_examples": ["Drums", "Musician [Production Numbers], Drums"],
       "albums": ["master-107325", "master-55658"],
-      "decade_activity": [1950, 1980],
+      "decade_activity": [1970, 1990],
       "connection_count": 2,
       "neighboring_contributor_ids": [27518, 106474],
       "evidence": [
@@ -12627,7 +12640,7 @@
       "role_categories": ["unknown"],
       "role_text_examples": [],
       "albums": ["master-1046042", "master-105802", "master-35706"],
-      "decade_activity": [1960, 1980, 2010],
+      "decade_activity": [],
       "connection_count": 2,
       "neighboring_contributor_ids": [2714, 92471],
       "evidence": []
@@ -12638,7 +12651,7 @@
       "role_categories": ["percussion_keys"],
       "role_text_examples": ["Piano", "Synthesizer"],
       "albums": ["master-107325", "master-69859"],
-      "decade_activity": [1950, 1970],
+      "decade_activity": [1980, 2010],
       "connection_count": 2,
       "neighboring_contributor_ids": [17827, 27518],
       "evidence": [
@@ -12658,7 +12671,7 @@
       "role_categories": ["production", "vocals"],
       "role_text_examples": ["Producer", "Vocals"],
       "albums": ["master-1046042", "master-35401"],
-      "decade_activity": [1960, 2010],
+      "decade_activity": [1970, 2010],
       "connection_count": 2,
       "neighboring_contributor_ids": [168907, 339644],
       "evidence": [
@@ -12687,7 +12700,7 @@
         "master-20135",
         "master-27765"
       ],
-      "decade_activity": [1970, 1980, 2010],
+      "decade_activity": [2000],
       "connection_count": 3,
       "neighboring_contributor_ids": [98889, 136984, 169117],
       "evidence": [
@@ -12711,7 +12724,7 @@
         "master-26725",
         "master-37145"
       ],
-      "decade_activity": [1970, 1980, 1990, 2000, 2010],
+      "decade_activity": [1970, 1990, 2000, 2010, 2020],
       "connection_count": 7,
       "neighboring_contributor_ids": [
         10783, 443558, 6952, 14743, 30344, 48424, 111502
@@ -12756,7 +12769,7 @@
         "Reissue Producer [Prepared For Compact Disc]"
       ],
       "albums": ["master-20135", "master-34081"],
-      "decade_activity": [1950, 1980],
+      "decade_activity": [1980, 1990],
       "connection_count": 2,
       "neighboring_contributor_ids": [251689, 268361],
       "evidence": [
@@ -12776,7 +12789,7 @@
       "role_categories": ["engineering", "production"],
       "role_text_examples": ["Recorded By", "Engineer", "Mixed By", "Producer"],
       "albums": ["master-1046042", "master-25688", "master-39341"],
-      "decade_activity": [1970, 1980, 2010],
+      "decade_activity": [1980, 1990, 2000],
       "connection_count": 3,
       "neighboring_contributor_ids": [429108, 22854, 135478],
       "evidence": [
@@ -12831,7 +12844,7 @@
         "master-68209",
         "master-72235"
       ],
-      "decade_activity": [1970, 1980, 2010],
+      "decade_activity": [1970, 1980, 1990, 2000, 2020],
       "connection_count": 11,
       "neighboring_contributor_ids": [
         57103, 101028, 106474, 152685, 173104, 200762, 208220, 219986, 251877,
@@ -12886,7 +12899,7 @@
       "role_categories": ["percussion_keys"],
       "role_text_examples": ["Drums"],
       "albums": ["master-35793", "master-82337"],
-      "decade_activity": [1960, 1970],
+      "decade_activity": [1970, 1990],
       "connection_count": 2,
       "neighboring_contributor_ids": [63771, 92623],
       "evidence": [
@@ -12922,7 +12935,7 @@
         "master-66510",
         "master-82337"
       ],
-      "decade_activity": [1960, 1980, 1990, 2010],
+      "decade_activity": [2000, 2010, 2020],
       "connection_count": 3,
       "neighboring_contributor_ids": [2013868, 8279, 135926],
       "evidence": [
@@ -12970,7 +12983,7 @@
       "role_categories": ["unknown"],
       "role_text_examples": [],
       "albums": ["master-1046042", "master-105802", "master-18442"],
-      "decade_activity": [1970, 1980, 2010],
+      "decade_activity": [],
       "connection_count": 2,
       "neighboring_contributor_ids": [74213, 479416],
       "evidence": []
@@ -12995,7 +13008,7 @@
         "master-92517",
         "master-92896"
       ],
-      "decade_activity": [1970, 1980, 1990, 2000, 2010],
+      "decade_activity": [1970, 1980, 1990, 2010],
       "connection_count": 11,
       "neighboring_contributor_ids": [
         48512, 59249, 110862, 262944, 90233, 119840, 170807, 200567, 208234,
@@ -13048,7 +13061,7 @@
         "master-55658",
         "master-67405"
       ],
-      "decade_activity": [1970, 1980, 2010],
+      "decade_activity": [1970],
       "connection_count": 4,
       "neighboring_contributor_ids": [46063, 74213, 253433, 306264],
       "evidence": [
@@ -13064,7 +13077,7 @@
       "role_categories": ["engineering"],
       "role_text_examples": ["Mastered By", "Remastered By"],
       "albums": ["master-1046042", "master-49058"],
-      "decade_activity": [1960, 2010],
+      "decade_activity": [1970, 1990],
       "connection_count": 2,
       "neighboring_contributor_ids": [48412, 1004502],
       "evidence": [
@@ -13084,7 +13097,7 @@
       "role_categories": ["percussion_keys"],
       "role_text_examples": ["Keyboards", "Piano, Organ, Celesta [Celeste]"],
       "albums": ["master-13960", "master-3878"],
-      "decade_activity": [1970, 1980],
+      "decade_activity": [2000, 2010],
       "connection_count": 2,
       "neighboring_contributor_ids": [59792, 82294],
       "evidence": [
@@ -13109,7 +13122,7 @@
         "master-20135",
         "master-34081"
       ],
-      "decade_activity": [1950, 1980, 2010],
+      "decade_activity": [2010],
       "connection_count": 3,
       "neighboring_contributor_ids": [48090, 150321, 237978],
       "evidence": [
@@ -13125,7 +13138,7 @@
       "role_categories": ["strings", "vocals"],
       "role_text_examples": ["Vocals", "Vocals, Lead Guitar"],
       "albums": ["master-56036", "master-72235"],
-      "decade_activity": [1970],
+      "decade_activity": [1990],
       "connection_count": 2,
       "neighboring_contributor_ids": [120232, 243955],
       "evidence": [
@@ -13145,7 +13158,7 @@
       "role_categories": ["unknown"],
       "role_text_examples": [],
       "albums": ["master-1046042", "master-105802", "master-55281"],
-      "decade_activity": [1970, 1980, 2010],
+      "decade_activity": [],
       "connection_count": 2,
       "neighboring_contributor_ids": [129348, 156347],
       "evidence": []
@@ -13156,7 +13169,7 @@
       "role_categories": ["percussion_keys"],
       "role_text_examples": ["Drums"],
       "albums": ["master-13960", "master-51607"],
-      "decade_activity": [1980],
+      "decade_activity": [1990],
       "connection_count": 2,
       "neighboring_contributor_ids": [30542, 82294],
       "evidence": [
@@ -13176,7 +13189,7 @@
       "role_categories": ["percussion_keys"],
       "role_text_examples": ["Percussion"],
       "albums": ["master-106396", "master-87446"],
-      "decade_activity": [1970, 1980],
+      "decade_activity": [1990, 2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [13735, 18956],
       "evidence": [
@@ -13200,7 +13213,7 @@
         "Guitar"
       ],
       "albums": ["master-105802", "master-45922"],
-      "decade_activity": [1980, 1990],
+      "decade_activity": [1990, 2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [12615, 161091],
       "evidence": [
@@ -13227,7 +13240,7 @@
         "Guitar"
       ],
       "albums": ["master-17217", "master-57029"],
-      "decade_activity": [1960, 1970],
+      "decade_activity": [1990],
       "connection_count": 2,
       "neighboring_contributor_ids": [70829, 137418],
       "evidence": [
@@ -13284,7 +13297,7 @@
       "role_categories": ["unknown"],
       "role_text_examples": ["Performer [\"Flute Thing\" Elements]"],
       "albums": ["master-20135", "master-35276"],
-      "decade_activity": [1960, 1980],
+      "decade_activity": [2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [10783, 253021],
       "evidence": [
@@ -13300,7 +13313,7 @@
       "role_categories": ["brass_woodwind"],
       "role_text_examples": ["Saxophone", "Saxophone, Soloist [Sax Solo]"],
       "albums": ["master-35793", "master-45720"],
-      "decade_activity": [1970, 1980],
+      "decade_activity": [1990, 2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [69722, 92623],
       "evidence": [
@@ -13320,7 +13333,7 @@
       "role_categories": ["brass_woodwind"],
       "role_text_examples": ["Trombone"],
       "albums": ["master-122261", "master-13960"],
-      "decade_activity": [1960, 1980],
+      "decade_activity": [1990],
       "connection_count": 2,
       "neighboring_contributor_ids": [10584, 82294],
       "evidence": [
@@ -13340,7 +13353,7 @@
       "role_categories": ["production"],
       "role_text_examples": ["Producer"],
       "albums": ["master-20135", "master-35276"],
-      "decade_activity": [1960, 1980],
+      "decade_activity": [1960, 2010],
       "connection_count": 2,
       "neighboring_contributor_ids": [39766, 252489],
       "evidence": [
@@ -13383,7 +13396,7 @@
         "Vocals, Clarinet, Keyboards, Synthesizer"
       ],
       "albums": ["master-35793", "master-74227"],
-      "decade_activity": [1970, 1980],
+      "decade_activity": [1970, 1990],
       "connection_count": 2,
       "neighboring_contributor_ids": [53248, 92623],
       "evidence": [
@@ -13407,7 +13420,7 @@
         "Other [Special Thanks, Musician's Ear]"
       ],
       "albums": ["master-20135", "master-24535"],
-      "decade_activity": [1960, 1980],
+      "decade_activity": [1970, 2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [122381, 255672],
       "evidence": [
@@ -13435,7 +13448,7 @@
       "role_categories": ["percussion_keys"],
       "role_text_examples": ["Drums"],
       "albums": ["master-1046042", "master-59538"],
-      "decade_activity": [1970, 2010],
+      "decade_activity": [1990, 2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [25809, 42058],
       "evidence": [
@@ -13458,7 +13471,7 @@
         "Musician [Production Numbers], Keyboards"
       ],
       "albums": ["master-107325", "master-57029"],
-      "decade_activity": [1950, 1970],
+      "decade_activity": [1990],
       "connection_count": 2,
       "neighboring_contributor_ids": [27518, 137418],
       "evidence": [
@@ -13478,7 +13491,7 @@
       "role_categories": ["strings"],
       "role_text_examples": ["Bass"],
       "albums": ["master-55658", "master-67405"],
-      "decade_activity": [1970, 1980],
+      "decade_activity": [1970],
       "connection_count": 2,
       "neighboring_contributor_ids": [106474, 249829],
       "evidence": [
@@ -13498,7 +13511,7 @@
       "role_categories": ["strings"],
       "role_text_examples": ["Guitar"],
       "albums": ["master-45720", "master-65826"],
-      "decade_activity": [1980],
+      "decade_activity": [1990, 2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [69722, 117225],
       "evidence": [
@@ -13518,7 +13531,7 @@
       "role_categories": ["strings"],
       "role_text_examples": ["Electric Guitar", "Guitar [Riffs]"],
       "albums": ["master-13280", "master-403952"],
-      "decade_activity": [1980, 2010],
+      "decade_activity": [2010],
       "connection_count": 2,
       "neighboring_contributor_ids": [10933, 2445772],
       "evidence": [
@@ -13535,7 +13548,7 @@
     {
       "artist_id": 253548,
       "name": "Charles Judge",
-      "role_categories": ["percussion_keys"],
+      "role_categories": ["engineering", "percussion_keys"],
       "role_text_examples": [
         "Keyboards",
         "Organ",
@@ -13551,7 +13564,7 @@
         "master-47868",
         "master-750386"
       ],
-      "decade_activity": [1960, 1970, 1980, 2010],
+      "decade_activity": [1980, 1990, 2010],
       "connection_count": 6,
       "neighboring_contributor_ids": [
         161091, 1124645, 10263, 13735, 40916, 58687
@@ -13605,7 +13618,7 @@
       "role_categories": ["unknown"],
       "role_text_examples": [],
       "albums": ["master-105802", "master-25303"],
-      "decade_activity": [1980, 1990],
+      "decade_activity": [],
       "connection_count": 2,
       "neighboring_contributor_ids": [11213, 261361],
       "evidence": []
@@ -13620,7 +13633,7 @@
         "Whistle [Low], Woodwind [U-union Pipes]"
       ],
       "albums": ["master-105802", "master-553", "master-79666"],
-      "decade_activity": [1980, 1990],
+      "decade_activity": [1990, 2000],
       "connection_count": 3,
       "neighboring_contributor_ids": [161091, 33534, 101028],
       "evidence": [
@@ -13644,7 +13657,7 @@
       "role_categories": ["strings"],
       "role_text_examples": ["Electric Guitar", "Guitar"],
       "albums": ["master-47744", "master-79666"],
-      "decade_activity": [1970, 1990],
+      "decade_activity": [1990],
       "connection_count": 2,
       "neighboring_contributor_ids": [33534, 90233],
       "evidence": [
@@ -13680,7 +13693,7 @@
         "master-57940",
         "master-65826"
       ],
-      "decade_activity": [1970, 1980, 2010],
+      "decade_activity": [1980, 1990, 2010],
       "connection_count": 8,
       "neighboring_contributor_ids": [
         109822, 110387, 154225, 168059, 170807, 258114, 270195, 325232
@@ -13740,7 +13753,7 @@
         "Guitar [High String], Vocals"
       ],
       "albums": ["master-1046042", "master-24535", "master-56036"],
-      "decade_activity": [1960, 1970, 2010],
+      "decade_activity": [1970, 2010],
       "connection_count": 3,
       "neighboring_contributor_ids": [482142, 243955, 255672],
       "evidence": [
@@ -13800,7 +13813,7 @@
         "Vocals, Guitar, Producer, Artwork By"
       ],
       "albums": ["master-19493", "master-750386"],
-      "decade_activity": [1970, 2010],
+      "decade_activity": [2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [3865, 1124645],
       "evidence": [
@@ -13831,7 +13844,7 @@
         "master-16545",
         "master-44278"
       ],
-      "decade_activity": [1970, 1980],
+      "decade_activity": [1980, 1990],
       "connection_count": 4,
       "neighboring_contributor_ids": [161091, 10263, 11879, 30344],
       "evidence": [
@@ -13871,7 +13884,7 @@
       "role_categories": ["percussion_keys"],
       "role_text_examples": ["Organ", "Piano"],
       "albums": ["master-122261", "master-35759"],
-      "decade_activity": [1960, 1980],
+      "decade_activity": [2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [10584, 11136],
       "evidence": [
@@ -13891,7 +13904,7 @@
       "role_categories": ["vocals"],
       "role_text_examples": ["Backing Vocals"],
       "albums": ["master-1046042", "master-80514"],
-      "decade_activity": [1980, 2010],
+      "decade_activity": [1980],
       "connection_count": 2,
       "neighboring_contributor_ids": [67331, 350510],
       "evidence": [
@@ -13911,7 +13924,7 @@
       "role_categories": ["strings"],
       "role_text_examples": ["Steel Guitar"],
       "albums": ["master-108242", "master-750386"],
-      "decade_activity": [1970, 2010],
+      "decade_activity": [2010],
       "connection_count": 2,
       "neighboring_contributor_ids": [268583, 1124645],
       "evidence": [
@@ -13931,7 +13944,7 @@
       "role_categories": ["brass_woodwind"],
       "role_text_examples": ["Trumpet"],
       "albums": ["master-107325", "master-60721"],
-      "decade_activity": [1950, 1960],
+      "decade_activity": [1970, 2010],
       "connection_count": 2,
       "neighboring_contributor_ids": [27518, 124497],
       "evidence": [
@@ -13951,7 +13964,7 @@
       "role_categories": ["percussion_keys"],
       "role_text_examples": ["Keyboards"],
       "albums": ["master-106396", "master-113224"],
-      "decade_activity": [1980, 1990],
+      "decade_activity": [1980],
       "connection_count": 2,
       "neighboring_contributor_ids": [12686, 13735],
       "evidence": [
@@ -13976,7 +13989,7 @@
         "master-20135",
         "master-24535"
       ],
-      "decade_activity": [1960, 1980, 2010],
+      "decade_activity": [],
       "connection_count": 3,
       "neighboring_contributor_ids": [129348, 253216, 254439],
       "evidence": []
@@ -13987,7 +14000,7 @@
       "role_categories": ["unknown"],
       "role_text_examples": ["Performer [Life In The Fast Lane]"],
       "albums": ["master-1046042", "master-105802", "master-59501"],
-      "decade_activity": [1980, 2010],
+      "decade_activity": [],
       "connection_count": 2,
       "neighboring_contributor_ids": [108722, 350510],
       "evidence": [
@@ -14023,7 +14036,7 @@
       "role_categories": ["brass_woodwind"],
       "role_text_examples": ["Trumpet"],
       "albums": ["master-122261", "master-16545"],
-      "decade_activity": [1960, 1980],
+      "decade_activity": [1980],
       "connection_count": 2,
       "neighboring_contributor_ids": [10584, 30344],
       "evidence": [
@@ -14063,7 +14076,7 @@
       "role_categories": ["percussion_keys", "strings"],
       "role_text_examples": ["Guitar", "Keyboards [Remix]"],
       "albums": ["master-403952", "master-8883"],
-      "decade_activity": [1980, 2010],
+      "decade_activity": [2000, 2010],
       "connection_count": 2,
       "neighboring_contributor_ids": [15885, 2445772],
       "evidence": [
@@ -14083,7 +14096,7 @@
       "role_categories": ["percussion_keys"],
       "role_text_examples": ["Drums"],
       "albums": ["master-16545", "master-3878"],
-      "decade_activity": [1970, 1980],
+      "decade_activity": [1970],
       "connection_count": 2,
       "neighboring_contributor_ids": [30344, 59792],
       "evidence": [
@@ -14103,7 +14116,7 @@
       "role_categories": ["percussion_keys"],
       "role_text_examples": ["Drums"],
       "albums": ["master-23069", "master-26037"],
-      "decade_activity": [1970],
+      "decade_activity": [1980, 1990],
       "connection_count": 2,
       "neighboring_contributor_ids": [200567, 254259],
       "evidence": [
@@ -14123,7 +14136,7 @@
       "role_categories": ["percussion_keys"],
       "role_text_examples": ["Drums"],
       "albums": ["master-28680", "master-55658"],
-      "decade_activity": [1980],
+      "decade_activity": [2000, 2010],
       "connection_count": 2,
       "neighboring_contributor_ids": [85929, 106474],
       "evidence": [
@@ -14143,7 +14156,7 @@
       "role_categories": ["strings"],
       "role_text_examples": ["Electric Guitar", "Guitar"],
       "albums": ["master-105802", "master-81575"],
-      "decade_activity": [1980],
+      "decade_activity": [1980, 1990],
       "connection_count": 2,
       "neighboring_contributor_ids": [161091, 249597],
       "evidence": [
@@ -14163,7 +14176,7 @@
       "role_categories": ["percussion_keys"],
       "role_text_examples": ["Drums, Percussion", "Percussion"],
       "albums": ["master-69859", "master-92517"],
-      "decade_activity": [1970],
+      "decade_activity": [1970, 2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [17827, 938844],
       "evidence": [
@@ -14203,7 +14216,7 @@
       "role_categories": ["engineering"],
       "role_text_examples": ["Mixed By", "Engineer [Engineered By]"],
       "albums": ["master-105802", "master-48605"],
-      "decade_activity": [1980],
+      "decade_activity": [1980, 2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [161091, 208220],
       "evidence": [
@@ -14239,7 +14252,7 @@
         "Guest, Musician"
       ],
       "albums": ["master-105802", "master-25303", "master-70584"],
-      "decade_activity": [1970, 1980, 1990],
+      "decade_activity": [1980, 2000],
       "connection_count": 3,
       "neighboring_contributor_ids": [161091, 253791, 261760],
       "evidence": [
@@ -14275,7 +14288,7 @@
       "role_categories": ["packaging_business", "production"],
       "role_text_examples": ["Executive-Producer", "Producer"],
       "albums": ["master-1046042", "master-105802", "master-70584"],
-      "decade_activity": [1970, 1980, 2010],
+      "decade_activity": [2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [40916, 261361],
       "evidence": [
@@ -14295,7 +14308,7 @@
       "role_categories": ["vocals"],
       "role_text_examples": ["Backing Vocals", "Vocals [Ornithologist]"],
       "albums": ["master-65826", "master-81172"],
-      "decade_activity": [1980],
+      "decade_activity": [1990],
       "connection_count": 2,
       "neighboring_contributor_ids": [117225, 145072],
       "evidence": [
@@ -14321,7 +14334,7 @@
         "Bass, Guitar, Written-By"
       ],
       "albums": ["master-1046042", "master-38722"],
-      "decade_activity": [1970, 2010],
+      "decade_activity": [1980],
       "connection_count": 2,
       "neighboring_contributor_ids": [47333, 350510],
       "evidence": [
@@ -14373,7 +14386,7 @@
       "role_categories": ["percussion_keys"],
       "role_text_examples": ["Drums", "Drums, Percussion"],
       "albums": ["master-16545", "master-72879"],
-      "decade_activity": [1970, 1980],
+      "decade_activity": [1980, 2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [30344, 46481],
       "evidence": [
@@ -14393,7 +14406,7 @@
       "role_categories": ["production"],
       "role_text_examples": ["Producer"],
       "albums": ["master-1046042", "master-15841"],
-      "decade_activity": [1970, 2010],
+      "decade_activity": [1990],
       "connection_count": 2,
       "neighboring_contributor_ids": [8211, 270195],
       "evidence": [
@@ -14409,7 +14422,7 @@
       "role_categories": ["engineering"],
       "role_text_examples": ["Mixed By"],
       "albums": ["master-20135", "master-3211"],
-      "decade_activity": [1980, 2000],
+      "decade_activity": [2010],
       "connection_count": 2,
       "neighboring_contributor_ids": [861083, 1513560],
       "evidence": [
@@ -14462,7 +14475,7 @@
         "master-92517",
         "master-99919"
       ],
-      "decade_activity": [1970, 1980, 2000, 2010],
+      "decade_activity": [1970, 1980, 1990, 2000, 2020],
       "connection_count": 18,
       "neighboring_contributor_ids": [
         249597, 938844, 13961, 18956, 30552, 35301, 36603, 53248, 57103, 108475,
@@ -14517,7 +14530,7 @@
       "role_categories": ["vocals"],
       "role_text_examples": ["Backing Vocals"],
       "albums": ["master-106274", "master-66631"],
-      "decade_activity": [1970, 2000],
+      "decade_activity": [1980, 2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [18984, 30552],
       "evidence": [
@@ -14551,7 +14564,7 @@
         "Electric Piano [Rhodes]"
       ],
       "albums": ["master-1046042", "master-9382"],
-      "decade_activity": [1970, 2010],
+      "decade_activity": [2010],
       "connection_count": 2,
       "neighboring_contributor_ids": [180664, 2013868],
       "evidence": [
@@ -14627,7 +14640,7 @@
         "master-81575",
         "master-99919"
       ],
-      "decade_activity": [1950, 1960, 1970, 1980, 1990],
+      "decade_activity": [1970, 1980, 1990],
       "connection_count": 10,
       "neighboring_contributor_ids": [
         48512, 19298, 36603, 37735, 69621, 76605, 90233, 200762, 262944, 298002
@@ -14701,7 +14714,7 @@
       "role_categories": ["unknown"],
       "role_text_examples": ["Performer [Sonic Reducer]"],
       "albums": ["master-20135", "master-23684", "master-25688"],
-      "decade_activity": [1980],
+      "decade_activity": [2010],
       "connection_count": 3,
       "neighboring_contributor_ids": [10783, 22854, 175760],
       "evidence": [
@@ -14722,7 +14735,7 @@
         "Violin, Performer [Vitar]"
       ],
       "albums": ["master-105802", "master-122261", "master-73013"],
-      "decade_activity": [1960, 1980],
+      "decade_activity": [1970, 1980, 2000],
       "connection_count": 3,
       "neighboring_contributor_ids": [161091, 139508, 296983],
       "evidence": [
@@ -14762,7 +14775,7 @@
       "role_categories": ["brass_woodwind"],
       "role_text_examples": ["Flute", "Performer [Choir]"],
       "albums": ["master-20135", "master-34081"],
-      "decade_activity": [1950, 1980],
+      "decade_activity": [1990, 2010],
       "connection_count": 2,
       "neighboring_contributor_ids": [10783, 237978],
       "evidence": [
@@ -14781,6 +14794,7 @@
       "name": "Boz Scaggs",
       "role_categories": [
         "composition",
+        "engineering",
         "percussion_keys",
         "strings",
         "vocals"
@@ -14802,7 +14816,7 @@
         "master-68209",
         "master-750386"
       ],
-      "decade_activity": [1960, 1970, 1980, 2010],
+      "decade_activity": [1980, 1990, 2000, 2010],
       "connection_count": 7,
       "neighboring_contributor_ids": [
         43745, 52230, 108475, 177374, 255388, 271387, 386834
@@ -14870,7 +14884,7 @@
         "master-45720",
         "master-91767"
       ],
-      "decade_activity": [1970, 1980, 1990, 2000, 2010],
+      "decade_activity": [1990, 2000, 2010, 2020],
       "connection_count": 7,
       "neighboring_contributor_ids": [
         2013868, 15687, 19298, 24221, 69722, 254259, 262691
@@ -14924,7 +14938,7 @@
       "role_categories": ["unknown"],
       "role_text_examples": ["Film Director"],
       "albums": ["master-105802", "master-35276"],
-      "decade_activity": [1960, 1980],
+      "decade_activity": [2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [39600, 39766],
       "evidence": [
@@ -14944,7 +14958,7 @@
       "role_categories": ["percussion_keys"],
       "role_text_examples": ["Drums [Live Drums]", "Percussion"],
       "albums": ["master-108242", "master-403952"],
-      "decade_activity": [1970, 2010],
+      "decade_activity": [1990, 2010],
       "connection_count": 2,
       "neighboring_contributor_ids": [268583, 2445772],
       "evidence": [
@@ -14964,7 +14978,7 @@
       "role_categories": ["vocals"],
       "role_text_examples": ["Backing Vocals"],
       "albums": ["master-1046042", "master-553"],
-      "decade_activity": [1980, 2010],
+      "decade_activity": [2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [101028, 118532],
       "evidence": [
@@ -14987,7 +15001,7 @@
         "Vocals, Acoustic Guitar, Slide Guitar, Keyboards"
       ],
       "albums": ["master-106274", "master-13280"],
-      "decade_activity": [1980, 2000],
+      "decade_activity": [1990, 2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [10933, 30552],
       "evidence": [
@@ -15007,7 +15021,7 @@
       "role_categories": ["strings"],
       "role_text_examples": ["Bass"],
       "albums": ["master-26647", "master-59538"],
-      "decade_activity": [1970, 2000],
+      "decade_activity": [2000, 2010],
       "connection_count": 2,
       "neighboring_contributor_ids": [1289, 42058],
       "evidence": [
@@ -15027,7 +15041,7 @@
       "role_categories": ["vocals"],
       "role_text_examples": ["Backing Vocals", "Vocals"],
       "albums": ["master-26725", "master-67836"],
-      "decade_activity": [1970, 1980],
+      "decade_activity": [1980, 2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [8760, 219986],
       "evidence": [
@@ -15047,7 +15061,7 @@
       "role_categories": ["vocals"],
       "role_text_examples": ["Backing Vocals [Background Vocals]"],
       "albums": ["master-51607", "master-55576"],
-      "decade_activity": [1980],
+      "decade_activity": [1980, 1990],
       "connection_count": 2,
       "neighboring_contributor_ids": [13932, 30542],
       "evidence": [
@@ -15067,7 +15081,7 @@
       "role_categories": ["brass_woodwind"],
       "role_text_examples": ["Featuring", "Flute", "Tenor Saxophone"],
       "albums": ["master-105802", "master-45432"],
-      "decade_activity": [1970, 1980],
+      "decade_activity": [2010],
       "connection_count": 2,
       "neighboring_contributor_ids": [56798, 62920],
       "evidence": [
@@ -15091,7 +15105,7 @@
       "role_categories": ["vocals"],
       "role_text_examples": ["Backing Vocals", "Featuring"],
       "albums": ["master-1046042", "master-13280"],
-      "decade_activity": [1980, 2010],
+      "decade_activity": [1980, 2020],
       "connection_count": 2,
       "neighboring_contributor_ids": [10933, 350510],
       "evidence": [
@@ -15111,7 +15125,7 @@
       "role_categories": ["strings", "vocals"],
       "role_text_examples": ["Backing Vocals", "Bass"],
       "albums": ["master-45720", "master-81172"],
-      "decade_activity": [1980],
+      "decade_activity": [1990, 2010],
       "connection_count": 2,
       "neighboring_contributor_ids": [69722, 145072],
       "evidence": [
@@ -15140,7 +15154,7 @@
         "Keyboards"
       ],
       "albums": ["master-19493", "master-403952"],
-      "decade_activity": [1970, 2010],
+      "decade_activity": [2000, 2010],
       "connection_count": 2,
       "neighboring_contributor_ids": [3865, 2445772],
       "evidence": [
@@ -15165,7 +15179,7 @@
         "master-34081",
         "master-35759"
       ],
-      "decade_activity": [1950, 1970, 1980],
+      "decade_activity": [1980, 1990, 2000],
       "connection_count": 4,
       "neighboring_contributor_ids": [48512, 161091, 11136, 48090],
       "evidence": [
@@ -15193,7 +15207,7 @@
       "role_categories": ["brass_woodwind"],
       "role_text_examples": ["Trumpet", "Trumpet, Flugelhorn"],
       "albums": ["master-1046042", "master-30712", "master-35793"],
-      "decade_activity": [1970, 1980, 2010],
+      "decade_activity": [1990, 2000],
       "connection_count": 3,
       "neighboring_contributor_ids": [92623, 68693, 429108],
       "evidence": [
@@ -15221,7 +15235,7 @@
         "Producer"
       ],
       "albums": ["master-1046042", "master-113224"],
-      "decade_activity": [1990, 2010],
+      "decade_activity": [1990],
       "connection_count": 2,
       "neighboring_contributor_ids": [12686, 25809],
       "evidence": [
@@ -15249,7 +15263,7 @@
       "role_categories": ["engineering", "production"],
       "role_text_examples": ["Producer, Mixed By"],
       "albums": ["master-1046042", "master-105802", "master-38712"],
-      "decade_activity": [1970, 1980, 2010],
+      "decade_activity": [1980],
       "connection_count": 2,
       "neighboring_contributor_ids": [85101, 177374],
       "evidence": [
@@ -15272,7 +15286,7 @@
         "Percussion"
       ],
       "albums": ["master-105802", "master-3211"],
-      "decade_activity": [1980, 2000],
+      "decade_activity": [2010, 2020],
       "connection_count": 2,
       "neighboring_contributor_ids": [39600, 861083],
       "evidence": [
@@ -15292,7 +15306,7 @@
       "role_categories": ["arrangement", "production"],
       "role_text_examples": ["Arranged By", "Producer"],
       "albums": ["master-1046042", "master-76678"],
-      "decade_activity": [1970, 2010],
+      "decade_activity": [2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [134633, 600573],
       "evidence": [
@@ -15312,7 +15326,7 @@
       "role_categories": ["strings", "vocals"],
       "role_text_examples": ["Bells", "Harp", "Vocals", "Wind"],
       "albums": ["master-1046042", "master-72235"],
-      "decade_activity": [1970, 2010],
+      "decade_activity": [1970],
       "connection_count": 2,
       "neighboring_contributor_ids": [173805, 482142],
       "evidence": [
@@ -15340,7 +15354,7 @@
       "role_categories": ["brass_woodwind"],
       "role_text_examples": ["Saxophone", "Soloist, Tenor Saxophone"],
       "albums": ["master-35401", "master-68399"],
-      "decade_activity": [1960, 1970],
+      "decade_activity": [1970, 2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [11012, 168907],
       "evidence": [
@@ -15383,7 +15397,7 @@
       "role_categories": ["engineering"],
       "role_text_examples": ["Engineer [Assistant]"],
       "albums": ["master-105802", "master-73013"],
-      "decade_activity": [1980],
+      "decade_activity": [1980, 2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [267872, 451329],
       "evidence": [
@@ -15403,7 +15417,7 @@
       "role_categories": ["brass_woodwind"],
       "role_text_examples": ["Trombone"],
       "albums": ["master-59538", "master-68399"],
-      "decade_activity": [1970],
+      "decade_activity": [1970, 2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [11012, 42058],
       "evidence": [
@@ -15423,7 +15437,7 @@
       "role_categories": ["strings"],
       "role_text_examples": ["Viola"],
       "albums": ["master-104166", "master-32208"],
-      "decade_activity": [1950, 1970],
+      "decade_activity": [1970],
       "connection_count": 2,
       "neighboring_contributor_ids": [97545, 266352],
       "evidence": [
@@ -15449,7 +15463,7 @@
         "Electric Guitar"
       ],
       "albums": ["master-1046042", "master-26436"],
-      "decade_activity": [1980, 2010],
+      "decade_activity": [2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [25884, 339644],
       "evidence": [
@@ -15489,7 +15503,7 @@
       "role_categories": ["composition", "vocals"],
       "role_text_examples": ["Vocals", "Vocals [Supporting]", "Written-By"],
       "albums": ["master-105802", "master-16158"],
-      "decade_activity": [1970, 1980],
+      "decade_activity": [1970, 1990],
       "connection_count": 2,
       "neighboring_contributor_ids": [29923, 308343],
       "evidence": [
@@ -15522,7 +15536,7 @@
         "Mandolin"
       ],
       "albums": ["master-105802", "master-49965"],
-      "decade_activity": [1980, 1990],
+      "decade_activity": [1980, 2010],
       "connection_count": 2,
       "neighboring_contributor_ids": [110862, 161091],
       "evidence": [
@@ -15547,13 +15561,13 @@
     {
       "artist_id": 303282,
       "name": "Matt Chamberlain",
-      "role_categories": ["percussion_keys"],
+      "role_categories": ["engineering", "percussion_keys"],
       "role_text_examples": [
         "Drums, Programmed By [Additional Programming]",
         "Drums, Programmed By [Loop Programming], Percussion"
       ],
       "albums": ["master-1046042", "master-1561"],
-      "decade_activity": [1970, 2010],
+      "decade_activity": [2000, 2010],
       "connection_count": 2,
       "neighboring_contributor_ids": [10263, 2013868],
       "evidence": [
@@ -15579,7 +15593,7 @@
         "master-32708",
         "master-55281"
       ],
-      "decade_activity": [1970, 1980, 2010],
+      "decade_activity": [2010],
       "connection_count": 2,
       "neighboring_contributor_ids": [1818, 2013868],
       "evidence": [
@@ -15599,7 +15613,7 @@
       "role_categories": ["strings"],
       "role_text_examples": ["Acoustic Guitar", "Guitar"],
       "albums": ["master-13960", "master-45720"],
-      "decade_activity": [1980],
+      "decade_activity": [2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [69722, 82294],
       "evidence": [
@@ -15619,7 +15633,7 @@
       "role_categories": ["strings"],
       "role_text_examples": ["Violin"],
       "albums": ["master-32208", "master-60680"],
-      "decade_activity": [1950, 1970],
+      "decade_activity": [1970],
       "connection_count": 2,
       "neighboring_contributor_ids": [97545, 152685],
       "evidence": [
@@ -15639,7 +15653,7 @@
       "role_categories": ["percussion_keys"],
       "role_text_examples": ["Drums", "Percussion, Drums"],
       "albums": ["master-26725", "master-67405"],
-      "decade_activity": [1970],
+      "decade_activity": [1970, 1990],
       "connection_count": 2,
       "neighboring_contributor_ids": [219986, 249829],
       "evidence": [
@@ -15665,7 +15679,7 @@
         "Vocals, Organ"
       ],
       "albums": ["master-105802", "master-16158", "master-35401"],
-      "decade_activity": [1960, 1970, 1980],
+      "decade_activity": [1970, 1980],
       "connection_count": 3,
       "neighboring_contributor_ids": [161091, 168907, 301570],
       "evidence": [
@@ -15701,7 +15715,7 @@
       "role_categories": ["brass_woodwind"],
       "role_text_examples": ["Trumpet", "Trumpet, Flugelhorn"],
       "albums": ["master-49965", "master-89665"],
-      "decade_activity": [1990],
+      "decade_activity": [1980, 1990],
       "connection_count": 2,
       "neighboring_contributor_ids": [51039, 110862],
       "evidence": [
@@ -15721,7 +15735,7 @@
       "role_categories": ["percussion_keys"],
       "role_text_examples": ["Drums"],
       "albums": ["master-113224", "master-26647"],
-      "decade_activity": [1990, 2000],
+      "decade_activity": [2010],
       "connection_count": 2,
       "neighboring_contributor_ids": [1289, 12686],
       "evidence": [
@@ -15741,7 +15755,7 @@
       "role_categories": ["percussion_keys"],
       "role_text_examples": ["Drums"],
       "albums": ["master-28680", "master-44278"],
-      "decade_activity": [1970, 1980],
+      "decade_activity": [1970],
       "connection_count": 2,
       "neighboring_contributor_ids": [11879, 85929],
       "evidence": [
@@ -15761,7 +15775,7 @@
       "role_categories": ["percussion_keys"],
       "role_text_examples": ["Harpsichord", "Piano, Organ, Synthesizer"],
       "albums": ["master-1046042", "master-17217"],
-      "decade_activity": [1960, 2010],
+      "decade_activity": [1980, 2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [70829, 350510],
       "evidence": [
@@ -15781,7 +15795,7 @@
       "role_categories": ["strings"],
       "role_text_examples": ["Bass", "Musician [Production Numbers], Bass"],
       "albums": ["master-107325", "master-113224"],
-      "decade_activity": [1950, 1990],
+      "decade_activity": [1990],
       "connection_count": 2,
       "neighboring_contributor_ids": [12686, 27518],
       "evidence": [
@@ -15823,7 +15837,7 @@
         "master-72235",
         "master-9382"
       ],
-      "decade_activity": [1970, 1980],
+      "decade_activity": [1980, 1990],
       "connection_count": 8,
       "neighboring_contributor_ids": [
         161091, 46063, 9079, 34181, 125660, 147878, 153219, 201685
@@ -15881,7 +15895,7 @@
         "Keyboards [Additional]"
       ],
       "albums": ["master-1046042", "master-89665"],
-      "decade_activity": [1990, 2010],
+      "decade_activity": [2000, 2010],
       "connection_count": 2,
       "neighboring_contributor_ids": [51039, 2013868],
       "evidence": [
@@ -15913,7 +15927,7 @@
         "master-3878",
         "master-90844"
       ],
-      "decade_activity": [1970, 1980, 2000, 2010],
+      "decade_activity": [2000],
       "connection_count": 6,
       "neighboring_contributor_ids": [
         24651, 35646, 41266, 66824, 101883, 111502
@@ -15943,7 +15957,7 @@
       "role_categories": ["vocals"],
       "role_text_examples": ["Guest, Vocals", "Vocals, Backing Vocals"],
       "albums": ["master-23069", "master-57940"],
-      "decade_activity": [1970],
+      "decade_activity": [1980],
       "connection_count": 2,
       "neighboring_contributor_ids": [149420, 254259],
       "evidence": [
@@ -15960,13 +15974,13 @@
     {
       "artist_id": 325903,
       "name": "Larry Fast",
-      "role_categories": ["percussion_keys"],
+      "role_categories": ["engineering", "percussion_keys"],
       "role_text_examples": [
         "Programmed By [Synthesizer], Synthesizer",
         "Synthesizer [Prophet]"
       ],
       "albums": ["master-28680", "master-9382"],
-      "decade_activity": [1970, 1980],
+      "decade_activity": [1980, 2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [5951, 85929],
       "evidence": [
@@ -15986,7 +16000,7 @@
       "role_categories": ["percussion_keys"],
       "role_text_examples": ["Drums", "Percussion"],
       "albums": ["master-17217", "master-44278"],
-      "decade_activity": [1960, 1970],
+      "decade_activity": [1980, 1990],
       "connection_count": 2,
       "neighboring_contributor_ids": [11879, 70829],
       "evidence": [
@@ -16025,7 +16039,7 @@
         "master-74227",
         "master-99919"
       ],
-      "decade_activity": [1970, 1980, 2000, 2010],
+      "decade_activity": [2000, 2020],
       "connection_count": 5,
       "neighboring_contributor_ids": [2013868, 10421, 183231, 38661, 79704],
       "evidence": [
@@ -16061,7 +16075,7 @@
       "role_categories": ["percussion_keys"],
       "role_text_examples": ["Drums"],
       "albums": ["master-1046042", "master-41722"],
-      "decade_activity": [1970, 2010],
+      "decade_activity": [1980, 1990],
       "connection_count": 2,
       "neighboring_contributor_ids": [153073, 350510],
       "evidence": [
@@ -16081,7 +16095,7 @@
       "role_categories": ["percussion_keys"],
       "role_text_examples": ["Drums", "Drums [Additional]"],
       "albums": ["master-30577", "master-65826"],
-      "decade_activity": [1970, 1980],
+      "decade_activity": [1980, 2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [57103, 117225],
       "evidence": [
@@ -16101,7 +16115,7 @@
       "role_categories": ["strings"],
       "role_text_examples": ["Bass"],
       "albums": ["master-1046042", "master-92896"],
-      "decade_activity": [1970, 2010],
+      "decade_activity": [1970, 1980],
       "connection_count": 2,
       "neighboring_contributor_ids": [59249, 350510],
       "evidence": [
@@ -16132,7 +16146,7 @@
         "master-79666",
         "master-87446"
       ],
-      "decade_activity": [1960, 1970, 1980, 1990, 2010],
+      "decade_activity": [2000, 2010, 2020],
       "connection_count": 10,
       "neighboring_contributor_ids": [
         2013868, 18956, 19814, 33534, 57103, 59770, 85101, 229987, 262944,
@@ -16183,7 +16197,7 @@
       "role_categories": ["vocals"],
       "role_text_examples": ["Backing Vocals"],
       "albums": ["master-133278", "master-57940"],
-      "decade_activity": [1970, 1990],
+      "decade_activity": [1980, 1990],
       "connection_count": 2,
       "neighboring_contributor_ids": [19298, 149420],
       "evidence": [
@@ -16203,7 +16217,7 @@
       "role_categories": ["vocals"],
       "role_text_examples": ["Backing Vocals"],
       "albums": ["master-1046042", "master-113522"],
-      "decade_activity": [1970, 2010],
+      "decade_activity": [1980, 2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [48512, 118532],
       "evidence": [
@@ -16229,7 +16243,7 @@
         "Percussion, Drums"
       ],
       "albums": ["master-105802", "master-4300"],
-      "decade_activity": [1970, 1980],
+      "decade_activity": [1980, 1990],
       "connection_count": 2,
       "neighboring_contributor_ids": [60149, 161091],
       "evidence": [
@@ -16271,7 +16285,7 @@
         "Vocals"
       ],
       "albums": ["master-105802", "master-15841"],
-      "decade_activity": [1970, 1980],
+      "decade_activity": [2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [161091, 345004],
       "evidence": [
@@ -16307,7 +16321,7 @@
       "role_categories": ["strings"],
       "role_text_examples": ["Bass"],
       "albums": ["master-105802", "master-15841"],
-      "decade_activity": [1970, 1980],
+      "decade_activity": [1970, 2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [8887, 345003],
       "evidence": [
@@ -16333,7 +16347,7 @@
         "Film Director"
       ],
       "albums": ["master-20135", "master-32208"],
-      "decade_activity": [1950, 1980],
+      "decade_activity": [2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [10578, 10783],
       "evidence": [
@@ -16402,7 +16416,7 @@
         "master-8883",
         "master-92896"
       ],
-      "decade_activity": [1960, 1970, 1980, 2010],
+      "decade_activity": [1970, 1980, 2000, 2010],
       "connection_count": 13,
       "neighboring_contributor_ids": [
         2013868, 177374, 15885, 32216, 200567, 255368, 255680, 261837, 276418,
@@ -16456,6 +16470,7 @@
       "name": "Ed O'Brien",
       "role_categories": [
         "composition",
+        "engineering",
         "percussion_keys",
         "strings",
         "vocals"
@@ -16478,7 +16493,7 @@
         "master-4300",
         "master-44278"
       ],
-      "decade_activity": [1960, 1970, 1980, 1990, 2010],
+      "decade_activity": [2010, 2020],
       "connection_count": 4,
       "neighboring_contributor_ids": [2013868, 2768, 20661, 366507],
       "evidence": [
@@ -16530,7 +16545,7 @@
       "role_categories": ["engineering"],
       "role_text_examples": ["Mastered By", "Mastered By [Vinyl]"],
       "albums": ["master-1046042", "master-35006"],
-      "decade_activity": [1970, 2010],
+      "decade_activity": [2010, 2020],
       "connection_count": 2,
       "neighboring_contributor_ids": [50263, 365794],
       "evidence": [
@@ -16578,7 +16593,7 @@
       "role_categories": ["percussion_keys"],
       "role_text_examples": ["Piano"],
       "albums": ["master-108242", "master-122261"],
-      "decade_activity": [1960, 1970],
+      "decade_activity": [1990],
       "connection_count": 2,
       "neighboring_contributor_ids": [10584, 268583],
       "evidence": [
@@ -16598,7 +16613,7 @@
       "role_categories": ["strings"],
       "role_text_examples": ["Electric Violin", "Violin"],
       "albums": ["master-105802", "master-25688"],
-      "decade_activity": [1980],
+      "decade_activity": [1980, 2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [23524, 161091],
       "evidence": [
@@ -16618,7 +16633,7 @@
       "role_categories": ["composition", "strings", "vocals"],
       "role_text_examples": ["Written-By", "Guitar, Vocals", "Lead Vocals"],
       "albums": ["master-1046042", "master-47868"],
-      "decade_activity": [1960, 2010],
+      "decade_activity": [2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [58687, 482142],
       "evidence": [
@@ -16642,7 +16657,7 @@
       "role_categories": ["engineering"],
       "role_text_examples": ["Engineer [Assistant]", "Mastered By"],
       "albums": ["master-1046042", "master-16921"],
-      "decade_activity": [1970, 2010],
+      "decade_activity": [1970, 2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [118532, 160906],
       "evidence": [
@@ -16665,7 +16680,7 @@
         "Engineer [Assistant]"
       ],
       "albums": ["master-105802", "master-24047"],
-      "decade_activity": [1960, 1980],
+      "decade_activity": [1990, 2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [39765, 161091],
       "evidence": [
@@ -16686,6 +16701,7 @@
         "arrangement",
         "brass_woodwind",
         "composition",
+        "engineering",
         "percussion_keys",
         "production",
         "strings"
@@ -16711,7 +16727,7 @@
         "master-68209",
         "master-750386"
       ],
-      "decade_activity": [1950, 1960, 1970, 1980, 2010],
+      "decade_activity": [1990, 2000, 2010],
       "connection_count": 9,
       "neighboring_contributor_ids": [
         2013868, 74213, 241495, 33591, 61430, 64756, 124497, 262944, 280706
@@ -16777,7 +16793,7 @@
         "Featuring [Uncredited]"
       ],
       "albums": ["master-1046042", "master-16545", "master-37145"],
-      "decade_activity": [1980, 2010],
+      "decade_activity": [2010, 2020],
       "connection_count": 2,
       "neighboring_contributor_ids": [237914, 2013868],
       "evidence": [
@@ -16829,7 +16845,7 @@
       "role_categories": ["brass_woodwind"],
       "role_text_examples": ["Trombone"],
       "albums": ["master-13960", "master-8883"],
-      "decade_activity": [1980],
+      "decade_activity": [1970],
       "connection_count": 2,
       "neighboring_contributor_ids": [15885, 82294],
       "evidence": [
@@ -16852,7 +16868,7 @@
         "Musician [Additional Musician], Cello"
       ],
       "albums": ["master-105802", "master-12236"],
-      "decade_activity": [1980, 2000],
+      "decade_activity": [1990, 2010],
       "connection_count": 2,
       "neighboring_contributor_ids": [38661, 161091],
       "evidence": [
@@ -16872,7 +16888,7 @@
       "role_categories": ["packaging_business"],
       "role_text_examples": ["Art Direction"],
       "albums": ["master-1046042", "master-105802", "master-73013"],
-      "decade_activity": [1980, 2010],
+      "decade_activity": [2010],
       "connection_count": 2,
       "neighboring_contributor_ids": [18552, 296983],
       "evidence": [
@@ -16898,7 +16914,7 @@
         "master-55658",
         "master-60680"
       ],
-      "decade_activity": [1970, 1980, 2010],
+      "decade_activity": [2010],
       "connection_count": 4,
       "neighboring_contributor_ids": [2013868, 106474, 152685, 163505],
       "evidence": [
@@ -16953,7 +16969,7 @@
         "Musician [Additional Musician], Piano [Piano By]"
       ],
       "albums": ["master-105802", "master-18442"],
-      "decade_activity": [1970, 1980],
+      "decade_activity": [1990],
       "connection_count": 2,
       "neighboring_contributor_ids": [161091, 246650],
       "evidence": [
@@ -16993,7 +17009,7 @@
         "master-68469",
         "master-72235"
       ],
-      "decade_activity": [1950, 1960, 1970, 1980, 2010],
+      "decade_activity": [1970, 1990, 2000, 2010, 2020],
       "connection_count": 7,
       "neighboring_contributor_ids": [
         2013868, 52230, 254439, 670257, 13735, 292542, 399028
@@ -17039,7 +17055,7 @@
       "role_categories": ["unknown"],
       "role_text_examples": [],
       "albums": ["master-105802", "master-27460"],
-      "decade_activity": [1980, 2000],
+      "decade_activity": [],
       "connection_count": 2,
       "neighboring_contributor_ids": [15687, 161091],
       "evidence": []
@@ -17053,7 +17069,7 @@
         "Engineer [Assistant]"
       ],
       "albums": ["master-105802", "master-26647"],
-      "decade_activity": [1980, 2000],
+      "decade_activity": [2000, 2010],
       "connection_count": 2,
       "neighboring_contributor_ids": [1289, 161091],
       "evidence": [
@@ -17085,7 +17101,7 @@
         "master-6495",
         "master-70584"
       ],
-      "decade_activity": [1970, 1980, 2010],
+      "decade_activity": [2010],
       "connection_count": 5,
       "neighboring_contributor_ids": [2013868, 40916, 10783, 18839, 113655],
       "evidence": [
@@ -17129,7 +17145,7 @@
         "Keyboards"
       ],
       "albums": ["master-105802", "master-49058"],
-      "decade_activity": [1960, 1980],
+      "decade_activity": [1970],
       "connection_count": 2,
       "neighboring_contributor_ids": [48412, 89675],
       "evidence": [
@@ -17169,7 +17185,7 @@
       "role_categories": ["percussion_keys"],
       "role_text_examples": ["Keyboards", "Organ"],
       "albums": ["master-60680", "master-9382"],
-      "decade_activity": [1970],
+      "decade_activity": [1970, 2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [5951, 152685],
       "evidence": [
@@ -17209,7 +17225,7 @@
       "role_categories": ["vocals"],
       "role_text_examples": ["Backing Vocals [Background Vocals]", "Vocals"],
       "albums": ["master-37615", "master-72235"],
-      "decade_activity": [1970],
+      "decade_activity": [1990, 2010],
       "connection_count": 2,
       "neighboring_contributor_ids": [120232, 138556],
       "evidence": [
@@ -17229,7 +17245,7 @@
       "role_categories": ["engineering"],
       "role_text_examples": ["Engineer", "Engineer [Assistant]"],
       "albums": ["master-1046042", "master-76678"],
-      "decade_activity": [1970, 2010],
+      "decade_activity": [2010],
       "connection_count": 2,
       "neighboring_contributor_ids": [292535, 2013868],
       "evidence": [
@@ -17252,7 +17268,7 @@
         "Vocals, Piano, Twelve-String Guitar, Guitar, Percussion, Banjo, Organ [Hammond & Vox], Synthesizer"
       ],
       "albums": ["master-26037", "master-403952"],
-      "decade_activity": [1970, 2010],
+      "decade_activity": [2010],
       "connection_count": 2,
       "neighboring_contributor_ids": [200567, 2445772],
       "evidence": [
@@ -17272,7 +17288,7 @@
       "role_categories": ["composition", "vocals"],
       "role_text_examples": ["Backing Vocals", "Handclaps", "Written-By"],
       "albums": ["master-1046042", "master-27765", "master-34081"],
-      "decade_activity": [1950, 1970, 2010],
+      "decade_activity": [1970],
       "connection_count": 3,
       "neighboring_contributor_ids": [482142, 98889, 150321],
       "evidence": [
@@ -17300,7 +17316,7 @@
         "Mixed By [Mixing Assistance By]"
       ],
       "albums": ["master-1046042", "master-107325", "master-26725"],
-      "decade_activity": [1950, 1970, 2010],
+      "decade_activity": [2000, 2010],
       "connection_count": 3,
       "neighboring_contributor_ids": [2013868, 1003, 219986],
       "evidence": [
@@ -17396,7 +17412,7 @@
         "master-20135",
         "master-3211"
       ],
-      "decade_activity": [1980, 2000, 2010],
+      "decade_activity": [2000],
       "connection_count": 3,
       "neighboring_contributor_ids": [262727, 287868, 724168],
       "evidence": [
@@ -17412,7 +17428,7 @@
       "role_categories": ["engineering", "packaging_business"],
       "role_text_examples": ["Mastered By", "Mastered By, Lacquer Cut By"],
       "albums": ["master-20135", "master-26037"],
-      "decade_activity": [1970, 1980],
+      "decade_activity": [2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [10783, 215471],
       "evidence": [
@@ -17441,7 +17457,7 @@
         "master-92517",
         "master-99919"
       ],
-      "decade_activity": [1970, 1980, 2010],
+      "decade_activity": [1970, 2000],
       "connection_count": 4,
       "neighboring_contributor_ids": [31213, 36603, 262944, 259352],
       "evidence": [
@@ -17477,7 +17493,7 @@
         "Engineer [Assistant Engineer]"
       ],
       "albums": ["master-1046042", "master-39248", "master-69156"],
-      "decade_activity": [1980, 2010],
+      "decade_activity": [2010, 2020],
       "connection_count": 3,
       "neighboring_contributor_ids": [2013868, 12332, 252409],
       "evidence": [
@@ -17506,7 +17522,7 @@
         "master-58313",
         "master-92517"
       ],
-      "decade_activity": [1970, 1980, 2000, 2010],
+      "decade_activity": [2010],
       "connection_count": 2,
       "neighboring_contributor_ids": [54650, 2013868],
       "evidence": [
@@ -17542,7 +17558,7 @@
         "Electric Guitar"
       ],
       "albums": ["master-1046042", "master-49058"],
-      "decade_activity": [1960, 2010],
+      "decade_activity": [1970, 2000],
       "connection_count": 2,
       "neighboring_contributor_ids": [250892, 350510],
       "evidence": [
@@ -17594,7 +17610,7 @@
       "role_categories": ["percussion_keys"],
       "role_text_examples": ["Keyboards, Orchestra [Leader]", "Music Director"],
       "albums": ["master-1046042", "master-23684"],
-      "decade_activity": [1980, 2010],
+      "decade_activity": [2010, 2020],
       "connection_count": 2,
       "neighboring_contributor_ids": [18836, 152377],
       "evidence": [
@@ -17635,7 +17651,7 @@
         "master-41155",
         "master-750386"
       ],
-      "decade_activity": [1970, 1980, 2010],
+      "decade_activity": [2000, 2010],
       "connection_count": 6,
       "neighboring_contributor_ids": [
         253548, 64756, 174046, 254479, 255388, 5262065
@@ -17693,7 +17709,7 @@
         "Vocals [Additional]"
       ],
       "albums": ["master-1046042", "master-69859"],
-      "decade_activity": [1970, 2010],
+      "decade_activity": [2010],
       "connection_count": 2,
       "neighboring_contributor_ids": [21363, 2013868],
       "evidence": [
@@ -17717,7 +17733,7 @@
       "role_categories": ["production"],
       "role_text_examples": ["Producer", "Co-producer", "Featuring"],
       "albums": ["master-20135", "master-3211"],
-      "decade_activity": [1980, 2000],
+      "decade_activity": [2010],
       "connection_count": 2,
       "neighboring_contributor_ids": [10783, 262727],
       "evidence": [
@@ -17741,7 +17757,7 @@
       "role_categories": ["strings"],
       "role_text_examples": ["Guitar"],
       "albums": ["master-1046042", "master-122261"],
-      "decade_activity": [1960, 2010],
+      "decade_activity": [2010, 2020],
       "connection_count": 2,
       "neighboring_contributor_ids": [74286, 2013868],
       "evidence": [
@@ -17764,7 +17780,7 @@
         "Engineer [Assistant]"
       ],
       "albums": ["master-1046042", "master-68399"],
-      "decade_activity": [1970, 2010],
+      "decade_activity": [2010],
       "connection_count": 2,
       "neighboring_contributor_ids": [11012, 2013868],
       "evidence": [
@@ -17789,7 +17805,7 @@
         "master-45432",
         "master-72879"
       ],
-      "decade_activity": [1960, 1970, 2010],
+      "decade_activity": [2000, 2010],
       "connection_count": 2,
       "neighboring_contributor_ids": [12208, 2013868],
       "evidence": [
@@ -17809,7 +17825,7 @@
       "role_categories": ["unknown"],
       "role_text_examples": ["Featuring"],
       "albums": ["master-1046042", "master-25303"],
-      "decade_activity": [1990, 2010],
+      "decade_activity": [2010],
       "connection_count": 2,
       "neighboring_contributor_ids": [25495, 2013868],
       "evidence": [
@@ -17825,7 +17841,7 @@
       "role_categories": ["unknown"],
       "role_text_examples": ["Featuring"],
       "albums": ["master-1046042", "master-81172"],
-      "decade_activity": [1980, 2010],
+      "decade_activity": [2010],
       "connection_count": 2,
       "neighboring_contributor_ids": [6092, 2013868],
       "evidence": [
@@ -17850,7 +17866,7 @@
         "master-24047",
         "master-31755"
       ],
-      "decade_activity": [1960, 1980],
+      "decade_activity": [],
       "connection_count": 3,
       "neighboring_contributor_ids": [10783, 3479, 82730],
       "evidence": []
@@ -18010,7 +18026,7 @@
         "master-9382",
         "master-99919"
       ],
-      "decade_activity": [1950, 1960, 1970, 1980, 1990, 2000, 2010],
+      "decade_activity": [2010, 2020],
       "connection_count": 40,
       "neighboring_contributor_ids": [
         350510, 482142, 429108, 339644, 365794, 170365, 25809, 270195, 330380,
@@ -18069,7 +18085,7 @@
         "Musician [Additional Musicians], Trombone"
       ],
       "albums": ["master-1046042", "master-3878"],
-      "decade_activity": [1970, 2010],
+      "decade_activity": [2010],
       "connection_count": 2,
       "neighboring_contributor_ids": [59792, 2013868],
       "evidence": [
@@ -18110,7 +18126,7 @@
         "master-403952",
         "master-8883"
       ],
-      "decade_activity": [1970, 1980, 2010],
+      "decade_activity": [2010, 2020],
       "connection_count": 7,
       "neighboring_contributor_ids": [
         15900, 101883, 253545, 256804, 271387, 277673, 614092
@@ -18167,7 +18183,7 @@
         "Engineer [Assistant]"
       ],
       "albums": ["master-1046042", "master-26647"],
-      "decade_activity": [2000, 2010],
+      "decade_activity": [2010],
       "connection_count": 2,
       "neighboring_contributor_ids": [1289, 2013868],
       "evidence": [
@@ -18187,7 +18203,7 @@
       "role_categories": ["vocals"],
       "role_text_examples": ["Backing Vocals"],
       "albums": ["master-41155", "master-47744"],
-      "decade_activity": [1970, 1980],
+      "decade_activity": [2020],
       "connection_count": 2,
       "neighboring_contributor_ids": [59770, 90233],
       "evidence": [
@@ -18210,7 +18226,7 @@
         "Guitar, Steel Guitar, Classical Guitar [Nylon Guitar]"
       ],
       "albums": ["master-151766", "master-5460"],
-      "decade_activity": [1950, 2000],
+      "decade_activity": [2010],
       "connection_count": 2,
       "neighboring_contributor_ids": [23755, 44944],
       "evidence": [
@@ -18230,7 +18246,7 @@
       "role_categories": ["percussion_keys"],
       "role_text_examples": ["Keyboards"],
       "albums": ["master-41155", "master-750386"],
-      "decade_activity": [1980, 2010],
+      "decade_activity": [2010, 2020],
       "connection_count": 2,
       "neighboring_contributor_ids": [59770, 1124645],
       "evidence": [
@@ -18250,7 +18266,7 @@
       "role_categories": ["packaging_business"],
       "role_text_examples": ["Artwork [Uncredited]", "Performer [Uncredited]"],
       "albums": ["master-105802", "master-27765"],
-      "decade_activity": [1970, 1980],
+      "decade_activity": [2010],
       "connection_count": 2,
       "neighboring_contributor_ids": [161091, 169117],
       "evidence": [

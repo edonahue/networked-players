@@ -33,7 +33,9 @@ The site now ships a game-first surface on top of the browse experience (plan:
 - **Connection Guesser** (`/play/connection/`): two records land on the counter and the player picks the contributor credited on both from a tray of choices — two attempts, an optional clue ladder, an honest give-up. Two-hop rounds hide a middle record: find the bridge credit on each side, then name the record itself. Rounds play in five-round sittings with a needle-drop summary (clean / with help / revealed), stored only on the device.
 - **Connection of the Day** (`/play/daily/`): one frozen round per local calendar date, resolved from a committed, append-only schedule (the same connection for everyone on that date, entered at each player's own local midnight), with a local streak and a spoiler-free share string (the date and grooves, never a name).
 - **Record Routes** (`/play/routes/`): a distinct path-guessing mode — album A → artist X → album B, guessed by hop count (one or two hops) and, for two-hop routes, an optional connecting-artist guess before the path is revealed. A genuinely different question from Connection Guesser's shared-credit intersection (ADR 0046).
-- All three modes run on the real canonical 140-album catalog (`apps/web/public/data/catalog/albums.v1.json`), with cover art hotlinked from Discogs' own CDN via a separately versioned art registry. The one remaining synthetic universe (a fictional catalog with generated sleeve art) survives only as an isolated test fixture — it is never shown during real play.
+- **Connect Two Records** (`/play/connect/`): pick any two catalog albums and search for a real, documented record-to-record route between them — a genuine single-source/single-sink search over every credited contributor on each album, not just its primary artist (ADR 0058), with real endpoint and evidence cards and optional producer/engineer-, drums/bass-, or guitar-only role filters (ADR 0053).
+- **Explore** (`/explore/`): an open-ended, bounded network view of one album's documented credit neighborhood — click any name to recenter, filter by role to fade the rest without hiding it (ADR 0052).
+- All modes run on the real canonical 140-album catalog (`apps/web/public/data/catalog/albums.v1.json`), with cover art hotlinked from Discogs' own CDN via a separately versioned art registry. The one remaining synthetic universe (a fictional catalog with generated sleeve art) survives only as an isolated test fixture — it is never shown during real play.
 
 Every round resolves into a liner-note evidence sheet: the credit rows, role text, and provenance that document the connection. A shared credit documents participation on a recording — never influence.
 
@@ -48,11 +50,6 @@ Every round resolves into a liner-note evidence sheet: the credit rows, role tex
 
 ## Potential later modes
 
-- producer/engineer-bridge mode: find the behind-the-scenes credit that links two albums, not just a performing artist;
-- six-degrees mode: shortest documented route between two albums, with a hop budget;
-- curated paths (the daily shipped; a reviewed-cohort browse shell exists, reviewed sets pending);
 - hidden contributor;
-- role-restricted paths;
 - manual relay between players;
-- collection-inspired challenges using derived public facts;
-- bounded live search and visual exploration.
+- collection-inspired challenges using derived public facts.

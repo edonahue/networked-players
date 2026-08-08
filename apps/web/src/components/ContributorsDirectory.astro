@@ -1,0 +1,51 @@
+---
+// Contributors directory (ADR 0058 Slice 8): search by name, filter by role
+// category, and a "most connected" default view -- all client-side over the
+// public contributor index. Markup shell only -- all wiring lives in
+// game/contributorsDirectory.ts (initContributorsDirectory()), matching
+// ConnectStage.astro's split.
+import { ROLE_CATEGORY_CHIPS } from '../game/contributorsDirectory';
+---
+
+<div class="contributors-directory" data-testid="contributors-directory">
+  <div class="contributors-directory__controls">
+    <label for="contributors-search">Search contributors</label>
+    <input
+      id="contributors-search"
+      type="text"
+      autocomplete="off"
+      placeholder="Search by name…"
+      data-contributors-search
+    />
+    <div
+      class="contributors-directory__chips"
+      role="group"
+      aria-label="Filter by role category"
+    >
+      {
+        ROLE_CATEGORY_CHIPS.map((chip) => (
+          <button
+            type="button"
+            class="chip"
+            data-contributors-category={chip.value}
+            aria-pressed="false"
+          >
+            {chip.label}
+          </button>
+        ))
+      }
+    </div>
+  </div>
+
+  <p
+    class="contributors-directory__status"
+    data-contributors-status
+    role="status"
+    aria-live="polite"
+  >
+    Loading contributors…
+  </p>
+
+  <p class="eyebrow" data-contributors-heading style="margin-top:20px">Most connected</p>
+  <div class="contributor-grid" data-contributors-results></div>
+</div>

@@ -771,6 +771,13 @@ def _parser() -> argparse.ArgumentParser:
     build_contributor_index.add_argument(
         "--catalog", type=Path, required=True, help="apps/web/public/data/catalog/albums.v1.json"
     )
+    build_contributor_index.add_argument(
+        "--evidence-release-registry",
+        type=Path,
+        required=True,
+        help="apps/web/public/data/evidence/release-registry.v1.json -- supplies "
+        "decade_activity's real per-evidence-release years (ADR 0058 Slice 8)",
+    )
     build_contributor_index.add_argument("--output", type=Path, required=True)
     build_contributor_index.add_argument(
         "--generated-at",
@@ -2608,6 +2615,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             routes_universe=json.loads(args.routes_universe.read_text()),
             routes_rounds=json.loads(args.routes_rounds.read_text()),
             catalog=catalog,
+            evidence_release_registry=json.loads(args.evidence_release_registry.read_text()),
             generated_at=args.generated_at,
         )
         failures = contributor_index_failures(index, catalog)
