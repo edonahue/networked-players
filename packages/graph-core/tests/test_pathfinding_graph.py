@@ -6,7 +6,10 @@ from typing import Any
 import pytest
 
 from networked_players_graph_core.graph import CreditGraph
-from networked_players_graph_core.pathfinding_graph import build_pathfinding_graph
+from networked_players_graph_core.pathfinding_graph import (
+    ALBUM_ANCHOR_SENTINEL,
+    build_pathfinding_graph,
+)
 
 _SNAPSHOT = "20260601"
 _CATALOG_VERSION = "catalog-v1-20260601-abc123abc123"
@@ -89,44 +92,105 @@ def onehop_dataset(tmp_path: Path) -> Path:
     )
 
 
-def _catalog() -> dict[str, Any]:
+def _catalog(*, main_release_id: int = 1) -> dict[str, Any]:
     return {
         "catalog_version": _CATALOG_VERSION,
         "snapshot_date": _SNAPSHOT,
-        "albums": [{"id": "master-1", "title": "First Light", "artist_id": 100, "year": 1995}],
+        "albums": [
+            {
+                "id": "master-1",
+                "title": "First Light",
+                "artist_id": 100,
+                "main_release_id": main_release_id,
+                "year": 1995,
+            }
+        ],
     }
 
 
-def test_pathfinding_graph_includes_the_1hop_neighborhood(onehop_dataset: Path) -> None:
-    with CreditGraph.open(onehop_dataset) as graph:
-        payload = build_pathfinding_graph(
-            graph, _catalog(), snapshot_date=_SNAPSHOT, generated_at="2026-08-03T00:00:00+00:00"
-        )
+def _membership(
+    *, main_release_id: int = 1, credits: list[dict[str, Any]] | None = None
+) -> dict[str, Any]:
+    """A minimal album-credit-membership artifact naming Alice as the sole
+    credited contributor on master-1's release, unless `credits` overrides
+    it -- matches the real Slice 2 artifact shape closely enough for this
+    module's own tests (full contract coverage lives in
+    test_album_credit_membership.py)."""
+    default_credits = [
+        {
+            "artist_id": 100,
+            "name": "Alice",
+            "anv": None,
+            "role_text": None,
+            "credit_scope": "release_artist",
+            "track_position": None,
+            "track_title": None,
+        }
+    ]
+    return {
+        "schema_version": 1,
+        "catalog_version": _CATALOG_VERSION,
+        "album_credit_membership_version": "album-credit-membership-v1-test",
+        "generated_at": "2026-08-08T00:00:00+00:00",
+        "source": "test",
+        "license": "test",
+        "albums": [
+            {
+                "album_id": "master-1",
+                "main_release_id": main_release_id,
+                "credits": credits if credits is not None else default_credits,
+            }
+        ],
+    }
 
-    assert set(payload["node_ids"]) == {100, 200, 300}
-    name_by_id = dict(zip(payload["node_ids"], payload["names"], strict=True))
-    assert name_by_id == {100: "Alice", 200: "Bob", 300: "Carol"}
 
-
-def test_edge_roles_carry_real_role_text_for_both_endpoints(onehop_dataset: Path) -> None:
-    with CreditGraph.open(onehop_dataset) as graph:
-        payload = build_pathfinding_graph(
-            graph, _catalog(), snapshot_date=_SNAPSHOT, generated_at="2026-08-03T00:00:00+00:00"
-        )
-
+def _by_pair(payload: dict[str, Any]) -> dict[tuple[int, int], tuple[str, str]]:
     node_ids = payload["node_ids"]
-    by_pair: dict[tuple[int, int], tuple[str, str]] = {}
+    result: dict[tuple[int, int], tuple[str, str]] = {}
     for node_index in range(len(node_ids)):
         start, end = payload["offsets"][node_index], payload["offsets"][node_index + 1]
         artist_a_id = node_ids[node_index]
         for slot in range(start, end):
             neighbor_index = payload["neighbors"][slot]
             artist_b_id = node_ids[neighbor_index]
-            by_pair[(artist_a_id, artist_b_id)] = (
+            result[(artist_a_id, artist_b_id)] = (
                 payload["edge_role_a"][slot],
                 payload["edge_role_b"][slot],
             )
+    return result
 
+
+def test_pathfinding_graph_includes_the_1hop_neighborhood(onehop_dataset: Path) -> None:
+    with CreditGraph.open(onehop_dataset) as graph:
+        payload = build_pathfinding_graph(
+            graph,
+            _catalog(),
+            _membership(),
+            snapshot_date=_SNAPSHOT,
+            generated_at="2026-08-03T00:00:00+00:00",
+        )
+
+    real_node_ids = {n for n in payload["node_ids"] if n > 0}
+    assert real_node_ids == {100, 200, 300}
+    name_by_id = {
+        node_id: name
+        for node_id, name in zip(payload["node_ids"], payload["names"], strict=True)
+        if node_id > 0
+    }
+    assert name_by_id == {100: "Alice", 200: "Bob", 300: "Carol"}
+
+
+def test_edge_roles_carry_real_role_text_for_both_endpoints(onehop_dataset: Path) -> None:
+    with CreditGraph.open(onehop_dataset) as graph:
+        payload = build_pathfinding_graph(
+            graph,
+            _catalog(),
+            _membership(),
+            snapshot_date=_SNAPSHOT,
+            generated_at="2026-08-03T00:00:00+00:00",
+        )
+
+    by_pair = _by_pair(payload)
     assert by_pair[(100, 200)] == ("Guitar", "Bass")
     assert by_pair[(200, 100)] == ("Bass", "Guitar")
     assert by_pair[(100, 300)] == ("Producer", "Vocals")
@@ -157,22 +221,14 @@ def two_role_dataset(tmp_path: Path) -> Path:
 def test_edge_role_joins_multiple_distinct_roles(two_role_dataset: Path) -> None:
     with CreditGraph.open(two_role_dataset) as graph:
         payload = build_pathfinding_graph(
-            graph, _catalog(), snapshot_date=_SNAPSHOT, generated_at="2026-08-07T00:00:00+00:00"
+            graph,
+            _catalog(),
+            _membership(),
+            snapshot_date=_SNAPSHOT,
+            generated_at="2026-08-07T00:00:00+00:00",
         )
 
-    node_ids = payload["node_ids"]
-    by_pair: dict[tuple[int, int], tuple[str, str]] = {}
-    for node_index in range(len(node_ids)):
-        start, end = payload["offsets"][node_index], payload["offsets"][node_index + 1]
-        artist_a_id = node_ids[node_index]
-        for slot in range(start, end):
-            neighbor_index = payload["neighbors"][slot]
-            artist_b_id = node_ids[neighbor_index]
-            by_pair[(artist_a_id, artist_b_id)] = (
-                payload["edge_role_a"][slot],
-                payload["edge_role_b"][slot],
-            )
-
+    by_pair = _by_pair(payload)
     assert by_pair[(100, 200)] == ("Guitar, Keys", "Bass")
     assert by_pair[(200, 100)] == ("Bass", "Guitar, Keys")
 
@@ -191,7 +247,11 @@ def test_edge_role_join_produces_clean_comma_components(two_role_dataset: Path) 
     comma components, not a fused string."""
     with CreditGraph.open(two_role_dataset) as graph:
         payload = build_pathfinding_graph(
-            graph, _catalog(), snapshot_date=_SNAPSHOT, generated_at="2026-08-07T00:00:00+00:00"
+            graph,
+            _catalog(),
+            _membership(),
+            snapshot_date=_SNAPSHOT,
+            generated_at="2026-08-07T00:00:00+00:00",
         )
 
     node_ids = payload["node_ids"]
@@ -240,7 +300,11 @@ def many_role_dataset(tmp_path: Path) -> Path:
 def test_edge_role_join_stays_bounded(many_role_dataset: Path) -> None:
     with CreditGraph.open(many_role_dataset) as graph:
         payload = build_pathfinding_graph(
-            graph, _catalog(), snapshot_date=_SNAPSHOT, generated_at="2026-08-07T00:00:00+00:00"
+            graph,
+            _catalog(),
+            _membership(),
+            snapshot_date=_SNAPSHOT,
+            generated_at="2026-08-07T00:00:00+00:00",
         )
 
     node_ids = payload["node_ids"]
@@ -258,21 +322,33 @@ def test_edge_role_join_stays_bounded(many_role_dataset: Path) -> None:
 def test_top_level_shape_and_version(onehop_dataset: Path) -> None:
     with CreditGraph.open(onehop_dataset) as graph:
         payload = build_pathfinding_graph(
-            graph, _catalog(), snapshot_date=_SNAPSHOT, generated_at="2026-08-03T00:00:00+00:00"
+            graph,
+            _catalog(),
+            _membership(),
+            snapshot_date=_SNAPSHOT,
+            generated_at="2026-08-03T00:00:00+00:00",
         )
-    assert payload["schema_version"] == 1
+    assert payload["schema_version"] == 2
     assert payload["catalog_version"] == _CATALOG_VERSION
-    assert payload["pathfinding_graph_version"].startswith(f"pathfinding-graph-v1-{_SNAPSHOT}-")
+    assert payload["pathfinding_graph_version"].startswith(f"pathfinding-graph-v2-{_SNAPSHOT}-")
 
 
 def test_deterministic_across_repeated_builds(onehop_dataset: Path) -> None:
     with CreditGraph.open(onehop_dataset) as graph:
         first = build_pathfinding_graph(
-            graph, _catalog(), snapshot_date=_SNAPSHOT, generated_at="2026-08-03T00:00:00+00:00"
+            graph,
+            _catalog(),
+            _membership(),
+            snapshot_date=_SNAPSHOT,
+            generated_at="2026-08-03T00:00:00+00:00",
         )
     with CreditGraph.open(onehop_dataset) as graph:
         second = build_pathfinding_graph(
-            graph, _catalog(), snapshot_date=_SNAPSHOT, generated_at="2026-08-03T00:00:00+00:00"
+            graph,
+            _catalog(),
+            _membership(),
+            snapshot_date=_SNAPSHOT,
+            generated_at="2026-08-03T00:00:00+00:00",
         )
     assert first == second
 
@@ -284,6 +360,135 @@ def test_no_albums_raises() -> None:
         build_pathfinding_graph(
             None,  # type: ignore[arg-type]
             empty_catalog,
+            _membership(),
             snapshot_date=_SNAPSHOT,
             generated_at="2026-08-03T00:00:00+00:00",
         )
+
+
+# --- virtual album-anchor nodes (ADR 0058) ----------------------------------
+
+
+def test_virtual_node_id_is_negative_and_disjoint_from_real_ids(onehop_dataset: Path) -> None:
+    with CreditGraph.open(onehop_dataset) as graph:
+        payload = build_pathfinding_graph(
+            graph,
+            _catalog(),
+            _membership(),
+            snapshot_date=_SNAPSHOT,
+            generated_at="2026-08-07T00:00:00+00:00",
+        )
+    virtual_node = payload["album_virtual_nodes"][0]
+    assert virtual_node["virtual_artist_id"] < 0
+    assert virtual_node["virtual_artist_id"] not in {n for n in payload["node_ids"] if n > 0}
+    assert virtual_node["virtual_artist_id"] in payload["node_ids"]
+
+
+def test_virtual_node_connects_to_every_real_credited_contributor(onehop_dataset: Path) -> None:
+    """master-1's membership credits Alice (100) and Bob (200) -- both are
+    real nodes in this fixture's ego network, so the virtual anchor's
+    neighbors must be exactly {100, 200}, matching the membership list
+    exactly (Carol, 300, is not credited on master-1 and must not appear)."""
+    membership = _membership(
+        credits=[
+            {
+                "artist_id": 100,
+                "name": "Alice",
+                "anv": None,
+                "role_text": "Producer",
+                "credit_scope": "release_artist",
+                "track_position": None,
+                "track_title": None,
+            },
+            {
+                "artist_id": 200,
+                "name": "Bob",
+                "anv": None,
+                "role_text": "Bass",
+                "credit_scope": "release_artist",
+                "track_position": None,
+                "track_title": None,
+            },
+        ]
+    )
+    with CreditGraph.open(onehop_dataset) as graph:
+        payload = build_pathfinding_graph(
+            graph,
+            _catalog(),
+            membership,
+            snapshot_date=_SNAPSHOT,
+            generated_at="2026-08-07T00:00:00+00:00",
+        )
+    virtual_id = payload["album_virtual_nodes"][0]["virtual_artist_id"]
+    node_ids = payload["node_ids"]
+    virtual_index = node_ids.index(virtual_id)
+    start, end = payload["offsets"][virtual_index], payload["offsets"][virtual_index + 1]
+    neighbor_ids = {node_ids[payload["neighbors"][slot]] for slot in range(start, end)}
+    assert neighbor_ids == {100, 200}
+
+
+def test_virtual_edge_role_is_sentinel_on_virtual_side_and_membership_role_on_real_side(
+    onehop_dataset: Path,
+) -> None:
+    membership = _membership(
+        credits=[
+            {
+                "artist_id": 100,
+                "name": "Alice",
+                "anv": None,
+                "role_text": "Producer",
+                "credit_scope": "release_artist",
+                "track_position": None,
+                "track_title": None,
+            }
+        ]
+    )
+    with CreditGraph.open(onehop_dataset) as graph:
+        payload = build_pathfinding_graph(
+            graph,
+            _catalog(),
+            membership,
+            snapshot_date=_SNAPSHOT,
+            generated_at="2026-08-07T00:00:00+00:00",
+        )
+    virtual_id = payload["album_virtual_nodes"][0]["virtual_artist_id"]
+    by_pair = _by_pair(payload)
+    assert by_pair[(virtual_id, 100)] == (ALBUM_ANCHOR_SENTINEL, "Producer")
+    assert by_pair[(100, virtual_id)] == ("Producer", ALBUM_ANCHOR_SENTINEL)
+
+
+def test_album_with_no_in_scope_credited_contributors_gets_isolated_virtual_node(
+    onehop_dataset: Path,
+) -> None:
+    """An album whose credited contributors are entirely outside this
+    ego network (or has none) must not crash the build -- its virtual node
+    still exists, just with zero neighbors, so a search against it is a
+    real, confirmed "no-path," never a crash or "unknown-album."""
+    membership = _membership(credits=[])
+    with CreditGraph.open(onehop_dataset) as graph:
+        payload = build_pathfinding_graph(
+            graph,
+            _catalog(),
+            membership,
+            snapshot_date=_SNAPSHOT,
+            generated_at="2026-08-07T00:00:00+00:00",
+        )
+    virtual_id = payload["album_virtual_nodes"][0]["virtual_artist_id"]
+    node_ids = payload["node_ids"]
+    assert virtual_id in node_ids
+    virtual_index = node_ids.index(virtual_id)
+    assert payload["offsets"][virtual_index] == payload["offsets"][virtual_index + 1]
+
+
+def test_album_virtual_nodes_field_shape(onehop_dataset: Path) -> None:
+    with CreditGraph.open(onehop_dataset) as graph:
+        payload = build_pathfinding_graph(
+            graph,
+            _catalog(),
+            _membership(),
+            snapshot_date=_SNAPSHOT,
+            generated_at="2026-08-07T00:00:00+00:00",
+        )
+    assert payload["album_virtual_nodes"] == [
+        {"album_id": "master-1", "virtual_artist_id": -1, "main_release_id": 1}
+    ]

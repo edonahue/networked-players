@@ -180,6 +180,24 @@ def test_csr_construction_is_deterministic_regardless_of_edge_order() -> None:
     assert graph_a.evidence_release_ids == graph_b.evidence_release_ids
 
 
+def test_extra_node_ids_includes_isolated_nodes() -> None:
+    graph = build_csr_adjacency([(100, 200, 1)], extra_node_ids=[900])
+    assert graph.node_ids == [100, 200, 900]
+    isolated_index = graph.id_to_index[900]
+    assert graph.degree(isolated_index) == 0
+
+
+def test_extra_node_ids_already_present_in_an_edge_are_not_duplicated() -> None:
+    graph = build_csr_adjacency([(100, 200, 1)], extra_node_ids=[100])
+    assert graph.node_ids == [100, 200]
+
+
+def test_extra_node_ids_defaults_to_no_change() -> None:
+    with_default = build_csr_adjacency([(100, 200, 1)])
+    explicit_empty = build_csr_adjacency([(100, 200, 1)], extra_node_ids=[])
+    assert with_default == explicit_empty
+
+
 def test_payload_size_bytes_scales_with_graph_size() -> None:
     small = build_csr_adjacency([(1, 2, 100)])
     large = build_csr_adjacency([(1, 2, 100), (2, 3, 200), (3, 4, 300), (4, 5, 400)])

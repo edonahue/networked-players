@@ -794,15 +794,23 @@ def _parser() -> argparse.ArgumentParser:
         "build-pathfinding-graph",
         help=(
             "OPERATOR/coordination-host only: build the public pathfinding graph "
-            "(apps/web/public/data/pathfinding/graph.v1.json) -- a compact CSR adjacency "
+            "(apps/web/public/data/pathfinding/graph.v2.json) -- a compact CSR adjacency "
             "scoped to a bounded 1-hop ego network around the canonical catalog's primary "
-            "artists (ADR 0050's measured scope decision). Needs the real one-hop working "
-            "set with edges built (--onehop-root); never a Pi job"
+            "artists (ADR 0050's measured scope decision), plus one virtual album-anchor "
+            "node per catalog album for real record-to-record search endpoints (ADR 0058). "
+            "Needs the real one-hop working set with edges built (--onehop-root); never a "
+            "Pi job"
         ),
     )
     build_pathfinding_graph.add_argument("--onehop-root", type=Path, required=True)
     build_pathfinding_graph.add_argument(
         "--catalog", type=Path, required=True, help="apps/web/public/data/catalog/albums.v1.json"
+    )
+    build_pathfinding_graph.add_argument(
+        "--album-credit-membership",
+        type=Path,
+        required=True,
+        help="apps/web/public/data/albums/credit-membership.v1.json",
     )
     build_pathfinding_graph.add_argument("--output", type=Path, required=True)
     build_pathfinding_graph.add_argument("--memory-limit", default="3GB")
@@ -971,6 +979,11 @@ def _parser() -> argparse.ArgumentParser:
         "--pathfinding-graph",
         type=Path,
         default=Path("apps/web/public/data/pathfinding/graph.v1.json"),
+    )
+    validate_public_artifacts.add_argument(
+        "--pathfinding-graph-v2",
+        type=Path,
+        default=Path("apps/web/public/data/pathfinding/graph.v2.json"),
     )
     validate_public_artifacts.add_argument(
         "--album-credit-membership",
@@ -2634,6 +2647,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         from networked_players_graph_core.pathfinding_graph import build_pathfinding_graph
 
         catalog = json.loads(args.catalog.read_text())
+        album_credit_membership = json.loads(args.album_credit_membership.read_text())
         onehop_manifest = json.loads((args.onehop_root / "manifest.json").read_text())
         snapshot_date = str(onehop_manifest["snapshot_date"])
 
@@ -2641,7 +2655,11 @@ def main(argv: Sequence[str] | None = None) -> int:
             args.onehop_root, memory_limit=args.memory_limit, threads=args.threads
         ) as graph:
             pathfinding_graph = build_pathfinding_graph(
-                graph, catalog, snapshot_date=snapshot_date, generated_at=args.generated_at
+                graph,
+                catalog,
+                album_credit_membership,
+                snapshot_date=snapshot_date,
+                generated_at=args.generated_at,
             )
 
         failures = pathfinding_graph_failures(pathfinding_graph, catalog)
@@ -2659,6 +2677,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                     "pathfinding_graph_version": pathfinding_graph["pathfinding_graph_version"],
                     "nodes": len(pathfinding_graph["node_ids"]),
                     "edges": len(pathfinding_graph["neighbors"]) // 2,
+                    "album_virtual_nodes": len(pathfinding_graph["album_virtual_nodes"]),
                 },
                 indent=2,
             )
@@ -2810,6 +2829,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             challenge=json.loads(args.challenge.read_text()),
             contributor_index=json.loads(args.contributor_index.read_text()),
             pathfinding_graph=json.loads(args.pathfinding_graph.read_text()),
+            pathfinding_graph_v2=json.loads(args.pathfinding_graph_v2.read_text()),
             album_credit_membership=json.loads(args.album_credit_membership.read_text()),
             evidence_release_registry=json.loads(args.evidence_release_registry.read_text()),
         )

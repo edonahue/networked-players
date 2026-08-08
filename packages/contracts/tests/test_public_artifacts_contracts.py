@@ -448,6 +448,52 @@ def _pathfinding_graph() -> dict[str, Any]:
     return payload
 
 
+_PATHFINDING_ANCHOR_SENTINEL = "__np_album_anchor__"
+
+
+def _pathfinding_graph_v2() -> dict[str, Any]:
+    """Two catalog albums (master-1/artist 100, master-2/artist 200), one
+    real edge between them (release 1), and one virtual anchor per album
+    connected to its own credited artist. node_ids sorted:
+    [-2 (master-2 anchor), -1 (master-1 anchor), 100, 200]."""
+    catalog_version = _catalog()["catalog_version"]
+    payload: dict[str, Any] = {
+        "schema_version": 2,
+        "catalog_version": catalog_version,
+        "snapshot_date": _SNAPSHOT,
+        "generated_at": "2026-08-08T00:00:00+00:00",
+        "source": "Discogs monthly data dump (CC0), one-hop working set.",
+        "license": "See docs/DATA_AND_RIGHTS.md.",
+        "node_ids": [-2, -1, 100, 200],
+        "names": ["Second Wave (album anchor)", "First Light (album anchor)", "Alice", "Bob"],
+        "offsets": [0, 1, 2, 4, 6],
+        "neighbors": [3, 2, 1, 3, 0, 2],
+        "evidence_release_ids": [2, 1, 1, 1, 2, 1],
+        "edge_role_a": [
+            _PATHFINDING_ANCHOR_SENTINEL,
+            _PATHFINDING_ANCHOR_SENTINEL,
+            "Guitar",
+            "Guitar",
+            "Bass",
+            "Bass",
+        ],
+        "edge_role_b": [
+            "Bass",
+            "Guitar",
+            _PATHFINDING_ANCHOR_SENTINEL,
+            "Bass",
+            _PATHFINDING_ANCHOR_SENTINEL,
+            "Guitar",
+        ],
+        "album_virtual_nodes": [
+            {"album_id": "master-1", "virtual_artist_id": -1, "main_release_id": 1},
+            {"album_id": "master-2", "virtual_artist_id": -2, "main_release_id": 2},
+        ],
+    }
+    payload["pathfinding_graph_version"] = pathfinding_graph_version(payload, _SNAPSHOT)
+    return payload
+
+
 # --- album-credit-membership --------------------------------------------------
 
 
@@ -541,6 +587,7 @@ def _clean_artifacts() -> dict[str, Any]:
         "challenge": _challenge(),
         "contributor_index": _contributor_index(),
         "pathfinding_graph": _pathfinding_graph(),
+        "pathfinding_graph_v2": _pathfinding_graph_v2(),
         "album_credit_membership": _album_credit_membership(),
         "evidence_release_registry": _evidence_release_registry(),
     }
@@ -557,6 +604,7 @@ def test_clean_publication_set_has_no_failures() -> None:
         "challenge": [],
         "contributor_index": [],
         "pathfinding_graph": [],
+        "pathfinding_graph_v2": [],
         "album_credit_membership": [],
         "evidence_release_registry": [],
     }
@@ -573,6 +621,7 @@ def test_every_group_key_always_present() -> None:
         "challenge",
         "contributor_index",
         "pathfinding_graph",
+        "pathfinding_graph_v2",
         "album_credit_membership",
         "evidence_release_registry",
     }
@@ -660,6 +709,23 @@ def test_pathfinding_graph_defect_is_caught_independently() -> None:
 
     report = public_artifacts_failures(**artifacts)
     assert report["pathfinding_graph"] != []
+    assert report["catalog"] == []
+    assert report["challenge"] == []
+    assert report["contributor_index"] == []
+    assert report["pathfinding_graph_v2"] == []
+
+
+def test_pathfinding_graph_v2_defect_is_caught_independently() -> None:
+    """v1 and v2 are validated as two fully independent groups -- a defect
+    in one must never be masked by, or bleed into, the other."""
+    artifacts = _clean_artifacts()
+    broken_graph_v2 = deepcopy(artifacts["pathfinding_graph_v2"])
+    broken_graph_v2["album_virtual_nodes"][0]["virtual_artist_id"] = 1  # must be negative
+    artifacts["pathfinding_graph_v2"] = broken_graph_v2
+
+    report = public_artifacts_failures(**artifacts)
+    assert report["pathfinding_graph_v2"] != []
+    assert report["pathfinding_graph"] == []
     assert report["catalog"] == []
     assert report["challenge"] == []
     assert report["contributor_index"] == []
