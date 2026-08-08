@@ -173,8 +173,37 @@ def test_edge_role_joins_multiple_distinct_roles(two_role_dataset: Path) -> None
                 payload["edge_role_b"][slot],
             )
 
-    assert by_pair[(100, 200)] == ("Guitar; Keys", "Bass")
-    assert by_pair[(200, 100)] == ("Bass", "Guitar; Keys")
+    assert by_pair[(100, 200)] == ("Guitar, Keys", "Bass")
+    assert by_pair[(200, 100)] == ("Bass", "Guitar, Keys")
+
+
+def test_edge_role_join_produces_clean_comma_components(two_role_dataset: Path) -> None:
+    """Direct regression test for a real caught defect: joining with any
+    separator other than ", " produces a merged component (e.g. "Guitar;
+    Producer") that fails the frontend role-taxonomy classifiers' exact-
+    match-per-comma-component parsing (apps/web/src/game/roleTaxonomy.ts's
+    `matchesAnyComponent`, and role_taxonomy.py's own `classify_role`,
+    which both split strictly on "," and require an exact token match per
+    component) -- a single-token role adjacent to another role with no
+    internal comma of its own silently stopped classifying at all. This
+    mirrors that exact shape (single-token "Guitar" next to single-token
+    "Keys") and asserts the join produces clean, independently-parseable
+    comma components, not a fused string."""
+    with CreditGraph.open(two_role_dataset) as graph:
+        payload = build_pathfinding_graph(
+            graph, _catalog(), snapshot_date=_SNAPSHOT, generated_at="2026-08-07T00:00:00+00:00"
+        )
+
+    node_ids = payload["node_ids"]
+    alice_index = node_ids.index(100)
+    start, end = payload["offsets"][alice_index], payload["offsets"][alice_index + 1]
+    role_for_bob = next(
+        payload["edge_role_a"][slot]
+        for slot in range(start, end)
+        if node_ids[payload["neighbors"][slot]] == 200
+    )
+    components = [c.strip().lower() for c in role_for_bob.split(",")]
+    assert components == ["guitar", "keys"]
 
 
 @pytest.fixture

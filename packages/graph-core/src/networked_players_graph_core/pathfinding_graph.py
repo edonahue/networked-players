@@ -42,6 +42,21 @@ def _joined_roles(rows: list[dict[str, Any]]) -> str:
     billing (edge-eligible per `credit_edges_sql`, but with no descriptive
     role text).
 
+    Joined with ", " -- the same separator Discogs' own role_text already
+    uses for multiple components within a single credit (e.g. "Producer,
+    Engineer, Mixed By"), and the exact separator both role-taxonomy
+    classifiers (`role_taxonomy.classify_role`, `roleTaxonomy.ts`'s
+    `matchesAnyComponent`) split on. A different separator (e.g. "; ") is a
+    real, confirmed regression: both classifiers split on "," only and
+    check each component for an *exact* token match, so a component
+    straddling a non-comma separator (e.g. "Guitar; Producer" as one
+    component, no internal comma) silently fails to match "producer" even
+    though the role is plainly present -- caught by a real end-to-end
+    Playwright test against the rebuilt artifact
+    (apps/web/tests/game-connect.spec.ts's "Behind the Glass" case), not by
+    any unit test in this package, since this module has no awareness of
+    either classifier.
+
     The joined string itself is still bounded (`_MAX_JOINED_ROLE_LEN`): a
     real measurement against the full corpus found a rare but genuine long
     tail -- an artist credited with dozens of near-duplicate role
@@ -56,10 +71,10 @@ def _joined_roles(rows: list[dict[str, Any]]) -> str:
             seen.setdefault(str(role_text), None)
     if not seen:
         return "Credited artist"
-    joined = "; ".join(seen)
+    joined = ", ".join(seen)
     if len(joined) <= _MAX_JOINED_ROLE_LEN:
         return joined
-    return joined[:_MAX_JOINED_ROLE_LEN].rsplit("; ", 1)[0] + "…"
+    return joined[:_MAX_JOINED_ROLE_LEN].rsplit(", ", 1)[0] + "…"
 
 
 def pathfinding_graph_version(payload: dict[str, Any], snapshot_date: str) -> str:
