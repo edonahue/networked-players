@@ -151,3 +151,10 @@ cross-language BFS parity harness" gap named in ADR 0051's own Revisit
 trigger — it only extends that same manually-pinned pattern to cover the
 new virtual-node code path. That gap remains open for whichever future
 work actually builds a shared dual-runner.
+
+**Addendum (Slice 4):** the pathfinding graph's own budget referenced
+above was itself re-measured in this same phase (see ADR 0051's Slice-4
+addendum) — fixing a real per-edge role-text truncation defect changed its
+real size from ~1.8MB to **~2.26MB gzip**. `evidence-release-registry.v1.json`'s
+real measured 354KB gzip (Slice 3) stays comfortably under either figure —
+no revisit needed on that account.

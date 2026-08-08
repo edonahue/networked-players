@@ -133,6 +133,99 @@ def test_edge_roles_carry_real_role_text_for_both_endpoints(onehop_dataset: Path
     assert by_pair[(300, 100)] == ("Vocals", "Producer")
 
 
+@pytest.fixture
+def two_role_dataset(tmp_path: Path) -> Path:
+    """Alice holds two distinct track_artist role credits on release 1
+    (Guitar on one track, Keys on another) alongside Bob's single Bass
+    credit -- the edge role text for (100, 200) must join both of Alice's
+    roles, not silently keep only the first."""
+    from conftest import write_synthetic_dataset
+
+    releases = [_release(1, "R1")]
+    credits = [
+        _credit(1, 100, "Alice", credit_scope="release_artist"),
+        _credit(1, 100, "Alice", credit_scope="track_artist", track_index=0, role_text="Guitar"),
+        _credit(1, 100, "Alice", credit_scope="track_artist", track_index=1, role_text="Keys"),
+        _credit(1, 200, "Bob", credit_scope="release_artist"),
+        _credit(1, 200, "Bob", credit_scope="track_artist", track_index=0, role_text="Bass"),
+    ]
+    return write_synthetic_dataset(
+        tmp_path / f"snapshot={_SNAPSHOT}", release_rows=releases, credit_rows=credits
+    )
+
+
+def test_edge_role_joins_multiple_distinct_roles(two_role_dataset: Path) -> None:
+    with CreditGraph.open(two_role_dataset) as graph:
+        payload = build_pathfinding_graph(
+            graph, _catalog(), snapshot_date=_SNAPSHOT, generated_at="2026-08-07T00:00:00+00:00"
+        )
+
+    node_ids = payload["node_ids"]
+    by_pair: dict[tuple[int, int], tuple[str, str]] = {}
+    for node_index in range(len(node_ids)):
+        start, end = payload["offsets"][node_index], payload["offsets"][node_index + 1]
+        artist_a_id = node_ids[node_index]
+        for slot in range(start, end):
+            neighbor_index = payload["neighbors"][slot]
+            artist_b_id = node_ids[neighbor_index]
+            by_pair[(artist_a_id, artist_b_id)] = (
+                payload["edge_role_a"][slot],
+                payload["edge_role_b"][slot],
+            )
+
+    assert by_pair[(100, 200)] == ("Guitar; Keys", "Bass")
+    assert by_pair[(200, 100)] == ("Bass", "Guitar; Keys")
+
+
+@pytest.fixture
+def many_role_dataset(tmp_path: Path) -> Path:
+    """Alice holds 30 distinct, verbose role credits on release 1 -- a real
+    corpus measurement found joining every distinct role unbounded can
+    reach 2,639 characters for a busy multi-track release. The joined
+    result must stay bounded (`_MAX_JOINED_ROLE_LEN`), not grow without
+    limit."""
+    from conftest import write_synthetic_dataset
+
+    releases = [_release(1, "R1")]
+    credits = [_credit(1, 100, "Alice", credit_scope="release_artist")]
+    for i in range(30):
+        credits.append(
+            _credit(
+                1,
+                100,
+                "Alice",
+                credit_scope="track_artist",
+                track_index=i,
+                role_text=f"Producer, Piano, Backing Vocals [Variant {i}]",
+            )
+        )
+    credits.append(_credit(1, 200, "Bob", credit_scope="release_artist"))
+    credits.append(
+        _credit(1, 200, "Bob", credit_scope="track_artist", track_index=0, role_text="Bass")
+    )
+    return write_synthetic_dataset(
+        tmp_path / f"snapshot={_SNAPSHOT}", release_rows=releases, credit_rows=credits
+    )
+
+
+def test_edge_role_join_stays_bounded(many_role_dataset: Path) -> None:
+    with CreditGraph.open(many_role_dataset) as graph:
+        payload = build_pathfinding_graph(
+            graph, _catalog(), snapshot_date=_SNAPSHOT, generated_at="2026-08-07T00:00:00+00:00"
+        )
+
+    node_ids = payload["node_ids"]
+    alice_index = node_ids.index(100)
+    start, end = payload["offsets"][alice_index], payload["offsets"][alice_index + 1]
+    role_for_bob = next(
+        payload["edge_role_a"][slot]
+        for slot in range(start, end)
+        if node_ids[payload["neighbors"][slot]] == 200
+    )
+    assert len(role_for_bob) <= 201  # _MAX_JOINED_ROLE_LEN + the trailing ellipsis character
+    assert role_for_bob.endswith("…")
+
+
 def test_top_level_shape_and_version(onehop_dataset: Path) -> None:
     with CreditGraph.open(onehop_dataset) as graph:
         payload = build_pathfinding_graph(

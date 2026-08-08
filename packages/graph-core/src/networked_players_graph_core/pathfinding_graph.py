@@ -30,18 +30,36 @@ from networked_players_contracts.canonical import content_hash
 from .compact_graph_bench import build_csr_adjacency
 from .graph import CreditGraph
 
-_MAX_ROLE_TEXT_LEN = 60
+_MAX_JOINED_ROLE_LEN = 200
 
 
-def _representative_role(rows: list[dict[str, Any]]) -> str:
-    """First non-null role_text among an artist's credit rows on one
-    release, or a generic fallback for a bare release-artist billing (edge-
-    eligible per `credit_edges_sql`, but with no descriptive role text)."""
+def _joined_roles(rows: list[dict[str, Any]]) -> str:
+    """Every distinct non-null role_text among an artist's credit rows on
+    one release, joined in the order first seen -- not just the first role
+    found (that was real, silent data loss: a producer/engineer/performer
+    on the same release previously lost every role but one, truncated to
+    60 characters besides). A generic fallback covers a bare release-artist
+    billing (edge-eligible per `credit_edges_sql`, but with no descriptive
+    role text).
+
+    The joined string itself is still bounded (`_MAX_JOINED_ROLE_LEN`): a
+    real measurement against the full corpus found a rare but genuine long
+    tail -- an artist credited with dozens of near-duplicate role
+    combinations across a large multi-track release joined to a 2,639-
+    character string. Truncating the final joined text (never a single
+    role's own text) keeps the common case fully intact while bounding
+    that tail, rather than reintroducing per-role truncation."""
+    seen: dict[str, None] = {}
     for row in rows:
         role_text = row.get("role_text")
         if role_text:
-            return str(role_text)[:_MAX_ROLE_TEXT_LEN]
-    return "Credited artist"
+            seen.setdefault(str(role_text), None)
+    if not seen:
+        return "Credited artist"
+    joined = "; ".join(seen)
+    if len(joined) <= _MAX_JOINED_ROLE_LEN:
+        return joined
+    return joined[:_MAX_JOINED_ROLE_LEN].rsplit("; ", 1)[0] + "…"
 
 
 def pathfinding_graph_version(payload: dict[str, Any], snapshot_date: str) -> str:
@@ -108,7 +126,7 @@ def build_pathfinding_graph(
         rows_for_artist = [
             r for r in credit_rows_by_release.get(release_id, []) if r["artist_id"] == artist_id
         ]
-        role = _representative_role(rows_for_artist)
+        role = _joined_roles(rows_for_artist)
         role_cache[key] = role
         return role
 

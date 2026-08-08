@@ -1,6 +1,6 @@
 // Connect Two Records (ADR 0051): wires ConnectStage.astro's markup to the
 // pathfinding graph, contributor index, and route-quality scoring. The
-// heavy pathfinding graph (~1.8MB gzip) is fetched lazily on first search,
+// heavy pathfinding graph (~2.26MB gzip, ADR 0058) is fetched lazily on first search,
 // not on page load -- the page itself stays light until a visitor actually
 // searches.
 

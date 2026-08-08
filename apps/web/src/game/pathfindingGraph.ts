@@ -213,7 +213,9 @@ const SESSION_CACHE_KEY = "np.pathfinding-graph.v1";
 /** Fetches and validates the pathfinding graph, caching it in
  * `sessionStorage` (not `localStorage` -- large and disposable, unlike the
  * persistent `np.game.v1` progression store) so repeated searches within one
- * session don't re-fetch/re-parse a ~1.8MB artifact. A corrupt or
+ * session don't re-fetch/re-parse a ~2.26MB artifact (real measured size
+ * as of ADR 0058's role-text join fix -- see data/contracts/
+ * pathfinding-graph-v1.md). A corrupt or
  * unreadable cache entry is discarded, never thrown -- storage failures
  * degrade to a fresh fetch, matching store.ts's "losing local state is
  * preferable to breaking play" philosophy. */

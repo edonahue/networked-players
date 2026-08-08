@@ -119,3 +119,12 @@ which adds the album-credit-membership and evidence-release-registry
 artifacts and a virtual-node search-endpoint mechanism on top of this
 ADR's pathfinding architecture. See ADR 0058 for the current state of
 both points.
+
+**Addendum (Phase 4 Slice 4):** the pathfinding graph's real gzip size
+above (~1.8 MB) is superseded — fixing a real per-edge role-text defect
+(only the first of an artist's distinct roles on a release was kept,
+truncated to 60 characters, silently discarding the rest) to instead join
+every distinct role (bounded to 200 characters) changed the real measured
+size to **~2.26 MB gzip** (same 36,819 nodes / 60,696 edges — a content
+fix, not a structural change). See `data/contracts/pathfinding-graph-v1.md`
+for the current figure.

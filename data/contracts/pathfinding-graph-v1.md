@@ -48,6 +48,15 @@ bare CSR topology without role-text/name evidence. Brotli was not measured;
 likely smaller than gzip. Fetched only on `/play/connect/` (Slice F), never
 on the homepage or any other page load.
 
+**Re-measured** (Phase 4 Slice 4, generated 2026-08-08, ADR 0058): fixing a
+real per-edge role-text defect (`_representative_role` kept only the first
+of an artist's distinct roles on a release, truncated to 60 characters,
+silently discarding the rest) to instead join every distinct role, bounded
+to 200 characters, changed real size to ~14 MB raw / **~2.26 MB gzip**
+(same 36,819 nodes / 60,696 edges — a content change, not a structural
+one). This is the current real number; the 2026-08-03 figures above are
+historical.
+
 ## Validation
 
 `pathfinding_graph_failures(graph, catalog)` checks: exact top-level key
