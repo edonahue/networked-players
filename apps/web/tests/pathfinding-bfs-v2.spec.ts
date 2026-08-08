@@ -212,6 +212,90 @@ test("findAlbumRoute respects a smaller hop budget", () => {
   expect(result).toEqual({ ok: false, reason: "no-path" });
 });
 
+test("findAlbumRoute's usedEdgeKeys includes the anchor edges, not just the middle hops", () => {
+  const graph = albumAnchorGraph();
+  const artistIndex = buildArtistIndex(graph);
+  const albumIndex = buildAlbumIndex(graph);
+  const result = findAlbumRoute(
+    graph,
+    artistIndex,
+    albumIndex,
+    "album-a",
+    "album-b",
+    4,
+  );
+  expect(result.ok).toBe(true);
+  if (!result.ok) return;
+  // 5 raw hops walked (2 anchor + 3 middle), even though only 3 are
+  // returned in `hops` -- the exclusion set must cover all of them so a
+  // second search can't just re-walk the same anchor connection.
+  expect(result.usedEdgeKeys.size).toBe(5);
+});
+
+test("excluding a route's own edges forces a genuinely distinct alternate, or an honest no-path", () => {
+  const graph = albumAnchorGraph();
+  const artistIndex = buildArtistIndex(graph);
+  const albumIndex = buildAlbumIndex(graph);
+  const first = findAlbumRoute(
+    graph,
+    artistIndex,
+    albumIndex,
+    "album-a",
+    "album-b",
+    4,
+  );
+  expect(first.ok).toBe(true);
+  if (!first.ok) return;
+
+  // This fixture has exactly one route between album-a and album-b --
+  // excluding its own edges must therefore report an honest no-path, not
+  // silently rediscover the same route.
+  const second = findAlbumRoute(
+    graph,
+    artistIndex,
+    albumIndex,
+    "album-a",
+    "album-b",
+    4,
+    undefined,
+    first.usedEdgeKeys,
+  );
+  expect(second).toEqual({ ok: false, reason: "no-path" });
+});
+
+test("findAlbumRoute's edgeFilter is never applied to an anchor edge", () => {
+  // Regression test for a real bug (ADR 0058 Slice 7): an anchor edge's
+  // role is always ALBUM_ANCHOR_SENTINEL on the virtual side, which can
+  // never match a real role-filter predicate. Applying the caller's
+  // filter unwrapped to anchor edges made every role-filtered search fail
+  // to leave the starting album's own anchor node, regardless of real
+  // connectivity. This filter matches every real middle-hop role in the
+  // fixture (Guitar/Bass/Cello/Drums) but never Producer, Vocals, or the
+  // sentinel -- so a route can only be found here if the two anchor edges
+  // (whose real-side roles are Producer and Vocals) are exempted from it.
+  const graph = albumAnchorGraph();
+  const artistIndex = buildArtistIndex(graph);
+  const albumIndex = buildAlbumIndex(graph);
+  const middleHopRoles = new Set(["Guitar", "Bass", "Cello", "Drums"]);
+  const onlyMiddleHopRoles = (roleA: string, roleB: string): boolean =>
+    middleHopRoles.has(roleA) && middleHopRoles.has(roleB);
+
+  const result = findAlbumRoute(
+    graph,
+    artistIndex,
+    albumIndex,
+    "album-a",
+    "album-b",
+    4,
+    onlyMiddleHopRoles,
+  );
+  expect(result.ok).toBe(true);
+  if (!result.ok) return;
+  expect(result.hops).toHaveLength(3);
+  expect(result.endpointA.artistId).toBe(100);
+  expect(result.endpointB.artistId).toBe(400);
+});
+
 test("stripAlbumAnchors returns null for fewer than 2 hops", () => {
   expect(stripAlbumAnchors([])).toBeNull();
   expect(

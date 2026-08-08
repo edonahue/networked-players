@@ -187,10 +187,30 @@ export function buildAlbumIndex(graph: PathfindingGraph): Map<string, number> {
   return index;
 }
 
+/** Identifies one undirected edge (artist pair + evidence release),
+ * independent of which direction it was walked -- used to hard-exclude a
+ * specific already-found route's edges from a second search (the "more
+ * musical route" fix, ADR 0058 Slice 7), which role text alone can't do
+ * (two unrelated edges can share identical role text). */
+export function hopEdgeKey(hop: PathHop): string {
+  const a = Math.min(hop.artist_a_id, hop.artist_b_id);
+  const b = Math.max(hop.artist_a_id, hop.artist_b_id);
+  return `${a}:${b}:${hop.release_id}`;
+}
+
+export function edgeKeysForHops(hops: PathHop[]): Set<string> {
+  return new Set(hops.map(hopEdgeKey));
+}
+
 /** Bounded BFS over the CSR graph, mirroring `bfs_over_csr`'s exact
  * contract: an empty hop list for the same artist, a real hop list on
  * success, or a typed failure reason -- never a thrown exception for an
- * ordinary "no path" outcome. */
+ * ordinary "no path" outcome.
+ *
+ * `excludeEdgeKeys` (ADR 0058 Slice 7): a set of `hopEdgeKey` values this
+ * search must never walk -- a real, new sibling parameter alongside
+ * `edgeFilter`, not the same mechanism, since role text alone cannot
+ * identify one specific edge instance to exclude. */
 export function findPath(
   graph: PathfindingGraph,
   artistIndex: Map<number, number>,
@@ -198,6 +218,7 @@ export function findPath(
   toArtistId: number,
   maxHops = 4,
   edgeFilter?: (roleA: string, roleB: string) => boolean,
+  excludeEdgeKeys?: Set<string>,
 ): PathfindingResult {
   const start = artistIndex.get(fromArtistId);
   const goal = artistIndex.get(toArtistId);
@@ -223,6 +244,12 @@ export function findPath(
           !edgeFilter(graph.edge_role_a[slot], graph.edge_role_b[slot])
         ) {
           continue;
+        }
+        if (excludeEdgeKeys) {
+          const a = Math.min(graph.node_ids[node], graph.node_ids[neighbor]);
+          const b = Math.max(graph.node_ids[node], graph.node_ids[neighbor]);
+          const key = `${a}:${b}:${graph.evidence_release_ids[slot]}`;
+          if (excludeEdgeKeys.has(key)) continue;
         }
         visited.add(neighbor);
         parentOf.set(neighbor, { parent: node, slot });
@@ -277,6 +304,12 @@ export type AlbumRouteResult =
       endpointA: AlbumEndpoint;
       hops: PathHop[];
       endpointB: AlbumEndpoint;
+      /** Edge keys for every hop actually walked, including the two
+       * (never user-visible) anchor edges -- pass this as a later search's
+       * `excludeEdgeKeys` to guarantee a genuinely distinct alternate
+       * route (ADR 0058 Slice 7's "more musical route" fix), not just a
+       * different-looking rendering of the same underlying edges. */
+      usedEdgeKeys: Set<string>;
     }
   | { ok: false; reason: PathfindingFailureReason };
 
@@ -312,7 +345,16 @@ export function stripAlbumAnchors(hops: PathHop[]): {
  * anchor edges get `ALBUM_ANCHOR_HOP_BUDGET` extra hops of BFS budget on
  * top of that, invisibly. Requires a v2 graph (`albumIndex` built via
  * `buildAlbumIndex`) -- an album id absent from it (a v1 graph, or an
- * album with no virtual node) is `unknown-album`. */
+ * album with no virtual node) is `unknown-album`.
+ *
+ * `edgeFilter`, if given, is never applied to an anchor edge -- only to
+ * real contributor-to-contributor edges. An anchor edge's role is always
+ * `ALBUM_ANCHOR_SENTINEL` on the virtual side, which cannot match any
+ * real role-filter predicate (Behind the Glass/Rhythm Section/Guitar
+ * Paths); applying the caller's filter to it unwrapped would make every
+ * role-filtered search fail to leave the start album's anchor at all,
+ * confirmed against real album pairs that have a real, filter-qualifying
+ * documented connection. */
 export function findAlbumRoute(
   graph: PathfindingGraph,
   artistIndex: Map<number, number>,
@@ -321,6 +363,7 @@ export function findAlbumRoute(
   toAlbumId: string,
   maxHops = 4,
   edgeFilter?: (roleA: string, roleB: string) => boolean,
+  excludeEdgeKeys?: Set<string>,
 ): AlbumRouteResult {
   const fromVirtualId = albumIndex.get(fromAlbumId);
   const toVirtualId = albumIndex.get(toAlbumId);
@@ -328,19 +371,27 @@ export function findAlbumRoute(
     return { ok: false, reason: "unknown-album" };
   }
 
+  const anchorAwareFilter = edgeFilter
+    ? (roleA: string, roleB: string): boolean =>
+        roleA === ALBUM_ANCHOR_SENTINEL || roleB === ALBUM_ANCHOR_SENTINEL
+          ? true
+          : edgeFilter(roleA, roleB)
+    : undefined;
+
   const result = findPath(
     graph,
     artistIndex,
     fromVirtualId,
     toVirtualId,
     maxHops + ALBUM_ANCHOR_HOP_BUDGET,
-    edgeFilter,
+    anchorAwareFilter,
+    excludeEdgeKeys,
   );
   if (!result.ok) return result;
 
   const stripped = stripAlbumAnchors(result.hops);
   if (!stripped) return { ok: false, reason: "no-path" };
-  return { ok: true, ...stripped };
+  return { ok: true, ...stripped, usedEdgeKeys: edgeKeysForHops(result.hops) };
 }
 
 export interface StorageLike {

@@ -1,24 +1,35 @@
-// Connect Two Records (ADR 0051): wires ConnectStage.astro's markup to the
-// pathfinding graph, contributor index, and route-quality scoring. The
-// heavy pathfinding graph (~2.26MB gzip, ADR 0058) is fetched lazily on first search,
-// not on page load -- the page itself stays light until a visitor actually
-// searches.
+// Connect Two Records (ADR 0051, record-to-record search per ADR 0058):
+// wires ConnectStage.astro's markup to the pathfinding graph, the
+// evidence-release registry, the contributor index, and route-quality
+// scoring. The heavy pathfinding graph (~2.34MB gzip, ADR 0058) is
+// fetched lazily on first search, not on page load -- the page itself
+// stays light until a visitor actually searches.
 
 import { filterAlbums, type PickableAlbum } from "./albumPicker";
 import {
+  buildEvidenceIndex,
+  renderEndpointCard,
+  renderEvidenceHop,
+  type EvidenceRelease,
+} from "./connectEvidence";
+import {
+  buildAlbumIndex,
   buildArtistIndex,
-  findPath,
+  findAlbumRoute,
   loadPathfindingGraph,
+  type AlbumRouteResult,
   type PathfindingGraph,
-  type PathHop,
 } from "./pathfindingGraph";
-import { explainScore, scorePath } from "./routeQuality";
+import { explainScore } from "./routeQuality";
 import {
   behindTheGlassEdgeFilter,
   guitarPathsEdgeFilter,
   rhythmSectionEdgeFilter,
 } from "./roleTaxonomy";
 import type { Contributor, ContributorIndex } from "../data/contributors";
+
+const PATHFINDING_GRAPH_URL = "/data/pathfinding/graph.v2.json";
+const EVIDENCE_REGISTRY_URL = "/data/evidence/release-registry.v1.json";
 
 interface CatalogAlbum {
   id: string;
@@ -63,28 +74,6 @@ function sessionStorageOrNull(): Storage | null {
   }
 }
 
-function renderHop(hop: PathHop, nameById: Map<number, string>): string {
-  const nameA = nameById.get(hop.artist_a_id) ?? `Artist ${hop.artist_a_id}`;
-  const nameB = nameById.get(hop.artist_b_id) ?? `Artist ${hop.artist_b_id}`;
-  const releaseUrl = `https://www.discogs.com/release/${hop.release_id}`;
-  return (
-    `<div class="connect-hop">` +
-    `<p>${escapeHtml(nameA)} <span class="connect-hop__role">(${escapeHtml(hop.role_a)})</span>` +
-    ` and ${escapeHtml(nameB)} <span class="connect-hop__role">(${escapeHtml(hop.role_b)})</span>` +
-    ` are co-credited on the same documented release.</p>` +
-    `<p class="connect-hop__source">Release <a href="${releaseUrl}" rel="nofollow noopener">#${hop.release_id} on Discogs</a></p>` +
-    `</div>`
-  );
-}
-
-function escapeHtml(value: string): string {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;");
-}
-
 function wirePicker(
   root: HTMLElement,
   albums: PickableAlbum[],
@@ -125,6 +114,32 @@ function wirePicker(
     selected.textContent = `Selected: ${album.title} — ${album.artist}`;
     onSelect(album);
   });
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
+}
+
+/** Renders one full route (both endpoint cards + the documented hops
+ * between them) into `target`. */
+function renderRoute(
+  target: HTMLElement,
+  route: Extract<AlbumRouteResult, { ok: true }>,
+  fromAlbum: PickableAlbum,
+  toAlbum: PickableAlbum,
+  nameById: Map<number, string>,
+  evidenceIndex: Map<number, EvidenceRelease>,
+): void {
+  target.innerHTML =
+    renderEndpointCard(route.endpointA, fromAlbum.title, nameById) +
+    route.hops
+      .map((hop) => renderEvidenceHop(hop, nameById, evidenceIndex))
+      .join("") +
+    renderEndpointCard(route.endpointB, toAlbum.title, nameById);
 }
 
 export async function initConnect(): Promise<void> {
@@ -195,7 +210,10 @@ export async function initConnect(): Promise<void> {
     setStatus("Searching…");
     searchButton.disabled = true;
 
-    const graphResult = await loadPathfindingGraph(sessionStorageOrNull());
+    const graphResult = await loadPathfindingGraph(
+      sessionStorageOrNull(),
+      PATHFINDING_GRAPH_URL,
+    );
     if (!("graph" in graphResult)) {
       const messages: Record<string, string> = {
         "fetch-failed":
@@ -213,6 +231,7 @@ export async function initConnect(): Promise<void> {
     }
     const graph: PathfindingGraph = graphResult.graph;
     const artistIndex = buildArtistIndex(graph);
+    const albumIndex = buildAlbumIndex(graph);
     const nameById = new Map<number, string>(
       graph.node_ids.map((id, i) => [id, graph.names[i]]),
     );
@@ -222,15 +241,16 @@ export async function initConnect(): Promise<void> {
         "[data-connect-mode-option]:checked",
       )?.value ?? "none";
     const roleFilterMode = ROLE_FILTER_MODES[selectedModeValue];
-    const pathResult = findPath(
+    const route = findAlbumRoute(
       graph,
       artistIndex,
-      fromAlbum.artist_id,
-      toAlbum.artist_id,
+      albumIndex,
+      fromAlbum.id,
+      toAlbum.id,
       4,
       roleFilterMode?.edgeFilter,
     );
-    if (!pathResult.ok) {
+    if (!route.ok) {
       const messages: Record<string, string> = {
         "unknown-album":
           "One of these records isn't in the documented connection graph yet.",
@@ -239,64 +259,86 @@ export async function initConnect(): Promise<void> {
           roleFilterMode?.noPathMessage ??
           "No documented connection was found between these two records within 4 hops.",
       };
-      setStatus(messages[pathResult.reason] ?? "No connection found.");
+      setStatus(messages[route.reason] ?? "No connection found.");
       updateButton();
       return;
+    }
+
+    // Real evidence (title/year/country/cover) is a presentational
+    // enhancement over the always-available names/roles/Discogs-id --
+    // fetched only now, lazily, and its absence never blocks rendering
+    // the documented route itself.
+    let evidenceIndex = new Map<number, EvidenceRelease>();
+    try {
+      const evidenceResponse = await fetch(EVIDENCE_REGISTRY_URL);
+      if (evidenceResponse.ok) {
+        evidenceIndex = buildEvidenceIndex(await evidenceResponse.json());
+      }
+    } catch {
+      // Falls back to names/roles/source-link-only rendering.
     }
 
     setStatus(null);
     resultsEl.hidden = false;
     if (roleFilterMode && musicalSection) musicalSection.hidden = true;
-    hopsEl.innerHTML = pathResult.hops
-      .map((hop) => renderHop(hop, nameById))
-      .join("");
+    renderRoute(hopsEl, route, fromAlbum, toAlbum, nameById, evidenceIndex);
 
-    // "More musical route" needs contributor role/degree data -- fetched
-    // only now, so a plain shortest-path result never pays for it. Skipped
-    // in any role-filtered mode: every hop already matches that mode's
-    // credit type by construction, so a role-signal re-ranking has nothing
-    // to add.
-    if (
-      !roleFilterMode &&
-      musicalHopsAvailable(hopsMusicalEl, musicalSection)
-    ) {
-      try {
-        const contributorResponse = await fetch(
-          "/data/contributors/index.v1.json",
+    // "More musical route" (ADR 0058 Slice 7): a real second search that
+    // hard-excludes every edge the first route walked (including its two
+    // anchor edges), so a found result is genuinely distinct -- never a
+    // second rendering of the same route under a different heading (the
+    // bug this fix replaces). Skipped in any role-filtered mode: every
+    // hop already matches that mode's credit type by construction, so a
+    // role-signal re-ranking has nothing to add.
+    if (!roleFilterMode && musicalSection && hopsMusicalEl && explainEl) {
+      const alternate = findAlbumRoute(
+        graph,
+        artistIndex,
+        albumIndex,
+        fromAlbum.id,
+        toAlbum.id,
+        4,
+        undefined,
+        route.usedEdgeKeys,
+      );
+      musicalSection.hidden = false;
+      if (!alternate.ok) {
+        explainEl.textContent =
+          "No distinct alternate route was found within the same hop budget.";
+        hopsMusicalEl.innerHTML = "";
+      } else {
+        renderRoute(
+          hopsMusicalEl,
+          alternate,
+          fromAlbum,
+          toAlbum,
+          nameById,
+          evidenceIndex,
         );
-        if (contributorResponse.ok) {
-          const contributorIndex =
-            (await contributorResponse.json()) as ContributorIndex;
-          const byId = new Map<number, Contributor>(
-            contributorIndex.contributors.map((c) => [c.artist_id, c]),
+        try {
+          const contributorResponse = await fetch(
+            "/data/contributors/index.v1.json",
           );
-          const explanation = explainScore(pathResult.hops, byId);
-          if (musicalSection && hopsMusicalEl && explainEl) {
-            explainEl.textContent = explanation.join(" · ");
-            hopsMusicalEl.innerHTML = pathResult.hops
-              .slice()
-              .map((hop) => renderHop(hop, nameById))
-              .join("");
-            // Only show the "more musical route" section when it's
-            // meaningfully explainable -- the shortest route is already
-            // shown above either way.
-            void scorePath(pathResult.hops, byId);
-            musicalSection.hidden = false;
+          if (contributorResponse.ok) {
+            const contributorIndex =
+              (await contributorResponse.json()) as ContributorIndex;
+            const byId = new Map<number, Contributor>(
+              contributorIndex.contributors.map((c) => [c.artist_id, c]),
+            );
+            explainEl.textContent = explainScore(alternate.hops, byId).join(
+              " · ",
+            );
+          } else {
+            explainEl.textContent = "A distinct alternate documented route.";
           }
+        } catch {
+          // Role-signal explanation is a presentational enhancement --
+          // the distinct alternate route above already rendered.
+          explainEl.textContent = "A distinct alternate documented route.";
         }
-      } catch {
-        // Contributor data is a presentational enhancement here -- the
-        // shortest documented route above already rendered successfully.
       }
     }
 
     updateButton();
   });
-}
-
-function musicalHopsAvailable(
-  hopsMusicalEl: Element | null,
-  musicalSection: Element | null,
-): boolean {
-  return Boolean(hopsMusicalEl && musicalSection);
 }
