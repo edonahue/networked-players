@@ -12,6 +12,7 @@ from typing import Any
 
 from networked_players_catalog.cli import main
 from networked_players_contracts.album_art import album_art_version
+from networked_players_contracts.album_credit_membership import album_credit_membership_version
 from networked_players_contracts.canonical import content_hash, stable_id_digest
 from networked_players_contracts.catalog import _catalog_version
 from networked_players_contracts.connection_rounds import round_content_fingerprint
@@ -388,6 +389,35 @@ def _pathfinding_graph(catalog: dict[str, Any]) -> dict[str, Any]:
     return payload
 
 
+def _album_credit_membership(catalog: dict[str, Any]) -> dict[str, Any]:
+    albums = [
+        {
+            "album_id": "master-1",
+            "main_release_id": 1,
+            "credits": [
+                {
+                    "artist_id": 100,
+                    "name": "Alice",
+                    "anv": None,
+                    "role_text": "Guitar",
+                    "credit_scope": "release_artist",
+                    "track_position": None,
+                    "track_title": None,
+                }
+            ],
+        }
+    ]
+    return {
+        "schema_version": 1,
+        "catalog_version": catalog["catalog_version"],
+        "album_credit_membership_version": album_credit_membership_version(albums, _SNAPSHOT),
+        "generated_at": "2026-08-07T00:00:00+00:00",
+        "source": "Derived from each album's own main_release_id.",
+        "license": "See docs/DATA_AND_RIGHTS.md.",
+        "albums": albums,
+    }
+
+
 def _write(path: Path, payload: dict[str, Any]) -> Path:
     path.write_text(json.dumps(payload))
     return path
@@ -412,6 +442,9 @@ def _write_all(tmp_path: Path) -> dict[str, Path]:
         ),
         "pathfinding_graph": _write(
             tmp_path / "pathfinding-graph.v1.json", _pathfinding_graph(catalog)
+        ),
+        "album_credit_membership": _write(
+            tmp_path / "album-credit-membership.v1.json", _album_credit_membership(catalog)
         ),
     }
 
@@ -439,6 +472,8 @@ def _args(paths: dict[str, Path]) -> list[str]:
         str(paths["contributor_index"]),
         "--pathfinding-graph",
         str(paths["pathfinding_graph"]),
+        "--album-credit-membership",
+        str(paths["album_credit_membership"]),
     ]
 
 
@@ -457,6 +492,7 @@ def test_clean_set_exits_zero(tmp_path: Path, capsys) -> None:
         "challenge": [],
         "contributor_index": [],
         "pathfinding_graph": [],
+        "album_credit_membership": [],
     }
 
 
@@ -491,6 +527,7 @@ def test_default_paths_point_at_the_real_repo_layout(tmp_path: Path, capsys, mon
         "apps/web/public/data/challenge.v2.json": _challenge(catalog),
         "apps/web/public/data/contributors/index.v1.json": _contributor_index(catalog),
         "apps/web/public/data/pathfinding/graph.v1.json": _pathfinding_graph(catalog),
+        "apps/web/public/data/albums/credit-membership.v1.json": _album_credit_membership(catalog),
     }
     for relative_path, payload in layout.items():
         full_path = tmp_path / relative_path
