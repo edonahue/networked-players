@@ -53,6 +53,7 @@ def _artifact_validators() -> dict[str, tuple[Callable[..., list[str]], int]]:
     - pathfinding-graph: (graph, catalog)
     - record-routes: (universe, rounds)
     - album-credit-membership: (membership, catalog)
+    - evidence-release-registry: (registry, catalog)
     """
     from networked_players_contracts import (
         album_art_failures,
@@ -61,6 +62,7 @@ def _artifact_validators() -> dict[str, tuple[Callable[..., list[str]], int]]:
         connection_rounds_failures,
         connectivity_failures,
         contributor_index_failures,
+        evidence_release_registry_failures,
         pathfinding_graph_failures,
         playable_cohort_failures,
         public_album_catalog_failures,
@@ -78,6 +80,7 @@ def _artifact_validators() -> dict[str, tuple[Callable[..., list[str]], int]]:
         "pathfinding-graph": (pathfinding_graph_failures, 2),
         "record-routes": (record_routes_failures, 2),
         "album-credit-membership": (album_credit_membership_failures, 2),
+        "evidence-release-registry": (evidence_release_registry_failures, 2),
     }
 
 

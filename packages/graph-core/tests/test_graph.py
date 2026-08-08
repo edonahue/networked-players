@@ -306,6 +306,24 @@ def test_release_has_no_hive_partition_artifacts(dataset_root: Path) -> None:
     assert "snapshot" not in release
 
 
+def test_releases_for_ids_matches_release(dataset_root: Path) -> None:
+    with CreditGraph.open(dataset_root) as graph:
+        direct = {1: graph.release(1), 2: graph.release(2)}
+        batched = graph.releases_for_ids([1, 2])
+    assert batched == direct
+
+
+def test_releases_for_ids_empty_input_returns_empty_dict(dataset_root: Path) -> None:
+    with CreditGraph.open(dataset_root) as graph:
+        assert graph.releases_for_ids([]) == {}
+
+
+def test_releases_for_ids_omits_unknown_ids(dataset_root: Path) -> None:
+    with CreditGraph.open(dataset_root) as graph:
+        batched = graph.releases_for_ids([1, 999999])
+    assert set(batched) == {1}
+
+
 def test_open_sets_temp_directory_under_dataset_root_by_default(dataset_root: Path) -> None:
     """Regression test: previously neither open() nor export_graph_snapshot()
     set temp_directory, so DuckDB spilled to CWD-relative `.tmp/` -- a real

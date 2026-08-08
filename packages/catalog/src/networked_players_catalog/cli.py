@@ -859,6 +859,64 @@ def _parser() -> argparse.ArgumentParser:
     validate_album_credit_membership.add_argument("--membership", type=Path, required=True)
     validate_album_credit_membership.add_argument("--catalog", type=Path, required=True)
 
+    build_evidence_release_registry = subparsers.add_parser(
+        "build-evidence-release-registry",
+        help=(
+            "OPERATOR/coordination-host only: build the public evidence-release registry "
+            "(apps/web/public/data/evidence/release-registry.v1.json) -- a deduplicated "
+            "lookup of every release id that can appear as evidence anywhere in the "
+            "product (union of challenge.v2.json, routes/rounds.v1.json, and the "
+            "pathfinding graph's evidence_release_ids). Needs the real one-hop working "
+            "set (--onehop-root) to resolve release ids only reachable via the "
+            "pathfinding graph; never a Pi job (ADR 0058)"
+        ),
+    )
+    build_evidence_release_registry.add_argument("--onehop-root", type=Path, required=True)
+    build_evidence_release_registry.add_argument(
+        "--challenge", type=Path, required=True, help="apps/web/public/data/challenge.v2.json"
+    )
+    build_evidence_release_registry.add_argument(
+        "--routes-rounds",
+        type=Path,
+        required=True,
+        help="apps/web/public/data/routes/rounds.v1.json",
+    )
+    build_evidence_release_registry.add_argument(
+        "--pathfinding-graph",
+        type=Path,
+        required=True,
+        help="apps/web/public/data/pathfinding/graph.v1.json",
+    )
+    build_evidence_release_registry.add_argument(
+        "--album-art",
+        type=Path,
+        required=True,
+        help="apps/web/public/data/catalog/album-art.v1.json",
+    )
+    build_evidence_release_registry.add_argument(
+        "--catalog", type=Path, required=True, help="apps/web/public/data/catalog/albums.v1.json"
+    )
+    build_evidence_release_registry.add_argument("--output", type=Path, required=True)
+    build_evidence_release_registry.add_argument("--memory-limit", default="3GB")
+    build_evidence_release_registry.add_argument("--threads", type=int, default=4)
+    build_evidence_release_registry.add_argument(
+        "--generated-at",
+        required=True,
+        help="explicit ISO datetime for this build (never the wall clock)",
+    )
+
+    validate_evidence_release_registry = subparsers.add_parser(
+        "validate-evidence-release-registry",
+        help=(
+            "validate an evidence-release registry against the canonical catalog it "
+            "claims to belong to (catalog_version agreement, parallel-array structural "
+            "invariants, evidence_release_registry_version recomputation, cover-art "
+            "hotlink host)"
+        ),
+    )
+    validate_evidence_release_registry.add_argument("--registry", type=Path, required=True)
+    validate_evidence_release_registry.add_argument("--catalog", type=Path, required=True)
+
     validate_public_artifacts = subparsers.add_parser(
         "validate-public-artifacts",
         help=(
@@ -918,6 +976,11 @@ def _parser() -> argparse.ArgumentParser:
         "--album-credit-membership",
         type=Path,
         default=Path("apps/web/public/data/albums/credit-membership.v1.json"),
+    )
+    validate_public_artifacts.add_argument(
+        "--evidence-release-registry",
+        type=Path,
+        default=Path("apps/web/public/data/evidence/release-registry.v1.json"),
     )
 
     diff_artifact_version = subparsers.add_parser(
@@ -2671,6 +2734,68 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(json.dumps({"ok": True, "albums": len(membership["albums"])}, indent=2))
         return 0
 
+    if args.command == "build-evidence-release-registry":
+        from networked_players_contracts.evidence_release_registry import (
+            evidence_release_registry_failures,
+        )
+        from networked_players_graph_core.evidence_release_registry import (
+            build_evidence_release_registry,
+        )
+        from networked_players_graph_core.graph import CreditGraph
+
+        catalog = json.loads(args.catalog.read_text())
+        challenge = json.loads(args.challenge.read_text())
+        routes_rounds = json.loads(args.routes_rounds.read_text())
+        pathfinding_graph = json.loads(args.pathfinding_graph.read_text())
+        album_art = json.loads(args.album_art.read_text())
+        with CreditGraph.open(
+            args.onehop_root, memory_limit=args.memory_limit, threads=args.threads
+        ) as graph:
+            registry = build_evidence_release_registry(
+                graph,
+                challenge=challenge,
+                routes_rounds=routes_rounds,
+                pathfinding_graph=pathfinding_graph,
+                album_art=album_art,
+                catalog=catalog,
+                generated_at=args.generated_at,
+            )
+
+        failures = evidence_release_registry_failures(registry, catalog)
+        if failures:
+            raise ValueError(
+                "refusing to write an invalid evidence-release registry: " + "; ".join(failures)
+            )
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(json.dumps(registry, indent=2) + "\n")
+        print(
+            json.dumps(
+                {
+                    "output": str(args.output),
+                    "catalog_version": registry["catalog_version"],
+                    "evidence_release_registry_version": registry[
+                        "evidence_release_registry_version"
+                    ],
+                    "release_ids": len(registry["release_ids"]),
+                },
+                indent=2,
+            )
+        )
+        return 0
+
+    if args.command == "validate-evidence-release-registry":
+        from networked_players_contracts.evidence_release_registry import (
+            evidence_release_registry_failures,
+        )
+
+        registry = json.loads(args.registry.read_text())
+        catalog = json.loads(args.catalog.read_text())
+        failures = evidence_release_registry_failures(registry, catalog)
+        if failures:
+            raise ValueError("; ".join(failures))
+        print(json.dumps({"ok": True, "release_ids": len(registry["release_ids"])}, indent=2))
+        return 0
+
     if args.command == "validate-public-artifacts":
         from networked_players_contracts import public_artifacts_failures
 
@@ -2686,6 +2811,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             contributor_index=json.loads(args.contributor_index.read_text()),
             pathfinding_graph=json.loads(args.pathfinding_graph.read_text()),
             album_credit_membership=json.loads(args.album_credit_membership.read_text()),
+            evidence_release_registry=json.loads(args.evidence_release_registry.read_text()),
         )
         ok = all(not failures for failures in report.values())
         print(json.dumps({"ok": ok, "failures": report}, indent=2))

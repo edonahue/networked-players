@@ -17,6 +17,9 @@ from networked_players_contracts.canonical import content_hash, stable_id_digest
 from networked_players_contracts.catalog import _catalog_version
 from networked_players_contracts.connection_rounds import round_content_fingerprint
 from networked_players_contracts.contributor_index import contributor_index_version
+from networked_players_contracts.evidence_release_registry import (
+    evidence_release_registry_version,
+)
 from networked_players_contracts.pathfinding_graph import pathfinding_graph_version
 
 _SNAPSHOT = "20260601"
@@ -418,6 +421,31 @@ def _album_credit_membership(catalog: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _evidence_release_registry(catalog: dict[str, Any]) -> dict[str, Any]:
+    fields = {
+        "release_ids": [1],
+        "titles": ["First Light"],
+        "years": [1995],
+        "countries": ["US"],
+        "master_ids": [1],
+        "source_urls": ["https://data.discogs.com/?download=fake"],
+        "cover_uri150s": [None],
+        "relation_to_catalog_album_ids": ["master-1"],
+    }
+    registry = {
+        "schema_version": 1,
+        "catalog_version": catalog["catalog_version"],
+        "generated_at": "2026-08-07T00:00:00+00:00",
+        "source": "Union of challenge/routes/pathfinding-graph release ids.",
+        "license": "See docs/DATA_AND_RIGHTS.md.",
+        **fields,
+    }
+    registry["evidence_release_registry_version"] = evidence_release_registry_version(
+        registry, _SNAPSHOT
+    )
+    return registry
+
+
 def _write(path: Path, payload: dict[str, Any]) -> Path:
     path.write_text(json.dumps(payload))
     return path
@@ -445,6 +473,9 @@ def _write_all(tmp_path: Path) -> dict[str, Path]:
         ),
         "album_credit_membership": _write(
             tmp_path / "album-credit-membership.v1.json", _album_credit_membership(catalog)
+        ),
+        "evidence_release_registry": _write(
+            tmp_path / "evidence-release-registry.v1.json", _evidence_release_registry(catalog)
         ),
     }
 
@@ -474,6 +505,8 @@ def _args(paths: dict[str, Path]) -> list[str]:
         str(paths["pathfinding_graph"]),
         "--album-credit-membership",
         str(paths["album_credit_membership"]),
+        "--evidence-release-registry",
+        str(paths["evidence_release_registry"]),
     ]
 
 
@@ -493,6 +526,7 @@ def test_clean_set_exits_zero(tmp_path: Path, capsys) -> None:
         "contributor_index": [],
         "pathfinding_graph": [],
         "album_credit_membership": [],
+        "evidence_release_registry": [],
     }
 
 
@@ -528,6 +562,9 @@ def test_default_paths_point_at_the_real_repo_layout(tmp_path: Path, capsys, mon
         "apps/web/public/data/contributors/index.v1.json": _contributor_index(catalog),
         "apps/web/public/data/pathfinding/graph.v1.json": _pathfinding_graph(catalog),
         "apps/web/public/data/albums/credit-membership.v1.json": _album_credit_membership(catalog),
+        "apps/web/public/data/evidence/release-registry.v1.json": _evidence_release_registry(
+            catalog
+        ),
     }
     for relative_path, payload in layout.items():
         full_path = tmp_path / relative_path
