@@ -110,3 +110,12 @@ exception, TS via a typed union member no code path produces today, since
 this graph's bounded scope makes an in-memory BFS cheap regardless of
 degree). If a future change makes `"inconclusive"` reachable in either
 implementation, extend the parity test to cover it at that point.
+
+**Addendum (Phase 4):** this ADR's own named gap — evidence rendering
+skipping `EvidencePanel`/`buildHopViews` and the search resolving each
+album to one primary `artist_id` rather than its real personnel — is
+addressed by [ADR 0058](0058-album-credit-membership-and-evidence-registry.md),
+which adds the album-credit-membership and evidence-release-registry
+artifacts and a virtual-node search-endpoint mechanism on top of this
+ADR's pathfinding architecture. See ADR 0058 for the current state of
+both points.
