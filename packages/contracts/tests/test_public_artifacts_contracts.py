@@ -426,28 +426,6 @@ def _contributor_index() -> dict[str, Any]:
 # --- pathfinding graph -------------------------------------------------------
 
 
-def _pathfinding_graph() -> dict[str, Any]:
-    catalog_version = _catalog()["catalog_version"]
-    # A tiny two-node CSR graph: artist 100 <-> artist 200, one edge.
-    payload: dict[str, Any] = {
-        "schema_version": 1,
-        "catalog_version": catalog_version,
-        "snapshot_date": _SNAPSHOT,
-        "generated_at": "2026-08-03T00:00:00+00:00",
-        "source": "Discogs monthly data dump (CC0), one-hop working set.",
-        "license": "See docs/DATA_AND_RIGHTS.md.",
-        "node_ids": [100, 200],
-        "names": ["Alice", "Bob"],
-        "offsets": [0, 1, 2],
-        "neighbors": [1, 0],
-        "evidence_release_ids": [1, 1],
-        "edge_role_a": ["Guitar", "Bass"],
-        "edge_role_b": ["Bass", "Guitar"],
-    }
-    payload["pathfinding_graph_version"] = pathfinding_graph_version(payload, _SNAPSHOT)
-    return payload
-
-
 _PATHFINDING_ANCHOR_SENTINEL = "__np_album_anchor__"
 
 
@@ -586,7 +564,6 @@ def _clean_artifacts() -> dict[str, Any]:
         "routes_rounds": routes_rounds,
         "challenge": _challenge(),
         "contributor_index": _contributor_index(),
-        "pathfinding_graph": _pathfinding_graph(),
         "pathfinding_graph_v2": _pathfinding_graph_v2(),
         "album_credit_membership": _album_credit_membership(),
         "evidence_release_registry": _evidence_release_registry(),
@@ -603,7 +580,6 @@ def test_clean_publication_set_has_no_failures() -> None:
         "record_routes": [],
         "challenge": [],
         "contributor_index": [],
-        "pathfinding_graph": [],
         "pathfinding_graph_v2": [],
         "album_credit_membership": [],
         "evidence_release_registry": [],
@@ -620,7 +596,6 @@ def test_every_group_key_always_present() -> None:
         "record_routes",
         "challenge",
         "contributor_index",
-        "pathfinding_graph",
         "pathfinding_graph_v2",
         "album_credit_membership",
         "evidence_release_registry",
@@ -649,7 +624,6 @@ def test_deleted_mode_on_record_routes_is_caught() -> None:
     assert report["connection_daily_manifest"] == []
     assert report["challenge"] == []
     assert report["contributor_index"] == []
-    assert report["pathfinding_graph"] == []
 
 
 def test_catalog_defect_is_caught_independently() -> None:
@@ -663,7 +637,6 @@ def test_catalog_defect_is_caught_independently() -> None:
     assert report["record_routes"] == []
     assert report["challenge"] == []
     assert report["contributor_index"] == []
-    assert report["pathfinding_graph"] == []
 
 
 def test_deleted_provenance_field_on_challenge_is_caught() -> None:
@@ -684,7 +657,6 @@ def test_deleted_provenance_field_on_challenge_is_caught() -> None:
     assert report["connection_daily_manifest"] == []
     assert report["record_routes"] == []
     assert report["contributor_index"] == []
-    assert report["pathfinding_graph"] == []
 
 
 def test_contributor_index_defect_is_caught_independently() -> None:
@@ -698,26 +670,9 @@ def test_contributor_index_defect_is_caught_independently() -> None:
     assert report["catalog"] == []
     assert report["challenge"] == []
     assert report["record_routes"] == []
-    assert report["pathfinding_graph"] == []
-
-
-def test_pathfinding_graph_defect_is_caught_independently() -> None:
-    artifacts = _clean_artifacts()
-    broken_graph = deepcopy(artifacts["pathfinding_graph"])
-    del broken_graph["node_ids"][0]
-    artifacts["pathfinding_graph"] = broken_graph
-
-    report = public_artifacts_failures(**artifacts)
-    assert report["pathfinding_graph"] != []
-    assert report["catalog"] == []
-    assert report["challenge"] == []
-    assert report["contributor_index"] == []
-    assert report["pathfinding_graph_v2"] == []
 
 
 def test_pathfinding_graph_v2_defect_is_caught_independently() -> None:
-    """v1 and v2 are validated as two fully independent groups -- a defect
-    in one must never be masked by, or bleed into, the other."""
     artifacts = _clean_artifacts()
     broken_graph_v2 = deepcopy(artifacts["pathfinding_graph_v2"])
     broken_graph_v2["album_virtual_nodes"][0]["virtual_artist_id"] = 1  # must be negative
@@ -725,7 +680,6 @@ def test_pathfinding_graph_v2_defect_is_caught_independently() -> None:
 
     report = public_artifacts_failures(**artifacts)
     assert report["pathfinding_graph_v2"] != []
-    assert report["pathfinding_graph"] == []
     assert report["catalog"] == []
     assert report["challenge"] == []
     assert report["contributor_index"] == []

@@ -24,6 +24,7 @@ import type { Contributor, ContributorIndex } from "../data/contributors";
 import { ROLE_CATEGORY_LABEL } from "../data/contributors";
 
 const EVIDENCE_REGISTRY_URL = "/data/evidence/release-registry.v1.json";
+const PATHFINDING_GRAPH_URL = "/data/pathfinding/graph.v2.json";
 
 const VIEW_SIZE = 320;
 const CENTER = VIEW_SIZE / 2;
@@ -104,7 +105,10 @@ export async function initExplorerStage(): Promise<void> {
 
   setStatus("Loading the network…");
 
-  const graphResult = await loadPathfindingGraph(sessionStorageOrNull());
+  const graphResult = await loadPathfindingGraph(
+    sessionStorageOrNull(),
+    PATHFINDING_GRAPH_URL,
+  );
   if (!("graph" in graphResult)) {
     setStatus("Couldn't load the network graph. Try reloading the page.");
     return;

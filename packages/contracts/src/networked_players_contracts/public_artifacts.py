@@ -50,7 +50,6 @@ PUBLIC_ARTIFACT_GROUPS = (
     "record_routes",
     "challenge",
     "contributor_index",
-    "pathfinding_graph",
     "pathfinding_graph_v2",
     "album_credit_membership",
     "evidence_release_registry",
@@ -68,7 +67,6 @@ def public_artifacts_failures(
     routes_rounds: Any,
     challenge: Any,
     contributor_index: Any,
-    pathfinding_graph: Any,
     pathfinding_graph_v2: Any,
     album_credit_membership: Any,
     evidence_release_registry: Any,
@@ -78,11 +76,10 @@ def public_artifacts_failures(
     present, with an empty list when that artifact is clean -- callers can
     report "N/N clean" without special-casing an absent key.
 
-    `pathfinding_graph` (v1) and `pathfinding_graph_v2` are validated as two
-    independent groups against the same `pathfinding_graph_failures`
-    (schema-version-aware) -- both real files are live simultaneously during
-    the ADR 0058 transition window (v1 until Connect Two Records cuts over
-    to v2, then v1 retires)."""
+    `pathfinding_graph_v2` uses the same schema-version-aware
+    `pathfinding_graph_failures` that validated the retired v1 artifact --
+    v1 (`graph.v1.json`) was retired once both real browser consumers
+    (Connect Two Records, Network Explorer) had cut over to v2 (ADR 0058)."""
     return {
         "catalog": public_album_catalog_failures(catalog),
         "album_art_registry": album_art_failures(album_art, catalog),
@@ -93,7 +90,6 @@ def public_artifacts_failures(
         "record_routes": record_routes_failures(routes_universe, routes_rounds),
         "challenge": challenge_failures(challenge, catalog),
         "contributor_index": contributor_index_failures(contributor_index, catalog),
-        "pathfinding_graph": pathfinding_graph_failures(pathfinding_graph, catalog),
         "pathfinding_graph_v2": pathfinding_graph_failures(pathfinding_graph_v2, catalog),
         "album_credit_membership": album_credit_membership_failures(
             album_credit_membership, catalog

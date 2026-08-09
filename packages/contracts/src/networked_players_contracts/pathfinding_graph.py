@@ -1,13 +1,12 @@
 """Canonical, dependency-free validation for the public pathfinding graph.
 
-The pathfinding graph (`apps/web/public/data/pathfinding/graph.v1.json` /
-`graph.v2.json`, `data/contracts/pathfinding-graph-v1.md` /
-`pathfinding-graph-v2.md`, ADR 0050/0051/0058) is a compact CSR adjacency
-scoped to a bounded 1-hop ego network around the canonical catalog's
-primary artists -- not the full one-hop corpus (ADR 0050's measured scope
-decision). Every per-node/per-edge field is a PARALLEL ARRAY aligned with
-the CSR arrays (`names[i]` describes `node_ids[i]`; `edge_role_a[slot]`/
-`edge_role_b[slot]` describe the same directed slot as
+The pathfinding graph (`apps/web/public/data/pathfinding/graph.v2.json`,
+`data/contracts/pathfinding-graph-v2.md`, ADR 0050/0051/0058) is a compact
+CSR adjacency scoped to a bounded 1-hop ego network around the canonical
+catalog's primary artists -- not the full one-hop corpus (ADR 0050's
+measured scope decision). Every per-node/per-edge field is a PARALLEL
+ARRAY aligned with the CSR arrays (`names[i]` describes `node_ids[i]`;
+`edge_role_a[slot]`/`edge_role_b[slot]` describe the same directed slot as
 `neighbors[slot]`/`evidence_release_ids[slot]`) -- measured during Slice F
 to gzip roughly 15x smaller than an equivalent array-of-objects shape at
 this graph's real size. It belongs to exactly one catalog generation, the
@@ -16,10 +15,11 @@ same rule every other catalog-derived artifact enforces.
 v2 (ADR 0058) adds `album_virtual_nodes`: one synthetic node per catalog
 album, connected to its real credited contributors, letting a
 record-to-record search anchor on real album personnel instead of one
-primary artist. This module accepts both schema versions -- v1 stays live
-(unedited) until Connect Two Records cuts over to v2; only the builder
-(`networked_players_graph_core.pathfinding_graph`) has moved to
-v2-only output.
+primary artist. This module still accepts a v1-shaped payload
+(`data/contracts/pathfinding-graph-v1.md`, kept as historical record) for
+whatever legacy export might need re-validating, but no live artifact
+publishes v1 anymore -- it retired once both real browser consumers
+(Connect Two Records, Network Explorer) cut over to v2.
 
 Pure Python (no lxml/pyarrow/duckdb), safe for the Pi fleet and the web build
 to independently verify an already-generated graph against the canonical

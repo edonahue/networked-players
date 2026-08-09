@@ -89,12 +89,20 @@ _DEFAULT_ARTIFACTS: dict[str, tuple[str, ...]] = {
         "apps/web/public/data/game/rounds.v1.json",
     ),
     "pathfinding-graph": (
-        "apps/web/public/data/pathfinding/graph.v1.json",
+        "apps/web/public/data/pathfinding/graph.v2.json",
         "apps/web/public/data/catalog/albums.v1.json",
     ),
     "record-routes": (
         "apps/web/public/data/routes/universe.v1.json",
         "apps/web/public/data/routes/rounds.v1.json",
+    ),
+    "album-credit-membership": (
+        "apps/web/public/data/albums/credit-membership.v1.json",
+        "apps/web/public/data/catalog/albums.v1.json",
+    ),
+    "evidence-release-registry": (
+        "apps/web/public/data/evidence/release-registry.v1.json",
+        "apps/web/public/data/catalog/albums.v1.json",
     ),
 }
 _AD_HOC_VALIDATORS = ("connectivity", "playable-cohort")

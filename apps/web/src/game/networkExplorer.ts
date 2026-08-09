@@ -66,8 +66,16 @@ export function buildView(
   }[] = [];
   for (let slot = start; slot < end; slot++) {
     const neighborIndex = graph.neighbors[slot];
+    const neighborArtistId = graph.node_ids[neighborIndex];
+    // v2 graphs (ADR 0058) add one synthetic, negative-id virtual node per
+    // catalog album, bidirectionally edge-connected to every real credited
+    // contributor -- Explorer walks real people's real neighborhoods, never
+    // a virtual album anchor. Real Discogs artist_ids are always positive,
+    // so this also doubles as a defensive check against the sentinel role
+    // ever leaking through on a v2 graph.
+    if (neighborArtistId < 0) continue;
     candidates.push({
-      neighborArtistId: graph.node_ids[neighborIndex],
+      neighborArtistId,
       releaseId: graph.evidence_release_ids[slot],
       roleCenter: graph.edge_role_a[slot],
       roleNeighbor: graph.edge_role_b[slot],

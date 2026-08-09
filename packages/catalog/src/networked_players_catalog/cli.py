@@ -900,7 +900,7 @@ def _parser() -> argparse.ArgumentParser:
         "--pathfinding-graph",
         type=Path,
         required=True,
-        help="apps/web/public/data/pathfinding/graph.v1.json",
+        help="apps/web/public/data/pathfinding/graph.v2.json (v1 retired, ADR 0058)",
     )
     build_evidence_release_registry.add_argument(
         "--album-art",
@@ -981,11 +981,6 @@ def _parser() -> argparse.ArgumentParser:
         "--contributor-index",
         type=Path,
         default=Path("apps/web/public/data/contributors/index.v1.json"),
-    )
-    validate_public_artifacts.add_argument(
-        "--pathfinding-graph",
-        type=Path,
-        default=Path("apps/web/public/data/pathfinding/graph.v1.json"),
     )
     validate_public_artifacts.add_argument(
         "--pathfinding-graph-v2",
@@ -2836,7 +2831,6 @@ def main(argv: Sequence[str] | None = None) -> int:
             routes_rounds=json.loads(args.routes_rounds.read_text()),
             challenge=json.loads(args.challenge.read_text()),
             contributor_index=json.loads(args.contributor_index.read_text()),
-            pathfinding_graph=json.loads(args.pathfinding_graph.read_text()),
             pathfinding_graph_v2=json.loads(args.pathfinding_graph_v2.read_text()),
             album_credit_membership=json.loads(args.album_credit_membership.read_text()),
             evidence_release_registry=json.loads(args.evidence_release_registry.read_text()),

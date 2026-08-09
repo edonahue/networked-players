@@ -1,7 +1,11 @@
 // Runtime type + validation + BFS for the pathfinding graph artifact
-// (apps/web/public/data/pathfinding/graph.v1.json / graph.v2.json,
-// data/contracts/pathfinding-graph-v1.md / pathfinding-graph-v2.md, ADR
-// 0050/0051/0058). A TypeScript port of compact_graph_bench.py's
+// (apps/web/public/data/pathfinding/graph.v2.json,
+// data/contracts/pathfinding-graph-v2.md, ADR 0050/0051/0058). v1
+// (graph.v1.json, data/contracts/pathfinding-graph-v1.md, kept as historical
+// record) retired once both real browser consumers (Connect Two Records,
+// Network Explorer) cut over to v2 -- the validator/type shape here stays
+// schema-version-aware for that historical record, but no live artifact
+// publishes v1 anymore. A TypeScript port of compact_graph_bench.py's
 // build_csr_adjacency/bfs_over_csr -- see ADR 0051's revisit trigger:
 // there is no shared cross-language parity test yet, so keep this file's
 // BFS logic in careful lockstep with the Python reference by inspection
@@ -399,24 +403,23 @@ export interface StorageLike {
   setItem(key: string, value: string): void;
 }
 
-const DEFAULT_GRAPH_URL = "/data/pathfinding/graph.v1.json";
+const DEFAULT_GRAPH_URL = "/data/pathfinding/graph.v2.json";
 
 /** Fetches and validates the pathfinding graph, caching it in
  * `sessionStorage` (not `localStorage` -- large and disposable, unlike the
  * persistent `np.game.v1` progression store) so repeated searches within one
  * session don't re-fetch/re-parse a multi-MB artifact (real measured size
  * as of ADR 0058's role-text join fix -- see data/contracts/
- * pathfinding-graph-v1.md / pathfinding-graph-v2.md). A corrupt or
- * unreadable cache entry is discarded, never thrown -- storage failures
- * degrade to a fresh fetch, matching store.ts's "losing local state is
- * preferable to breaking play" philosophy.
+ * pathfinding-graph-v2.md). A corrupt or unreadable cache entry is
+ * discarded, never thrown -- storage failures degrade to a fresh fetch,
+ * matching store.ts's "losing local state is preferable to breaking play"
+ * philosophy.
  *
- * `url` defaults to the v1 artifact for existing callers; a caller that
- * wants the v2 (virtual album-anchor) graph passes the v2 path explicitly
- * -- the cache key is derived from `url` itself so a v1 fetch and a v2
- * fetch never collide in the same session's storage (a cached v1 blob
- * being handed back for a v2 request would silently omit
- * `album_virtual_nodes`, both shapes now pass `validatePathfindingGraph`). */
+ * `url` defaults to the v2 artifact (the only one still published, ADR
+ * 0058 -- v1 retired once every real browser consumer cut over); the
+ * cache key is derived from `url` itself, so a caller that ever needs to
+ * validate a differently-shaped historical export never collides with the
+ * live v2 cache entry. */
 export async function loadPathfindingGraph(
   storage: StorageLike | null,
   url: string = DEFAULT_GRAPH_URL,

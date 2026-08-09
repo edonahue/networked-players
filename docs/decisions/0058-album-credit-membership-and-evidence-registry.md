@@ -158,3 +158,21 @@ addendum) — fixing a real per-edge role-text truncation defect changed its
 real size from ~1.8MB to **~2.26MB gzip**. `evidence-release-registry.v1.json`'s
 real measured 354KB gzip (Slice 3) stays comfortably under either figure —
 no revisit needed on that account.
+
+**Addendum (2026-08-09): `graph.v1.json` retirement completed.** Slice 7
+(Connect Two Records) cut over to v2, but this ADR's own plan for v1
+retirement undercounted the real consumer set: Network Explorer
+(`explorerStage.ts`) also fetched `graph.v1.json` and wasn't migrated at
+the time — a real gap only caught by re-checking the plan's end-state
+acceptance checklist against actual code, not by any test (nothing
+regressed; v1 simply never got deleted). Fixed by migrating Explorer to
+v2 as well, which required one real code change beyond a URL swap:
+`networkExplorer.ts`'s `buildView` now excludes v2's virtual
+album-anchor nodes (negative node ids) from its neighbor walk, since
+Explorer centers on and lists real people, never a synthetic album
+anchor — without this, any real artist credited on a catalog album would
+show that album as a "neighbor" with the `__np_album_anchor__` sentinel
+as its role text. `graph.v1.json` is now deleted, and
+`pathfinding_graph` (v1) dropped from `PUBLIC_ARTIFACT_GROUPS`/
+`validate-public-artifacts` — see `pathfinding-graph-v1.md`/
+`pathfinding-graph-v2.md`'s own updated retirement notes.

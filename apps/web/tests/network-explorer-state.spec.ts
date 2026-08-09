@@ -2,7 +2,10 @@
 // a small fixture graph, no browser needed.
 
 import { expect, test } from "@playwright/test";
-import { buildArtistIndex } from "../src/game/pathfindingGraph";
+import {
+  ALBUM_ANCHOR_SENTINEL,
+  buildArtistIndex,
+} from "../src/game/pathfindingGraph";
 import type { PathfindingGraph } from "../src/game/pathfindingGraph";
 import {
   MAX_NEIGHBORS,
@@ -42,6 +45,50 @@ function starGraph(): PathfindingGraph {
       "Producer",
     ],
     pathfinding_graph_version: "pathfinding-graph-v1-20260601-test",
+  };
+}
+
+// Same star graph as starGraph(), but on a v2 schema with one extra virtual
+// album-anchor node (-1) bidirectionally connected to the center (100) --
+// exactly the shape a real catalog artist gets in graph.v2.json (ADR 0058)
+// once they're credited on any catalog album.
+function starGraphWithAlbumAnchor(): PathfindingGraph {
+  return {
+    schema_version: 2,
+    catalog_version: "catalog-v1-test",
+    snapshot_date: "20260601",
+    generated_at: "2026-08-09T00:00:00+00:00",
+    source: "test",
+    license: "test",
+    node_ids: [-1, 100, 200, 300, 400],
+    names: ["First Light (album anchor)", "Alice", "Bob", "Cara", "Dan"],
+    offsets: [0, 1, 5, 6, 7, 8],
+    neighbors: [1, 0, 2, 3, 4, 1, 1, 1],
+    evidence_release_ids: [10, 10, 1, 2, 3, 1, 2, 3],
+    edge_role_a: [
+      ALBUM_ANCHOR_SENTINEL,
+      "Producer",
+      "Producer",
+      "Producer",
+      "Producer",
+      "Guitar",
+      "Bass",
+      "Drums",
+    ],
+    edge_role_b: [
+      "Producer",
+      ALBUM_ANCHOR_SENTINEL,
+      "Guitar",
+      "Bass",
+      "Drums",
+      "Producer",
+      "Producer",
+      "Producer",
+    ],
+    pathfinding_graph_version: "pathfinding-graph-v2-20260601-test",
+    album_virtual_nodes: [
+      { album_id: "master-1", virtual_artist_id: -1, main_release_id: 10 },
+    ],
   };
 }
 
@@ -93,6 +140,27 @@ test("buildView ranks neighbors by degree and truncates beyond the cap", () => {
   const view = buildView(graph, index, byId, 100, 2);
   expect(view?.neighbors.map((n) => n.artistId)).toEqual([300, 200]);
   expect(view?.truncated).toBe(true);
+});
+
+test("buildView never surfaces a v2 graph's virtual album-anchor node as a neighbor", () => {
+  const graph = starGraphWithAlbumAnchor();
+  const index = buildArtistIndex(graph);
+  const view = buildView(graph, index, new Map(), 100);
+  expect(view).not.toBeNull();
+  // Alice (100) is adjacent to the album anchor (-1) plus her three real
+  // collaborators -- only the three real collaborators should ever appear.
+  expect(view?.neighbors.map((n) => n.artistId).sort()).toEqual([
+    200, 300, 400,
+  ]);
+  expect(view?.neighbors.some((n) => n.artistId < 0)).toBe(false);
+  expect(
+    view?.edges.some(
+      (e) =>
+        e.roleCenter === ALBUM_ANCHOR_SENTINEL ||
+        e.roleNeighbor === ALBUM_ANCHOR_SENTINEL,
+    ),
+  ).toBe(false);
+  expect(view?.truncated).toBe(false);
 });
 
 test("MAX_NEIGHBORS is the default cap", () => {
