@@ -335,3 +335,59 @@ test("stripAlbumAnchors returns null for fewer than 2 hops", () => {
     ]),
   ).toBeNull();
 });
+
+test("stripAlbumAnchors fails closed when the sentinel isn't where it's about to be stripped from", () => {
+  // Defense-in-depth (post-Phase-4 audit F7): stripAlbumAnchors must not
+  // trust hop position alone. Real callers only ever reach this with a
+  // validatePathfindingGraph-checked graph, where this can't happen -- but
+  // the BFS layer itself should still fail closed, not silently strip the
+  // wrong hop, if that upstream guarantee is ever violated. Each case below
+  // isolates exactly one missing sentinel -- the other end is genuinely
+  // valid, so a check that fired for the wrong reason would still be caught.
+  const realMiddleHop = {
+    release_id: 2,
+    artist_a_id: 100,
+    artist_b_id: 200,
+    role_a: "Guitar",
+    role_b: "Bass",
+  };
+  const validLeadingAnchor = {
+    release_id: 1,
+    artist_a_id: -1,
+    artist_b_id: 100,
+    role_a: ALBUM_ANCHOR_SENTINEL,
+    role_b: "Producer",
+  };
+  const missingLeadingSentinel = {
+    ...validLeadingAnchor,
+    role_a: "Not the sentinel",
+  };
+  const validTrailingAnchor = {
+    release_id: 3,
+    artist_a_id: 200,
+    artist_b_id: -2,
+    role_a: "Bass",
+    role_b: ALBUM_ANCHOR_SENTINEL,
+  };
+  const missingTrailingSentinel = {
+    ...validTrailingAnchor,
+    role_b: "Not the sentinel",
+  };
+  expect(
+    stripAlbumAnchors([
+      missingLeadingSentinel,
+      realMiddleHop,
+      validTrailingAnchor,
+    ]),
+  ).toBeNull();
+  expect(
+    stripAlbumAnchors([
+      validLeadingAnchor,
+      realMiddleHop,
+      missingTrailingSentinel,
+    ]),
+  ).toBeNull();
+  expect(
+    stripAlbumAnchors([validLeadingAnchor, realMiddleHop, validTrailingAnchor]),
+  ).not.toBeNull();
+});
