@@ -136,6 +136,37 @@ test("the rest of the page keeps working after a failed search", async ({
   await expect(page.getByRole("link", { name: "About" })).toBeVisible();
 });
 
+// loadPreparedGraph (post-Phase-4 cleanup audit F11/F12): the ~2.34MB
+// graph is fetched, parsed, and indexed at most once per page session --
+// a second/third search on the same page load must not re-issue the
+// network request at all, not just reuse a sessionStorage cache entry.
+test("a multi-search session fetches the pathfinding graph exactly once", async ({
+  page,
+}) => {
+  let fetchCount = 0;
+  await page.route("**/data/pathfinding/graph.v2.json", (route) => {
+    fetchCount++;
+    return route.continue();
+  });
+  await page.goto("/play/connect/");
+
+  await selectAlbum(page, "a", "Discovery");
+  await selectAlbum(page, "b", "Joshua Tree");
+  await page.locator("[data-connect-search]").click();
+  await expect(page.locator("[data-connect-results]")).toBeVisible({
+    timeout: 15000,
+  });
+
+  await selectAlbum(page, "a", "Ziggy Stardust");
+  await selectAlbum(page, "b", "A Night At The Opera");
+  await page.locator("[data-connect-search]").click();
+  await expect(page.locator("[data-connect-results]")).toBeVisible({
+    timeout: 15000,
+  });
+
+  expect(fetchCount).toBe(1);
+});
+
 // Behind the Glass (ADR 0053): restricts the same search to producer/
 // engineer/mixer-only credits. Ziggy Stardust (David Bowie) <-> A Night
 // At The Opera (Queen) is a real, directly-connected pair in the committed

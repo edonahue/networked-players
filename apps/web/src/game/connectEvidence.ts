@@ -13,6 +13,7 @@
 // contributor names + roles and one release's presentational metadata per
 // hop, not a full credit table.
 
+import { escapeHtml } from "./domUtils";
 import type { AlbumEndpoint, PathHop } from "./pathfindingGraph";
 
 export interface EvidenceRelease {
@@ -55,14 +56,6 @@ export function buildEvidenceIndex(
  * pattern the pre-v2 renderHop already used. */
 export function discogsReleaseUrl(releaseId: number): string {
   return `https://www.discogs.com/release/${releaseId}`;
-}
-
-function escapeHtml(value: string): string {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;");
 }
 
 function releaseMetaLine(release: EvidenceRelease | undefined): string {

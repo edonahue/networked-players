@@ -6,6 +6,8 @@
 // here -- that needs the private one-hop corpus, not the published index.
 
 import { ROLE_CATEGORY_LABEL, type Contributor } from "../data/contributors";
+import { escapeHtml, sessionStorageOrNull } from "./domUtils";
+import type { StorageLike } from "./store";
 
 export interface DirectoryContributor {
   artist_id: number;
@@ -81,11 +83,6 @@ export const ROLE_CATEGORY_CHIPS: { value: string; label: string }[] =
     label,
   }));
 
-export interface StorageLike {
-  getItem(key: string): string | null;
-  setItem(key: string, value: string): void;
-}
-
 const CONTRIBUTOR_INDEX_URL = "/data/contributors/index.v1.json";
 const CACHE_KEY = "np.contributors-directory:v1";
 
@@ -148,14 +145,6 @@ export async function loadDirectoryContributors(
   return { contributors };
 }
 
-function escapeHtml(value: string): string {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;");
-}
-
 function renderResults(
   target: HTMLElement,
   results: DirectoryContributor[],
@@ -169,14 +158,6 @@ function renderResults(
         `</a>`,
     )
     .join("");
-}
-
-function sessionStorageOrNull(): Storage | null {
-  try {
-    return window.sessionStorage;
-  } catch {
-    return null;
-  }
 }
 
 export async function initContributorsDirectory(): Promise<void> {
