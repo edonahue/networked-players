@@ -154,11 +154,11 @@ export async function initConnect(): Promise<void> {
   const statusEl = stage.querySelector<HTMLElement>("[data-connect-status]");
   const resultsEl = stage.querySelector<HTMLElement>("[data-connect-results]");
   const hopsEl = stage.querySelector<HTMLElement>("[data-connect-hops]");
-  const hopsMusicalEl = stage.querySelector<HTMLElement>(
-    "[data-connect-hops-musical]",
+  const hopsAlternateEl = stage.querySelector<HTMLElement>(
+    "[data-connect-hops-alternate]",
   );
-  const musicalSection = stage.querySelector<HTMLElement>(
-    "[data-connect-result='musical']",
+  const alternateSection = stage.querySelector<HTMLElement>(
+    "[data-connect-result='alternate']",
   );
   const explainEl = stage.querySelector<HTMLElement>("[data-connect-explain]");
   if (!searchButton || !statusEl || !resultsEl || !hopsEl) return;
@@ -280,17 +280,20 @@ export async function initConnect(): Promise<void> {
 
     setStatus(null);
     resultsEl.hidden = false;
-    if (roleFilterMode && musicalSection) musicalSection.hidden = true;
+    if (roleFilterMode && alternateSection) alternateSection.hidden = true;
     renderRoute(hopsEl, route, fromAlbum, toAlbum, nameById, evidenceIndex);
 
-    // "More musical route" (ADR 0058 Slice 7): a real second search that
-    // hard-excludes every edge the first route walked (including its two
-    // anchor edges), so a found result is genuinely distinct -- never a
-    // second rendering of the same route under a different heading (the
-    // bug this fix replaces). Skipped in any role-filtered mode: every
+    // Distinct alternate route (ADR 0058 Slice 7, renamed post-Phase-4
+    // cleanup audit): a real second search that hard-excludes every edge
+    // the first route walked (including its two anchor edges), so a found
+    // result is genuinely distinct -- never a second rendering of the same
+    // route under a different heading (the bug the original Slice-7 fix
+    // replaced). This is plain BFS-with-exclusion, not a ranked "musical"
+    // alternative -- the label was corrected to match what it actually
+    // does (F9/F10 in the audit). Skipped in any role-filtered mode: every
     // hop already matches that mode's credit type by construction, so a
-    // role-signal re-ranking has nothing to add.
-    if (!roleFilterMode && musicalSection && hopsMusicalEl && explainEl) {
+    // distinct-route search has nothing to add there.
+    if (!roleFilterMode && alternateSection && hopsAlternateEl && explainEl) {
       const alternate = findAlbumRoute(
         graph,
         artistIndex,
@@ -301,14 +304,14 @@ export async function initConnect(): Promise<void> {
         undefined,
         route.usedEdgeKeys,
       );
-      musicalSection.hidden = false;
+      alternateSection.hidden = false;
       if (!alternate.ok) {
         explainEl.textContent =
           "No distinct alternate route was found within the same hop budget.";
-        hopsMusicalEl.innerHTML = "";
+        hopsAlternateEl.innerHTML = "";
       } else {
         renderRoute(
-          hopsMusicalEl,
+          hopsAlternateEl,
           alternate,
           fromAlbum,
           toAlbum,

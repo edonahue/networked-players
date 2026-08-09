@@ -150,3 +150,26 @@ every distinct role (bounded to 200 characters) changed the real measured
 size to **~2.26 MB gzip** (same 36,819 nodes / 60,696 edges — a content
 fix, not a structural change). See `data/contracts/pathfinding-graph-v1.md`
 for the current figure.
+
+**Addendum (post-Phase-4 cleanup audit): the "more musical route" label was
+inaccurate and has been corrected, not the underlying mechanism.** This
+ADR's original "Decision" text above (line 38) frames `routeQuality.ts` as
+"a transparent secondary ranking... purely a presentation ordering over
+the same evidence." Tracing the real call path found that framing was
+never actually true: `findAlbumRoute`'s second search is plain
+BFS-with-exclusion (the first route's edges hard-excluded, ADR 0058 Slice
+7) — found or not found, nothing is scored or compared, and the section
+was unconditionally labeled as the "more musical" result even when it
+could legitimately be worse by `scorePath`'s own (never-called) formula.
+`scorePath`, `roleSignalScore`, and `hubPenalty` were fully dead code —
+reachable only from each other and their own unit tests, never from
+`connect.ts`. Corrected by renaming the section "Distinct alternate
+route" everywhere (`ConnectStage.astro`'s heading, `connect.ts`'s DOM
+hooks/variables, test selectors and names) and removing the three dead
+scoring functions, keeping only `explainScore` — which remains genuinely
+used, as a purely descriptive, after-the-fact breakdown of an already-found
+route, never a selection mechanism. No BFS/search behavior changed; this
+is a labeling and dead-code correction only. A real ranked "distinct
+routes" feature (e.g. K-shortest-paths with a defined scoring criterion)
+remains a legitimate future feature — it just isn't what shipped here, and
+the label no longer claims otherwise.

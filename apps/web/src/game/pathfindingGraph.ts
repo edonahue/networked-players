@@ -305,8 +305,8 @@ export function buildAlbumIndex(graph: PathfindingGraph): Map<string, number> {
 
 /** Identifies one undirected edge (artist pair + evidence release),
  * independent of which direction it was walked -- used to hard-exclude a
- * specific already-found route's edges from a second search (the "more
- * musical route" fix, ADR 0058 Slice 7), which role text alone can't do
+ * specific already-found route's edges from a second search (the distinct-
+ * alternate-route fix, ADR 0058 Slice 7), which role text alone can't do
  * (two unrelated edges can share identical role text). */
 export function hopEdgeKey(hop: PathHop): string {
   const a = Math.min(hop.artist_a_id, hop.artist_b_id);
@@ -423,8 +423,8 @@ export type AlbumRouteResult =
       /** Edge keys for every hop actually walked, including the two
        * (never user-visible) anchor edges -- pass this as a later search's
        * `excludeEdgeKeys` to guarantee a genuinely distinct alternate
-       * route (ADR 0058 Slice 7's "more musical route" fix), not just a
-       * different-looking rendering of the same underlying edges. */
+       * route (ADR 0058 Slice 7's distinct-alternate-route fix), not just
+       * a different-looking rendering of the same underlying edges. */
       usedEdgeKeys: Set<string>;
     }
   | { ok: false; reason: PathfindingFailureReason };
