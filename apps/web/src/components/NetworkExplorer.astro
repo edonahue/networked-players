@@ -38,4 +38,22 @@ const { initialArtistId, initialLabel } = Astro.props;
   <p class="explorer-truncated-note" data-explorer-truncated hidden>
     Showing the most-connected neighbors only — not every documented connection.
   </p>
+
+  <div
+    class="explorer-evidence-drawer"
+    data-explorer-evidence-drawer
+    role="region"
+    aria-label="Connection evidence"
+    hidden
+  >
+    <button
+      type="button"
+      class="explorer-evidence-drawer__close"
+      data-explorer-evidence-close
+      aria-label="Close evidence"
+    >
+      ×
+    </button>
+    <div data-explorer-evidence-content></div>
+  </div>
 </div>

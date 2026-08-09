@@ -15,8 +15,15 @@ import {
   type ExplorerNode,
   type ExplorerView,
 } from "./networkExplorer";
+import {
+  buildEvidenceIndex,
+  renderEvidenceHop,
+  type EvidenceRelease,
+} from "./connectEvidence";
 import type { Contributor, ContributorIndex } from "../data/contributors";
 import { ROLE_CATEGORY_LABEL } from "../data/contributors";
+
+const EVIDENCE_REGISTRY_URL = "/data/evidence/release-registry.v1.json";
 
 const VIEW_SIZE = 320;
 const CENTER = VIEW_SIZE / 2;
@@ -68,13 +75,25 @@ export async function initExplorerStage(): Promise<void> {
   const truncatedEl = stage.querySelector<HTMLElement>(
     "[data-explorer-truncated]",
   );
+  const evidenceDrawer = stage.querySelector<HTMLElement>(
+    "[data-explorer-evidence-drawer]",
+  );
+  const evidenceContent = stage.querySelector<HTMLElement>(
+    "[data-explorer-evidence-content]",
+  );
+  const evidenceClose = stage.querySelector<HTMLButtonElement>(
+    "[data-explorer-evidence-close]",
+  );
   if (
     !svg ||
     !nodesLayer ||
     !edgesLayer ||
     !roleFilterEl ||
     !statusEl ||
-    !truncatedEl
+    !truncatedEl ||
+    !evidenceDrawer ||
+    !evidenceContent ||
+    !evidenceClose
   )
     return;
 
@@ -105,6 +124,26 @@ export async function initExplorerStage(): Promise<void> {
   } catch {
     // Contributor data enriches role filtering/labels; the graph itself
     // still renders without it.
+  }
+
+  // The evidence-release registry (~57 KB gzipped, ADR 0058 Slice 3) is
+  // fetched lazily on first edge interaction, not on page load -- most
+  // visits to Explore never open the drawer at all. Cached as a promise
+  // (not just the resolved map) so a second interaction while the first
+  // fetch is still in flight doesn't trigger a duplicate request.
+  let evidenceIndexPromise: Promise<Map<number, EvidenceRelease>> | null = null;
+  async function fetchEvidenceIndex(): Promise<Map<number, EvidenceRelease>> {
+    try {
+      const response = await fetch(EVIDENCE_REGISTRY_URL);
+      if (!response.ok) return new Map();
+      return buildEvidenceIndex(await response.json());
+    } catch {
+      return new Map();
+    }
+  }
+  function loadEvidenceIndex(): Promise<Map<number, EvidenceRelease>> {
+    if (!evidenceIndexPromise) evidenceIndexPromise = fetchEvidenceIndex();
+    return evidenceIndexPromise;
   }
 
   const initialArtistId = Number(stage.dataset.initialArtistId);
@@ -140,11 +179,23 @@ export async function initExplorerStage(): Promise<void> {
       );
     });
 
+    const nodeNameById = new Map<number, string>(
+      [view.center, ...view.neighbors].map((n) => [n.artistId, n.name]),
+    );
+
     edgesLayer!.innerHTML = view.edges
       .map((edge) => {
         const from = nodePositions.get(view.center.artistId)!;
         const to = nodePositions.get(edge.neighborArtistId)!;
-        return `<line x1="${from.x}" y1="${from.y}" x2="${to.x}" y2="${to.y}" class="explorer-edge" data-neighbor-id="${edge.neighborArtistId}" />`;
+        const neighborName =
+          nodeNameById.get(edge.neighborArtistId) ?? "this contributor";
+        return (
+          `<line x1="${from.x}" y1="${from.y}" x2="${to.x}" y2="${to.y}" class="explorer-edge" ` +
+          `data-neighbor-id="${edge.neighborArtistId}" data-release-id="${edge.releaseId}" ` +
+          `data-role-center="${escapeHtml(edge.roleCenter)}" data-role-neighbor="${escapeHtml(edge.roleNeighbor)}" ` +
+          `tabindex="0" role="button" ` +
+          `aria-label="Evidence for the documented credit between ${escapeHtml(view.center.name)} and ${escapeHtml(neighborName)}" />`
+        );
       })
       .join("");
 
@@ -187,6 +238,8 @@ export async function initExplorerStage(): Promise<void> {
     }
     activeCategories = new Set();
     currentView = view;
+    openEdgeRequestId++; // invalidate any evidence fetch still in flight for the old view
+    hideEvidenceDrawer();
     renderRoleFilter(view);
     renderView(view);
     // Announce the new center -- rebuilding the SVG destroys whatever was
@@ -201,6 +254,95 @@ export async function initExplorerStage(): Promise<void> {
         ?.focus();
     }
   }
+
+  // Evidence drawer (ADR 0058 Slice 9): an edge's release/role data is
+  // already carried on the DOM element itself (set in renderView above),
+  // so opening the drawer never needs to re-walk `currentView.edges` --
+  // robust against `currentView` having moved on mid-interaction. `openId`
+  // guards against a stale, slower-resolving fetch (e.g. a quick hover
+  // that already moved to a different edge) overwriting newer content.
+  let openEdgeRequestId = 0;
+
+  function hideEvidenceDrawer() {
+    evidenceDrawer!.hidden = true;
+    evidenceContent!.innerHTML = "";
+  }
+
+  async function showEdgeEvidence(edgeEl: SVGLineElement) {
+    const neighborId = Number(edgeEl.dataset.neighborId);
+    const releaseId = Number(edgeEl.dataset.releaseId);
+    const roleCenter = edgeEl.dataset.roleCenter ?? "";
+    const roleNeighbor = edgeEl.dataset.roleNeighbor ?? "";
+    if (!currentView || Number.isNaN(neighborId) || Number.isNaN(releaseId))
+      return;
+
+    const requestId = ++openEdgeRequestId;
+    evidenceDrawer!.hidden = false;
+    evidenceContent!.innerHTML = "<p>Loading evidence…</p>";
+
+    const evidenceIndex = await loadEvidenceIndex();
+    if (requestId !== openEdgeRequestId) return; // a newer edge opened meanwhile
+
+    const nameById = new Map<number, string>(
+      [currentView.center, ...currentView.neighbors].map((n) => [
+        n.artistId,
+        n.name,
+      ]),
+    );
+    evidenceContent!.innerHTML = renderEvidenceHop(
+      {
+        release_id: releaseId,
+        artist_a_id: currentView.center.artistId,
+        artist_b_id: neighborId,
+        role_a: roleCenter,
+        role_b: roleNeighbor,
+      },
+      nameById,
+      evidenceIndex,
+    );
+  }
+
+  edgesLayer.addEventListener("click", (event) => {
+    const target = (event.target as Element).closest<SVGLineElement>(
+      "[data-release-id]",
+    );
+    if (!target) return;
+    void showEdgeEvidence(target);
+  });
+  edgesLayer.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    const target = (event.target as Element).closest<SVGLineElement>(
+      "[data-release-id]",
+    );
+    if (!target) return;
+    event.preventDefault();
+    void showEdgeEvidence(target);
+  });
+  // "mouseover"/"focusin" (not "mouseenter"/"focus") because both bubble,
+  // letting one delegated listener on the layer cover every edge without
+  // attaching a handler per `<line>` on every render.
+  edgesLayer.addEventListener("mouseover", (event) => {
+    const target = (event.target as Element).closest<SVGLineElement>(
+      "[data-release-id]",
+    );
+    if (!target) return;
+    void showEdgeEvidence(target);
+  });
+  edgesLayer.addEventListener("focusin", (event) => {
+    const target = (event.target as Element).closest<SVGLineElement>(
+      "[data-release-id]",
+    );
+    if (!target) return;
+    void showEdgeEvidence(target);
+  });
+  evidenceClose.addEventListener("click", () => hideEvidenceDrawer());
+  // Document-level, not scoped to the drawer's own focus: a hover-opened
+  // drawer never moves real DOM focus at all, so a listener attached only
+  // to the drawer element would never see the Escape keydown a visitor
+  // presses right after hovering (as opposed to clicking) an edge.
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && !evidenceDrawer!.hidden) hideEvidenceDrawer();
+  });
 
   nodesLayer.addEventListener("click", (event) => {
     const target = (event.target as Element).closest<SVGGElement>(

@@ -795,6 +795,49 @@ a.contributor-card:focus-visible {
 .explorer-edge {
   stroke: var(--line);
   stroke-width: 1.5;
+  cursor: pointer;
+  transition:
+    stroke 150ms ease,
+    stroke-width 150ms ease;
+}
+.explorer-edge:hover,
+.explorer-edge:focus-visible {
+  stroke: var(--accent-strong);
+  stroke-width: 3;
+  outline: none;
+}
+.explorer-evidence-drawer {
+  position: relative;
+  max-width: 640px;
+  margin-inline: auto;
+  padding: 16px 40px 16px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+.explorer-evidence-drawer__close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: 1.2rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.explorer-evidence-drawer__close:hover,
+.explorer-evidence-drawer__close:focus-visible {
+  color: var(--ink);
+}
+.explorer-evidence-drawer .connect-hop {
+  border: none;
+  padding: 0;
+  background: none;
+  box-shadow: none;
 }
 .explorer-node circle {
   fill: var(--surface);
