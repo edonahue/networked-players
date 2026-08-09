@@ -293,6 +293,7 @@ export async function initExplorerStage(): Promise<void> {
     activeCategories = new Set();
     currentView = view;
     openEdgeRequestId++; // invalidate any evidence fetch still in flight for the old view
+    evidenceDismissed = false; // a fresh view is a natural reset point regardless of the old one's state
     hideEvidenceDrawer();
     renderRoleFilter(view);
     renderView(view);
@@ -323,20 +324,29 @@ export async function initExplorerStage(): Promise<void> {
   // closing after a plain hover doesn't yank focus somewhere the visitor
   // never asked to go.
   let drawerTriggerEl: SVGGElement | null = null;
-  // Restoring focus to the trigger edge fires a real `focusin` on it,
-  // which the delegated `focusin` listener below would otherwise treat as
-  // "an edge just gained focus, reopen the drawer" -- immediately undoing
-  // the close. `.focus()` dispatches `focusin` synchronously, so this flag
-  // only needs to be true for the duration of that one call.
-  let isRestoringDrawerFocus = false;
+  // True once the visitor has explicitly dismissed the drawer (Escape or
+  // the close button) -- while true, passive triggers (mouseover/focusin)
+  // never reopen it; only a genuinely new explicit activation (click or
+  // Enter/Space) or recentering the graph does. Real testing found the
+  // DOM mutation from closing the drawer (hiding it, moving focus back to
+  // the edge) makes Chromium redeliver a synthetic mouseout/mouseover pair
+  // for whatever's now under the OS cursor's last known position -- with
+  // no real pointer movement at all, this could otherwise silently reopen
+  // what the visitor just explicitly closed. A per-edge suppression that
+  // clears on the paired mouseout is not robust against this, since the
+  // synthetic mouseout is exactly what clears it right before the
+  // synthetic mouseover that follows; suppressing all passive triggers
+  // until the next genuinely new explicit action sidesteps the problem
+  // entirely, regardless of how many synthetic events Chromium generates
+  // or in what order.
+  let evidenceDismissed = false;
 
   function hideEvidenceDrawer(options: { restoreFocus?: boolean } = {}) {
     evidenceDrawer!.hidden = true;
     evidenceContent!.innerHTML = "";
-    if (options.restoreFocus && drawerTriggerEl) {
-      isRestoringDrawerFocus = true;
-      drawerTriggerEl.focus();
-      isRestoringDrawerFocus = false;
+    if (options.restoreFocus) {
+      evidenceDismissed = true;
+      drawerTriggerEl?.focus();
     }
     drawerTriggerEl = null;
   }
@@ -360,6 +370,7 @@ export async function initExplorerStage(): Promise<void> {
     // aria-label) and "Loading evidence…" content, so a screen reader has
     // something meaningful to announce right away.
     if (options.moveFocus) {
+      evidenceDismissed = false;
       drawerTriggerEl = edgeEl;
       evidenceDrawer!.focus();
     }
@@ -419,6 +430,7 @@ export async function initExplorerStage(): Promise<void> {
   // edge already has focus (from Tab or the roving-focus move above),
   // which already gives a screen reader the right announcement on its own.
   edgesLayer.addEventListener("mouseover", (event) => {
+    if (evidenceDismissed) return;
     const target = (event.target as Element).closest<SVGGElement>(
       "[data-release-id]",
     );
@@ -426,7 +438,7 @@ export async function initExplorerStage(): Promise<void> {
     void showEdgeEvidence(target);
   });
   edgesLayer.addEventListener("focusin", (event) => {
-    if (isRestoringDrawerFocus) return;
+    if (evidenceDismissed) return;
     const target = (event.target as Element).closest<SVGGElement>(
       "[data-release-id]",
     );
