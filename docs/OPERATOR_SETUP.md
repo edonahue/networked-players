@@ -1135,13 +1135,16 @@ against the live fleet, including a real redundant-fan-out run of `catalog` acro
 Pi workers independently. These are observed results for their date and worker set, not a
 standing uptime guarantee — see [ADR 0018](decisions/0018-benchmark-results-local-only.md).
 
-**Honest gap:** `album-credit-membership` and `evidence-release-registry` (added by ADR
-0058) have never been run against real Pi-fleet hardware — only their unit tests and
-`validate-public-artifacts` (CI/`make check`) have exercised them so far. The `make
-*-check-distributed` targets above exist and are believed correct by construction (same
-`submit_artifact_check.py`/`_DEFAULT_ARTIFACTS` mechanism as the other seven), but that
-belief is unverified against the real fleet. Run both once for real before relying on this
-section's coverage claim to include them.
+**Gap closed (2026-08-09):** `album-credit-membership` and `evidence-release-registry`
+(added by ADR 0058) were first run for real against Pi-fleet hardware at commit `1d32ade`
+(the post-Phase-4 cleanup audit's PR sequence, #102-#107) — both passing independently on
+all 3 active Pi workers (`worker-01`/`worker-02`/`worker-03`), the same `make
+*-check-distributed` targets above. This required a fresh `make platform-build` +
+`make platform-deploy ARGS="--limit pi_workers"` first: the fleet's previously-deployed
+runtime commit predated the merge, and the ADR 0034 scheduler correctly refuses to dispatch
+a job to a worker whose advertised `runtime_commit` doesn't match (by design — see
+`packages/platform/src/networked_players_platform/scheduler.py`). All nine ambient
+validators now have a real, dated fleet-run record.
 
 ## Public artifact and version-relationship reference
 
