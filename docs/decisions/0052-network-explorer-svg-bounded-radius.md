@@ -90,3 +90,20 @@ If real usage shows `MAX_NEIGHBORS` needs to exceed roughly a few dozen to
 feel useful, that is a signal to add a second, coarser "album-only"
 zoomed-out view (per the original design brief) rather than quietly raising
 the cap until SVG DOM performance degrades on a real low-end device.
+
+## Addendum (post-Phase-4 cleanup audit, 2026-08-09): automated accessibility
+scan added, the manual pass named above (issue #53) is still open
+
+`apps/web/tests/accessibility-scan.spec.ts` (axe-core, `@axe-core/playwright`,
+already a declared dependency) now runs on every `npm run test:smoke`: the
+home, about, Connect (before and after a real search), Explore (static and
+with the evidence drawer open), contributors directory, and albums grid all
+assert zero violations against axe-core's default WCAG 2.0/2.1 A/AA plus
+best-practice ruleset. As of this addendum, all eight real pages/states pass
+with zero violations. This is a real, repeatable, CI-enforced signal — a
+future regression (a missing label, a contrast change, invalid ARIA) now
+fails the build automatically, closing part of what line 26 above named as
+still-open. It is explicitly not a replacement for the still-open manual
+pass: axe-core cannot verify a screen reader's actual spoken output, real
+200%-zoom reflow, or physical touch-target behavior on a device, all of
+which still need a human.
