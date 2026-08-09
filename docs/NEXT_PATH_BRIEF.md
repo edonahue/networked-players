@@ -27,12 +27,37 @@ Corpus contract asks one artifact to do both jobs.
 - *Biggest uncertainty*: whether "two corpora" is the right shape, or a
   single corpus with a scope-tier field per analysis is cleaner — not yet
   designed.
-- *Prerequisite measurement*: done (this cleanup pass) for Jamiroquai
-  alone; a second, structurally different real artist would strengthen
-  the case before committing to a contract change.
+- *Prerequisite measurement*: done for Jamiroquai (this cleanup pass) and
+  four more real, structurally different catalog artists (Wu-Tang Clan,
+  D'Angelo, Nirvana, Miles Davis — 2026-08-09, see the summary paragraph
+  below); real evidence across five artists now supports the tradeoff
+  being general, not Jamiroquai-specific — still not yet a decision on
+  contract shape.
 - *What not to build yet*: don't touch the Topic Corpus contract itself
   without a real design pass — this cleanup pass deliberately only
   measured, per its own scope boundary.
+
+**Multi-artist follow-up measurement (2026-08-09).** Extended the
+Jamiroquai scope-tier measurement above to four more real catalog
+artists — Wu-Tang Clan, D'Angelo, Nirvana, and Miles Davis, chosen for
+structural contrast (hip-hop, R&B/neo-soul, a short 3-album discography,
+and a 40+-year session-heavy jazz catalog respectively). Full real results
+and analysis in `local/research/{wu-tang-clan,d-angelo,nirvana,miles-davis}/scope-tier-analysis.md`
+(gitignored). Two real findings not visible from Jamiroquai alone: (1)
+the star/tree graph-structure finding (edges = nodes − 1, one component)
+replicated cleanly across all five artists at every narrowed tier — the
+single most consistent finding across this whole measurement; (2)
+"narrower scope always improves role coverage" does **not** hold
+universally — Jamiroquai and Wu-Tang Clan both rose monotonically, but
+D'Angelo and Nirvana each show a real, measured *dip* at an intermediate
+tier before recovering at the narrowest one, and Miles Davis peaks at
+Tier B rather than Tier D. Role-coverage *ceilings* also vary
+meaningfully by artist even at the narrowest tier (70.3% for Wu-Tang Clan
+vs. 93.5% for Jamiroquai), suggesting genre/production style shapes
+`role_taxonomy.py` coverage independently of corpus breadth — a real,
+new, still-unconfirmed hypothesis for that section's own "biggest
+uncertainty." No design decision was made from any of this; it remains
+evidence, not a commitment to a specific corpus-tier or taxonomy design.
 
 **`role_taxonomy.py` coverage.** Real, current gap: even after this
 pass's fix, the majority of classified role components at Jamiroquai's
