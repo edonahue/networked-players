@@ -3,7 +3,10 @@
 // evidence-release registry, the contributor index, and route-quality
 // scoring. The heavy pathfinding graph (~2.34MB gzip, ADR 0058) is
 // fetched lazily on first search, not on page load -- the page itself
-// stays light until a visitor actually searches.
+// stays light until a visitor actually searches. `loadPreparedGraph`
+// (post-Phase-4 cleanup audit F11/F12) also keeps it loaded/parsed/indexed
+// in memory for the rest of the page session, so only the first search
+// pays that cost.
 
 import { filterAlbums, type PickableAlbum } from "./albumPicker";
 import {
@@ -12,13 +15,11 @@ import {
   renderEvidenceHop,
   type EvidenceRelease,
 } from "./connectEvidence";
+import { escapeHtml, sessionStorageOrNull } from "./domUtils";
 import {
-  buildAlbumIndex,
-  buildArtistIndex,
   findAlbumRoute,
-  loadPathfindingGraph,
+  loadPreparedGraph,
   type AlbumRouteResult,
-  type PathfindingGraph,
 } from "./pathfindingGraph";
 import { explainScore } from "./routeQuality";
 import {
@@ -66,14 +67,6 @@ const ROLE_FILTER_MODES: Record<string, RoleFilterMode> = {
   },
 };
 
-function sessionStorageOrNull(): Storage | null {
-  try {
-    return window.sessionStorage;
-  } catch {
-    return null;
-  }
-}
-
 function wirePicker(
   root: HTMLElement,
   albums: PickableAlbum[],
@@ -114,14 +107,6 @@ function wirePicker(
     selected.textContent = `Selected: ${album.title} — ${album.artist}`;
     onSelect(album);
   });
-}
-
-function escapeHtml(value: string): string {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;");
 }
 
 /** Renders one full route (both endpoint cards + the documented hops
@@ -210,11 +195,17 @@ export async function initConnect(): Promise<void> {
     setStatus("Searching…");
     searchButton.disabled = true;
 
-    const graphResult = await loadPathfindingGraph(
+    // Prepared (loaded + indexed) once per page load and reused across
+    // every search click via loadPreparedGraph's own module-level cache
+    // (post-Phase-4 cleanup audit F11/F12) -- only the first search in a
+    // session pays the fetch/parse/index cost; a sessionStorage failure no
+    // longer causes a refetch on the 2nd/3rd/4th search within one page
+    // load, only across page loads.
+    const preparedResult = await loadPreparedGraph(
       sessionStorageOrNull(),
       PATHFINDING_GRAPH_URL,
     );
-    if (!("graph" in graphResult)) {
+    if (!("prepared" in preparedResult)) {
       const messages: Record<string, string> = {
         "fetch-failed":
           "Couldn't fetch the connection graph. Check your connection and try again.",
@@ -224,17 +215,13 @@ export async function initConnect(): Promise<void> {
           "The connection graph failed validation. Try reloading the page.",
       };
       setStatus(
-        messages[graphResult.error] ?? "Something went wrong. Try again.",
+        messages[preparedResult.error] ?? "Something went wrong. Try again.",
       );
       updateButton();
       return;
     }
-    const graph: PathfindingGraph = graphResult.graph;
-    const artistIndex = buildArtistIndex(graph);
-    const albumIndex = buildAlbumIndex(graph);
-    const nameById = new Map<number, string>(
-      graph.node_ids.map((id, i) => [id, graph.names[i]]),
-    );
+    const { graph, artistIndex, albumIndex, nameById } =
+      preparedResult.prepared;
 
     const selectedModeValue =
       stage.querySelector<HTMLInputElement>(

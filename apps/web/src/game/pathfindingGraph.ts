@@ -22,6 +22,12 @@
 // mirroring routesResolver.ts's hardened pattern.
 
 import { contentHash } from "./canonical";
+// `StorageLike` (the small getItem/setItem interface used to inject a real
+// or fake storage backend) is canonically defined in `store.ts` --
+// `flagship.ts`/`dailyArchiveStage.ts` already import it from there; this
+// module used to redefine an identical copy (post-Phase-4 cleanup audit
+// F13), now imports it too instead.
+import type { StorageLike } from "./store";
 
 export interface AlbumVirtualNode {
   album_id: string;
@@ -520,11 +526,6 @@ export function findAlbumRoute(
   return { ok: true, ...stripped, usedEdgeKeys: edgeKeysForHops(result.hops) };
 }
 
-export interface StorageLike {
-  getItem(key: string): string | null;
-  setItem(key: string, value: string): void;
-}
-
 const DEFAULT_GRAPH_URL = "/data/pathfinding/graph.v2.json";
 
 /** Fetches and validates the pathfinding graph, caching it in
@@ -585,4 +586,62 @@ export async function loadPathfindingGraph(
     }
   }
   return { graph };
+}
+
+export interface PreparedGraph {
+  graph: PathfindingGraph;
+  artistIndex: Map<number, number>;
+  albumIndex: Map<string, number>;
+  nameById: Map<number, string>;
+}
+
+/** Module-level, URL-keyed promise cache so a graph is fetched, parsed, and
+ * indexed at most once per page load, no matter how many times
+ * `loadPreparedGraph` is called -- the same load-once-reuse-via-closure
+ * shape `explorerStage.ts` already gets for free by loading at page-init
+ * time, extended to `connect.ts`'s search handler, which runs on every
+ * click, not once (post-Phase-4 cleanup audit F11/F12). A resolved success
+ * stays cached: correct, since the graph is immutable for the page's
+ * lifetime and an in-memory cache hit needs no `sessionStorage` round trip
+ * at all. A resolved *error* is evicted before returning, so a later call
+ * (e.g. after the network recovers) gets a fresh attempt rather than being
+ * stuck replaying the first failure for the rest of the session. */
+const preparedGraphCache = new Map<
+  string,
+  Promise<{ prepared: PreparedGraph } | { error: PathfindingFailureReason }>
+>();
+
+/** `loadPathfindingGraph` plus the three derived structures every real
+ * caller needs immediately after loading it (`buildArtistIndex`,
+ * `buildAlbumIndex`, and the `node_ids -> names` map `connect.ts` builds
+ * inline on every search) -- cached together as one prepared bundle. */
+export function loadPreparedGraph(
+  storage: StorageLike | null,
+  url: string = DEFAULT_GRAPH_URL,
+): Promise<{ prepared: PreparedGraph } | { error: PathfindingFailureReason }> {
+  const cached = preparedGraphCache.get(url);
+  if (cached) return cached;
+
+  const promise = (async (): Promise<
+    { prepared: PreparedGraph } | { error: PathfindingFailureReason }
+  > => {
+    const result = await loadPathfindingGraph(storage, url);
+    if (!("graph" in result)) {
+      preparedGraphCache.delete(url);
+      return result;
+    }
+    const graph = result.graph;
+    return {
+      prepared: {
+        graph,
+        artistIndex: buildArtistIndex(graph),
+        albumIndex: buildAlbumIndex(graph),
+        nameById: new Map<number, string>(
+          graph.node_ids.map((id, i) => [id, graph.names[i]]),
+        ),
+      },
+    };
+  })();
+  preparedGraphCache.set(url, promise);
+  return promise;
 }

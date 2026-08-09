@@ -20,6 +20,7 @@ import {
   renderEvidenceHop,
   type EvidenceRelease,
 } from "./connectEvidence";
+import { escapeHtml, sessionStorageOrNull } from "./domUtils";
 import type { Contributor, ContributorIndex } from "../data/contributors";
 import { ROLE_CATEGORY_LABEL } from "../data/contributors";
 
@@ -31,22 +32,6 @@ const CENTER = VIEW_SIZE / 2;
 const RADIUS = 120;
 const NODE_RADIUS = 8;
 const CENTER_NODE_RADIUS = 14;
-
-function sessionStorageOrNull(): Storage | null {
-  try {
-    return window.sessionStorage;
-  } catch {
-    return null;
-  }
-}
-
-function escapeHtml(value: string): string {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;");
-}
 
 function neighborPosition(
   index: number,
@@ -130,11 +115,14 @@ export async function initExplorerStage(): Promise<void> {
     // still renders without it.
   }
 
-  // The evidence-release registry (~57 KB gzipped, ADR 0058 Slice 3) is
-  // fetched lazily on first edge interaction, not on page load -- most
-  // visits to Explore never open the drawer at all. Cached as a promise
-  // (not just the resolved map) so a second interaction while the first
-  // fetch is still in flight doesn't trigger a duplicate request.
+  // The evidence-release registry (~355 KB gzipped, ADR 0058 Slice 3 --
+  // ~57 KB is the *contributor index*'s real size, fetched separately
+  // above; this comment named the wrong artifact until the post-Phase-4
+  // cleanup audit caught it) is fetched lazily on first edge interaction,
+  // not on page load -- most visits to Explore never open the drawer at
+  // all. Cached as a promise (not just the resolved map) so a second
+  // interaction while the first fetch is still in flight doesn't trigger
+  // a duplicate request.
   let evidenceIndexPromise: Promise<Map<number, EvidenceRelease>> | null = null;
   async function fetchEvidenceIndex(): Promise<Map<number, EvidenceRelease>> {
     try {
