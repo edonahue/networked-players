@@ -1,8 +1,8 @@
 // Network Explorer integration tests (ADR 0052) against the real committed
 // pathfinding graph. master-107325 (Elvis Presley) is a real, high-degree
 // entry in the committed artifact (verified against
-// apps/web/public/data/pathfinding/graph.v1.json) -- picked from the
-// artifact itself so this exercises the truncation path for real.
+// apps/web/public/data/pathfinding/graph.v2.json, ADR 0058) -- picked from
+// the artifact itself so this exercises the truncation path for real.
 
 import { expect, test } from "@playwright/test";
 
@@ -143,7 +143,7 @@ test("a keyboard-activated recenter moves focus to the new center and announces 
 test("an unknown artist id shows a graceful message instead of a blank graph", async ({
   page,
 }) => {
-  await page.route("**/data/pathfinding/graph.v1.json", async (route) => {
+  await page.route("**/data/pathfinding/graph.v2.json", async (route) => {
     const response = await route.fetch();
     const json = await response.json();
     json.node_ids = [999999999];
@@ -153,6 +153,7 @@ test("an unknown artist id shows a graceful message instead of a blank graph", a
     json.evidence_release_ids = [];
     json.edge_role_a = [];
     json.edge_role_b = [];
+    json.album_virtual_nodes = [];
     await route.fulfill({ response, json });
   });
   await page.goto("/explore/master-107325/");

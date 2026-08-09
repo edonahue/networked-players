@@ -157,3 +157,20 @@ decision — not simply "a fourth mode exists."
   rhythm-section- or guitar-only bridge within 4 hops either, confirmed
   directly against the artifact — reused as the negative case for both new
   modes too.
+
+**Addendum (2026-08-09, ADR 0058): backend moved to v2; the Discovery ↔
+Joshua Tree negative case above no longer holds.** This ADR's "same
+published artifact" decision reused `graph.v1.json`'s raw edges, searched
+from each album's single primary artist. Slice 7 moved Connect Two
+Records (Behind the Glass/Rhythm Section/Guitar Paths included) onto
+`graph.v2.json`'s virtual album-anchor nodes, which search from *every*
+credited contributor on an album, not just its primary artist — a real,
+strictly more capable search. Discovery ↔ The Joshua Tree, verified above
+as having no role-filtered bridge under the old artist-only search, was
+directly re-verified against the real committed v2 artifact to now have
+real bridges under all three role filters via other credited
+contributors — it stopped being a valid negative case, not a bug.
+Replaced with Time Out (Dave Brubeck) ↔ Rumours (Fleetwood Mac), verified
+to have a real unfiltered connection but no bridge under any of the three
+role filters within budget. See `apps/web/tests/game-connect.spec.ts` and
+ADR 0058's own Slice 7 record.

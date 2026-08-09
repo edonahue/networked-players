@@ -66,10 +66,18 @@ slot, never elsewhere).
 
 ## Revisit trigger
 
-v1 retires once Connect Two Records (Slice 7) cuts over to this artifact —
-at that point, stop publishing `graph.v1.json` and drop its validator
-wiring from `validate-public-artifacts` rather than maintaining two live
-generators indefinitely. If a future change needs virtual nodes to carry
-more than a single bidirectional zero-cost edge per credited contributor
-(e.g. weighting by credit prominence), that is a real, separate design
-decision — extend this contract explicitly, or add a clearly-named `v3`.
+If a future change needs virtual nodes to carry more than a single
+bidirectional zero-cost edge per credited contributor (e.g. weighting by
+credit prominence), that is a real, separate design decision — extend
+this contract explicitly, or add a clearly-named `v3`.
+
+**Addendum (2026-08-09): v1 retirement completed.** The original plan
+above (retire once Connect Two Records cuts over) undercounted the real
+consumer set — Network Explorer also fetched `graph.v1.json` and wasn't
+migrated when Connect cut over in Slice 7. `graph.v1.json` is now deleted
+and its `pathfinding_graph` (v1) group dropped from
+`validate-public-artifacts`/`PUBLIC_ARTIFACT_GROUPS` only after Explorer's
+own migration (`buildView` in `networkExplorer.ts` now excludes v2's
+virtual album-anchor nodes from its neighbor walk, since Explorer centers
+on real people, never a synthetic album anchor). See
+`pathfinding-graph-v1.md`'s own updated retirement note.

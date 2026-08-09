@@ -146,7 +146,7 @@ def build_evidence_release_registry(
         "generated_at": generated_at,
         "source": (
             "Union of apps/web/public/data/challenge.v2.json, routes/rounds.v1.json, and "
-            "every evidence_release_id in pathfinding/graph.v1.json -- release-level metadata "
+            "every evidence_release_id in pathfinding/graph.v2.json -- release-level metadata "
             "for ids not already covered by the first two comes from the one-hop dataset. "
             "See docs/DATA_AND_RIGHTS.md."
         ),
