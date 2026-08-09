@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import json
 from copy import deepcopy
+from pathlib import Path
 from typing import Any
 
 from networked_players_contracts.catalog import _catalog_version
@@ -10,6 +12,19 @@ from networked_players_contracts.pathfinding_graph import (
 )
 
 _SNAPSHOT = "20260601"
+
+# Shared, cross-language fixture set (also loaded by apps/web/tests/
+# pathfinding-bfs*.spec.ts) -- a malformed case added here is automatically
+# exercised against both the Python and TypeScript validators, closing the
+# parity gap ADR 0051's revisit trigger names.
+_FIXTURE_DIR = Path(__file__).resolve().parents[3] / "data" / "fixtures" / "pathfinding-graph"
+
+
+def _load_fixture(name: str) -> Any:
+    return json.loads((_FIXTURE_DIR / f"{name}.json").read_text())
+
+
+_FIXTURE_CATALOG = _load_fixture("catalog")
 
 
 def _catalog() -> dict[str, Any]:
@@ -212,4 +227,57 @@ def test_v2_sentinel_used_on_a_real_slot_is_rejected() -> None:
     graph = deepcopy(_graph_v2())
     graph["edge_role_a"][3] = _SENTINEL  # slot 3 is (100 -> 200), a real-real edge
     failures = pathfinding_graph_failures(graph, _catalog())
+    assert any("sentinel placement" in f for f in failures)
+
+
+# --- shared, cross-language fixture set --------------------------------
+# Every file under data/fixtures/pathfinding-graph/ is also loaded by
+# apps/web/tests/pathfinding-bfs*.spec.ts against validatePathfindingGraph
+# -- these tests prove the Python side agrees on the same files, not just
+# on inline-built equivalents.
+
+
+def test_shared_well_formed_v1_fixture_has_no_failures() -> None:
+    graph = _load_fixture("well-formed-v1")
+    assert pathfinding_graph_failures(graph, _FIXTURE_CATALOG) == []
+
+
+def test_shared_well_formed_v2_fixture_has_no_failures() -> None:
+    graph = _load_fixture("well-formed-v2")
+    assert pathfinding_graph_failures(graph, _FIXTURE_CATALOG) == []
+
+
+def test_shared_non_monotonic_offsets_fixture_is_rejected() -> None:
+    graph = _load_fixture("malformed-non-monotonic-offsets")
+    failures = pathfinding_graph_failures(graph, _FIXTURE_CATALOG)
+    assert any("non-decreasing" in f for f in failures)
+
+
+def test_shared_unsorted_node_ids_fixture_is_rejected() -> None:
+    graph = _load_fixture("malformed-unsorted-node-ids")
+    failures = pathfinding_graph_failures(graph, _FIXTURE_CATALOG)
+    assert any("must be sorted" in f for f in failures)
+
+
+def test_shared_duplicate_node_ids_fixture_is_rejected() -> None:
+    graph = _load_fixture("malformed-duplicate-node-ids")
+    failures = pathfinding_graph_failures(graph, _FIXTURE_CATALOG)
+    assert any("must not contain duplicates" in f for f in failures)
+
+
+def test_shared_tampered_hash_fixture_is_rejected() -> None:
+    graph = _load_fixture("malformed-tampered-hash")
+    failures = pathfinding_graph_failures(graph, _FIXTURE_CATALOG)
+    assert any("does not match recomputed content" in f for f in failures)
+
+
+def test_shared_wrong_top_level_keys_fixture_is_rejected() -> None:
+    graph = _load_fixture("malformed-wrong-top-level-keys")
+    failures = pathfinding_graph_failures(graph, _FIXTURE_CATALOG)
+    assert any("unexpected top-level keys" in f for f in failures)
+
+
+def test_shared_misplaced_sentinel_fixture_is_rejected() -> None:
+    graph = _load_fixture("malformed-misplaced-sentinel")
+    failures = pathfinding_graph_failures(graph, _FIXTURE_CATALOG)
     assert any("sentinel placement" in f for f in failures)

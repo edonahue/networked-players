@@ -2,7 +2,17 @@
 // fixture graph, no browser or fetch needed. Mirrors
 // test_compact_graph_bench.py's Python fixture cases (see that ADR's
 // revisit trigger: there is no shared cross-language parity harness yet).
+//
+// Validator rejection cases load the shared, cross-language fixture set
+// under data/fixtures/pathfinding-graph/ (each file generated with a real
+// content-hashed `pathfinding_graph_version`, verified against the Python
+// validator in packages/contracts/tests/test_pathfinding_graph_contracts.py)
+// instead of hand-built inline objects, so a new malformed case added there
+// is automatically exercised on both sides.
 
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { expect, test } from "@playwright/test";
 import {
   buildArtistIndex,
@@ -10,6 +20,13 @@ import {
   validatePathfindingGraph,
   type PathfindingGraph,
 } from "../src/game/pathfindingGraph";
+
+const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "../../..");
+const fixtureDir = join(repoRoot, "data/fixtures/pathfinding-graph");
+
+function loadFixture(name: string): unknown {
+  return JSON.parse(readFileSync(join(fixtureDir, `${name}.json`), "utf8"));
+}
 
 // A -1- B -2- C -3- D chain, matching the CSR shape build_csr_adjacency
 // would produce for the same edges (both directions stored, sorted).
@@ -94,21 +111,42 @@ test("reconstructed hops carry real role text and release ids", () => {
   }
 });
 
-test("validatePathfindingGraph accepts a well-formed graph", () => {
-  expect(validatePathfindingGraph(chainGraph())).not.toBeNull();
+test("validatePathfindingGraph accepts a well-formed v1 graph", async () => {
+  const graph = await validatePathfindingGraph(loadFixture("well-formed-v1"));
+  expect(graph).not.toBeNull();
 });
 
-test("validatePathfindingGraph rejects mismatched parallel array lengths", () => {
+test("validatePathfindingGraph rejects mismatched parallel array lengths", async () => {
   const broken = { ...chainGraph(), edge_role_a: ["only one"] };
-  expect(validatePathfindingGraph(broken)).toBeNull();
+  expect(await validatePathfindingGraph(broken)).toBeNull();
 });
 
-test("validatePathfindingGraph rejects an out-of-range neighbor index", () => {
+test("validatePathfindingGraph rejects an out-of-range neighbor index", async () => {
   const broken = { ...chainGraph(), neighbors: [1, 0, 2, 1, 3, 99] };
-  expect(validatePathfindingGraph(broken)).toBeNull();
+  expect(await validatePathfindingGraph(broken)).toBeNull();
 });
 
-test("validatePathfindingGraph rejects a non-object", () => {
-  expect(validatePathfindingGraph(null)).toBeNull();
-  expect(validatePathfindingGraph("not a graph")).toBeNull();
+test("validatePathfindingGraph rejects a non-object", async () => {
+  expect(await validatePathfindingGraph(null)).toBeNull();
+  expect(await validatePathfindingGraph("not a graph")).toBeNull();
+});
+
+test("validatePathfindingGraph rejects non-monotonic offsets", async () => {
+  const broken = loadFixture("malformed-non-monotonic-offsets");
+  expect(await validatePathfindingGraph(broken)).toBeNull();
+});
+
+test("validatePathfindingGraph rejects unsorted node_ids", async () => {
+  const broken = loadFixture("malformed-unsorted-node-ids");
+  expect(await validatePathfindingGraph(broken)).toBeNull();
+});
+
+test("validatePathfindingGraph rejects duplicate node_ids", async () => {
+  const broken = loadFixture("malformed-duplicate-node-ids");
+  expect(await validatePathfindingGraph(broken)).toBeNull();
+});
+
+test("validatePathfindingGraph rejects a tampered pathfinding_graph_version hash", async () => {
+  const broken = loadFixture("malformed-tampered-hash");
+  expect(await validatePathfindingGraph(broken)).toBeNull();
 });

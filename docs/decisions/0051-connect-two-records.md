@@ -111,6 +111,28 @@ this graph's bounded scope makes an in-memory BFS cheap regardless of
 degree). If a future change makes `"inconclusive"` reachable in either
 implementation, extend the parity test to cover it at that point.
 
+**Addendum (post-Phase-4 cleanup audit):** the BFS-parity gap above and the
+*contract-validator* parity gap are distinct and were closed separately.
+`validatePathfindingGraph` (TS) was found to silently accept payloads
+`pathfinding_graph_failures` (Python, `packages/contracts/src/
+networked_players_contracts/pathfinding_graph.py`) would reject: no
+top-level key-set check, no `offsets`/`node_ids` monotonicity or uniqueness
+check, no album-anchor sentinel-placement check (v2), and — the highest-
+severity gap — no recomputation of `pathfinding_graph_version`'s content
+hash, so a tampered or truncated fetch with a plausible-looking version
+string passed client-side validation entirely. All five checks were added
+(`apps/web/src/game/pathfindingGraph.ts`, now `async` since hash
+verification uses `contentHash`/`crypto.subtle.digest`), reusing
+`canonical.ts`'s already-proven-byte-identical hashing rather than adding a
+second implementation. A new shared, cross-language fixture set
+(`data/fixtures/pathfinding-graph/`, one well-formed v1/v2 file plus one
+file per malformed invariant) is now loaded by both
+`test_pathfinding_graph_contracts.py` and `pathfinding-bfs*.spec.ts`, so a
+future malformed case added there is automatically exercised against both
+validators — closing the same "kept in step by inspection" risk this
+section's original revisit trigger named, applied to the validator instead
+of the BFS walk.
+
 **Addendum (Phase 4):** this ADR's own named gap — evidence rendering
 skipping `EvidencePanel`/`buildHopViews` and the search resolving each
 album to one primary `artist_id` rather than its real personnel — is
