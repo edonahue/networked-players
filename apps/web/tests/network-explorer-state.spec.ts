@@ -163,6 +163,20 @@ test("buildView never surfaces a v2 graph's virtual album-anchor node as a neigh
   expect(view?.truncated).toBe(false);
 });
 
+test("buildView returns null for a negative centerArtistId (a virtual album anchor)", () => {
+  // Defense-in-depth (post-Phase-4 audit F8): the neighbor-side guard above
+  // already keeps a virtual album anchor out of the neighbor list; this
+  // guards buildView's own centerArtistId parameter the same way. -1 is a
+  // real, resolvable node in this v2 fixture (it's in node_ids), so without
+  // the guard this would previously have built a "view" centered on the
+  // synthetic album node itself. Every real caller (explorerStage.ts) only
+  // ever passes a real, positive artist id today -- this has no effect on
+  // any currently-reachable input.
+  const graph = starGraphWithAlbumAnchor();
+  const index = buildArtistIndex(graph);
+  expect(buildView(graph, index, new Map(), -1)).toBeNull();
+});
+
 test("MAX_NEIGHBORS is the default cap", () => {
   const graph = starGraph();
   const index = buildArtistIndex(graph);

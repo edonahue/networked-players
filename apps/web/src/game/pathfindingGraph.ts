@@ -436,7 +436,15 @@ export type AlbumRouteResult =
  * two distinct virtual nodes (album -> shared real contributor -> album),
  * since virtual nodes are never directly connected to each other; a
  * shorter result would indicate a structural inconsistency, not a real
- * route. */
+ * route.
+ *
+ * Also `null` if the sentinel isn't actually present where it's about to
+ * be stripped from (`first.role_a`/`last.role_b` -- the virtual side of
+ * each anchor hop, per `findAlbumRoute`'s own walk direction). Every real
+ * caller today only ever reaches this with a `validatePathfindingGraph`-
+ * checked graph, where that's always true by construction -- this is
+ * defense-in-depth against trusting hop position alone, not a behavior
+ * change for any currently-reachable input. */
 export function stripAlbumAnchors(hops: PathHop[]): {
   endpointA: AlbumEndpoint;
   hops: PathHop[];
@@ -445,6 +453,8 @@ export function stripAlbumAnchors(hops: PathHop[]): {
   if (hops.length < 2) return null;
   const first = hops[0];
   const last = hops[hops.length - 1];
+  if (first.role_a !== ALBUM_ANCHOR_SENTINEL) return null;
+  if (last.role_b !== ALBUM_ANCHOR_SENTINEL) return null;
   return {
     endpointA: { artistId: first.artist_b_id, roleText: first.role_b },
     hops: hops.slice(1, hops.length - 1),

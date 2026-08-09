@@ -176,3 +176,20 @@ as its role text. `graph.v1.json` is now deleted, and
 `pathfinding_graph` (v1) dropped from `PUBLIC_ARTIFACT_GROUPS`/
 `validate-public-artifacts` — see `pathfinding-graph-v1.md`/
 `pathfinding-graph-v2.md`'s own updated retirement notes.
+
+**Addendum (post-Phase-4 cleanup audit): virtual-anchor containment is now
+defense-in-depth, not solely convention-dependent.** A full trace found
+exactly two places in `apps/web/src/` that ever exclude a virtual
+album-anchor node from user-facing output — `findAlbumRoute`/
+`stripAlbumAnchors` (Connect) and `buildView` (Explorer, the fix above) —
+and both were correct for every currently-reachable real input but neither
+verified its own assumption at the point of use. `stripAlbumAnchors` now
+re-checks that the album-anchor sentinel is actually present on the
+hop it's about to strip (`first.role_a`/`last.role_b`) before stripping it,
+failing closed (returning `null`) instead of trusting hop position alone.
+`buildView` now also guards its own `centerArtistId` parameter against
+being negative, the same way it already guarded neighbor ids — a v2
+graph's `node_ids` legitimately contains negative virtual ids, so without
+this a caller that ever passed one as a center would have silently built a
+view around a synthetic album node. Neither change alters behavior for any
+input either function can be reached with today.

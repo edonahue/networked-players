@@ -53,6 +53,15 @@ export function buildView(
   centerArtistId: number,
   maxNeighbors: number = MAX_NEIGHBORS,
 ): ExplorerView | null {
+  // Defense-in-depth, mirroring the neighbor-side guard below: a v2 graph's
+  // node_ids legitimately contains negative virtual album-anchor ids
+  // (ADR 0058), so artistIndex.get would otherwise happily resolve one and
+  // build a "view" centered on a synthetic album node rather than a real
+  // contributor. Every real caller (explorerStage.ts) only ever passes a
+  // real, positive artist id today -- this guard has no effect on any
+  // currently-reachable input, only on a future caller that might not
+  // uphold that.
+  if (centerArtistId < 0) return null;
   const centerIndex = artistIndex.get(centerArtistId);
   if (centerIndex === undefined) return null;
 
