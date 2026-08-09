@@ -21,6 +21,8 @@
 // fetched JSON is untrusted input, validated field-by-field before use,
 // mirroring routesResolver.ts's hardened pattern.
 
+import { contentHash } from "./canonical";
+
 export interface AlbumVirtualNode {
   album_id: string;
   virtual_artist_id: number;
@@ -100,18 +102,97 @@ function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((v) => typeof v === "string");
 }
 
+/** Top-level key sets, kept byte-identical to Python's
+ * `_BASE_TOP_LEVEL_KEYS`/`_V2_ONLY_KEYS` (`pathfinding_graph.py:49-67`). */
+const BASE_TOP_LEVEL_KEYS = [
+  "schema_version",
+  "catalog_version",
+  "snapshot_date",
+  "generated_at",
+  "source",
+  "license",
+  "node_ids",
+  "names",
+  "offsets",
+  "neighbors",
+  "evidence_release_ids",
+  "edge_role_a",
+  "edge_role_b",
+  "pathfinding_graph_version",
+] as const;
+const V2_ONLY_KEYS = ["album_virtual_nodes"] as const;
+
+const VERSION_PATTERN_BY_SCHEMA: Record<number, RegExp> = {
+  1: /^pathfinding-graph-v1-[0-9A-Za-z]+-[0-9a-f]{12}$/,
+  2: /^pathfinding-graph-v2-[0-9A-Za-z]+-[0-9a-f]{12}$/,
+};
+
+/** Recomputation mirror of the generation-time function in
+ * `networked_players_graph_core.pathfinding_graph` and its dependency-free
+ * contract-side duplicate `networked_players_contracts.pathfinding_graph
+ * ::pathfinding_graph_version` -- same field set, same truncated content
+ * hash, so a hash computed by either language validates in the other. */
+export async function pathfindingGraphVersion(
+  value: Record<string, unknown>,
+  schemaVersion: number,
+  snapshotDate: string,
+): Promise<string> {
+  const identity: Record<string, unknown> = {
+    node_ids: value.node_ids,
+    names: value.names,
+    offsets: value.offsets,
+    neighbors: value.neighbors,
+    evidence_release_ids: value.evidence_release_ids,
+    edge_role_a: value.edge_role_a,
+    edge_role_b: value.edge_role_b,
+  };
+  if (schemaVersion === 2) {
+    identity.album_virtual_nodes = value.album_virtual_nodes;
+  }
+  const digest = await contentHash(identity, 12);
+  return `pathfinding-graph-v${schemaVersion}-${snapshotDate}-${digest}`;
+}
+
 /** Every structural invariant `pathfinding_graph_failures` (the Python
- * contract validator) also checks -- offsets length/monotonicity, parallel
- * array lengths, neighbor indices in range, and (schema_version 2 only)
- * album_virtual_nodes' negative/disjoint virtual ids resolving into
- * node_ids. A malformed or truncated fetch must be caught here, not
- * partway through a BFS. */
-export function validatePathfindingGraph(
+ * contract validator) also checks -- exact top-level key set, offsets
+ * length/monotonicity, `node_ids` sorted/unique, parallel array lengths,
+ * neighbor indices in range, `pathfinding_graph_version` recomputed from
+ * content (not merely shape-checked, closing the integrity gap a tampered
+ * or truncated fetch would otherwise pass through silently), and
+ * (schema_version 2 only) `album_virtual_nodes`' negative/disjoint virtual
+ * ids resolving into node_ids plus the album-anchor sentinel appearing on
+ * exactly the virtual side of every CSR slot. A malformed or truncated
+ * fetch must be caught here, not partway through a BFS.
+ *
+ * Async because hash recomputation uses `contentHash`
+ * (`crypto.subtle.digest`, browsers' only SHA-256 primitive) -- its one
+ * caller, `loadPathfindingGraph`, was already async. Cross-catalog checks
+ * (`catalog_version` matching a real catalog, `album_id` resolving into it)
+ * stay Python-only: the browser never has the full catalog loaded
+ * alongside the graph, so this validator only proves internal
+ * self-consistency, the same "was this corrupted since it was written"
+ * scope the Python docstring names. */
+export async function validatePathfindingGraph(
   value: unknown,
-): PathfindingGraph | null {
+): Promise<PathfindingGraph | null> {
   if (!isRecord(value)) return null;
   if (value.schema_version !== 1 && value.schema_version !== 2) return null;
+
+  const expectedKeys = new Set<string>(BASE_TOP_LEVEL_KEYS);
+  if (value.schema_version === 2) {
+    for (const key of V2_ONLY_KEYS) expectedKeys.add(key);
+  }
+  const actualKeys = Object.keys(value);
+  if (
+    actualKeys.length !== expectedKeys.size ||
+    actualKeys.some((key) => !expectedKeys.has(key))
+  ) {
+    return null;
+  }
+
   if (typeof value.catalog_version !== "string" || !value.catalog_version)
+    return null;
+  if (typeof value.snapshot_date !== "string" || !value.snapshot_date)
     return null;
   if (
     typeof value.pathfinding_graph_version !== "string" ||
@@ -122,11 +203,19 @@ export function validatePathfindingGraph(
   if (!isNumberArray(value.node_ids) || value.node_ids.length === 0)
     return null;
   const nodeCount = value.node_ids.length;
+  for (let i = 1; i < nodeCount; i++) {
+    if (value.node_ids[i] < value.node_ids[i - 1]) return null;
+  }
+  if (new Set(value.node_ids).size !== nodeCount) return null;
+
   if (!isStringArray(value.names) || value.names.length !== nodeCount)
     return null;
   if (!isNumberArray(value.offsets) || value.offsets.length !== nodeCount + 1)
     return null;
   if (value.offsets[0] !== 0) return null;
+  for (let i = 1; i < value.offsets.length; i++) {
+    if (value.offsets[i] < value.offsets[i - 1]) return null;
+  }
   if (!isNumberArray(value.neighbors)) return null;
   const slotCount = value.neighbors.length;
   if (value.offsets[nodeCount] !== slotCount) return null;
@@ -168,7 +257,30 @@ export function validatePathfindingGraph(
       if (!nodeIdSet.has(virtual_artist_id)) return null;
       if (typeof main_release_id !== "number") return null;
     }
+
+    for (let nodeIndex = 0; nodeIndex < nodeCount; nodeIndex++) {
+      const artistAId = value.node_ids[nodeIndex];
+      const start = value.offsets[nodeIndex];
+      const end = value.offsets[nodeIndex + 1];
+      for (let slot = start; slot < end; slot++) {
+        const neighborIndex = value.neighbors[slot];
+        const artistBId = value.node_ids[neighborIndex];
+        const roleA = value.edge_role_a[slot];
+        const roleB = value.edge_role_b[slot];
+        if ((roleA === ALBUM_ANCHOR_SENTINEL) !== artistAId < 0) return null;
+        if ((roleB === ALBUM_ANCHOR_SENTINEL) !== artistBId < 0) return null;
+      }
+    }
   }
+
+  const versionPattern = VERSION_PATTERN_BY_SCHEMA[value.schema_version];
+  if (!versionPattern.test(value.pathfinding_graph_version)) return null;
+  const expectedVersion = await pathfindingGraphVersion(
+    value,
+    value.schema_version,
+    value.snapshot_date,
+  );
+  if (value.pathfinding_graph_version !== expectedVersion) return null;
 
   return value as unknown as PathfindingGraph;
 }
@@ -429,7 +541,7 @@ export async function loadPathfindingGraph(
     try {
       const cached = storage.getItem(cacheKey);
       if (cached) {
-        const parsed = validatePathfindingGraph(JSON.parse(cached));
+        const parsed = await validatePathfindingGraph(JSON.parse(cached));
         if (parsed) return { graph: parsed };
       }
     } catch {
@@ -452,7 +564,7 @@ export async function loadPathfindingGraph(
     return { error: "parse-failed" };
   }
 
-  const graph = validatePathfindingGraph(raw);
+  const graph = await validatePathfindingGraph(raw);
   if (!graph) return { error: "invalid-graph" };
 
   if (storage) {

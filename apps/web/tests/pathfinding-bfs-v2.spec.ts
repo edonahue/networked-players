@@ -2,7 +2,14 @@
 // (ADR 0058) -- record-to-record search via `findAlbumRoute`. A small
 // fixture graph, no browser or fetch needed, mirroring
 // pathfinding-bfs.spec.ts's own hand-built-CSR pattern.
+//
+// Validator rejection cases load the shared, cross-language fixture set
+// under data/fixtures/pathfinding-graph/ -- see pathfinding-bfs.spec.ts's
+// header comment.
 
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { expect, test } from "@playwright/test";
 import {
   ALBUM_ANCHOR_SENTINEL,
@@ -13,6 +20,13 @@ import {
   validatePathfindingGraph,
   type PathfindingGraph,
 } from "../src/game/pathfindingGraph";
+
+const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "../../..");
+const fixtureDir = join(repoRoot, "data/fixtures/pathfinding-graph");
+
+function loadFixture(name: string): unknown {
+  return JSON.parse(readFileSync(join(fixtureDir, `${name}.json`), "utf8"));
+}
 
 // Album A's anchor (-1) connects to Alice (100); Album B's anchor (-2)
 // connects to Dan (400); a Bob/Cara chain bridges them (100-200-300-400,
@@ -72,11 +86,12 @@ function albumAnchorGraph(): PathfindingGraph {
   };
 }
 
-test("validatePathfindingGraph accepts a well-formed v2 graph", () => {
-  expect(validatePathfindingGraph(albumAnchorGraph())).not.toBeNull();
+test("validatePathfindingGraph accepts the shared well-formed v2 fixture", async () => {
+  const graph = await validatePathfindingGraph(loadFixture("well-formed-v2"));
+  expect(graph).not.toBeNull();
 });
 
-test("validatePathfindingGraph rejects a positive virtual_artist_id", () => {
+test("validatePathfindingGraph rejects a positive virtual_artist_id", async () => {
   const graph = albumAnchorGraph();
   const broken = {
     ...graph,
@@ -86,10 +101,10 @@ test("validatePathfindingGraph rejects a positive virtual_artist_id", () => {
       graph.album_virtual_nodes![2],
     ],
   };
-  expect(validatePathfindingGraph(broken)).toBeNull();
+  expect(await validatePathfindingGraph(broken)).toBeNull();
 });
 
-test("validatePathfindingGraph rejects a virtual id absent from node_ids", () => {
+test("validatePathfindingGraph rejects a virtual id absent from node_ids", async () => {
   const graph = albumAnchorGraph();
   const broken = {
     ...graph,
@@ -99,7 +114,17 @@ test("validatePathfindingGraph rejects a virtual id absent from node_ids", () =>
       graph.album_virtual_nodes![2],
     ],
   };
-  expect(validatePathfindingGraph(broken)).toBeNull();
+  expect(await validatePathfindingGraph(broken)).toBeNull();
+});
+
+test("validatePathfindingGraph rejects an unexpected top-level key set (v2 missing album_virtual_nodes)", async () => {
+  const broken = loadFixture("malformed-wrong-top-level-keys");
+  expect(await validatePathfindingGraph(broken)).toBeNull();
+});
+
+test("validatePathfindingGraph rejects a misplaced album-anchor sentinel", async () => {
+  const broken = loadFixture("malformed-misplaced-sentinel");
+  expect(await validatePathfindingGraph(broken)).toBeNull();
 });
 
 test("buildAlbumIndex maps album_id to virtual_artist_id", () => {

@@ -1,0 +1,49 @@
+{
+  "catalog_version": "catalog-v1-20260601-5c99e86c2730",
+  "edge_role_a": [
+    "Guitar",
+    "Producer",
+    "Bass",
+    "Vocals"
+  ],
+  "edge_role_b": [
+    "Bass",
+    "Vocals",
+    "Guitar",
+    "Producer"
+  ],
+  "evidence_release_ids": [
+    1,
+    2,
+    1,
+    2
+  ],
+  "generated_at": "2026-08-03T00:00:00+00:00",
+  "license": "See docs/DATA_AND_RIGHTS.md.",
+  "names": [
+    "Alice",
+    "Bob",
+    "Carol"
+  ],
+  "neighbors": [
+    1,
+    2,
+    0,
+    0
+  ],
+  "node_ids": [
+    100,
+    200,
+    300
+  ],
+  "offsets": [
+    0,
+    2,
+    1,
+    4
+  ],
+  "pathfinding_graph_version": "pathfinding-graph-v1-20260601-1e2ae0fd04cc",
+  "schema_version": 1,
+  "snapshot_date": "20260601",
+  "source": "Discogs monthly data dump (CC0), one-hop working set."
+}

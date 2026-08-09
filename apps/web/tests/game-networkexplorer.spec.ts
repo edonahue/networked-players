@@ -5,6 +5,7 @@
 // the artifact itself so this exercises the truncation path for real.
 
 import { expect, test } from "@playwright/test";
+import { pathfindingGraphVersion } from "../src/game/pathfindingGraph";
 
 test("the explorer centers on the album's artist and shows a bounded neighborhood", async ({
   page,
@@ -154,6 +155,14 @@ test("an unknown artist id shows a graceful message instead of a blank graph", a
     json.edge_role_a = [];
     json.edge_role_b = [];
     json.album_virtual_nodes = [];
+    // The mutated payload must carry a real recomputed content hash --
+    // validatePathfindingGraph now verifies pathfinding_graph_version
+    // against the graph's own content, not merely its shape.
+    json.pathfinding_graph_version = await pathfindingGraphVersion(
+      json,
+      json.schema_version,
+      json.snapshot_date,
+    );
     await route.fulfill({ response, json });
   });
   await page.goto("/explore/master-107325/");
