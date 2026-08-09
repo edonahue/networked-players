@@ -1080,9 +1080,9 @@ Never hand-edit a committed artifact's JSON directly. Never reassign an already-
 daily-manifest date, even to fix a mistake — extend forward instead, and treat the
 mistake as a known, documented gap in that date's history rather than rewriting it.
 
-## Pi ambient artifact checks (catalog, album-art, Connection Guesser, daily manifest, Record Routes, contributor index, pathfinding graph)
+## Pi ambient artifact checks (catalog, album-art, Connection Guesser, daily manifest, Record Routes, contributor index, pathfinding graph, album-credit-membership, evidence-release registry)
 
-Seven more bounded, validation-only ambient jobs, all dispatched through the ADR 0034
+Nine more bounded, validation-only ambient jobs, all dispatched through the ADR 0034
 capability platform's `artifact.validate` workload (`packages/platform`, see
 [ADR 0056](decisions/0056-unify-pi-fleet-checks-onto-capability-platform.md)) via
 `scripts/submit_artifact_check.py --validator <name>`: no dataset, no `CreditGraph`, no
@@ -1111,6 +1111,8 @@ run, so there is nothing to keep in sync between a "deploy" step and a "check" s
 ./scripts/submit_artifact_check.py --validator record-routes
 ./scripts/submit_artifact_check.py --validator contributor-index
 ./scripts/submit_artifact_check.py --validator pathfinding-graph
+./scripts/submit_artifact_check.py --validator album-credit-membership
+./scripts/submit_artifact_check.py --validator evidence-release-registry
 
 # or via make (same ARGS="--limit worker-01" pattern for debugging one worker):
 make catalog-check-distributed
@@ -1132,6 +1134,14 @@ same way: all 7 fixed-artifact validators plus one ad hoc validator dispatched f
 against the live fleet, including a real redundant-fan-out run of `catalog` across all 3
 Pi workers independently. These are observed results for their date and worker set, not a
 standing uptime guarantee — see [ADR 0018](decisions/0018-benchmark-results-local-only.md).
+
+**Honest gap:** `album-credit-membership` and `evidence-release-registry` (added by ADR
+0058) have never been run against real Pi-fleet hardware — only their unit tests and
+`validate-public-artifacts` (CI/`make check`) have exercised them so far. The `make
+*-check-distributed` targets above exist and are believed correct by construction (same
+`submit_artifact_check.py`/`_DEFAULT_ARTIFACTS` mechanism as the other seven), but that
+belief is unverified against the real fleet. Run both once for real before relying on this
+section's coverage claim to include them.
 
 ## Public artifact and version-relationship reference
 

@@ -51,11 +51,17 @@ measurement yourself.
 3. Inspect files and metadata for addresses, usernames, paths, tokens, and account identifiers.
 4. Verify that example configuration cannot reach the real environment.
 5. Record provenance, schema, and snapshot versions.
-6. Diff the freshly regenerated candidate against the currently-committed artifact with
+6. **For a *regeneration* of an already-published artifact** (not its first-ever
+   publish, which has no prior committed version to diff against): diff the freshly
+   regenerated candidate against the currently-committed artifact with
    `networked-players-catalog diff-artifact-version --old <committed> --new <candidate>`
    (`packages/contracts/.../artifact_diff.py`) — review every reported version-field
    change and structural diff before committing, rather than eyeballing a byte-for-byte
-   diff by hand.
+   diff by hand. (Post-Phase-4 cleanup audit: this step's wording previously read as
+   applying to every publish including the first; confirmed via PR #89/#90's real
+   first-publish history that it structurally cannot — the tool requires `--old`, and no
+   prior committed version exists yet. Skipping it on a first publish is correct, not a
+   missed step.)
 
 A curated cohort source's extracted-candidates, resolved, and connectivity JSON
 (`data/contracts/album-cohort-extracted-v1.md`, `album-cohort-resolved-v1.md`,

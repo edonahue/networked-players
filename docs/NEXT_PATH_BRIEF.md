@@ -146,18 +146,13 @@ specifically.
 
 ## Publication/data operations
 
-**Repeated publication and rollback verification.** `docs/ROADMAP.md` §6
-still has this as a real, open, never-measured item — every publication
-to date has been additive, never a real rollback drill.
-- *User value*: confidence the publication pipeline can recover from a
-  bad push, not just make one.
-- *Backend leverage*: `diff-artifact-version` (Phase 2 Slice L) already
-  exists; a rollback drill would exercise it plus the existing content-
-  hash versioning, not build anything new.
-- *Biggest uncertainty*: none real — this is mostly "actually do the
-  drill," not a design question.
-- *Prerequisite measurement*: none.
-- *What not to build yet*: n/a.
+**Repeated publication and rollback verification -- done.** This was a real, open,
+never-measured item as of the Phase 4 plan's original authoring; it is no longer
+open. A real rollback drill was performed 2026-08-08 (revert-and-restore against a
+live Phase-4 artifact, PRs #96/#97, ADR 0058 Slice 11) — see `docs/ROADMAP.md` §6
+(checked off) and `docs/OPERATOR_SETUP.md`'s Rollback section for the real,
+dated record. This entry previously contradicted both of those; corrected during
+the post-Phase-4 cleanup audit rather than left stale.
 
 **Reviewed-cohort promotion.** ADR 0031's mechanism is real and fully
 implemented (`promote-playable-cohort` CLI); no real cohort has ever been
