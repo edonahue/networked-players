@@ -82,7 +82,9 @@ See [docs/BUILD_PLAN.md](BUILD_PLAN.md) for the granular, code-level task breakd
       `docs/RESEARCH_COMPUTE_LOCALITY_METHOD.md` -- not yet a comprehensive
       per-hardware-class measurement)
 - [ ] Expand challenge generation and public findings
-- [ ] Verify repeated publication and rollback
+- [x] Verify repeated publication and rollback (real drilled revert-and-restore against a
+      live Phase-4 artifact, 2026-08-08 -- see `docs/OPERATOR_SETUP.md`'s Rollback section,
+      PRs #96/#97, ADR 0058 Slice 11)
 
 ## 7. Graph benchmark gate
 

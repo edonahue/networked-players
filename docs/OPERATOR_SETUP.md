@@ -1042,7 +1042,24 @@ this runbook does not touch `daily-manifest.v1.json`.
 ## Rollback
 
 There is no scripted revert command for any real artifact in this project — rollback is
-git-history-based, following the exact precedent already used twice for real corrective
+git-history-based. **Drilled for real on 2026-08-08** (ADR 0058 Slice 11, owner-approved):
+`git revert -m 1 <mergeSHA>` on the album-credit-membership artifact's original merge
+(PR #89) — the revert PR (#96) passed CI and deployed, the artifact genuinely 404'd on the
+live site (`https://networked-players.com/data/albums/credit-membership.v1.json`) while
+every real page (`/`, `/play/connect/`, `/explore/`, `/contributors/`, `/albums/`) kept
+returning 200 with zero regression, then a second PR (#97, `git revert` of the revert)
+restored it — confirmed live again (200) after that merge and deploy. A plain `git revert
+-m 1` hit 5 merge conflicts in shared files (`cli.py`, `public_artifacts.py`,
+`workloads.py`, two test files) that later slices had extended after the original merge;
+each was hand-resolved by keeping every later slice's own additions and removing only the
+artifact being reverted — the restore PR, reverting the revert with nothing else having
+touched `main` in between, applied with zero conflicts. See PRs #96/#97 for the real,
+exercised diffs. This replaces the previous "never drilled" state named in
+`docs/ROADMAP.md` §6/§8 for one real artifact; it does not by itself prove every other
+artifact's revert would be conflict-free — a heavily-extended artifact's own revert may
+need the same hand-resolution this one did.
+
+The general procedure remains the same precedent already used twice for real corrective
 regenerations (ADR 0043's corrective-slice-4.5/4.6 addenda):
 
 1. **Fix the root cause** first (a code bug, a bad exclusion, a stale policy input) —
