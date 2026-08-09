@@ -10,6 +10,7 @@ from typing import Any
 
 from networked_players_contracts import public_artifacts_failures
 from networked_players_contracts.album_art import album_art_version
+from networked_players_contracts.album_credit_membership import album_credit_membership_version
 from networked_players_contracts.canonical import content_hash, stable_id_digest
 from networked_players_contracts.catalog import _catalog_version
 from networked_players_contracts.connection_rounds import round_content_fingerprint
@@ -493,6 +494,54 @@ def _pathfinding_graph_v2() -> dict[str, Any]:
     return payload
 
 
+# --- album-credit-membership --------------------------------------------------
+
+
+def _album_credit_membership() -> dict[str, Any]:
+    catalog_version = _catalog()["catalog_version"]
+    albums = [
+        {
+            "album_id": "master-1",
+            "main_release_id": 1,
+            "credits": [
+                {
+                    "artist_id": 100,
+                    "name": "Alice",
+                    "anv": None,
+                    "role_text": "Guitar",
+                    "credit_scope": "release_artist",
+                    "track_position": None,
+                    "track_title": None,
+                }
+            ],
+        },
+        {
+            "album_id": "master-2",
+            "main_release_id": 2,
+            "credits": [
+                {
+                    "artist_id": 200,
+                    "name": "Bob",
+                    "anv": None,
+                    "role_text": "Bass",
+                    "credit_scope": "release_artist",
+                    "track_position": None,
+                    "track_title": None,
+                }
+            ],
+        },
+    ]
+    return {
+        "schema_version": 1,
+        "catalog_version": catalog_version,
+        "album_credit_membership_version": album_credit_membership_version(albums, _SNAPSHOT),
+        "generated_at": "2026-08-07T00:00:00+00:00",
+        "source": "Derived from each album's own main_release_id.",
+        "license": "See docs/DATA_AND_RIGHTS.md.",
+        "albums": albums,
+    }
+
+
 # --- evidence-release registry ------------------------------------------------
 
 
@@ -539,6 +588,7 @@ def _clean_artifacts() -> dict[str, Any]:
         "contributor_index": _contributor_index(),
         "pathfinding_graph": _pathfinding_graph(),
         "pathfinding_graph_v2": _pathfinding_graph_v2(),
+        "album_credit_membership": _album_credit_membership(),
         "evidence_release_registry": _evidence_release_registry(),
     }
 
@@ -555,6 +605,7 @@ def test_clean_publication_set_has_no_failures() -> None:
         "contributor_index": [],
         "pathfinding_graph": [],
         "pathfinding_graph_v2": [],
+        "album_credit_membership": [],
         "evidence_release_registry": [],
     }
 
@@ -571,6 +622,7 @@ def test_every_group_key_always_present() -> None:
         "contributor_index",
         "pathfinding_graph",
         "pathfinding_graph_v2",
+        "album_credit_membership",
         "evidence_release_registry",
     }
 
