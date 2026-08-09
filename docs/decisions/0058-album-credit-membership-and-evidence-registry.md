@@ -193,3 +193,14 @@ graph's `node_ids` legitimately contains negative virtual ids, so without
 this a caller that ever passed one as a center would have silently built a
 view around a synthetic album node. Neither change alters behavior for any
 input either function can be reached with today.
+
+**Addendum (post-Phase-4 cleanup audit): the "17,895 distinct release ids"
+figure above (line 57) was inaccurate from this ADR's original authoring,
+not later drift.** Directly counting the real, committed
+`evidence-release-registry.v1.json`'s `release_ids` array gives **18,013**.
+Git history on that file shows a single commit since first publish — it
+has never been regenerated, so this was never a case of the artifact
+changing underneath a stale doc; the number was simply wrong when first
+written. No artifact or code change needed here, only this correction —
+see `data/contracts/evidence-release-registry-v1.md` for the current
+count going forward.
