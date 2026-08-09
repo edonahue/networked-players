@@ -17,16 +17,18 @@ function loadFixtureText(name: string): string {
   return readFileSync(join(fixtureDir, `${name}.json`), "utf8");
 }
 
-function withMockedFetch<T>(
+async function withMockedFetch<T>(
   handler: (url: string) => Response,
   run: () => Promise<T>,
 ): Promise<T> {
   const original = globalThis.fetch;
   globalThis.fetch = (async (input: RequestInfo | URL) =>
     handler(String(input))) as typeof fetch;
-  return run().finally(() => {
+  try {
+    return await run();
+  } finally {
     globalThis.fetch = original;
-  });
+  }
 }
 
 test("loadPreparedGraph fetches and parses the graph at most once across repeated calls", async () => {
