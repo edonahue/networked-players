@@ -50,14 +50,16 @@ test("a real connected pair finds a documented route with evidence", async ({
   ).toBeVisible();
 });
 
-// "More musical route" (ADR 0058 Slice 7): a real second bounded search
-// that hard-excludes the first route's own edges. Discovery <-> Joshua
-// Tree's real committed data has a genuinely distinct alternate route
-// within the same hop budget (verified against
+// Distinct alternate route (ADR 0058 Slice 7, renamed post-Phase-4 cleanup
+// audit -- the old label implied a musical ranking this never actually
+// computed, see ADR 0051's addendum): a real second bounded search that
+// hard-excludes the first route's own edges. Discovery <-> Joshua Tree's
+// real committed data has a genuinely distinct alternate route within the
+// same hop budget (verified against
 // apps/web/public/data/pathfinding/graph.v2.json) -- this directly
-// regression-guards the pre-Slice-7 bug where the "musical route" section
-// silently re-rendered the same hop list under a second heading.
-test("the musical route section renders content genuinely distinct from the documented route", async ({
+// regression-guards the pre-Slice-7 bug where this section silently
+// re-rendered the same hop list under a second heading.
+test("the distinct alternate route section renders content genuinely distinct from the documented route", async ({
   page,
 }) => {
   await page.goto("/play/connect/");
@@ -68,15 +70,15 @@ test("the musical route section renders content genuinely distinct from the docu
   await expect(page.locator("[data-connect-results]")).toBeVisible({
     timeout: 15000,
   });
-  const musicalSection = page.locator("[data-connect-result='musical']");
-  await expect(musicalSection).toBeVisible();
+  const alternateSection = page.locator("[data-connect-result='alternate']");
+  await expect(alternateSection).toBeVisible();
 
   const documentedHtml = await page.locator("[data-connect-hops]").innerHTML();
-  const musicalHtml = await page
-    .locator("[data-connect-hops-musical]")
+  const alternateHtml = await page
+    .locator("[data-connect-hops-alternate]")
     .innerHTML();
-  expect(musicalHtml.length).toBeGreaterThan(0);
-  expect(musicalHtml).not.toBe(documentedHtml);
+  expect(alternateHtml.length).toBeGreaterThan(0);
+  expect(alternateHtml).not.toBe(documentedHtml);
   await expect(page.locator("[data-connect-explain]")).not.toContainText(
     /no distinct alternate route/i,
   );
@@ -156,7 +158,7 @@ test("Behind the Glass finds a real producer-only connection", async ({
   await expect(hop).toContainText(/producer/i);
   // No role-signal re-ranking section in this mode -- every hop is already
   // producer/engineer-only by construction.
-  await expect(page.locator("[data-connect-result='musical']")).toBeHidden();
+  await expect(page.locator("[data-connect-result='alternate']")).toBeHidden();
 });
 
 // "Time Out" (Dave Brubeck) <-> "Rumours" (Fleetwood Mac) has a real
@@ -205,7 +207,7 @@ test("Rhythm Section finds a real drums/bass-only connection", async ({
   const hops = page.locator("[data-connect-hops] .connect-hop");
   await expect(hops).toHaveCount(2);
   await expect(hops.first()).toContainText(/drums|bass/i);
-  await expect(page.locator("[data-connect-result='musical']")).toBeHidden();
+  await expect(page.locator("[data-connect-result='alternate']")).toBeHidden();
 });
 
 // Guitar Paths: restricts the search to guitar-only credits. "Blood On

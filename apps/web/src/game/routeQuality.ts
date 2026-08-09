@@ -1,7 +1,10 @@
-// Transparent "more musical route" scoring over an already-found path
-// (ADR 0051). Never a new inferred edge or a hidden score -- a presentation
-// ordering over the same evidence, with an explicit rendered explanation
-// (explainScore) for every score this module produces.
+// Role-signal explanation for a documented alternate route (ADR 0051,
+// renamed post-Phase-4 cleanup audit -- see that ADR's addendum). Never a
+// ranking or a hidden score: `findAlbumRoute`'s "distinct alternate route"
+// is plain BFS with the first route's edges excluded, found or not found,
+// nothing more. `explainScore` only produces a human-readable, after-the-
+// fact description of an already-found route -- it never selects between
+// candidates.
 
 import type { PathHop } from "./pathfindingGraph";
 import type { Contributor } from "../data/contributors";
@@ -29,24 +32,6 @@ function isPerformanceContributor(
   );
 }
 
-/** Higher for hops bridged by a performer (vocals/strings/percussion-keys/
- * brass-woodwind) rather than purely production/business/composition
- * credits -- an explicit, labeled "more musical" signal, never presented as
- * more real or more important than the shortest documented route. */
-export function roleSignalScore(
-  hops: PathHop[],
-  contributorByArtistId: Map<number, Contributor>,
-): number {
-  let score = 0;
-  for (const hop of hops) {
-    if (isPerformanceContributor(contributorByArtistId.get(hop.artist_a_id)))
-      score += 1;
-    if (isPerformanceContributor(contributorByArtistId.get(hop.artist_b_id)))
-      score += 1;
-  }
-  return score;
-}
-
 /** Every distinct artist_id appearing anywhere in the path (bridge
  * contributors are visited once by construction -- `findPath`'s BFS never
  * revisits a node, so within one path a "repeated hub across non-adjacent
@@ -61,40 +46,10 @@ function uniqueArtistIds(hops: PathHop[]): Set<number> {
   return ids;
 }
 
-/** Penalizes a path for passing through high-degree hub contributors --
- * summed log-degree over every distinct contributor in the path, so one
- * very prolific session player contributes one penalty, not one per hop
- * they happen to touch. */
-export function hubPenalty(
-  hops: PathHop[],
-  contributorByArtistId: Map<number, Contributor>,
-): number {
-  let penalty = 0;
-  for (const artistId of uniqueArtistIds(hops)) {
-    const contributor = contributorByArtistId.get(artistId);
-    if (contributor) penalty += Math.log10(1 + contributor.connection_count);
-  }
-  return penalty;
-}
-
-/** Overall "more musical" score -- fewer hops dominate, then role signal,
- * then hub penalty as a tiebreaker. Only ever used to REORDER two already-
- * found, equally-documented paths; never used to manufacture a path that
- * wasn't found by the shortest-path search. */
-export function scorePath(
-  hops: PathHop[],
-  contributorByArtistId: Map<number, Contributor>,
-): number {
-  return (
-    -hops.length * 100 +
-    roleSignalScore(hops, contributorByArtistId) * 10 -
-    hubPenalty(hops, contributorByArtistId)
-  );
-}
-
-/** A human-readable breakdown rendered directly in the UI -- the
- * differentiator from every other mode's single verdict. Never a black-box
- * number. */
+/** A human-readable breakdown rendered directly in the UI for the distinct
+ * alternate route -- names hop count, whether a performer bridges any hop,
+ * and whether a high-degree hub contributor appears. Purely descriptive:
+ * it never influences which route was found, only how it's explained. */
 export function explainScore(
   hops: PathHop[],
   contributorByArtistId: Map<number, Contributor>,
