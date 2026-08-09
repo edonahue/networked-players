@@ -33,6 +33,25 @@ const RADIUS = 120;
 const NODE_RADIUS = 8;
 const CENTER_NODE_RADIUS = 14;
 
+/** Width (SVG user units) of each edge's invisible hit-area, post-Phase-4
+ * cleanup audit F15. A real, deliberate improvement over the visible
+ * line's own 1.5px stroke (8x wider), bounded by how tightly edges pack
+ * when a hub shows the full MAX_NEIGHBORS=24 -- wider risks adjacent
+ * edges' hit-areas overlapping at typical radii. Applied via a rotated
+ * `<rect>`, not a wide `stroke-width` on a `<line>`: a real browser's
+ * pointer-event hit-testing already accounts for stroke width on a
+ * `<line>`, but `getBoundingClientRect` (what Playwright's actionability
+ * checks use before dispatching a synthetic click/hover) reflects only
+ * the line's zero-width/zero-height geometric path, ignoring stroke -- so
+ * a perfectly vertical or horizontal edge (the circular layout's first
+ * neighbor always is) measured as zero-area and failed Playwright's
+ * visibility check even though genuinely clickable in a real browser
+ * (confirmed by a real test run against a wide-stroke `<line>` version of
+ * this fix). A `<rect>`'s own geometry always has real width/height
+ * before rotation, so both real hit-testing and Playwright's own checks
+ * agree the edge occupies real space. */
+const EDGE_HIT_AREA_WIDTH = 12;
+
 function neighborPosition(
   index: number,
   total: number,
@@ -43,6 +62,23 @@ function neighborPosition(
     x: CENTER + RADIUS * Math.cos(angle),
     y: CENTER + RADIUS * Math.sin(angle),
   };
+}
+
+/** Roving-tabindex arrow-key move shared by the node and edge layers
+ * (post-Phase-4 cleanup audit F16 -- edges used to be up to 24 independent
+ * `tabindex="0"` stops instead of this same one-roving-position pattern
+ * nodes already used). `items` is the current tab-stop set in DOM order;
+ * moves both the roving `tabIndex` and real focus to the next/previous
+ * item, wrapping around either end. */
+function moveRovingFocus(items: SVGGElement[], key: string): void {
+  if (items.length === 0) return;
+  const current = document.activeElement as SVGGElement | null;
+  const index = Math.max(0, items.indexOf(current as SVGGElement));
+  const delta = key === "ArrowRight" || key === "ArrowDown" ? 1 : -1;
+  const next = items[(index + delta + items.length) % items.length];
+  for (const item of items) item.tabIndex = -1;
+  next.tabIndex = 0;
+  next.focus();
 }
 
 export async function initExplorerStage(): Promise<void> {
@@ -175,18 +211,44 @@ export async function initExplorerStage(): Promise<void> {
       [view.center, ...view.neighbors].map((n) => [n.artistId, n.name]),
     );
 
+    // Each edge is a <g> wrapping a wide, invisible hit-area rect (see
+    // EDGE_HIT_AREA_WIDTH -- post-Phase-4 cleanup audit F15, the visible
+    // line alone was a bare 1.5px stroke, ~15-25x under a real
+    // touch-target size on any realistic viewport) plus the real thin
+    // styled line. The <g>, not either child, carries the interactive
+    // attributes (tabindex/role/aria-label/data-*) --
+    // `.closest("[data-release-id]")` in the delegated handlers below
+    // finds it regardless of which child the event actually originated
+    // on, and CSS hover/focus-visible states on the group drive the
+    // visible line's style via a descendant selector. Only the first edge
+    // is a tab stop on a fresh render (F16 -- roving tabindex, matching
+    // the node pattern below, replacing up to 24 independent
+    // tabindex="0" stops with one roving position).
     edgesLayer!.innerHTML = view.edges
-      .map((edge) => {
+      .map((edge, i) => {
         const from = nodePositions.get(view.center.artistId)!;
         const to = nodePositions.get(edge.neighborArtistId)!;
         const neighborName =
           nodeNameById.get(edge.neighborArtistId) ?? "this contributor";
+        const coords = `x1="${from.x}" y1="${from.y}" x2="${to.x}" y2="${to.y}"`;
+        const dx = to.x - from.x;
+        const dy = to.y - from.y;
+        const length = Math.hypot(dx, dy);
+        const angleDeg = (Math.atan2(dy, dx) * 180) / Math.PI;
+        const hitArea =
+          `<rect x="${from.x}" y="${from.y - EDGE_HIT_AREA_WIDTH / 2}" ` +
+          `width="${length}" height="${EDGE_HIT_AREA_WIDTH}" ` +
+          `transform="rotate(${angleDeg} ${from.x} ${from.y})" ` +
+          `class="explorer-edge-hitarea" />`;
         return (
-          `<line x1="${from.x}" y1="${from.y}" x2="${to.x}" y2="${to.y}" class="explorer-edge" ` +
+          `<g class="explorer-edge-group" ` +
           `data-neighbor-id="${edge.neighborArtistId}" data-release-id="${edge.releaseId}" ` +
           `data-role-center="${escapeHtml(edge.roleCenter)}" data-role-neighbor="${escapeHtml(edge.roleNeighbor)}" ` +
-          `tabindex="0" role="button" ` +
-          `aria-label="Evidence for the documented credit between ${escapeHtml(view.center.name)} and ${escapeHtml(neighborName)}" />`
+          `tabindex="${i === 0 ? "0" : "-1"}" role="button" ` +
+          `aria-label="Evidence for the documented credit between ${escapeHtml(view.center.name)} and ${escapeHtml(neighborName)}">` +
+          hitArea +
+          `<line ${coords} class="explorer-edge" />` +
+          `</g>`
         );
       })
       .join("");
@@ -255,12 +317,34 @@ export async function initExplorerStage(): Promise<void> {
   // that already moved to a different edge) overwriting newer content.
   let openEdgeRequestId = 0;
 
-  function hideEvidenceDrawer() {
+  // The element focus should return to when the drawer closes (post-Phase-4
+  // cleanup audit F17) -- only set when the drawer was opened by an
+  // explicit activation (click or Enter/Space), never by hover/focusin, so
+  // closing after a plain hover doesn't yank focus somewhere the visitor
+  // never asked to go.
+  let drawerTriggerEl: SVGGElement | null = null;
+  // Restoring focus to the trigger edge fires a real `focusin` on it,
+  // which the delegated `focusin` listener below would otherwise treat as
+  // "an edge just gained focus, reopen the drawer" -- immediately undoing
+  // the close. `.focus()` dispatches `focusin` synchronously, so this flag
+  // only needs to be true for the duration of that one call.
+  let isRestoringDrawerFocus = false;
+
+  function hideEvidenceDrawer(options: { restoreFocus?: boolean } = {}) {
     evidenceDrawer!.hidden = true;
     evidenceContent!.innerHTML = "";
+    if (options.restoreFocus && drawerTriggerEl) {
+      isRestoringDrawerFocus = true;
+      drawerTriggerEl.focus();
+      isRestoringDrawerFocus = false;
+    }
+    drawerTriggerEl = null;
   }
 
-  async function showEdgeEvidence(edgeEl: SVGLineElement) {
+  async function showEdgeEvidence(
+    edgeEl: SVGGElement,
+    options: { moveFocus?: boolean } = {},
+  ) {
     const neighborId = Number(edgeEl.dataset.neighborId);
     const releaseId = Number(edgeEl.dataset.releaseId);
     const roleCenter = edgeEl.dataset.roleCenter ?? "";
@@ -271,6 +355,14 @@ export async function initExplorerStage(): Promise<void> {
     const requestId = ++openEdgeRequestId;
     evidenceDrawer!.hidden = false;
     evidenceContent!.innerHTML = "<p>Loading evidence…</p>";
+    // Move focus immediately (not after the evidence fetch resolves) --
+    // the drawer already has a real accessible name (role="region",
+    // aria-label) and "Loading evidence…" content, so a screen reader has
+    // something meaningful to announce right away.
+    if (options.moveFocus) {
+      drawerTriggerEl = edgeEl;
+      evidenceDrawer!.focus();
+    }
 
     const evidenceIndex = await loadEvidenceIndex();
     if (requestId !== openEdgeRequestId) return; // a newer edge opened meanwhile
@@ -295,45 +387,62 @@ export async function initExplorerStage(): Promise<void> {
   }
 
   edgesLayer.addEventListener("click", (event) => {
-    const target = (event.target as Element).closest<SVGLineElement>(
+    const target = (event.target as Element).closest<SVGGElement>(
       "[data-release-id]",
     );
     if (!target) return;
-    void showEdgeEvidence(target);
+    void showEdgeEvidence(target, { moveFocus: true });
   });
   edgesLayer.addEventListener("keydown", (event) => {
-    if (event.key !== "Enter" && event.key !== " ") return;
-    const target = (event.target as Element).closest<SVGLineElement>(
-      "[data-release-id]",
-    );
-    if (!target) return;
+    if (event.key === "Enter" || event.key === " ") {
+      const target = (event.target as Element).closest<SVGGElement>(
+        "[data-release-id]",
+      );
+      if (!target) return;
+      event.preventDefault();
+      void showEdgeEvidence(target, { moveFocus: true });
+      return;
+    }
+
+    const arrowKeys = ["ArrowRight", "ArrowDown", "ArrowLeft", "ArrowUp"];
+    if (!arrowKeys.includes(event.key)) return;
     event.preventDefault();
-    void showEdgeEvidence(target);
+    const groups = [
+      ...edgesLayer!.querySelectorAll<SVGGElement>(".explorer-edge-group"),
+    ];
+    moveRovingFocus(groups, event.key);
   });
   // "mouseover"/"focusin" (not "mouseenter"/"focus") because both bubble,
   // letting one delegated listener on the layer cover every edge without
-  // attaching a handler per `<line>` on every render.
+  // attaching a handler per `<g>` on every render. Neither moves focus
+  // (F17) -- a hover shouldn't steal keyboard focus, and focusin means the
+  // edge already has focus (from Tab or the roving-focus move above),
+  // which already gives a screen reader the right announcement on its own.
   edgesLayer.addEventListener("mouseover", (event) => {
-    const target = (event.target as Element).closest<SVGLineElement>(
+    const target = (event.target as Element).closest<SVGGElement>(
       "[data-release-id]",
     );
     if (!target) return;
     void showEdgeEvidence(target);
   });
   edgesLayer.addEventListener("focusin", (event) => {
-    const target = (event.target as Element).closest<SVGLineElement>(
+    if (isRestoringDrawerFocus) return;
+    const target = (event.target as Element).closest<SVGGElement>(
       "[data-release-id]",
     );
     if (!target) return;
     void showEdgeEvidence(target);
   });
-  evidenceClose.addEventListener("click", () => hideEvidenceDrawer());
+  evidenceClose.addEventListener("click", () =>
+    hideEvidenceDrawer({ restoreFocus: true }),
+  );
   // Document-level, not scoped to the drawer's own focus: a hover-opened
   // drawer never moves real DOM focus at all, so a listener attached only
   // to the drawer element would never see the Escape keydown a visitor
   // presses right after hovering (as opposed to clicking) an edge.
   document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && !evidenceDrawer!.hidden) hideEvidenceDrawer();
+    if (event.key === "Escape" && !evidenceDrawer!.hidden)
+      hideEvidenceDrawer({ restoreFocus: true });
   });
 
   nodesLayer.addEventListener("click", (event) => {
@@ -362,15 +471,7 @@ export async function initExplorerStage(): Promise<void> {
     const nodes = [
       ...nodesLayer!.querySelectorAll<SVGGElement>("[data-artist-id]"),
     ];
-    if (nodes.length === 0) return;
-    const current = document.activeElement as SVGGElement | null;
-    const index = Math.max(0, nodes.indexOf(current as SVGGElement));
-    const delta =
-      event.key === "ArrowRight" || event.key === "ArrowDown" ? 1 : -1;
-    const next = nodes[(index + delta + nodes.length) % nodes.length];
-    for (const node of nodes) node.tabIndex = -1;
-    next.tabIndex = 0;
-    next.focus();
+    moveRovingFocus(nodes, event.key);
   });
 
   roleFilterEl.addEventListener("click", (event) => {

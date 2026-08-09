@@ -596,7 +596,8 @@ a.contributor-card:focus-visible {
   .mode-card,
   .stage *,
   .chip,
-  .explorer-node circle {
+  .explorer-node circle,
+  .explorer-edge {
     animation: none !important;
     transition: none !important;
   }
@@ -792,18 +793,37 @@ a.contributor-card:focus-visible {
   aspect-ratio: 1;
   overflow: visible;
 }
+.explorer-edge-group {
+  cursor: pointer;
+}
+/* Wide, invisible hit-area rect sibling of the real visible line
+   (explorerStage.ts's EDGE_HIT_AREA_WIDTH, post-Phase-4 cleanup audit
+   F15) -- the visible line alone is a bare 1.5px stroke, ~15-25x under a
+   real touch-target size on any realistic viewport, and a getBBox-zero-
+   area edge (a perfectly vertical/horizontal one) for Playwright's own
+   actionability checks. `fill="transparent"` (not `fill: none`) keeps the
+   rect hit-testable under SVG's default `pointer-events: visiblePainted`
+   while staying invisible; it does not claim to reach a full ~44px CSS
+   touch target at every viewport scale, only a real, deliberate, bounded
+   improvement over the previous 1.5px line. */
+.explorer-edge-hitarea {
+  fill: transparent;
+}
 .explorer-edge {
   stroke: var(--line);
   stroke-width: 1.5;
-  cursor: pointer;
+  fill: none;
+  pointer-events: none;
   transition:
     stroke 150ms ease,
     stroke-width 150ms ease;
 }
-.explorer-edge:hover,
-.explorer-edge:focus-visible {
+.explorer-edge-group:hover .explorer-edge,
+.explorer-edge-group:focus-visible .explorer-edge {
   stroke: var(--accent-strong);
   stroke-width: 3;
+}
+.explorer-edge-group:focus-visible {
   outline: none;
 }
 .explorer-evidence-drawer {
@@ -874,7 +894,8 @@ a.contributor-card:focus-visible {
   text-align: center;
 }
 
-:root[data-motion="off"] .explorer-node circle {
+:root[data-motion="off"] .explorer-node circle,
+:root[data-motion="off"] .explorer-edge {
   transition: none;
 }
 
