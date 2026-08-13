@@ -1,5 +1,8 @@
 import { expect, test } from "@playwright/test";
-import { pickBoundedConnectedAlbum } from "./helpers/challengeAlbums";
+import {
+  pickBoundedConnectedAlbum,
+  pickConnectedAlbumWithArt,
+} from "./helpers/challengeAlbums";
 import { stubCoverArt } from "./helpers/coverArt";
 
 test("home renders hero, nav, and the album grid", async ({ page }) => {
@@ -74,18 +77,22 @@ test("an album page renders mode controls and reveals evidence", async ({
   page,
   request,
 }) => {
+  // Cover art is optional product data, resolved from a wholly separate
+  // artifact (public/data/catalog/album-art.v1.json) with its own
+  // presence/version validation -- nothing ties "fewest documented paths"
+  // (what this helper picks for) to "has registry art". A regenerated
+  // artifact could legitimately leave the bounded album without art, in
+  // which case the page intentionally renders its placeholder -- this test
+  // stays art-agnostic (asserts the header art slot rendered SOMETHING,
+  // real cover or placeholder, not which branch). The real hotlink contract
+  // has its own dedicated, art-guaranteed test below.
   const { album, pathCount } = await pickBoundedConnectedAlbum(request);
   await stubCoverArt(page);
 
   await page.goto(`/albums/${album.id}/`);
-
-  // The hotlink contract itself (AGENTS.md: cover art is served from Discogs'
-  // CDN, never rehosted here) stays asserted in the DOM -- only the bytes are
-  // served locally.
-  await expect(page.locator(".play-header__cover")).toHaveAttribute(
-    "src",
-    /^https:\/\/i\.discogs\.com\//,
-  );
+  await expect(
+    page.locator(".play-header__cover, .play-header__placeholder"),
+  ).toBeVisible();
 
   await expect(page.getByRole("heading", { level: 1 })).toContainText(
     album.title,
@@ -143,6 +150,24 @@ test("an album page renders mode controls and reveals evidence", async ({
   await expect(
     page.locator(".play-from-here a[href='/play/connection/']"),
   ).toBeVisible();
+});
+
+// Dedicated hotlink-contract coverage (AGENTS.md: cover art is served from
+// Discogs' own CDN, never downloaded/rehosted here), decoupled from the
+// interaction test above -- this album is deterministically known to have
+// real registry art, independent of path count or artifact ordering.
+test("an album with registry art hotlinks its cover to the Discogs CDN", async ({
+  page,
+  request,
+}) => {
+  const { album } = await pickConnectedAlbumWithArt(request);
+  await stubCoverArt(page);
+
+  await page.goto(`/albums/${album.id}/`);
+  await expect(page.locator(".play-header__cover")).toHaveAttribute(
+    "src",
+    /^https:\/\/i\.discogs\.com\//,
+  );
 });
 
 test("cohorts index lists cohorts and links to a detail page", async ({

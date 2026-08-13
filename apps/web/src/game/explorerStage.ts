@@ -366,6 +366,11 @@ export async function initExplorerStage(): Promise<void> {
   }
 
   function hideEvidenceDrawer(options: { restoreFocus?: boolean } = {}) {
+    openEdgeRequestId++; // invalidate any evidence fetch still in flight for
+    // the edge this drawer was showing -- otherwise a slow registry response
+    // that resolves after the drawer is closed still passes showEdgeEvidence's
+    // requestId guard and resurrects data-evidence-state/aria-busy/content on
+    // a drawer the visitor already dismissed.
     evidenceDrawer!.hidden = true;
     evidenceContent!.innerHTML = "";
     setDrawerState(null);

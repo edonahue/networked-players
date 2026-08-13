@@ -100,8 +100,16 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
-function isNumberArray(value: unknown): value is number[] {
-  return Array.isArray(value) && value.every((v) => typeof v === "number");
+// `typeof v === "number"` alone would accept fractional values (2.5) --
+// nothing this validator uses it for is ever fractional (an id, an index,
+// an offset, a release id). `typeof` already excludes booleans on its own
+// (`typeof true === "boolean"`), so no separate exclusion is needed the way
+// Python's `isinstance(x, int)` requires one.
+function isIntegerArray(value: unknown): value is number[] {
+  return (
+    Array.isArray(value) &&
+    value.every((v) => typeof v === "number" && Number.isInteger(v))
+  );
 }
 
 function isStringArray(value: unknown): value is string[] {
@@ -127,6 +135,14 @@ const BASE_TOP_LEVEL_KEYS = [
   "pathfinding_graph_version",
 ] as const;
 const V2_ONLY_KEYS = ["album_virtual_nodes"] as const;
+
+/** Kept byte-identical to Python's `_ALBUM_VIRTUAL_NODE_KEYS`
+ * (`pathfinding_graph.py:68`). */
+const ALBUM_VIRTUAL_NODE_KEYS = new Set([
+  "album_id",
+  "virtual_artist_id",
+  "main_release_id",
+]);
 
 const VERSION_PATTERN_BY_SCHEMA: Record<number, RegExp> = {
   1: /^pathfinding-graph-v1-[0-9A-Za-z]+-[0-9a-f]{12}$/,
@@ -159,16 +175,20 @@ export async function pathfindingGraphVersion(
   return `pathfinding-graph-v${schemaVersion}-${snapshotDate}-${digest}`;
 }
 
-/** Every structural invariant `pathfinding_graph_failures` (the Python
- * contract validator) also checks -- exact top-level key set, offsets
+/** Every internal-structure invariant `pathfinding_graph_failures` (the
+ * Python contract validator) also checks -- exact top-level key set,
+ * nonempty required string metadata, integer-typed ids/indices/offsets
+ * (not merely numeric -- a fractional or boolean value is rejected the same
+ * way Python's `isinstance(x, int)` would reject it), offsets
  * length/monotonicity, `node_ids` sorted/unique, parallel array lengths,
- * neighbor indices in range, `pathfinding_graph_version` recomputed from
- * content (not merely shape-checked, closing the integrity gap a tampered
- * or truncated fetch would otherwise pass through silently), and
- * (schema_version 2 only) `album_virtual_nodes`' negative/disjoint virtual
- * ids resolving into node_ids plus the album-anchor sentinel appearing on
- * exactly the virtual side of every CSR slot. A malformed or truncated
- * fetch must be caught here, not partway through a BFS.
+ * neighbor indices in range, exact key set on each `album_virtual_nodes`
+ * entry, `pathfinding_graph_version` recomputed from content (not merely
+ * shape-checked, closing the integrity gap a tampered or truncated fetch
+ * would otherwise pass through silently), and (schema_version 2 only)
+ * `album_virtual_nodes`' negative/disjoint virtual ids resolving into
+ * node_ids plus the album-anchor sentinel appearing on exactly the virtual
+ * side of every CSR slot. A malformed or truncated fetch must be caught
+ * here, not partway through a BFS.
  *
  * Async because hash recomputation uses `contentHash`
  * (`crypto.subtle.digest`, browsers' only SHA-256 primitive) -- its one
@@ -200,13 +220,17 @@ export async function validatePathfindingGraph(
     return null;
   if (typeof value.snapshot_date !== "string" || !value.snapshot_date)
     return null;
+  if (typeof value.generated_at !== "string" || !value.generated_at)
+    return null;
+  if (typeof value.source !== "string" || !value.source) return null;
+  if (typeof value.license !== "string" || !value.license) return null;
   if (
     typeof value.pathfinding_graph_version !== "string" ||
     !value.pathfinding_graph_version
   ) {
     return null;
   }
-  if (!isNumberArray(value.node_ids) || value.node_ids.length === 0)
+  if (!isIntegerArray(value.node_ids) || value.node_ids.length === 0)
     return null;
   const nodeCount = value.node_ids.length;
   for (let i = 1; i < nodeCount; i++) {
@@ -216,17 +240,17 @@ export async function validatePathfindingGraph(
 
   if (!isStringArray(value.names) || value.names.length !== nodeCount)
     return null;
-  if (!isNumberArray(value.offsets) || value.offsets.length !== nodeCount + 1)
+  if (!isIntegerArray(value.offsets) || value.offsets.length !== nodeCount + 1)
     return null;
   if (value.offsets[0] !== 0) return null;
   for (let i = 1; i < value.offsets.length; i++) {
     if (value.offsets[i] < value.offsets[i - 1]) return null;
   }
-  if (!isNumberArray(value.neighbors)) return null;
+  if (!isIntegerArray(value.neighbors)) return null;
   const slotCount = value.neighbors.length;
   if (value.offsets[nodeCount] !== slotCount) return null;
   if (
-    !isNumberArray(value.evidence_release_ids) ||
+    !isIntegerArray(value.evidence_release_ids) ||
     value.evidence_release_ids.length !== slotCount
   ) {
     return null;
@@ -252,16 +276,32 @@ export async function validatePathfindingGraph(
     const seenVirtualIds = new Set<number>();
     for (const entry of value.album_virtual_nodes) {
       if (!isRecord(entry)) return null;
+      const entryKeys = Object.keys(entry);
+      if (
+        entryKeys.length !== ALBUM_VIRTUAL_NODE_KEYS.size ||
+        entryKeys.some((key) => !ALBUM_VIRTUAL_NODE_KEYS.has(key))
+      ) {
+        return null;
+      }
       const { album_id, virtual_artist_id, main_release_id } = entry;
       if (typeof album_id !== "string" || !album_id) return null;
       if (seenAlbumIds.has(album_id)) return null;
       seenAlbumIds.add(album_id);
-      if (typeof virtual_artist_id !== "number" || virtual_artist_id >= 0)
+      if (
+        typeof virtual_artist_id !== "number" ||
+        !Number.isInteger(virtual_artist_id) ||
+        virtual_artist_id >= 0
+      ) {
         return null;
+      }
       if (seenVirtualIds.has(virtual_artist_id)) return null;
       seenVirtualIds.add(virtual_artist_id);
       if (!nodeIdSet.has(virtual_artist_id)) return null;
-      if (typeof main_release_id !== "number") return null;
+      if (
+        typeof main_release_id !== "number" ||
+        !Number.isInteger(main_release_id)
+      )
+        return null;
     }
 
     for (let nodeIndex = 0; nodeIndex < nodeCount; nodeIndex++) {

@@ -281,3 +281,96 @@ def test_shared_misplaced_sentinel_fixture_is_rejected() -> None:
     graph = _load_fixture("malformed-misplaced-sentinel")
     failures = pathfinding_graph_failures(graph, _FIXTURE_CATALOG)
     assert any("sentinel placement" in f for f in failures)
+
+
+# --- parity-hardening follow-up (post-#109 correctness closeout) --------
+# These close specific gaps found by comparing this validator against
+# validatePathfindingGraph line by line: TS was missing nonempty-metadata,
+# exact virtual-node keys, and integer-typed id/index/offset checks.
+
+
+def test_shared_empty_metadata_fixture_is_rejected() -> None:
+    graph = _load_fixture("malformed-empty-metadata")
+    failures = pathfinding_graph_failures(graph, _FIXTURE_CATALOG)
+    assert any("generated_at" in f and "non-empty" in f for f in failures)
+
+
+def test_truthy_non_string_metadata_is_rejected() -> None:
+    # Review follow-up on #110: a truthy non-string (generated_at: 1) used
+    # to pass the old truthy-only check even though
+    # validatePathfindingGraph's matching TS check requires a real string --
+    # letting this pass validate-public-artifacts (Python) while still
+    # failing loadPathfindingGraph() at runtime in the browser.
+    graph = deepcopy(_graph_v2())
+    graph["generated_at"] = 1
+    failures = pathfinding_graph_failures(graph, _catalog())
+    assert any("generated_at" in f and "non-empty" in f for f in failures)
+
+
+def test_shared_virtual_node_missing_key_fixture_is_rejected() -> None:
+    graph = _load_fixture("malformed-virtual-node-missing-key")
+    failures = pathfinding_graph_failures(graph, _FIXTURE_CATALOG)
+    assert any("must have keys" in f for f in failures)
+
+
+def test_shared_virtual_node_extra_key_fixture_is_rejected() -> None:
+    graph = _load_fixture("malformed-virtual-node-extra-key")
+    failures = pathfinding_graph_failures(graph, _FIXTURE_CATALOG)
+    assert any("must have keys" in f for f in failures)
+
+
+def test_shared_fractional_offset_fixture_is_rejected() -> None:
+    # Also a crash-safety regression test: a float offset used to reach
+    # range() uncaught (TypeError). This fixture reproduces that shape.
+    graph = _load_fixture("malformed-fractional-offset")
+    failures = pathfinding_graph_failures(graph, _FIXTURE_CATALOG)
+    assert any("offsets must contain only integers" in f for f in failures)
+
+
+def test_shared_fractional_neighbor_fixture_is_rejected() -> None:
+    graph = _load_fixture("malformed-fractional-neighbor")
+    failures = pathfinding_graph_failures(graph, _FIXTURE_CATALOG)
+    assert any("neighbors must be an array of integers" in f for f in failures)
+
+
+def test_shared_fractional_main_release_id_fixture_is_rejected() -> None:
+    graph = _load_fixture("malformed-fractional-main-release-id")
+    failures = pathfinding_graph_failures(graph, _FIXTURE_CATALOG)
+    assert any("main_release_id must be an integer" in f for f in failures)
+
+
+def test_shared_node_id_wrong_type_fixture_is_rejected() -> None:
+    # Also a crash-safety regression test: a str node_id alongside ints used
+    # to reach sorted() uncaught (TypeError: '<' not supported).
+    graph = _load_fixture("malformed-node-id-wrong-type")
+    failures = pathfinding_graph_failures(graph, _FIXTURE_CATALOG)
+    assert any("node_ids must contain only integers" in f for f in failures)
+
+
+# --- Python-local: values that aren't meaningfully shareable JSON fixtures
+# (a bare inline payload isolates the case more clearly than a full graph
+# fixture would), or that are Python-specific (bool is a subtype of int).
+
+
+def test_neighbors_containing_a_bool_is_rejected() -> None:
+    # bool is a subtype of int in Python -- isinstance(True, int) is True,
+    # so this needs its own exclusion the same way virtual_artist_id and
+    # main_release_id already have one. Regression test for exactly the
+    # Python-only bug the parity investigation found: True silently passed
+    # as a valid neighbor index (1) before this fix.
+    graph = deepcopy(_graph())
+    graph["neighbors"] = [True, 0]
+    failures = pathfinding_graph_failures(graph, _catalog())
+    assert any("neighbors must be an array of integers" in f for f in failures)
+
+
+def test_unhashable_node_ids_do_not_crash_the_validator() -> None:
+    # A malformed-but-JSON-shaped payload must produce failures, never an
+    # uncaught exception. A list-valued node_id used to reach set()
+    # uncaught (TypeError: unhashable type: 'list').
+    graph = deepcopy(_graph())
+    graph["node_ids"] = [[1, 2], [3, 4]]
+    graph["names"] = ["A", "B"]
+    failures = pathfinding_graph_failures(graph, _catalog())
+    assert isinstance(failures, list) and failures
+    assert any("node_ids must contain only integers" in f for f in failures)

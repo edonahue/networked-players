@@ -127,6 +127,64 @@ test("validatePathfindingGraph rejects a misplaced album-anchor sentinel", async
   expect(await validatePathfindingGraph(broken)).toBeNull();
 });
 
+// Parity-hardening follow-up (post-#109 correctness closeout): each of
+// these fixtures isolates one gap the parity investigation found between
+// this validator and pathfinding_graph_failures -- shared with
+// test_pathfinding_graph_contracts.py's own tests for the same files.
+
+test("validatePathfindingGraph rejects empty required metadata", async () => {
+  const broken = loadFixture("malformed-empty-metadata");
+  expect(await validatePathfindingGraph(broken)).toBeNull();
+});
+
+test("validatePathfindingGraph rejects a virtual node missing a required key", async () => {
+  const broken = loadFixture("malformed-virtual-node-missing-key");
+  expect(await validatePathfindingGraph(broken)).toBeNull();
+});
+
+test("validatePathfindingGraph rejects a virtual node with an extra key", async () => {
+  const broken = loadFixture("malformed-virtual-node-extra-key");
+  expect(await validatePathfindingGraph(broken)).toBeNull();
+});
+
+test("validatePathfindingGraph rejects a fractional offset", async () => {
+  const broken = loadFixture("malformed-fractional-offset");
+  expect(await validatePathfindingGraph(broken)).toBeNull();
+});
+
+test("validatePathfindingGraph rejects a fractional neighbor index", async () => {
+  const broken = loadFixture("malformed-fractional-neighbor");
+  expect(await validatePathfindingGraph(broken)).toBeNull();
+});
+
+test("validatePathfindingGraph rejects a fractional main_release_id", async () => {
+  const broken = loadFixture("malformed-fractional-main-release-id");
+  expect(await validatePathfindingGraph(broken)).toBeNull();
+});
+
+test("validatePathfindingGraph rejects a non-integer node_id", async () => {
+  const broken = loadFixture("malformed-node-id-wrong-type");
+  expect(await validatePathfindingGraph(broken)).toBeNull();
+});
+
+// TS-local totality tests: NaN/Infinity can't exist in a JSON fixture (JSON
+// has no literal for either), so these are inline-built objects, never
+// JSON.parse'd. A malformed-but-object-shaped payload must return null,
+// never throw.
+test("validatePathfindingGraph returns null, not a thrown error, for Infinity in offsets", async () => {
+  const graph = albumAnchorGraph();
+  const broken = { ...graph, offsets: [...graph.offsets] };
+  broken.offsets[2] = Infinity;
+  await expect(validatePathfindingGraph(broken)).resolves.toBeNull();
+});
+
+test("validatePathfindingGraph returns null, not a thrown error, for NaN in neighbors", async () => {
+  const graph = albumAnchorGraph();
+  const broken = { ...graph, neighbors: [...graph.neighbors] };
+  broken.neighbors[0] = NaN;
+  await expect(validatePathfindingGraph(broken)).resolves.toBeNull();
+});
+
 test("buildAlbumIndex maps album_id to virtual_artist_id", () => {
   const index = buildAlbumIndex(albumAnchorGraph());
   expect(index.get("album-a")).toBe(-1);
