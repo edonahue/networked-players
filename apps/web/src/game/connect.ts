@@ -31,6 +31,7 @@ import type { Contributor, ContributorIndex } from "../data/contributors";
 
 const PATHFINDING_GRAPH_URL = "/data/pathfinding/graph.v2.json";
 const EVIDENCE_REGISTRY_URL = "/data/evidence/release-registry.v1.json";
+const ALBUM_CATALOG_URL = "/data/catalog/albums.v1.json";
 
 interface CatalogAlbum {
   id: string;
@@ -67,15 +68,39 @@ const ROLE_FILTER_MODES: Record<string, RoleFilterMode> = {
   },
 };
 
+// The album catalog is fetched asynchronously, so a picker exists in one of
+// three honest states, published on the picker root as `data-picker-state`
+// (plus `aria-busy` on the input itself, the real ARIA contract for "this
+// control's data isn't ready yet"). This matters because the input is live
+// from first paint: a visitor can type before the catalog lands, and both
+// they and a screen reader deserve to know the difference between "no
+// matches" and "not loaded yet".
+type PickerState = "loading" | "ready" | "unavailable";
+
+interface PickerHandle {
+  /**
+   * Re-evaluate the input's CURRENT value against the catalog without
+   * requiring a new `input` event. This is what closes the initialization
+   * race: text typed while the catalog was still in flight fired its
+   * `input` event against an empty catalog, and nothing would otherwise
+   * ever re-run the filter for it.
+   */
+  refresh(): void;
+  setState(state: PickerState): void;
+}
+
 function wirePicker(
   root: HTMLElement,
-  albums: PickableAlbum[],
+  // A getter, not a snapshot: the picker is wired before the catalog exists,
+  // so it must read whatever is current at event time.
+  getAlbums: () => PickableAlbum[],
   onSelect: (album: PickableAlbum | null) => void,
-): void {
+  onInput: () => void,
+): PickerHandle | null {
   const input = root.querySelector<HTMLInputElement>("[data-picker-input]");
   const results = root.querySelector<HTMLUListElement>("[data-picker-results]");
   const selected = root.querySelector<HTMLDivElement>("[data-picker-selected]");
-  if (!input || !results || !selected) return;
+  if (!input || !results || !selected) return null;
 
   const showResults = (matches: PickableAlbum[]) => {
     results.innerHTML = matches
@@ -87,11 +112,14 @@ function wirePicker(
     results.hidden = matches.length === 0;
   };
 
+  const refresh = () => showResults(filterAlbums(getAlbums(), input.value));
+
   input.addEventListener("input", () => {
     onSelect(null);
     selected.hidden = true;
     selected.innerHTML = "";
-    showResults(filterAlbums(albums, input.value));
+    refresh();
+    onInput();
   });
 
   results.addEventListener("click", (event) => {
@@ -99,7 +127,7 @@ function wirePicker(
       "[data-album-id]",
     );
     if (!button) return;
-    const album = albums.find((a) => a.id === button.dataset.albumId);
+    const album = getAlbums().find((a) => a.id === button.dataset.albumId);
     if (!album) return;
     input.value = `${album.title} — ${album.artist}`;
     results.hidden = true;
@@ -107,6 +135,38 @@ function wirePicker(
     selected.textContent = `Selected: ${album.title} — ${album.artist}`;
     onSelect(album);
   });
+
+  return {
+    refresh,
+    setState(state: PickerState) {
+      root.dataset.pickerState = state;
+      input.setAttribute("aria-busy", String(state === "loading"));
+    },
+  };
+}
+
+// Typed failure union matching loadPathfindingGraph/loadDirectoryContributors,
+// so a non-`ok` response is a real, reportable failure rather than silently
+// yielding an empty catalog that looks identical to "nothing matched".
+type CatalogFailure = "fetch-failed" | "parse-failed";
+
+async function loadAlbumCatalog(): Promise<
+  { albums: PickableAlbum[] } | { error: CatalogFailure }
+> {
+  let response: Response;
+  try {
+    response = await fetch(ALBUM_CATALOG_URL);
+  } catch {
+    return { error: "fetch-failed" };
+  }
+  if (!response.ok) return { error: "fetch-failed" };
+  try {
+    const catalog = (await response.json()) as { albums?: CatalogAlbum[] };
+    if (!Array.isArray(catalog?.albums)) return { error: "parse-failed" };
+    return { albums: catalog.albums };
+  } catch {
+    return { error: "parse-failed" };
+  }
 }
 
 /** Renders one full route (both endpoint cards + the documented hops
@@ -164,27 +224,72 @@ export async function initConnect(): Promise<void> {
     searchButton.disabled = !(albumA && albumB && albumA.id !== albumB.id);
   };
 
+  // Initialization lifecycle (post-#108 P1): the pickers are wired FIRST and
+  // the catalog is awaited last. The inputs are interactive from first paint
+  // whatever this module does -- Astro defers the bundle, so the browser has
+  // already parsed and painted them -- so the old fetch-then-wire order meant
+  // a visitor who typed during initialization fired their `input` event at no
+  // listener at all: the text stayed in the box but suggestions never
+  // appeared until they typed again. Wiring first and calling refresh() when
+  // the catalog lands re-evaluates whatever is already in the box, with no
+  // synthetic event, no duplicate listener, and no discarded input.
   let albums: PickableAlbum[] = [];
-  try {
-    const response = await fetch("/data/catalog/albums.v1.json");
-    if (response.ok) {
-      const catalog = (await response.json()) as { albums: CatalogAlbum[] };
-      albums = catalog.albums;
+  let catalogState: PickerState = "loading";
+  let catalogPending = false;
+  const pickers: PickerHandle[] = [];
+
+  const setCatalogState = (state: PickerState) => {
+    catalogState = state;
+    for (const picker of pickers) picker.setState(state);
+  };
+
+  const ensureCatalog = async (): Promise<void> => {
+    if (catalogPending) return;
+    catalogPending = true;
+    setCatalogState("loading");
+    try {
+      const result = await loadAlbumCatalog();
+      if ("error" in result) {
+        setCatalogState("unavailable");
+        setStatus(
+          result.error === "fetch-failed"
+            ? "Couldn't load the album list. Check your connection — keep typing to retry."
+            : "The album list looked corrupted. Keep typing to retry, or reload the page.",
+        );
+        return;
+      }
+      albums = result.albums;
+      setCatalogState("ready");
+      setStatus(null);
+      for (const picker of pickers) picker.refresh();
+    } finally {
+      catalogPending = false;
     }
-  } catch {
-    setStatus("Couldn't load the album list. Try reloading the page.");
-    return;
-  }
+  };
 
   for (const pickerRoot of stage.querySelectorAll<HTMLElement>(
     "[data-picker]",
   )) {
     const which = pickerRoot.dataset.picker;
-    wirePicker(pickerRoot, albums, (album) => {
-      if (which === "a") albumA = album;
-      else albumB = album;
-      updateButton();
-    });
+    const picker = wirePicker(
+      pickerRoot,
+      () => albums,
+      (album) => {
+        if (which === "a") albumA = album;
+        else albumB = album;
+        updateButton();
+      },
+      // A failed catalog load leaves a recoverable control, not a dead one:
+      // the next keystroke re-attempts the fetch (guarded against piling up
+      // concurrent attempts), and a success refreshes both pickers.
+      () => {
+        if (catalogState === "unavailable") void ensureCatalog();
+      },
+    );
+    if (picker) {
+      picker.setState("loading");
+      pickers.push(picker);
+    }
   }
 
   searchButton.addEventListener("click", async () => {
@@ -331,4 +436,10 @@ export async function initConnect(): Promise<void> {
 
     updateButton();
   });
+
+  // Awaited last, deliberately: every listener above is attached before the
+  // first network request, so nothing a visitor does during initialization
+  // is dropped -- including a search click, which the old early-return on a
+  // catalog failure used to skip wiring entirely.
+  await ensureCatalog();
 }

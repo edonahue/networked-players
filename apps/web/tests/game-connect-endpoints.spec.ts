@@ -7,19 +7,7 @@
 // Discovery <-> Joshua Tree pair game-connect.spec.ts already uses.
 
 import { expect, test } from "@playwright/test";
-
-async function selectAlbum(
-  page: import("@playwright/test").Page,
-  picker: string,
-  query: string,
-) {
-  const input = page.locator(`[data-picker="${picker}"] input`);
-  await input.fill(query);
-  await page
-    .locator(`[data-picker="${picker}"] [data-picker-results] button`)
-    .first()
-    .click();
-}
+import { selectAlbum } from "./helpers/connectPicker";
 
 test("a real search renders real endpoint cards for both albums", async ({
   page,
