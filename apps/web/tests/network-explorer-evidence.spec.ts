@@ -97,7 +97,9 @@ test("the drawer reports loading state until the evidence registry resolves", as
 // a drawer the visitor already closed. Each case gates the registry fetch,
 // performs the invalidating action, and only THEN releases the response, so
 // releasing after closure is what proves the guard actually holds.
-function gateEvidenceRegistry(page: import("@playwright/test").Page): {
+async function gateEvidenceRegistry(
+  page: import("@playwright/test").Page,
+): Promise<{
   // Releases the gate AND waits for the real network response plus one real
   // round-trip through the page's own event loop (a live CDP `evaluate`,
   // not a fixed sleep) -- so by the time this resolves, showEdgeEvidence's
@@ -107,12 +109,17 @@ function gateEvidenceRegistry(page: import("@playwright/test").Page): {
   // would pass even on the unfixed code, since the continuation's DOM
   // write is itself async and might not have happened yet.
   releaseAndSettle: () => Promise<void>;
-} {
+}> {
   let release!: () => void;
   const gate = new Promise<void>((resolve) => {
     release = resolve;
   });
-  void page.route(
+  // Awaited, not fire-and-forget: page.route()'s own promise resolves once
+  // interception is actually installed. A caller that navigated before that
+  // completed could have its request race ahead of the gate -- the registry
+  // fetch resolving immediately instead of staying pending, silently
+  // defeating every assertion downstream.
+  await page.route(
     "**/data/evidence/release-registry.v1.json",
     async (route) => {
       await gate;
@@ -155,7 +162,7 @@ async function assertDrawerClosedAndUntouched(
 test("closing via the close button during loading discards the pending evidence", async ({
   page,
 }) => {
-  const { releaseAndSettle } = gateEvidenceRegistry(page);
+  const { releaseAndSettle } = await gateEvidenceRegistry(page);
   await page.goto("/explore/master-107325/");
   await waitForGraph(page);
   const edge = firstEdge(page);
@@ -175,7 +182,7 @@ test("closing via the close button during loading discards the pending evidence"
 test("dismissing via Escape during loading discards the pending evidence", async ({
   page,
 }) => {
-  const { releaseAndSettle } = gateEvidenceRegistry(page);
+  const { releaseAndSettle } = await gateEvidenceRegistry(page);
   await page.goto("/explore/master-107325/");
   await waitForGraph(page);
   const edge = firstEdge(page);
@@ -195,7 +202,7 @@ test("dismissing via Escape during loading discards the pending evidence", async
 test("recentering during loading discards the pending evidence for the old view", async ({
   page,
 }) => {
-  const { releaseAndSettle } = gateEvidenceRegistry(page);
+  const { releaseAndSettle } = await gateEvidenceRegistry(page);
   await page.goto("/explore/master-107325/");
   await waitForGraph(page);
   await firstEdge(page).click();
@@ -203,10 +210,24 @@ test("recentering during loading discards the pending evidence for the old view"
   const drawer = page.locator("[data-explorer-evidence-drawer]");
   await expect(drawer).toHaveAttribute("data-evidence-state", "loading");
 
+  // Move the mouse off the graph, and activate the neighbor via keyboard
+  // (not .click()), BEFORE the recentering mutation happens. Recentering
+  // rebuilds the whole SVG; per this file's own header note on Chromium
+  // redelivering a synthetic mouseover for whatever's under the cursor's
+  // last known position after a DOM mutation, that synthetic event fires
+  // based on where the cursor was AT THE MOMENT OF the mutation -- moving
+  // the mouse away only after clicking (and thus only after triggering the
+  // mutation) is too late, since the browser already captured the old
+  // position. A stray hover landing on a real edge in the new view would
+  // legitimately (if noisily) open it, which isn't a bug this test should
+  // catch; route around the same Chromium quirk the edge-B test documents,
+  // this time by keeping the mouse off the graph for the entire action.
+  await page.mouse.move(0, 0);
   const neighbor = page
     .locator("[data-explorer-nodes] .explorer-node[data-is-center='false']")
     .first();
-  await neighbor.click();
+  await neighbor.focus();
+  await page.keyboard.press("Enter");
   await expect(page.locator("[data-explorer-status]")).toContainText(
     /^centered on /i,
   );
@@ -219,7 +240,7 @@ test("recentering during loading discards the pending evidence for the old view"
 test("a newer edge's open invalidates an older edge's still-pending evidence", async ({
   page,
 }) => {
-  const { releaseAndSettle } = gateEvidenceRegistry(page);
+  const { releaseAndSettle } = await gateEvidenceRegistry(page);
   await page.goto("/explore/master-107325/");
   await waitForGraph(page);
   const edges = page.locator("[data-explorer-edges] .explorer-edge-group");
@@ -265,7 +286,7 @@ test("a newer edge's open invalidates an older edge's still-pending evidence", a
 test("a fresh explicit open works after a previous pending request was invalidated by a close", async ({
   page,
 }) => {
-  const { releaseAndSettle } = gateEvidenceRegistry(page);
+  const { releaseAndSettle } = await gateEvidenceRegistry(page);
   await page.goto("/explore/master-107325/");
   await waitForGraph(page);
   const edge = firstEdge(page);
