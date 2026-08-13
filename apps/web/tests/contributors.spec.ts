@@ -3,6 +3,8 @@
 // rather than hardcoding an id, so this test survives a future regeneration.
 
 import { expect, test } from "@playwright/test";
+import { pickBoundedConnectedAlbum } from "./helpers/challengeAlbums";
+import { stubCoverArt } from "./helpers/coverArt";
 
 interface ContributorLite {
   artist_id: number;
@@ -42,16 +44,8 @@ test("an album page links to a contributor page that resolves", async ({
   page,
   request,
 }) => {
-  const res = await request.get("/data/challenge.v2.json");
-  const { paths, albums } = (await res.json()) as {
-    paths: { from_album_id: string; to_album_id: string }[];
-    albums: { id: string }[];
-  };
-  const connectedIds = new Set(
-    paths.flatMap((p) => [p.from_album_id, p.to_album_id]),
-  );
-  const album = albums.find((a) => connectedIds.has(a.id));
-  if (!album) throw new Error("no connected album in the real artifact");
+  const { album } = await pickBoundedConnectedAlbum(request);
+  await stubCoverArt(page);
 
   await page.goto(`/albums/${album.id}/`);
   const contributorLink = page.locator("a.contributor-card").first();
