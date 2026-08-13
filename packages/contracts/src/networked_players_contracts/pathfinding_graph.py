@@ -129,8 +129,16 @@ def pathfinding_graph_failures(graph: Any, catalog: Any) -> list[str]:
         "license",
         "pathfinding_graph_version",
     ):
-        if not graph.get(field_name):
-            failures.append(f"{field_name} is required and must be non-empty")
+        # String-typed, not just truthy: a truthy non-string (e.g.
+        # generated_at: 1) used to pass this check even though
+        # validatePathfindingGraph's matching check requires a real string --
+        # letting a malformed artifact clear `validate-public-artifacts` (the
+        # committed-artifact CI gate) while still failing at runtime in the
+        # browser. These fields are excluded from the content hash, so
+        # nothing else in this function would have caught it.
+        value = graph.get(field_name)
+        if not isinstance(value, str) or not value:
+            failures.append(f"{field_name} is required and must be a non-empty string")
 
     catalog_version = catalog.get("catalog_version")
     if graph.get("catalog_version") != catalog_version:

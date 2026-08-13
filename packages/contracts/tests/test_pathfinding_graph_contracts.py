@@ -295,6 +295,18 @@ def test_shared_empty_metadata_fixture_is_rejected() -> None:
     assert any("generated_at" in f and "non-empty" in f for f in failures)
 
 
+def test_truthy_non_string_metadata_is_rejected() -> None:
+    # Review follow-up on #110: a truthy non-string (generated_at: 1) used
+    # to pass the old truthy-only check even though
+    # validatePathfindingGraph's matching TS check requires a real string --
+    # letting this pass validate-public-artifacts (Python) while still
+    # failing loadPathfindingGraph() at runtime in the browser.
+    graph = deepcopy(_graph_v2())
+    graph["generated_at"] = 1
+    failures = pathfinding_graph_failures(graph, _catalog())
+    assert any("generated_at" in f and "non-empty" in f for f in failures)
+
+
 def test_shared_virtual_node_missing_key_fixture_is_rejected() -> None:
     graph = _load_fixture("malformed-virtual-node-missing-key")
     failures = pathfinding_graph_failures(graph, _FIXTURE_CATALOG)
