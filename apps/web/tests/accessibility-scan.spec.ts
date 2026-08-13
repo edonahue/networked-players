@@ -11,6 +11,7 @@
 
 import { expect, test } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
+import { selectAlbum } from "./helpers/connectPicker";
 
 async function expectNoViolations(page: import("@playwright/test").Page) {
   const results = await new AxeBuilder({ page }).analyze();
@@ -48,16 +49,8 @@ test("connect has no automated accessibility violations after a real search", as
   page,
 }) => {
   await page.goto("/play/connect/");
-  await page.locator('[data-picker="a"] input').fill("Discovery");
-  await page
-    .locator('[data-picker="a"] [data-picker-results] button')
-    .first()
-    .click();
-  await page.locator('[data-picker="b"] input').fill("Joshua Tree");
-  await page
-    .locator('[data-picker="b"] [data-picker-results] button')
-    .first()
-    .click();
+  await selectAlbum(page, "a", "Discovery");
+  await selectAlbum(page, "b", "Joshua Tree");
   await page.locator("[data-connect-search]").click();
   await expect(page.locator("[data-connect-results]")).toBeVisible({
     timeout: 15000,
@@ -73,6 +66,13 @@ test("explore has no automated accessibility violations", async ({ page }) => {
   await expectNoViolations(page);
 });
 
+// The drawer un-hides synchronously and only THEN fetches the 3.3MB evidence
+// registry, so waiting on visibility alone scanned "<p>Loading evidence…</p>"
+// -- measured as the drawer's content in 3/3 runs, with the real card landing
+// 216-305ms later. That silently excluded exactly the markup this test exists
+// to audit: the Discogs release link's accessible name, the cover image's
+// alt text, and the muted-contrast role/source text. Gate on the drawer's
+// real settled state plus the final content itself.
 test("explore has no automated accessibility violations with the evidence drawer open", async ({
   page,
 }) => {
@@ -84,8 +84,68 @@ test("explore has no automated accessibility violations with the evidence drawer
     .locator("[data-explorer-edges] .explorer-edge-group")
     .first()
     .click();
-  await expect(page.locator("[data-explorer-evidence-drawer]")).toBeVisible();
+
+  const drawer = page.locator("[data-explorer-evidence-drawer]");
+  await expect(drawer).toHaveAttribute(
+    "data-evidence-state",
+    /^(ready|unavailable)$/,
+    { timeout: 15000 },
+  );
+  await expect(drawer).toHaveAttribute("aria-busy", "false");
+
+  // The final evidence card, not the placeholder it replaced.
+  const content = page.locator("[data-explorer-evidence-content]");
+  await expect(content.locator(".connect-hop")).toBeVisible();
+  await expect(
+    content.locator("a[href*='discogs.com/release/']"),
+  ).toBeVisible();
+
+  // Still open, and focus transferred on activation survived the async
+  // content swap rather than being dropped back to <body>.
+  await expect(drawer).toBeVisible();
+  await expect(drawer).toBeFocused();
+
   await expectNoViolations(page);
+});
+
+// Additive, not a substitute for the settled-state scan above: the loading
+// state is a real state a visitor can be in, and holding the registry
+// response open makes it deterministically reachable.
+test("explore has no automated accessibility violations while evidence is loading", async ({
+  page,
+}) => {
+  let releaseRegistry!: () => void;
+  const registryGate = new Promise<void>((resolve) => {
+    releaseRegistry = resolve;
+  });
+  await page.route(
+    "**/data/evidence/release-registry.v1.json",
+    async (route) => {
+      await registryGate;
+      await route.continue();
+    },
+  );
+
+  await page.goto("/explore/master-107325/");
+  await expect(
+    page.locator("[data-explorer-nodes] .explorer-node").first(),
+  ).toBeVisible({ timeout: 15000 });
+  await page
+    .locator("[data-explorer-edges] .explorer-edge-group")
+    .first()
+    .click();
+
+  const drawer = page.locator("[data-explorer-evidence-drawer]");
+  await expect(drawer).toHaveAttribute("data-evidence-state", "loading");
+  await expect(drawer).toHaveAttribute("aria-busy", "true");
+  await expectNoViolations(page);
+
+  releaseRegistry();
+  await expect(drawer).toHaveAttribute(
+    "data-evidence-state",
+    /^(ready|unavailable)$/,
+    { timeout: 15000 },
+  );
 });
 
 test("contributors directory has no automated accessibility violations", async ({
