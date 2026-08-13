@@ -1,4 +1,6 @@
 import { expect, test } from "@playwright/test";
+import { pickBoundedConnectedAlbum } from "./helpers/challengeAlbums";
+import { stubCoverArt } from "./helpers/coverArt";
 
 test("home renders hero, nav, and the album grid", async ({ page }) => {
   await page.goto("/");
@@ -72,18 +74,19 @@ test("an album page renders mode controls and reveals evidence", async ({
   page,
   request,
 }) => {
-  const res = await request.get("/data/challenge.v2.json");
-  const { albums, paths } = await res.json();
-  const connectedIds = new Set(
-    paths.flatMap((p: { from_album_id: string; to_album_id: string }) => [
-      p.from_album_id,
-      p.to_album_id,
-    ]),
-  );
-  const album = albums.find((a: { id: string }) => connectedIds.has(a.id));
-  test.skip(!album, "need at least one connected album to test the play view");
+  const { album, pathCount } = await pickBoundedConnectedAlbum(request);
+  await stubCoverArt(page);
 
   await page.goto(`/albums/${album.id}/`);
+
+  // The hotlink contract itself (AGENTS.md: cover art is served from Discogs'
+  // CDN, never rehosted here) stays asserted in the DOM -- only the bytes are
+  // served locally.
+  await expect(page.locator(".play-header__cover")).toHaveAttribute(
+    "src",
+    /^https:\/\/i\.discogs\.com\//,
+  );
+
   await expect(page.getByRole("heading", { level: 1 })).toContainText(
     album.title,
   );
@@ -116,11 +119,13 @@ test("an album page renders mode controls and reveals evidence", async ({
   await expect(firstReveal).toHaveAttribute("aria-expanded", "false");
   await expect(page.locator(`#${controls}`)).toBeHidden();
 
-  // "Reveal every path" unhides every evidence card on the page.
+  // "Reveal every path" unhides every evidence card on the page. Compared
+  // against the artifact-derived path count rather than a number read back
+  // off the same page, so this is an independent expectation.
+  await expect(page.locator("[data-play-path]")).toHaveCount(pathCount);
   await page.getByRole("button", { name: "Reveal every path" }).click();
-  const totalPaths = await page.locator("[data-play-path]").count();
   await expect(page.locator(".evidence-card:not([hidden])")).toHaveCount(
-    totalPaths,
+    pathCount,
   );
   await expect(
     page.getByRole("button", { name: "Hide" }).first(),
@@ -232,16 +237,8 @@ test("old /play/<album>/ URLs redirect to /albums/<album>/", async ({
   page,
   request,
 }) => {
-  const res = await request.get("/data/challenge.v2.json");
-  const { albums, paths } = await res.json();
-  const connectedIds = new Set(
-    paths.flatMap((p: { from_album_id: string; to_album_id: string }) => [
-      p.from_album_id,
-      p.to_album_id,
-    ]),
-  );
-  const album = albums.find((a: { id: string }) => connectedIds.has(a.id));
-  test.skip(!album, "need a connected album to test the redirect stub");
+  const { album } = await pickBoundedConnectedAlbum(request);
+  await stubCoverArt(page);
 
   await page.goto(`/play/${album.id}/`);
   // The meta refresh lands on the new home; the stub also carries a canonical.

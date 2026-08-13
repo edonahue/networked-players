@@ -341,9 +341,34 @@ export async function initExplorerStage(): Promise<void> {
   // or in what order.
   let evidenceDismissed = false;
 
+  // The drawer opens synchronously but its evidence arrives over the network,
+  // so "visible" and "showing real evidence" are two different things. These
+  // states make that difference observable instead of implicit:
+  //   loading      -- open, registry request in flight, placeholder content
+  //   ready        -- open, release metadata found and rendered
+  //   unavailable  -- open, credit rendered but release metadata is missing
+  //                   (release absent from the registry, or the registry
+  //                   fetch failed -- both degrade to the same card)
+  // Closed needs no value: `hidden` already says so, and the attribute is
+  // removed. `aria-busy` rides along because it is the real ARIA contract
+  // for a region whose content is mid-update -- without it a screen reader
+  // gets no signal at all that "Loading evidence…" is about to be replaced.
+  type DrawerState = "loading" | "ready" | "unavailable";
+
+  function setDrawerState(state: DrawerState | null) {
+    if (state === null) {
+      delete evidenceDrawer!.dataset.evidenceState;
+      evidenceDrawer!.removeAttribute("aria-busy");
+      return;
+    }
+    evidenceDrawer!.dataset.evidenceState = state;
+    evidenceDrawer!.setAttribute("aria-busy", String(state === "loading"));
+  }
+
   function hideEvidenceDrawer(options: { restoreFocus?: boolean } = {}) {
     evidenceDrawer!.hidden = true;
     evidenceContent!.innerHTML = "";
+    setDrawerState(null);
     if (options.restoreFocus) {
       evidenceDismissed = true;
       drawerTriggerEl?.focus();
@@ -364,6 +389,7 @@ export async function initExplorerStage(): Promise<void> {
 
     const requestId = ++openEdgeRequestId;
     evidenceDrawer!.hidden = false;
+    setDrawerState("loading");
     evidenceContent!.innerHTML = "<p>Loading evidence…</p>";
     // Move focus immediately (not after the evidence fetch resolves) --
     // the drawer already has a real accessible name (role="region",
@@ -395,6 +421,9 @@ export async function initExplorerStage(): Promise<void> {
       nameById,
       evidenceIndex,
     );
+    // Set only after the content swap, so the state never advertises evidence
+    // that isn't in the DOM yet.
+    setDrawerState(evidenceIndex.has(releaseId) ? "ready" : "unavailable");
   }
 
   edgesLayer.addEventListener("click", (event) => {

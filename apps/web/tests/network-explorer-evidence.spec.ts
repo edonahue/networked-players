@@ -39,6 +39,11 @@ test("clicking an edge shows real evidence in the drawer", async ({ page }) => {
 
   const drawer = page.locator("[data-explorer-evidence-drawer]");
   await expect(drawer).toBeVisible();
+  // The drawer reports settled state only once the real card is in the DOM.
+  await expect(drawer).toHaveAttribute("data-evidence-state", "ready", {
+    timeout: 15000,
+  });
+  await expect(drawer).toHaveAttribute("aria-busy", "false");
   const content = page.locator("[data-explorer-evidence-content]");
   await expect(content).toContainText(
     /co-credited on the same documented release/i,
@@ -46,6 +51,61 @@ test("clicking an edge shows real evidence in the drawer", async ({ page }) => {
   await expect(
     content.locator("a[href*='discogs.com/release/']"),
   ).toBeVisible();
+});
+
+// The drawer's advertised state must distinguish "open but still fetching"
+// from "open and settled" -- a visitor (and a screen reader, via aria-busy)
+// otherwise cannot tell a slow load from an empty result.
+test("the drawer reports loading state until the evidence registry resolves", async ({
+  page,
+}) => {
+  let releaseRegistry!: () => void;
+  const registryGate = new Promise<void>((resolve) => {
+    releaseRegistry = resolve;
+  });
+  await page.route(
+    "**/data/evidence/release-registry.v1.json",
+    async (route) => {
+      await registryGate;
+      await route.continue();
+    },
+  );
+
+  await page.goto("/explore/master-107325/");
+  await waitForGraph(page);
+  await firstEdge(page).click();
+
+  const drawer = page.locator("[data-explorer-evidence-drawer]");
+  await expect(drawer).toBeVisible();
+  await expect(drawer).toHaveAttribute("data-evidence-state", "loading");
+  await expect(drawer).toHaveAttribute("aria-busy", "true");
+  await expect(page.locator("[data-explorer-evidence-content]")).toContainText(
+    /loading evidence/i,
+  );
+
+  releaseRegistry();
+  await expect(drawer).toHaveAttribute("data-evidence-state", "ready", {
+    timeout: 15000,
+  });
+  await expect(drawer).toHaveAttribute("aria-busy", "false");
+});
+
+// Closing the drawer clears the state entirely -- `hidden` already means
+// closed, so a stale "ready" must not linger on a dismissed drawer.
+test("closing the drawer clears its evidence state", async ({ page }) => {
+  await page.goto("/explore/master-107325/");
+  await waitForGraph(page);
+  await firstEdge(page).click();
+
+  const drawer = page.locator("[data-explorer-evidence-drawer]");
+  await expect(drawer).toHaveAttribute("data-evidence-state", "ready", {
+    timeout: 15000,
+  });
+
+  await page.keyboard.press("Escape");
+  await expect(drawer).toBeHidden();
+  await expect(drawer).not.toHaveAttribute("data-evidence-state", /.*/);
+  await expect(drawer).not.toHaveAttribute("aria-busy", /.*/);
 });
 
 // Post-Phase-4 cleanup audit F17: a real click/keyboard activation must
@@ -206,7 +266,13 @@ test("the drawer degrades gracefully when the evidence registry fetch fails", as
   await waitForGraph(page);
   await firstEdge(page).click();
 
-  // Still shows names/roles/source link even without title/year/cover.
+  // Still shows names/roles/source link even without title/year/cover, and
+  // says so honestly: settled, but without release metadata.
+  const drawer = page.locator("[data-explorer-evidence-drawer]");
+  await expect(drawer).toHaveAttribute("data-evidence-state", "unavailable", {
+    timeout: 15000,
+  });
+  await expect(drawer).toHaveAttribute("aria-busy", "false");
   const content = page.locator("[data-explorer-evidence-content]");
   await expect(
     content.locator("a[href*='discogs.com/release/']"),

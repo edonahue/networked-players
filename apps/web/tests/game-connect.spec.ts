@@ -7,19 +7,7 @@
 // this test's failure is itself a useful signal to pick a new real pair.
 
 import { expect, test } from "@playwright/test";
-
-async function selectAlbum(
-  page: import("@playwright/test").Page,
-  picker: string,
-  query: string,
-) {
-  const input = page.locator(`[data-picker="${picker}"] input`);
-  await input.fill(query);
-  await page
-    .locator(`[data-picker="${picker}"] [data-picker-results] button`)
-    .first()
-    .click();
-}
+import { picker, pickerResults, selectAlbum } from "./helpers/connectPicker";
 
 async function selectRouteFilter(
   page: import("@playwright/test").Page,
@@ -27,6 +15,85 @@ async function selectRouteFilter(
 ) {
   await page.locator(`[data-connect-mode-option][value="${value}"]`).check();
 }
+
+// Initialization race (P1 after #108). The inputs are interactive from first
+// paint, long before the deferred module has fetched the album catalog. This
+// gates the catalog response behind a manually released promise so "the user
+// types during initialization" is a controlled, deterministic event rather
+// than a matter of typing fast enough. Against the pre-fix code this fails
+// for exactly the right reason: wirePicker ran only after the fetch resolved,
+// so the typed value's `input` event hit no listener and nothing ever
+// re-evaluated it -- suggestions stayed empty until a second keystroke.
+test("a query typed before the catalog arrives is evaluated when it lands", async ({
+  page,
+}) => {
+  let releaseCatalog!: () => void;
+  const catalogGate = new Promise<void>((resolve) => {
+    releaseCatalog = resolve;
+  });
+  await page.route("**/data/catalog/albums.v1.json", async (route) => {
+    await catalogGate;
+    await route.continue();
+  });
+
+  await page.goto("/play/connect/");
+
+  const pickerA = picker(page, "a");
+  const input = pickerA.locator("input");
+  await expect(pickerA).toHaveAttribute("data-picker-state", "loading");
+  await expect(input).toHaveAttribute("aria-busy", "true");
+
+  // Type while the catalog is still in flight.
+  await input.fill("Discovery");
+  await expect(pickerResults(page, "a")).toHaveCount(0);
+
+  releaseCatalog();
+
+  // No second input event, no synthetic keystroke: the picker re-evaluates
+  // the value already in the box once the catalog is ready.
+  await expect(pickerA).toHaveAttribute("data-picker-state", "ready");
+  await expect(input).toHaveAttribute("aria-busy", "false");
+  await expect(pickerResults(page, "a").first()).toBeVisible();
+  await expect(input).toHaveValue("Discovery");
+
+  // The picker is fully usable by keyboard from that recovered state.
+  await input.press("Tab");
+  await expect(pickerResults(page, "a").first()).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(pickerA.locator("[data-picker-selected]")).toContainText(
+    "Discovery",
+  );
+});
+
+// A catalog that fails to load must leave a recoverable control, not a
+// silently dead input. Pre-fix, a non-`ok` response yielded an empty catalog
+// with no message at all (indistinguishable from "nothing matched"), and a
+// thrown fetch returned early without even wiring the search button.
+test("a failed catalog load is announced and recovers on the next keystroke", async ({
+  page,
+}) => {
+  let attempts = 0;
+  await page.route("**/data/catalog/albums.v1.json", async (route) => {
+    attempts += 1;
+    if (attempts === 1) return route.fulfill({ status: 503, body: "" });
+    return route.continue();
+  });
+
+  await page.goto("/play/connect/");
+
+  const pickerA = picker(page, "a");
+  await expect(pickerA).toHaveAttribute("data-picker-state", "unavailable");
+  await expect(page.locator("[data-connect-status]")).toContainText(
+    /couldn't load the album list/i,
+  );
+
+  // Typing again retries the load, and the recovered catalog is applied to
+  // the text already in the box.
+  await pickerA.locator("input").fill("Discovery");
+  await expect(pickerA).toHaveAttribute("data-picker-state", "ready");
+  await expect(pickerResults(page, "a").first()).toBeVisible();
+  expect(attempts).toBe(2);
+});
 
 test("a real connected pair finds a documented route with evidence", async ({
   page,
