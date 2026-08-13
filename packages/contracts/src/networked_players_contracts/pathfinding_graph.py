@@ -29,7 +29,7 @@ catalog it claims to belong to.
 from __future__ import annotations
 
 import re
-from typing import Any
+from typing import Any, TypeGuard
 
 from .canonical import content_hash
 
@@ -66,6 +66,14 @@ _BASE_TOP_LEVEL_KEYS = frozenset(
 )
 _V2_ONLY_KEYS = frozenset({"album_virtual_nodes"})
 _ALBUM_VIRTUAL_NODE_KEYS = frozenset({"album_id", "virtual_artist_id", "main_release_id"})
+
+
+def _is_int_not_bool(value: Any) -> TypeGuard[int]:
+    """`bool` is a subtype of `int` in Python (`isinstance(True, int)` is
+    `True`), so every integer-required field needs this, not a bare
+    `isinstance(x, int)` -- otherwise a JSON `true`/`false` silently passes
+    as a valid id/index/offset."""
+    return isinstance(value, int) and not isinstance(value, bool)
 
 
 def pathfinding_graph_version(payload: dict[str, Any], snapshot_date: str) -> str:
@@ -142,31 +150,49 @@ def pathfinding_graph_failures(graph: Any, catalog: Any) -> list[str]:
     if not isinstance(node_ids, list) or not node_ids:
         failures.append("node_ids must be a non-empty array")
         node_ids = []
-    if node_ids != sorted(node_ids):
-        failures.append("node_ids must be sorted")
-    if len(set(node_ids)) != len(node_ids):
-        failures.append("node_ids must not contain duplicates")
+    elif not all(_is_int_not_bool(n) for n in node_ids):
+        # sorted()/set() below would raise on a mixed-type or unhashable
+        # element (e.g. a str alongside an int, or a nested list) -- fail
+        # closed instead of letting a malformed-but-JSON-shaped payload
+        # crash the validator.
+        failures.append("node_ids must contain only integers")
+        node_ids = []
+    else:
+        if node_ids != sorted(node_ids):
+            failures.append("node_ids must be sorted")
+        if len(set(node_ids)) != len(node_ids):
+            failures.append("node_ids must not contain duplicates")
 
-    if not isinstance(names, list) or len(names) != len(node_ids):
-        failures.append("names must be an array the same length as node_ids")
+    if (
+        not isinstance(names, list)
+        or len(names) != len(node_ids)
+        or not all(isinstance(n, str) for n in names)
+    ):
+        failures.append("names must be an array of strings the same length as node_ids")
 
     if not isinstance(offsets, list) or len(offsets) != len(node_ids) + 1:
         failures.append("offsets must be an array of length len(node_ids) + 1")
         offsets = []
+    elif not all(_is_int_not_bool(x) for x in offsets):
+        # sorted()/range() below would raise on a float or bool element.
+        failures.append("offsets must contain only integers")
+        offsets = []
     elif offsets != sorted(offsets) or offsets[0] != 0:
         failures.append("offsets must be non-decreasing and start at 0")
 
-    if not isinstance(neighbors, list):
-        failures.append("neighbors must be an array")
+    if not isinstance(neighbors, list) or not all(_is_int_not_bool(n) for n in neighbors):
+        failures.append("neighbors must be an array of integers")
         neighbors = []
-    if not isinstance(evidence_release_ids, list):
-        failures.append("evidence_release_ids must be an array")
+    if not isinstance(evidence_release_ids, list) or not all(
+        _is_int_not_bool(x) for x in evidence_release_ids
+    ):
+        failures.append("evidence_release_ids must be an array of integers")
         evidence_release_ids = []
-    if not isinstance(edge_role_a, list):
-        failures.append("edge_role_a must be an array")
+    if not isinstance(edge_role_a, list) or not all(isinstance(x, str) for x in edge_role_a):
+        failures.append("edge_role_a must be an array of strings")
         edge_role_a = []
-    if not isinstance(edge_role_b, list):
-        failures.append("edge_role_b must be an array")
+    if not isinstance(edge_role_b, list) or not all(isinstance(x, str) for x in edge_role_b):
+        failures.append("edge_role_b must be an array of strings")
         edge_role_b = []
 
     slot_count = len(neighbors)
@@ -183,7 +209,7 @@ def pathfinding_graph_failures(graph: Any, catalog: Any) -> list[str]:
 
     node_count = len(node_ids)
     for index, neighbor_index in enumerate(neighbors):
-        if not isinstance(neighbor_index, int) or not (0 <= neighbor_index < node_count):
+        if not (0 <= neighbor_index < node_count):
             failures.append(f"neighbors[{index}] {neighbor_index!r} is not a valid node index")
             break  # one report is enough; a systemic index error would spam this otherwise
 
@@ -234,7 +260,7 @@ def pathfinding_graph_failures(graph: Any, catalog: Any) -> list[str]:
             seen_album_ids.add(album_id)
 
         virtual_id = vn.get("virtual_artist_id")
-        if not isinstance(virtual_id, int) or isinstance(virtual_id, bool) or virtual_id >= 0:
+        if not _is_int_not_bool(virtual_id) or virtual_id >= 0:
             failures.append(
                 f"album_virtual_nodes[{i}] virtual_artist_id {virtual_id!r} must be a "
                 "negative integer, disjoint from every real (positive) node id"
@@ -257,7 +283,7 @@ def pathfinding_graph_failures(graph: Any, catalog: Any) -> list[str]:
                 )
 
         main_release_id = vn.get("main_release_id")
-        if not isinstance(main_release_id, int) or isinstance(main_release_id, bool):
+        if not _is_int_not_bool(main_release_id):
             failures.append(f"album_virtual_nodes[{i}] main_release_id must be an integer")
 
     if offsets and neighbors and edge_role_a and edge_role_b:
