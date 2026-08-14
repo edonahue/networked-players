@@ -256,6 +256,7 @@ def test_summary_median_matches_a_true_median_on_an_even_sample() -> None:
             shortest_layer_expansions=0,
             enumeration_seconds=0.0,
             enumeration_truncated=False,
+            truncated_by_route_cap=False,
             shortest_layer_complete=True,
             equal_hop_improves_hub=False,
         )

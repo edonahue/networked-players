@@ -109,11 +109,21 @@ shortest layers verified complete.
 | Shortest-hop distribution | 0 hops: 2 · 1 hop: 23 · 2 hops: 15 |
 | Equal-hop candidates per pair | min 1 · **median 4.5** · max 157 |
 | Shortest-layer enumeration expansions | **median 11.5** · max 397 |
-| Candidates within +1 hop | **exceeds 20,000** for many pairs |
+| Candidates within +1 hop (raised cap, see below) | **reaches 8,654** for a single pair, and every pair still saturates the cap |
 
 Every figure above is printed verbatim by the `research-route-quality`
-command below, so the decision and its reproducible report cannot drift
-apart. Expansion and candidate counts are deterministic properties of the
+command, so the decision and its reproducible report cannot drift apart.
+The first four rows come from the default invocation; the +1-hop row needs
+the cap raised, because the default `--max-routes 200` saturates on all 40
+pairs and would only ever report 200:
+
+```
+networked-players-research research-route-quality --pairs 40 \
+  --max-routes 20000 --max-expansions 5000000
+```
+
+Even at that cap all 40 pairs still saturate, so 8,654 is a **lower bound**
+on the worst +1 layer, not a count — which is precisely the point. Expansion and candidate counts are deterministic properties of the
 graph and the algorithm — identical on any machine, so they belong here. Elapsed
 time is a benchmark *result* and stays in `local/research/` per
 [ADR 0018](0018-benchmark-results-local-only.md) and
@@ -126,9 +136,11 @@ Two conclusions follow directly, and neither was chosen by taste:
   157 routes over max 397 expansions, against a graph whose parse and
   integrity hash already dominate any per-search cost. Nearly three in five
   pairs improve with **no hop increase at all**.
-- **Treat any hop increase as exceptional and hard-capped.** The +1 layer is
-  effectively unbounded (>20,000 routes for many pairs), so it may only be
-  consulted when the shortest layer offers nothing, and never without a cap.
+- **Treat any hop increase as exceptional and hard-capped.** The +1 layer
+  saturates every cap it has been measured against — at least 8,654 routes
+  for one pair, roughly 55x the shortest layer's worst case — so it may
+  only be consulted when the shortest layer offers nothing, and never
+  without a cap.
 
 ### Honest labels
 

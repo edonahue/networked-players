@@ -391,6 +391,9 @@ class PairMeasurement:
     shortest_layer_expansions: int
     enumeration_seconds: float
     enumeration_truncated: bool
+    #: Which bound fired -- the route cap saturating is what makes a +1
+    #: figure a lower bound rather than a count.
+    truncated_by_route_cap: bool
     #: Was every route at the shortest depth collected? Every equal-hop
     #: figure below is only meaningful when this is True.
     shortest_layer_complete: bool
@@ -451,6 +454,7 @@ def measure_pair(
             shortest_layer_expansions=enumeration.shortest_layer_expansions,
             enumeration_seconds=enumeration.elapsed_seconds,
             enumeration_truncated=enumeration.truncated,
+            truncated_by_route_cap=enumeration.truncated_by_route_cap,
             shortest_layer_complete=enumeration.shortest_layer_complete,
             equal_hop_improves_hub=False,
             # Truncation before the first route means we do not know
@@ -490,6 +494,7 @@ def measure_pair(
         shortest_layer_expansions=enumeration.shortest_layer_expansions,
         enumeration_seconds=enumeration.elapsed_seconds,
         enumeration_truncated=enumeration.truncated,
+        truncated_by_route_cap=enumeration.truncated_by_route_cap,
         shortest_layer_complete=enumeration.shortest_layer_complete,
         equal_hop_improves_hub=improves,
     )
@@ -618,6 +623,14 @@ def summarize(measurements: Sequence[PairMeasurement]) -> dict[str, Any]:
             # figure, so the reproducible report has to agree with it.
             "median": (statistics.median(equal_hop_counts) if equal_hop_counts else 0),
             "max": equal_hop_counts[-1] if equal_hop_counts else 0,
+        },
+        "routes_within_one_extra_hop": {
+            # A LOWER BOUND whenever the route cap fired: the +1 layer is
+            # where enumeration blows up, so with the default cap this
+            # saturates rather than terminating. Raise --max-routes to see
+            # how far it really goes.
+            "max": max((m.routes_within_one_extra_hop for m in complete), default=0),
+            "saturated_at_route_cap_pairs": len([m for m in complete if m.truncated_by_route_cap]),
         },
         "equal_hop_hub_improvable": {
             "count": len(hub_improvable),
