@@ -1161,6 +1161,22 @@ validators now have a real, dated fleet-run record.
 | Evidence-release registry (v2, ADR 0059) | `apps/web/public/data/evidence/release-registry.v1.json` | `evidence_release_registry_version` (+ `catalog_version`) | One-hop dataset + catalog + challenge/routes/pathfinding-graph release ids, plus `release_formats.descriptions` for the v2 caveat flags | `networked_players_contracts.evidence_release_registry::evidence_release_registry_failures` | `evidence-release-registry` | Connect Two Records, Network Explorer (real per-hop evidence cards) |
 | Pathfinding graph (v2, ADR 0058/0059) | `apps/web/public/data/pathfinding/graph.v2.json` | `pathfinding_graph_version` (+ `catalog_version`) | One-hop dataset + catalog + album-credit-membership, scoped to the catalog's 1-hop ego network plus one virtual anchor node per catalog album. The only consumer that opts into ADR 0059's ranked evidence release and canonical display names | `networked_players_contracts.pathfinding_graph::pathfinding_graph_failures` | `pathfinding-graph` | Connect Two Records, Network Explorer |
 
+### After any artifact build: run Prettier
+
+Every JSON artifact under `apps/web/public/data/` is committed in
+**Prettier's** formatting, not the builders' `json.dumps(indent=2)` output.
+The two differ only in array line-wrapping — semantically identical, ~10%
+apart on raw bytes — but `npm run format:check` is a required CI gate, so a
+freshly-built artifact fails CI until it is reformatted:
+
+```bash
+cd apps/web && npx prettier --write public/data/<the-file-you-just-built>.json
+```
+
+Do this before committing, and re-run the artifact validator afterwards.
+Prettier rewrites whitespace only, so the content hash in the artifact's
+own `*_version` field is unaffected.
+
 Every `pool_version`/`artifact_version` pair above (the challenge artifact has neither)
 follows the same identity model established for the Connection Guesser (ADR 0043): a
 `pool_version` changes only on membership change; an `artifact_version` changes on ANY

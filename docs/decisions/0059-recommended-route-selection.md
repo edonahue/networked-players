@@ -227,8 +227,8 @@ names moved.
 | — of which `compilation` | 17,668 → 12,902 |
 | — of which `unofficial` | 9,020 → 7,672 |
 | Anchor-edge sentinel slots | 8,874, identical set, each still carrying its album's own `main_release_id` |
-| Graph gzip | 2,233.85 KB → 2,239.58 KB (+0.26%) |
-| Registry gzip | 338.60 KB → 358.07 KB (+5.8%), against this contract's own 1.8 MB revisit trigger |
+| Graph gzip | 2,233.85 KB → 2,243.06 KB (+0.41%) |
+| Registry gzip | 338.60 KB → 359.37 KB (+6.1%), against that contract's own 1.8 MB revisit trigger |
 
 Two honest caveats on those figures. First, an earlier comparison looked
 up caveat flags in the *new* registry, which no longer lists the 3,728
