@@ -71,8 +71,21 @@ function loadRegistry(): Map<string, ReleaseImage> {
     // Resolve from the build's working directory (apps/web during
     // `astro build`) rather than import.meta.url, which Vite rewrites to the
     // bundled chunk location and would not resolve the public asset.
+    //
+    // NP_ALBUM_ART_REGISTRY_PATH lets a test build point this at an
+    // alternate registry file, unset in every real build (npm run
+    // build/CI/deploy), so production behavior is unaffected -- the one
+    // seam that makes the true "no cover art at all" placeholder branch on
+    // /albums/[album].astro exercisable by a real render assertion
+    // (see tests/album-cover-placeholder.spec.ts): no committed album
+    // currently lacks a registry entry, so without this seam that branch
+    // has no real page that can reach it.
     raw = readFileSync(
-      join(process.cwd(), "public/data/catalog/album-art.v1.json"),
+      join(
+        process.cwd(),
+        process.env.NP_ALBUM_ART_REGISTRY_PATH ??
+          "public/data/catalog/album-art.v1.json",
+      ),
       "utf8",
     );
   } catch {

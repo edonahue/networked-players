@@ -35,6 +35,11 @@ const { album } = Astro.props;
 const { albums, artists, paths, releases } = challenge;
 const albumById = new Map(albums.map((a) => [a.id, a]));
 // Presentation art from the registry (ADR 0045), never a frozen field.
+// album.cover_image is a second fallback for whenever the registry lacks an
+// entry -- currently always null across every committed album (the registry
+// alone already covers all 140), so this fallback is presently unreachable
+// in production. It stays as a real, typed field so a future artifact
+// generation can populate it without a page change.
 const albumCover = coverFor(album.id) ?? album.cover_image;
 
 const connectedPaths = paths
