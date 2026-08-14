@@ -492,3 +492,86 @@ def test_album_virtual_nodes_field_shape(onehop_dataset: Path) -> None:
     assert payload["album_virtual_nodes"] == [
         {"album_id": "master-1", "virtual_artist_id": -1, "main_release_id": 1}
     ]
+
+
+# --- Canonical display names (ADR 0059) ---------------------------------
+
+
+@pytest.fixture
+def multi_spelling_dataset(tmp_path: Path) -> Path:
+    """Bob is credited three times with two spellings.
+
+    `linked_credits` holds one row per CREDIT, so an artist carries as many
+    spellings as contributors typed. Release 1 spells him "bob"; releases 2
+    and 3 spell him "Bob". The lowercase spelling is on the LOWEST release
+    id, which is what the previous `SELECT DISTINCT` + `setdefault` tended
+    to surface -- so this fixture fails loudly if the old behaviour returns.
+    """
+    from conftest import write_synthetic_dataset
+
+    releases = [_release(1, "R1"), _release(2, "R2"), _release(3, "R3")]
+    credits = [
+        *_co_performer_credits(1, (100, "Alice", "Guitar"), (200, "bob", "Bass")),
+        *_co_performer_credits(2, (100, "Alice", "Guitar"), (200, "Bob", "Bass")),
+        *_co_performer_credits(3, (100, "Alice", "Guitar"), (200, "Bob", "Bass")),
+    ]
+    return write_synthetic_dataset(
+        tmp_path / f"snapshot={_SNAPSHOT}", release_rows=releases, credit_rows=credits
+    )
+
+
+def _name_of(payload: dict[str, Any], artist_id: int) -> str:
+    return str(payload["names"][payload["node_ids"].index(artist_id)])
+
+
+def _build(dataset: Path, catalog: dict[str, Any], membership: dict[str, Any]) -> dict[str, Any]:
+    with CreditGraph.open(dataset) as graph:
+        return build_pathfinding_graph(
+            graph,
+            catalog,
+            membership,
+            snapshot_date=_SNAPSHOT,
+            generated_at="2026-08-14T00:00:00+00:00",
+        )
+
+
+def test_the_most_credited_spelling_wins(multi_spelling_dataset: Path) -> None:
+    payload = _build(multi_spelling_dataset, _catalog(), _membership())
+    assert _name_of(payload, 200) == "Bob"
+
+
+@pytest.mark.parametrize(
+    "spelling",
+    ["will.i.am", "deadmau5", "k.d. lang", "P!nk", "blink-182", "U2", "THE KLF", "µ-Ziq"],
+)
+def test_unconventional_spellings_survive_untransformed(tmp_path: Path, spelling: str) -> None:
+    """The selection never TRANSFORMS the source string. Generic
+    title-casing is exactly what would corrupt every one of these, which is
+    why the fix is "pick the most-credited row", not "normalize"."""
+    from conftest import write_synthetic_dataset
+
+    dataset = write_synthetic_dataset(
+        tmp_path / f"snapshot={_SNAPSHOT}",
+        release_rows=[_release(1, "R1")],
+        credit_rows=_co_performer_credits(1, (100, "Alice", "Guitar"), (200, spelling, "Bass")),
+    )
+    payload = _build(dataset, _catalog(), _membership())
+    assert _name_of(payload, 200) == spelling
+
+
+def test_a_tie_is_broken_by_name_so_builds_are_reproducible(tmp_path: Path) -> None:
+    """Two spellings, one credit each. Without a tiebreak DuckDB is free to
+    return either, and two builds of one dataset could disagree -- which
+    would change `pathfinding_graph_version` for no real reason."""
+    from conftest import write_synthetic_dataset
+
+    dataset = write_synthetic_dataset(
+        tmp_path / f"snapshot={_SNAPSHOT}",
+        release_rows=[_release(1, "R1"), _release(2, "R2")],
+        credit_rows=[
+            *_co_performer_credits(1, (100, "Alice", "Guitar"), (200, "Zeta", "Bass")),
+            *_co_performer_credits(2, (100, "Alice", "Guitar"), (200, "Alpha", "Bass")),
+        ],
+    )
+    names = {_name_of(_build(dataset, _catalog(), _membership()), 200) for _ in range(3)}
+    assert names == {"Alpha"}

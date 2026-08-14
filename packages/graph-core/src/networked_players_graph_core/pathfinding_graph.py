@@ -251,12 +251,30 @@ def build_pathfinding_graph(
     real_ids_for_name_query = [nid for nid in compact.node_ids if nid > 0]
     name_by_id: dict[int, str] = {}
     if real_ids_for_name_query:
+        # `linked_credits` holds one row per CREDIT, so an artist carries as
+        # many spellings as contributors typed -- "U2", "u2", "U 2". The
+        # previous `SELECT DISTINCT` + `setdefault` kept whichever row
+        # DuckDB happened to emit first, which is not a choice about
+        # quality; measured against the published graph it left ~550 of
+        # 36,819 display names visibly broken (149 lowercase, 198 ALL-CAPS,
+        # 203 half-cased). Most-credited spelling wins instead, name-broken
+        # ties, which is exactly the pattern `snapshot.py` already uses for
+        # its own artist names -- the two artifacts now agree by
+        # construction rather than by coincidence.
+        #
+        # The source string is never TRANSFORMED, only selected. Generic
+        # title-casing would corrupt `will.i.am`, `deadmau5`, `k.d. lang`,
+        # `P!nk` and `blink-182`, and no hand-maintained correction list is
+        # introduced.
         name_rows = graph._connection.execute(
-            "SELECT DISTINCT artist_id, name FROM linked_credits "
-            f"WHERE artist_id IN ({', '.join(str(i) for i in real_ids_for_name_query)})"
+            "SELECT artist_id, name FROM linked_credits "
+            f"WHERE artist_id IN ({', '.join(str(i) for i in real_ids_for_name_query)}) "
+            "GROUP BY artist_id, name "
+            "QUALIFY row_number() OVER "
+            "(PARTITION BY artist_id ORDER BY count(*) DESC, name) = 1"
         ).fetchall()
         for artist_id, name in name_rows:
-            name_by_id.setdefault(int(artist_id), str(name))
+            name_by_id[int(artist_id)] = str(name)
     names = [
         virtual_names[node_id] if node_id < 0 else name_by_id.get(node_id, f"Artist {node_id}")
         for node_id in compact.node_ids

@@ -282,6 +282,97 @@ def _edge_ineligible_role_sql(role_column: str) -> str:
     )"""
 
 
+#: Format descriptors that make a release a WEAKER piece of evidence for
+#: "these two people worked together". Every one is a literal
+#: `release_formats.descriptions` value, measured present in the one-hop
+#: corpus (Compilation 384,144 · Reissue 307,447 · Unofficial Release
+#: 114,520 · Promo 114,519 · Repress 37,329 · Mixed 11,559 · Sampler
+#: 10,579 rows).
+#:
+#: These are used for EXCLUSION only -- "prefer a release carrying none of
+#: these" -- never to assert that a release without them is a studio album.
+#: `docs/RELEASE_FORMAT_RESEARCH.md` measured 94.7% of a known
+#: false-positive population carrying only a bare `Album` descriptor, so a
+#: positive claim from these fields would be unsupportable.
+EVIDENCE_CAVEAT_DESCRIPTORS: tuple[str, ...] = (
+    "Compilation",
+    "Mixed",
+    "Promo",
+    "Reissue",
+    "Repress",
+    "Sampler",
+    "Unofficial Release",
+)
+
+
+@dataclass(frozen=True)
+class EvidenceReleasePreference:
+    """Which release is chosen to EVIDENCE a co-credit pair.
+
+    Only the representative is affected. The set of `(artist_a_id,
+    artist_b_id)` pairs is fixed by the edge rules and is byte-identical
+    with or without a preference -- this never adds or removes an edge,
+    which is what keeps it safe to apply to one consumer and not others.
+
+    It is worth choosing at all because the multiplicity is real: measured
+    on the 20260601 one-hop corpus, **1,801,482 of 2,898,252 directed pairs
+    (62.2%) are evidenced by more than one release** (median 5, max 13,115).
+    The default `min(release_id)` throws all of that away in favour of the
+    lowest Discogs database id, which correlates with "catalogued earliest"
+    and skews toward early-listed 12" singles, mashups and bootlegs.
+
+    Tiers, applied in order:
+
+    1. `preferred_release_ids` -- typically the catalog's own
+       `main_release_id` values. "They both appear on this album" is the
+       most defensible evidence a route can offer.
+    2. Carries none of `caveat_descriptors`.
+    3. `master_is_main_release` -- the primary version of its master rather
+       than a reissue pressing.
+    4. `release_id` ascending -- the deterministic final tiebreak, which is
+       exactly today's behaviour and guarantees a total order.
+    """
+
+    preferred_release_ids: tuple[int, ...] = ()
+    caveat_descriptors: tuple[str, ...] = EVIDENCE_CAVEAT_DESCRIPTORS
+    prefer_master_main_release: bool = True
+
+    def order_by_sql(self, *, release_column: str) -> str:
+        """The ORDER BY list ranking candidate releases, best first.
+
+        Every term is a boolean sorted ascending, so `false` (0) wins --
+        i.e. each term names the thing that DISQUALIFIES a release.
+        """
+        terms: list[str] = []
+        if self.preferred_release_ids:
+            ids = ", ".join(str(int(r)) for r in sorted(set(self.preferred_release_ids)))
+            terms.append(f"({release_column} NOT IN ({ids}))")
+        if self.caveat_descriptors:
+            # Escaped rather than interpolated raw: these are constants
+            # today, but a descriptor is source text and a stray apostrophe
+            # would otherwise end the string literal.
+            quoted = ", ".join(
+                "'" + str(d).replace("'", "''") + "'" for d in sorted(set(self.caveat_descriptors))
+            )
+            terms.append(
+                f"""EXISTS (
+                    SELECT 1 FROM release_formats rf
+                    WHERE rf.release_id = {release_column}
+                      AND list_bool_or(
+                          list_transform(rf.descriptions, x -> x IN ({quoted}))
+                      )
+                )"""
+            )
+        if self.prefer_master_main_release:
+            terms.append(
+                f"""(NOT COALESCE(
+                    (SELECT r2.master_is_main_release FROM releases r2
+                     WHERE r2.release_id = {release_column}), FALSE))"""
+            )
+        terms.append(release_column)
+        return ", ".join(terms)
+
+
 def credit_edges_sql(
     *,
     max_artists_per_release: int,
@@ -289,6 +380,7 @@ def credit_edges_sql(
     max_artists_per_track: int = MAX_ARTISTS_PER_TRACK,
     credits_relation: str = "credits",
     release_format_policy_relation: str | None = None,
+    evidence_release_preference: EvidenceReleasePreference | None = None,
 ) -> str:
     """A SELECT producing the directed, deduplicated co-credit edge relation
     `(artist_a_id, artist_b_id, release_id)` over `credits_relation`.
@@ -332,6 +424,7 @@ def credit_edges_sql(
         if release_format_policy_relation is not None
         else _non_studio_release_title_sql("r.title")
     )
+    evidence_collapse = _evidence_collapse_sql(evidence_release_preference)
     cap = int(max_artists_per_release)
     track_cap = int(max_artists_per_track)
     policy_join = ""
@@ -445,9 +538,31 @@ def credit_edges_sql(
         UNION ALL SELECT artist_a_id, artist_b_id, release_id FROM release_scope
         UNION ALL SELECT artist_b_id, artist_a_id, release_id FROM release_scope
     )
-    SELECT artist_a_id, artist_b_id, min(release_id) AS release_id
-    FROM directed GROUP BY artist_a_id, artist_b_id
+    {evidence_collapse}
     """
+
+
+def _evidence_collapse_sql(preference: EvidenceReleasePreference | None) -> str:
+    """Collapse `directed` to one release per pair.
+
+    Without a preference this is verbatim the historical
+    `min(release_id)` -- every existing caller stays byte-identical, which
+    is the whole point of the parameter being optional.
+    """
+    if preference is None:
+        return """SELECT artist_a_id, artist_b_id, min(release_id) AS release_id
+    FROM directed GROUP BY artist_a_id, artist_b_id"""
+    # `d.release_id`, never a bare `release_id`: the correlated subqueries
+    # in the ordering compare against `releases`/`release_formats`, whose
+    # own `release_id` column would otherwise capture the name and make
+    # every correlation a tautology (`r2.release_id = r2.release_id`),
+    # silently matching all rows instead of one.
+    order_by = preference.order_by_sql(release_column="d.release_id")
+    return f"""SELECT artist_a_id, artist_b_id, release_id FROM (
+        SELECT DISTINCT artist_a_id, artist_b_id, release_id FROM directed
+    ) d QUALIFY row_number() OVER (
+        PARTITION BY d.artist_a_id, d.artist_b_id ORDER BY {order_by}
+    ) = 1"""
 
 
 _CREDIT_COLUMNS = (
@@ -547,6 +662,7 @@ class CreditGraph:
         max_temp_directory_size: str | None = None,
         build_edges: bool = True,
         release_format_policy: Path | None = None,
+        evidence_release_preference: EvidenceReleasePreference | None = None,
     ) -> CreditGraph:
         """`build_edges=False` skips materializing `credit_edges` -- the ~2.5
         minute step on the real corpus. The result can read evidence rows
@@ -591,6 +707,25 @@ class CreditGraph:
             connection.execute(
                 f"CREATE VIEW releases AS SELECT * FROM {read_parquet_sql(releases_glob)}"
             )
+            # `release_formats` is a v3-and-later table: the original
+            # `discogs-onehop` layout has no such directory. Always define
+            # the relation so SQL that references it (the evidence-release
+            # preference's caveat tier) parses against every dataset
+            # generation; when the table is absent the relation is empty,
+            # which makes the caveat tier uniformly false and degrades
+            # cleanly to the next tier rather than failing the build.
+            formats_dir = dataset_root / "table=release_formats"
+            if formats_dir.is_dir():
+                formats_glob = str(formats_dir / "*.parquet")
+                connection.execute(
+                    f"CREATE VIEW release_formats AS SELECT * FROM {read_parquet_sql(formats_glob)}"
+                )
+            else:
+                connection.execute(
+                    "CREATE VIEW release_formats AS "
+                    "SELECT NULL::BIGINT AS release_id, NULL::VARCHAR[] AS descriptions "
+                    "WHERE FALSE"
+                )
         except duckdb.IOException as exc:
             raise GraphError(f"could not open dataset at {dataset_root}: {exc}") from exc
 
@@ -663,6 +798,7 @@ class CreditGraph:
                 + credit_edges_sql(
                     max_artists_per_release=max_artists_per_release,
                     release_format_policy_relation=policy_relation,
+                    evidence_release_preference=evidence_release_preference,
                 )
             )
             connection.execute("CREATE INDEX credit_edges_a ON credit_edges (artist_a_id)")
