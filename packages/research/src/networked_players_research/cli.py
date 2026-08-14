@@ -126,7 +126,12 @@ def _parser() -> argparse.ArgumentParser:
     route_quality.add_argument(
         "--max-expansions",
         type=int,
-        default=200_000,
+        # Chosen from the measurement, not rounded to taste: the worst
+        # sampled pair consumes 358,505 slots (125,975 reverse + the
+        # forward walk), and at 200,000 one of the 40 shortest layers is
+        # cut off -- which invalidates every equal-hop statistic derived
+        # from it. 400,000 completes all 40.
+        default=400_000,
         help="per-pair enumeration expansion cap",
     )
     route_quality.add_argument(

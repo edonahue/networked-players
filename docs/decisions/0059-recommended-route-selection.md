@@ -108,16 +108,24 @@ shortest layers verified complete.
 | Pairs where an **equal-hop** alternative strictly lowers the worst hub | **23 of 40 (57.5%)** |
 | Shortest-hop distribution | 0 hops: 2 · 1 hop: 23 · 2 hops: 15 |
 | Equal-hop candidates per pair | min 1 · **median 4.5** · max 157 |
-| Shortest-layer forward walk (expansions) | **median 11.5** · max 397 |
+| Shortest-layer forward walk (slots inspected) | **median 2,256.5** · max 84,240 |
 | Reverse-distance precompute (slots scanned) | **max 125,975** — one pass per search |
-| Whole bounded search | max 127,545, of which the precompute is **98.8%** |
+| Precompute share of the whole bounded search | median **60.1%** · range 35.1–86.0% |
 | Candidates within +1 hop (raised cap, see below) | **8,654** for the worst pair — an exact count |
+
+Expansion counts here are **slots inspected**, charged before the pruning
+checks rather than after. An earlier revision counted only the neighbours
+that survived pruning, which on a heavy-tailed graph undercounted the
+forward walk by roughly two orders of magnitude (it reported a median of
+11.5 against a true 2,256.5) and made the precompute look like 98.8% of
+the search when it is nearer 60%. The cap now bounds the work it claims to
+bound.
 
 Every figure above is printed verbatim by the `research-route-quality`
 command, so the decision and its reproducible report cannot drift apart.
 The first four rows come from the default invocation; the +1-hop row needs
-the cap raised, because the default `--max-routes 200` saturates on all 40
-pairs and would only ever report 200:
+`--max-routes` raised, because at the default 200 that layer saturates for
+**26 of the 40 pairs** and reports a censored 200 for each:
 
 ```
 networked-players-research research-route-quality --pairs 40 \
@@ -125,9 +133,14 @@ networked-players-research research-route-quality --pairs 40 \
 ```
 
 Because enumeration is shortest-first, a cap firing at a deeper layer
-leaves every shallower layer already complete. At this cap no pair
-truncates within its +1 layer (`saturated_within_plus_one_pairs: 0`), so
-**8,654 is an exact count**, not a lower bound.
+leaves every shallower layer already complete. Whole-search truncation and
++1-layer saturation are therefore different facts and the report keeps them
+apart: the default run truncates *somewhere* on all 40 pairs
+(`truncated_pairs: 40`) while only 26 of those caps fire at or before the
++1 layer (`saturated_within_plus_one_pairs: 26`) — the other 14 finish that
+layer and report exact counts below 200. At the raised cap above,
+`saturated_within_plus_one_pairs: 0`, so **8,654 is an exact count** rather
+than a lower bound.
 
 Expansion and candidate counts are deterministic properties of the graph
 and the algorithm — identical on any machine, so they belong here. Elapsed
@@ -138,18 +151,21 @@ time is a benchmark *result* and stays in `local/research/` per
 
 Two conclusions follow directly, and neither was chosen by taste:
 
-- **Enumerate the complete shortest layer.** The forward walk is genuinely
-  trivial — max 157 routes over max 397 expansions. Nearly three in five
-  pairs improve with **no hop increase at all**.
-- **The reverse-distance precompute, not the walk, is the cost to manage.**
-  It is 98.8% of the search: one pass over the reachable graph (~126,000
-  adjacency slots), the same order as the `buildArtistIndex` pass the
-  browser already performs. It is per-GOAL, so PR 3 computes it once per
-  search and reuses it across the recommended/shortest/alternate results
-  rather than once per candidate. Production's `findPath` pays nothing like
-  it today because plain BFS needs no guide — completeness is what buys the
-  precompute, and that trade is only defensible because the pass is linear
-  and cached, not because it is free.
+- **Enumerate the complete shortest layer.** Its worst case is 157 routes
+  over 84,240 inspected slots — not free, but the same order as the
+  ~126,000-slot `buildArtistIndex` pass the browser already performs on
+  every load, and it is plain typed-array reads. Nearly three in five pairs
+  improve with **no hop increase at all**, which is what that cost buys.
+- **Both halves of the search must be bounded and cached, not just one.**
+  The reverse precompute is the larger single component (median 60.1% of
+  the whole search, up to 86%) and is per-GOAL, so PR 3 computes it once
+  per search and reuses it across the recommended/shortest/alternate
+  results rather than once per candidate. But the forward walk is not
+  negligible either — up to 84,240 slots — so it keeps its own explicit
+  cap rather than relying on the precompute to dominate. Production's
+  `findPath` pays neither cost today because plain BFS needs no guide;
+  completeness is what buys both, and the trade is defensible because each
+  pass is linear and the expensive one is cached.
 - **Treat any hop increase as exceptional and hard-capped.** The +1 layer
   reaches 8,654 routes for the worst measured pair — roughly 55x the
   shortest layer's worst case of 157 — so it may only be consulted when the
@@ -212,11 +228,11 @@ shared credit remains documented co-participation and nothing more.
 ## Revisit trigger
 
 If the catalog grows enough that the shortest layer stops being cheap —
-concretely, if the shortest-layer forward walk routinely exceeds ~5,000
-expansions, or the equal-hop candidate count routinely exceeds ~1,000, or
-the reverse precompute stops being reusable across a single search —
-revisit the bound
-before widening the hop allowance. If a future artifact ever publishes
+concretely, if the shortest-layer forward walk's **median** exceeds ~25,000
+inspected slots (it is 2,256.5 today) or its worst case exceeds ~500,000
+(84,240 today), or the equal-hop candidate count routinely exceeds ~1,000
+(max 157 today), or the reverse precompute stops being reusable across a
+single search — revisit the bound before widening the hop allowance. If a future artifact ever publishes
 per-pair *candidate* releases rather than one collapsed choice, revisit
 whether hop-level evidence selection belongs in the client instead of the
 builder.

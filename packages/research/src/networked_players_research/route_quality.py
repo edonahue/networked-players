@@ -155,9 +155,10 @@ def _reverse_distances(
     Returns the distances, the adjacency slots scanned, and whether the
     budget stopped it early. This traversal is NOT incidental: at default
     depth on the committed graph it reaches all 36,959 nodes and scans
-    ~125,900 slots -- roughly 300x the forward walk it guides. Leaving it
-    uncounted made the advertised expansion cap bound about 0.3% of the
-    real work, so it is charged to the same budget.
+    ~125,900 slots, the largest single component of the search (median
+    60.1% of it, up to 86%). Leaving it uncounted let the advertised
+    expansion cap bound a small fraction of the real work, so it is
+    charged to the same budget as the forward walk.
     """
     distances = {goal_index: 0}
     frontier = deque([goal_index])
@@ -256,6 +257,16 @@ def enumerate_routes(
         if remaining <= 0:
             return True
         for slot in graph.slots(node):
+            # Charged BEFORE the pruning checks: a slot that is inspected
+            # and rejected still cost a read, and on a high-degree node
+            # most slots are rejected. Counting only survivors let a search
+            # inspect many thousands of slots without touching the cap,
+            # which is the same accounting error the reverse pass had.
+            if result.expansions >= max_expansions:
+                result.truncated_by_expansion_cap = True
+                return False
+            result.expansions += 1
+
             neighbor = graph.neighbors[slot]
             if neighbor in on_path:
                 continue
@@ -281,12 +292,6 @@ def enumerate_routes(
             ):
                 continue
 
-            # Same ordering as the reverse pass: check before consuming.
-            if result.expansions >= max_expansions:
-                result.truncated_by_expansion_cap = True
-                return False
-            result.expansions += 1
-
             on_path.add(neighbor)
             path_nodes.append(neighbor)
             path_slots.append(slot)
@@ -304,10 +309,11 @@ def enumerate_routes(
         # hub-improvement signal) is computed over that layer, and a
         # partial layer is an arbitrary CSR-ordered prefix rather than a
         # sample -- it would silently understate the count and could miss
-        # the best route entirely. Measured worst case is 223 routes at
-        # 639 expansions, so completing it is cheap; the expansion cap
-        # still bounds a pathological graph, and when IT fires the layer
-        # is honestly reported as incomplete.
+        # the best route entirely. Measured worst case is 157 routes at
+        # 84,240 inspected slots -- the same order as the index pass the
+        # browser already runs, so completing it is affordable; the
+        # expansion cap still bounds a pathological graph, and when IT
+        # fires the layer is honestly reported as incomplete.
         is_shortest_layer = target_depth == shortest_possible
         completed = walk(start_index, 0, target_depth, enforce_cap=not is_shortest_layer)
         if is_shortest_layer:
