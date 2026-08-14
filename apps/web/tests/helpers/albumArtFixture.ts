@@ -23,6 +23,7 @@ import { dirname, join } from "node:path";
 interface ChallengeAlbum {
   id: string;
   title: string;
+  cover_image: unknown;
 }
 
 interface ChallengePath {
@@ -76,7 +77,17 @@ export function generatePlaceholderFixture(
   const candidates = challenge.albums
     .filter(
       (album) =>
-        (pathCount.get(album.id) ?? 0) >= 2 && registeredIds.has(album.id),
+        (pathCount.get(album.id) ?? 0) >= 2 &&
+        registeredIds.has(album.id) &&
+        // Removing the registry entry alone only reaches the TRUE
+        // placeholder branch if album.cover_image (coverFor()'s second
+        // fallback) is also falsy. Every committed album's cover_image is
+        // null today, so this has no effect now -- but without it, a
+        // future artifact regeneration that populates cover_image for
+        // whichever album this picks would make the page correctly render
+        // that fallback cover, and this test would then assert the
+        // placeholder shows when production behavior is actually right.
+        album.cover_image == null,
     )
     .sort(
       (a, b) =>
@@ -84,7 +95,7 @@ export function generatePlaceholderFixture(
     );
   if (candidates.length === 0) {
     throw new Error(
-      "challenge.v2.json must contain a connected, registry-listed album to build the placeholder fixture from",
+      "challenge.v2.json must contain a connected, registry-listed album with no cover_image fallback to build the placeholder fixture from",
     );
   }
   const chosen = candidates[0];

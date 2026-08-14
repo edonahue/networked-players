@@ -83,32 +83,36 @@ test.beforeAll(async () => {
 test.afterAll(async () => {
   if (!previewProcess || previewProcess.pid === undefined) return;
   const pid = previewProcess.pid;
-  await new Promise<void>((resolve) => {
-    const proc = previewProcess!;
-    let settled = false;
-    const finish = () => {
-      if (settled) return;
-      settled = true;
-      resolve();
-    };
-    proc.once("exit", finish);
-    try {
-      process.kill(-pid, "SIGTERM");
-    } catch {
-      finish(); // already exited
-      return;
-    }
-    // Fallback if SIGTERM alone doesn't bring the group down in time.
-    setTimeout(() => {
-      if (settled) return;
-      try {
-        process.kill(-pid, "SIGKILL");
-      } catch {
-        // already gone
-      }
-      finish();
-    }, 5_000);
+  const proc = previewProcess;
+
+  const exited = new Promise<void>((resolve) => {
+    proc.once("exit", () => resolve());
   });
+
+  try {
+    process.kill(-pid, "SIGTERM");
+  } catch {
+    return; // whole group already gone
+  }
+
+  // Race a graceful exit against a deadline, then ALWAYS probe the group
+  // afterward -- regardless of which one won. The npx wrapper exiting does
+  // not prove its Astro child (the thing actually bound to the port) has
+  // too: gating the follow-up kill on the wrapper's own "exit" event was
+  // itself a real gap here (a slower-to-shut-down descendant could survive
+  // a SIGTERM the wrapper had already reacted to). Signal 0 is a liveness
+  // probe, not a real signal -- it throws ESRCH if the group is genuinely
+  // empty, so this only force-kills if something is still actually there.
+  await Promise.race([
+    exited,
+    new Promise((resolve) => setTimeout(resolve, 5_000)),
+  ]);
+  try {
+    process.kill(-pid, 0);
+    process.kill(-pid, "SIGKILL");
+  } catch {
+    // group already empty
+  }
 });
 
 test("an album whose registry entry and cover_image are both absent renders the accessible placeholder, not a broken image", async ({
