@@ -9,11 +9,14 @@
 // takes the else branch).
 //
 // Runs its own isolated second build (NP_TEST_OUT_DIR=dist-test-artwork,
-// gitignored, never the real dist/) against a generated-at-test-time copy
-// of the real registry with one real album's entry removed
-// (helpers/albumArtFixture.ts) and its own preview server on a distinct
-// port -- the normal suite's dist/ and port-4321 server are never touched,
-// so this cannot destabilize any other test.
+// gitignored, never the real dist/) against a generated-at-test-time
+// SYNTHETIC empty art registry (helpers/albumArtFixture.ts -- no field is
+// read from or derived from the real committed registry, per AGENTS.md's
+// "keep fixtures synthetic and reproducible"), plus its own preview server
+// on a distinct port -- the normal suite's dist/ and port-4321 server are
+// never touched, so this cannot destabilize any other test. The one real
+// read is challenge.v2.json, used only to pick which real, already-
+// generated album page to navigate to.
 
 import { execSync, spawn, type ChildProcess } from "node:child_process";
 import { dirname, join } from "node:path";

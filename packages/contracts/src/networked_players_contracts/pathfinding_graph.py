@@ -251,11 +251,22 @@ def pathfinding_graph_failures(graph: Any, catalog: Any) -> list[str]:
         failures.append("album_virtual_nodes must be an array")
         album_virtual_nodes = []
 
-    catalog_album_ids = {a.get("id") for a in catalog.get("albums", []) if isinstance(a, dict)}
+    # Validated before iterating, not assumed: this validator takes an
+    # arbitrary JSON-compatible catalog and must stay total. `albums: null`
+    # and `albums: 5` both raised TypeError from the comprehensions below
+    # before this check -- and a raise is strictly worse than a failure
+    # string here, since every caller (validate-public-artifacts, the CLI,
+    # the Pi-fleet artifact.validate workload) reports failures but crashes
+    # on an exception. Reset to [] on a structural failure, the same
+    # convention the graph-side arrays above already use.
+    catalog_albums = catalog.get("albums")
+    if not isinstance(catalog_albums, list):
+        failures.append("catalog albums must be an array")
+        catalog_albums = []
+
+    catalog_album_ids = {a.get("id") for a in catalog_albums if isinstance(a, dict)}
     catalog_main_release_id_by_album = {
-        a.get("id"): a.get("main_release_id")
-        for a in catalog.get("albums", [])
-        if isinstance(a, dict)
+        a.get("id"): a.get("main_release_id") for a in catalog_albums if isinstance(a, dict)
     }
     real_node_ids = {n for n in node_ids if isinstance(n, int) and n > 0}
     node_id_set = set(node_ids)

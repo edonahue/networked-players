@@ -29,8 +29,8 @@ coverage/
 # never the real dist/, which the blanket dist/ pattern above already covers.
 dist-test-artwork/
 # Generated-at-test-time fixture inputs for that same isolated build --
-# derived from real committed data at test run time, never hand-authored,
-# never committed.
+# written fresh by the test run (a synthetic empty art registry), never
+# hand-authored, never committed.
 apps/web/tests/fixtures/.generated/
 
 # Environment and secrets
