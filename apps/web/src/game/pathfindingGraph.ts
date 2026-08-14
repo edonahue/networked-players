@@ -193,11 +193,18 @@ export async function pathfindingGraphVersion(
  * Async because hash recomputation uses `contentHash`
  * (`crypto.subtle.digest`, browsers' only SHA-256 primitive) -- its one
  * caller, `loadPathfindingGraph`, was already async. Cross-catalog checks
- * (`catalog_version` matching a real catalog, `album_id` resolving into it)
- * stay Python-only: the browser never has the full catalog loaded
- * alongside the graph, so this validator only proves internal
- * self-consistency, the same "was this corrupted since it was written"
- * scope the Python docstring names. */
+ * stay Python-only, by design, not by omission: the browser never has the
+ * full catalog loaded alongside the graph, so this validator only proves
+ * internal self-consistency, the same "was this corrupted since it was
+ * written" scope the Python docstring names. That specifically excludes
+ * `catalog_version` matching a real catalog, `album_id` resolving into it,
+ * every catalog album having its own `album_virtual_nodes` entry (including
+ * one with zero in-scope credited contributors), and each entry's
+ * `main_release_id` VALUE agreeing with the catalog's own value for that
+ * album -- the last two are Python-only checks with no TS equivalent here,
+ * not a parity gap; see `data/fixtures/pathfinding-graph/README.md`'s
+ * parity matrix for the full breakdown of what's shared versus
+ * catalog-dependent. */
 export async function validatePathfindingGraph(
   value: unknown,
 ): Promise<PathfindingGraph | null> {

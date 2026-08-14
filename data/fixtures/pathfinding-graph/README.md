@@ -75,4 +75,17 @@ TypeScript-only, since JSON has no literal for either value:
 Genuinely catalog-dependent checks (Python only, no TypeScript equivalent
 by design, not tested via a shared fixture since the browser validator has
 no catalog to check against): `catalog_version` matching the canonical
-catalog, and each `album_virtual_nodes[i].album_id` resolving into it.
+catalog, each `album_virtual_nodes[i].album_id` resolving into it, **every**
+catalog album having its own `album_virtual_nodes` entry -- including one
+with zero in-scope credited contributors, which still gets a real, isolated
+virtual node per the contract's own "never silently dropped" requirement --
+and each entry's `main_release_id` VALUE agreeing with the catalog's own
+value for that album (not merely being *an* integer, which the shared
+`malformed-fractional-main-release-id.json` fixture above already covers
+for both languages). These two (post-#110 correctness-closeout follow-up)
+are covered by inline-built Python tests
+(`test_v2_missing_catalog_album_is_rejected`,
+`test_v2_main_release_id_mismatches_catalog_is_rejected`,
+`test_v2_zero_contributor_album_virtual_node_is_accepted`) rather than new
+fixture files, matching this file's existing convention for catalog-
+dependent v2 checks (e.g. `test_v2_album_id_not_in_catalog_is_rejected`).

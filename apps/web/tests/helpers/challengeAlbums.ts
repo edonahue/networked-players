@@ -74,11 +74,12 @@ export async function pickBoundedConnectedAlbum(
 
 interface AlbumArtRegistry {
   catalog_version: string;
-  albums: Array<{ album_id: string }>;
+  albums: Array<{ album_id: string; main_release_id?: number }>;
 }
 
 interface CatalogAlbum {
   catalog_version: string;
+  albums: Array<{ id: string; main_release_id: number }>;
 }
 
 /**
@@ -90,10 +91,17 @@ interface CatalogAlbum {
  * Cover art is resolved at build time from a wholly separate artifact
  * (`public/data/catalog/album-art.v1.json`, see `src/data/albumArt.ts`),
  * with its own presence/version validation -- nothing ties "fewest paths"
- * to "has art". This helper cross-references that registry the same way
- * `coverFor()` does (entry presence + matching `catalog_version`, the
- * primary gate) so a hotlink-contract test can pick an album guaranteed to
- * exercise the real `<img>` branch rather than the placeholder.
+ * to "has art". This helper cross-references that registry against exactly
+ * two of `coverFor()`'s checks: entry presence, and matching
+ * `catalog_version` (the primary gate). It additionally now requires
+ * `main_release_id` agreement against the canonical catalog, closing the
+ * one previously-unreplicated check that had no downstream re-verification
+ * (a bad pick here could silently render the wrong evidence with no test
+ * catching it). It deliberately does NOT replicate `coverFor()`'s
+ * URL-approval check (https + `i.discogs.com` host) -- the dedicated
+ * hotlink test that consumes this helper's pick already independently
+ * re-asserts the rendered `src` against that exact pattern afterward, so a
+ * bad host pick would fail loudly there, not silently pass here.
  */
 export async function pickConnectedAlbumWithArt(
   request: APIRequestContext,
@@ -121,9 +129,21 @@ export async function pickConnectedAlbumWithArt(
     }
   }
 
+  const catalogMainReleaseIdByAlbum = new Map(
+    catalog.albums.map((a) => [a.id, a.main_release_id]),
+  );
   const artAlbumIds =
     art.catalog_version === catalog.catalog_version
-      ? new Set(art.albums.map((a) => a.album_id))
+      ? new Set(
+          art.albums
+            .filter(
+              (a) =>
+                a.main_release_id === undefined ||
+                a.main_release_id ===
+                  catalogMainReleaseIdByAlbum.get(a.album_id),
+            )
+            .map((a) => a.album_id),
+        )
       : new Set<string>();
 
   const candidates = albums

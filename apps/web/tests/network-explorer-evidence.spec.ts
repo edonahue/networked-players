@@ -245,7 +245,12 @@ test("a newer edge's open invalidates an older edge's still-pending evidence", a
   await waitForGraph(page);
   const edges = page.locator("[data-explorer-edges] .explorer-edge-group");
   const count = await edges.count();
-  test.skip(count < 2, "this real center doesn't have a second edge");
+  // master-107325 is documented (this file's own header) as a real,
+  // high-degree center -- 1696 real edges in the committed graph.v2.json,
+  // capped at 24 in the DOM. A hard precondition, not a skip: if this ever
+  // drops below 2, the fixture itself has changed and this test's premise
+  // needs revisiting, not a silently-skipped CI run.
+  expect(count).toBeGreaterThanOrEqual(2);
 
   await edges.nth(0).click();
   const drawer = page.locator("[data-explorer-evidence-drawer]");
