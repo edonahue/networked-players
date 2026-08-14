@@ -108,15 +108,23 @@ shortest layers verified complete.
 | Pairs where an **equal-hop** alternative strictly lowers the worst hub | **23 of 40 (57.5%)** |
 | Shortest-hop distribution | 0 hops: 2 · 1 hop: 23 · 2 hops: 15 |
 | Equal-hop candidates per pair | min 1 · **median 4.5** · max 157 |
-| Shortest-layer enumeration expansions | min 2 · **median 12** · max 403 |
-| Shortest-layer enumeration time (CPython) | median 0.024 s · **max 0.088 s** |
+| Shortest-layer enumeration expansions | **median 11.5** · max 397 |
 | Candidates within +1 hop | **exceeds 20,000** for many pairs |
+
+Every figure above is printed verbatim by the `research-route-quality`
+command below, so the decision and its reproducible report cannot drift
+apart. Expansion and candidate counts are deterministic properties of the
+graph and the algorithm — identical on any machine, so they belong here. Elapsed
+time is a benchmark *result* and stays in `local/research/` per
+[ADR 0018](0018-benchmark-results-local-only.md) and
+`docs/PUBLIC_PRIVATE_BOUNDARY.md`; the reproducible method is the
+`research-route-quality` command above, not a transcribed number.
 
 Two conclusions follow directly, and neither was chosen by taste:
 
-- **Enumerate the complete shortest layer.** It is small and cheap — max
-  157 routes, max 403 expansions, under 0.1 s in CPython, and the browser
-  already pays several times that parsing the graph. Nearly three in five
+- **Enumerate the complete shortest layer.** It is small and bounded — max
+  157 routes over max 397 expansions, against a graph whose parse and
+  integrity hash already dominate any per-search cost. Nearly three in five
   pairs improve with **no hop increase at all**.
 - **Treat any hop increase as exceptional and hard-capped.** The +1 layer is
   effectively unbounded (>20,000 routes for many pairs), so it may only be
@@ -179,7 +187,7 @@ shared credit remains documented co-participation and nothing more.
 ## Revisit trigger
 
 If the catalog grows enough that the shortest layer stops being cheap —
-concretely, if measured shortest-layer enumeration exceeds ~250 ms or the
+concretely, if shortest-layer expansions routinely exceed ~5,000 or the
 equal-hop candidate count routinely exceeds ~1,000 — revisit the bound
 before widening the hop allowance. If a future artifact ever publishes
 per-pair *candidate* releases rather than one collapsed choice, revisit

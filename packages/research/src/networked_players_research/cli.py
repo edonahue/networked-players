@@ -386,6 +386,7 @@ def main(argv: list[str] | None = None) -> int:
                         "routes_within_one_extra_hop": m.routes_within_one_extra_hop,
                         "equal_hop_improves_hub": m.equal_hop_improves_hub,
                         "enumeration_expansions": m.enumeration_expansions,
+                        "shortest_layer_expansions": m.shortest_layer_expansions,
                         "enumeration_seconds": round(m.enumeration_seconds, 4),
                         "enumeration_truncated": m.enumeration_truncated,
                         "shortest_layer_complete": m.shortest_layer_complete,

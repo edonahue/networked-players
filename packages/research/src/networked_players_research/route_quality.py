@@ -125,6 +125,12 @@ class EnumerationResult:
     #: a partially-enumerated shortest layer is an arbitrary CSR-ordered
     #: prefix, not a sample.
     shortest_layer_complete: bool = False
+    #: Expansions consumed by the shortest layer ALONE, snapshotted when
+    #: that layer finishes. `expansions` keeps counting through the deeper
+    #: layers, so it answers a different question -- ADR 0059's bound is
+    #: about the shortest layer, which is the only thing PR 3's engine
+    #: enumerates completely.
+    shortest_layer_expansions: int = 0
 
     @property
     def truncated(self) -> bool:
@@ -273,6 +279,7 @@ def enumerate_routes(
         if is_shortest_layer:
             # Only the expansion cap can cut the shortest layer short now.
             result.shortest_layer_complete = completed
+            result.shortest_layer_expansions = result.expansions
         if not completed:
             if not result.truncated_by_expansion_cap:
                 result.truncated_by_route_cap = True
@@ -379,6 +386,9 @@ class PairMeasurement:
     bfs_first: RouteMetrics | None
     best_equal_hop_by_degree: RouteMetrics | None
     enumeration_expansions: int
+    #: Expansions for the shortest layer alone -- the figure ADR 0059's
+    #: bound is stated in, and the one PR 3's engine will actually pay.
+    shortest_layer_expansions: int
     enumeration_seconds: float
     enumeration_truncated: bool
     #: Was every route at the shortest depth collected? Every equal-hop
@@ -438,6 +448,7 @@ def measure_pair(
             bfs_first=baseline_metrics,
             best_equal_hop_by_degree=None,
             enumeration_expansions=enumeration.expansions,
+            shortest_layer_expansions=enumeration.shortest_layer_expansions,
             enumeration_seconds=enumeration.elapsed_seconds,
             enumeration_truncated=enumeration.truncated,
             shortest_layer_complete=enumeration.shortest_layer_complete,
@@ -476,6 +487,7 @@ def measure_pair(
         bfs_first=baseline_metrics,
         best_equal_hop_by_degree=best_by_degree,
         enumeration_expansions=enumeration.expansions,
+        shortest_layer_expansions=enumeration.shortest_layer_expansions,
         enumeration_seconds=enumeration.elapsed_seconds,
         enumeration_truncated=enumeration.truncated,
         shortest_layer_complete=enumeration.shortest_layer_complete,
@@ -616,8 +628,20 @@ def summarize(measurements: Sequence[PairMeasurement]) -> dict[str, Any]:
         },
         "enumeration": {
             "truncated_pairs": len(truncated),
+            # The bounded search as a whole, across every allowed depth.
             "max_expansions": max((m.enumeration_expansions for m in measurements), default=0),
-            "max_seconds": max((m.enumeration_seconds for m in measurements), default=0.0),
+            # The shortest layer alone -- the bound ADR 0059 actually
+            # states, and all PR 3's engine enumerates completely. Elapsed
+            # time is deliberately absent: a benchmark result stays in
+            # local/ (ADR 0018), while an expansion count is deterministic.
+            "shortest_layer_max_expansions": max(
+                (m.shortest_layer_expansions for m in complete), default=0
+            ),
+            "shortest_layer_median_expansions": (
+                statistics.median([m.shortest_layer_expansions for m in complete])
+                if complete
+                else 0
+            ),
         },
     }
 

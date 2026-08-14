@@ -253,6 +253,7 @@ def test_summary_median_matches_a_true_median_on_an_even_sample() -> None:
             bfs_first=None,
             best_equal_hop_by_degree=None,
             enumeration_expansions=0,
+            shortest_layer_expansions=0,
             enumeration_seconds=0.0,
             enumeration_truncated=False,
             shortest_layer_complete=True,
@@ -507,3 +508,18 @@ def test_incomplete_shortest_layers_are_excluded_from_aggregates() -> None:
     assert (
         summary["equal_hop_hub_improvable"]["share_of_pairs_with_a_complete_shortest_layer"] == 1.0
     )
+
+
+def test_shortest_layer_expansions_are_snapshotted_not_the_whole_search() -> None:
+    """ADR 0059 states its bound in shortest-layer expansions, so the CLI
+    has to report that figure -- `expansions` keeps counting through the
+    deeper layers and answers a different question."""
+    graph = two_album_graph()
+    start = graph.index_by_node_id[-1]
+    goal = graph.index_by_node_id[-2]
+    result = enumerate_routes(graph, start, goal, max_user_hops=4)
+    assert result.shortest_layer_complete
+    assert 0 < result.shortest_layer_expansions < result.expansions
+
+    shortest_only = enumerate_routes(graph, start, goal, max_user_hops=1)
+    assert result.shortest_layer_expansions == shortest_only.shortest_layer_expansions
