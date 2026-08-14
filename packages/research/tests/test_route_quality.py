@@ -388,7 +388,9 @@ def test_summarize_reports_the_hub_improvable_share() -> None:
     assert summary["pairs_measured"] == 1
     assert summary["pairs_with_a_route"] == 1
     assert summary["equal_hop_hub_improvable"]["count"] == 1
-    assert summary["equal_hop_hub_improvable"]["share_of_pairs_with_a_route"] == 1.0
+    assert (
+        summary["equal_hop_hub_improvable"]["share_of_pairs_with_a_complete_shortest_layer"] == 1.0
+    )
     assert summary["shortest_hop_histogram"] == {"1": 1}
 
 
@@ -480,3 +482,28 @@ def test_stratified_pairs_span_every_degree_stratum_combination() -> None:
     # Not merely the complementary-rank diagonal.
     assert len(combinations) >= 3
     assert any(a == b for a, b in combinations), "no same-stratum pair sampled"
+
+
+def test_incomplete_shortest_layers_are_excluded_from_aggregates() -> None:
+    """A partial layer contributes an arbitrary prefix's count to the
+    distribution, and -- since its hub claim is correctly withheld -- would
+    otherwise sit in the improvement denominator as a false
+    non-improvement, biasing a capped run's headline downward."""
+    graph = two_album_graph()
+    complete = measure_pair(graph, "album-a", "album-b", max_user_hops=4)
+    partial = measure_pair(graph, "album-a", "album-b", max_user_hops=4, max_expansions=5)
+    assert complete is not None and partial is not None
+    assert complete.shortest_layer_complete
+    assert not partial.shortest_layer_complete
+    assert partial.shortest_user_hops is not None  # it did find a route
+
+    summary = summarize([complete, partial])
+    assert summary["pairs_with_a_route"] == 2
+    assert summary["pairs_shortest_layer_incomplete"] == 1
+    # Aggregates cover only the complete pair.
+    assert summary["equal_hop_alternatives"]["measured_over_pairs"] == 1
+    assert summary["equal_hop_alternatives"]["max"] == complete.equal_hop_route_count
+    assert summary["equal_hop_hub_improvable"]["measured_over_pairs"] == 1
+    assert (
+        summary["equal_hop_hub_improvable"]["share_of_pairs_with_a_complete_shortest_layer"] == 1.0
+    )

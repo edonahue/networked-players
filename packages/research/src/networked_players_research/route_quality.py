@@ -580,16 +580,26 @@ def summarize(measurements: Sequence[PairMeasurement]) -> dict[str, Any]:
     without_route = [
         m for m in measurements if m.shortest_user_hops is None and not m.reachability_unknown
     ]
-    hub_improvable = [m for m in with_route if m.equal_hop_improves_hub]
+    # Every equal-hop aggregate is computed ONLY over pairs whose shortest
+    # layer was fully enumerated. A partial layer contributes an arbitrary
+    # CSR-ordered prefix's count to the distribution, and -- because its
+    # hub claim is (correctly) withheld -- would otherwise sit in the
+    # improvement denominator as a false non-improvement, biasing a capped
+    # run's headline downward.
+    complete = [m for m in with_route if m.shortest_layer_complete]
+    incomplete = [m for m in with_route if not m.shortest_layer_complete]
+    hub_improvable = [m for m in complete if m.equal_hop_improves_hub]
     truncated = [m for m in measurements if m.enumeration_truncated]
-    equal_hop_counts = sorted(m.equal_hop_route_count for m in with_route)
+    equal_hop_counts = sorted(m.equal_hop_route_count for m in complete)
     return {
         "pairs_measured": len(measurements),
         "pairs_with_a_route": len(with_route),
         "pairs_without_a_route": len(without_route),
         "pairs_reachability_unknown": len(unknown),
+        "pairs_shortest_layer_incomplete": len(incomplete),
         "shortest_hop_histogram": _histogram(m.shortest_user_hops for m in with_route),
         "equal_hop_alternatives": {
+            "measured_over_pairs": len(complete),
             "min": equal_hop_counts[0] if equal_hop_counts else 0,
             # A true median (mean of both central observations on an even
             # sample), not the upper-middle element -- the ADR quotes this
@@ -599,8 +609,9 @@ def summarize(measurements: Sequence[PairMeasurement]) -> dict[str, Any]:
         },
         "equal_hop_hub_improvable": {
             "count": len(hub_improvable),
-            "share_of_pairs_with_a_route": (
-                len(hub_improvable) / len(with_route) if with_route else 0.0
+            "measured_over_pairs": len(complete),
+            "share_of_pairs_with_a_complete_shortest_layer": (
+                len(hub_improvable) / len(complete) if complete else 0.0
             ),
         },
         "enumeration": {
