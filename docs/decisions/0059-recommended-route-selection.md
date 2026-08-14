@@ -74,23 +74,37 @@ against the live artifact while building the measurement harness, now a
 regression test). Truncation must only ever discard routes **longer** than
 ones already held.
 
+The **shortest layer is additionally exempt from the route cap**, and its
+completeness is reported rather than assumed. Every equal-hop statistic
+below is computed over that layer, and a partially-enumerated layer is an
+arbitrary CSR-ordered prefix, not a sample — capping it mid-depth would
+silently undercount candidates and could miss the best route outright. When
+the expansion cap does fire inside the shortest layer, the layer is flagged
+incomplete and the derived hub claim is withheld instead of asserted.
+
 ### Measured bounds (real artifact, 40 stratified pairs, `local/research/`)
+
+Pairs are sampled across degree terciles covering **every** stratum
+combination (sparse/sparse through dense/dense). An earlier
+complementary-rank pairing produced only sparse/dense pairs and biased
+these figures; the numbers below are from the corrected sample, with all 40
+shortest layers verified complete.
 
 | Measurement | Result |
 | --- | --- |
-| Pairs where an **equal-hop** alternative strictly lowers the worst hub | **20 of 40 (50%)** |
-| Shortest-hop distribution | 0 hops: 3 · 1 hop: 21 · 2 hops: 16 |
-| Equal-hop candidates per pair | min 1 · **median 6** · max 223 |
-| Shortest-layer enumeration expansions | min 2 · **median 17** · max 639 |
-| Shortest-layer enumeration time (CPython) | median 0.02 s · **max 0.097 s** |
+| Pairs where an **equal-hop** alternative strictly lowers the worst hub | **23 of 40 (57.5%)** |
+| Shortest-hop distribution | 0 hops: 2 · 1 hop: 23 · 2 hops: 15 |
+| Equal-hop candidates per pair | min 1 · **median 4.5** · max 159 |
+| Shortest-layer enumeration expansions | min 2 · **median 12** · max 403 |
+| Shortest-layer enumeration time (CPython) | median 0.024 s · **max 0.088 s** |
 | Candidates within +1 hop | **exceeds 20,000** for many pairs |
 
 Two conclusions follow directly, and neither was chosen by taste:
 
 - **Enumerate the complete shortest layer.** It is small and cheap — max
-  223 routes, max 639 expansions, under 0.1 s in CPython, and the browser
-  already pays more than that parsing the graph. Half the available
-  improvement needs **no hop increase at all**.
+  159 routes, max 403 expansions, under 0.1 s in CPython, and the browser
+  already pays several times that parsing the graph. Nearly three in five
+  pairs improve with **no hop increase at all**.
 - **Treat any hop increase as exceptional and hard-capped.** The +1 layer is
   effectively unbounded (>20,000 routes for many pairs), so it may only be
   consulted when the shortest layer offers nothing, and never without a cap.

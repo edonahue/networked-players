@@ -39,6 +39,12 @@ from networked_players_graph_core.role_taxonomy import classify_role
 
 ALBUM_ANCHOR_SENTINEL = "__np_album_anchor__"
 
+#: The four categories in `RoleCategory` that mean somebody actually
+#: performed. The other seven (production, engineering, arrangement,
+#: composition, rework, packaging_business, unknown) are real credits but
+#: not performances, and must not be counted as such.
+PERFORMANCE_CATEGORIES = frozenset({"vocals", "strings", "percussion_keys", "brass_woodwind"})
+
 #: Anchor edges (album -> first contributor, last contributor -> album) are
 #: not user-visible hops but do consume BFS depth, matching
 #: `pathfindingGraph.ts`'s own ALBUM_ANCHOR_HOP_BUDGET.
@@ -112,6 +118,12 @@ class EnumerationResult:
     truncated_by_route_cap: bool = False
     truncated_by_expansion_cap: bool = False
     elapsed_seconds: float = 0.0
+    #: True only when every route at the shortest reachable depth was
+    #: collected. Every equal-hop statistic derived downstream is
+    #: meaningless without this, so it is reported rather than assumed --
+    #: a partially-enumerated shortest layer is an arbitrary CSR-ordered
+    #: prefix, not a sample.
+    shortest_layer_complete: bool = False
 
     @property
     def truncated(self) -> bool:
@@ -182,13 +194,13 @@ def enumerate_routes(
     path_slots: list[int] = []
     on_path = {start_index}
 
-    def walk(node: int, depth: int, target_depth: int) -> bool:
+    def walk(node: int, depth: int, target_depth: int, *, enforce_cap: bool) -> bool:
         """Collect routes of EXACTLY `target_depth`. Returns False to
         signal an enumeration bound was hit."""
         if node == goal_index:
             if depth == target_depth:
                 result.routes.append(RouteCandidate(tuple(path_nodes), tuple(path_slots)))
-                return len(result.routes) < max_routes
+                return (not enforce_cap) or len(result.routes) < max_routes
             return True
 
         remaining = target_depth - depth
@@ -214,7 +226,7 @@ def enumerate_routes(
             on_path.add(neighbor)
             path_nodes.append(neighbor)
             path_slots.append(slot)
-            keep_going = walk(neighbor, depth + 1, target_depth)
+            keep_going = walk(neighbor, depth + 1, target_depth, enforce_cap=enforce_cap)
             path_nodes.pop()
             path_slots.pop()
             on_path.discard(neighbor)
@@ -223,7 +235,21 @@ def enumerate_routes(
         return True
 
     for target_depth in range(shortest_possible, max_depth + 1):
-        if not walk(start_index, 0, target_depth):
+        # The shortest layer is never cut off mid-depth. Every equal-hop
+        # statistic downstream (candidate count, best-by-degree, the
+        # hub-improvement signal) is computed over that layer, and a
+        # partial layer is an arbitrary CSR-ordered prefix rather than a
+        # sample -- it would silently understate the count and could miss
+        # the best route entirely. Measured worst case is 223 routes at
+        # 639 expansions, so completing it is cheap; the expansion cap
+        # still bounds a pathological graph, and when IT fires the layer
+        # is honestly reported as incomplete.
+        is_shortest_layer = target_depth == shortest_possible
+        completed = walk(start_index, 0, target_depth, enforce_cap=not is_shortest_layer)
+        if is_shortest_layer:
+            # Only the expansion cap can cut the shortest layer short now.
+            result.shortest_layer_complete = completed
+        if not completed:
             if not result.truncated_by_expansion_cap:
                 result.truncated_by_route_cap = True
             break
@@ -260,7 +286,7 @@ def route_metrics(graph: PublishedGraph, route: RouteCandidate) -> RouteMetrics:
             for category in classify_role(role_text)
         }
         categories.extend(sorted(hop_categories))
-        if hop_categories - {"production"}:
+        if hop_categories & PERFORMANCE_CATEGORIES:
             performer_hops += 1
     return RouteMetrics(
         user_hop_count=route.user_hop_count,
@@ -331,9 +357,13 @@ class PairMeasurement:
     enumeration_expansions: int
     enumeration_seconds: float
     enumeration_truncated: bool
+    #: Was every route at the shortest depth collected? Every equal-hop
+    #: figure below is only meaningful when this is True.
+    shortest_layer_complete: bool
     #: Did an equal-hop alternative strictly reduce the worst hub on the
     #: route? This is the headline disagreement signal -- it says the
-    #: current first-found answer was avoidably hub-heavy.
+    #: current first-found answer was avoidably hub-heavy. Only ever set
+    #: when the shortest layer was fully enumerated.
     equal_hop_improves_hub: bool
 
 
@@ -381,6 +411,7 @@ def measure_pair(
             enumeration_expansions=enumeration.expansions,
             enumeration_seconds=enumeration.elapsed_seconds,
             enumeration_truncated=enumeration.truncated,
+            shortest_layer_complete=enumeration.shortest_layer_complete,
             equal_hop_improves_hub=False,
         )
 
@@ -408,6 +439,7 @@ def measure_pair(
         enumeration_expansions=enumeration.expansions,
         enumeration_seconds=enumeration.elapsed_seconds,
         enumeration_truncated=enumeration.truncated,
+        shortest_layer_complete=enumeration.shortest_layer_complete,
         equal_hop_improves_hub=improves,
     )
 
@@ -418,13 +450,14 @@ def stratified_album_pairs(
     *,
     limit: int,
 ) -> list[tuple[str, str]]:
-    """Deterministic, spread-out pairs across the catalog's anchor-degree
-    range -- chosen programmatically rather than hand-picked, so the
-    measurement cannot be accused of selecting flattering examples.
+    """Deterministic pairs spanning every anchor-degree topology --
+    chosen programmatically rather than hand-picked, so the measurement
+    cannot be accused of selecting flattering examples.
 
-    Albums are ordered by their anchor's degree (how many in-scope
-    contributors the album has) and paired across that ordering, so the set
-    spans sparse/sparse, sparse/dense and dense/dense combinations.
+    Albums are ranked by their anchor's degree (how many in-scope
+    contributors the album has), split into terciles, and sampled from
+    every stratum combination: sparse/sparse, sparse/mid, sparse/dense,
+    mid/mid, mid/dense and dense/dense.
     """
     scored: list[tuple[int, str]] = []
     for album_id in album_ids:
@@ -440,13 +473,40 @@ def stratified_album_pairs(
     if len(ordered) < 2:
         return []
 
+    # Split into terciles by anchor degree, then walk EVERY stratum
+    # combination -- low/low, low/mid, low/high, mid/mid, mid/high,
+    # high/high -- rather than pairing rank i with rank n-1-i. That
+    # complementary-rank walk only ever produces sparse/dense (plus
+    # middle/middle where the two ends meet), which would bias the
+    # route-count and hub-improvement statistics ADR 0059 rests on toward
+    # one topology.
+    count = len(ordered)
+    cut_low = count // 3
+    cut_high = (2 * count) // 3
+    strata = [
+        ordered[:cut_low] or ordered[:1],
+        ordered[cut_low:cut_high] or ordered[:1],
+        ordered[cut_high:] or ordered[-1:],
+    ]
+    combinations = [(0, 0), (0, 1), (0, 2), (1, 1), (1, 2), (2, 2)]
+
     pairs: list[tuple[str, str]] = []
     seen: set[tuple[str, str]] = set()
-    count = len(ordered)
-    stride = max(1, count // max(1, limit))
-    for offset in range(0, count, stride):
-        left = ordered[offset]
-        right = ordered[(count - 1) - offset]
+    # Round-robin across combinations so a small `limit` still samples
+    # every topology rather than exhausting the first combination.
+    for step in range(limit * len(combinations)):
+        if len(pairs) >= limit:
+            break
+        left_stratum, right_stratum = combinations[step % len(combinations)]
+        offset = step // len(combinations)
+        left_pool = strata[left_stratum]
+        right_pool = strata[right_stratum]
+        if not left_pool or not right_pool:
+            continue
+        left = left_pool[offset % len(left_pool)]
+        # Offset the right index so a same-stratum combination does not
+        # simply pair an album with itself.
+        right = right_pool[(offset + 1 + step) % len(right_pool)]
         if left == right:
             continue
         key = (min(left, right), max(left, right))
@@ -454,8 +514,6 @@ def stratified_album_pairs(
             continue
         seen.add(key)
         pairs.append((left, right))
-        if len(pairs) >= limit:
-            break
     return pairs
 
 

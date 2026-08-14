@@ -153,12 +153,18 @@ def test_deepening_collects_shortest_routes_before_a_cap_can_drop_them() -> None
     goal = graph.index_by_node_id[-2]
     capped = enumerate_routes(graph, start, goal, max_user_hops=4, max_routes=1)
     assert capped.truncated_by_route_cap
-    assert len(capped.routes) == 1
-    assert capped.routes[0].user_hop_count == 1  # the shortest, not an arbitrary one
-
     uncapped = enumerate_routes(graph, start, goal, max_user_hops=4)
+
+    # The invariant: a cap may drop LONGER routes, never shorter ones. The
+    # capped run must still report the true shortest length and hold every
+    # route at that length (the shortest layer is exempt from the cap --
+    # see test_shortest_layer_completes_even_when_the_route_cap_is_smaller).
+    shortest_capped = min(r.user_hop_count for r in capped.routes)
     shortest_uncapped = min(r.user_hop_count for r in uncapped.routes)
-    assert capped.routes[0].user_hop_count == shortest_uncapped
+    assert shortest_capped == shortest_uncapped
+    assert len([r for r in capped.routes if r.user_hop_count == shortest_capped]) == len(
+        [r for r in uncapped.routes if r.user_hop_count == shortest_uncapped]
+    )
 
 
 def test_expansion_cap_is_enforced_and_reported() -> None:
@@ -250,3 +256,89 @@ def test_summarize_reports_the_hub_improvable_share() -> None:
 
 def test_summarize_handles_an_empty_measurement_set() -> None:
     assert summarize([])["pairs_measured"] == 0
+
+
+# --- review follow-ups (PR #112) ---------------------------------------
+
+
+def test_shortest_layer_completes_even_when_the_route_cap_is_smaller() -> None:
+    """The route cap must never cut the shortest layer mid-depth: every
+    equal-hop statistic is computed over that layer, and a partial layer is
+    an arbitrary CSR-ordered prefix, not a sample. With max_routes=1 and
+    two equal-hop routes, BOTH must still be collected."""
+    graph = two_album_graph()
+    start = graph.index_by_node_id[-1]
+    goal = graph.index_by_node_id[-2]
+    result = enumerate_routes(graph, start, goal, max_user_hops=4, max_routes=1)
+    shortest = min(r.user_hop_count for r in result.routes)
+    at_shortest = [r for r in result.routes if r.user_hop_count == shortest]
+    assert len(at_shortest) == 2
+    assert result.shortest_layer_complete
+
+
+def test_equal_hop_statistics_are_computed_over_a_complete_layer() -> None:
+    graph = two_album_graph()
+    measurement = measure_pair(graph, "album-a", "album-b", max_user_hops=4, max_routes=1)
+    assert measurement is not None
+    assert measurement.shortest_layer_complete
+    assert measurement.equal_hop_route_count == 2
+    # The better alternative is still found despite the tiny route cap.
+    assert measurement.equal_hop_improves_hub is True
+
+
+def test_an_incomplete_shortest_layer_suppresses_the_hub_signal() -> None:
+    """If the expansion cap fires inside the shortest layer, the layer is
+    reported incomplete and the derived hub claim is withheld rather than
+    asserted from a prefix."""
+    graph = two_album_graph()
+    measurement = measure_pair(graph, "album-a", "album-b", max_user_hops=4, max_expansions=2)
+    assert measurement is not None
+    assert not measurement.shortest_layer_complete
+    assert measurement.equal_hop_improves_hub is False
+
+
+def test_performer_share_counts_only_real_performance_categories() -> None:
+    """production/engineering/composition etc. are real credits but not
+    performances -- a hop credited solely to them must not count."""
+    graph = build_graph(
+        node_ids=[-2, -1, 10, 20],
+        edges=[(-1, 10, 1001), (10, 20, 5005), (-2, 20, 2001)],
+        roles={
+            (10, 20): ("Producer", "Engineer"),
+            (20, 10): ("Engineer", "Producer"),
+        },
+        album_anchors={"a": -1, "b": -2},
+    )
+    start, goal = graph.index_by_node_id[-1], graph.index_by_node_id[-2]
+    route = bfs_first_route(graph, start, goal, max_user_hops=4)
+    assert route is not None
+    metrics = route_metrics(graph, route)
+    assert metrics.performer_hop_share == 0.0
+    assert "production" in metrics.role_categories
+
+
+def test_stratified_pairs_span_every_degree_stratum_combination() -> None:
+    """Complementary-rank pairing (i with n-1-i) only ever yields
+    sparse/dense; the sample must also contain sparse/sparse and
+    dense/dense or the statistics are biased toward one topology."""
+    graph = build_graph(
+        node_ids=[-9, -8, -7, -6, -5, -4, -3, -2, -1, 100],
+        edges=[(-i, 100, 1000 + i) for i in range(1, 10)],
+        album_anchors={f"album-{i}": -i for i in range(1, 10)},
+    )
+    album_ids = [f"album-{i}" for i in range(1, 10)]
+    pairs = stratified_album_pairs(graph, album_ids, limit=6)
+    assert pairs == stratified_album_pairs(graph, album_ids, limit=6)
+
+    ranked = sorted(
+        album_ids,
+        key=lambda a: (
+            graph.degree(graph.index_by_node_id[graph.virtual_id_by_album_id[a]]),
+            a,
+        ),
+    )
+    stratum_of = {album_id: min(2, (3 * i) // len(ranked)) for i, album_id in enumerate(ranked)}
+    combinations = {tuple(sorted((stratum_of[left], stratum_of[right]))) for left, right in pairs}
+    # Not merely the complementary-rank diagonal.
+    assert len(combinations) >= 3
+    assert any(a == b for a, b in combinations), "no same-stratum pair sampled"

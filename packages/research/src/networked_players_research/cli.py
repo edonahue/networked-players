@@ -388,6 +388,7 @@ def main(argv: list[str] | None = None) -> int:
                         "enumeration_expansions": m.enumeration_expansions,
                         "enumeration_seconds": round(m.enumeration_seconds, 4),
                         "enumeration_truncated": m.enumeration_truncated,
+                        "shortest_layer_complete": m.shortest_layer_complete,
                         "bfs_first": _route_metrics_json(m.bfs_first),
                         "best_equal_hop_by_degree": _route_metrics_json(m.best_equal_hop_by_degree),
                     }
