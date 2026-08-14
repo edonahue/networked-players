@@ -265,6 +265,86 @@ evidence is never concealed or rewritten.
   they are used as caveats, never as a positive "this is a studio album"
   claim.
 
+## PR 3: the recommended-route engine ships
+
+`apps/web/src/game/recommendedRoute.ts` — client-side, no artifact change.
+Enumerates the complete shortest virtual-node layer between two albums
+(bounded, shortest-first, sharing one expansion budget between the
+reverse-distance guide and the forward walk, exactly as measured above),
+ranks it on evidence caveat severity, then CSR node degree, then role
+substance (`roleTaxonomy.ts`'s new `isPerformerRole`, ported verbatim from
+`eligibility.py`'s `_PERFORMER_ROLE_TOKENS`), with a canonical sorted-edge-
+key tiebreak so two runs over the same graph always agree. The retired
+`scorePath`'s failure was coverage (1.46% of nodes via
+`contributors/index.v1.json`), not concept — degree is the same signal at
+100% coverage, for free, from the CSR already in memory.
+
+**Caveat tiers, ported from `graph.py`'s `EVIDENCE_CAVEAT_TIERS`** so the
+release the builder already de-prefers when picking evidence is the same
+one the ranker de-prefers when picking a route: unofficial (worst), then
+compilation/mixed/sampler, then promo/reissue (mildest). A flat "has any
+caveat" test cannot tell a bootleg from a reissue — the PR 2 severity-tier
+fix exists for exactly this reason, and the ranker inherits it rather than
+re-deriving a weaker version.
+
+**The +1-hop escape hatch is real and narrowly scoped**: triggered only
+when *every* shortest-layer candidate carries the worst caveat tier and a
+strictly better-evidenced route exists exactly one hop further, sharing
+the already-computed reverse-distance guide so it costs no second
+precompute. When no better alternative exists at any depth, the honestly-
+caveated shortest route is still returned — evidence is never concealed to
+make a route look cleaner than it is.
+
+**Safe fallback, satisfied structurally, not by caller discipline**: if
+bounded enumeration cannot produce a real candidate (expansion budget
+exhausted before the reverse precompute completes), `selectRecommendedRoute`
+falls back to `findAlbumRoute`'s plain first-found result internally and
+reports `rankingDegraded: true` — the caller never needs a separate
+fallback path, and the label downgrades from "Recommended" to "Shortest"
+accordingly (honest labels: the method that ran, not the outcome, decides
+the claim).
+
+**A real bug the diagnostic pair itself caught**: the first working version
+of the engine conflated `albumIndex`'s virtual ARTIST id with a CSR NODE
+INDEX, silently walking the wrong slot on every real query and returning
+`no-path` for the diagnostic pair. A second, more subtle bug followed:
+unlike `findAlbumRoute`, the engine did not exempt anchor edges from a
+caller-supplied `edgeFilter`, which would have made any future
+role-filtered use of this engine fail to leave the start album's anchor at
+all — unreachable from today's one caller (role-filtered searches keep
+using `findAlbumRoute` directly, unchanged) but a landmine in the exported
+function regardless. Both are fixed and regression-tested.
+
+**Scope decision, stated plainly**: role-filtered searches (Behind the
+Glass, Rhythm Section, Guitar Paths) keep today's plain first-found BFS
+unchanged in this PR. The edge filter already narrows every hop to one
+credit type, a materially stronger constraint than ranking adds value
+against, and the existing role-mode tests assert specific real-artifact
+hop content this PR did not want to put at risk without its own dedicated
+measurement. Extending ranking to role-filtered search is a scoped future
+change, not an oversight.
+
+**Measured against the real committed artifacts** (`graph.v2.json`,
+`release-registry.v1.json`, this machine, Node 22, warm/post-JIT): the
+diagnostic pair and the PR 1 research sample's worst pair
+(master-24047/master-3878) both complete in ~34ms, neither exhausting the
+400,000-slot shared budget (`shortestLayerComplete: true` for both) — see
+`apps/web/tests/game-connect.spec.ts`'s "the diagnostic pair" test for the
+live, real-artifact assertion that the recommended route no longer routes
+through the bootleg mashup's evidence, and
+`apps/web/tests/recommended-route.spec.ts` for the engine's own synthetic
+unit suite (ranking axes, determinism, the anchor-exclusion invariant
+verified to fail without its guard, hard caps, the +1-hop escape hatch in
+both directions, and `computeRouteFacts`/`explainRoute`).
+
+**Also retired in this PR**: `routeQuality.ts`'s `explainScore`, the
+purely-descriptive (never selecting) narrator this repo already used for
+the distinct-alternate route's explanation text. It read
+`contributors/index.v1.json`'s `connection_count` for its own hub signal —
+the same 1.46%-coverage problem `scorePath` had — so it is replaced by
+`computeRouteFacts`/`explainRoute`, which both the recommended pick and
+the distinct alternate now share, reading CSR degree instead.
+
 ## Validation
 
 - Synthetic-fixture tests for enumeration bounds, shortest-first
@@ -275,8 +355,13 @@ evidence is never concealed or rewritten.
   `networked-players-research research-route-quality`. No private one-hop
   corpus required; outputs go to the git-ignored `local/research/` lane
   (ADR 0054).
-- Ranking determinism, stable tie-breaking, role-filter hardness, and
-  fallback-to-shortest are tested in the engine itself when it ships.
+- Ranking determinism, stable tie-breaking, the virtual-anchor exclusion
+  invariant, hard caps, the +1-hop escape hatch (both the trigger and its
+  refusal to fire when nothing better exists), and safe fallback are all
+  tested in the engine itself
+  (`apps/web/tests/recommended-route.spec.ts`), plus one real-artifact,
+  real-browser assertion against the diagnostic pair
+  (`apps/web/tests/game-connect.spec.ts`).
 
 ## Revisit trigger
 

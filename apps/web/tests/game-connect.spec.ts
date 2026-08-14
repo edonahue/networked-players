@@ -117,6 +117,41 @@ test("a real connected pair finds a documented route with evidence", async ({
   ).toBeVisible();
 });
 
+// The recommended-route engine (ADR 0059, Phase 5 PR 3): Discovery ->
+// Joshua Tree is the ADR's own diagnostic pair -- production's plain BFS
+// used to surface a route through "u2", evidenced by a 1998 Italian
+// mashup 12" (release #200783, now published with the `unofficial` caveat
+// flag). Verified against the real committed artifacts: an equal-hop,
+// uncaveated alternative exists (Alex And Martin <-> U2), so the ranked
+// engine should pick it and label the result accordingly -- this is a
+// real, live behavior change this PR ships, not just an internal refactor.
+test("the diagnostic pair (Discovery / Joshua Tree) is ranked away from its caveated evidence", async ({
+  page,
+}) => {
+  await page.goto("/play/connect/");
+  await selectAlbum(page, "a", "Discovery");
+  await selectAlbum(page, "b", "Joshua Tree");
+  await page.locator("[data-connect-search]").click();
+
+  await expect(page.locator("[data-connect-results]")).toBeVisible({
+    timeout: 15000,
+  });
+  await expect(page.locator("[data-connect-eyebrow]")).toHaveText(
+    "Recommended documented route",
+  );
+  const explanation = page.locator("[data-connect-explain-primary]");
+  await expect(explanation).toBeVisible();
+  await expect(explanation).toContainText(
+    "no hop's evidence carries a published caveat",
+  );
+  // The bootleg release must never appear as the recommended route's own
+  // evidence -- it may still appear elsewhere (the distinct alternate,
+  // an evidence card) since it is never hidden, only de-prioritized.
+  await expect(
+    page.locator("[data-connect-hops] a[href*='/release/200783']"),
+  ).toHaveCount(0);
+});
+
 // Distinct alternate route (ADR 0058 Slice 7, renamed post-Phase-4 cleanup
 // audit -- the old label implied a musical ranking this never actually
 // computed, see ADR 0051's addendum): a real second bounded search that

@@ -65,6 +65,91 @@ const GUITAR_TOKENS = new Set([
   "pedal steel",
 ]);
 
+// Verbatim port of eligibility.py's `_PERFORMER_ROLE_TOKENS` -- the full
+// instrument/vocal token set, not one of the three narrow filter-mode sets
+// above. Added for ADR 0059's recommended-route ranking, which needs a
+// general "did a real performer bridge this hop" signal distinct from any
+// one filter mode's instrument-specific question. Kept in step with the
+// Python source by inspection, the same convention this file's header
+// already documents, with its own pinned parity cases in
+// apps/web/tests/game-roletaxonomy.spec.ts.
+const PERFORMER_TOKENS = new Set([
+  // Voice
+  "vocals",
+  "lead vocals",
+  "co-lead vocals",
+  "backing vocals",
+  "background vocals",
+  "additional vocals",
+  "choir",
+  "chorus",
+  "voice",
+  "rap",
+  "spoken word",
+  // Fretted / plucked / bowed strings
+  "guitar",
+  "acoustic guitar",
+  "electric guitar",
+  "lead guitar",
+  "rhythm guitar",
+  "slide guitar",
+  "steel guitar",
+  "pedal steel",
+  "bass",
+  "bass guitar",
+  "double bass",
+  "upright bass",
+  "banjo",
+  "mandolin",
+  "ukulele",
+  "sitar",
+  "violin",
+  "viola",
+  "cello",
+  "fiddle",
+  "harp",
+  // Percussion / keys
+  "drums",
+  "percussion",
+  "congas",
+  "bongos",
+  "timpani",
+  "tabla",
+  "piano",
+  "electric piano",
+  "organ",
+  "hammond organ",
+  "keyboards",
+  "synthesizer",
+  "synth",
+  "accordion",
+  "harpsichord",
+  "celesta",
+  "vibraphone",
+  "marimba",
+  "xylophone",
+  // Brass
+  "trumpet",
+  "trombone",
+  "tuba",
+  "french horn",
+  "cornet",
+  "flugelhorn",
+  // Woodwind
+  "saxophone",
+  "alto saxophone",
+  "tenor saxophone",
+  "baritone saxophone",
+  "soprano saxophone",
+  "clarinet",
+  "flute",
+  "piccolo",
+  "oboe",
+  "bassoon",
+  "bagpipes",
+  "harmonica",
+]);
+
 function normalizeComponent(component: string): string {
   return component
     .replace(/\[.*\]/g, "")
@@ -97,6 +182,16 @@ export function isRhythmSectionRole(roleText: string): boolean {
  * guitar credit (any variant -- acoustic, electric, lead, slide, etc). */
 export function isGuitarRole(roleText: string): boolean {
   return matchesAnyComponent(roleText, GUITAR_TOKENS);
+}
+
+/** True when at least one comma-separated component of `roleText` is a
+ * recognized instrument/vocal token -- did a real performer sing or play
+ * on this credit, as opposed to producing, engineering, composing, or a
+ * packaging/business role. `None`/empty is always false: unlike the
+ * edge-eligibility denylist, billing alone is not proof of performance.
+ * Mirrors eligibility.py's `is_performer_role`. */
+export function isPerformerRole(roleText: string): boolean {
+  return matchesAnyComponent(roleText, PERFORMER_TOKENS);
 }
 
 /** Edge filter for `findPath`: both endpoints' credited roles on the

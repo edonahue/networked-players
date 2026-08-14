@@ -1,33 +1,45 @@
 // Connect Two Records (ADR 0051, record-to-record search per ADR 0058):
 // wires ConnectStage.astro's markup to the pathfinding graph, the
-// evidence-release registry, the contributor index, and route-quality
-// scoring. The heavy pathfinding graph (~2.34MB gzip, ADR 0058) is
-// fetched lazily on first search, not on page load -- the page itself
-// stays light until a visitor actually searches. `loadPreparedGraph`
-// (post-Phase-4 cleanup audit F11/F12) also keeps it loaded/parsed/indexed
-// in memory for the rest of the page session, so only the first search
-// pays that cost.
+// evidence-release registry, and the recommended-route engine (ADR 0059).
+// The heavy pathfinding graph (~2.34MB gzip, ADR 0058) is fetched lazily on
+// first search, not on page load -- the page itself stays light until a
+// visitor actually searches. `loadPreparedGraph` (post-Phase-4 cleanup
+// audit F11/F12) also keeps it loaded/parsed/indexed in memory for the
+// rest of the page session, so only the first search pays that cost.
+//
+// The evidence registry is now fetched ALONGSIDE the graph, not after a
+// route is found: ADR 0059's ranking needs its caveat data to pick among
+// equal-hop candidates, so it is no longer a purely presentational
+// enhancement for the primary result. A failed or slow fetch still never
+// blocks a route from being found -- `selectRecommendedRoute` degrades to
+// ranking on degree and role substance alone when no caveat vocabulary is
+// available, the documented fallback (see recommendedRoute.ts).
 
 import { filterAlbums, type PickableAlbum } from "./albumPicker";
 import {
   buildEvidenceIndex,
   renderEndpointCard,
   renderEvidenceHop,
+  type EvidenceIndex,
   type EvidenceRelease,
 } from "./connectEvidence";
 import { escapeHtml, sessionStorageOrNull } from "./domUtils";
 import {
   findAlbumRoute,
   loadPreparedGraph,
-  type AlbumRouteResult,
+  type AlbumEndpoint,
+  type PathHop,
 } from "./pathfindingGraph";
-import { explainScore } from "./routeQuality";
+import {
+  computeRouteFacts,
+  explainRoute,
+  selectRecommendedRoute,
+} from "./recommendedRoute";
 import {
   behindTheGlassEdgeFilter,
   guitarPathsEdgeFilter,
   rhythmSectionEdgeFilter,
 } from "./roleTaxonomy";
-import type { Contributor, ContributorIndex } from "../data/contributors";
 
 const PATHFINDING_GRAPH_URL = "/data/pathfinding/graph.v2.json";
 const EVIDENCE_REGISTRY_URL = "/data/evidence/release-registry.v1.json";
@@ -67,6 +79,28 @@ const ROLE_FILTER_MODES: Record<string, RoleFilterMode> = {
       "No guitar-only connection was found between these two records within 4 hops.",
   },
 };
+
+// Module-level, like `loadPreparedGraph`'s own cache: fetched and parsed at
+// most once per page load no matter how many searches run. A resolved
+// EMPTY index (fetch/parse failure) still caches -- it is itself a valid,
+// permanent fallback (ranking degrades to degree+role, never blocks a
+// search), matching explorerStage.ts's identical no-retry convention for
+// its own evidence-index cache.
+let evidenceIndexPromise: Promise<EvidenceIndex> | null = null;
+function loadEvidenceIndex(): Promise<EvidenceIndex> {
+  if (!evidenceIndexPromise) {
+    evidenceIndexPromise = (async (): Promise<EvidenceIndex> => {
+      try {
+        const response = await fetch(EVIDENCE_REGISTRY_URL);
+        if (!response.ok) return { releases: new Map(), caveatFlagNames: [] };
+        return buildEvidenceIndex(await response.json());
+      } catch {
+        return { releases: new Map(), caveatFlagNames: [] };
+      }
+    })();
+  }
+  return evidenceIndexPromise;
+}
 
 // The album catalog is fetched asynchronously, so a picker exists in one of
 // three honest states, published on the picker root as `data-picker-state`
@@ -170,10 +204,16 @@ async function loadAlbumCatalog(): Promise<
 }
 
 /** Renders one full route (both endpoint cards + the documented hops
- * between them) into `target`. */
+ * between them) into `target`. Structural, not `AlbumRouteResult`-typed --
+ * both a plain `findAlbumRoute` result and a `RankedRoute` from
+ * `selectRecommendedRoute` satisfy this shape. */
 function renderRoute(
   target: HTMLElement,
-  route: Extract<AlbumRouteResult, { ok: true }>,
+  route: {
+    endpointA: AlbumEndpoint;
+    hops: PathHop[];
+    endpointB: AlbumEndpoint;
+  },
   fromAlbum: PickableAlbum,
   toAlbum: PickableAlbum,
   nameById: Map<number, string>,
@@ -206,6 +246,10 @@ export async function initConnect(): Promise<void> {
     "[data-connect-result='alternate']",
   );
   const explainEl = stage.querySelector<HTMLElement>("[data-connect-explain]");
+  const eyebrowEl = stage.querySelector<HTMLElement>("[data-connect-eyebrow]");
+  const explainPrimaryEl = stage.querySelector<HTMLElement>(
+    "[data-connect-explain-primary]",
+  );
   if (!searchButton || !statusEl || !resultsEl || !hopsEl) return;
 
   const setStatus = (message: string | null) => {
@@ -305,11 +349,14 @@ export async function initConnect(): Promise<void> {
     // (post-Phase-4 cleanup audit F11/F12) -- only the first search in a
     // session pays the fetch/parse/index cost; a sessionStorage failure no
     // longer causes a refetch on the 2nd/3rd/4th search within one page
-    // load, only across page loads.
-    const preparedResult = await loadPreparedGraph(
-      sessionStorageOrNull(),
-      PATHFINDING_GRAPH_URL,
-    );
+    // load, only across page loads. The evidence registry is fetched in
+    // parallel, not chained after: ADR 0059's ranking needs it, so it can
+    // no longer wait until after a route is already found the way the
+    // purely-presentational pre-ranking version did.
+    const [preparedResult, evidenceIndex] = await Promise.all([
+      loadPreparedGraph(sessionStorageOrNull(), PATHFINDING_GRAPH_URL),
+      loadEvidenceIndex(),
+    ]);
     if (!("prepared" in preparedResult)) {
       const messages: Record<string, string> = {
         "fetch-failed":
@@ -328,63 +375,116 @@ export async function initConnect(): Promise<void> {
     const { graph, artistIndex, albumIndex, nameById } =
       preparedResult.prepared;
 
+    const failureMessages: Record<string, string> = {
+      "unknown-album":
+        "One of these records isn't in the documented connection graph yet.",
+      inconclusive: "The search was inconclusive within the current bounds.",
+    };
+
     const selectedModeValue =
       stage.querySelector<HTMLInputElement>(
         "[data-connect-mode-option]:checked",
       )?.value ?? "none";
     const roleFilterMode = ROLE_FILTER_MODES[selectedModeValue];
-    const route = findAlbumRoute(
-      graph,
-      artistIndex,
-      albumIndex,
-      fromAlbum.id,
-      toAlbum.id,
-      4,
-      roleFilterMode?.edgeFilter,
-    );
-    if (!route.ok) {
-      const messages: Record<string, string> = {
-        "unknown-album":
-          "One of these records isn't in the documented connection graph yet.",
-        inconclusive: "The search was inconclusive within the current bounds.",
-        "no-path":
-          roleFilterMode?.noPathMessage ??
-          "No documented connection was found between these two records within 4 hops.",
-      };
-      setStatus(messages[route.reason] ?? "No connection found.");
-      updateButton();
-      return;
-    }
 
-    // Real evidence (title/year/country/cover) is a presentational
-    // enhancement over the always-available names/roles/Discogs-id --
-    // fetched only now, lazily, and its absence never blocks rendering
-    // the documented route itself.
-    let evidenceIndex = new Map<number, EvidenceRelease>();
-    try {
-      const evidenceResponse = await fetch(EVIDENCE_REGISTRY_URL);
-      if (evidenceResponse.ok) {
-        evidenceIndex = buildEvidenceIndex(await evidenceResponse.json());
+    // Role-filtered searches keep today's plain first-found BFS
+    // unchanged: the edge filter already narrows every hop to one credit
+    // type, which is a much stronger constraint than ranking adds value
+    // against, and this keeps the existing role-mode behavior exactly as
+    // tested. Ranking (ADR 0059) applies to the unfiltered search only.
+    let primaryRoute: {
+      endpointA: AlbumEndpoint;
+      hops: PathHop[];
+      endpointB: AlbumEndpoint;
+      usedEdgeKeys: Set<string>;
+    };
+    if (roleFilterMode) {
+      const route = findAlbumRoute(
+        graph,
+        artistIndex,
+        albumIndex,
+        fromAlbum.id,
+        toAlbum.id,
+        4,
+        roleFilterMode.edgeFilter,
+      );
+      if (!route.ok) {
+        setStatus(
+          failureMessages[route.reason] ??
+            roleFilterMode.noPathMessage ??
+            "No connection found.",
+        );
+        updateButton();
+        return;
       }
-    } catch {
-      // Falls back to names/roles/source-link-only rendering.
+      primaryRoute = route;
+      if (eyebrowEl) eyebrowEl.textContent = "Shortest documented route";
+      if (explainPrimaryEl) explainPrimaryEl.hidden = true;
+    } else {
+      const result = selectRecommendedRoute(
+        graph,
+        artistIndex,
+        albumIndex,
+        fromAlbum.id,
+        toAlbum.id,
+        evidenceIndex,
+        4,
+      );
+      if (!result.ok) {
+        setStatus(
+          failureMessages[result.reason] ??
+            "No documented connection was found between these two records within 4 hops.",
+        );
+        updateButton();
+        return;
+      }
+      primaryRoute = result.recommended;
+      // Honest labels (ADR 0059): "Recommended" only when real ranking
+      // ran. A degraded result (bounded enumeration couldn't produce a
+      // real candidate set, so the engine fell back to the plain
+      // first-found route) is still a correct, real route -- it just
+      // wasn't genuinely compared against alternatives, so it keeps the
+      // literal label instead of claiming a ranking that didn't happen.
+      if (eyebrowEl) {
+        eyebrowEl.textContent = result.rankingDegraded
+          ? "Shortest documented route"
+          : "Recommended documented route";
+      }
+      if (explainPrimaryEl) {
+        if (result.rankingDegraded) {
+          explainPrimaryEl.hidden = true;
+        } else {
+          explainPrimaryEl.hidden = false;
+          explainPrimaryEl.textContent = explainRoute(
+            result.recommended.facts,
+            result.usedPlusOneHop,
+          ).join(" · ");
+        }
+      }
     }
 
     setStatus(null);
     resultsEl.hidden = false;
     if (roleFilterMode && alternateSection) alternateSection.hidden = true;
-    renderRoute(hopsEl, route, fromAlbum, toAlbum, nameById, evidenceIndex);
+    renderRoute(
+      hopsEl,
+      primaryRoute,
+      fromAlbum,
+      toAlbum,
+      nameById,
+      evidenceIndex.releases,
+    );
 
     // Distinct alternate route (ADR 0058 Slice 7, renamed post-Phase-4
     // cleanup audit): a real second search that hard-excludes every edge
     // the first route walked (including its two anchor edges), so a found
     // result is genuinely distinct -- never a second rendering of the same
     // route under a different heading (the bug the original Slice-7 fix
-    // replaced). This is plain BFS-with-exclusion, not a ranked "musical"
-    // alternative -- the label was corrected to match what it actually
-    // does (F9/F10 in the audit). Skipped in any role-filtered mode: every
-    // hop already matches that mode's credit type by construction, so a
-    // distinct-route search has nothing to add there.
+    // replaced). This is plain BFS-with-exclusion, not a second ranked
+    // pick -- the label matches what it actually does. Skipped in any
+    // role-filtered mode: every hop already matches that mode's credit
+    // type by construction, so a distinct-route search has nothing to add
+    // there.
     if (!roleFilterMode && alternateSection && hopsAlternateEl && explainEl) {
       const alternate = findAlbumRoute(
         graph,
@@ -394,7 +494,7 @@ export async function initConnect(): Promise<void> {
         toAlbum.id,
         4,
         undefined,
-        route.usedEdgeKeys,
+        primaryRoute.usedEdgeKeys,
       );
       alternateSection.hidden = false;
       if (!alternate.ok) {
@@ -408,29 +508,18 @@ export async function initConnect(): Promise<void> {
           fromAlbum,
           toAlbum,
           nameById,
+          evidenceIndex.releases,
+        );
+        // Explained from the SAME facts the primary ranking uses --
+        // degree, evidence caveat, role substance -- never a parallel
+        // narrative computed some other way (ADR 0059).
+        const facts = computeRouteFacts(
+          graph,
+          artistIndex,
+          alternate.hops,
           evidenceIndex,
         );
-        try {
-          const contributorResponse = await fetch(
-            "/data/contributors/index.v1.json",
-          );
-          if (contributorResponse.ok) {
-            const contributorIndex =
-              (await contributorResponse.json()) as ContributorIndex;
-            const byId = new Map<number, Contributor>(
-              contributorIndex.contributors.map((c) => [c.artist_id, c]),
-            );
-            explainEl.textContent = explainScore(alternate.hops, byId).join(
-              " · ",
-            );
-          } else {
-            explainEl.textContent = "A distinct alternate documented route.";
-          }
-        } catch {
-          // Role-signal explanation is a presentational enhancement --
-          // the distinct alternate route above already rendered.
-          explainEl.textContent = "A distinct alternate documented route.";
-        }
+        explainEl.textContent = explainRoute(facts, false).join(" · ");
       }
     }
 

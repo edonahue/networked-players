@@ -88,8 +88,9 @@
   <div class="connect-status" data-connect-status role="status" aria-live="polite" hidden></div>
 
   <div class="connect-results" data-connect-results hidden>
-    <section data-connect-result="shortest">
-      <p class="eyebrow">Shortest documented route</p>
+    <section data-connect-result="primary">
+      <p class="eyebrow" data-connect-eyebrow>Shortest documented route</p>
+      <p class="connect-explain" data-connect-explain-primary hidden></p>
       <div data-connect-hops></div>
     </section>
     <section data-connect-result="alternate" hidden>

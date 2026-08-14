@@ -5,6 +5,14 @@
 // -- verified against the real committed
 // apps/web/public/data/pathfinding/graph.v2.json artifact, same real
 // Discovery <-> Joshua Tree pair game-connect.spec.ts already uses.
+//
+// The endpoint-A role text changed with ADR 0059 (Phase 5 PR 3): the
+// recommended-route engine ranks the Discovery side's art-director bridge
+// (Alex And Martin, "Design Concept, Art Direction") above the old plain-
+// BFS pick through Daft Punk, because that bridge's only evidence is the
+// diagnostic pair's own bootleg mashup release. Still a real, documented
+// co-credit endpoint -- packaging/business credits are not performer
+// credits, but they are exactly as real as a producer credit.
 
 import { expect, test } from "@playwright/test";
 import { selectAlbum } from "./helpers/connectPicker";
@@ -27,7 +35,7 @@ test("a real search renders real endpoint cards for both albums", async ({
   const first = endpoints.first();
   await expect(first).toContainText(/is credited on/i);
   await expect(first).toContainText("Discovery");
-  await expect(first).toContainText(/producer|vocals/i);
+  await expect(first).toContainText(/design concept, art direction/i);
 
   const last = endpoints.last();
   await expect(last).toContainText(/is credited on/i);
