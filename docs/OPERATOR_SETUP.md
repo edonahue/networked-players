@@ -1118,6 +1118,15 @@ run, so there is nothing to keep in sync between a "deploy" step and a "check" s
 make catalog-check-distributed
 ```
 
+> **Reinstall contracts BEFORE checking a schema-bumped artifact.** Each worker
+> validates with whatever `networked_players_contracts` is installed on it, and
+> `equip-workers.yml` does not reinstall contracts just because they changed. Publish a
+> registry with a `schema_version` the fleet's copy predates and every Pi reports a
+> confident, wrong failure (`schema_version must be 1`) against a perfectly good
+> artifact. This bit the ADR 0059 evidence-registry v2 bump. Reinstall first, then
+> check — and treat a fleet-wide failure that CI's `validate-public-artifacts` passed as
+> a staleness suspect before believing it about the artifact.
+
 Every validator except `catalog` reads two artifacts; the real default paths (matching
 the published artifact locations exactly) live in `submit_artifact_check.py`'s
 `_DEFAULT_ARTIFACTS` table — pass `--artifact <path>` (twice, in order) to override for a
@@ -1160,6 +1169,28 @@ validators now have a real, dated fleet-run record.
 | Album-credit-membership | `apps/web/public/data/albums/credit-membership.v1.json` | `album_credit_membership_version` (+ `catalog_version`) | One-hop dataset + catalog, each album's own `main_release_id` | `networked_players_contracts.album_credit_membership::album_credit_membership_failures` | `album-credit-membership` | Build-time input to the pathfinding graph's virtual album-anchor nodes only -- never fetched by the browser |
 | Evidence-release registry (v2, ADR 0059) | `apps/web/public/data/evidence/release-registry.v1.json` | `evidence_release_registry_version` (+ `catalog_version`) | One-hop dataset + catalog + challenge/routes/pathfinding-graph release ids, plus `release_formats.descriptions` for the v2 caveat flags | `networked_players_contracts.evidence_release_registry::evidence_release_registry_failures` | `evidence-release-registry` | Connect Two Records, Network Explorer (real per-hop evidence cards) |
 | Pathfinding graph (v2, ADR 0058/0059) | `apps/web/public/data/pathfinding/graph.v2.json` | `pathfinding_graph_version` (+ `catalog_version`) | One-hop dataset + catalog + album-credit-membership, scoped to the catalog's 1-hop ego network plus one virtual anchor node per catalog album. The only consumer that opts into ADR 0059's ranked evidence release and canonical display names | `networked_players_contracts.pathfinding_graph::pathfinding_graph_failures` | `pathfinding-graph` | Connect Two Records, Network Explorer |
+
+### `build-pathfinding-graph` spills to disk — check free space first
+
+Building `credit_edges` over the real one-hop corpus does not fit in the CLI's default
+`--memory-limit 3GB` and DuckDB spills the remainder to `<dataset-root>/.graph-core-tmp`.
+This is **not new** in ADR 0059 — measured locally on the coordination host, the
+historical `min(release_id)` collapse already spilled several GB, and the ranked
+evidence collapse adds roughly a third more on top. The run completes either way.
+
+`CreditGraph.open` leaves `max_temp_directory_size` unset by default, so that spill is
+bounded only by free space on the volume holding the dataset. On a shared host a
+disk-full there takes down everything else on the same filesystem. Before a
+regeneration:
+
+- confirm the dataset volume has **at least ~10 GB free** (measured locally; re-measure
+  on your own host rather than trusting this figure), or
+- raise `--memory-limit` to trade spill for RAM, or
+- pass an explicit `max_temp_directory_size` so a pathological run fails its own query
+  instead of the filesystem.
+
+Reproduce the measurement with the script pattern in
+`local/research/phase5-regen/` (git-ignored, per ADR 0018 benchmark results stay local).
 
 ### After any artifact build: run Prettier
 

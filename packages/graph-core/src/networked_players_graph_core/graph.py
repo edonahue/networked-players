@@ -739,8 +739,19 @@ class CreditGraph:
             # generation; when the table is absent the relation is empty,
             # which makes the caveat tier uniformly false and degrades
             # cleanly to the next tier rather than failing the build.
+            #
+            # The test is for a matching FILE, not for the directory: an
+            # interrupted or partial dataset copy can leave
+            # `table=release_formats/` present but empty, and
+            # `read_parquet` raises IOException on a glob that matches
+            # nothing. Under the `except` below that becomes a bare
+            # "could not open dataset", hard-failing every `CreditGraph.
+            # open` on that root -- challenge, record routes and cohort
+            # connectivity included, none of which read format descriptors
+            # at all. Degrading is only correct if it degrades here too.
             formats_dir = dataset_root / "table=release_formats"
-            if formats_dir.is_dir():
+            formats_files = sorted(formats_dir.glob("*.parquet")) if formats_dir.is_dir() else []
+            if formats_files:
                 formats_glob = str(formats_dir / "*.parquet")
                 connection.execute(
                     f"CREATE VIEW release_formats AS SELECT * FROM {read_parquet_sql(formats_glob)}"

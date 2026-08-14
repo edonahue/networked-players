@@ -241,6 +241,18 @@ test — not to repair a regression, but because a flat term lets a bootleg
 and a reissue tie and fall through to the release-id tiebreak, which is
 precisely the arbitrary choice this ADR exists to remove.
 
+Build cost was measured rather than assumed, since the collapse changed
+shape (a streaming `GROUP BY … min(release_id)` became a `DISTINCT` plus a
+`row_number()` window whose ordering carries correlated subqueries). Both
+paths were run against the real corpus at the CLI's default memory limit:
+the `credit_edges` count is **identical at 2,584,126**, which is the
+pair-set invariant confirmed a second way, and the ranked collapse costs
+roughly a third more spill and wall time on an operation that **already
+spilled several GB before this change**. Elapsed and peak-memory figures
+stay in `local/research/` per [ADR 0018](0018-benchmark-results-local-only.md);
+the operator-facing consequence — check free space on the dataset volume
+before regenerating — is recorded in `docs/OPERATOR_SETUP.md`.
+
 The diagnostic release #200783 still evidences its two edges: it is the
 **only** release evidencing those pairs, so no re-selection could move
 them. What changed is that it is now published as `unofficial`, which is

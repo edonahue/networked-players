@@ -281,3 +281,40 @@ def test_severity_tiers_are_disjoint_and_cover_every_descriptor() -> None:
     flat = [d for tier in EVIDENCE_CAVEAT_TIERS for d in tier]
     assert len(flat) == len(set(flat)), "a descriptor appears in two severity tiers"
     assert set(flat) == set(EVIDENCE_CAVEAT_DESCRIPTORS)
+
+
+def test_the_ranking_and_the_published_flags_share_one_vocabulary() -> None:
+    """`EVIDENCE_CAVEAT_TIERS` (graph-core, decides which release EVIDENCES
+    a pair) and `CAVEAT_FLAG_DESCRIPTORS` (contracts, decides what the
+    registry PUBLISHES) are separate literals in separate packages. Add a
+    descriptor to one only and the two artifacts silently disagree: either
+    the graph de-prefers a release the registry cannot flag -- so PR 5
+    renders it as uncaveated -- or the registry flags one the ranker never
+    de-preferred. Nothing else binds them, so this does."""
+    from networked_players_contracts.evidence_release_registry import CAVEAT_FLAG_DESCRIPTORS
+
+    published = {d for _, descriptors in CAVEAT_FLAG_DESCRIPTORS for d in descriptors}
+    assert set(EVIDENCE_CAVEAT_DESCRIPTORS) == published
+
+
+def test_an_empty_release_formats_directory_degrades_like_a_missing_one(tmp_path: Path) -> None:
+    """A partial dataset copy leaves the directory present but empty.
+    `read_parquet` raises on a glob matching nothing, which the open path
+    would otherwise turn into a bare "could not open dataset" and hard-fail
+    EVERY consumer -- including the ones that never read format
+    descriptors."""
+    root = _pair_dataset(
+        tmp_path / "ds",
+        releases=[
+            _release(900, "Record High", master_id=5, master_is_main_release=True),
+            _release(100, "Record Low", master_id=5, master_is_main_release=False),
+        ],
+        format_rows=[],
+    )
+    for stale in (root / "table=release_formats").glob("*.parquet"):
+        stale.unlink()
+    assert (root / "table=release_formats").is_dir()
+    assert not list((root / "table=release_formats").glob("*.parquet"))
+    # Opens at all (the real regression), and the caveat tier goes quiet so
+    # tier 3 decides.
+    assert _evidence_for_pair(root, EvidenceReleasePreference()) == 900
