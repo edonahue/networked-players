@@ -143,6 +143,12 @@ def _reverse_distances(graph: PublishedGraph, goal_index: int, max_depth: int) -
         depth = distances[node]
         if depth >= max_depth:
             continue
+        # Never expand OUT of a virtual album anchor that isn't the goal:
+        # anchors are endpoints, not through-routes, so a distance that
+        # relied on one would be unreachable for the walker and would only
+        # loosen its pruning.
+        if depth > 0 and graph.node_ids[node] < 0:
+            continue
         for slot in graph.slots(node):
             neighbor = graph.neighbors[slot]
             if neighbor not in distances:
@@ -200,8 +206,11 @@ def enumerate_routes(
         signal an enumeration bound was hit."""
         if node == goal_index:
             if depth == target_depth:
+                # Check the cap BEFORE appending, so a capped run never
+                # holds one route more than it advertises.
+                if enforce_cap and len(result.routes) >= max_routes:
+                    return False
                 result.routes.append(RouteCandidate(tuple(path_nodes), tuple(path_slots)))
-                return (not enforce_cap) or len(result.routes) < max_routes
             return True
 
         remaining = target_depth - depth
@@ -210,6 +219,20 @@ def enumerate_routes(
         for slot in graph.slots(node):
             neighbor = graph.neighbors[slot]
             if neighbor in on_path:
+                continue
+            # A virtual album anchor is only ever an endpoint, never an
+            # interior step. Walking THROUGH one would mean "album A to
+            # some other album's anchor to album B", which is not a
+            # contributor-to-contributor route at all -- and because
+            # stripAlbumAnchors only removes the FIRST and LAST hop, an
+            # interior anchor would survive into the rendered route as a
+            # synthetic "contributor" carrying the sentinel role. Measured
+            # against the real artifact before this guard: 4 of the 40
+            # sampled pairs had their best equal-hop route routed through
+            # anchors -23/-6/-120/-135, and all 4 inflated the
+            # hub-improvement headline, since a synthetic anchor's degree
+            # is low compared with a real hub.
+            if graph.node_ids[neighbor] < 0 and neighbor != goal_index:
                 continue
             reachable = distances.get(neighbor)
             if reachable is None or reachable > remaining - 1:
@@ -366,6 +389,11 @@ class PairMeasurement:
     #: current first-found answer was avoidably hub-heavy. Only ever set
     #: when the shortest layer was fully enumerated.
     equal_hop_improves_hub: bool
+    #: True when enumeration hit a bound BEFORE finding any route. The pair
+    #: is then of unknown reachability -- distinct from a genuinely
+    #: disconnected pair, and excluded from both counts in summarize()
+    #: rather than silently reported as "no route exists".
+    reachability_unknown: bool = False
 
 
 def measure_pair(
@@ -414,6 +442,11 @@ def measure_pair(
             enumeration_truncated=enumeration.truncated,
             shortest_layer_complete=enumeration.shortest_layer_complete,
             equal_hop_improves_hub=False,
+            # Truncation before the first route means we do not know
+            # whether one exists -- and bfs_first_route (uncapped) may well
+            # have found one. Reporting that as "no route" would be a claim
+            # the measurement cannot support.
+            reachability_unknown=enumeration.truncated,
         )
 
     all_metrics = [route_metrics(graph, route) for route in enumeration.routes]
@@ -540,13 +573,21 @@ def summarize(measurements: Sequence[PairMeasurement]) -> dict[str, Any]:
     if not measurements:
         return {"pairs_measured": 0}
     with_route = [m for m in measurements if m.shortest_user_hops is not None]
+    # A pair whose enumeration was cut off before finding anything is of
+    # UNKNOWN reachability, not routeless -- counting it as "no route
+    # exists" would overstate what the measurement observed.
+    unknown = [m for m in measurements if m.reachability_unknown]
+    without_route = [
+        m for m in measurements if m.shortest_user_hops is None and not m.reachability_unknown
+    ]
     hub_improvable = [m for m in with_route if m.equal_hop_improves_hub]
     truncated = [m for m in measurements if m.enumeration_truncated]
     equal_hop_counts = sorted(m.equal_hop_route_count for m in with_route)
     return {
         "pairs_measured": len(measurements),
         "pairs_with_a_route": len(with_route),
-        "pairs_without_a_route": len(measurements) - len(with_route),
+        "pairs_without_a_route": len(without_route),
+        "pairs_reachability_unknown": len(unknown),
         "shortest_hop_histogram": _histogram(m.shortest_user_hops for m in with_route),
         "equal_hop_alternatives": {
             "min": equal_hop_counts[0] if equal_hop_counts else 0,

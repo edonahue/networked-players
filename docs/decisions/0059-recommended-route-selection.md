@@ -74,6 +74,19 @@ against the live artifact while building the measurement harness, now a
 regression test). Truncation must only ever discard routes **longer** than
 ones already held.
 
+**A virtual album anchor is an endpoint, never an interior step.** Walking
+through one would mean "album A to some other album's anchor to album B" —
+not a contributor-to-contributor route — and since `stripAlbumAnchors` only
+removes the first and last hop, an interior anchor would survive into the
+rendered route as a synthetic "contributor" carrying the sentinel role.
+Measured before this guard: 4 of 40 sampled pairs had their best equal-hop
+route running through anchors, and all 4 inflated the hub-improvement
+headline, because a synthetic anchor's degree is low next to a real hub.
+Production's own `findPath` has no such guard, but was measured at **0 of
+40** — an anchor detour is never the shortest route — so this is a latent
+risk in the traversal contract rather than a live defect, and PR 3's engine
+carries the guard explicitly.
+
 The **shortest layer is additionally exempt from the route cap**, and its
 completeness is reported rather than assumed. Every equal-hop statistic
 below is computed over that layer, and a partially-enumerated layer is an
@@ -94,7 +107,7 @@ shortest layers verified complete.
 | --- | --- |
 | Pairs where an **equal-hop** alternative strictly lowers the worst hub | **23 of 40 (57.5%)** |
 | Shortest-hop distribution | 0 hops: 2 · 1 hop: 23 · 2 hops: 15 |
-| Equal-hop candidates per pair | min 1 · **median 4.5** · max 159 |
+| Equal-hop candidates per pair | min 1 · **median 4.5** · max 157 |
 | Shortest-layer enumeration expansions | min 2 · **median 12** · max 403 |
 | Shortest-layer enumeration time (CPython) | median 0.024 s · **max 0.088 s** |
 | Candidates within +1 hop | **exceeds 20,000** for many pairs |
@@ -102,7 +115,7 @@ shortest layers verified complete.
 Two conclusions follow directly, and neither was chosen by taste:
 
 - **Enumerate the complete shortest layer.** It is small and cheap — max
-  159 routes, max 403 expansions, under 0.1 s in CPython, and the browser
+  157 routes, max 403 expansions, under 0.1 s in CPython, and the browser
   already pays several times that parsing the graph. Nearly three in five
   pairs improve with **no hop increase at all**.
 - **Treat any hop increase as exceptional and hard-capped.** The +1 layer is

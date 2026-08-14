@@ -265,6 +265,87 @@ def test_summary_median_matches_a_true_median_on_an_even_sample() -> None:
     assert summary["equal_hop_alternatives"]["median"] == 3.0
 
 
+def test_routes_never_pass_through_another_albums_anchor() -> None:
+    """A virtual anchor is an endpoint, never an interior step. Walking
+    through one would mean "album A to some other album's anchor to album
+    B" -- not a contributor-to-contributor route -- and since
+    stripAlbumAnchors only removes the first and last hop, an interior
+    anchor would survive into the rendered route as a synthetic
+    'contributor'. Measured against the real artifact before this guard: 4
+    of 40 sampled pairs had their best equal-hop route routed through one,
+    and all 4 inflated the hub-improvement headline."""
+    # album-a -- 10 -- [album-c's anchor] -- 20 -- album-b is a 2-hop route
+    # through -3 that must never be enumerated; the honest route is the
+    # 3-hop one through the real contributor 900.
+    graph = build_graph(
+        node_ids=[-3, -2, -1, 10, 20, 900],
+        edges=[
+            (-1, 10, 1001),
+            (-2, 20, 2001),
+            (-3, 10, 3001),
+            (-3, 20, 3002),
+            (10, 900, 5001),
+            (900, 20, 5002),
+        ],
+        album_anchors={"album-a": -1, "album-b": -2, "album-c": -3},
+    )
+    start, goal = graph.index_by_node_id[-1], graph.index_by_node_id[-2]
+    result = enumerate_routes(graph, start, goal, max_user_hops=4)
+    assert result.routes
+    for route in result.routes:
+        interior = route.node_indices[1:-1]
+        assert all(graph.node_ids[i] > 0 for i in interior), (
+            "an album anchor was walked through as an interior step"
+        )
+    # The only honest route runs through the real contributor.
+    assert {route_metrics(graph, r).contributor_node_ids for r in result.routes} == {(10, 900, 20)}
+
+
+def test_a_capped_pair_is_unknown_reachability_not_routeless() -> None:
+    """Truncation before the first route means reachability is unknown --
+    bfs_first_route (uncapped) may well have found one. Counting it as
+    'no route exists' would overstate what was observed."""
+    graph = two_album_graph()
+    measurement = measure_pair(graph, "album-a", "album-b", max_user_hops=4, max_expansions=2)
+    assert measurement is not None
+    assert measurement.shortest_user_hops is None
+    assert measurement.reachability_unknown
+    # The uncapped baseline did find a route, which is exactly why "no
+    # route" would have been the wrong conclusion.
+    assert measurement.bfs_first is not None
+
+    summary = summarize([measurement])
+    assert summary["pairs_without_a_route"] == 0
+    assert summary["pairs_reachability_unknown"] == 1
+
+
+def test_a_genuinely_disconnected_pair_is_reported_as_routeless() -> None:
+    graph = build_graph(
+        node_ids=[-2, -1, 10, 20],
+        edges=[(-1, 10, 1001), (-2, 20, 2001)],
+        album_anchors={"a": -1, "b": -2},
+    )
+    measurement = measure_pair(graph, "a", "b", max_user_hops=4)
+    assert measurement is not None
+    assert measurement.shortest_user_hops is None
+    assert not measurement.reachability_unknown
+    summary = summarize([measurement])
+    assert summary["pairs_without_a_route"] == 1
+    assert summary["pairs_reachability_unknown"] == 0
+
+
+def test_the_route_cap_is_never_exceeded_beyond_the_shortest_layer() -> None:
+    """The shortest layer is exempt, but a longer route must not be
+    appended past the cap: check before appending, not after."""
+    graph = two_album_graph()
+    start = graph.index_by_node_id[-1]
+    goal = graph.index_by_node_id[-2]
+    result = enumerate_routes(graph, start, goal, max_user_hops=4, max_routes=1)
+    shortest = min(r.user_hop_count for r in result.routes)
+    longer = [r for r in result.routes if r.user_hop_count > shortest]
+    assert longer == [], "a longer route was appended despite the cap"
+
+
 def test_unknown_album_measures_as_none_not_an_error() -> None:
     graph = two_album_graph()
     assert measure_pair(graph, "album-a", "album-missing") is None
