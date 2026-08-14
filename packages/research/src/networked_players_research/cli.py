@@ -387,6 +387,8 @@ def main(argv: list[str] | None = None) -> int:
                         "equal_hop_improves_hub": m.equal_hop_improves_hub,
                         "enumeration_expansions": m.enumeration_expansions,
                         "shortest_layer_expansions": m.shortest_layer_expansions,
+                        "reverse_expansions": m.reverse_expansions,
+                        "truncated_at_user_hops": m.truncated_at_user_hops,
                         "enumeration_truncated": m.enumeration_truncated,
                         "shortest_layer_complete": m.shortest_layer_complete,
                         "bfs_first": _route_metrics_json(m.bfs_first),

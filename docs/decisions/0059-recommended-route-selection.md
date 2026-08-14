@@ -111,7 +111,7 @@ shortest layers verified complete.
 | Shortest-layer forward walk (expansions) | **median 11.5** · max 397 |
 | Reverse-distance precompute (slots scanned) | **max 125,975** — one pass per search |
 | Whole bounded search | max 127,545, of which the precompute is **98.8%** |
-| Candidates within +1 hop (raised cap, see below) | **reaches 8,654** for a single pair, and every pair still saturates the cap |
+| Candidates within +1 hop (raised cap, see below) | **8,654** for the worst pair — an exact count |
 
 Every figure above is printed verbatim by the `research-route-quality`
 command, so the decision and its reproducible report cannot drift apart.
@@ -124,9 +124,13 @@ networked-players-research research-route-quality --pairs 40 \
   --max-routes 20000 --max-expansions 5000000
 ```
 
-Even at that cap all 40 pairs still saturate, so 8,654 is a **lower bound**
-on the worst +1 layer, not a count — which is precisely the point. Expansion and candidate counts are deterministic properties of the
-graph and the algorithm — identical on any machine, so they belong here. Elapsed
+Because enumeration is shortest-first, a cap firing at a deeper layer
+leaves every shallower layer already complete. At this cap no pair
+truncates within its +1 layer (`saturated_within_plus_one_pairs: 0`), so
+**8,654 is an exact count**, not a lower bound.
+
+Expansion and candidate counts are deterministic properties of the graph
+and the algorithm — identical on any machine, so they belong here. Elapsed
 time is a benchmark *result* and stays in `local/research/` per
 [ADR 0018](0018-benchmark-results-local-only.md) and
 `docs/PUBLIC_PRIVATE_BOUNDARY.md`; the reproducible method is the
@@ -147,10 +151,9 @@ Two conclusions follow directly, and neither was chosen by taste:
   precompute, and that trade is only defensible because the pass is linear
   and cached, not because it is free.
 - **Treat any hop increase as exceptional and hard-capped.** The +1 layer
-  saturates every cap it has been measured against — at least 8,654 routes
-  for one pair, roughly 55x the shortest layer's worst case — so it may
-  only be consulted when the shortest layer offers nothing, and never
-  without a cap.
+  reaches 8,654 routes for the worst measured pair — roughly 55x the
+  shortest layer's worst case of 157 — so it may only be consulted when the
+  shortest layer offers nothing, and never without a cap.
 
 ### Honest labels
 

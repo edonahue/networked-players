@@ -133,6 +133,11 @@ class EnumerationResult:
     #: Adjacency slots scanned by the reverse-distance precompute. Charged
     #: to the same budget as the forward walk, because it dominates it.
     reverse_expansions: int = 0
+    #: User-visible hop depth at which a cap first fired, or None if the
+    #: search ran to completion. Because enumeration is shortest-first, a
+    #: layer shallower than this one necessarily finished, so its counts
+    #: are exact rather than lower bounds.
+    truncated_at_user_hops: int | None = None
 
     @property
     def truncated(self) -> bool:
@@ -170,10 +175,12 @@ def _reverse_distances(
         if depth > 0 and graph.node_ids[node] < 0:
             continue
         for slot in graph.slots(node):
-            scanned += 1
+            # Check BEFORE consuming, so a budget of N permits N slots
+            # rather than N-1 -- an exact-bound run fits its own bound.
             if budget is not None and scanned >= budget:
                 exhausted = True
                 return distances, scanned, exhausted
+            scanned += 1
             neighbor = graph.neighbors[slot]
             if neighbor not in distances:
                 distances[neighbor] = depth + 1
@@ -274,10 +281,11 @@ def enumerate_routes(
             ):
                 continue
 
-            result.expansions += 1
+            # Same ordering as the reverse pass: check before consuming.
             if result.expansions >= max_expansions:
                 result.truncated_by_expansion_cap = True
                 return False
+            result.expansions += 1
 
             on_path.add(neighbor)
             path_nodes.append(neighbor)
@@ -311,6 +319,7 @@ def enumerate_routes(
         if not completed:
             if not result.truncated_by_expansion_cap:
                 result.truncated_by_route_cap = True
+            result.truncated_at_user_hops = max(0, target_depth - ANCHOR_HOP_BUDGET)
             break
     result.elapsed_seconds = time.perf_counter() - started
     return result
@@ -419,6 +428,8 @@ class PairMeasurement:
     shortest_layer_expansions: int
     #: Slots scanned by the reverse-distance precompute.
     reverse_expansions: int
+    #: User-visible depth at which a cap first fired, or None if complete.
+    truncated_at_user_hops: int | None
     enumeration_seconds: float
     enumeration_truncated: bool
     #: Which bound fired -- the route cap saturating is what makes a +1
@@ -483,6 +494,7 @@ def measure_pair(
             enumeration_expansions=enumeration.expansions,
             shortest_layer_expansions=enumeration.shortest_layer_expansions,
             reverse_expansions=enumeration.reverse_expansions,
+            truncated_at_user_hops=enumeration.truncated_at_user_hops,
             enumeration_seconds=enumeration.elapsed_seconds,
             enumeration_truncated=enumeration.truncated,
             truncated_by_route_cap=enumeration.truncated_by_route_cap,
@@ -524,6 +536,7 @@ def measure_pair(
         enumeration_expansions=enumeration.expansions,
         shortest_layer_expansions=enumeration.shortest_layer_expansions,
         reverse_expansions=enumeration.reverse_expansions,
+        truncated_at_user_hops=enumeration.truncated_at_user_hops,
         enumeration_seconds=enumeration.elapsed_seconds,
         enumeration_truncated=enumeration.truncated,
         truncated_by_route_cap=enumeration.truncated_by_route_cap,
@@ -662,7 +675,20 @@ def summarize(measurements: Sequence[PairMeasurement]) -> dict[str, Any]:
             # saturates rather than terminating. Raise --max-routes to see
             # how far it really goes.
             "max": max((m.routes_within_one_extra_hop for m in complete), default=0),
-            "saturated_at_route_cap_pairs": len([m for m in complete if m.truncated_by_route_cap]),
+            # Saturation only counts when the cap fired at or before the
+            # +1 layer. Enumeration is shortest-first, so a cap that fired
+            # at a DEEPER layer means the +1 layer had already finished and
+            # its count is exact, not a lower bound.
+            "saturated_within_plus_one_pairs": len(
+                [
+                    m
+                    for m in complete
+                    if m.truncated_by_route_cap
+                    and m.truncated_at_user_hops is not None
+                    and m.shortest_user_hops is not None
+                    and m.truncated_at_user_hops <= m.shortest_user_hops + 1
+                ]
+            ),
         },
         "equal_hop_hub_improvable": {
             "count": len(hub_improvable),

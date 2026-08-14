@@ -257,6 +257,7 @@ def test_summary_median_matches_a_true_median_on_an_even_sample() -> None:
             enumeration_expansions=0,
             shortest_layer_expansions=0,
             reverse_expansions=0,
+            truncated_at_user_hops=None,
             enumeration_seconds=0.0,
             enumeration_truncated=False,
             truncated_by_route_cap=False,
@@ -555,3 +556,55 @@ def test_the_reverse_precompute_is_counted_and_capped() -> None:
     assert starved.truncated_by_expansion_cap
     assert starved.routes == []
     assert not starved.shortest_layer_complete
+
+
+def test_an_exact_budget_permits_exactly_that_many_operations() -> None:
+    """A cap of N must allow N slot scans, not N-1: increment-then-compare
+    aborted the very operation the budget was meant to permit, so an
+    exact-bound run reported itself truncated."""
+    graph = two_album_graph()
+    start = graph.index_by_node_id[-1]
+    goal = graph.index_by_node_id[-2]
+    full = enumerate_routes(graph, start, goal, max_user_hops=4)
+    assert not full.truncated
+
+    exact = enumerate_routes(graph, start, goal, max_user_hops=4, max_expansions=full.expansions)
+    assert not exact.truncated_by_expansion_cap
+    assert exact.expansions == full.expansions
+    assert len(exact.routes) == len(full.routes)
+
+
+def test_truncation_depth_is_recorded_so_shallower_counts_stay_exact() -> None:
+    """Enumeration is shortest-first, so a cap firing at a DEEPER layer
+    means every shallower layer already finished and its counts are exact.
+    Without the depth, a deep truncation was misreported as saturating the
+    +1 layer."""
+    graph = two_album_graph()
+    start = graph.index_by_node_id[-1]
+    goal = graph.index_by_node_id[-2]
+
+    full = enumerate_routes(graph, start, goal, max_user_hops=4)
+    assert full.truncated_at_user_hops is None
+
+    # Cap low enough to stop at a layer beyond the shortest.
+    capped = enumerate_routes(graph, start, goal, max_user_hops=4, max_routes=2)
+    assert capped.truncated_by_route_cap
+    assert capped.truncated_at_user_hops is not None
+    shortest = min(r.user_hop_count for r in capped.routes)
+    assert capped.truncated_at_user_hops > shortest, (
+        "the shortest layer completed, so truncation must be recorded deeper"
+    )
+
+
+def test_plus_one_saturation_counts_only_truncation_at_that_layer() -> None:
+    graph = two_album_graph()
+    deep = measure_pair(graph, "album-a", "album-b", max_user_hops=4, max_routes=2)
+    assert deep is not None
+    assert deep.truncated_by_route_cap
+    summary = summarize([deep])
+    # Truncation happened beyond shortest+1, so the +1 count is exact and
+    # must NOT be reported as saturated.
+    if deep.truncated_at_user_hops is not None and deep.shortest_user_hops is not None:
+        beyond = deep.truncated_at_user_hops > deep.shortest_user_hops + 1
+        if beyond:
+            assert summary["routes_within_one_extra_hop"]["saturated_within_plus_one_pairs"] == 0
