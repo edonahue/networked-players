@@ -24,6 +24,7 @@ from conftest import (  # type: ignore[import-not-found]
 )
 from networked_players_graph_core.graph import (
     EVIDENCE_CAVEAT_DESCRIPTORS,
+    EVIDENCE_CAVEAT_TIERS,
     CreditGraph,
     EvidenceReleasePreference,
     credit_edges_sql,
@@ -153,14 +154,16 @@ def test_release_id_remains_the_final_deterministic_tiebreak(tmp_path: Path) -> 
 
 
 def test_all_candidates_caveated_still_yields_a_representative(tmp_path: Path) -> None:
-    """A pair evidenced only by compilations does not lose its edge. The
-    preference ranks; it never filters."""
+    """A pair with nothing but caveated evidence does not lose its edge.
+    The preference ranks; it never filters -- and it still ranks WITHIN the
+    caveats, so the compilation beats the bootleg rather than the two
+    tying and falling through to the release-id tiebreak."""
     root = _pair_dataset(
         tmp_path / "ds",
         releases=[_release(900, "Record High"), _release(100, "Record Low")],
         format_rows=[_format_row(900, ["Compilation"]), _format_row(100, ["Unofficial Release"])],
     )
-    assert _evidence_for_pair(root, EvidenceReleasePreference()) == 100
+    assert _evidence_for_pair(root, EvidenceReleasePreference()) == 900
 
 
 def test_the_edge_set_is_identical_with_and_without_a_preference(tmp_path: Path) -> None:
@@ -229,5 +232,52 @@ def test_a_descriptor_containing_an_apostrophe_is_escaped(tmp_path: Path) -> Non
         releases=[_release(900, "Record High"), _release(100, "Record Low")],
         format_rows=[_format_row(900, ["Album"]), _format_row(100, ["DJ's Own"])],
     )
-    preference = EvidenceReleasePreference(caveat_descriptors=("DJ's Own",))
+    preference = EvidenceReleasePreference(caveat_tiers=(("DJ's Own",),))
     assert _evidence_for_pair(root, preference) == 900
+
+
+def test_a_bootleg_loses_to_a_reissue(tmp_path: Path) -> None:
+    """Severity ordering, and the reason it exists. A single combined
+    "has any caveat" term ranks these two equally and lets the release-id
+    tiebreak choose -- which on the real corpus traded 5,178
+    reissue-evidenced edges away while taking on 74 more unofficial ones.
+    An unofficial release is the mashup/bootleg case ADR 0059 opens with;
+    a reissue is a real collaboration on a secondary artefact."""
+    root = _pair_dataset(
+        tmp_path / "ds",
+        releases=[_release(900, "Record High"), _release(100, "Record Low")],
+        format_rows=[
+            _format_row(900, ["Reissue"]),
+            _format_row(100, ["Unofficial Release"]),
+        ],
+    )
+    assert _evidence_for_pair(root, EvidenceReleasePreference()) == 900
+
+
+def test_a_container_loses_to_a_pressing_caveat(tmp_path: Path) -> None:
+    root = _pair_dataset(
+        tmp_path / "ds",
+        releases=[_release(900, "Record High"), _release(100, "Record Low")],
+        format_rows=[_format_row(900, ["Promo"]), _format_row(100, ["Compilation"])],
+    )
+    assert _evidence_for_pair(root, EvidenceReleasePreference()) == 900
+
+
+def test_a_bootleg_loses_to_a_container(tmp_path: Path) -> None:
+    root = _pair_dataset(
+        tmp_path / "ds",
+        releases=[_release(900, "Record High"), _release(100, "Record Low")],
+        format_rows=[
+            _format_row(900, ["Compilation"]),
+            _format_row(100, ["Unofficial Release"]),
+        ],
+    )
+    assert _evidence_for_pair(root, EvidenceReleasePreference()) == 900
+
+
+def test_severity_tiers_are_disjoint_and_cover_every_descriptor() -> None:
+    """The flattened tuple is derived from the tiers, so a descriptor
+    added to one without the other cannot silently go unranked."""
+    flat = [d for tier in EVIDENCE_CAVEAT_TIERS for d in tier]
+    assert len(flat) == len(set(flat)), "a descriptor appears in two severity tiers"
+    assert set(flat) == set(EVIDENCE_CAVEAT_DESCRIPTORS)

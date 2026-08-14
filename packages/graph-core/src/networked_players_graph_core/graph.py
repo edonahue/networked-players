@@ -294,14 +294,32 @@ def _edge_ineligible_role_sql(role_column: str) -> str:
 #: `docs/RELEASE_FORMAT_RESEARCH.md` measured 94.7% of a known
 #: false-positive population carrying only a bare `Album` descriptor, so a
 #: positive claim from these fields would be unsupportable.
-EVIDENCE_CAVEAT_DESCRIPTORS: tuple[str, ...] = (
-    "Compilation",
-    "Mixed",
-    "Promo",
-    "Reissue",
-    "Repress",
-    "Sampler",
-    "Unofficial Release",
+#: Grouped by SEVERITY, worst first, and ranked as separate tiers rather
+#: than one flat "has any caveat" test. Measured reason: a flat test cannot
+#: tell a bootleg from a reissue, so on the real corpus it traded 5,178
+#: reissue-evidenced edges away but took on 74 more UNOFFICIAL-evidenced
+#: ones -- an improvement on aggregate that moved the wrong way on the
+#: category that matters most. Ranking the groups separately makes each one
+#: monotone.
+#:
+#: * bootleg -- not a release the credited parties participated in issuing;
+#:   this is the mashup/bootleg 12" case ADR 0059 opens with.
+#: * container -- a compilation, DJ mix or sampler: the artists are on one
+#:   disc, which is much weaker than being on one record together.
+#: * pressing -- a promo or a later pressing: the collaboration is real,
+#:   only the artefact is secondary. Mild.
+EVIDENCE_CAVEAT_TIERS: tuple[tuple[str, ...], ...] = (
+    ("Unofficial Release",),
+    ("Compilation", "Mixed", "Sampler"),
+    ("Promo", "Reissue", "Repress"),
+)
+
+#: Every caveat descriptor, flattened. Measured present in the one-hop
+#: corpus (Compilation 384,144 · Reissue 307,447 · Unofficial Release
+#: 114,520 · Promo 114,519 · Repress 37,329 · Mixed 11,559 · Sampler
+#: 10,579 rows).
+EVIDENCE_CAVEAT_DESCRIPTORS: tuple[str, ...] = tuple(
+    sorted({descriptor for tier in EVIDENCE_CAVEAT_TIERS for descriptor in tier})
 )
 
 
@@ -326,7 +344,10 @@ class EvidenceReleasePreference:
     1. `preferred_release_ids` -- typically the catalog's own
        `main_release_id` values. "They both appear on this album" is the
        most defensible evidence a route can offer.
-    2. Carries none of `caveat_descriptors`.
+    2. Carries no caveat descriptor, one tier at a time from worst to
+       mildest (`EVIDENCE_CAVEAT_TIERS`: bootleg, then container, then
+       pressing) so the ranking is monotone within each severity rather
+       than only in aggregate.
     3. `master_is_main_release` -- the primary version of its master rather
        than a reissue pressing.
     4. `release_id` ascending -- the deterministic final tiebreak, which is
@@ -334,26 +355,30 @@ class EvidenceReleasePreference:
     """
 
     preferred_release_ids: tuple[int, ...] = ()
-    caveat_descriptors: tuple[str, ...] = EVIDENCE_CAVEAT_DESCRIPTORS
+    caveat_tiers: tuple[tuple[str, ...], ...] = EVIDENCE_CAVEAT_TIERS
     prefer_master_main_release: bool = True
 
     def order_by_sql(self, *, release_column: str) -> str:
         """The ORDER BY list ranking candidate releases, best first.
 
         Every term is a boolean sorted ascending, so `false` (0) wins --
-        i.e. each term names the thing that DISQUALIFIES a release.
+        i.e. each term names the thing that DISQUALIFIES a release. The
+        caveat tiers contribute one term EACH, worst first, so a bootleg
+        loses to a compilation and a compilation loses to a reissue; a
+        single combined term would rank all three the same and let the
+        release-id tiebreak pick among them arbitrarily.
         """
         terms: list[str] = []
         if self.preferred_release_ids:
             ids = ", ".join(str(int(r)) for r in sorted(set(self.preferred_release_ids)))
             terms.append(f"({release_column} NOT IN ({ids}))")
-        if self.caveat_descriptors:
+        for tier in self.caveat_tiers:
+            if not tier:
+                continue
             # Escaped rather than interpolated raw: these are constants
             # today, but a descriptor is source text and a stray apostrophe
             # would otherwise end the string literal.
-            quoted = ", ".join(
-                "'" + str(d).replace("'", "''") + "'" for d in sorted(set(self.caveat_descriptors))
-            )
+            quoted = ", ".join("'" + str(d).replace("'", "''") + "'" for d in sorted(set(tier)))
             terms.append(
                 f"""EXISTS (
                     SELECT 1 FROM release_formats rf

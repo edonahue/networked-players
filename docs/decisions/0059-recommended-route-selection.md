@@ -198,13 +198,54 @@ shared credit remains documented co-participation and nothing more.
   and it never transforms the source string, so `will.i.am`, `deadmau5`,
   `k.d. lang`, `P!nk` and `blink-182` survive intact. Generic title-casing
   is explicitly rejected for exactly that reason.
-- Regeneration invalidates the pinned BFS parity goldens, which encode the
-  old tie-break by construction. They are re-pinned with justification, not
-  relaxed.
+- Regeneration was expected to invalidate the pinned BFS parity goldens.
+  **It did not, and the expectation was wrong**: `pathfinding-bfs-parity*.
+  spec.ts` pin a synthetic five-edge fixture, not the published artifact,
+  so no golden encodes the old tie-break. The web specs that do name
+  `graph.v2.json` either serve a synthetic payload through `page.route` or
+  assert structural properties. Nothing was re-pinned, because nothing
+  needed to be — recorded here so the next regeneration does not go
+  looking for a step that does not exist.
 - The diagnostic pair is **not** fixed by hub-awareness: both of its
   equal-hop routes pass through the same node (`u2`, degree 928), so only
   the evidence-release axis discriminates there. This is why the phase does
   both, and why neither alone would have been enough.
+
+### Measured outcome of the regeneration
+
+Run against the 20260601 corpus. The pair-set invariant held on real data:
+`node_ids`, `offsets`, `neighbors` and `album_virtual_nodes` are
+**byte-identical**, 36,959 nodes and 65,133 edges before and after. Only
+the representative release, the roles derived from it, and the display
+names moved.
+
+| Measurement | Result |
+| --- | --- |
+| Display names corrected | **790** of 36,959 (`u2` → `U2`, `Mfsb` → `MFSB`, `Patti labelle` → `Patti LaBelle`, `Paul Van Dyk` → `Paul van Dyk`) |
+| Real (non-anchor) edges whose evidence carries a caveat | **42.3% → 27.5%** (−17,930 of 121,392) |
+| — of which `reissue` | 27,642 → 14,260 |
+| — of which `compilation` | 17,668 → 12,902 |
+| — of which `unofficial` | 9,020 → 7,672 |
+| Anchor-edge sentinel slots | 8,874, identical set, each still carrying its album's own `main_release_id` |
+| Graph gzip | 2,233.85 KB → 2,239.58 KB (+0.26%) |
+| Registry gzip | 338.60 KB → 358.07 KB (+5.8%), against this contract's own 1.8 MB revisit trigger |
+
+Two honest caveats on those figures. First, an earlier comparison looked
+up caveat flags in the *new* registry, which no longer lists the 3,728
+release ids the old graph referenced and only the new one dropped; those
+silently defaulted to "no caveat" and understated the improvement. The
+table above resolves flags for the union of both graphs' ids straight from
+the dataset. Second, the caveat tiers are ranked by severity (bootleg,
+then container, then pressing) rather than as one flat "has any caveat"
+test — not to repair a regression, but because a flat term lets a bootleg
+and a reissue tie and fall through to the release-id tiebreak, which is
+precisely the arbitrary choice this ADR exists to remove.
+
+The diagnostic release #200783 still evidences its two edges: it is the
+**only** release evidencing those pairs, so no re-selection could move
+them. What changed is that it is now published as `unofficial`, which is
+what lets PR 3 rank the route down and PR 5 caveat it honestly — the
+evidence is never concealed or rewritten.
 - Route quality can only improve as far as the published evidence signals
   allow. Format descriptors are reliable for *exclusion*, not confirmation
   (`docs/RELEASE_FORMAT_RESEARCH.md` measured 94.7% of a known
