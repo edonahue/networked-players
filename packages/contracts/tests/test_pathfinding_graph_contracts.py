@@ -230,6 +230,92 @@ def test_v2_sentinel_used_on_a_real_slot_is_rejected() -> None:
     assert any("sentinel placement" in f for f in failures)
 
 
+# --- catalog-coverage / main_release_id agreement (post-#110 correctness
+# closeout follow-up) -- the contract (data/contracts/pathfinding-graph-v2.md)
+# requires one album_virtual_nodes entry per catalog album, including a
+# catalog album with zero in-scope credited contributors, and that each
+# entry's main_release_id VALUE agrees with the catalog's own value for that
+# album, not merely that it's an integer. Neither direction was previously
+# enforced: album_virtual_nodes[i].album_id was only ever checked to resolve
+# INTO the catalog, never the reverse (every catalog album resolving OUT to
+# an entry), and main_release_id was only ever type-checked. Both gaps were
+# confirmed to accept malformed input with zero failures before this fix.
+
+
+def test_v2_missing_catalog_album_is_rejected() -> None:
+    graph = deepcopy(_graph_v2())
+    del graph["album_virtual_nodes"][1]  # master-2 no longer has any entry at all
+    failures = pathfinding_graph_failures(graph, _catalog())
+    assert any(
+        "missing a virtual node for catalog album" in f and "master-2" in f for f in failures
+    )
+
+
+def test_v2_main_release_id_mismatches_catalog_is_rejected() -> None:
+    graph = deepcopy(_graph_v2())
+    # Still a real integer -- the pre-existing type check alone would accept
+    # this. The catalog's own main_release_id for master-1 is 1.
+    graph["album_virtual_nodes"][0]["main_release_id"] = 999
+    failures = pathfinding_graph_failures(graph, _catalog())
+    assert any(
+        "main_release_id" in f and "does not match" in f and "master-1" in f for f in failures
+    )
+
+
+def test_v2_zero_contributor_album_virtual_node_is_accepted() -> None:
+    """The contract's own explicit case: an album with zero in-scope
+    credited contributors still gets a real, isolated virtual node --
+    "never silently dropped" -- and that must be ACCEPTED, not merely
+    "removing it is rejected" (the two prior tests). Three catalog albums;
+    master-3 (virtual node -3, sorted first) has no membership/neighbors of
+    its own -- zero-length CSR slice, offsets[0] == offsets[1] == 0.
+    Written out explicitly (not derived by mutating _graph_v2()'s CSR
+    arrays in place) because inserting a node shifts every existing
+    `neighbors` index by one -- easy to get silently wrong; this literal
+    shape was verified directly against pathfinding_graph_failures before
+    being written here."""
+    catalog = _catalog()
+    catalog["albums"].append(
+        {
+            "id": "master-3",
+            "master_id": None,
+            "main_release_id": 3,
+            "title": "Third Light",
+            "artist_id": 300,
+            "artist": "Carol",
+            "year": 2001,
+        }
+    )
+    graph: dict[str, Any] = {
+        "schema_version": 2,
+        "catalog_version": catalog["catalog_version"],
+        "snapshot_date": _SNAPSHOT,
+        "generated_at": "2026-08-08T00:00:00+00:00",
+        "source": "Discogs monthly data dump (CC0), one-hop working set.",
+        "license": "See docs/DATA_AND_RIGHTS.md.",
+        "node_ids": [-3, -2, -1, 100, 200],
+        "names": [
+            "Third Light (album anchor)",
+            "Second Wave (album anchor)",
+            "First Light (album anchor)",
+            "Alice",
+            "Bob",
+        ],
+        "offsets": [0, 0, 1, 2, 4, 6],
+        "neighbors": [4, 3, 2, 4, 1, 3],
+        "evidence_release_ids": [2, 1, 1, 5, 2, 5],
+        "edge_role_a": [_SENTINEL, _SENTINEL, "Guitar", "Guitar", "Bass", "Bass"],
+        "edge_role_b": ["Bass", "Guitar", _SENTINEL, "Bass", _SENTINEL, "Guitar"],
+        "album_virtual_nodes": [
+            {"album_id": "master-1", "virtual_artist_id": -1, "main_release_id": 1},
+            {"album_id": "master-2", "virtual_artist_id": -2, "main_release_id": 2},
+            {"album_id": "master-3", "virtual_artist_id": -3, "main_release_id": 3},
+        ],
+    }
+    graph["pathfinding_graph_version"] = pathfinding_graph_version(graph, _SNAPSHOT)
+    assert pathfinding_graph_failures(graph, catalog) == []
+
+
 # --- shared, cross-language fixture set --------------------------------
 # Every file under data/fixtures/pathfinding-graph/ is also loaded by
 # apps/web/tests/pathfinding-bfs*.spec.ts against validatePathfindingGraph

@@ -102,9 +102,16 @@ def pathfinding_graph_failures(graph: Any, catalog: Any) -> list[str]:
     invariants (offsets monotonic, neighbor indices in range, every parallel
     array the correct length). For a v2 graph, also validates
     `album_virtual_nodes` (negative ids disjoint from real ones, every
-    album_id resolving to the canonical catalog, no duplicates) and that
-    the album-anchor sentinel role appears on a slot's virtual side and
-    only there."""
+    album_id resolving to the canonical catalog, no duplicates, EVERY
+    catalog album -- including one with zero in-scope credited
+    contributors -- has its own entry, and each entry's main_release_id
+    VALUE agrees with the catalog's own main_release_id for that album, not
+    merely its type) and that the album-anchor sentinel role appears on a
+    slot's virtual side and only there. The catalog-coverage and
+    main_release_id-agreement checks are necessarily Python-only:
+    `validatePathfindingGraph` (apps/web/src/game/pathfindingGraph.ts) never
+    receives the catalog, so it can only ever prove internal
+    self-consistency, not agreement with an external source of truth."""
     failures: list[str] = []
     if not isinstance(graph, dict):
         return ["pathfinding graph must be an object"]
@@ -245,6 +252,11 @@ def pathfinding_graph_failures(graph: Any, catalog: Any) -> list[str]:
         album_virtual_nodes = []
 
     catalog_album_ids = {a.get("id") for a in catalog.get("albums", []) if isinstance(a, dict)}
+    catalog_main_release_id_by_album = {
+        a.get("id"): a.get("main_release_id")
+        for a in catalog.get("albums", [])
+        if isinstance(a, dict)
+    }
     real_node_ids = {n for n in node_ids if isinstance(n, int) and n > 0}
     node_id_set = set(node_ids)
 
@@ -293,6 +305,26 @@ def pathfinding_graph_failures(graph: Any, catalog: Any) -> list[str]:
         main_release_id = vn.get("main_release_id")
         if not _is_int_not_bool(main_release_id):
             failures.append(f"album_virtual_nodes[{i}] main_release_id must be an integer")
+        elif (
+            album_id in catalog_main_release_id_by_album
+            and main_release_id != catalog_main_release_id_by_album[album_id]
+        ):
+            failures.append(
+                f"album_virtual_nodes[{i}] main_release_id {main_release_id!r} does not match "
+                f"the canonical catalog's main_release_id "
+                f"{catalog_main_release_id_by_album[album_id]!r} for album_id {album_id!r}"
+            )
+
+    # Every catalog album -- including one with zero in-scope credited
+    # contributors -- must still get its own virtual node (contract: "never
+    # silently dropped"). seen_album_ids only ever gains an id once its
+    # entry has passed the per-entry checks above, so this also catches an
+    # album whose only entry was malformed (missing/duplicate/wrong keys)
+    # just as validly as one with no entry at all.
+    for missing_album_id in sorted(catalog_album_ids - seen_album_ids, key=str):
+        failures.append(
+            f"album_virtual_nodes is missing a virtual node for catalog album {missing_album_id!r}"
+        )
 
     if offsets and neighbors and edge_role_a and edge_role_b:
         for node_index in range(min(node_count, len(offsets) - 1)):
