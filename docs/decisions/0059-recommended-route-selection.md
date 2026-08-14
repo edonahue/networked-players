@@ -1,0 +1,160 @@
+# ADR 0059: Recommended documented route selection
+
+- **Status:** Accepted
+- **Date:** 2026-08-14
+- **Depends on:** [ADR 0035](0035-track-scoped-credit-edges.md), [ADR 0050](0050-browser-pathfinding-architecture-selection.md), [ADR 0051](0051-connect-two-records.md), [ADR 0053](0053-role-aware-game-mode-selection.md), [ADR 0054](0054-research-lane-and-promotion-boundary.md), [ADR 0058](0058-album-credit-membership-and-evidence-registry.md)
+
+## Context
+
+Connect Two Records shows whichever route BFS touches first. That is not a
+choice about quality; it is an accident of data layout. Searching the real
+production pair *Discovery* (Daft Punk) → *The Joshua Tree* (U2) returns a
+route through a contributor displayed as **`u2`**, evidenced by a **1998
+Italian mashup 12″** (*With Or Without You Vs. Da Funk / Your Love Vs. Mr
+Gorgeous*, release #200783). Mathematically valid; indefensible as the
+default story the product tells.
+
+Four independent causes were traced to source, not assumed:
+
+1. **The evidence release for every artist pair is `min(release_id)`** —
+   the lowest Discogs *database id*, decided in `graph.py`'s
+   `credit_edges_sql` (`SELECT artist_a_id, artist_b_id, min(release_id)
+   ... GROUP BY artist_a_id, artist_b_id`) long before the pathfinding
+   graph is built. Lowest id correlates with "catalogued earliest", which
+   skews toward early-listed 12″ singles, mashups and bootlegs. **Measured:
+   0 of 65,133 pairs in the published graph retain any alternative** — the
+   multiplicity is destroyed upstream, so no client-side fix is possible.
+2. **The display name per node is arbitrary.** `pathfinding_graph.py` runs
+   `SELECT DISTINCT artist_id, name FROM linked_credits` and keeps whichever
+   row DuckDB emits first via `setdefault`. `linked_credits` holds one row
+   per credit, so an artist has as many spellings as contributors typed.
+   **Measured: ~550 visibly broken names of 36,819** — 149 lowercase
+   (`u2`, `george duke`, `michael jackson`), 198 ALL-CAPS
+   (`THE ROLLING STONES`), 203 half-cased (`Carl perkins`, `Stevie wonder`).
+3. **The route tie-break is "lowest Discogs artist id wins."** CSR
+   neighbour lists are sorted by node index, node index is ascending
+   `artist_id`, `findPath` marks `visited` at *discovery* (so the first
+   parent to claim a node keeps it irreversibly), and it returns the moment
+   any frontier node touches the goal — no candidate is ever compared.
+4. **That tie-break is actively biased toward hubs.** The degree
+   distribution is brutally heavy-tailed (71% of real nodes are leaves; 42
+   nodes carry 500+ edges), and famous acts hold low Discogs ids — Elvis
+   27518, Miles 23755, Bowie 10263, Clapton 17827. Ascending-id order
+   therefore routes *through* exactly the hubs a quality policy would want
+   to avoid.
+
+An earlier scorer (`scorePath`) was removed in PR #104 as dead code. It must
+not be revived as written: it keyed off `contributors/index.v1.json`, which
+holds **549 entries covering 1.46%** of the graph's nodes. Bono is absent
+from it entirely; Quincy Jones (real graph degree **983**) scores as "no
+hub" there. The concept was fine; the signal had no coverage.
+
+## Decision
+
+**Rank a bounded candidate set instead of returning the first route found**,
+using only source-derived signals, and fix the two builder-side causes at
+their source rather than compensating for them in the client.
+
+### The hub signal comes from the graph itself
+
+Node degree is `offsets[i+1] - offsets[i]` — available in the browser, for
+**100% of nodes**, at zero additional cost. This is the direct fix for what
+made `scorePath` unusable, and it is why hub-awareness is viable now.
+
+### Candidate enumeration is bounded and shortest-first
+
+Enumeration uses distance-guided **iterative deepening**, not plain DFS: a
+reverse BFS from the goal prunes any branch that cannot reach it within the
+remaining budget, and routes are collected one exact depth at a time.
+
+Deepening is not a refinement — it is required for correctness under a cap.
+A deep-first walk filled a 200-route cap with long branches and then
+reported a *shortest* of 2 hops for a pair that has a 1-hop route (caught
+against the live artifact while building the measurement harness, now a
+regression test). Truncation must only ever discard routes **longer** than
+ones already held.
+
+### Measured bounds (real artifact, 40 stratified pairs, `local/research/`)
+
+| Measurement | Result |
+| --- | --- |
+| Pairs where an **equal-hop** alternative strictly lowers the worst hub | **20 of 40 (50%)** |
+| Shortest-hop distribution | 0 hops: 3 · 1 hop: 21 · 2 hops: 16 |
+| Equal-hop candidates per pair | min 1 · **median 6** · max 223 |
+| Shortest-layer enumeration expansions | min 2 · **median 17** · max 639 |
+| Shortest-layer enumeration time (CPython) | median 0.02 s · **max 0.097 s** |
+| Candidates within +1 hop | **exceeds 20,000** for many pairs |
+
+Two conclusions follow directly, and neither was chosen by taste:
+
+- **Enumerate the complete shortest layer.** It is small and cheap — max
+  223 routes, max 639 expansions, under 0.1 s in CPython, and the browser
+  already pays more than that parsing the graph. Half the available
+  improvement needs **no hop increase at all**.
+- **Treat any hop increase as exceptional and hard-capped.** The +1 layer is
+  effectively unbounded (>20,000 routes for many pairs), so it may only be
+  consulted when the shortest layer offers nothing, and never without a cap.
+
+### Honest labels
+
+- **"Recommended documented route"** — only because candidates are genuinely
+  ranked. The shown explanation is generated from the same facts used to
+  select it, never a parallel narrative.
+- **"Shortest documented route"** — literal BFS distance, always available.
+- **"Distinct alternate route"** — only for a genuinely edge-disjoint route.
+- Never "more musical" or "best": nothing here could substantiate that.
+
+### Out of scope, permanently
+
+No LLM, embedding, vector, popularity, streaming or external-API signal. No
+hidden blacklist — a release is only ever de-preferred by a published,
+source-derived field the UI is willing to show the player. Nothing here
+implies friendship, influence, collaboration intent or musical lineage; a
+shared credit remains documented co-participation and nothing more.
+
+## Consequences
+
+- The evidence-release fix requires **regenerating `graph.v2.json`**, since
+  the published artifact stores exactly one release per pair. Names are
+  fixed in the same regeneration, using the `QUALIFY row_number() OVER
+  (PARTITION BY artist_id ORDER BY count(*) DESC, name)` pattern
+  `snapshot.py` already uses — most-credited spelling wins, deterministic,
+  and it never transforms the source string, so `will.i.am`, `deadmau5`,
+  `k.d. lang`, `P!nk` and `blink-182` survive intact. Generic title-casing
+  is explicitly rejected for exactly that reason.
+- Regeneration invalidates the pinned BFS parity goldens, which encode the
+  old tie-break by construction. They are re-pinned with justification, not
+  relaxed.
+- The diagnostic pair is **not** fixed by hub-awareness: both of its
+  equal-hop routes pass through the same node (`u2`, degree 928), so only
+  the evidence-release axis discriminates there. This is why the phase does
+  both, and why neither alone would have been enough.
+- Route quality can only improve as far as the published evidence signals
+  allow. Format descriptors are reliable for *exclusion*, not confirmation
+  (`docs/RELEASE_FORMAT_RESEARCH.md` measured 94.7% of a known
+  false-positive population carrying only a bare `Album` descriptor), so
+  they are used as caveats, never as a positive "this is a studio album"
+  claim.
+
+## Validation
+
+- Synthetic-fixture tests for enumeration bounds, shortest-first
+  truncation, the reproduced production tie-break, role/degree metrics, and
+  disconnected/unknown-album handling
+  (`packages/research/tests/test_route_quality.py`).
+- Real measurement is reproducible from committed public artifacts alone:
+  `networked-players-research research-route-quality`. No private one-hop
+  corpus required; outputs go to the git-ignored `local/research/` lane
+  (ADR 0054).
+- Ranking determinism, stable tie-breaking, role-filter hardness, and
+  fallback-to-shortest are tested in the engine itself when it ships.
+
+## Revisit trigger
+
+If the catalog grows enough that the shortest layer stops being cheap —
+concretely, if measured shortest-layer enumeration exceeds ~250 ms or the
+equal-hop candidate count routinely exceeds ~1,000 — revisit the bound
+before widening the hop allowance. If a future artifact ever publishes
+per-pair *candidate* releases rather than one collapsed choice, revisit
+whether hop-level evidence selection belongs in the client instead of the
+builder.
