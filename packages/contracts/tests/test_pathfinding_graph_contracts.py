@@ -5,6 +5,8 @@ from copy import deepcopy
 from pathlib import Path
 from typing import Any
 
+import pytest
+
 from networked_players_contracts.catalog import _catalog_version
 from networked_players_contracts.pathfinding_graph import (
     pathfinding_graph_failures,
@@ -460,3 +462,45 @@ def test_unhashable_node_ids_do_not_crash_the_validator() -> None:
     failures = pathfinding_graph_failures(graph, _catalog())
     assert isinstance(failures, list) and failures
     assert any("node_ids must contain only integers" in f for f in failures)
+
+
+# --- malformed-catalog totality (Phase 5 preflight) ---------------------
+# The catalog is caller-supplied and arbitrary; this validator must stay
+# total over it. `albums: null` and `albums: 5` both raised TypeError from
+# the album-id/main_release_id comprehensions before this fix -- worse than
+# a failure string, since every real caller (validate-public-artifacts, the
+# CLI, the Pi-fleet artifact.validate workload) reports failures but
+# crashes on an exception.
+
+
+@pytest.mark.parametrize(
+    "albums",
+    [None, 5, "nope", {}, 3.5, True],
+    ids=["null", "int", "string", "object", "float", "bool"],
+)
+def test_malformed_catalog_albums_is_reported_not_raised(albums: Any) -> None:
+    catalog = deepcopy(_catalog())
+    catalog["albums"] = albums
+    failures = pathfinding_graph_failures(_graph_v2(), catalog)
+    assert isinstance(failures, list)
+    assert any("catalog albums must be an array" in f for f in failures)
+
+
+def test_missing_catalog_albums_key_is_reported_not_raised() -> None:
+    catalog = deepcopy(_catalog())
+    del catalog["albums"]
+    failures = pathfinding_graph_failures(_graph_v2(), catalog)
+    assert isinstance(failures, list)
+    assert any("catalog albums must be an array" in f for f in failures)
+
+
+def test_catalog_albums_list_of_non_dicts_does_not_crash() -> None:
+    # A list IS the right type -- non-dict entries are skipped, exactly as
+    # before, so this must NOT report the array failure.
+    catalog = deepcopy(_catalog())
+    catalog["albums"] = [1, "two", None, [3]]
+    failures = pathfinding_graph_failures(_graph_v2(), catalog)
+    assert isinstance(failures, list)
+    assert not any("catalog albums must be an array" in f for f in failures)
+    # Every real catalog album is now absent, so coverage must fail instead.
+    assert any("is not in the canonical catalog" in f for f in failures)

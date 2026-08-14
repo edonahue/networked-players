@@ -94,7 +94,69 @@ def _parser() -> argparse.ArgumentParser:
         "--output", type=Path, default=None, help="optional JSON report path (local-only)"
     )
 
+    route_quality = subparsers.add_parser(
+        "research-route-quality",
+        help=(
+            "measure Connect route quality over the PUBLISHED pathfinding graph "
+            "(Phase 5 / ADR 0059) -- reads only committed public artifacts, so it "
+            "needs no private one-hop corpus"
+        ),
+    )
+    route_quality.add_argument(
+        "--graph",
+        type=Path,
+        default=Path("apps/web/public/data/pathfinding/graph.v2.json"),
+        help="published pathfinding graph",
+    )
+    route_quality.add_argument(
+        "--catalog",
+        type=Path,
+        default=Path("apps/web/public/data/catalog/albums.v1.json"),
+        help="canonical album catalog (supplies the album ids to pair)",
+    )
+    route_quality.add_argument(
+        "--pairs", type=int, default=40, help="how many stratified album pairs to measure"
+    )
+    route_quality.add_argument(
+        "--max-user-hops", type=int, default=4, help="user-visible hop budget"
+    )
+    route_quality.add_argument(
+        "--max-routes", type=int, default=200, help="per-pair enumeration route cap"
+    )
+    route_quality.add_argument(
+        "--max-expansions",
+        type=int,
+        # Chosen from the measurement, not rounded to taste: the worst
+        # sampled pair consumes 358,505 slots (125,975 reverse + the
+        # forward walk), and at 200,000 one of the 40 shortest layers is
+        # cut off -- which invalidates every equal-hop statistic derived
+        # from it. 400,000 completes all 40.
+        default=400_000,
+        help="per-pair enumeration expansion cap",
+    )
+    route_quality.add_argument(
+        "--output", type=Path, default=None, help="optional JSON report path (local-only)"
+    )
+
     return parser
+
+
+def _route_metrics_json(metrics: Any) -> dict[str, Any] | None:
+    """Serialize a RouteMetrics for the local-only research report. Facts
+    only -- no score, since the ranking policy is ADR 0059's decision and
+    is derived FROM these numbers, not baked into the measurement."""
+    if metrics is None:
+        return None
+    return {
+        "user_hop_count": metrics.user_hop_count,
+        "contributor_node_ids": list(metrics.contributor_node_ids),
+        "contributor_names": list(metrics.contributor_names),
+        "evidence_release_ids": list(metrics.evidence_release_ids),
+        "max_contributor_degree": metrics.max_contributor_degree,
+        "mean_contributor_degree": round(metrics.mean_contributor_degree, 2),
+        "role_categories": list(metrics.role_categories),
+        "performer_hop_share": round(metrics.performer_hop_share, 3),
+    }
 
 
 def _open_credits_view(dataset_root: Path) -> duckdb.DuckDBPyConnection:
@@ -284,6 +346,66 @@ def main(argv: list[str] | None = None) -> int:
                 args.output.parent.mkdir(parents=True, exist_ok=True)
                 args.output.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n")
             print(json.dumps(report, indent=2, sort_keys=True))
+            return 0
+
+        if args.command == "research-route-quality":
+            from .route_quality import (
+                iter_measurements,
+                load_published_graph,
+                stratified_album_pairs,
+                summarize,
+            )
+
+            graph = load_published_graph(args.graph)
+            catalog = json.loads(args.catalog.read_text())
+            album_ids = [
+                str(album["id"])
+                for album in catalog.get("albums", [])
+                if isinstance(album, dict) and "id" in album
+            ]
+            pairs = stratified_album_pairs(graph, album_ids, limit=args.pairs)
+            measurements = list(
+                iter_measurements(
+                    graph,
+                    pairs,
+                    max_user_hops=args.max_user_hops,
+                    max_routes=args.max_routes,
+                    max_expansions=args.max_expansions,
+                )
+            )
+            report = {
+                "graph": str(args.graph),
+                "catalog": str(args.catalog),
+                "bounds": {
+                    "max_user_hops": args.max_user_hops,
+                    "max_routes": args.max_routes,
+                    "max_expansions": args.max_expansions,
+                },
+                "summary": summarize(measurements),
+                "pairs": [
+                    {
+                        "from_album_id": m.from_album_id,
+                        "to_album_id": m.to_album_id,
+                        "shortest_user_hops": m.shortest_user_hops,
+                        "equal_hop_route_count": m.equal_hop_route_count,
+                        "routes_within_one_extra_hop": m.routes_within_one_extra_hop,
+                        "equal_hop_improves_hub": m.equal_hop_improves_hub,
+                        "enumeration_expansions": m.enumeration_expansions,
+                        "shortest_layer_expansions": m.shortest_layer_expansions,
+                        "reverse_expansions": m.reverse_expansions,
+                        "truncated_at_user_hops": m.truncated_at_user_hops,
+                        "enumeration_truncated": m.enumeration_truncated,
+                        "shortest_layer_complete": m.shortest_layer_complete,
+                        "bfs_first": _route_metrics_json(m.bfs_first),
+                        "best_equal_hop_by_degree": _route_metrics_json(m.best_equal_hop_by_degree),
+                    }
+                    for m in measurements
+                ],
+            }
+            if args.output is not None:
+                args.output.parent.mkdir(parents=True, exist_ok=True)
+                args.output.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n")
+            print(json.dumps(report["summary"], indent=2, sort_keys=True))
             return 0
 
         raise AssertionError(f"unhandled command: {args.command}")
