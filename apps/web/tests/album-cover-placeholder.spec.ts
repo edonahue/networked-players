@@ -67,13 +67,48 @@ test.beforeAll(async () => {
       cwd: webRoot,
       env: { ...process.env, NP_TEST_OUT_DIR: OUT_DIR },
       stdio: "pipe",
+      // `npx astro preview` launches the actual Astro server as a CHILD of
+      // the npx wrapper -- killing just the wrapper process leaves that
+      // child (the thing actually bound to the port) running, causing
+      // EADDRINUSE on a retry or a later local run. Detached spawns it into
+      // its own process group instead, so afterAll can kill the whole
+      // group (negative pid, POSIX-only -- this repo's CI and local dev
+      // both run Linux/macOS).
+      detached: true,
     },
   );
   await waitForServer(`${BASE_URL}/albums/${albumId}/`, 30_000);
 });
 
-test.afterAll(() => {
-  previewProcess?.kill();
+test.afterAll(async () => {
+  if (!previewProcess || previewProcess.pid === undefined) return;
+  const pid = previewProcess.pid;
+  await new Promise<void>((resolve) => {
+    const proc = previewProcess!;
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      resolve();
+    };
+    proc.once("exit", finish);
+    try {
+      process.kill(-pid, "SIGTERM");
+    } catch {
+      finish(); // already exited
+      return;
+    }
+    // Fallback if SIGTERM alone doesn't bring the group down in time.
+    setTimeout(() => {
+      if (settled) return;
+      try {
+        process.kill(-pid, "SIGKILL");
+      } catch {
+        // already gone
+      }
+      finish();
+    }, 5_000);
+  });
 });
 
 test("an album whose registry entry and cover_image are both absent renders the accessible placeholder, not a broken image", async ({
