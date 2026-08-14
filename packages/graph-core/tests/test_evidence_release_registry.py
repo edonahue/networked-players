@@ -6,6 +6,7 @@ from typing import Any
 import pytest
 
 from networked_players_graph_core.evidence_release_registry import (
+    CAVEAT_FLAG_NAMES,
     build_evidence_release_registry,
 )
 from networked_players_graph_core.graph import CreditGraph
@@ -219,11 +220,17 @@ def test_top_level_shape_and_version() -> None:
         catalog=_catalog(),
         generated_at="2026-08-07T00:00:00+00:00",
     )
-    assert payload["schema_version"] == 1
+    assert payload["schema_version"] == 2
     assert payload["catalog_version"] == _CATALOG_VERSION
     assert payload["evidence_release_registry_version"].startswith(
-        f"evidence-release-registry-v1-{_SNAPSHOT}-"
+        f"evidence-release-registry-v2-{_SNAPSHOT}-"
     )
+    # The legend ships with the data so the integers are self-describing.
+    assert payload["caveat_flag_names"] == list(CAVEAT_FLAG_NAMES)
+    # `graph=None` means no `release_formats` lookup was possible at all.
+    # That must read as "nothing warrants a caveat", not as a build failure
+    # and not as a positive quality claim.
+    assert payload["caveat_flags"] == [0]
 
 
 def test_deterministic_across_repeated_builds() -> None:

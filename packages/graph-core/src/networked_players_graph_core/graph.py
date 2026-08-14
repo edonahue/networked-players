@@ -1151,6 +1151,38 @@ class CreditGraph:
             for record in (dict(zip(columns, row, strict=True)) for row in rows)
         }
 
+    def format_descriptors_for_ids(self, release_ids: Sequence[int]) -> dict[int, frozenset[str]]:
+        """Every `release_formats.descriptions` value per release id.
+
+        Batched for the same reason `releases_for_ids` is: the evidence
+        registry needs this for ~18,000 ids at once. A release can carry
+        several format rows (a 2xCD + DVD box set), so the descriptors are
+        unioned across them -- the question this answers is "does anything
+        about this release's format warrant a caveat", not "what is its
+        primary format".
+
+        Absent ids simply do not appear, which callers must treat as "no
+        descriptors known" rather than "no caveats" -- on a dataset
+        generation with no `release_formats` table the result is empty for
+        every id.
+        """
+        if not release_ids:
+            return {}
+        ids = sorted(set(release_ids))
+        placeholders = ", ".join("?" for _ in ids)
+        rows = self._connection.execute(
+            "SELECT release_id, descriptions FROM release_formats "
+            f"WHERE release_id IN ({placeholders})",
+            ids,
+        ).fetchall()
+        descriptors: dict[int, set[str]] = {}
+        for release_id, descriptions in rows:
+            bucket = descriptors.setdefault(int(release_id), set())
+            for description in descriptions or ():
+                if description is not None:
+                    bucket.add(str(description))
+        return {rid: frozenset(values) for rid, values in descriptors.items()}
+
     def find_release_by_title_artist(self, title: str, artist_name: str) -> dict[str, Any] | None:
         """The release-artist-scope playable credit matching an exact title + name/ANV.
 

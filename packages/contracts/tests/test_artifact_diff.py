@@ -61,3 +61,16 @@ def test_a_list_length_change_is_reported_directly_not_element_by_element() -> N
             "new_length": 3,
         }
     ]
+
+
+def test_registry_and_membership_version_fields_are_reported() -> None:
+    """Both shipped after `_VERSION_FIELD_NAMES` was written and were
+    missing from it, so a regenerated evidence registry diffed without the
+    one line a publisher most needs. Regression-pinned per field rather
+    than asserting the set's contents, so the test states the behaviour
+    rather than restating the constant."""
+    for field in ("evidence_release_registry_version", "album_credit_membership_version"):
+        report = artifact_diff({field: "a"}, {field: "b"})
+        assert field in report["version_field_changes"], field
+        assert report["version_field_changes"][field]["old"] == "a"
+        assert report["version_field_changes"][field]["new"] == "b"

@@ -3,8 +3,12 @@ from __future__ import annotations
 from copy import deepcopy
 from typing import Any
 
+import pytest
+
 from networked_players_contracts.catalog import _catalog_version
 from networked_players_contracts.evidence_release_registry import (
+    CAVEAT_FLAG_NAMES,
+    caveat_flags_for_descriptors,
     evidence_release_registry_failures,
     evidence_release_registry_version,
 )
@@ -42,6 +46,8 @@ def _base_fields() -> dict[str, Any]:
         "source_urls": ["https://data.discogs.com/?download=fake"] * 2,
         "cover_uri150s": ["https://i.discogs.com/thumb.jpg", None],
         "relation_to_catalog_album_ids": ["master-1", None],
+        "caveat_flags": [0, 1],
+        "caveat_flag_names": list(CAVEAT_FLAG_NAMES),
     }
 
 
@@ -49,7 +55,7 @@ def _registry() -> dict[str, Any]:
     catalog = _catalog()
     fields = _base_fields()
     registry = {
-        "schema_version": 1,
+        "schema_version": 2,
         "catalog_version": catalog["catalog_version"],
         "generated_at": "2026-08-07T00:00:00+00:00",
         "source": "Union of challenge/routes/pathfinding-graph release ids.",
@@ -132,7 +138,7 @@ def test_relation_to_unknown_catalog_album_is_rejected() -> None:
 def test_empty_registry_is_valid() -> None:
     catalog = _catalog()
     registry = {
-        "schema_version": 1,
+        "schema_version": 2,
         "catalog_version": catalog["catalog_version"],
         "generated_at": "2026-08-07T00:00:00+00:00",
         "source": "Union of challenge/routes/pathfinding-graph release ids.",
@@ -145,8 +151,93 @@ def test_empty_registry_is_valid() -> None:
         "source_urls": [],
         "cover_uri150s": [],
         "relation_to_catalog_album_ids": [],
+        "caveat_flags": [],
+        "caveat_flag_names": list(CAVEAT_FLAG_NAMES),
     }
     registry["evidence_release_registry_version"] = evidence_release_registry_version(
         registry, _SNAPSHOT
     )
     assert evidence_release_registry_failures(registry, catalog) == []
+
+
+# --- v2 caveat flags (ADR 0059) -----------------------------------------
+
+
+def test_v1_payloads_still_validate() -> None:
+    """The schema bump must not orphan an already-published artifact: the
+    Pi fleet and the web build both validate whatever is on disk, and a
+    registry regenerates independently of the validator that ships."""
+    registry = _registry()
+    registry["schema_version"] = 1
+    registry.pop("caveat_flags")
+    registry.pop("caveat_flag_names")
+    registry["evidence_release_registry_version"] = evidence_release_registry_version(
+        registry, _SNAPSHOT
+    )
+    assert evidence_release_registry_failures(registry, _catalog()) == []
+
+
+def test_v2_requires_the_caveat_fields() -> None:
+    registry = _registry()
+    registry.pop("caveat_flags")
+    failures = evidence_release_registry_failures(registry, _catalog())
+    assert any("unexpected top-level keys" in f for f in failures)
+
+
+def test_a_legend_that_disagrees_with_the_contract_is_a_failure() -> None:
+    """The legend IS the bit order. A payload that reorders it is one whose
+    integers mean something else -- silently relabelled caveats in the UI
+    would be worse than a hard build failure."""
+    registry = _registry()
+    registry["caveat_flag_names"] = list(reversed(CAVEAT_FLAG_NAMES))
+    registry["evidence_release_registry_version"] = evidence_release_registry_version(
+        registry, _SNAPSHOT
+    )
+    failures = evidence_release_registry_failures(registry, _catalog())
+    assert any("published bit order" in f for f in failures)
+
+
+def test_flags_outside_the_published_legend_are_rejected() -> None:
+    registry = _registry()
+    registry["caveat_flags"] = [1 << len(CAVEAT_FLAG_NAMES)]
+    registry["evidence_release_registry_version"] = evidence_release_registry_version(
+        registry, _SNAPSHOT
+    )
+    failures = evidence_release_registry_failures(registry, _catalog())
+    assert any("outside the published legend" in f for f in failures)
+
+
+def test_the_version_identity_pool_includes_caveat_flags() -> None:
+    """Adding a field without folding it into the content hash would leave
+    a version string describing content it never saw."""
+    registry = _registry()
+    before = evidence_release_registry_version(registry, _SNAPSHOT)
+    registry["caveat_flags"] = [1]
+    assert evidence_release_registry_version(registry, _SNAPSHOT) != before
+
+
+@pytest.mark.parametrize(
+    ("descriptors", "expected"),
+    [
+        (frozenset(), 0),
+        (frozenset({"Album"}), 0),
+        (frozenset({"Compilation"}), 1),
+        (frozenset({"Reissue"}), 1 << 3),
+        # Repress and Reissue share one bit: both mean "not the original
+        # pressing", and a player does not need them told apart.
+        (frozenset({"Repress"}), 1 << 3),
+        (frozenset({"Unofficial Release"}), 1 << 5),
+        (frozenset({"Compilation", "Unofficial Release"}), 1 | (1 << 5)),
+    ],
+)
+def test_caveat_flags_for_descriptors(descriptors: frozenset[str], expected: int) -> None:
+    assert caveat_flags_for_descriptors(descriptors) == expected
+
+
+def test_no_descriptor_produces_a_positive_quality_claim() -> None:
+    """The deliberate absence being pinned: there is no `studio_album` flag,
+    because `docs/RELEASE_FORMAT_RESEARCH.md` measured 94.7% of a known
+    false-positive population carrying only a bare `Album` descriptor. A
+    future edit that adds one has to delete this test and say why."""
+    assert "studio_album" not in CAVEAT_FLAG_NAMES
+    assert caveat_flags_for_descriptors(frozenset({"Album", "LP", "Stereo"})) == 0

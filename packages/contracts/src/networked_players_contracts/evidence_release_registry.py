@@ -21,12 +21,63 @@ from typing import Any
 
 from .canonical import content_hash
 
-EVIDENCE_RELEASE_REGISTRY_SCHEMA_VERSION = 1
+#: The schema version new builds emit. Older payloads still validate --
+#: see `EVIDENCE_RELEASE_REGISTRY_SCHEMA_VERSIONS`.
+EVIDENCE_RELEASE_REGISTRY_SCHEMA_VERSION = 2
+EVIDENCE_RELEASE_REGISTRY_SCHEMA_VERSIONS = frozenset({1, 2})
 
-_VERSION_PATTERN = re.compile(r"^evidence-release-registry-v1-[0-9A-Za-z]+-[0-9a-f]{12}$")
+_VERSION_PATTERN_BY_SCHEMA = {
+    1: re.compile(r"^evidence-release-registry-v1-[0-9A-Za-z]+-[0-9a-f]{12}$"),
+    2: re.compile(r"^evidence-release-registry-v2-[0-9A-Za-z]+-[0-9a-f]{12}$"),
+}
 _APPROVED_COVER_HOST = "i.discogs.com"
 
-_TOP_LEVEL_KEYS = frozenset(
+#: Format-descriptor caveat flags, v2. Each entry is `(flag_name,
+#: descriptors)`: the flag is set when the release carries ANY of those
+#: literal `release_formats.descriptions` values.
+#:
+#: These say what a release IS TAGGED AS, never what it is. Discogs format
+#: descriptors are reliable for EXCLUSION and not for confirmation --
+#: `docs/RELEASE_FORMAT_RESEARCH.md` measured 94.7% of a known
+#: false-positive population carrying only a bare `Album` descriptor -- so
+#: there is deliberately no `studio_album` flag and no positive quality
+#: enum. The absence of every flag means "nothing here warrants a caveat",
+#: which is a much weaker and much more defensible claim.
+#:
+#: Order is the BIT ORDER and is therefore load-bearing: `flags & 1` is
+#: always `compilation`. Append only; never reorder or remove.
+CAVEAT_FLAG_DESCRIPTORS: tuple[tuple[str, tuple[str, ...]], ...] = (
+    ("compilation", ("Compilation",)),
+    ("mixed", ("Mixed",)),
+    ("promo", ("Promo",)),
+    ("reissue", ("Reissue", "Repress")),
+    ("sampler", ("Sampler",)),
+    ("unofficial", ("Unofficial Release",)),
+)
+CAVEAT_FLAG_NAMES: tuple[str, ...] = tuple(name for name, _ in CAVEAT_FLAG_DESCRIPTORS)
+#: Every bit that can legitimately be set -- anything outside this is a
+#: malformed payload, not an unknown-but-tolerable future flag, because the
+#: registry publishes its own `caveat_flag_names` legend alongside.
+CAVEAT_FLAGS_MASK = (1 << len(CAVEAT_FLAG_DESCRIPTORS)) - 1
+
+
+def caveat_flags_for_descriptors(descriptors: frozenset[str] | set[str]) -> int:
+    """The v2 bitmask for one release's unioned format descriptors.
+
+    An empty descriptor set yields 0, which reads as "no caveat" -- correct
+    for a release genuinely tagged with nothing notable, and also what a
+    dataset generation with no `release_formats` table produces. That
+    ambiguity is why the flags are only ever used to de-prefer and to
+    caveat, never to promote.
+    """
+    flags = 0
+    for bit, (_, values) in enumerate(CAVEAT_FLAG_DESCRIPTORS):
+        if any(value in descriptors for value in values):
+            flags |= 1 << bit
+    return flags
+
+
+_BASE_TOP_LEVEL_KEYS = frozenset(
     {
         "schema_version",
         "catalog_version",
@@ -44,7 +95,9 @@ _TOP_LEVEL_KEYS = frozenset(
         "relation_to_catalog_album_ids",
     }
 )
-_FIELD_ARRAYS = (
+_V2_ONLY_KEYS = frozenset({"caveat_flags", "caveat_flag_names"})
+
+_BASE_FIELD_ARRAYS = (
     "release_ids",
     "titles",
     "years",
@@ -54,14 +107,27 @@ _FIELD_ARRAYS = (
     "cover_uri150s",
     "relation_to_catalog_album_ids",
 )
+_V2_FIELD_ARRAYS = (*_BASE_FIELD_ARRAYS, "caveat_flags")
+
+
+def _field_arrays(schema_version: Any) -> tuple[str, ...]:
+    return _V2_FIELD_ARRAYS if schema_version == 2 else _BASE_FIELD_ARRAYS
 
 
 def evidence_release_registry_version(registry: dict[str, Any], snapshot_date: str) -> str:
     """Recomputation mirror of the generation-time function in
-    `networked_players_graph_core.evidence_release_registry` -- duplicated
-    here deliberately (this package stays dependency-free of graph-core)."""
-    identity = {field: registry.get(field) for field in _FIELD_ARRAYS}
-    return f"evidence-release-registry-v1-{snapshot_date}-{content_hash(identity, length=12)}"
+    `networked_players_graph_core.evidence_release_registry` -- which
+    imports THIS one, so the two cannot drift.
+
+    The identity pool is schema-aware: a v2 payload folds `caveat_flags`
+    in, so adding the field necessarily changes the version string rather
+    than leaving a v1 hash describing content it never saw.
+    """
+    schema_version = registry.get("schema_version")
+    identity = {field: registry.get(field) for field in _field_arrays(schema_version)}
+    label = "v2" if schema_version == 2 else "v1"
+    digest = content_hash(identity, length=12)
+    return f"evidence-release-registry-{label}-{snapshot_date}-{digest}"
 
 
 def evidence_release_registry_failures(registry: Any, catalog: Any) -> list[str]:
@@ -73,12 +139,16 @@ def evidence_release_registry_failures(registry: Any, catalog: Any) -> list[str]
     if not isinstance(catalog, dict):
         return ["catalog must be an object"]
 
-    if set(registry.keys()) != _TOP_LEVEL_KEYS:
+    schema_version = registry.get("schema_version")
+    if schema_version not in EVIDENCE_RELEASE_REGISTRY_SCHEMA_VERSIONS:
+        failures.append(
+            f"schema_version must be one of {sorted(EVIDENCE_RELEASE_REGISTRY_SCHEMA_VERSIONS)}"
+        )
+    expected_keys = _BASE_TOP_LEVEL_KEYS | (_V2_ONLY_KEYS if schema_version == 2 else frozenset())
+    if set(registry.keys()) != expected_keys:
         failures.append(
             f"evidence-release-registry has unexpected top-level keys: {sorted(registry.keys())}"
         )
-    if registry.get("schema_version") != EVIDENCE_RELEASE_REGISTRY_SCHEMA_VERSION:
-        failures.append(f"schema_version must be {EVIDENCE_RELEASE_REGISTRY_SCHEMA_VERSION}")
     for field_name in (
         "catalog_version",
         "evidence_release_registry_version",
@@ -108,7 +178,7 @@ def evidence_release_registry_failures(registry: Any, catalog: Any) -> list[str]
         elif release_ids != sorted(set(release_ids)):
             failures.append("release_ids must be sorted and deduplicated")
 
-    for field in _FIELD_ARRAYS[1:]:
+    for field in _field_arrays(schema_version)[1:]:
         values = registry.get(field)
         if not isinstance(values, list):
             failures.append(f"{field} must be an array")
@@ -119,10 +189,15 @@ def evidence_release_registry_failures(registry: Any, catalog: Any) -> list[str]
             )
 
     version = registry.get("evidence_release_registry_version")
-    if isinstance(version, str) and not _VERSION_PATTERN.match(version):
+    pattern = (
+        _VERSION_PATTERN_BY_SCHEMA.get(schema_version)
+        if isinstance(schema_version, int) and not isinstance(schema_version, bool)
+        else None
+    )
+    if pattern is not None and isinstance(version, str) and not pattern.match(version):
         failures.append(
             f"evidence_release_registry_version {version!r} is not a well-formed "
-            f"evidence-release-registry-v1 version"
+            f"evidence-release-registry-v{schema_version} version"
         )
     snapshot_date = catalog.get("snapshot_date")
     if isinstance(snapshot_date, str) and isinstance(version, str):
@@ -176,5 +251,26 @@ def evidence_release_registry_failures(registry: Any, catalog: Any) -> list[str]
             failures.append(
                 f"relation_to_catalog_album_ids[{i}] {album_id!r} is not in the canonical catalog"
             )
+
+    if schema_version == 2:
+        flag_names = registry.get("caveat_flag_names")
+        if flag_names != list(CAVEAT_FLAG_NAMES):
+            # Not merely "some list of strings": the legend is the bit
+            # order, so a payload whose legend disagrees with this contract
+            # is one whose `caveat_flags` integers mean something else.
+            failures.append(
+                f"caveat_flag_names must be exactly {list(CAVEAT_FLAG_NAMES)} "
+                f"(the published bit order), got {flag_names!r}"
+            )
+        flags = registry.get("caveat_flags")
+        if isinstance(flags, list):
+            for i, value in enumerate(flags):
+                if not isinstance(value, int) or isinstance(value, bool):
+                    failures.append(f"caveat_flags[{i}] must be an integer")
+                elif value < 0 or value & ~CAVEAT_FLAGS_MASK:
+                    failures.append(
+                        f"caveat_flags[{i}] {value!r} sets bits outside the published "
+                        f"legend (mask {CAVEAT_FLAGS_MASK})"
+                    )
 
     return failures
