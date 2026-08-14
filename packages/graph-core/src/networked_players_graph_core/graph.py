@@ -282,6 +282,122 @@ def _edge_ineligible_role_sql(role_column: str) -> str:
     )"""
 
 
+#: Format descriptors that make a release a WEAKER piece of evidence for
+#: "these two people worked together". Every one is a literal
+#: `release_formats.descriptions` value, measured present in the one-hop
+#: corpus (Compilation 384,144 · Reissue 307,447 · Unofficial Release
+#: 114,520 · Promo 114,519 · Repress 37,329 · Mixed 11,559 · Sampler
+#: 10,579 rows).
+#:
+#: These are used for EXCLUSION only -- "prefer a release carrying none of
+#: these" -- never to assert that a release without them is a studio album.
+#: `docs/RELEASE_FORMAT_RESEARCH.md` measured 94.7% of a known
+#: false-positive population carrying only a bare `Album` descriptor, so a
+#: positive claim from these fields would be unsupportable.
+#: Grouped by SEVERITY, worst first, and ranked as separate tiers rather
+#: than one flat "has any caveat" test. Measured reason: a flat test cannot
+#: tell a bootleg from a reissue, so on the real corpus it traded 5,178
+#: reissue-evidenced edges away but took on 74 more UNOFFICIAL-evidenced
+#: ones -- an improvement on aggregate that moved the wrong way on the
+#: category that matters most. Ranking the groups separately makes each one
+#: monotone.
+#:
+#: * bootleg -- not a release the credited parties participated in issuing;
+#:   this is the mashup/bootleg 12" case ADR 0059 opens with.
+#: * container -- a compilation, DJ mix or sampler: the artists are on one
+#:   disc, which is much weaker than being on one record together.
+#: * pressing -- a promo or a later pressing: the collaboration is real,
+#:   only the artefact is secondary. Mild.
+EVIDENCE_CAVEAT_TIERS: tuple[tuple[str, ...], ...] = (
+    ("Unofficial Release",),
+    ("Compilation", "Mixed", "Sampler"),
+    ("Promo", "Reissue", "Repress"),
+)
+
+#: Every caveat descriptor, flattened. Measured present in the one-hop
+#: corpus (Compilation 384,144 · Reissue 307,447 · Unofficial Release
+#: 114,520 · Promo 114,519 · Repress 37,329 · Mixed 11,559 · Sampler
+#: 10,579 rows).
+EVIDENCE_CAVEAT_DESCRIPTORS: tuple[str, ...] = tuple(
+    sorted({descriptor for tier in EVIDENCE_CAVEAT_TIERS for descriptor in tier})
+)
+
+
+@dataclass(frozen=True)
+class EvidenceReleasePreference:
+    """Which release is chosen to EVIDENCE a co-credit pair.
+
+    Only the representative is affected. The set of `(artist_a_id,
+    artist_b_id)` pairs is fixed by the edge rules and is byte-identical
+    with or without a preference -- this never adds or removes an edge,
+    which is what keeps it safe to apply to one consumer and not others.
+
+    It is worth choosing at all because the multiplicity is real: measured
+    on the 20260601 one-hop corpus, **1,801,482 of 2,898,252 directed pairs
+    (62.2%) are evidenced by more than one release** (median 5, max 13,115).
+    The default `min(release_id)` throws all of that away in favour of the
+    lowest Discogs database id, which correlates with "catalogued earliest"
+    and skews toward early-listed 12" singles, mashups and bootlegs.
+
+    Tiers, applied in order:
+
+    1. `preferred_release_ids` -- typically the catalog's own
+       `main_release_id` values. "They both appear on this album" is the
+       most defensible evidence a route can offer.
+    2. Carries no caveat descriptor, one tier at a time from worst to
+       mildest (`EVIDENCE_CAVEAT_TIERS`: bootleg, then container, then
+       pressing) so the ranking is monotone within each severity rather
+       than only in aggregate.
+    3. `master_is_main_release` -- the primary version of its master rather
+       than a reissue pressing.
+    4. `release_id` ascending -- the deterministic final tiebreak, which is
+       exactly today's behaviour and guarantees a total order.
+    """
+
+    preferred_release_ids: tuple[int, ...] = ()
+    caveat_tiers: tuple[tuple[str, ...], ...] = EVIDENCE_CAVEAT_TIERS
+    prefer_master_main_release: bool = True
+
+    def order_by_sql(self, *, release_column: str) -> str:
+        """The ORDER BY list ranking candidate releases, best first.
+
+        Every term is a boolean sorted ascending, so `false` (0) wins --
+        i.e. each term names the thing that DISQUALIFIES a release. The
+        caveat tiers contribute one term EACH, worst first, so a bootleg
+        loses to a compilation and a compilation loses to a reissue; a
+        single combined term would rank all three the same and let the
+        release-id tiebreak pick among them arbitrarily.
+        """
+        terms: list[str] = []
+        if self.preferred_release_ids:
+            ids = ", ".join(str(int(r)) for r in sorted(set(self.preferred_release_ids)))
+            terms.append(f"({release_column} NOT IN ({ids}))")
+        for tier in self.caveat_tiers:
+            if not tier:
+                continue
+            # Escaped rather than interpolated raw: these are constants
+            # today, but a descriptor is source text and a stray apostrophe
+            # would otherwise end the string literal.
+            quoted = ", ".join("'" + str(d).replace("'", "''") + "'" for d in sorted(set(tier)))
+            terms.append(
+                f"""EXISTS (
+                    SELECT 1 FROM release_formats rf
+                    WHERE rf.release_id = {release_column}
+                      AND list_bool_or(
+                          list_transform(rf.descriptions, x -> x IN ({quoted}))
+                      )
+                )"""
+            )
+        if self.prefer_master_main_release:
+            terms.append(
+                f"""(NOT COALESCE(
+                    (SELECT r2.master_is_main_release FROM releases r2
+                     WHERE r2.release_id = {release_column}), FALSE))"""
+            )
+        terms.append(release_column)
+        return ", ".join(terms)
+
+
 def credit_edges_sql(
     *,
     max_artists_per_release: int,
@@ -289,6 +405,7 @@ def credit_edges_sql(
     max_artists_per_track: int = MAX_ARTISTS_PER_TRACK,
     credits_relation: str = "credits",
     release_format_policy_relation: str | None = None,
+    evidence_release_preference: EvidenceReleasePreference | None = None,
 ) -> str:
     """A SELECT producing the directed, deduplicated co-credit edge relation
     `(artist_a_id, artist_b_id, release_id)` over `credits_relation`.
@@ -332,6 +449,7 @@ def credit_edges_sql(
         if release_format_policy_relation is not None
         else _non_studio_release_title_sql("r.title")
     )
+    evidence_collapse = _evidence_collapse_sql(evidence_release_preference)
     cap = int(max_artists_per_release)
     track_cap = int(max_artists_per_track)
     policy_join = ""
@@ -445,9 +563,31 @@ def credit_edges_sql(
         UNION ALL SELECT artist_a_id, artist_b_id, release_id FROM release_scope
         UNION ALL SELECT artist_b_id, artist_a_id, release_id FROM release_scope
     )
-    SELECT artist_a_id, artist_b_id, min(release_id) AS release_id
-    FROM directed GROUP BY artist_a_id, artist_b_id
+    {evidence_collapse}
     """
+
+
+def _evidence_collapse_sql(preference: EvidenceReleasePreference | None) -> str:
+    """Collapse `directed` to one release per pair.
+
+    Without a preference this is verbatim the historical
+    `min(release_id)` -- every existing caller stays byte-identical, which
+    is the whole point of the parameter being optional.
+    """
+    if preference is None:
+        return """SELECT artist_a_id, artist_b_id, min(release_id) AS release_id
+    FROM directed GROUP BY artist_a_id, artist_b_id"""
+    # `d.release_id`, never a bare `release_id`: the correlated subqueries
+    # in the ordering compare against `releases`/`release_formats`, whose
+    # own `release_id` column would otherwise capture the name and make
+    # every correlation a tautology (`r2.release_id = r2.release_id`),
+    # silently matching all rows instead of one.
+    order_by = preference.order_by_sql(release_column="d.release_id")
+    return f"""SELECT artist_a_id, artist_b_id, release_id FROM (
+        SELECT DISTINCT artist_a_id, artist_b_id, release_id FROM directed
+    ) d QUALIFY row_number() OVER (
+        PARTITION BY d.artist_a_id, d.artist_b_id ORDER BY {order_by}
+    ) = 1"""
 
 
 _CREDIT_COLUMNS = (
@@ -547,6 +687,7 @@ class CreditGraph:
         max_temp_directory_size: str | None = None,
         build_edges: bool = True,
         release_format_policy: Path | None = None,
+        evidence_release_preference: EvidenceReleasePreference | None = None,
     ) -> CreditGraph:
         """`build_edges=False` skips materializing `credit_edges` -- the ~2.5
         minute step on the real corpus. The result can read evidence rows
@@ -591,6 +732,36 @@ class CreditGraph:
             connection.execute(
                 f"CREATE VIEW releases AS SELECT * FROM {read_parquet_sql(releases_glob)}"
             )
+            # `release_formats` is a v3-and-later table: the original
+            # `discogs-onehop` layout has no such directory. Always define
+            # the relation so SQL that references it (the evidence-release
+            # preference's caveat tier) parses against every dataset
+            # generation; when the table is absent the relation is empty,
+            # which makes the caveat tier uniformly false and degrades
+            # cleanly to the next tier rather than failing the build.
+            #
+            # The test is for a matching FILE, not for the directory: an
+            # interrupted or partial dataset copy can leave
+            # `table=release_formats/` present but empty, and
+            # `read_parquet` raises IOException on a glob that matches
+            # nothing. Under the `except` below that becomes a bare
+            # "could not open dataset", hard-failing every `CreditGraph.
+            # open` on that root -- challenge, record routes and cohort
+            # connectivity included, none of which read format descriptors
+            # at all. Degrading is only correct if it degrades here too.
+            formats_dir = dataset_root / "table=release_formats"
+            formats_files = sorted(formats_dir.glob("*.parquet")) if formats_dir.is_dir() else []
+            if formats_files:
+                formats_glob = str(formats_dir / "*.parquet")
+                connection.execute(
+                    f"CREATE VIEW release_formats AS SELECT * FROM {read_parquet_sql(formats_glob)}"
+                )
+            else:
+                connection.execute(
+                    "CREATE VIEW release_formats AS "
+                    "SELECT NULL::BIGINT AS release_id, NULL::VARCHAR[] AS descriptions "
+                    "WHERE FALSE"
+                )
         except duckdb.IOException as exc:
             raise GraphError(f"could not open dataset at {dataset_root}: {exc}") from exc
 
@@ -663,6 +834,7 @@ class CreditGraph:
                 + credit_edges_sql(
                     max_artists_per_release=max_artists_per_release,
                     release_format_policy_relation=policy_relation,
+                    evidence_release_preference=evidence_release_preference,
                 )
             )
             connection.execute("CREATE INDEX credit_edges_a ON credit_edges (artist_a_id)")
@@ -1014,6 +1186,38 @@ class CreditGraph:
             int(record["release_id"]): record
             for record in (dict(zip(columns, row, strict=True)) for row in rows)
         }
+
+    def format_descriptors_for_ids(self, release_ids: Sequence[int]) -> dict[int, frozenset[str]]:
+        """Every `release_formats.descriptions` value per release id.
+
+        Batched for the same reason `releases_for_ids` is: the evidence
+        registry needs this for ~18,000 ids at once. A release can carry
+        several format rows (a 2xCD + DVD box set), so the descriptors are
+        unioned across them -- the question this answers is "does anything
+        about this release's format warrant a caveat", not "what is its
+        primary format".
+
+        Absent ids simply do not appear, which callers must treat as "no
+        descriptors known" rather than "no caveats" -- on a dataset
+        generation with no `release_formats` table the result is empty for
+        every id.
+        """
+        if not release_ids:
+            return {}
+        ids = sorted(set(release_ids))
+        placeholders = ", ".join("?" for _ in ids)
+        rows = self._connection.execute(
+            "SELECT release_id, descriptions FROM release_formats "
+            f"WHERE release_id IN ({placeholders})",
+            ids,
+        ).fetchall()
+        descriptors: dict[int, set[str]] = {}
+        for release_id, descriptions in rows:
+            bucket = descriptors.setdefault(int(release_id), set())
+            for description in descriptions or ():
+                if description is not None:
+                    bucket.add(str(description))
+        return {rid: frozenset(values) for rid, values in descriptors.items()}
 
     def find_release_by_title_artist(self, title: str, artist_name: str) -> dict[str, Any] | None:
         """The release-artist-scope playable credit matching an exact title + name/ANV.

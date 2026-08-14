@@ -26,22 +26,24 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from networked_players_contracts.canonical import content_hash
+from networked_players_contracts.evidence_release_registry import (
+    CAVEAT_FLAG_DESCRIPTORS,
+    CAVEAT_FLAG_NAMES,
+    EVIDENCE_RELEASE_REGISTRY_SCHEMA_VERSION,
+    caveat_flags_for_descriptors,
+    evidence_release_registry_version,
+)
 
 from .graph import CreditGraph
 
 _YEAR_PATTERN = re.compile(r"(\d{4})")
 
-_FIELD_ARRAYS = (
-    "release_ids",
-    "titles",
-    "years",
-    "countries",
-    "master_ids",
-    "source_urls",
-    "cover_uri150s",
-    "relation_to_catalog_album_ids",
-)
+__all__ = [
+    "CAVEAT_FLAG_DESCRIPTORS",
+    "CAVEAT_FLAG_NAMES",
+    "build_evidence_release_registry",
+    "evidence_release_registry_version",
+]
 
 
 def _extract_year(released: Any) -> int | None:
@@ -55,16 +57,6 @@ def _extract_year(released: Any) -> int | None:
         return None
     year = int(match.group(1))
     return year if 1900 <= year <= 2100 else None
-
-
-def evidence_release_registry_version(payload: dict[str, Any], snapshot_date: str) -> str:
-    """Content hash over every published field -- a fingerprinted content
-    pool, like `pathfinding_graph_version`, not an order-insensitive lookup
-    index (release_ids are always sorted, so this is still deterministic
-    regardless)."""
-    identity = {field: payload[field] for field in _FIELD_ARRAYS}
-    digest = content_hash(identity, length=12)
-    return f"evidence-release-registry-v1-{snapshot_date}-{digest}"
 
 
 def build_evidence_release_registry(
@@ -129,6 +121,14 @@ def build_evidence_release_registry(
     cover_uri150s: list[str | None] = []
     relation_to_catalog_album_ids: list[str | None] = []
 
+    # One batched query for every id, like `releases_for_ids` above and for
+    # the same reason: 18,000 single-id lookups would dominate build time.
+    # Ids absent from `release_formats` (or a whole dataset generation
+    # without that table) simply yield no descriptors, which becomes flags
+    # 0 -- "nothing warrants a caveat", never "confirmed clean".
+    descriptors_by_id = graph.format_descriptors_for_ids(release_ids) if graph is not None else {}
+    caveat_flags: list[int] = []
+
     for release_id in release_ids:
         meta = metadata_by_id[release_id]
         titles.append(str(meta["title"]))
@@ -139,9 +139,12 @@ def build_evidence_release_registry(
         source_urls.append(str(meta["source_url"]))
         cover_uri150s.append(cover_by_release.get(release_id))
         relation_to_catalog_album_ids.append(catalog_album_by_release.get(release_id))
+        caveat_flags.append(
+            caveat_flags_for_descriptors(descriptors_by_id.get(release_id, frozenset()))
+        )
 
     payload: dict[str, Any] = {
-        "schema_version": 1,
+        "schema_version": EVIDENCE_RELEASE_REGISTRY_SCHEMA_VERSION,
         "catalog_version": catalog_version,
         "generated_at": generated_at,
         "source": (
@@ -162,6 +165,13 @@ def build_evidence_release_registry(
         "source_urls": source_urls,
         "cover_uri150s": cover_uri150s,
         "relation_to_catalog_album_ids": relation_to_catalog_album_ids,
+        "caveat_flags": caveat_flags,
+        # The legend travels WITH the data. It costs ~60 bytes once and
+        # makes an integer array self-describing rather than meaningless
+        # without the matching code revision; the contract validates that
+        # the two agree, so a legend/bit-order drift is a build failure
+        # instead of silently relabelled caveats in the UI.
+        "caveat_flag_names": list(CAVEAT_FLAG_NAMES),
     }
     payload["evidence_release_registry_version"] = evidence_release_registry_version(
         payload, snapshot_date

@@ -30,6 +30,12 @@ _VERSION_FIELD_NAMES = frozenset(
         "exploration_corpus_version",
         "contributor_index_version",
         "pathfinding_graph_version",
+        # Both shipped after this set was written and were never added, so
+        # `diff-artifact-version` silently omitted the one line a publisher
+        # most needs when reviewing a regenerated evidence registry or
+        # album-credit-membership artifact.
+        "evidence_release_registry_version",
+        "album_credit_membership_version",
     }
 )
 

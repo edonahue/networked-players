@@ -19,8 +19,15 @@ def write_synthetic_dataset(
     release_rows: list[dict[str, Any]],
     credit_rows: list[dict[str, Any]],
     track_rows: list[dict[str, Any]] | None = None,
+    release_format_rows: list[dict[str, Any]] | None = None,
 ) -> Path:
-    """Write a real, tiny, schema-conformant one-hop-shaped dataset for graph-core tests."""
+    """Write a real, tiny, schema-conformant one-hop-shaped dataset for graph-core tests.
+
+    `release_format_rows=None` omits the `table=release_formats` directory
+    entirely, reproducing the pre-v3 dataset layout that `CreditGraph.open`
+    has to tolerate. Pass `[]` for a v3-shaped dataset that simply has no
+    format rows.
+    """
     (root / "table=releases").mkdir(parents=True)
     (root / "table=credits").mkdir(parents=True)
     (root / "table=tracks").mkdir(parents=True)
@@ -37,6 +44,12 @@ def write_synthetic_dataset(
         pa.Table.from_pylist(track_rows or [], schema=SCHEMAS["tracks"]),
         root / "table=tracks" / "part-00000.parquet",
     )
+    if release_format_rows is not None:
+        (root / "table=release_formats").mkdir(parents=True)
+        pq.write_table(
+            pa.Table.from_pylist(release_format_rows, schema=SCHEMAS["release_formats"]),
+            root / "table=release_formats" / "part-00000.parquet",
+        )
     (root / "manifest.json").write_text(
         json.dumps(
             {

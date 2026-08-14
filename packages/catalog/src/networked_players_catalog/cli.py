@@ -2646,7 +2646,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if args.command == "build-pathfinding-graph":
         from networked_players_contracts.pathfinding_graph import pathfinding_graph_failures
-        from networked_players_graph_core.graph import CreditGraph
+        from networked_players_graph_core.graph import CreditGraph, EvidenceReleasePreference
         from networked_players_graph_core.pathfinding_graph import build_pathfinding_graph
 
         catalog = json.loads(args.catalog.read_text())
@@ -2654,8 +2654,29 @@ def main(argv: Sequence[str] | None = None) -> int:
         onehop_manifest = json.loads((args.onehop_root / "manifest.json").read_text())
         snapshot_date = str(onehop_manifest["snapshot_date"])
 
+        # The pathfinding graph is the ONE consumer that opts into a ranked
+        # evidence release (ADR 0059). Its edges are shown to a player as
+        # "here is why we say these two worked together", so the lowest
+        # Discogs database id -- which is what `min(release_id)` means, and
+        # which skews toward early-listed 12" singles, mashups and
+        # bootlegs -- is the wrong representative. Every other consumer
+        # (challenge, record routes, cohort connectivity) keeps the
+        # historical collapse untouched, so this changes no artifact but
+        # this one. The pair SET is identical either way; only which
+        # release evidences each pair moves.
+        evidence_preference = EvidenceReleasePreference(
+            preferred_release_ids=tuple(
+                int(album["main_release_id"])
+                for album in catalog["albums"]
+                if album.get("main_release_id") is not None
+            )
+        )
+
         with CreditGraph.open(
-            args.onehop_root, memory_limit=args.memory_limit, threads=args.threads
+            args.onehop_root,
+            memory_limit=args.memory_limit,
+            threads=args.threads,
+            evidence_release_preference=evidence_preference,
         ) as graph:
             pathfinding_graph = build_pathfinding_graph(
                 graph,
