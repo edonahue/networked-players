@@ -108,7 +108,9 @@ shortest layers verified complete.
 | Pairs where an **equal-hop** alternative strictly lowers the worst hub | **23 of 40 (57.5%)** |
 | Shortest-hop distribution | 0 hops: 2 · 1 hop: 23 · 2 hops: 15 |
 | Equal-hop candidates per pair | min 1 · **median 4.5** · max 157 |
-| Shortest-layer enumeration expansions | **median 11.5** · max 397 |
+| Shortest-layer forward walk (expansions) | **median 11.5** · max 397 |
+| Reverse-distance precompute (slots scanned) | **max 125,975** — one pass per search |
+| Whole bounded search | max 127,545, of which the precompute is **98.8%** |
 | Candidates within +1 hop (raised cap, see below) | **reaches 8,654** for a single pair, and every pair still saturates the cap |
 
 Every figure above is printed verbatim by the `research-route-quality`
@@ -132,10 +134,18 @@ time is a benchmark *result* and stays in `local/research/` per
 
 Two conclusions follow directly, and neither was chosen by taste:
 
-- **Enumerate the complete shortest layer.** It is small and bounded — max
-  157 routes over max 397 expansions, against a graph whose parse and
-  integrity hash already dominate any per-search cost. Nearly three in five
+- **Enumerate the complete shortest layer.** The forward walk is genuinely
+  trivial — max 157 routes over max 397 expansions. Nearly three in five
   pairs improve with **no hop increase at all**.
+- **The reverse-distance precompute, not the walk, is the cost to manage.**
+  It is 98.8% of the search: one pass over the reachable graph (~126,000
+  adjacency slots), the same order as the `buildArtistIndex` pass the
+  browser already performs. It is per-GOAL, so PR 3 computes it once per
+  search and reuses it across the recommended/shortest/alternate results
+  rather than once per candidate. Production's `findPath` pays nothing like
+  it today because plain BFS needs no guide — completeness is what buys the
+  precompute, and that trade is only defensible because the pass is linear
+  and cached, not because it is free.
 - **Treat any hop increase as exceptional and hard-capped.** The +1 layer
   saturates every cap it has been measured against — at least 8,654 routes
   for one pair, roughly 55x the shortest layer's worst case — so it may
@@ -199,8 +209,10 @@ shared credit remains documented co-participation and nothing more.
 ## Revisit trigger
 
 If the catalog grows enough that the shortest layer stops being cheap —
-concretely, if shortest-layer expansions routinely exceed ~5,000 or the
-equal-hop candidate count routinely exceeds ~1,000 — revisit the bound
+concretely, if the shortest-layer forward walk routinely exceeds ~5,000
+expansions, or the equal-hop candidate count routinely exceeds ~1,000, or
+the reverse precompute stops being reusable across a single search —
+revisit the bound
 before widening the hop allowance. If a future artifact ever publishes
 per-pair *candidate* releases rather than one collapsed choice, revisit
 whether hop-level evidence selection belongs in the client instead of the

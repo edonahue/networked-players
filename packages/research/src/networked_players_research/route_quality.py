@@ -125,25 +125,39 @@ class EnumerationResult:
     #: a partially-enumerated shortest layer is an arbitrary CSR-ordered
     #: prefix, not a sample.
     shortest_layer_complete: bool = False
-    #: Expansions consumed by the shortest layer ALONE, snapshotted when
-    #: that layer finishes. `expansions` keeps counting through the deeper
-    #: layers, so it answers a different question -- ADR 0059's bound is
-    #: about the shortest layer, which is the only thing PR 3's engine
-    #: enumerates completely.
+    #: FORWARD-WALK expansions consumed by the shortest layer alone,
+    #: snapshotted when that layer finishes and excluding the reverse
+    #: precompute. `expansions` covers the whole search including that
+    #: precompute, so the two answer different questions.
     shortest_layer_expansions: int = 0
+    #: Adjacency slots scanned by the reverse-distance precompute. Charged
+    #: to the same budget as the forward walk, because it dominates it.
+    reverse_expansions: int = 0
 
     @property
     def truncated(self) -> bool:
         return self.truncated_by_route_cap or self.truncated_by_expansion_cap
 
 
-def _reverse_distances(graph: PublishedGraph, goal_index: int, max_depth: int) -> dict[int, int]:
+def _reverse_distances(
+    graph: PublishedGraph, goal_index: int, max_depth: int, *, budget: int | None = None
+) -> tuple[dict[int, int], int, bool]:
     """Hops from every reachable node to `goal_index`, capped at
     `max_depth`. The graph is undirected (every edge is stored in both
     directions), so a plain BFS from the goal gives the admissible
-    remaining-budget bound that keeps enumeration tractable."""
+    remaining-budget bound that keeps enumeration tractable.
+
+    Returns the distances, the adjacency slots scanned, and whether the
+    budget stopped it early. This traversal is NOT incidental: at default
+    depth on the committed graph it reaches all 36,959 nodes and scans
+    ~125,900 slots -- roughly 300x the forward walk it guides. Leaving it
+    uncounted made the advertised expansion cap bound about 0.3% of the
+    real work, so it is charged to the same budget.
+    """
     distances = {goal_index: 0}
     frontier = deque([goal_index])
+    scanned = 0
+    exhausted = False
     while frontier:
         node = frontier.popleft()
         depth = distances[node]
@@ -156,11 +170,15 @@ def _reverse_distances(graph: PublishedGraph, goal_index: int, max_depth: int) -
         if depth > 0 and graph.node_ids[node] < 0:
             continue
         for slot in graph.slots(node):
+            scanned += 1
+            if budget is not None and scanned >= budget:
+                exhausted = True
+                return distances, scanned, exhausted
             neighbor = graph.neighbors[slot]
             if neighbor not in distances:
                 distances[neighbor] = depth + 1
                 frontier.append(neighbor)
-    return distances
+    return distances, scanned, exhausted
 
 
 def enumerate_routes(
@@ -197,7 +215,15 @@ def enumerate_routes(
     result = EnumerationResult()
     started = time.perf_counter()
     max_depth = max_user_hops + ANCHOR_HOP_BUDGET
-    distances = _reverse_distances(graph, goal_index, max_depth)
+    distances, reverse_scanned, reverse_exhausted = _reverse_distances(
+        graph, goal_index, max_depth, budget=max_expansions
+    )
+    result.reverse_expansions = reverse_scanned
+    result.expansions = reverse_scanned
+    if reverse_exhausted:
+        result.truncated_by_expansion_cap = True
+        result.elapsed_seconds = time.perf_counter() - started
+        return result
     shortest_possible = distances.get(start_index)
     if shortest_possible is None:
         result.elapsed_seconds = time.perf_counter() - started
@@ -279,7 +305,9 @@ def enumerate_routes(
         if is_shortest_layer:
             # Only the expansion cap can cut the shortest layer short now.
             result.shortest_layer_complete = completed
-            result.shortest_layer_expansions = result.expansions
+            # Forward-walk only: result.expansions now starts at the
+            # reverse-traversal cost, which is charged separately.
+            result.shortest_layer_expansions = result.expansions - result.reverse_expansions
         if not completed:
             if not result.truncated_by_expansion_cap:
                 result.truncated_by_route_cap = True
@@ -389,6 +417,8 @@ class PairMeasurement:
     #: Expansions for the shortest layer alone -- the figure ADR 0059's
     #: bound is stated in, and the one PR 3's engine will actually pay.
     shortest_layer_expansions: int
+    #: Slots scanned by the reverse-distance precompute.
+    reverse_expansions: int
     enumeration_seconds: float
     enumeration_truncated: bool
     #: Which bound fired -- the route cap saturating is what makes a +1
@@ -452,6 +482,7 @@ def measure_pair(
             best_equal_hop_by_degree=None,
             enumeration_expansions=enumeration.expansions,
             shortest_layer_expansions=enumeration.shortest_layer_expansions,
+            reverse_expansions=enumeration.reverse_expansions,
             enumeration_seconds=enumeration.elapsed_seconds,
             enumeration_truncated=enumeration.truncated,
             truncated_by_route_cap=enumeration.truncated_by_route_cap,
@@ -492,6 +523,7 @@ def measure_pair(
         best_equal_hop_by_degree=best_by_degree,
         enumeration_expansions=enumeration.expansions,
         shortest_layer_expansions=enumeration.shortest_layer_expansions,
+        reverse_expansions=enumeration.reverse_expansions,
         enumeration_seconds=enumeration.elapsed_seconds,
         enumeration_truncated=enumeration.truncated,
         truncated_by_route_cap=enumeration.truncated_by_route_cap,
@@ -650,6 +682,10 @@ def summarize(measurements: Sequence[PairMeasurement]) -> dict[str, Any]:
             "shortest_layer_max_expansions": max(
                 (m.shortest_layer_expansions for m in complete), default=0
             ),
+            # The reverse-distance precompute, which dominates: one pass
+            # over the reachable graph per search, independent of how many
+            # routes the forward walk then finds.
+            "reverse_max_expansions": max((m.reverse_expansions for m in measurements), default=0),
             "shortest_layer_median_expansions": (
                 statistics.median([m.shortest_layer_expansions for m in complete])
                 if complete

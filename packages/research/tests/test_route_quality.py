@@ -218,21 +218,23 @@ def test_a_partial_shortest_layer_still_suppresses_the_hub_signal() -> None:
     still be withheld -- otherwise summarize() folds an unfounded claim
     into the headline count.
 
-    max_expansions=5 is calibrated against this fixture to stop between the
-    first and second of its two shortest routes."""
+    max_expansions=18 is calibrated against this fixture: 14 slots go to
+    the reverse-distance precompute (which is charged to the same budget),
+    leaving just enough forward walk to find the first of its two shortest
+    routes but not the second."""
     graph = two_album_graph()
     partial = enumerate_routes(
         graph,
         graph.index_by_node_id[-1],
         graph.index_by_node_id[-2],
         max_user_hops=4,
-        max_expansions=5,
+        max_expansions=18,
     )
     shortest = min(r.user_hop_count for r in partial.routes)
     assert len([r for r in partial.routes if r.user_hop_count == shortest]) == 1
     assert not partial.shortest_layer_complete
 
-    measurement = measure_pair(graph, "album-a", "album-b", max_user_hops=4, max_expansions=5)
+    measurement = measure_pair(graph, "album-a", "album-b", max_user_hops=4, max_expansions=18)
     assert measurement is not None
     assert not measurement.shortest_layer_complete
     assert measurement.equal_hop_improves_hub is False
@@ -254,6 +256,7 @@ def test_summary_median_matches_a_true_median_on_an_even_sample() -> None:
             best_equal_hop_by_degree=None,
             enumeration_expansions=0,
             shortest_layer_expansions=0,
+            reverse_expansions=0,
             enumeration_seconds=0.0,
             enumeration_truncated=False,
             truncated_by_route_cap=False,
@@ -493,7 +496,7 @@ def test_incomplete_shortest_layers_are_excluded_from_aggregates() -> None:
     non-improvement, biasing a capped run's headline downward."""
     graph = two_album_graph()
     complete = measure_pair(graph, "album-a", "album-b", max_user_hops=4)
-    partial = measure_pair(graph, "album-a", "album-b", max_user_hops=4, max_expansions=5)
+    partial = measure_pair(graph, "album-a", "album-b", max_user_hops=4, max_expansions=18)
     assert complete is not None and partial is not None
     assert complete.shortest_layer_complete
     assert not partial.shortest_layer_complete
@@ -524,3 +527,31 @@ def test_shortest_layer_expansions_are_snapshotted_not_the_whole_search() -> Non
 
     shortest_only = enumerate_routes(graph, start, goal, max_user_hops=1)
     assert result.shortest_layer_expansions == shortest_only.shortest_layer_expansions
+
+
+def test_the_reverse_precompute_is_counted_and_capped() -> None:
+    """The reverse-distance BFS dominates the forward walk it guides -- on
+    the committed graph it scans ~125,900 slots against a forward walk of a
+    few hundred. Leaving it uncounted made the advertised cap bound about
+    0.3% of the real work, so it is charged to the same budget and can stop
+    the search on its own."""
+    graph = two_album_graph()
+    start = graph.index_by_node_id[-1]
+    goal = graph.index_by_node_id[-2]
+
+    full = enumerate_routes(graph, start, goal, max_user_hops=4)
+    assert full.reverse_expansions > 0
+    # Total covers the precompute; the shortest-layer figure does not.
+    assert full.expansions > full.reverse_expansions
+    # The shortest-layer figure is forward-walk only, so it must be
+    # strictly smaller than the total that includes the precompute.
+    assert 0 < full.shortest_layer_expansions < full.expansions
+    assert full.shortest_layer_expansions <= full.expansions - full.reverse_expansions
+
+    # A budget smaller than the precompute stops the search there, and says so.
+    starved = enumerate_routes(
+        graph, start, goal, max_user_hops=4, max_expansions=full.reverse_expansions - 1
+    )
+    assert starved.truncated_by_expansion_cap
+    assert starved.routes == []
+    assert not starved.shortest_layer_complete
