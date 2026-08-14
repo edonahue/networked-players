@@ -7,9 +7,12 @@ test suite (AGENTS.md: keep fixtures synthetic and reproducible).
 
 from __future__ import annotations
 
+import statistics
+
 from networked_players_research.route_quality import (
     ALBUM_ANCHOR_SENTINEL,
     ANCHOR_HOP_BUDGET,
+    PairMeasurement,
     PublishedGraph,
     bfs_first_route,
     enumerate_routes,
@@ -206,6 +209,60 @@ def test_route_metrics_measures_degree_and_roles_over_visible_hops_only() -> Non
     assert metrics.evidence_release_ids == (5005,)
     assert "production" in metrics.role_categories
     assert metrics.performer_hop_share == 1.0  # Drums is a performing role
+
+
+def test_a_partial_shortest_layer_still_suppresses_the_hub_signal() -> None:
+    """The harder case the first review fix missed: the cap fires AFTER
+    some shortest routes are collected. `best_equal_hop_by_degree` is then
+    the best of an arbitrary CSR-ordered prefix, so the hub claim must
+    still be withheld -- otherwise summarize() folds an unfounded claim
+    into the headline count.
+
+    max_expansions=5 is calibrated against this fixture to stop between the
+    first and second of its two shortest routes."""
+    graph = two_album_graph()
+    partial = enumerate_routes(
+        graph,
+        graph.index_by_node_id[-1],
+        graph.index_by_node_id[-2],
+        max_user_hops=4,
+        max_expansions=5,
+    )
+    shortest = min(r.user_hop_count for r in partial.routes)
+    assert len([r for r in partial.routes if r.user_hop_count == shortest]) == 1
+    assert not partial.shortest_layer_complete
+
+    measurement = measure_pair(graph, "album-a", "album-b", max_user_hops=4, max_expansions=5)
+    assert measurement is not None
+    assert not measurement.shortest_layer_complete
+    assert measurement.equal_hop_improves_hub is False
+
+
+def test_summary_median_matches_a_true_median_on_an_even_sample() -> None:
+    """The ADR quotes this figure, so the reproducible report has to agree
+    with it: on an even sample with differing central values the median is
+    the average of both, not the upper-middle element."""
+    counts = [1, 2, 4, 5]
+    measurements = [
+        PairMeasurement(
+            from_album_id=f"a{i}",
+            to_album_id=f"b{i}",
+            shortest_user_hops=1,
+            equal_hop_route_count=count,
+            routes_within_one_extra_hop=count,
+            bfs_first=None,
+            best_equal_hop_by_degree=None,
+            enumeration_expansions=0,
+            enumeration_seconds=0.0,
+            enumeration_truncated=False,
+            shortest_layer_complete=True,
+            equal_hop_improves_hub=False,
+        )
+        for i, count in enumerate(counts)
+    ]
+    summary = summarize(measurements)
+    assert summary["equal_hop_alternatives"]["median"] == statistics.median(counts)
+    assert summary["equal_hop_alternatives"]["median"] == 3.0
 
 
 def test_unknown_album_measures_as_none_not_an_error() -> None:

@@ -28,6 +28,7 @@ terminate in useful time.
 from __future__ import annotations
 
 import json
+import statistics
 import time
 from collections import deque
 from collections.abc import Iterator, Sequence
@@ -423,8 +424,13 @@ def measure_pair(
         equal_hop,
         key=lambda m: (m.max_contributor_degree, m.contributor_node_ids),
     )
+    # Gated on completeness: with a partial shortest layer, `best_by_degree`
+    # is the best of an arbitrary CSR-ordered prefix, so claiming the
+    # current answer is "avoidably hub-heavy" would be unfounded -- and
+    # summarize() would fold that claim into the headline count.
     improves = bool(
-        baseline_metrics
+        enumeration.shortest_layer_complete
+        and baseline_metrics
         and baseline_metrics.user_hop_count == shortest
         and best_by_degree.max_contributor_degree < baseline_metrics.max_contributor_degree
     )
@@ -544,7 +550,10 @@ def summarize(measurements: Sequence[PairMeasurement]) -> dict[str, Any]:
         "shortest_hop_histogram": _histogram(m.shortest_user_hops for m in with_route),
         "equal_hop_alternatives": {
             "min": equal_hop_counts[0] if equal_hop_counts else 0,
-            "median": (equal_hop_counts[len(equal_hop_counts) // 2] if equal_hop_counts else 0),
+            # A true median (mean of both central observations on an even
+            # sample), not the upper-middle element -- the ADR quotes this
+            # figure, so the reproducible report has to agree with it.
+            "median": (statistics.median(equal_hop_counts) if equal_hop_counts else 0),
             "max": equal_hop_counts[-1] if equal_hop_counts else 0,
         },
         "equal_hop_hub_improvable": {
