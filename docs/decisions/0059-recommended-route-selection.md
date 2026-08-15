@@ -741,6 +741,98 @@ check, not a new-behavior one. Full existing Connect suite (50 tests
 including combobox, URL state, swap, and staleness) re-verified green
 against the restored code, plus a fresh `npx tsc --noEmit` and `make check`.
 
+**Review findings on this slice, both real.** An automated review of the
+pushed PR found two defects:
+
+1. `runSearch` awaited the album-art registry (`artPromise`) before
+   revealing results at all. `fetchAlbumArt()` has no fetch timeout, so a
+   slow or hung art registry would leave an already-found route stuck
+   behind "Searching…" indefinitely, with search/swap disabled, for a
+   fetch that only affects presentation. Fixed by never awaiting it:
+   `runSearch` now renders immediately with an empty (all-placeholder) art
+   map, then a `.then()` callback -- guarded by the same `stale()` check
+   every other late-arriving continuation uses -- upgrades each rendered
+   endpoint's placeholder to a real cover IN PLACE
+   (`connectEvidence.ts`'s new `enhanceEndpointCover`) once the registry
+   actually resolves, never a full re-render of the route. The map is the
+   same mutable object stored on `lastSearch`, so Swap's own re-render
+   (which reads `lastSearch.artByAlbumId`) sees the enhancement too with
+   no extra bookkeeping.
+2. `BaseLayout.astro`'s site-wide image-error fallback (the handler every
+   `data-art-fallback="disc"` image already shares) replaced a failing
+   `<img>` with a bare `<span class="album-card__placeholder">`, discarding
+   whatever OTHER classes that image carried. For Connect's 72px, flex-
+   sized `connect-endpoint__cover`, a real upstream image failure (an
+   expired or 404 hotlink) would silently fall back to
+   `.album-card__placeholder`'s own `width: 100%` sizing instead --
+   correct for the album grid this handler was originally written for,
+   wrong for an endpoint card. Fixed by carrying the failing image's own
+   `className` over onto the replacement span (`${img.className}
+   album-card__placeholder`) rather than discarding it -- a generic fix at
+   the shared handler, not a Connect-specific branch, so any future
+   `data-art-fallback="disc"` caller with its own sizing class is covered
+   the same way.
+
+A new regression test (`a slow album-art registry never delays the route
+from rendering, and covers upgrade in place once it resolves`) gates the
+art registry response and confirms the route renders fully -- status
+clears, results show, placeholders stand in -- before releasing it and
+confirming the placeholders upgrade to real `<img>`s in place.
+
+## PR 5b: progressive rendering
+
+The second slice of PR 5, in `apps/web/src/game/connect.ts` -- begins
+graph preparation on a real intent signal, and stages status text
+honestly, per the plan's own wording. No ranking or route-selection
+change.
+
+**Begin graph preparation on the second valid pick, not the search
+click.** `updateButton()` already runs on every pick and already computes
+`bothPicked`; it now also calls `loadPreparedGraph()` (and `loadAlbumArt()`)
+the moment that's true. Both are already memoized, module-level promises
+(post-Phase-4 cleanup audit F11/F12 for the graph; this PR's own PR 5a
+slice for art), so warming them here costs nothing extra -- `runSearch`'s
+own later calls to the same functions just resolve immediately, or much
+sooner, once the visitor actually clicks Search, overlapping fetch/parse/
+validate time with their own think-time between picking and searching.
+This directly targets the measured baseline's single biggest waterfall
+item: `graph.v2.json` wasn't even requested until the search click.
+
+**Evidence is deliberately NOT warmed the same way.** Unlike the graph,
+whether evidence is needed at all depends on the role-filter mode, which
+isn't decided yet at pick time (it defaults to unfiltered, but picking
+both albums and only afterward choosing a role filter -- exactly what
+`tests/game-connect.spec.ts`'s "a role-filtered search that finds no
+connection never fetches the evidence registry" already covers -- is a
+real, common order). Warming it unconditionally on pick-completion would
+silently reintroduce the exact wasted-fetch cost `runSearch`'s own
+mode-conditional evidence fetch (PR 3) was written to avoid. Evidence
+keeps loading exactly when it does today: alongside the graph for an
+unfiltered search, or only after a role-filtered route is confirmed.
+
+**Honest staged status text**, never a fabricated percentage: "Loading
+the connection graph…" (the real first operation, true whether the graph
+is a fresh fetch or already warmed -- the await still runs either way, it
+just settles fast when warmed) transitions to "Ranking documented
+routes…" (unfiltered -- about to await evidence and rank) or "Searching
+for a documented connection…" (role-filtered -- about to run the edge-
+filtered BFS) once the graph resolves. The four existing staleness/
+race-condition tests that previously asserted a flat `/searching/i`
+were updated to the new second-stage text, since all four are unfiltered
+Discovery/Joshua Tree searches whose evidence-gated construction means
+that's genuinely what's showing by the time each assertion runs.
+
+**Verification.** Five new tests confirm the graph and album-art registry
+are requested on the second pick (before any search click), that evidence
+is NOT eagerly fetched merely from picking both albums, and that both
+staged-status transitions are real and observable (gating the graph, then
+also gating evidence long enough to hold each search at its second stage
+before releasing) -- 4 of 5 confirmed to fail against the pre-slice code;
+the 5th (no eager evidence fetch) was already true and stays a non-
+regression check. Full Connect suite (76 tests across every existing
+spec file plus the two new ones) re-verified green, plus `npx tsc
+--noEmit` and `make check`.
+
 ## Revisit trigger
 
 If the catalog grows enough that the shortest layer stops being cheap —

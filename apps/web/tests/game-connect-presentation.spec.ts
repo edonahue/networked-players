@@ -196,3 +196,44 @@ test("swap preserves the endpoint cover art and route length across the reversed
     lengthBefore ?? "",
   );
 });
+
+// A real review finding: `fetchAlbumArt()` has no fetch timeout, and
+// endpoint covers are purely presentational, so a slow or hung art
+// registry must never delay showing a route that's already been found.
+test("a slow album-art registry never delays the route from rendering, and covers upgrade in place once it resolves", async ({
+  page,
+}) => {
+  let releaseArt!: () => void;
+  const artGate = new Promise<void>((resolve) => {
+    releaseArt = resolve;
+  });
+  await page.route("**/data/catalog/album-art.v1.json", async (route) => {
+    await artGate;
+    await route.continue();
+  });
+
+  await page.goto("/play/connect/");
+  await selectAlbum(page, "a", "Discovery");
+  await selectAlbum(page, "b", "Joshua Tree");
+  await page.locator("[data-connect-search]").click();
+
+  // The route renders fully -- status clears, results show, placeholders
+  // stand in for the covers -- while the art registry is still gated.
+  await expect(page.locator("[data-connect-results]")).toBeVisible({
+    timeout: 15000,
+  });
+  await expect(page.locator("[data-connect-status]")).toBeHidden();
+  const placeholders = page.locator(
+    "[data-connect-hops] .connect-endpoint .connect-endpoint__cover--placeholder",
+  );
+  await expect(placeholders).toHaveCount(2);
+  await expect(page.locator("[data-connect-hops] img")).toHaveCount(0);
+
+  // Releasing it upgrades the placeholders to real covers in place --
+  // the results stay mounted throughout, never re-rendered wholesale.
+  releaseArt();
+  await expect(
+    page.locator("[data-connect-hops] .connect-endpoint img"),
+  ).toHaveCount(2);
+  await expect(placeholders).toHaveCount(0);
+});

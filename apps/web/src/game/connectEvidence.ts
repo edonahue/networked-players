@@ -160,3 +160,30 @@ export function renderEndpointCard(
     `</div>`
   );
 }
+
+/** Upgrades an already-rendered endpoint card's placeholder to a real
+ * cover, in place -- never a full re-render of the card or its container.
+ * `renderRoute` never awaits the art registry before rendering a route (a
+ * real review finding: the registry has no fetch timeout, so a slow or
+ * hung request would otherwise leave an already-found route stuck behind
+ * "Searching…" indefinitely); this is the enhancement half of that split,
+ * called once the art registry resolves. A no-op if the card already shows
+ * a real image (nothing to upgrade) or `art` is still unavailable. */
+export function enhanceEndpointCover(
+  cardEl: Element,
+  art: ResolvedArt | undefined,
+  albumTitle: string,
+): void {
+  if (!art) return;
+  const existing = cardEl.querySelector(".connect-endpoint__cover");
+  if (!existing || existing.tagName === "IMG") return;
+  const img = document.createElement("img");
+  img.className = "connect-endpoint__cover";
+  img.src = art.uri150;
+  img.width = 72;
+  img.height = 72;
+  img.loading = "lazy";
+  img.alt = `Cover art for ${albumTitle}`;
+  img.dataset.artFallback = "disc";
+  existing.replaceWith(img);
+}

@@ -33,6 +33,7 @@ import {
 } from "./connectUrlState";
 import {
   buildEvidenceIndex,
+  enhanceEndpointCover,
   renderEndpointCard,
   renderEvidenceHop,
   type EvidenceIndex,
@@ -528,6 +529,31 @@ export async function initConnect(): Promise<void> {
     const bothPicked = Boolean(albumA && albumB && albumA.id !== albumB.id);
     searchButton.disabled = !bothPicked;
     if (swapButton) swapButton.disabled = !bothPicked;
+    // Progressive rendering (ADR 0059 Phase 5 PR 5b): begin preparing the
+    // graph on the real intent signal of a second valid pick, not the
+    // search click -- `loadPreparedGraph` is already a memoized,
+    // module-level promise, so warming it here costs nothing extra and
+    // just lets `runSearch`'s own `await` resolve immediately (or much
+    // sooner) once the visitor actually clicks Search, overlapping
+    // fetch/parse/validate time with their own think-time between picking
+    // and searching -- the single biggest piece of the measured cold-
+    // search waterfall (ADR 0059's own baseline: graph.v2.json wasn't even
+    // requested until the search click). Album art is warmed for the same
+    // reason -- also mode-independent, always needed for the endpoint
+    // cards regardless of which route is eventually found. Evidence is
+    // deliberately NOT warmed here: unlike the graph, whether it's needed
+    // at all depends on the role-filter mode, which isn't decided yet at
+    // pick time (it defaults to unfiltered, but a visitor who picks both
+    // albums and only afterward selects a role filter is a real, common
+    // order -- warming evidence unconditionally here would silently
+    // resurrect the exact wasted-fetch cost the mode-conditional fetch in
+    // `runSearch` was written to avoid). Evidence keeps loading exactly
+    // when it does today: alongside the graph for an unfiltered search,
+    // or only after a role-filtered route is confirmed.
+    if (bothPicked) {
+      void loadPreparedGraph(sessionStorageOrNull(), PATHFINDING_GRAPH_URL);
+      void loadAlbumArt();
+    }
   };
 
   // Initialization lifecycle (post-#108 P1): the pickers are wired FIRST and
@@ -702,7 +728,13 @@ export async function initConnect(): Promise<void> {
     const hopsElNonNull = hopsEl!;
 
     resultsElNonNull.hidden = true;
-    setStatus("Searching…");
+    // Honest staged status (ADR 0059 Phase 5 PR 5b): each message names the
+    // real operation actually in flight when it's set, never a fabricated
+    // percentage. This first message stays true whether the graph is a
+    // fresh fetch or already warmed from the second pick (`updateButton`) --
+    // the await below still runs either way, it just settles fast when
+    // warmed.
+    setStatus("Loading the connection graph…");
     searchButtonNonNull.disabled = true;
     if (swapButton) swapButton.disabled = true;
     // Any new attempt invalidates the previous snapshot immediately, win
@@ -763,6 +795,15 @@ export async function initConnect(): Promise<void> {
     }
     const { graph, artistIndex, albumIndex, nameById } =
       preparedResult.prepared;
+
+    // Second stage: the graph is ready, but rendering still needs either a
+    // route search (role-filtered) or a search plus evidence-informed
+    // ranking (unfiltered) -- name whichever is actually about to happen.
+    setStatus(
+      roleFilterMode
+        ? "Searching for a documented connection…"
+        : "Ranking documented routes…",
+    );
 
     const failureMessages: Record<string, string> = {
       "unknown-album":
@@ -850,8 +891,18 @@ export async function initConnect(): Promise<void> {
       }
     }
 
-    const artByAlbumId = await artPromise;
-    if (stale()) return;
+    // Never awaited here -- a real review finding: `fetchAlbumArt()` has
+    // no fetch timeout, and album art is purely presentational, so a slow
+    // or hung art registry must never delay showing a route that's already
+    // been found. Rendered with whatever's in this map RIGHT NOW (empty on
+    // a cold session, already populated if a prior search's art already
+    // resolved -- `loadAlbumArt`'s own promise is memoized, so this is
+    // instant from the second search on); `artByAlbumId` itself is
+    // deliberately the SAME mutable Map stored on `lastSearch` and closed
+    // over below, so once the registry resolves, both are updated in one
+    // place and Swap's own re-render (which reads `lastSearch.artByAlbumId`)
+    // sees the enhancement too, with no extra bookkeeping.
+    const artByAlbumId = new Map<string, ResolvedArt>();
 
     setStatus(null);
     resultsElNonNull.hidden = false;
@@ -876,6 +927,36 @@ export async function initConnect(): Promise<void> {
       artByAlbumId,
       mode: selectedModeValue,
     };
+
+    // The enhancement half of the split above: once the (already in-
+    // flight, never-awaited) art registry resolves, upgrade each
+    // endpoint's placeholder to a real cover IN PLACE -- never a full
+    // re-render of the route, which would be real layout thrash for a
+    // purely cosmetic upgrade. Reads `hopsAlternateEl`'s CURRENT DOM state
+    // at the time this callback actually runs (a later microtask), not at
+    // registration time, so it correctly sees whatever the alternate-route
+    // block below (entirely synchronous) has by then already rendered.
+    const enhanceEndpoints = (container: HTMLElement | null) => {
+      if (!container) return;
+      const cards = container.querySelectorAll(".connect-endpoint");
+      if (cards.length < 2) return;
+      enhanceEndpointCover(
+        cards[0],
+        artByAlbumId.get(fromAlbum.id),
+        fromAlbum.title,
+      );
+      enhanceEndpointCover(
+        cards[cards.length - 1],
+        artByAlbumId.get(toAlbum.id),
+        toAlbum.title,
+      );
+    };
+    void artPromise.then((resolvedArt) => {
+      if (stale()) return;
+      for (const [id, art] of resolvedArt) artByAlbumId.set(id, art);
+      enhanceEndpoints(hopsElNonNull);
+      enhanceEndpoints(hopsAlternateEl);
+    });
 
     // Distinct alternate route (ADR 0058 Slice 7, renamed post-Phase-4
     // cleanup audit): a real second search that hard-excludes every edge
