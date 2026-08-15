@@ -23,6 +23,7 @@ import {
   selectRecommendedRoute,
   type RouteFacts,
 } from "../src/game/recommendedRoute";
+import { isPerformerRole } from "../src/game/roleTaxonomy";
 
 const CAVEAT_FLAG_NAMES = [
   "compilation",
@@ -742,5 +743,231 @@ test.describe("computeRouteFacts / explainRoute", () => {
     expect(result.hopCount).toBe(1);
     expect(result.worstCaveatSeverity).toBe(2); // compilation tier
     expect(result.performerHopCount).toBe(1); // Vocals qualifies even though the other side doesn't
+  });
+});
+
+// Three real review findings, regression-pinned individually.
+test.describe("selectRecommendedRoute: review fixes", () => {
+  test("the +1-hop escape hatch never fires on a truncated (incomplete) shortest layer", () => {
+    // Three real 1-hop bridges exist -- two unofficial (P-R, Q-S) and one
+    // CLEAN (U-V) -- plus a real clean 2-hop detour (Q-T-S). Node ids are
+    // ordered so the walk visits P and Q before U, and a route cap of 2
+    // truncates the layer to exactly [P-R, Q-S] before ever reaching the
+    // clean U-V bridge.
+    //
+    // A buggy engine that doesn't gate the escape hatch on completeness
+    // sees "every COLLECTED candidate is worst-tier" (true of the
+    // truncated pair), searches +1 hop, finds the real clean Q-T-S
+    // detour, and WRONGLY promotes to a 2-hop recommendation --
+    // overlooking the undiscovered clean 1-hop U-V bridge entirely. The
+    // fixed engine must refuse to search +1 hop at all when the shortest
+    // layer itself was never fully enumerated.
+    const edges: Edge[] = [
+      {
+        a: -1,
+        b: 100,
+        releaseId: 10,
+        roleA: ALBUM_ANCHOR_SENTINEL,
+        roleB: "Producer",
+      },
+      {
+        a: -1,
+        b: 200,
+        releaseId: 10,
+        roleA: ALBUM_ANCHOR_SENTINEL,
+        roleB: "Producer",
+      },
+      {
+        a: -1,
+        b: 900,
+        releaseId: 10,
+        roleA: ALBUM_ANCHOR_SENTINEL,
+        roleB: "Producer",
+      },
+      {
+        a: -2,
+        b: 300,
+        releaseId: 20,
+        roleA: ALBUM_ANCHOR_SENTINEL,
+        roleB: "Producer",
+      },
+      {
+        a: -2,
+        b: 400,
+        releaseId: 20,
+        roleA: ALBUM_ANCHOR_SENTINEL,
+        roleB: "Producer",
+      },
+      {
+        a: -2,
+        b: 950,
+        releaseId: 20,
+        roleA: ALBUM_ANCHOR_SENTINEL,
+        roleB: "Producer",
+      },
+      { a: 100, b: 300, releaseId: 9001, roleA: "Vocals", roleB: "Vocals" }, // P-R, unofficial
+      { a: 200, b: 400, releaseId: 9002, roleA: "Vocals", roleB: "Vocals" }, // Q-S, unofficial
+      { a: 900, b: 950, releaseId: 9003, roleA: "Vocals", roleB: "Vocals" }, // U-V, CLEAN (sorts last, excluded by the cap)
+      { a: 200, b: 500, releaseId: 9004, roleA: "Vocals", roleB: "Vocals" }, // Q-T, clean 2-hop detour, half 1
+      { a: 500, b: 400, releaseId: 9005, roleA: "Vocals", roleB: "Vocals" }, // T-S, clean 2-hop detour, half 2
+    ];
+    const graph = buildGraph(
+      [-2, -1, 100, 200, 300, 400, 500, 900, 950],
+      ["Album B", "Album A", "P", "Q", "R", "S", "T", "U", "V"],
+      edges,
+      [
+        { album_id: "album-a", virtual_artist_id: -1, main_release_id: 10 },
+        { album_id: "album-b", virtual_artist_id: -2, main_release_id: 20 },
+      ],
+    );
+    const { artistIndex, albumIndex } = indices(graph);
+    const evidence = evidenceIndex([
+      release(9001, "unofficial"),
+      release(9002, "unofficial"),
+      release(9003, null),
+      release(9004, null),
+      release(9005, null),
+    ]);
+
+    const result = selectRecommendedRoute(
+      graph,
+      artistIndex,
+      albumIndex,
+      "album-a",
+      "album-b",
+      evidence,
+      4,
+      undefined,
+      2, // truncates the 3-candidate 1-hop layer to [P-R, Q-S]
+      400_000,
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.shortestLayerComplete).toBe(false);
+    expect(result.usedPlusOneHop).toBe(false); // never promoted on the false premise
+    expect(result.rankingDegraded).toBe(true);
+    expect(result.recommended.hops.length).toBe(1); // stays at the true shortest depth
+  });
+
+  test("a known caveat is never hidden by an unrelated hop's missing registry entry", () => {
+    // Hop 1's release (900) carries a real unofficial caveat. Hop 2's
+    // release (999) is referenced by the graph but absent from the
+    // registry entirely -- the sessionStorage-cached-graph/fresh-registry
+    // staleness pattern ADR 0059's PR 2 section measured. The route's
+    // overall worstCaveatSeverity must still report the KNOWN bad value
+    // from hop 1, not collapse to unknown just because hop 2 is unverifiable.
+    const graph = twoBridgeGraph({});
+    const { artistIndex } = indices(graph);
+    const evidence = evidenceIndex([release(900, "unofficial")]); // 901 never added
+    const facts = computeRouteFacts(
+      graph,
+      artistIndex,
+      [
+        {
+          release_id: 900,
+          artist_a_id: 100,
+          artist_b_id: 300,
+          role_a: "Vocals",
+          role_b: "Vocals",
+        },
+        {
+          release_id: 999, // not in the registry at all
+          artist_a_id: 300,
+          artist_b_id: 400,
+          role_a: "Vocals",
+          role_b: "Vocals",
+        },
+      ],
+      evidence,
+    );
+    expect(facts.worstCaveatSeverity).toBe(3); // the known unofficial caveat survives
+  });
+
+  test("a would-be 'clean' claim downgrades to unknown when the only evidence is unverifiable", () => {
+    const graph = twoBridgeGraph({});
+    const { artistIndex } = indices(graph);
+    const evidence = evidenceIndex([]); // registry has vocabulary but no releases at all
+    const facts = computeRouteFacts(
+      graph,
+      artistIndex,
+      [
+        {
+          release_id: 999,
+          artist_a_id: 100,
+          artist_b_id: 300,
+          role_a: "Vocals",
+          role_b: "Vocals",
+        },
+      ],
+      evidence,
+    );
+    // Must NOT be 0 (a positive "verified clean" claim) -- nothing was
+    // actually checked.
+    expect(facts.worstCaveatSeverity).toBeNull();
+  });
+
+  test("an edge filter that rejects the unfiltered-shortest path still finds a real, longer filter-compliant route", () => {
+    // The direct 1-hop bridge (100 <-> 300, "Executive-Producer") is the
+    // graph's unfiltered shortest path, but a role filter for performer
+    // roles rejects it. A real 2-hop, fully-performer-role detour exists
+    // within the same hop budget (100 -> 500 -> 300). Before the fix, the
+    // reverse-distance guide was unfiltered, so `shortestPossible` was
+    // computed from the (filter-rejected) 1-hop bridge, and an exact-depth
+    // search at that depth under the filter found nothing -- a false
+    // no-path even though the real detour existed.
+    const edges: Edge[] = [
+      {
+        a: -1,
+        b: 100,
+        releaseId: 10,
+        roleA: ALBUM_ANCHOR_SENTINEL,
+        roleB: "Producer",
+      },
+      {
+        a: -2,
+        b: 300,
+        releaseId: 20,
+        roleA: ALBUM_ANCHOR_SENTINEL,
+        roleB: "Producer",
+      },
+      {
+        a: 100,
+        b: 300,
+        releaseId: 900,
+        roleA: "Executive-Producer",
+        roleB: "Executive-Producer",
+      },
+      { a: 100, b: 500, releaseId: 901, roleA: "Vocals", roleB: "Vocals" },
+      { a: 500, b: 300, releaseId: 902, roleA: "Vocals", roleB: "Vocals" },
+    ];
+    const graph = buildGraph(
+      [-2, -1, 100, 300, 500],
+      ["Album B", "Album A", "P", "R", "X"],
+      edges,
+      [
+        { album_id: "album-a", virtual_artist_id: -1, main_release_id: 10 },
+        { album_id: "album-b", virtual_artist_id: -2, main_release_id: 20 },
+      ],
+    );
+    const { artistIndex, albumIndex } = indices(graph);
+    const performerOnly = (roleA: string, roleB: string): boolean =>
+      isPerformerRole(roleA) && isPerformerRole(roleB);
+
+    const result = selectRecommendedRoute(
+      graph,
+      artistIndex,
+      albumIndex,
+      "album-a",
+      "album-b",
+      NO_EVIDENCE,
+      4,
+      performerOnly,
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.recommended.hops.length).toBe(2);
+    for (const hop of result.recommended.hops) {
+      expect(hop.release_id).not.toBe(900); // never the filter-rejected bridge
+    }
   });
 });

@@ -345,7 +345,7 @@ the same 1.46%-coverage problem `scorePath` had — so it is replaced by
 `computeRouteFacts`/`explainRoute`, which both the recommended pick and
 the distinct alternate now share, reading CSR degree instead.
 
-### Three real review findings, fixed before merge
+### The first review pass: three findings, fixed before merge
 
 1. **A truncated candidate set was silently ranked and still labeled
    "Recommended."** A route or expansion cap firing mid-enumeration left
@@ -377,6 +377,59 @@ the distinct alternate now share, reading CSR degree instead.
    matching pre-PR behavior. Two new real-artifact tests pin both sides:
    zero evidence fetches for a role-filtered search with no connection,
    exactly one once a route is found.
+
+### A second review pass: three more findings
+
+1. **The +1-hop escape hatch could still fire on a truncated shortest
+   layer**, even after the `rankingDegraded` fix above: gating the LABEL
+   on completeness didn't stop the CONTROL FLOW from evaluating "every
+   collected candidate is worst-tier" over a partial set and searching +1
+   hop on that possibly-false premise. A hostile fixture makes this
+   concrete: three real 1-hop bridges exist, two unofficial and one CLEAN,
+   ordered so a route cap of 2 truncates the layer to just the two
+   unofficial ones before the clean one is ever found; a real clean 2-hop
+   detour also exists. Unfixed, the engine finds "every candidate is
+   worst-tier" (true only of the truncated pair), searches +1 hop, and
+   promotes the 2-hop detour — overlooking the shorter, cleaner 1-hop
+   bridge that the cap had excluded. Fixed by adding
+   `shortestLayer.complete` to the escape hatch's own trigger condition,
+   not just the final label.
+2. **A release absent from an otherwise-populated registry was read as
+   "no caveat" rather than "unknown."** The published GRAPH is cached in
+   `sessionStorage` across page loads while the REGISTRY is always fetched
+   fresh, so a session that spans a deploy can hold a graph referencing
+   release ids a freshly-fetched registry doesn't cover — precisely the
+   staleness pattern this ADR's own PR 2 section measured (3,728 ids the
+   old graph referenced that a new registry didn't). Reading `?? 0` for a
+   missing release repeated that mistake at query time. Fixed with a rule
+   that only ever WIDENS what's reported, never narrows it: a route's
+   `worstCaveatSeverity` downgrades from a would-be "0 (verified clean)"
+   to `null` (unknown) when any hop's evidence couldn't be checked at all,
+   but a REAL known caveat from another hop is never hidden behind that
+   uncertainty — concealing a known bad signal because an unrelated one is
+   unverifiable would itself violate "never conceal evidence."
+3. **The reverse-distance guide was unfiltered**, so `shortestPossible`
+   was always the UNFILTERED shortest depth even when a role filter was
+   supplied. If the true unfiltered-shortest path's edges didn't satisfy
+   the filter but a real, longer filter-compliant path existed within the
+   hop budget, an exact-depth search at the (wrong) unfiltered depth found
+   nothing and reported a false `no-path`. Unreachable from connect.ts
+   today (role-filtered searches call `findAlbumRoute` directly, never
+   this engine) but a real defect in the exported function's contract, in
+   the same category as the anchor-edge exemption bug found earlier.
+   Fixed by threading the same `anchorAwareFilter` into the reverse pass
+   that the forward pass already uses — symmetric and correct because the
+   CSR is undirected and a slot's own `edge_role_a`/`edge_role_b` mean the
+   same "this node to that neighbor" thing regardless of which direction
+   is doing the scanning.
+
+All three are regression-pinned in `recommended-route.spec.ts`'s "review
+fixes" group, each verified to fail against the reverted code before being
+confirmed against the fix — including the escape-hatch fixture, which
+required a real design pass to make it discriminate the actual bug (an
+earlier, weaker version of the test passed even with the fix reverted,
+because a different part of the same commit already covered its original
+scenario).
 
 ## Validation
 

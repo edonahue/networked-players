@@ -121,6 +121,7 @@ function reverseDistances(
   goalIndex: number,
   maxDepth: number,
   budget: { remaining: number },
+  edgeFilter?: (roleA: string, roleB: string) => boolean,
 ): { distances: Map<number, number>; exhausted: boolean } {
   const distances = new Map<number, number>([[goalIndex, 0]]);
   let frontier = [goalIndex];
@@ -140,6 +141,22 @@ function reverseDistances(
           break;
         }
         budget.remaining--;
+        // Filter-aware for the same reason the forward walk is: the CSR
+        // is undirected (every edge stored both ways), so `node`'s own
+        // outgoing slot here means exactly the same "node -> neighbor"
+        // thing the forward walk would read at this same slot index --
+        // no direction-flipping needed. Without this, `shortestPossible`
+        // below would be the UNFILTERED shortest depth, and an exact-
+        // depth search at that depth under a filter that the true
+        // shortest path's edges don't satisfy would falsely report
+        // no-path even though a real, filter-compliant route exists one
+        // or more hops further out.
+        if (
+          edgeFilter &&
+          !edgeFilter(graph.edge_role_a[slot], graph.edge_role_b[slot])
+        ) {
+          continue;
+        }
         const neighbor = graph.neighbors[slot];
         if (distances.has(neighbor)) continue;
         distances.set(neighbor, depth + 1);
@@ -283,18 +300,31 @@ export function computeRouteFacts(
   evidenceIndex: EvidenceIndex,
 ): RouteFacts {
   const haveCaveatData = evidenceIndex.caveatFlagNames.length > 0;
-  let worstCaveatSeverity = haveCaveatData ? 0 : null;
+  let worstKnownSeverity = 0;
+  // Distinct from "checked and found no caveat": the published graph is
+  // cached in sessionStorage and can outlive a deploy that ships a fresh
+  // registry (`loadPathfindingGraph`'s own caching), so a release id this
+  // hop's graph references may simply be ABSENT from an otherwise-real,
+  // populated registry -- exactly the staleness pattern ADR 0059's PR 2
+  // section measured (3,728 ids the old graph referenced but the new
+  // registry didn't cover, understating caveats when conflated with "no
+  // caveat"). Reading `?? 0` for a missing release would repeat that
+  // mistake at query time instead of build time.
+  let anyReleaseMissing = false;
   let performerHopCount = 0;
   const interiorNodeIndices = new Set<number>();
 
   for (const hop of hops) {
     if (haveCaveatData) {
       const release = evidenceIndex.releases.get(hop.release_id);
-      const severity = caveatSeverity(
-        release?.caveatFlags ?? 0,
-        evidenceIndex.caveatFlagNames,
-      );
-      worstCaveatSeverity = Math.max(worstCaveatSeverity ?? 0, severity);
+      if (release === undefined) {
+        anyReleaseMissing = true;
+      } else {
+        worstKnownSeverity = Math.max(
+          worstKnownSeverity,
+          caveatSeverity(release.caveatFlags, evidenceIndex.caveatFlagNames),
+        );
+      }
     }
     if (isPerformerRole(hop.role_a) || isPerformerRole(hop.role_b)) {
       performerHopCount++;
@@ -309,6 +339,17 @@ export function computeRouteFacts(
   for (const nodeIndex of interiorNodeIndices) {
     maxInteriorDegree = Math.max(maxInteriorDegree, degreeOf(graph, nodeIndex));
   }
+
+  // A known caveat is reported regardless of what else is unknown --
+  // hiding a REAL caveat behind uncertainty about an unrelated hop would
+  // conceal evidence, which this whole engine exists never to do. Only a
+  // would-be "clean" claim (worstKnownSeverity 0) downgrades to unknown
+  // when some evidence couldn't be checked at all.
+  const worstCaveatSeverity = !haveCaveatData
+    ? null
+    : anyReleaseMissing && worstKnownSeverity === 0
+      ? null
+      : worstKnownSeverity;
 
   return {
     hopCount: hops.length,
@@ -509,6 +550,7 @@ export function selectRecommendedRoute(
     goalIndex,
     maxDepth,
     budget,
+    anchorAwareFilter,
   );
   if (exhausted) return fallback();
 
@@ -545,10 +587,17 @@ export function selectRecommendedRoute(
   );
 
   if (
+    shortestLayer.complete &&
     everyCandidateWorstTier &&
     best.facts.worstCaveatSeverity === WORST_SEVERITY &&
     shortestPossible + 1 <= maxDepth
   ) {
+    // Gated on `shortestLayer.complete`: a truncated layer's
+    // "every candidate is worst-tier" is only true of the candidates
+    // ENUMERATED so far, not of the real layer -- an uncollected candidate
+    // beyond the cap could have been clean. Searching +1 hop under that
+    // false premise would recommend an unnecessarily longer route while a
+    // real, undiscovered shortest-hop clean route sat just past the cap.
     const plusOneLayer = rankExactDepthLayer(
       graph,
       artistIndex,
