@@ -6,6 +6,8 @@
 // a future regeneration only if that specific edge remains; if it doesn't,
 // this test's failure is itself a useful signal to pick a new real pair.
 
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { expect, test } from "@playwright/test";
 import { picker, pickerResults, selectAlbum } from "./helpers/connectPicker";
 
@@ -14,6 +16,50 @@ async function selectRouteFilter(
   value: "none" | "behind-the-glass" | "rhythm-section" | "guitar-paths",
 ) {
   await page.locator(`[data-connect-mode-option][value="${value}"]`).check();
+}
+
+/** Flushes the page's task queue past every pending promise continuation
+ * spawned by a network response that just resolved -- NOT an arbitrary
+ * wait. `page.waitForResponse` resolves once Playwright's protocol layer
+ * has the response; the page's own `await fetch(...)` continuation is a
+ * separate, slightly later microtask, so a response having arrived does
+ * not yet prove the page has finished reacting to it. A double
+ * requestAnimationFrame is the standard, deterministic way to wait past
+ * at least one full microtask+task cycle: the browser guarantees every
+ * queued microtask (including a resolved `fetch()`'s `.then` chain) runs
+ * before the FIRST rAF callback, so two are a safety margin against a
+ * chain with an extra hop, not a guess at how long anything takes. */
+async function flushPendingWork(
+  page: import("@playwright/test").Page,
+): Promise<void> {
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+      }),
+  );
+}
+
+/** For a "this stale request must never render" assertion, a double-rAF
+ * flush isn't a reliable enough window: measured directly (repeated,
+ * consistent, not flaky) against a deliberately un-invalidated request, its
+ * `route.fulfill()`-released response takes measurably longer than two
+ * animation frames to reach the page's own `await fetch(...)` continuation
+ * in THIS specific shape (no second real search's own network round trip
+ * intervening beforehand to absorb that latency incidentally, unlike the
+ * older/newer-search staleness tests above). Actively polls for the BAD
+ * outcome (a populated URL) for a bounded, generous window -- 4x the
+ * measured gap -- so a broken guard is caught fast and reliably, while a
+ * working guard (which never produces that outcome at all) costs exactly
+ * one full timeout, the unavoidable price of proving an absence. */
+async function waitOutAnyStaleRender(
+  page: import("@playwright/test").Page,
+): Promise<void> {
+  await page
+    .waitForFunction(() => window.location.search !== "", null, {
+      timeout: 2000,
+    })
+    .catch(() => {});
 }
 
 // Initialization race (P1 after #108). The inputs are interactive from first
@@ -56,10 +102,16 @@ test("a query typed before the catalog arrives is evaluated when it lands", asyn
   await expect(pickerResults(page, "a").first()).toBeVisible();
   await expect(input).toHaveValue("Discovery");
 
-  // The picker is fully usable by keyboard from that recovered state.
-  await input.press("Tab");
-  await expect(pickerResults(page, "a").first()).toBeFocused();
-  await page.keyboard.press("Enter");
+  // The picker is fully usable by keyboard from that recovered state --
+  // the real WAI-ARIA combobox pattern (ADR 0059 Phase 5 PR 4): focus
+  // stays IN the input the whole time, ArrowDown moves the active
+  // descendant, Enter activates it.
+  await input.press("ArrowDown");
+  await expect(pickerResults(page, "a").first()).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
+  await input.press("Enter");
   await expect(pickerA.locator("[data-picker-selected]")).toContainText(
     "Discovery",
   );
@@ -449,4 +501,289 @@ test("only one route filter can be selected at a time", async ({ page }) => {
   await expect(
     page.locator('[data-connect-mode-option][value="guitar-paths"]'),
   ).toBeChecked();
+});
+
+// Request lifecycle (ADR 0059 Phase 5 PR 4): the same generation-counter
+// pattern explorerStage.ts already proved for its evidence drawer.
+//
+// A naive "click search twice quickly" race does NOT by itself prove the
+// guard matters here: `loadPreparedGraph`/the evidence-registry loader are
+// each a single memoized, URL-keyed promise, so two overlapping searches
+// share the exact same in-flight promise and their continuations resume in
+// FIFO (invocation) order regardless of the guard -- the newer search's
+// continuation was scheduled second and legitimately finishes second too.
+// That ordering is NOT guaranteed, though: an UNFILTERED search always
+// awaits both the graph AND the evidence registry (two awaits), while a
+// ROLE-FILTERED search that finds NO connection returns after `findAlbumRoute`
+// fails, needing only the FIRST await (graph) -- it never reaches a second
+// one at all. Gate the evidence fetch specifically and this asymmetry lets
+// an OLDER, slower (unfiltered) search's completion arrive strictly AFTER a
+// NEWER, faster (role-filtered, failed) search has already finished and
+// posted its own status -- a real ordering inversion, not an artifact of
+// invocation order, which is exactly the case the guard exists for. This
+// was verified to actually fail with the guard removed before being
+// trusted here (a naive "double-click, assert the second wins" version did
+// NOT fail without the guard, for the FIFO reason above -- it would have
+// been a false regression pin).
+test("an older, still-in-flight search's late completion never overwrites a newer search that already finished faster", async ({
+  page,
+}) => {
+  let releaseEvidence!: () => void;
+  const evidenceGate = new Promise<void>((resolve) => {
+    releaseEvidence = resolve;
+  });
+  // `route.fulfill()` with the real committed artifact's own bytes, not
+  // `route.continue()`: the latter proxies through to the real preview
+  // server and carries enough extra real I/O latency that a deterministic
+  // post-release flush (see `flushPendingWork`) isn't reliably long
+  // enough to observe the page's own fetch() continuation having run --
+  // confirmed by tracing actual DOM state after each before trusting this.
+  const realEvidenceBody = readFileSync(
+    join(process.cwd(), "public/data/evidence/release-registry.v1.json"),
+  );
+  await page.route(
+    "**/data/evidence/release-registry.v1.json",
+    async (route) => {
+      await evidenceGate;
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: realEvidenceBody,
+      });
+    },
+  );
+
+  await page.goto("/play/connect/");
+
+  // Older search: unfiltered, needs the (gated) evidence registry to rank
+  // at all -- stalls after its graph fetch, before it can ever finish.
+  await selectAlbum(page, "a", "Discovery");
+  await selectAlbum(page, "b", "Joshua Tree");
+  await page.locator("[data-connect-search]").click();
+  await expect(page.locator("[data-connect-status]")).toHaveText(/searching/i);
+
+  // Newer search: role-filtered, a real pair with NO drums/bass-only
+  // connection -- finishes after just the graph fetch (already resolved,
+  // real and unblocked), never touching the gated evidence endpoint.
+  await selectAlbum(page, "a", "Time Out");
+  await selectAlbum(page, "b", "Rumours");
+  await selectRouteFilter(page, "rhythm-section");
+  await page.locator("[data-connect-search]").click();
+  await expect(page.locator("[data-connect-status]")).toContainText(
+    /no drums\/bass-only connection/i,
+  );
+  await expect(page.locator("[data-connect-results]")).toBeHidden();
+
+  // Only now does the older search's stalled completion arrive. Wait for
+  // the real response, not an arbitrary delay -- this guarantees the
+  // stale search's continuation has had the chance to run (and, if the
+  // guard were broken, to overwrite the DOM) before asserting on it.
+  const evidenceResponse = page.waitForResponse(
+    "**/data/evidence/release-registry.v1.json",
+  );
+  releaseEvidence();
+  await evidenceResponse;
+  await flushPendingWork(page);
+
+  // It must be discarded, not overwrite the newer search's already-final,
+  // correct "no connection" state with a stale success.
+  await expect(page.locator("[data-connect-status]")).toContainText(
+    /no drums\/bass-only connection/i,
+  );
+  await expect(page.locator("[data-connect-results]")).toBeHidden();
+});
+
+// Same ordering inversion, but the older (superseded) search is the one
+// restoring from a URL at page load rather than a click -- both entry
+// points share the one `runSearch`, so this is the second real ENTRY
+// POINT exercising the counter, not the same code path renamed.
+test("a URL-restored search superseded by a faster manual search loses honestly", async ({
+  page,
+}) => {
+  let releaseEvidence!: () => void;
+  const evidenceGate = new Promise<void>((resolve) => {
+    releaseEvidence = resolve;
+  });
+  // `route.fulfill()` with the real committed artifact's own bytes, not
+  // `route.continue()`: the latter proxies through to the real preview
+  // server and carries enough extra real I/O latency that a deterministic
+  // post-release flush (see `flushPendingWork`) isn't reliably long
+  // enough to observe the page's own fetch() continuation having run --
+  // confirmed by tracing actual DOM state after each before trusting this.
+  const realEvidenceBody = readFileSync(
+    join(process.cwd(), "public/data/evidence/release-registry.v1.json"),
+  );
+  await page.route(
+    "**/data/evidence/release-registry.v1.json",
+    async (route) => {
+      await evidenceGate;
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: realEvidenceBody,
+      });
+    },
+  );
+
+  // The URL-restored search is unfiltered -- Discovery / Joshua Tree --
+  // and stalls the same way, waiting on the gated evidence registry.
+  await page.goto("/play/connect/?a=master-26647&b=master-64290");
+  await expect(
+    picker(page, "a").locator("[data-picker-selected]"),
+  ).toContainText("Discovery");
+  await expect(page.locator("[data-connect-status]")).toHaveText(/searching/i);
+
+  await selectAlbum(page, "a", "Time Out");
+  await selectAlbum(page, "b", "Rumours");
+  await selectRouteFilter(page, "rhythm-section");
+  await page.locator("[data-connect-search]").click();
+  await expect(page.locator("[data-connect-status]")).toContainText(
+    /no drums\/bass-only connection/i,
+  );
+
+  const evidenceResponse = page.waitForResponse(
+    "**/data/evidence/release-registry.v1.json",
+  );
+  releaseEvidence();
+  await evidenceResponse;
+  await flushPendingWork(page);
+
+  await expect(page.locator("[data-connect-status]")).toContainText(
+    /no drums\/bass-only connection/i,
+  );
+  await expect(page.locator("[data-connect-results]")).toBeHidden();
+});
+
+// A real review finding on PR #115: only Search and Swap were disabled
+// while a request was pending -- the picker inputs stayed fully live, so
+// editing a selection mid-request WITHOUT clicking Search again never
+// advanced `searchGeneration`. The original, now-abandoned request could
+// still land and render a route/URL for albums no longer selected. Fixed
+// by bumping the generation from the picker's own real-pick handler, not
+// only from inside `runSearch`.
+test("editing a picker selection while a search is pending invalidates it -- no stale render on late completion", async ({
+  page,
+}) => {
+  let releaseEvidence!: () => void;
+  const evidenceGate = new Promise<void>((resolve) => {
+    releaseEvidence = resolve;
+  });
+  const realEvidenceBody = readFileSync(
+    join(process.cwd(), "public/data/evidence/release-registry.v1.json"),
+  );
+  await page.route(
+    "**/data/evidence/release-registry.v1.json",
+    async (route) => {
+      await evidenceGate;
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: realEvidenceBody,
+      });
+    },
+  );
+
+  await page.goto("/play/connect/");
+  await selectAlbum(page, "a", "Discovery");
+  await selectAlbum(page, "b", "Joshua Tree");
+  await page.locator("[data-connect-search]").click();
+  await expect(page.locator("[data-connect-status]")).toHaveText(/searching/i);
+
+  // Edit picker A mid-flight without ever clicking Search again.
+  await selectAlbum(page, "a", "Time Out");
+
+  const evidenceResponse2 = page.waitForResponse(
+    "**/data/evidence/release-registry.v1.json",
+  );
+  releaseEvidence();
+  await evidenceResponse2;
+  await waitOutAnyStaleRender(page);
+
+  // The stale request's late completion must never populate results or
+  // the URL for the abandoned Discovery/Joshua Tree pair.
+  await expect(page.locator("[data-connect-results]")).toBeHidden();
+  expect(new URL(page.url()).search).toBe("");
+});
+
+// Same gap, the mode radio instead of a picker: changing the role filter
+// while a request is pending never used to advance the generation either,
+// so a request captured under the OLD filter could still land and render
+// for a mode the visitor had since changed away from.
+test("changing the role filter while a search is pending invalidates it -- no stale render on late completion", async ({
+  page,
+}) => {
+  let releaseEvidence!: () => void;
+  const evidenceGate = new Promise<void>((resolve) => {
+    releaseEvidence = resolve;
+  });
+  const realEvidenceBody = readFileSync(
+    join(process.cwd(), "public/data/evidence/release-registry.v1.json"),
+  );
+  await page.route(
+    "**/data/evidence/release-registry.v1.json",
+    async (route) => {
+      await evidenceGate;
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: realEvidenceBody,
+      });
+    },
+  );
+
+  await page.goto("/play/connect/");
+  await selectAlbum(page, "a", "Discovery");
+  await selectAlbum(page, "b", "Joshua Tree");
+  await page.locator("[data-connect-search]").click();
+  await expect(page.locator("[data-connect-status]")).toHaveText(/searching/i);
+
+  // Change the role filter mid-flight without clicking Search again.
+  await selectRouteFilter(page, "rhythm-section");
+
+  const evidenceResponse3 = page.waitForResponse(
+    "**/data/evidence/release-registry.v1.json",
+  );
+  releaseEvidence();
+  await evidenceResponse3;
+  await waitOutAnyStaleRender(page);
+
+  await expect(page.locator("[data-connect-results]")).toBeHidden();
+  expect(new URL(page.url()).search).toBe("");
+});
+
+// A third real review finding on PR #115: after a completed search, a
+// real pick that discards the cached route (`clearLastSearch`) used to
+// leave the PREVIOUS pair's route and Copy Link visibly on screen.
+// Pressing Swap at that point found no cached route to reverse (a
+// correct no-op for the route itself) but left that stale route/link
+// untouched while the picker selections had already changed underneath
+// it -- two mismatched states shown together.
+test("a real pick after a completed search hides the stale result and Copy Link, not just the route cache", async ({
+  page,
+}) => {
+  await page.goto("/play/connect/");
+  await selectAlbum(page, "a", "Discovery");
+  await selectAlbum(page, "b", "Joshua Tree");
+  await page.locator("[data-connect-search]").click();
+  await expect(page.locator("[data-connect-results]")).toBeVisible({
+    timeout: 15000,
+  });
+  await expect(page.locator("[data-connect-copy-link]")).toBeVisible();
+
+  await selectAlbum(page, "a", "Time Out");
+
+  await expect(page.locator("[data-connect-results]")).toBeHidden();
+  await expect(page.locator("[data-connect-copy-link]")).toBeHidden();
+
+  // Swap with no cached route must just exchange the picker selections,
+  // never resurrect the stale Discovery/Joshua Tree route or its link.
+  await page.locator("[data-connect-swap]").click();
+  await expect(page.locator("[data-connect-results]")).toBeHidden();
+  await expect(page.locator("[data-connect-copy-link]")).toBeHidden();
+  await expect(
+    picker(page, "a").locator("[data-picker-selected]"),
+  ).toContainText("Joshua Tree");
+  await expect(
+    picker(page, "b").locator("[data-picker-selected]"),
+  ).toContainText("Time Out");
 });

@@ -674,30 +674,36 @@ a.contributor-card:focus-visible {
   max-height: 260px;
   overflow-y: auto;
 }
-.connect-picker__results button {
+.connect-picker__results [role="option"] {
   display: block;
   width: 100%;
   text-align: left;
   padding: 8px 10px;
-  border: none;
   border-radius: 6px;
-  background: none;
-  color: inherit;
-  font: inherit;
   cursor: pointer;
 }
-.connect-picker__results button:hover,
-.connect-picker__results button:focus-visible {
+.connect-picker__results [role="option"]:hover,
+.connect-picker__results [role="option"][aria-selected="true"] {
   background: var(--surface-soft);
 }
 .connect-picker__selected {
   font-size: 0.88rem;
   color: var(--accent-strong);
 }
-.connect-stage__arrow {
+.connect-swap {
   align-self: center;
   margin-top: 30px;
-  color: var(--muted);
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  font-size: 1.1rem;
+  line-height: 1;
+}
+.connect-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 .connect-status {
   color: var(--muted);
@@ -758,7 +764,7 @@ a.contributor-card:focus-visible {
   .connect-picker-row {
     flex-direction: column;
   }
-  .connect-stage__arrow {
+  .connect-swap {
     align-self: flex-start;
     margin-top: 0;
     transform: rotate(90deg);

@@ -188,6 +188,15 @@ h2 {
   text-decoration: none;
   font-weight: 700;
 }
+/* `.button`'s own `display: inline-flex` otherwise outranks the UA
+ * stylesheet's `[hidden] { display: none }` rule (a class selector beats
+ * an attribute selector), so any `.button`-styled element toggled via the
+ * `hidden` attribute -- e.g. Connect's Copy Link -- stayed visually
+ * displayed the entire time despite the attribute being set. A real bug
+ * found by a Playwright `toBeHidden()` assertion, not by markup review. */
+.button[hidden] {
+  display: none;
+}
 .button:hover,
 .button:focus-visible {
   border-color: var(--accent);

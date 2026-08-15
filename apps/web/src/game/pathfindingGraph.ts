@@ -515,6 +515,41 @@ export function stripAlbumAnchors(hops: PathHop[]): {
   };
 }
 
+/** Reverses an already-stripped route in place-equivalent fashion: same
+ * evidence, same hops, same endpoints -- just walked the other direction.
+ * Used by Swap Records (ADR 0059 Phase 5 PR 4) to redisplay a route after
+ * its two albums swap sides without a second search: swapping A and B
+ * makes the new search's answer PROVABLY identical evidence to the old
+ * one, just read back to front, so recomputing it (which could pick a
+ * different equal-hop candidate depending on which side BFS starts from)
+ * would be strictly worse than reusing what's already verified on screen.
+ *
+ * Each hop's `artist_a_id`/`role_a` and `artist_b_id`/`role_b` swap along
+ * with the hop order, so the reversed sequence reads correctly from the
+ * new endpointA to the new endpointB. `usedEdgeKeys` is direction-
+ * independent (`hopEdgeKey` already sorts its two ids) and passes through
+ * unchanged. */
+export function reverseRoute<
+  T extends {
+    endpointA: AlbumEndpoint;
+    hops: PathHop[];
+    endpointB: AlbumEndpoint;
+  },
+>(route: T): T {
+  return {
+    ...route,
+    endpointA: route.endpointB,
+    endpointB: route.endpointA,
+    hops: [...route.hops].reverse().map((hop) => ({
+      release_id: hop.release_id,
+      artist_a_id: hop.artist_b_id,
+      artist_b_id: hop.artist_a_id,
+      role_a: hop.role_b,
+      role_b: hop.role_a,
+    })),
+  };
+}
+
 /** Record-to-record search (ADR 0058): finds a route between two albums'
  * virtual anchor nodes, then strips the anchor hops so the result reads
  * as "a person credited on Album A ... a person credited on Album B,"
