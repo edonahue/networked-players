@@ -833,6 +833,109 @@ regression check. Full Connect suite (76 tests across every existing
 spec file plus the two new ones) re-verified green, plus `npx tsc
 --noEmit` and `make check`.
 
+## PR 5c: off-main-thread graph parse/canonicalize/hash
+
+The third slice of PR 5 -- the first Web Worker in this codebase. In
+`apps/web/src/game/graphWorker.ts` (new) and `pathfindingGraph.ts`. Bounded
+scope, per the plan's own risk note: this worker ONLY fetches, parses, and
+validates/hashes the pathfinding graph artifact; no BFS or ranking logic
+moves off-thread, and the integrity hash is never skipped or deferred past
+validation.
+
+**Why.** ADR 0059's own measured baseline (cold cache, this machine, the
+13.5 MB v2 graph): fetch+body 456ms, `JSON.parse` 106ms, canonical
+stringify 106ms, SHA-256 299ms, build index 24ms -- the integrity check
+(`validatePathfindingGraph` recomputing `pathfinding_graph_version` from
+content, which canonical-stringifies and hashes the graph's identity
+fields) is 405ms of 535ms of real main-thread work, 76% of it. Real Pi-
+fleet browsers aside, even on a capable machine that's most of a second
+where the page can't respond to input, scroll, or repaint anything else.
+
+**Design.** `graphWorker.ts` fetches, `JSON.parse`s, and calls the
+EXISTING `validatePathfindingGraph` (already pure, DOM-free -- no
+duplication needed, just imported directly into the worker's module
+graph) -- then posts the validated graph back via structured clone (a
+plain-array CSR structure; a full clone, not a zero-copy transfer, but
+still far cheaper than redoing parse+canonicalize+hash on the receiving
+thread). `pathfindingGraph.ts`'s `loadPathfindingGraph` keeps its exact
+public signature and behavior: same cache-read-first order, same
+validation, same cache write, only WHERE the work happens changes. A
+single worker is created lazily and reused for the page's lifetime (the
+same load-once-reuse shape every other module-level cache in this file
+already has); `sessionStorage` access stays main-thread-only (a worker
+has no access to it) -- the main thread reads the cache entry first and
+passes it to the worker as `cachedText` for validation-in-place, and
+writes back whatever raw text the worker's own request actually used.
+
+**Fallback, two distinct cases.** A Worker that can't be constructed at
+all (`typeof Worker === "undefined"`, or the constructor throws -- the
+realistic case, e.g. a strict CSP) falls back to running the identical
+logic directly on the main thread (`loadPathfindingGraphMainThread`,
+literally the pre-PR-5c function body, unchanged). A Worker that crashes
+AFTER construction (its own `error` event) fails every request currently
+waiting on it with a synthetic `"worker-crashed"` signal, which the
+caller treats exactly the same way -- falls back to the main thread for
+that call, never leaving a promise hanging forever on a worker that can
+no longer respond. Neither case is confused with a THIRD case: a worker
+that completes a request normally and reports a real `fetch-failed`/
+`parse-failed`/`invalid-graph` failure. That's trusted as final and never
+retried on the main thread -- retrying would just reproduce the identical
+real failure with extra latency, not recover from anything.
+
+**Both real browser consumers benefit, not just Connect.**
+`loadPathfindingGraph` is `explorerStage.ts`'s own direct dependency too
+(Network Explorer), so this slice's win applies there automatically, with
+no Explorer-specific change.
+
+**Worker typing without a second tsconfig.** This project has one shared
+`tsconfig.json` across `apps/web/src`, which needs the `"dom"` lib for
+every other file; TypeScript doesn't support mixing `"dom"` and
+`"webworker"` lib globals in one compilation (both declare conflicting
+types for `self`/`postMessage`). Rather than add a second tsconfig for
+one file, `graphWorker.ts` casts `self` once to a small, locally-defined
+interface covering exactly the two worker APIs it uses
+(`postMessage`/`onmessage`), fully type-safe for this file's own
+request/response shapes without touching the ambient global lib set.
+
+**Verification.** Four new tests confirm: the worker script is actually
+requested (not just present in the bundle -- Vite's `new Worker(new
+URL(...))` convention was verified to produce a real, separate output
+chunk via a real `npm run build`, not assumed); a real search still finds
+the correct route when Worker construction is made to throw; a real
+search still finds the correct route when the worker script itself is
+replaced with one that crashes on load (a genuine Worker `error` event,
+not a simulated one); and a fetch failure still degrades gracefully
+through the worker path. The two fallback tests were each spot-verified
+against a deliberately broken version of their own code path (the
+try/catch removed, then the `error` listener removed) and confirmed to
+fail -- specifically to hang/time out, since without either fallback the
+promise the UI awaits never settles -- before being trusted. Full Connect
+suite, Network Explorer suite (both evidence-drawer and state-graph
+specs), and `pathfinding-bfs-v2.spec.ts` (98 tests total) re-verified
+green against the worker-backed loader, plus the full site-wide Playwright
+suite, `npx tsc --noEmit`, and `make check`.
+
+**Review finding on this slice.** An automated review of the pushed PR
+found one real defect: the crash handler resolved every request currently
+waiting on the dead worker, but left the dead `Worker` object itself
+cached (`graphWorker` still pointed at it, `graphWorkerWired` still
+`true`). `loadPreparedGraph` separately evicts a failed result from its
+own cache so a later search can retry -- but that retry would `postMessage`
+to the SAME crashed worker, which (having thrown during its own top-level
+script evaluation) never processes another message or fires another
+event, so the retry would hang forever waiting on a response that could
+never arrive. Fixed: the crash handler now also terminates the dead
+worker and resets both module-level flags (only when the crashed instance
+is still the currently-cached one, guarding against a stale listener on
+an already-replaced worker), so the next `getGraphWorker()` call
+constructs a genuinely fresh instance. A new regression test crashes the
+worker AND fails the graph fetch on its first attempt, then confirms a
+second attempt (progressive rendering's own pick-time warm-up already
+supplies the first attempt, so the search click itself becomes the real
+retry) resolves rather than hanging, with an explicit assertion that at
+least two real fetch attempts occurred -- confirmed to fail (time out)
+against the pre-fix code before being trusted.
+
 ## Revisit trigger
 
 If the catalog grows enough that the shortest layer stops being cheap —
