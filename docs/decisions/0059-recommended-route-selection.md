@@ -936,6 +936,45 @@ retry) resolves rather than hanging, with an explicit assertion that at
 least two real fetch attempts occurred -- confirmed to fail (time out)
 against the pre-fix code before being trusted.
 
+## PR 5d: closeout
+
+Phase 5 is complete: PR 1 (measurement + preflight), PR 2 (canonical
+names, defensible evidence release, evidence registry v2), PR 3 (the
+recommended-route engine), PR 4 (shareable URL state, Swap Records,
+accessible combobox, request lifecycle), and PR 5 in its three slices
+(5a presentation, 5b progressive rendering, 5c the graph Worker) are all
+merged to `main` and live in production.
+
+**`docs/PRODUCT.md`** updated -- its Connect Two Records bullet described
+only the ADR 0058/0053 baseline (route search, evidence cards, role
+filters); it now also names the ranked recommendation, the shortest/
+alternate distinction, the "Why this route?" disclosure, the shareable
+link, Swap, and endpoint cover art, all real and live.
+
+**`docs/ROADMAP.md` and `docs/NEXT_PATH_BRIEF.md`** checked and left
+unchanged -- neither references Connect, pathfinding, or route quality;
+both track a different, unrelated set of milestones and next-direction
+candidates that this phase doesn't touch or invalidate.
+
+**Performance measurement method, not results** (ADR 0018 /
+`PUBLIC_PRIVATE_BOUNDARY.md`: benchmark method is public, a real elapsed-
+time result measured on specific hardware is private and local, and that
+applies here just as it does to any other timing receipt -- publishing the
+method but describing it as an "observation" doesn't create an exception).
+The reproducible check: navigate to `/play/connect/` in a fresh browser
+context, pick a real connected pair, note when `graph.v2.json` and the
+Worker script (`graphWorker-*.js`) are first requested relative to
+navigation start, then click Search and note when results become visible.
+Anyone can reproduce this against the live site or a local `npm run
+preview` and compare their own numbers before/after this phase's changes;
+none are transcribed here. The one claim this ADR makes about the outcome
+is the structural one PR 5b's own section above already states and the
+source code itself proves without needing a timing run at all: the graph
+and Worker script are requested from `updateButton()` the moment both
+albums are picked, not from `runSearch()` on the search click -- verify by
+reading `connect.ts`'s `updateButton` versus `runSearch`, not by trusting
+a number.
+
 ## Revisit trigger
 
 If the catalog grows enough that the shortest layer stops being cheap —
