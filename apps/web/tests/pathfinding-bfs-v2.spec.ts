@@ -16,6 +16,7 @@ import {
   buildAlbumIndex,
   buildArtistIndex,
   findAlbumRoute,
+  reverseRoute,
   stripAlbumAnchors,
   validatePathfindingGraph,
   type PathfindingGraph,
@@ -448,4 +449,71 @@ test("stripAlbumAnchors fails closed when the sentinel isn't where it's about to
   expect(
     stripAlbumAnchors([validLeadingAnchor, realMiddleHop, validTrailingAnchor]),
   ).not.toBeNull();
+});
+
+// reverseRoute (ADR 0059 Phase 5 PR 4: Swap Records reuses an already-found
+// route instead of re-searching).
+test("reverseRoute swaps endpoints and reverses hop order/direction", () => {
+  const graph = albumAnchorGraph();
+  const artistIndex = buildArtistIndex(graph);
+  const albumIndex = buildAlbumIndex(graph);
+  const route = findAlbumRoute(
+    graph,
+    artistIndex,
+    albumIndex,
+    "album-a",
+    "album-b",
+  );
+  if (!route.ok) throw new Error("expected a real route in this fixture");
+
+  const reversed = reverseRoute(route);
+  expect(reversed.endpointA).toEqual(route.endpointB);
+  expect(reversed.endpointB).toEqual(route.endpointA);
+  expect(reversed.hops.length).toBe(route.hops.length);
+  expect([...reversed.hops].reverse()).toEqual(
+    route.hops.map((hop) => ({
+      release_id: hop.release_id,
+      artist_a_id: hop.artist_b_id,
+      artist_b_id: hop.artist_a_id,
+      role_a: hop.role_b,
+      role_b: hop.role_a,
+    })),
+  );
+});
+
+test("reverseRoute produces a chain that reads correctly end to end", () => {
+  const graph = albumAnchorGraph();
+  const artistIndex = buildArtistIndex(graph);
+  const albumIndex = buildAlbumIndex(graph);
+  const route = findAlbumRoute(
+    graph,
+    artistIndex,
+    albumIndex,
+    "album-a",
+    "album-b",
+  );
+  if (!route.ok) throw new Error("expected a real route in this fixture");
+  const reversed = reverseRoute(route);
+
+  // First hop starts from the new endpointA; last hop ends at the new
+  // endpointB -- exactly what renderRoute/renderEvidenceHop assume.
+  expect(reversed.hops[0].artist_a_id).toBe(reversed.endpointA.artistId);
+  expect(reversed.hops[reversed.hops.length - 1].artist_b_id).toBe(
+    reversed.endpointB.artistId,
+  );
+});
+
+test("reverseRoute is its own inverse", () => {
+  const graph = albumAnchorGraph();
+  const artistIndex = buildArtistIndex(graph);
+  const albumIndex = buildAlbumIndex(graph);
+  const route = findAlbumRoute(
+    graph,
+    artistIndex,
+    albumIndex,
+    "album-a",
+    "album-b",
+  );
+  if (!route.ok) throw new Error("expected a real route in this fixture");
+  expect(reverseRoute(reverseRoute(route))).toEqual(route);
 });

@@ -18,7 +18,7 @@ export function picker(page: Page, side: PickerSide) {
 }
 
 export function pickerResults(page: Page, side: PickerSide) {
-  return picker(page, side).locator("[data-picker-results] button");
+  return picker(page, side).locator("[data-picker-results] [role='option']");
 }
 
 export async function waitForPickerReady(

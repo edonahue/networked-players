@@ -9,6 +9,15 @@
 // buttons, not independent checkboxes: only one filter (or none) applies
 // per search. Markup shell only -- all wiring lives in game/connect.ts
 // (initConnect()), matching RoutesStage.astro's split.
+//
+// Each picker is a real WAI-ARIA combobox (ADR 0059 Phase 5 PR 4): the
+// input carries role="combobox" and aria-autocomplete="list"; the results
+// list is role="listbox"; each result is role="option" with a stable,
+// picker-namespaced id (connect-picker-a-option-N / connect-picker-b-
+// option-N) so aria-activedescendant on the input can point at exactly one
+// option in exactly one listbox -- two independent pickers, zero id
+// collision between them. The per-picker result-count region announces
+// match counts to screen readers without stealing focus from the input.
 ---
 
 <div class="connect-stage" data-testid="connect-stage">
@@ -20,12 +29,33 @@
         type="text"
         autocomplete="off"
         placeholder="Search an album or artist…"
+        role="combobox"
+        aria-autocomplete="list"
+        aria-expanded="false"
+        aria-controls="connect-picker-a-listbox"
         data-picker-input
       />
-      <ul class="connect-picker__results" data-picker-results hidden></ul>
+      <ul
+        id="connect-picker-a-listbox"
+        class="connect-picker__results"
+        role="listbox"
+        tabindex="-1"
+        aria-label="First record matches"
+        data-picker-results
+        hidden
+      ></ul>
+      <p class="visually-hidden" role="status" data-picker-count></p>
       <div class="connect-picker__selected" data-picker-selected hidden></div>
     </div>
-    <span class="connect-stage__arrow" aria-hidden="true">→</span>
+    <button
+      type="button"
+      class="button connect-swap"
+      data-connect-swap
+      aria-label="Swap first and second record"
+      disabled
+    >
+      ⇄
+    </button>
     <div class="connect-picker" data-picker="b">
       <label for="connect-input-b">Second record</label>
       <input
@@ -33,9 +63,22 @@
         type="text"
         autocomplete="off"
         placeholder="Search an album or artist…"
+        role="combobox"
+        aria-autocomplete="list"
+        aria-expanded="false"
+        aria-controls="connect-picker-b-listbox"
         data-picker-input
       />
-      <ul class="connect-picker__results" data-picker-results hidden></ul>
+      <ul
+        id="connect-picker-b-listbox"
+        class="connect-picker__results"
+        role="listbox"
+        tabindex="-1"
+        aria-label="Second record matches"
+        data-picker-results
+        hidden
+      ></ul>
+      <p class="visually-hidden" role="status" data-picker-count></p>
       <div class="connect-picker__selected" data-picker-selected hidden></div>
     </div>
   </div>
@@ -81,11 +124,22 @@
     </label>
   </fieldset>
 
-  <button type="button" class="button primary" data-connect-search disabled>
-    Find the connection
-  </button>
+  <div class="connect-actions">
+    <button type="button" class="button primary" data-connect-search disabled>
+      Find the connection
+    </button>
+    <button
+      type="button"
+      class="button"
+      data-connect-copy-link
+      hidden
+    >
+      Copy link
+    </button>
+  </div>
 
   <div class="connect-status" data-connect-status role="status" aria-live="polite" hidden></div>
+  <p class="visually-hidden" role="status" data-connect-announce></p>
 
   <div class="connect-results" data-connect-results hidden>
     <section data-connect-result="primary">

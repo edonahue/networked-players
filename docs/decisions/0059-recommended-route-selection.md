@@ -431,6 +431,102 @@ earlier, weaker version of the test passed even with the fix reverted,
 because a different part of the same commit already covered its original
 scenario).
 
+## PR 4: shareable URL state, Swap Records, accessible combobox, request lifecycle
+
+Four things, all in `apps/web/src/game/connect.ts`/`connectUrlState.ts`/
+`ConnectStage.astro` -- none touch the ranking engine itself.
+
+**URL state.** Connect is the first surface in this codebase to WRITE URL
+state at all: verified before starting (`grep`, not assumed) that nothing
+in `apps/web/src` calls `pushState`/`replaceState`, only the read-once-at-
+init `new URLSearchParams(window.location.search)` pattern `flagship.ts`/
+`routes.ts` already use for `?round=`/`?seed=`/`?motion=off`. Album **ids**
+only, never titles (`a`/`b`), plus `mode` (omitted entirely at its
+unfiltered default, so there is exactly one way to write the common case,
+never a redundant `mode=none` some links carry and others don't).
+Malformed input is rejected safely and silently: missing/empty ids, and
+`a === b` (a record cannot search against itself, and silently keeping one
+side of a self-referential link while dropping the other would be an
+arbitrary, unrequested repair, not a safe rejection). An unresolvable id
+(stale/deleted) cleans the URL without an alarming error -- a dead link is
+not something the visitor did wrong. An unrecognized `mode` value falls
+back to the unfiltered default rather than failing. No automatic search
+runs until both ids validate against the real, loaded catalog.
+
+`pushState` for a genuinely new pair, `replaceState` for the same pair
+re-run under a different filter -- **a real design bug found by the test
+that should have proven it**: the first implementation compared `a`/`b`/
+`mode` all three for the push-vs-replace decision, so a MODE-ONLY change
+(same two records) pushed a new history entry instead of replacing, which
+directly contradicted "replaceState for same-search refinements." Fixed
+by splitting `isSameConnectPair` (all three fields -- "is this write a
+total no-op") from a new `isSameConnectAlbumPair` (ids only -- the real
+push/replace test), each with its own pinned unit tests.
+
+**Copy Link** copies `location.href` (already reflecting the last
+completed search) via `navigator.clipboard.writeText`, following the exact
+success/failure pattern `flagship.ts`'s existing share-copy button already
+established (button-text swap on success, a polite announcement on
+failure) rather than inventing a second convention.
+
+**Swap Records** exchanges both picks, updates the URL, and -- when a
+route is already on screen -- reverses the DISPLAYED route
+(`pathfindingGraph.ts`'s new `reverseRoute`) instead of searching again.
+This is more than an optimization: re-searching A→B as B→A over an
+undirected graph is not guaranteed to return the identical route, since
+tie-breaking depends on which side the walk starts from, so reversing the
+already-verified route is the only way to guarantee "swap" means
+literally the same evidence, read the other direction. A genuinely new
+pick after a swap correctly invalidates the reusable route
+(`onSelect`); Swap's own `setSelection` calls are marked
+`{programmatic: true}` specifically so they do NOT re-trigger that same
+invalidation on the route they are in the middle of reusing.
+
+**Accessible combobox**, following the WAI-ARIA APG pattern precisely:
+`role="combobox"` + `aria-autocomplete="list"` + `aria-expanded` on the
+input; `role="listbox"` on the results; `role="option"` with a stable,
+picker-namespaced id on each result; `aria-activedescendant` tracks
+keyboard navigation WITHOUT moving real DOM focus off the input.
+`mousedown` on the listbox calls `preventDefault()` so a click never blurs
+the input first. **A real bug found by Playwright, not by review**: the
+scrollable results `<ul>` (`overflow-y: auto`, per the existing CSS)
+became a genuine, unintended Tab stop in Chromium -- an implicit-
+focusability quirk for any scrollable region regardless of `role` or the
+absence of `tabindex`, not something either the ARIA spec or this file's
+own markup review would surface. Fixed with an explicit `tabindex="-1"`
+on both listboxes, a real accessibility improvement independent of the
+test that found it.
+
+**Request lifecycle**: the same generation-counter pattern
+`explorerStage.ts` already proved for its evidence drawer, applied to
+`runSearch`. **The naive regression test for this ("click search twice
+quickly, assert the second wins") does not actually exercise the guard**
+in this codebase: `loadPreparedGraph`/the evidence-registry loader are
+each one memoized, URL-keyed promise, so two overlapping searches share
+the identical in-flight promise and their continuations resume in
+FIFO (invocation) order regardless of the guard -- the newer search
+naturally finishes second-and-therefore-last anyway. A REAL, guard-
+dependent race exists because an unfiltered search always awaits two
+promises (graph, then evidence) while a role-filtered search that finds
+NO connection returns after just the first (it never reaches the
+evidence await at all) -- so an OLDER unfiltered search can still be
+mid-flight, stalled on evidence, when a NEWER role-filtered search that
+fails has already finished and posted its own status. Gating the
+evidence-registry response specifically (not the graph) lets the older
+search's completion arrive strictly after the newer one's, a real
+ordering inversion the guard is what prevents. Verified by disabling the
+guard and confirming the test fails for the right reason before trusting
+it; the FIRST version of this test (gating the graph, "click twice
+quickly") passed with the guard removed and would have been a false
+regression pin. A second finding while building the test itself: a
+network response having arrived (`page.waitForResponse`) is NOT proof the
+page's own `await fetch(...)` continuation has finished running --
+`route.continue()`'s extra real I/O (proxying to the actual preview
+server) exceeded what a deterministic double-`requestAnimationFrame`
+flush covers, while `route.fulfill()` with the real artifact's own bytes
+(no proxy hop) does not; traced with the DOM's actual `hidden`
+attribute/status text before trusting either.
+
 ## Validation
 
 - Synthetic-fixture tests for enumeration bounds, shortest-first
