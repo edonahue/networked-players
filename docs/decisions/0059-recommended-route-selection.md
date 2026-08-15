@@ -956,36 +956,24 @@ unchanged -- neither references Connect, pathfinding, or route quality;
 both track a different, unrelated set of milestones and next-direction
 candidates that this phase doesn't touch or invalidate.
 
-**Real, dated performance observation** (not a claim about every visitor's
-experience -- one measurement, one machine, three runs, against the live
-production site, 2026-08-15, `chromium` via Playwright, cold context per
-run, the Discovery/Joshua Tree diagnostic pair, unfiltered mode):
-
-| Stage (from navigation start) | Run 1 | Run 2 | Run 3 |
-|---|---|---|---|
-| page load | 692ms | 588ms | 535ms |
-| picker ready | 815ms | 676ms | 621ms |
-| Worker script requested | 1112ms | 928ms | 854ms |
-| `graph.v2.json` requested | 1270ms | 1020ms | 918ms |
-| evidence registry requested | 1201ms | 1002ms | 954ms |
-| search click → results visible | 2232ms | 1643ms | 1649ms |
-
-The structural claim PR 5b's own section above makes -- that the graph
-(and, new in 5c, the Worker script) now load during picking rather than
-after the search click -- is directly confirmed here: both are requested
-within roughly a second of navigation start, well before this script's
-own search click (which follows immediately after the second pick, with
-none of a real visitor's think-time in between). That immediacy means
-this measurement is a conservative floor, not a ceiling, on the real-world
-benefit: a visitor who pauses between picking and searching gets more of
-that fetch/parse/validate time absorbed into their own think-time than an
-automated script clicking as fast as possible ever can. The search-click-
-to-results span (1643-2232ms) is comparable to or faster than this same
-page's pre-Phase-5-PR-5 behavior, where the graph fetch hadn't even
-started by the time of the click at all -- but no exact prior number is
-cited here, because none was ever committed to this repository to cite;
-the only claim made is what this table itself shows, run against the real
-site on the date given.
+**Performance measurement method, not results** (ADR 0018 /
+`PUBLIC_PRIVATE_BOUNDARY.md`: benchmark method is public, a real elapsed-
+time result measured on specific hardware is private and local, and that
+applies here just as it does to any other timing receipt -- publishing the
+method but describing it as an "observation" doesn't create an exception).
+The reproducible check: navigate to `/play/connect/` in a fresh browser
+context, pick a real connected pair, note when `graph.v2.json` and the
+Worker script (`graphWorker-*.js`) are first requested relative to
+navigation start, then click Search and note when results become visible.
+Anyone can reproduce this against the live site or a local `npm run
+preview` and compare their own numbers before/after this phase's changes;
+none are transcribed here. The one claim this ADR makes about the outcome
+is the structural one PR 5b's own section above already states and the
+source code itself proves without needing a timing run at all: the graph
+and Worker script are requested from `updateButton()` the moment both
+albums are picked, not from `runSearch()` on the search click -- verify by
+reading `connect.ts`'s `updateButton` versus `runSearch`, not by trusting
+a number.
 
 ## Revisit trigger
 
