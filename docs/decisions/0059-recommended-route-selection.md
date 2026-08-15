@@ -915,6 +915,27 @@ specs), and `pathfinding-bfs-v2.spec.ts` (98 tests total) re-verified
 green against the worker-backed loader, plus the full site-wide Playwright
 suite, `npx tsc --noEmit`, and `make check`.
 
+**Review finding on this slice.** An automated review of the pushed PR
+found one real defect: the crash handler resolved every request currently
+waiting on the dead worker, but left the dead `Worker` object itself
+cached (`graphWorker` still pointed at it, `graphWorkerWired` still
+`true`). `loadPreparedGraph` separately evicts a failed result from its
+own cache so a later search can retry -- but that retry would `postMessage`
+to the SAME crashed worker, which (having thrown during its own top-level
+script evaluation) never processes another message or fires another
+event, so the retry would hang forever waiting on a response that could
+never arrive. Fixed: the crash handler now also terminates the dead
+worker and resets both module-level flags (only when the crashed instance
+is still the currently-cached one, guarding against a stale listener on
+an already-replaced worker), so the next `getGraphWorker()` call
+constructs a genuinely fresh instance. A new regression test crashes the
+worker AND fails the graph fetch on its first attempt, then confirms a
+second attempt (progressive rendering's own pick-time warm-up already
+supplies the first attempt, so the search click itself becomes the real
+retry) resolves rather than hanging, with an explicit assertion that at
+least two real fetch attempts occurred -- confirmed to fail (time out)
+against the pre-fix code before being trusted.
+
 ## Revisit trigger
 
 If the catalog grows enough that the shortest layer stops being cheap —

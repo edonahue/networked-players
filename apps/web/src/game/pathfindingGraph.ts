@@ -677,6 +677,21 @@ function wireGraphWorker(worker: Worker): void {
       resolve("worker-crashed");
     }
     pendingGraphWorkerRequests.clear();
+    // Retires the dead worker -- a real review finding: `loadPreparedGraph`
+    // evicts a failed result from its own cache so a LATER search can
+    // retry, but a crashed worker (its top-level script threw, most
+    // likely) never processes another message or fires another event.
+    // Without this, that retry would still post to the same dead worker
+    // and hang forever waiting on a response that can never arrive. Only
+    // resets if this crashed instance is still the cached one -- a stale
+    // listener on an already-replaced worker (shouldn't happen, since this
+    // reset is synchronous, but not assumed impossible) must never clobber
+    // a newer, healthy worker's state.
+    if (graphWorker === worker) {
+      worker.terminate();
+      graphWorker = undefined;
+      graphWorkerWired = false;
+    }
   });
 }
 
