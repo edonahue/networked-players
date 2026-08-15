@@ -82,27 +82,6 @@ export function buildConnectSearchParams(
   return params;
 }
 
-/** Whether `state` already IS the current URL's own `a`/`b`/`mode`, all
- * three. Distinct from `isSameConnectAlbumPair` below -- this is "would
- * writing this state be a genuine no-op," not "is this the same
- * destination with a different filter." Compares against `search`
- * directly rather than requiring a pre-parsed `ConnectUrlState`, since the
- * current URL may not satisfy `parseConnectUrlParams` at all (e.g. nothing
- * searched yet this session) -- that absence itself means "not the same." */
-export function isSameConnectPair(
-  search: string,
-  state: ConnectUrlState,
-  validModes: ReadonlySet<string>,
-): boolean {
-  const current = parseConnectUrlParams(search, validModes);
-  if (!current) return false;
-  return (
-    current.albumAId === state.albumAId &&
-    current.albumBId === state.albumBId &&
-    current.mode === state.mode
-  );
-}
-
 /** Whether `state` names the SAME two records as the current URL --
  * `mode` deliberately excluded. This is the real push-vs-replace test
  * `connect.ts` uses: re-running the identical pair under a different role

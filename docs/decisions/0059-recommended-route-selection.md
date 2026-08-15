@@ -527,6 +527,58 @@ flush covers, while `route.fulfill()` with the real artifact's own bytes
 (no proxy hop) does not; traced with the DOM's actual `hidden`
 attribute/status text before trusting either.
 
+**Second review pass, one root cause behind three symptoms.** An
+automated review of the initial PR found seven real defects, five of
+which traced to the same root cause: `runSearch` tracked its completed
+route as **five independently-mutated `let` variables**
+(`lastPrimaryRoute`, `lastAlternateRoute`, `lastNameById`,
+`lastEvidenceReleases`, `lastWasRoleFiltered`), and different call sites
+cleared different subsets of them. Consolidated into one
+`LastSearch | null` plus a single `clearLastSearch()`, which by
+construction makes a partial-clear bug impossible to reintroduce. The
+symptoms this caused:
+
+- Swap never called `syncUrl` at all when the last completed search was
+  role-filtered (Swap's own code path never touched the URL-sync
+  variables the unfiltered path did), and separately read the *live*
+  checked radio for `mode` rather than the mode the cached route was
+  actually computed under -- so swapping after changing the filter
+  selection without re-searching could sync a URL naming a mode the
+  displayed route was never ranked against. Fixed: Swap now always
+  calls `syncUrl({..., mode: lastSearch.mode})` from the stored,
+  route-accurate mode.
+- A **failed** search never cleared the `last*` state, so Swap could
+  reverse and redisplay a route that a subsequent failed search had
+  already disproven as connected. Fixed: `clearLastSearch()` now runs
+  at the top of `runSearch`, before the outcome is known, so any new
+  search attempt -- successful or not -- invalidates the prior one
+  immediately rather than leaving stale evidence reachable.
+- Copy Link's reveal was bundled inside `syncUrl`, but `restoreFromUrl`
+  always called `runSearch` with `skipUrlSync: true` (correctly, to
+  avoid re-writing the URL it was just restoring from) -- which meant a
+  URL-restored search could never reveal Copy Link at all. Split
+  `syncUrl` (history only) from a new `showCopyLink()`, called
+  unconditionally at the end of every successful `runSearch` regardless
+  of `skipUrlSync`.
+
+Two independent findings: `restoreFromUrl`'s popstate cleanup called
+`setSelection(null)` on both pickers but never closed an open listbox,
+leaving a stale result list visible over an now-empty input. Fixed by
+moving `closeListbox()` to run unconditionally at the top of
+`applySelection`, rather than only on the album-selected branch.
+`restoreFromUrl` was invoked exactly once, from the bottom of
+`initConnect`, immediately after `ensureCatalog()` -- so a *failed*
+initial catalog load permanently skipped URL restoration even though
+`ensureCatalog` is retried on the next keystroke. Fixed with an
+`urlRestoreAttempted` flag and moving the `restoreFromUrl` call inside
+`ensureCatalog`'s own success branch, so it fires exactly once, on
+whichever attempt first actually succeeds.
+
+Last, `isSameConnectPair` (the original all-three-field comparator,
+superseded by `isSameConnectAlbumPair` above) had zero remaining
+production callers and was deleted along with its dedicated test block,
+rather than left as unreachable dead code.
+
 ## Validation
 
 - Synthetic-fixture tests for enumeration bounds, shortest-first

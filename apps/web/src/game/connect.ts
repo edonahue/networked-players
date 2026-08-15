@@ -196,9 +196,18 @@ function wirePicker(
     album: PickableAlbum | null,
     options: { programmatic: boolean },
   ): void => {
+    // Closing the listbox is unconditional -- a real review finding: the
+    // popstate-cleanup path called `setSelection(null)` expecting it to
+    // leave the picker fully closed, but only the `album` branch used to
+    // call `closeListbox()`, so an open listbox from an uncommitted typed
+    // query survived a visitor navigating away from this whole search
+    // (still showing stale options with `aria-expanded="true"` for a
+    // now-empty input). Harmless for the `input`-event caller too: it
+    // calls `refresh()` immediately afterward, which reopens the listbox
+    // from the new query if there's anything to show.
+    closeListbox();
     if (album) {
       input.value = `${album.title} — ${album.artist}`;
-      closeListbox();
       selected.hidden = false;
       selected.textContent = `Selected: ${album.title} — ${album.artist}`;
     } else {
@@ -411,16 +420,35 @@ export async function initConnect(): Promise<void> {
   let albumA: PickableAlbum | null = null;
   let albumB: PickableAlbum | null = null;
 
-  // The currently-displayed route, kept ONLY so Swap Records can redisplay
-  // it reversed without a second search (`reverseRoute`) -- provably
-  // identical evidence, just read the other direction. Cleared by any
-  // GENUINE new pick (see the picker `onSelect` callbacks below); Swap's
-  // own `setSelection` calls are programmatic and never clear it.
-  let lastPrimaryRoute: PrimaryRoute | null = null;
-  let lastAlternateRoute: PrimaryRoute | null = null;
-  let lastNameById: Map<number, string> | null = null;
-  let lastEvidenceReleases: Map<number, EvidenceRelease> | null = null;
-  let lastWasRoleFiltered = false;
+  // The currently-DISPLAYED search, as ONE unit -- kept so Swap Records can
+  // redisplay it reversed without a second search (`reverseRoute`),
+  // provably identical evidence, just read the other direction. Deliberately
+  // a single object rather than five parallel variables: an earlier version
+  // had exactly that shape and it was a real review finding -- three
+  // different call sites each cleared a different SUBSET of the fields (a
+  // failed search cleared none of them, letting Swap resurrect a route a
+  // just-failed re-search had already disproven; the popstate-cleanup path
+  // cleared only two of five, leaving stale evidence/mode behind), and
+  // Swap read the role-filter radio's LIVE, possibly-since-changed DOM
+  // value instead of the mode the cached route was actually computed
+  // under. Grouped like this, there is exactly one place to set it, and
+  // `clearLastSearch()` below is the only place that clears it -- nothing
+  // can drift out of sync by construction.
+  //
+  // `mode` is the real value ("none" or a filter key) the route was
+  // computed under, not a boolean -- Swap needs the EXACT mode to write an
+  // honest URL, not merely whether one was active.
+  interface LastSearch {
+    primaryRoute: PrimaryRoute;
+    alternateRoute: PrimaryRoute | null;
+    nameById: Map<number, string>;
+    evidenceReleases: Map<number, EvidenceRelease>;
+    mode: string;
+  }
+  let lastSearch: LastSearch | null = null;
+  const clearLastSearch = () => {
+    lastSearch = null;
+  };
 
   // Request lifecycle (ADR 0059 Phase 5 PR 4): the same generation-counter
   // pattern `explorerStage.ts` already proved for its evidence drawer. A
@@ -458,6 +486,12 @@ export async function initConnect(): Promise<void> {
     for (const picker of pickers) picker.setState(state);
   };
 
+  // Guards `restoreFromUrl` (declared below, but `function` declarations
+  // are hoisted) against running more than once: it should fire exactly
+  // once, on whichever catalog attempt first succeeds, never again on a
+  // later reload triggered by an unrelated retry.
+  let urlRestoreAttempted = false;
+
   const ensureCatalog = async (): Promise<void> => {
     if (catalogPending) return;
     catalogPending = true;
@@ -477,6 +511,20 @@ export async function initConnect(): Promise<void> {
       setCatalogState("ready");
       setStatus(null);
       for (const picker of pickers) picker.refresh();
+      // Attempted at most once, on whichever catalog load actually
+      // succeeds first -- a real review finding: this used to be a
+      // separate call after `await ensureCatalog()` at the bottom of
+      // `initConnect`, which only ever ran once regardless of outcome.
+      // If THAT first load failed, `restoreFromUrl` saw an empty
+      // `albums` array, declined (correctly, per its own contract), and
+      // was never invoked again -- so a shared link opened during a
+      // transient catalog outage permanently lost its auto-populate/
+      // auto-search for the rest of that page view, even after the
+      // visitor's own retry-on-keystroke succeeded moments later.
+      if (!urlRestoreAttempted) {
+        urlRestoreAttempted = true;
+        restoreFromUrl(window.location.search, false);
+      }
     } finally {
       catalogPending = false;
     }
@@ -495,8 +543,7 @@ export async function initConnect(): Promise<void> {
         // A real, user-driven pick invalidates any reusable route: Swap
         // must never redisplay a route that no longer describes the two
         // records actually selected.
-        lastPrimaryRoute = null;
-        lastAlternateRoute = null;
+        clearLastSearch();
         updateButton();
       },
       // A failed catalog load leaves a recoverable control, not a dead one:
@@ -530,6 +577,16 @@ export async function initConnect(): Promise<void> {
     } else {
       window.history.pushState(state, "", url);
     }
+  }
+
+  /** Reveals Copy Link for the URL now current in the address bar.
+   * Deliberately independent of `syncUrl`: a URL-restored search
+   * (`skipUrlSync: true`, since the address bar is already correct) still
+   * completed a real, documented search and still has a real link worth
+   * copying -- gating this on the SAME flag that skips the history write
+   * left Copy Link permanently hidden for anyone who opened a shared link
+   * directly, a real review finding. */
+  function showCopyLink(): void {
     if (copyLinkButton) {
       copyLinkButton.hidden = false;
       copyLinkButton.textContent = "Copy link";
@@ -557,6 +614,13 @@ export async function initConnect(): Promise<void> {
     setStatus("Searching…");
     searchButtonNonNull.disabled = true;
     if (swapButton) swapButton.disabled = true;
+    // Any new attempt invalidates the previous snapshot immediately, win
+    // or lose -- a route only becomes reusable again once THIS search
+    // actually succeeds and repopulates it below. Without this, a search
+    // that fails (wrong filter, no connection) left the prior search's
+    // route sitting in `lastSearch`, and Swap could silently resurrect and
+    // republish a route the just-failed re-search had already disproven.
+    clearLastSearch();
 
     const selectedModeValue =
       stageEl.querySelector<HTMLInputElement>(
@@ -702,11 +766,13 @@ export async function initConnect(): Promise<void> {
       nameById,
       evidenceIndex.releases,
     );
-    lastPrimaryRoute = primaryRoute;
-    lastAlternateRoute = null;
-    lastNameById = nameById;
-    lastEvidenceReleases = evidenceIndex.releases;
-    lastWasRoleFiltered = Boolean(roleFilterMode);
+    lastSearch = {
+      primaryRoute,
+      alternateRoute: null,
+      nameById,
+      evidenceReleases: evidenceIndex.releases,
+      mode: selectedModeValue,
+    };
 
     // Distinct alternate route (ADR 0058 Slice 7, renamed post-Phase-4
     // cleanup audit): a real second search that hard-excludes every edge
@@ -744,7 +810,7 @@ export async function initConnect(): Promise<void> {
           nameById,
           evidenceIndex.releases,
         );
-        lastAlternateRoute = alternate;
+        if (lastSearch) lastSearch.alternateRoute = alternate;
         // Explained from the SAME facts the primary ranking uses --
         // degree, evidence caveat, role substance -- never a parallel
         // narrative computed some other way (ADR 0059).
@@ -758,6 +824,12 @@ export async function initConnect(): Promise<void> {
       }
     }
 
+    // Copy Link is revealed for every completed search, including one
+    // restored from a URL -- the address bar is already correct there
+    // (that's what `skipUrlSync` means), but the search still completed
+    // and there is still a real link worth copying. Only the HISTORY
+    // write is conditional on `skipUrlSync`.
+    showCopyLink();
     if (!options.skipUrlSync) {
       syncUrl({
         albumAId: fromAlbum.id,
@@ -790,38 +862,39 @@ export async function initConnect(): Promise<void> {
       pickerB?.setSelection(albumB);
       updateButton();
 
-      if (lastPrimaryRoute && lastNameById && lastEvidenceReleases) {
-        lastPrimaryRoute = reverseRoute(lastPrimaryRoute);
+      if (lastSearch) {
+        lastSearch.primaryRoute = reverseRoute(lastSearch.primaryRoute);
         renderRoute(
           hopsEl,
-          lastPrimaryRoute,
+          lastSearch.primaryRoute,
           albumA,
           albumB,
-          lastNameById,
-          lastEvidenceReleases,
+          lastSearch.nameById,
+          lastSearch.evidenceReleases,
         );
-        if (lastAlternateRoute && hopsAlternateEl) {
-          lastAlternateRoute = reverseRoute(lastAlternateRoute);
+        if (lastSearch.alternateRoute && hopsAlternateEl) {
+          lastSearch.alternateRoute = reverseRoute(lastSearch.alternateRoute);
           renderRoute(
             hopsAlternateEl,
-            lastAlternateRoute,
+            lastSearch.alternateRoute,
             albumA,
             albumB,
-            lastNameById,
-            lastEvidenceReleases,
+            lastSearch.nameById,
+            lastSearch.evidenceReleases,
           );
         }
-        if (!lastWasRoleFiltered) {
-          const selectedModeValue =
-            stage.querySelector<HTMLInputElement>(
-              "[data-connect-mode-option]:checked",
-            )?.value ?? "none";
-          syncUrl({
-            albumAId: albumA.id,
-            albumBId: albumB.id,
-            mode: selectedModeValue,
-          });
-        }
+        // The MODE STORED ON THE CACHED SEARCH, never a live re-read of
+        // the mode radio group -- a real review finding: the checked
+        // radio can legitimately differ from what the on-screen route was
+        // actually computed under (the visitor can toggle a filter
+        // without re-searching), and syncing the live DOM value there
+        // would publish a URL claiming a search that was never run.
+        syncUrl({
+          albumAId: albumA.id,
+          albumBId: albumB.id,
+          mode: lastSearch.mode,
+        });
+        showCopyLink();
       }
 
       announce(
@@ -878,15 +951,19 @@ export async function initConnect(): Promise<void> {
         );
         if (pickerAInput) pickerAInput.value = "";
         if (pickerBInput) pickerBInput.value = "";
-        lastPrimaryRoute = null;
-        lastAlternateRoute = null;
+        clearLastSearch();
         resultsElNonNull.hidden = true;
         setStatus(null);
         updateButton();
       }
       return;
     }
-    if (albums.length === 0) return; // catalog not ready; only init calls this before it's ready
+    // Catalog not ready. Unreachable from the init caller (which only
+    // ever runs this from inside `ensureCatalog`'s own success path, so
+    // `albums` is always populated there) but real for `popstate`, which
+    // can fire before any catalog attempt has resolved at all -- declining
+    // here is correct; there is nothing to validate against yet.
+    if (albums.length === 0) return;
     const albumFromUrl = albums.find((a) => a.id === parsed.albumAId);
     const albumToUrl = albums.find((a) => a.id === parsed.albumBId);
     if (!albumFromUrl || !albumToUrl) {
@@ -914,7 +991,9 @@ export async function initConnect(): Promise<void> {
   // Awaited last, deliberately: every listener above is attached before the
   // first network request, so nothing a visitor does during initialization
   // is dropped -- including a search click, which the old early-return on a
-  // catalog failure used to skip wiring entirely.
+  // catalog failure used to skip wiring entirely. `restoreFromUrl` itself
+  // now runs from inside `ensureCatalog`'s own success path (see
+  // `urlRestoreAttempted` above), not from here -- that's what lets it
+  // fire correctly on a LATER retry too, not just this first attempt.
   await ensureCatalog();
-  restoreFromUrl(window.location.search, false);
 }

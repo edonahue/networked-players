@@ -5,7 +5,6 @@ import { expect, test } from "@playwright/test";
 import {
   buildConnectSearchParams,
   isSameConnectAlbumPair,
-  isSameConnectPair,
   parseConnectUrlParams,
 } from "../src/game/connectUrlState";
 
@@ -118,48 +117,6 @@ test.describe("buildConnectSearchParams", () => {
     expect(parseConnectUrlParams(`?${params.toString()}`, VALID_MODES)).toEqual(
       state,
     );
-  });
-});
-
-test.describe("isSameConnectPair", () => {
-  test("true when the current URL already encodes the exact same pair and mode", () => {
-    expect(
-      isSameConnectPair(
-        "?a=master-1&b=master-2&mode=rhythm-section",
-        { albumAId: "master-1", albumBId: "master-2", mode: "rhythm-section" },
-        VALID_MODES,
-      ),
-    ).toBe(true);
-  });
-
-  test("false when only the mode differs -- a mode change is still a refinement worth detecting distinctly by the caller, but not 'the same'", () => {
-    expect(
-      isSameConnectPair(
-        "?a=master-1&b=master-2",
-        { albumAId: "master-1", albumBId: "master-2", mode: "rhythm-section" },
-        VALID_MODES,
-      ),
-    ).toBe(false);
-  });
-
-  test("false when the pair differs", () => {
-    expect(
-      isSameConnectPair(
-        "?a=master-1&b=master-2",
-        { albumAId: "master-1", albumBId: "master-9", mode: "none" },
-        VALID_MODES,
-      ),
-    ).toBe(false);
-  });
-
-  test("false when nothing is in the URL yet (first search this session)", () => {
-    expect(
-      isSameConnectPair(
-        "",
-        { albumAId: "master-1", albumBId: "master-2", mode: "none" },
-        VALID_MODES,
-      ),
-    ).toBe(false);
   });
 });
 
