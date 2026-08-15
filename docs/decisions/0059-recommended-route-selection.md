@@ -345,6 +345,39 @@ the same 1.46%-coverage problem `scorePath` had — so it is replaced by
 `computeRouteFacts`/`explainRoute`, which both the recommended pick and
 the distinct alternate now share, reading CSR degree instead.
 
+### Three real review findings, fixed before merge
+
+1. **A truncated candidate set was silently ranked and still labeled
+   "Recommended."** A route or expansion cap firing mid-enumeration left
+   `candidates` non-empty but ARBITRARY — an accident of CSR walk order,
+   exactly the bias this whole engine exists to remove — yet the code only
+   checked `candidates.length === 0` before trusting `best`, never the
+   layer's own `complete` flag it already computed. `rankingDegraded` is
+   now `!shortestLayer.complete` (and `!plusOneLayer.complete` when the
+   +1-hop pick is used) rather than hardcoded `false` on every success
+   path. A test that exercised exactly this cap-truncation path had been
+   asserting the bug (`rankingDegraded: false` with only 1 of 2 real
+   candidates surviving a `maxRoutes: 1` cap) rather than catching it —
+   rewritten to assert the honest, fixed behavior, plus a companion test
+   confirming a cap that does NOT truncate stays genuinely ranked.
+2. **The reverse-distance precompute over-scanned by a full extra layer**
+   beyond even its own stated intent (`maxDepth + 1` passed where the
+   forward walk only ever consults distances up to `maxDepth - 1`, and the
+   code's own comment claimed only `maxDepth` was needed for later +1-hop
+   reuse). Harmless for correctness, real for the shared expansion budget:
+   on the worst measured pair already consuming 358,505 of 400,000 slots,
+   an unneeded layer could be the difference between completing and
+   spuriously exhausting the budget on a denser pair. Fixed to `maxDepth`.
+3. **The evidence registry was fetched unconditionally on every search
+   click**, including role-filtered searches (which never rank on it, only
+   render with it) and any search that finds no route at all — a real
+   network request the pre-ranking code never made in those cases. Fixed:
+   the fetch now starts alongside the graph only for an unfiltered search;
+   a role-filtered search defers it to after a route is confirmed, exactly
+   matching pre-PR behavior. Two new real-artifact tests pin both sides:
+   zero evidence fetches for a role-filtered search with no connection,
+   exactly one once a route is found.
+
 ## Validation
 
 - Synthetic-fixture tests for enumeration bounds, shortest-first

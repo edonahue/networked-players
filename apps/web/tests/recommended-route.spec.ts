@@ -526,7 +526,12 @@ test.describe("selectRecommendedRoute: invariants", () => {
     );
   });
 
-  test("hard route cap is honored -- never returns more candidates than the cap even though it still ranks correctly", () => {
+  test("a route cap that truncates the layer honestly reports rankingDegraded, even though a route was still found", () => {
+    // Two real equal-hop candidates exist; the cap allows only one through.
+    // The survivor is an arbitrary CSR-order-dependent prefix, not a
+    // genuine ranking result -- exactly the bias this whole engine exists
+    // to remove, so the label must downgrade even though a real route
+    // (never nothing) is still returned.
     const graph = twoBridgeGraph({});
     const { artistIndex, albumIndex } = indices(graph);
     const evidence = evidenceIndex([
@@ -548,8 +553,37 @@ test.describe("selectRecommendedRoute: invariants", () => {
     );
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    // Still degraded-free: 1 candidate is enough to "rank" (trivially).
+    expect(result.shortestLayerComplete).toBe(false);
+    expect(result.rankingDegraded).toBe(true);
+    // Still a real route, not a thrown error or a fabricated fallback.
+    expect(result.recommended.hops.length).toBeGreaterThan(0);
+  });
+
+  test("a route cap that does NOT truncate the layer (cap >= real candidate count) stays genuinely ranked", () => {
+    const graph = twoBridgeGraph({});
+    const { artistIndex, albumIndex } = indices(graph);
+    const evidence = evidenceIndex([
+      release(900, "unofficial"),
+      release(901, null),
+    ]);
+
+    const result = selectRecommendedRoute(
+      graph,
+      artistIndex,
+      albumIndex,
+      "album-a",
+      "album-b",
+      evidence,
+      4,
+      undefined,
+      2, // exactly enough for both real candidates
+      400_000,
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.shortestLayerComplete).toBe(true);
     expect(result.rankingDegraded).toBe(false);
+    expect(result.recommended.endpointA.artistId).toBe(200); // the genuinely-ranked winner
   });
 });
 

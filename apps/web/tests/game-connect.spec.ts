@@ -386,6 +386,57 @@ test("Rhythm Section and Guitar Paths report no connection for the same real non
   );
 });
 
+// ADR 0059 review finding: the recommended-route engine needs the
+// evidence registry BEFORE it can rank the unfiltered search, so its
+// fetch was moved to start alongside the graph -- but a role-filtered
+// search never ranks and only needs evidence to render an already-found
+// route, so unconditionally starting that fetch for every search would be
+// a real, wasted network cost on a role-filtered search and on any search
+// (filtered or not) that finds no route at all. Verifies the fix rather
+// than just the earlier parallel-fetch behavior.
+test("a role-filtered search that finds no connection never fetches the evidence registry", async ({
+  page,
+}) => {
+  let evidenceFetches = 0;
+  await page.route("**/data/evidence/release-registry.v1.json", (route) => {
+    evidenceFetches++;
+    return route.continue();
+  });
+  await page.goto("/play/connect/");
+  await selectAlbum(page, "a", "Time Out");
+  await selectAlbum(page, "b", "Rumours");
+  await selectRouteFilter(page, "behind-the-glass");
+  await page.locator("[data-connect-search]").click();
+
+  await expect(page.locator("[data-connect-status]")).toContainText(
+    /no producer\/engineer-only connection/i,
+  );
+  expect(evidenceFetches).toBe(0);
+});
+
+// The same mode DOES fetch evidence once a route is actually found --
+// deferred, not removed: it's still needed to render the hop's real
+// title/year/cover.
+test("a role-filtered search that finds a connection fetches evidence only after the route is confirmed", async ({
+  page,
+}) => {
+  let evidenceFetches = 0;
+  await page.route("**/data/evidence/release-registry.v1.json", (route) => {
+    evidenceFetches++;
+    return route.continue();
+  });
+  await page.goto("/play/connect/");
+  await selectAlbum(page, "a", "Ziggy Stardust");
+  await selectAlbum(page, "b", "A Night At The Opera");
+  await selectRouteFilter(page, "behind-the-glass");
+  await page.locator("[data-connect-search]").click();
+
+  await expect(page.locator("[data-connect-results]")).toBeVisible({
+    timeout: 15000,
+  });
+  expect(evidenceFetches).toBe(1);
+});
+
 // The radio group is mutually exclusive by construction -- selecting a
 // second filter must deselect the first, never leave two checked.
 test("only one route filter can be selected at a time", async ({ page }) => {

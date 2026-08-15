@@ -395,12 +395,16 @@ export type RecommendedRouteResult =
        * exception to "recommend from the shortest layer" (ADR 0059). */
       usedPlusOneHop: boolean;
       shortestLayerComplete: boolean;
-      /** True when real bounded enumeration could not run (caps exhausted
-       * before finding any candidate, or the graph has no v2 album
-       * anchors) and the result degraded to `findAlbumRoute`'s plain
-       * first-found route instead -- still a real, correct route, just
-       * not a genuinely ranked pick. Required fallback per ADR 0059's
-       * invariant list. */
+      /** True whenever `recommended` was not chosen from a COMPLETE
+       * ranked layer -- either because enumeration couldn't run at all
+       * (caps exhausted before finding any candidate) and degraded to
+       * `findAlbumRoute`'s plain first-found route, or because a route/
+       * expansion cap fired mid-enumeration and left a real but
+       * arbitrary, CSR-order-dependent PARTIAL candidate set. Either way
+       * `recommended` is still a real, correct route -- just not one a
+       * genuine ranking is known to have picked as the best available,
+       * so the label downgrades from "Recommended" to "Shortest"
+       * accordingly. Required fallback per ADR 0059's invariant list. */
       rankingDegraded: boolean;
     }
   | { ok: false; reason: PathfindingFailureReason };
@@ -489,10 +493,21 @@ export function selectRecommendedRoute(
     : undefined;
 
   const budget = { remaining: maxExpansions };
+  // No deeper than `maxDepth`: the forward walk only ever consults a
+  // distance value at `targetDepth - 1` (checked at its own depth-0 step),
+  // and `targetDepth` never exceeds `maxDepth` -- the shortest layer is
+  // gated by `shortestPossible <= maxDepth` above, and the +1-hop layer by
+  // `shortestPossible + 1 <= maxDepth` below. An earlier version passed
+  // `maxDepth + 1` "so the +1-hop call could reuse this guide", which was
+  // already one layer more than even that stated intent needed -- a real
+  // review finding: on the shared 400,000-slot budget the ADR's own worst
+  // measured pair already consumes 358,505 of, an unnecessary extra layer
+  // of reverse-BFS could be the difference between completing and
+  // spuriously exhausting the budget on a denser pair.
   const { distances, exhausted } = reverseDistances(
     graph,
     goalIndex,
-    maxDepth + 1, // +1 so a later plus-one-hop call can reuse this same guide
+    maxDepth,
     budget,
   );
   if (exhausted) return fallback();
@@ -556,7 +571,13 @@ export function selectRecommendedRoute(
         recommended: plusOneBest,
         usedPlusOneHop: true,
         shortestLayerComplete: shortestLayer.complete,
-        rankingDegraded: false,
+        // A truncated +1 layer may not have found the TRUE best of that
+        // layer, only *a* better-than-worst-tier candidate -- real
+        // evidence such a route exists, but not the same rigor the
+        // "Recommended" label claims. Mirrors the shortest-layer check
+        // below for the same reason: a partial, CSR-order-dependent
+        // prefix is not a sample (ADR 0059).
+        rankingDegraded: !plusOneLayer.complete,
       };
     }
   }
@@ -566,7 +587,13 @@ export function selectRecommendedRoute(
     recommended: best,
     usedPlusOneHop: false,
     shortestLayerComplete: shortestLayer.complete,
-    rankingDegraded: false,
+    // A route cap or expansion-budget cap firing mid-enumeration leaves
+    // `candidates` non-empty but ARBITRARY -- an accident of CSR walk
+    // order, exactly the bias this whole engine exists to remove. Ranking
+    // a partial layer and still calling it "Recommended" would silently
+    // reintroduce that bias; `best` is still returned (a real, correct
+    // route beats none), but the claim downgrades honestly.
+    rankingDegraded: !shortestLayer.complete,
   };
 }
 

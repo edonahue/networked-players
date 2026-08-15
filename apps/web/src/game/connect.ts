@@ -344,19 +344,34 @@ export async function initConnect(): Promise<void> {
     setStatus("Searching…");
     searchButton.disabled = true;
 
+    const selectedModeValue =
+      stage.querySelector<HTMLInputElement>(
+        "[data-connect-mode-option]:checked",
+      )?.value ?? "none";
+    const roleFilterMode = ROLE_FILTER_MODES[selectedModeValue];
+
     // Prepared (loaded + indexed) once per page load and reused across
     // every search click via loadPreparedGraph's own module-level cache
     // (post-Phase-4 cleanup audit F11/F12) -- only the first search in a
     // session pays the fetch/parse/index cost; a sessionStorage failure no
     // longer causes a refetch on the 2nd/3rd/4th search within one page
-    // load, only across page loads. The evidence registry is fetched in
-    // parallel, not chained after: ADR 0059's ranking needs it, so it can
-    // no longer wait until after a route is already found the way the
-    // purely-presentational pre-ranking version did.
-    const [preparedResult, evidenceIndex] = await Promise.all([
-      loadPreparedGraph(sessionStorageOrNull(), PATHFINDING_GRAPH_URL),
-      loadEvidenceIndex(),
-    ]);
+    // load, only across page loads.
+    //
+    // The evidence registry starts fetching alongside the graph ONLY for
+    // an unfiltered search: ADR 0059's ranking needs it before it can pick
+    // a route at all. A role-filtered search never ranks (see below) and
+    // only ever needs evidence for rendering an ALREADY-found route, so
+    // its fetch isn't STARTED until a route is confirmed -- starting it
+    // here too would pay a real, unconditional network cost for role-
+    // filtered searches and for any search (filtered or not) that turns
+    // out to find no route at all. `loadEvidenceIndex()` itself is a
+    // memoized module-level promise either way, so a role-filtered search
+    // still benefits once an unfiltered search has already paid the cost.
+    const evidenceIndexPromise = roleFilterMode ? null : loadEvidenceIndex();
+    const preparedResult = await loadPreparedGraph(
+      sessionStorageOrNull(),
+      PATHFINDING_GRAPH_URL,
+    );
     if (!("prepared" in preparedResult)) {
       const messages: Record<string, string> = {
         "fetch-failed":
@@ -381,12 +396,6 @@ export async function initConnect(): Promise<void> {
       inconclusive: "The search was inconclusive within the current bounds.",
     };
 
-    const selectedModeValue =
-      stage.querySelector<HTMLInputElement>(
-        "[data-connect-mode-option]:checked",
-      )?.value ?? "none";
-    const roleFilterMode = ROLE_FILTER_MODES[selectedModeValue];
-
     // Role-filtered searches keep today's plain first-found BFS
     // unchanged: the edge filter already narrows every hop to one credit
     // type, which is a much stronger constraint than ranking adds value
@@ -398,6 +407,7 @@ export async function initConnect(): Promise<void> {
       endpointB: AlbumEndpoint;
       usedEdgeKeys: Set<string>;
     };
+    let evidenceIndex: EvidenceIndex;
     if (roleFilterMode) {
       const route = findAlbumRoute(
         graph,
@@ -418,9 +428,14 @@ export async function initConnect(): Promise<void> {
         return;
       }
       primaryRoute = route;
+      // Only now, with a real route confirmed -- rendering it is the one
+      // thing this mode needs evidence data for.
+      evidenceIndex = await loadEvidenceIndex();
       if (eyebrowEl) eyebrowEl.textContent = "Shortest documented route";
       if (explainPrimaryEl) explainPrimaryEl.hidden = true;
     } else {
+      // Already fetching, started alongside the graph above.
+      evidenceIndex = await evidenceIndexPromise!;
       const result = selectRecommendedRoute(
         graph,
         artistIndex,
