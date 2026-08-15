@@ -667,6 +667,80 @@ codebase that combines with `hidden` today.
   real-browser assertion against the diagnostic pair
   (`apps/web/tests/game-connect.spec.ts`).
 
+## PR 5a: route timeline presentation
+
+The first slice of Phase 5 PR 5 (route timeline, progressive rendering,
+performance, closeout) -- presentation only, in `apps/web/src/game/connect.ts`,
+`connectEvidence.ts`, `ConnectStage.astro`, and `game.css`. No ranking or
+search-behavior change.
+
+**Endpoint cover art.** Endpoint cards (the route's literal start/end
+albums) now carry real cover art via the existing `albumArt.ts`
+(`fetchAlbumArt`, ADR 0044/0045) client-side module -- fetched once per page
+session alongside the graph/evidence, never blocking a search, and falling
+back to `AlbumCard.astro`'s own established polished placeholder (reused
+verbatim -- `.album-card__placeholder`/`.album-card__placeholder-disc` from
+`motif.css`, not a new placeholder design) for any album missing an entry.
+`data-art-fallback="disc"` wires the load-failure case into the SAME
+site-wide `BaseLayout.astro` error handler every other cover image already
+uses, rather than adding a second one.
+
+**Contributor vs. evidence-release separation.** Each hop card used to run
+the two contributors' names and the bridging release's title/year/country
+together into one sentence, with the cover image sitting in an unstyled,
+accidentally-malformed wrapper div (`<div class="connect-hop__head">${cover}<div>`
+-- an unclosed tag, not previously caught because no test asserted on
+`.connect-hop__head`'s own layout, only on text content via
+`toContainText`). Split into two real, separately styled blocks: a plain
+contributor-prose paragraph, and a `.connect-hop__release` sub-card (cover +
+title/year/country + source link) with its own subtle background --
+"contributor nodes visually distinct from evidence releases" from the PR 5
+plan, and a real bug fix along the way.
+
+**Route length.** `hops.length` is now always rendered ("2 hops
+documented"), for every outcome that reaches a route -- ranked, degraded,
+role-filtered, and the distinct alternate -- not just folded into the
+ranked-and-not-degraded case's "why" explanation text as it was before
+(where a role-filtered or degraded result showed no length at all).
+
+**"Why this route?" as a real disclosure.** The primary explanation used to
+be a permanently-visible paragraph; it's now a `<details data-connect-why-primary>`
+around the same explanation `<p>`, closed by default -- a genuine
+progressive disclosure rather than a permanently-shown block, matching the
+plan's own "disclosure" framing. Only rendered/openable when a real ranking
+ran (`!rankingDegraded`), same as before; a role-filtered or degraded result
+still shows no "why" section at all, since there is no real ranking to
+explain.
+
+**Timeline connector.** `.connect-timeline` (wrapping both the primary and
+alternate hop lists) adds a continuous left-edge connecting line with a
+marker per stop -- a filled accent dot for each endpoint, a hollow dot for
+each hop -- built entirely from this page's own `--line`/`--accent-strong`
+tokens, not a new visual system.
+
+**Pre-selection empty state.** A `<p data-connect-empty-state>` sits below
+the status/announce region, visible whenever neither the results panel nor
+the status message is -- covering initial page load, a popstate-driven
+clear, and (new in this slice) a real pick that discards a previously-
+completed search's cached route. Deliberately NOT threaded through every
+call site that already toggles `resultsEl.hidden`/`statusEl.hidden` (there
+are several, and PR 4's whole `LastSearch` consolidation exists specifically
+because that kind of duplication drifts); instead a `MutationObserver`
+derives it reactively from those two elements' real `hidden` attribute,
+so it can never fall out of sync with them by construction.
+
+**Verification.** All 7 new presentation-specific assertions (empty state
+before/after search, empty state reappearing after a cache-invalidating
+pick, real cover art rendering, the placeholder for a missing art entry,
+route length across ranked/role-filtered/alternate outcomes, and the
+disclosure's closed-by-default/openable behavior) were confirmed to
+actually fail against the pre-slice code before being trusted -- 7 of 8
+failed for the right reason; the 8th (role-filtered search shows no "why"
+section) was already true before this slice and stays a non-regression
+check, not a new-behavior one. Full existing Connect suite (50 tests
+including combobox, URL state, swap, and staleness) re-verified green
+against the restored code, plus a fresh `npx tsc --noEmit` and `make check`.
+
 ## Revisit trigger
 
 If the catalog grows enough that the shortest layer stops being cheap —

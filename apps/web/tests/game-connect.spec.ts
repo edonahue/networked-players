@@ -191,6 +191,11 @@ test("the diagnostic pair (Discovery / Joshua Tree) is ranked away from its cave
   await expect(page.locator("[data-connect-eyebrow]")).toHaveText(
     "Recommended documented route",
   );
+  // "Why this route?" is a real, closed-by-default disclosure (ADR 0059
+  // Phase 5 PR 5) -- expand it before reading the explanation it reveals.
+  const why = page.locator("[data-connect-why-primary]");
+  await expect(why).toBeVisible();
+  await why.locator("summary").click();
   const explanation = page.locator("[data-connect-explain-primary]");
   await expect(explanation).toBeVisible();
   await expect(explanation).toContainText(

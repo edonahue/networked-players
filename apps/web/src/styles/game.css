@@ -732,10 +732,106 @@ a.contributor-card:focus-visible {
   font-size: 0.9rem;
   color: var(--muted);
 }
+.connect-empty-state {
+  color: var(--muted);
+  font-size: 0.95rem;
+  max-width: 46em;
+}
 .connect-results:not([hidden]) {
   display: flex;
   flex-direction: column;
   gap: 24px;
+}
+.connect-route-length {
+  margin: 0 0 10px;
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.connect-why {
+  margin: 0 0 14px;
+}
+.connect-why summary {
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--accent-strong);
+  width: fit-content;
+}
+.connect-why summary:hover,
+.connect-why summary:focus-visible {
+  text-decoration: underline;
+}
+.connect-why[open] summary {
+  margin-bottom: 8px;
+}
+/* The route's own visual spine: a continuous connecting line down the left
+ * edge with a marker per stop, so the sequence of endpoint -> hop -> hop ->
+ * endpoint reads as one connected path rather than a stack of unrelated
+ * cards -- the "timeline" framing from ADR 0059's PR 5 plan, built from
+ * this page's existing --line/--accent-strong tokens rather than a new
+ * design language. */
+.connect-timeline {
+  position: relative;
+  padding-left: 26px;
+}
+.connect-timeline::before {
+  content: "";
+  position: absolute;
+  left: 9px;
+  top: 10px;
+  bottom: 10px;
+  width: 2px;
+  background: var(--line);
+}
+.connect-timeline .connect-hop,
+.connect-timeline .connect-endpoint {
+  position: relative;
+}
+.connect-timeline .connect-hop::before,
+.connect-timeline .connect-endpoint::before {
+  content: "";
+  position: absolute;
+  left: -22px;
+  top: 20px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 2px solid var(--line);
+}
+.connect-timeline .connect-endpoint::before {
+  top: 30px;
+  background: var(--accent-strong);
+  border-color: var(--accent-strong);
+}
+.connect-endpoint {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface-soft);
+  margin-bottom: 10px;
+}
+.connect-endpoint p {
+  margin: 0;
+}
+.connect-endpoint__cover {
+  flex: none;
+  width: 72px;
+  height: 72px;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+  object-fit: cover;
+}
+.connect-endpoint__cover--placeholder {
+  display: grid;
+  place-items: center;
 }
 .connect-hop {
   padding: 14px 16px;
@@ -747,12 +843,39 @@ a.contributor-card:focus-visible {
 .connect-hop p {
   margin: 0 0 6px;
 }
+.connect-hop__contributors {
+  margin-bottom: 12px;
+}
 .connect-hop__role {
   color: var(--muted);
+}
+.connect-hop__release {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-soft);
+}
+.connect-hop__release-text {
+  min-width: 0;
+}
+.connect-hop__release-title {
+  margin: 0 0 4px;
+}
+.connect-hop__cover {
+  flex: none;
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  object-fit: cover;
 }
 .connect-hop__source {
   font-size: 0.85rem;
   color: var(--muted);
+  margin: 0;
 }
 .connect-explain {
   font-family: var(--mono);

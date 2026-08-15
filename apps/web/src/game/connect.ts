@@ -23,6 +23,7 @@
 // (the same pattern `explorerStage.ts` already proved) so a stale search
 // can never overwrite a newer one's result.
 
+import { fetchAlbumArt, type ResolvedArt } from "./albumArt";
 import { filterAlbums, type PickableAlbum } from "./albumPicker";
 import {
   buildConnectSearchParams,
@@ -345,6 +346,23 @@ type PrimaryRoute = {
   usedEdgeKeys: Set<string>;
 };
 
+/** "1 hop documented" / "3 hops documented" -- always rendered, for every
+ * outcome (ranked, degraded, role-filtered, alternate), unlike the "why
+ * this route" disclosure which only exists for a genuinely ranked result. */
+function routeLengthText(hopCount: number): string {
+  return `${hopCount} hop${hopCount === 1 ? "" : "s"} documented`;
+}
+
+// Album art is presentation-only (ADR 0044/0045) and fetched at most once
+// per page session, the same module-level-promise shape `loadEvidenceIndex`
+// already uses -- a missing/failed registry resolves to an empty map (every
+// endpoint falls back to the placeholder), never blocking a search.
+let albumArtPromise: Promise<Map<string, ResolvedArt>> | null = null;
+function loadAlbumArt(): Promise<Map<string, ResolvedArt>> {
+  if (!albumArtPromise) albumArtPromise = fetchAlbumArt();
+  return albumArtPromise;
+}
+
 /** Renders one full route (both endpoint cards + the documented hops
  * between them) into `target`. Structural, not `AlbumRouteResult`-typed --
  * both a plain `findAlbumRoute` result and a `RankedRoute` from
@@ -360,13 +378,24 @@ function renderRoute(
   toAlbum: PickableAlbum,
   nameById: Map<number, string>,
   evidenceIndex: Map<number, EvidenceRelease>,
+  artByAlbumId: Map<string, ResolvedArt>,
 ): void {
   target.innerHTML =
-    renderEndpointCard(route.endpointA, fromAlbum.title, nameById) +
+    renderEndpointCard(
+      route.endpointA,
+      fromAlbum.title,
+      nameById,
+      artByAlbumId.get(fromAlbum.id),
+    ) +
     route.hops
       .map((hop) => renderEvidenceHop(hop, nameById, evidenceIndex))
       .join("") +
-    renderEndpointCard(route.endpointB, toAlbum.title, nameById);
+    renderEndpointCard(
+      route.endpointB,
+      toAlbum.title,
+      nameById,
+      artByAlbumId.get(toAlbum.id),
+    );
 }
 
 export async function initConnect(): Promise<void> {
@@ -398,10 +427,45 @@ export async function initConnect(): Promise<void> {
   );
   const explainEl = stage.querySelector<HTMLElement>("[data-connect-explain]");
   const eyebrowEl = stage.querySelector<HTMLElement>("[data-connect-eyebrow]");
+  const whyPrimaryEl = stage.querySelector<HTMLDetailsElement>(
+    "[data-connect-why-primary]",
+  );
   const explainPrimaryEl = stage.querySelector<HTMLElement>(
     "[data-connect-explain-primary]",
   );
+  const routeLengthEl = stage.querySelector<HTMLElement>(
+    "[data-connect-route-length]",
+  );
+  const routeLengthAltEl = stage.querySelector<HTMLElement>(
+    "[data-connect-route-length-alt]",
+  );
+  const emptyStateEl = stage.querySelector<HTMLElement>(
+    "[data-connect-empty-state]",
+  );
   if (!searchButton || !statusEl || !resultsEl || !hopsEl) return;
+
+  // Derived, not threaded through every call site that toggles
+  // `resultsEl.hidden`/`statusEl.hidden` (there are several, across
+  // runSearch/restoreFromUrl/the picker's onSelect handler): a
+  // MutationObserver keeps the pre-selection empty state in sync with
+  // whatever those two elements' real visibility ends up being, without
+  // adding a call at each site or risking one of them drifting out of
+  // sync the way the pre-consolidation `last*` variables once did.
+  if (emptyStateEl) {
+    const updateEmptyState = () => {
+      emptyStateEl.hidden = !resultsEl.hidden || !statusEl.hidden;
+    };
+    updateEmptyState();
+    const emptyStateObserver = new MutationObserver(updateEmptyState);
+    emptyStateObserver.observe(resultsEl, {
+      attributes: true,
+      attributeFilter: ["hidden"],
+    });
+    emptyStateObserver.observe(statusEl, {
+      attributes: true,
+      attributeFilter: ["hidden"],
+    });
+  }
 
   const setStatus = (message: string | null) => {
     if (!message) {
@@ -443,6 +507,7 @@ export async function initConnect(): Promise<void> {
     alternateRoute: PrimaryRoute | null;
     nameById: Map<number, string>;
     evidenceReleases: Map<number, EvidenceRelease>;
+    artByAlbumId: Map<string, ResolvedArt>;
     mode: string;
   }
   let lastSearch: LastSearch | null = null;
@@ -672,6 +737,10 @@ export async function initConnect(): Promise<void> {
     // memoized module-level promise either way, so a role-filtered search
     // still benefits once an unfiltered search has already paid the cost.
     const evidencePromise = roleFilterMode ? null : loadEvidenceIndex();
+    // Kicked off alongside the graph/evidence fetches -- presentation-only
+    // and never awaited until render time, so a slow or failed art
+    // registry can never delay a route being found or shown.
+    const artPromise = loadAlbumArt();
     const preparedResult = await loadPreparedGraph(
       sessionStorageOrNull(),
       PATHFINDING_GRAPH_URL,
@@ -734,7 +803,7 @@ export async function initConnect(): Promise<void> {
       evidenceIndex = await loadEvidenceIndex();
       if (stale()) return;
       if (eyebrowEl) eyebrowEl.textContent = "Shortest documented route";
-      if (explainPrimaryEl) explainPrimaryEl.hidden = true;
+      if (whyPrimaryEl) whyPrimaryEl.hidden = true;
     } else {
       // Already fetching, started alongside the graph above.
       evidenceIndex = await evidencePromise!;
@@ -768,11 +837,11 @@ export async function initConnect(): Promise<void> {
           ? "Shortest documented route"
           : "Recommended documented route";
       }
-      if (explainPrimaryEl) {
+      if (whyPrimaryEl && explainPrimaryEl) {
         if (result.rankingDegraded) {
-          explainPrimaryEl.hidden = true;
+          whyPrimaryEl.hidden = true;
         } else {
-          explainPrimaryEl.hidden = false;
+          whyPrimaryEl.hidden = false;
           explainPrimaryEl.textContent = explainRoute(
             result.recommended.facts,
             result.usedPlusOneHop,
@@ -781,9 +850,15 @@ export async function initConnect(): Promise<void> {
       }
     }
 
+    const artByAlbumId = await artPromise;
+    if (stale()) return;
+
     setStatus(null);
     resultsElNonNull.hidden = false;
     if (roleFilterMode && alternateSection) alternateSection.hidden = true;
+    if (routeLengthEl) {
+      routeLengthEl.textContent = routeLengthText(primaryRoute.hops.length);
+    }
     renderRoute(
       hopsElNonNull,
       primaryRoute,
@@ -791,12 +866,14 @@ export async function initConnect(): Promise<void> {
       toAlbum,
       nameById,
       evidenceIndex.releases,
+      artByAlbumId,
     );
     lastSearch = {
       primaryRoute,
       alternateRoute: null,
       nameById,
       evidenceReleases: evidenceIndex.releases,
+      artByAlbumId,
       mode: selectedModeValue,
     };
 
@@ -824,10 +901,14 @@ export async function initConnect(): Promise<void> {
       if (stale()) return;
       alternateSection.hidden = false;
       if (!alternate.ok) {
+        if (routeLengthAltEl) routeLengthAltEl.textContent = "";
         explainEl.textContent =
           "No distinct alternate route was found within the same hop budget.";
         hopsAlternateEl.innerHTML = "";
       } else {
+        if (routeLengthAltEl) {
+          routeLengthAltEl.textContent = routeLengthText(alternate.hops.length);
+        }
         renderRoute(
           hopsAlternateEl,
           alternate,
@@ -835,6 +916,7 @@ export async function initConnect(): Promise<void> {
           toAlbum,
           nameById,
           evidenceIndex.releases,
+          artByAlbumId,
         );
         if (lastSearch) lastSearch.alternateRoute = alternate;
         // Explained from the SAME facts the primary ranking uses --
@@ -897,6 +979,7 @@ export async function initConnect(): Promise<void> {
           albumB,
           lastSearch.nameById,
           lastSearch.evidenceReleases,
+          lastSearch.artByAlbumId,
         );
         if (lastSearch.alternateRoute && hopsAlternateEl) {
           lastSearch.alternateRoute = reverseRoute(lastSearch.alternateRoute);
@@ -907,6 +990,7 @@ export async function initConnect(): Promise<void> {
             albumB,
             lastSearch.nameById,
             lastSearch.evidenceReleases,
+            lastSearch.artByAlbumId,
           );
         }
         // The MODE STORED ON THE CACHED SEARCH, never a live re-read of
