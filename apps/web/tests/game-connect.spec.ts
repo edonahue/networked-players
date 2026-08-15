@@ -40,6 +40,28 @@ async function flushPendingWork(
   );
 }
 
+/** For a "this stale request must never render" assertion, a double-rAF
+ * flush isn't a reliable enough window: measured directly (repeated,
+ * consistent, not flaky) against a deliberately un-invalidated request, its
+ * `route.fulfill()`-released response takes measurably longer than two
+ * animation frames to reach the page's own `await fetch(...)` continuation
+ * in THIS specific shape (no second real search's own network round trip
+ * intervening beforehand to absorb that latency incidentally, unlike the
+ * older/newer-search staleness tests above). Actively polls for the BAD
+ * outcome (a populated URL) for a bounded, generous window -- 4x the
+ * measured gap -- so a broken guard is caught fast and reliably, while a
+ * working guard (which never produces that outcome at all) costs exactly
+ * one full timeout, the unavoidable price of proving an absence. */
+async function waitOutAnyStaleRender(
+  page: import("@playwright/test").Page,
+): Promise<void> {
+  await page
+    .waitForFunction(() => window.location.search !== "", null, {
+      timeout: 2000,
+    })
+    .catch(() => {});
+}
+
 // Initialization race (P1 after #108). The inputs are interactive from first
 // paint, long before the deferred module has fetched the album catalog. This
 // gates the catalog response behind a manually released promise so "the user
@@ -630,4 +652,138 @@ test("a URL-restored search superseded by a faster manual search loses honestly"
     /no drums\/bass-only connection/i,
   );
   await expect(page.locator("[data-connect-results]")).toBeHidden();
+});
+
+// A real review finding on PR #115: only Search and Swap were disabled
+// while a request was pending -- the picker inputs stayed fully live, so
+// editing a selection mid-request WITHOUT clicking Search again never
+// advanced `searchGeneration`. The original, now-abandoned request could
+// still land and render a route/URL for albums no longer selected. Fixed
+// by bumping the generation from the picker's own real-pick handler, not
+// only from inside `runSearch`.
+test("editing a picker selection while a search is pending invalidates it -- no stale render on late completion", async ({
+  page,
+}) => {
+  let releaseEvidence!: () => void;
+  const evidenceGate = new Promise<void>((resolve) => {
+    releaseEvidence = resolve;
+  });
+  const realEvidenceBody = readFileSync(
+    join(process.cwd(), "public/data/evidence/release-registry.v1.json"),
+  );
+  await page.route(
+    "**/data/evidence/release-registry.v1.json",
+    async (route) => {
+      await evidenceGate;
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: realEvidenceBody,
+      });
+    },
+  );
+
+  await page.goto("/play/connect/");
+  await selectAlbum(page, "a", "Discovery");
+  await selectAlbum(page, "b", "Joshua Tree");
+  await page.locator("[data-connect-search]").click();
+  await expect(page.locator("[data-connect-status]")).toHaveText(/searching/i);
+
+  // Edit picker A mid-flight without ever clicking Search again.
+  await selectAlbum(page, "a", "Time Out");
+
+  const evidenceResponse2 = page.waitForResponse(
+    "**/data/evidence/release-registry.v1.json",
+  );
+  releaseEvidence();
+  await evidenceResponse2;
+  await waitOutAnyStaleRender(page);
+
+  // The stale request's late completion must never populate results or
+  // the URL for the abandoned Discovery/Joshua Tree pair.
+  await expect(page.locator("[data-connect-results]")).toBeHidden();
+  expect(new URL(page.url()).search).toBe("");
+});
+
+// Same gap, the mode radio instead of a picker: changing the role filter
+// while a request is pending never used to advance the generation either,
+// so a request captured under the OLD filter could still land and render
+// for a mode the visitor had since changed away from.
+test("changing the role filter while a search is pending invalidates it -- no stale render on late completion", async ({
+  page,
+}) => {
+  let releaseEvidence!: () => void;
+  const evidenceGate = new Promise<void>((resolve) => {
+    releaseEvidence = resolve;
+  });
+  const realEvidenceBody = readFileSync(
+    join(process.cwd(), "public/data/evidence/release-registry.v1.json"),
+  );
+  await page.route(
+    "**/data/evidence/release-registry.v1.json",
+    async (route) => {
+      await evidenceGate;
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: realEvidenceBody,
+      });
+    },
+  );
+
+  await page.goto("/play/connect/");
+  await selectAlbum(page, "a", "Discovery");
+  await selectAlbum(page, "b", "Joshua Tree");
+  await page.locator("[data-connect-search]").click();
+  await expect(page.locator("[data-connect-status]")).toHaveText(/searching/i);
+
+  // Change the role filter mid-flight without clicking Search again.
+  await selectRouteFilter(page, "rhythm-section");
+
+  const evidenceResponse3 = page.waitForResponse(
+    "**/data/evidence/release-registry.v1.json",
+  );
+  releaseEvidence();
+  await evidenceResponse3;
+  await waitOutAnyStaleRender(page);
+
+  await expect(page.locator("[data-connect-results]")).toBeHidden();
+  expect(new URL(page.url()).search).toBe("");
+});
+
+// A third real review finding on PR #115: after a completed search, a
+// real pick that discards the cached route (`clearLastSearch`) used to
+// leave the PREVIOUS pair's route and Copy Link visibly on screen.
+// Pressing Swap at that point found no cached route to reverse (a
+// correct no-op for the route itself) but left that stale route/link
+// untouched while the picker selections had already changed underneath
+// it -- two mismatched states shown together.
+test("a real pick after a completed search hides the stale result and Copy Link, not just the route cache", async ({
+  page,
+}) => {
+  await page.goto("/play/connect/");
+  await selectAlbum(page, "a", "Discovery");
+  await selectAlbum(page, "b", "Joshua Tree");
+  await page.locator("[data-connect-search]").click();
+  await expect(page.locator("[data-connect-results]")).toBeVisible({
+    timeout: 15000,
+  });
+  await expect(page.locator("[data-connect-copy-link]")).toBeVisible();
+
+  await selectAlbum(page, "a", "Time Out");
+
+  await expect(page.locator("[data-connect-results]")).toBeHidden();
+  await expect(page.locator("[data-connect-copy-link]")).toBeHidden();
+
+  // Swap with no cached route must just exchange the picker selections,
+  // never resurrect the stale Discovery/Joshua Tree route or its link.
+  await page.locator("[data-connect-swap]").click();
+  await expect(page.locator("[data-connect-results]")).toBeHidden();
+  await expect(page.locator("[data-connect-copy-link]")).toBeHidden();
+  await expect(
+    picker(page, "a").locator("[data-picker-selected]"),
+  ).toContainText("Joshua Tree");
+  await expect(
+    picker(page, "b").locator("[data-picker-selected]"),
+  ).toContainText("Time Out");
 });

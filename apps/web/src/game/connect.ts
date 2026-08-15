@@ -544,6 +544,32 @@ export async function initConnect(): Promise<void> {
         // must never redisplay a route that no longer describes the two
         // records actually selected.
         clearLastSearch();
+        // Two more real review findings, both about this same moment:
+        //
+        // 1) Bumping `searchGeneration` here (not just inside `runSearch`)
+        // closes a gap the button-disabling alone didn't: only Search and
+        // Swap were disabled while a request was pending, but the picker
+        // inputs stayed live. Editing a selection mid-request without
+        // clicking Search again never used to advance the generation, so
+        // the original, now-stale request could still finish and render a
+        // route/URL for albums that no longer match what's selected. A
+        // genuinely new search (a real click) bumps the generation again
+        // itself, so this doesn't change how overlapping searches behave --
+        // it only stops an EDIT-WITHOUT-a-new-search from letting a
+        // superseded request land.
+        //
+        // 2) Hiding the results panel and Copy Link here (not just
+        // clearing `lastSearch`) closes the other half: previously, a pick
+        // that discarded the cached route left the OLD pair's route and
+        // Copy Link visibly on screen. Pressing Swap at that point (no
+        // cached route, so the `lastSearch` block below is a no-op) would
+        // then exchange the picker selections while leaving that stale
+        // route and URL untouched -- two completely mismatched states
+        // shown together. Hiding them here restores the same "swap before
+        // a search" state Swap already handles correctly.
+        searchGeneration++;
+        resultsEl.hidden = true;
+        if (copyLinkButton) copyLinkButton.hidden = true;
         updateButton();
       },
       // A failed catalog load leaves a recoverable control, not a dead one:
@@ -907,6 +933,19 @@ export async function initConnect(): Promise<void> {
     });
   }
 
+  // Same mid-request-edit gap as the picker `onSelect` above, for the
+  // other editable control: changing the role filter while a request is
+  // pending never used to advance the generation either, so a request
+  // captured under the OLD filter could still land and render/URL-sync
+  // for a mode the visitor had since changed away from.
+  for (const modeInput of stage.querySelectorAll<HTMLInputElement>(
+    "[data-connect-mode-option]",
+  )) {
+    modeInput.addEventListener("change", () => {
+      searchGeneration++;
+    });
+  }
+
   if (copyLinkButton) {
     copyLinkButton.addEventListener("click", async () => {
       try {
@@ -952,7 +991,9 @@ export async function initConnect(): Promise<void> {
         if (pickerAInput) pickerAInput.value = "";
         if (pickerBInput) pickerBInput.value = "";
         clearLastSearch();
+        searchGeneration++;
         resultsElNonNull.hidden = true;
+        if (copyLinkButton) copyLinkButton.hidden = true;
         setStatus(null);
         updateButton();
       }

@@ -579,6 +579,76 @@ superseded by `isSameConnectAlbumPair` above) had zero remaining
 production callers and was deleted along with its dedicated test block,
 rather than left as unreachable dead code.
 
+**Third review pass: editable state during a pending request, and a
+stale result surviving a cache-discarding pick.** An automated review of
+the pushed fixes above found three more real defects, all still on PR
+#115.
+
+Only Search and Swap were disabled while a request was pending -- the
+picker inputs and the mode radios stayed fully interactive. Editing a
+selection or the role filter mid-request, WITHOUT clicking Search again,
+never advanced `searchGeneration`, so the original, now-abandoned request
+could still land once its network call resolved and render a route/URL
+for albums or a mode the visitor had since changed away from. The fix is
+NOT disabling those controls during a request: the generation counter's
+whole design intentionally allows a genuinely NEW search to overlap and
+supersede an older one (the two `an older... late completion` tests
+above rely on exactly that, clicking a real second search mid-flight),
+so blocking input during a request would have broken supported,
+tested behavior. Instead, `searchGeneration` is now also bumped directly
+from the picker's real-pick handler and from each mode radio's `change`
+listener -- invalidating an EDIT-WITHOUT-a-new-search, while a real new
+search still bumps it again itself and behaves exactly as before.
+
+Verifying this against the reverted code surfaced a second, genuinely
+new lesson about this codebase's own established staleness-test pattern:
+the existing `flushPendingWork` double-`requestAnimationFrame` flush,
+proven reliable for the earlier two generation-counter tests, was NOT
+reliable here -- measured directly and repeatedly (consistent, not
+flaky), the gated `route.fulfill()` response in THIS specific
+construction took noticeably longer than two animation frames to reach
+the page's own `fetch()` continuation, because (unlike the earlier two
+tests) no second search's own real network round trip intervenes
+beforehand to incidentally absorb that latency. A double-rAF flush
+insufficiently proves an absence when nothing else pads the timing. The
+regression tests for this now actively poll for the BAD outcome (a
+populated URL) over a bounded, generous window via `page.waitForFunction`
+instead, so a broken guard is still caught fast and reliably, while a
+correctly-invalidated request (which never produces that outcome at all)
+costs exactly one full timeout -- the unavoidable price of proving an
+absence. Writing this poll surfaced a THIRD, unrelated lesson the hard
+way: `page.waitForFunction(fn, options)` silently puts `options` in the
+function's `arg` slot, not `options` -- the real signature is
+`(fn, arg, options)` -- so the intended `{ timeout: 2000 }` was silently
+discarded and Playwright's real default (30s) governed instead, which
+exceeded the test's own 30s timeout and tore the whole test down before
+the polling promise ever settled. Caught by directly observing the
+symptom (`Test timeout of 30000ms exceeded`, `Target page ... has been
+closed`) rather than trusting the first failure message at face value.
+
+Separately: after a completed search, a real pick that discards the
+cached route (`clearLastSearch`) used to leave the PREVIOUS pair's route
+and Copy Link visibly on screen -- only the cache was invalidated, not
+the DOM. Pressing Swap at that point found no cached route to reverse (a
+correct no-op for the route itself, matching "swap before a search just
+exchanges the two picker selections") but left that stale route and
+Copy Link untouched while the picker selections had already changed
+underneath them -- two mismatched states shown together. Fixed by hiding
+the results panel and Copy Link from the same real-pick handler that
+clears the cache. Writing the regression test for this surfaced a
+genuine, previously-undetected, unrelated CSS bug: `.button` (in
+`global.css`, predating this PR) sets `display: inline-flex`
+unconditionally, which as a class selector outranks the UA stylesheet's
+`[hidden] { display: none }` -- an attribute selector has lower
+specificity than any class selector. Copy Link (`class="button"`,
+toggled via the `hidden` attribute) had therefore never been visually
+hidden by that attribute at all, on initial page load or otherwise; no
+existing test had ever asserted Copy Link's HIDDEN state, only ever its
+visible one, so this had shipped undetected. Fixed with a
+`.button[hidden] { display: none; }` override restoring the native
+behavior, verified to be the only `.button`-classed element in the
+codebase that combines with `hidden` today.
+
 ## Validation
 
 - Synthetic-fixture tests for enumeration bounds, shortest-first
