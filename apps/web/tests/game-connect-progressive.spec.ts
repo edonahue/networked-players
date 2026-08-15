@@ -1,6 +1,8 @@
 // Progressive rendering (ADR 0059 Phase 5 PR 5b): graph preparation begins
-// on the real intent signal of a second valid pick, not the search click,
-// and status text is staged honestly rather than one flat "Searching…".
+// on the real intent signal of the FIRST valid pick, not the search click
+// (the graph doesn't depend on which pair is eventually searched, so
+// there's no reason to wait for a second pick), and status text is staged
+// honestly rather than one flat "Searching…".
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -14,7 +16,7 @@ async function selectRouteFilter(
   await page.locator(`[data-connect-mode-option][value="${value}"]`).check();
 }
 
-test("the pathfinding graph is requested as soon as both albums are picked, before the search click", async ({
+test("the pathfinding graph is requested as soon as the FIRST album is picked, before a second pick or the search click", async ({
   page,
 }) => {
   let graphFetches = 0;
@@ -24,14 +26,14 @@ test("the pathfinding graph is requested as soon as both albums are picked, befo
   });
 
   await page.goto("/play/connect/");
-  await selectAlbum(page, "a", "Discovery");
   expect(graphFetches).toBe(0);
 
-  await selectAlbum(page, "b", "Joshua Tree");
+  await selectAlbum(page, "a", "Discovery");
   await expect.poll(() => graphFetches).toBe(1);
 
-  // The search click still works normally and doesn't re-fetch --
-  // loadPreparedGraph's own memoized cache absorbs the click's own call.
+  // A second pick and the search click still work normally and don't
+  // re-fetch -- loadPreparedGraph's own memoized cache absorbs both.
+  await selectAlbum(page, "b", "Joshua Tree");
   await page.locator("[data-connect-search]").click();
   await expect(page.locator("[data-connect-results]")).toBeVisible({
     timeout: 15000,
@@ -39,7 +41,7 @@ test("the pathfinding graph is requested as soon as both albums are picked, befo
   expect(graphFetches).toBe(1);
 });
 
-test("the album-art registry is requested as soon as both albums are picked, before the search click", async ({
+test("the album-art registry is requested as soon as the FIRST album is picked, before a second pick or the search click", async ({
   page,
 }) => {
   let artFetches = 0;
@@ -49,10 +51,9 @@ test("the album-art registry is requested as soon as both albums are picked, bef
   });
 
   await page.goto("/play/connect/");
-  await selectAlbum(page, "a", "Discovery");
   expect(artFetches).toBe(0);
 
-  await selectAlbum(page, "b", "Joshua Tree");
+  await selectAlbum(page, "a", "Discovery");
   await expect.poll(() => artFetches).toBe(1);
 });
 
@@ -154,7 +155,12 @@ test("status is staged honestly: loading the graph, then searching, for a role-f
     await route.continue();
   });
   // Gates the rendering-only evidence fetch this mode makes AFTER finding
-  // its route, holding status at the second stage long enough to observe.
+  // its route -- structural rendering (ADR 0059 Phase 5 PR 5b) means this
+  // no longer blocks results from appearing at all, so this test uses the
+  // gate to prove exactly that, rather than to hold an intermediate status
+  // message (which structural rendering makes too brief to reliably poll
+  // for -- see the unfiltered version of this test above, which still can,
+  // since ranking genuinely blocks on evidence).
   let releaseEvidence!: () => void;
   const evidenceGate = new Promise<void>((resolve) => {
     releaseEvidence = resolve;
@@ -186,13 +192,63 @@ test("status is staged honestly: loading the graph, then searching, for a role-f
 
   releaseGraph();
 
-  await expect(page.locator("[data-connect-status]")).toHaveText(
-    /searching for a documented connection/i,
+  // Structural render: names, roles, and the release-id source link are
+  // already sufficient to find and confirm the route, so results become
+  // visible while evidence is still gated, not yet released.
+  await expect(page.locator("[data-connect-results]")).toBeVisible({
+    timeout: 15000,
+  });
+  await expect(
+    page.locator("[data-connect-hops] .connect-hop").first(),
+  ).toBeVisible();
+  await expect(
+    page.locator("[data-connect-hops] .connect-hop__release-title"),
+  ).toHaveCount(0);
+
+  // Enhancement: releasing evidence patches the release title into the
+  // already-rendered hop in place, never a full re-render.
+  releaseEvidence();
+  await expect(
+    page.locator("[data-connect-hops] .connect-hop__release-title").first(),
+  ).toBeVisible();
+});
+
+// The other half of the same split: a role-filtered search's structural
+// route must stay fully usable -- and never throw or hang -- when the
+// evidence registry it kicks off (never awaited before rendering) fails
+// outright rather than merely arriving late. `loadEvidenceIndex()` itself
+// already catches every fetch/parse failure into an empty, degraded
+// index (never a rejected promise), so this proves that degradation
+// still reaches the enhancement callback safely and leaves the
+// structural render exactly as it was, not broken or stuck.
+test("a role-filtered search's structural route survives an evidence-registry failure during enhancement", async ({
+  page,
+}) => {
+  await page.route("**/data/evidence/release-registry.v1.json", (route) =>
+    route.abort(),
   );
 
-  releaseEvidence();
+  await page.goto("/play/connect/");
+  await selectAlbum(page, "a", "Ziggy Stardust");
+  await selectAlbum(page, "b", "A Night At The Opera");
+  await selectRouteFilter(page, "behind-the-glass");
+  await page.locator("[data-connect-search]").click();
 
   await expect(page.locator("[data-connect-results]")).toBeVisible({
     timeout: 15000,
   });
+  const hop = page.locator("[data-connect-hops] .connect-hop").first();
+  await expect(hop).toBeVisible();
+  await expect(hop).toContainText(/producer/i);
+  await expect(hop.locator("a[href*='discogs.com/release/']")).toBeVisible();
+
+  // The enhancement itself is a real no-op, not a delayed success: no
+  // release title/cover ever appears, since the registry never resolved
+  // any real data to enhance with.
+  await expect(
+    page.locator("[data-connect-hops] .connect-hop__release-title"),
+  ).toHaveCount(0);
+
+  // The rest of the page -- and a subsequent search -- still work.
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
 });

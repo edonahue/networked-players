@@ -970,10 +970,64 @@ preview` and compare their own numbers before/after this phase's changes;
 none are transcribed here. The one claim this ADR makes about the outcome
 is the structural one PR 5b's own section above already states and the
 source code itself proves without needing a timing run at all: the graph
-and Worker script are requested from `updateButton()` the moment both
-albums are picked, not from `runSearch()` on the search click -- verify by
-reading `connect.ts`'s `updateButton` versus `runSearch`, not by trusting
-a number.
+and Worker script are requested from `updateButton()` on the first valid
+pick, not from `runSearch()` on the search click -- verify by reading
+`connect.ts`'s `updateButton` versus `runSearch`, not by trusting a number.
+
+## Post-closeout gap check against the original plan
+
+Re-verified Phase 5 against the plan's own literal text after PR 5d
+merged (not from memory of what shipped) and found two real gaps, both
+fixed:
+
+**"begin graph preparation on a real intent signal (first/second valid
+selection)"** -- the shipped PR 5b only warmed on the SECOND pick
+(`bothPicked`). The graph doesn't depend on which pair is eventually
+searched, only that a search is likely coming, so there was no reason to
+wait for the second pick -- the first is just as valid a signal, and
+warming twice costs nothing extra (`loadPreparedGraph`/`loadAlbumArt` are
+already memoized). Changed `updateButton`'s condition from `bothPicked` to
+`albumA || albumB`. The two existing "requested as soon as both albums are
+picked" tests were rewritten as "requested as soon as the FIRST album is
+picked" and reconfirmed to fail against the `bothPicked`-gated code before
+being trusted.
+
+**"render the structural route as soon as it exists (names, roles and
+release ids are already sufficient) and enhance stable evidence regions
+when registry metadata lands"** -- shipped only for endpoint cover art (the
+PR 5a review-fix round). The hop list itself still wasn't checked, and
+wasn't: the role-filtered branch found its route via plain BFS with NO
+evidence dependency, then still `await`ed the full evidence registry
+before rendering anything at all -- exactly the waterfall this section of
+the plan asked to fix, just for hop evidence instead of album art. (The
+unfiltered/ranked branch is a genuine, documented exception: ranking
+itself needs evidence caveat data to pick a route, so there is no honest
+"structural" route to show before it resolves -- this was correctly left
+as-is.)
+
+Fixed by applying the exact same split already proven for endpoint art:
+the role-filtered branch now renders immediately with an empty evidence
+map (contributor prose + release-id source link -- "names, roles and
+release ids", precisely the plan's own phrase) the moment its route is
+confirmed, kicks off `loadEvidenceIndex()` without awaiting it, and a new
+`enhanceHopRelease` (`connectEvidence.ts`, mirroring `enhanceEndpointCover`)
+patches each hop's cover/title in place once it resolves -- never a full
+re-render. Verified: results become visible while evidence is still
+gated/unresolved; the enhancement is a genuine no-op (nothing to patch,
+no error, no hang) when the evidence registry fetch fails outright, not
+just arrives late. Both new tests confirmed to fail against the pre-fix
+code (the first genuinely times out waiting for results, since the old
+code awaited evidence before rendering at all) before being trusted.
+
+Also swept the rest of the plan's "Verification (every PR)" and
+"Phase-specific" checklists against actual test coverage: malformed-
+catalog totality, deterministic ranking, candidate bounds, golden routes,
+role-filter invariants, missing-quality-data fallback, canonical-name
+regressions, URL hydration/back-forward/swap, stale-search invalidation,
+and combobox keyboard/ARIA are all covered (PRs 1-4, unchanged by this
+check). `docs/ROADMAP.md`/`NEXT_PATH_BRIEF.md` confirmed still accurate
+(PR 5d). Full Connect suite, full site-wide Playwright suite (422 tests),
+`npx tsc --noEmit`, and `make check` all green after both fixes above.
 
 ## Revisit trigger
 

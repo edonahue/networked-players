@@ -134,6 +134,45 @@ export function renderEvidenceHop(
   );
 }
 
+/** Upgrades an already-rendered hop's release sub-card with cover/title
+ * metadata, in place -- never a full re-render of the hop or its
+ * container. The structural render (`renderEvidenceHop` called with an
+ * empty evidence map, ADR 0059 Phase 5 PR 5b) already has the source
+ * link and contributor prose; this fills in exactly what evidence adds:
+ * a cover image and the release title/year/country line, each inserted
+ * only if not already present (so calling this twice, or on an already-
+ * fully-rendered hop, is a safe no-op). A no-op entirely if `evidenceIndex`
+ * still has no entry for this hop's release. */
+export function enhanceHopRelease(
+  hopEl: Element,
+  hop: PathHop,
+  evidenceIndex: Map<number, EvidenceRelease>,
+): void {
+  const release = evidenceIndex.get(hop.release_id);
+  if (!release) return;
+  const releaseEl = hopEl.querySelector(".connect-hop__release");
+  if (!releaseEl) return;
+  if (release.coverUri && !releaseEl.querySelector(".connect-hop__cover")) {
+    const img = document.createElement("img");
+    img.className = "connect-hop__cover";
+    img.src = release.coverUri;
+    img.width = 48;
+    img.height = 48;
+    img.loading = "lazy";
+    img.alt = "";
+    img.dataset.artFallback = "hide";
+    releaseEl.insertBefore(img, releaseEl.firstChild);
+  }
+  const meta = releaseMetaLine(release);
+  const textEl = releaseEl.querySelector(".connect-hop__release-text");
+  if (meta && textEl && !textEl.querySelector(".connect-hop__release-title")) {
+    const title = document.createElement("p");
+    title.className = "connect-hop__release-title";
+    title.innerHTML = meta;
+    textEl.insertBefore(title, textEl.firstChild);
+  }
+}
+
 /** One album endpoint card: "X is credited on Album A's own release, as
  * Producer" -- the north-star claim's literal starting/ending point, not
  * an ordinary co-credit hop, so it gets a cover (or the site's own

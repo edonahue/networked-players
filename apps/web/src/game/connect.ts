@@ -34,6 +34,7 @@ import {
 import {
   buildEvidenceIndex,
   enhanceEndpointCover,
+  enhanceHopRelease,
   renderEndpointCard,
   renderEvidenceHop,
   type EvidenceIndex,
@@ -530,27 +531,31 @@ export async function initConnect(): Promise<void> {
     searchButton.disabled = !bothPicked;
     if (swapButton) swapButton.disabled = !bothPicked;
     // Progressive rendering (ADR 0059 Phase 5 PR 5b): begin preparing the
-    // graph on the real intent signal of a second valid pick, not the
-    // search click -- `loadPreparedGraph` is already a memoized,
-    // module-level promise, so warming it here costs nothing extra and
-    // just lets `runSearch`'s own `await` resolve immediately (or much
-    // sooner) once the visitor actually clicks Search, overlapping
-    // fetch/parse/validate time with their own think-time between picking
-    // and searching -- the single biggest piece of the measured cold-
-    // search waterfall (ADR 0059's own baseline: graph.v2.json wasn't even
-    // requested until the search click). Album art is warmed for the same
-    // reason -- also mode-independent, always needed for the endpoint
-    // cards regardless of which route is eventually found. Evidence is
-    // deliberately NOT warmed here: unlike the graph, whether it's needed
-    // at all depends on the role-filter mode, which isn't decided yet at
-    // pick time (it defaults to unfiltered, but a visitor who picks both
-    // albums and only afterward selects a role filter is a real, common
-    // order -- warming evidence unconditionally here would silently
-    // resurrect the exact wasted-fetch cost the mode-conditional fetch in
-    // `runSearch` was written to avoid). Evidence keeps loading exactly
-    // when it does today: alongside the graph for an unfiltered search,
-    // or only after a role-filtered route is confirmed.
-    if (bothPicked) {
+    // graph on the real intent signal of a FIRST OR second valid pick
+    // (the plan's own wording), not the search click -- `loadPreparedGraph`
+    // is already a memoized, module-level promise, so warming it here
+    // costs nothing extra and just lets `runSearch`'s own `await` resolve
+    // immediately (or much sooner) once the visitor actually clicks
+    // Search, overlapping fetch/parse/validate time with their own
+    // think-time between picking and searching -- the single biggest
+    // piece of the measured cold-search waterfall (ADR 0059's own
+    // baseline: graph.v2.json wasn't even requested until the search
+    // click). The graph doesn't depend on WHICH pair is eventually
+    // searched, only that a search is likely coming, so the first pick is
+    // just as valid a signal as the second -- there is no reason to wait
+    // for both. Album art is warmed for the same reason -- also
+    // mode-independent, always needed for the endpoint cards regardless
+    // of which route is eventually found. Evidence is deliberately NOT
+    // warmed here: unlike the graph, whether it's needed at all depends
+    // on the role-filter mode, which isn't decided yet at pick time (it
+    // defaults to unfiltered, but a visitor who picks both albums and
+    // only afterward selects a role filter is a real, common order --
+    // warming evidence unconditionally here would silently resurrect the
+    // exact wasted-fetch cost the mode-conditional fetch in `runSearch`
+    // was written to avoid). Evidence keeps loading exactly when it does
+    // today: alongside the graph for an unfiltered search, or only after
+    // a role-filtered route is confirmed.
+    if (albumA || albumB) {
       void loadPreparedGraph(sessionStorageOrNull(), PATHFINDING_GRAPH_URL);
       void loadAlbumArt();
     }
@@ -817,7 +822,30 @@ export async function initConnect(): Promise<void> {
     // against, and this keeps the existing role-mode behavior exactly as
     // tested. Ranking (ADR 0059) applies to the unfiltered search only.
     let primaryRoute: PrimaryRoute;
-    let evidenceIndex: EvidenceIndex;
+    // Shared by both branches below, but populated differently: the
+    // unfiltered branch has a fully-resolved map by the time it's set
+    // (ranking genuinely needs evidence to pick a route at all, so there
+    // is no earlier honest moment to render). The role-filtered branch
+    // finds its route with NO evidence dependency (plain BFS over an
+    // already-role-narrowed edge set), so it renders structurally first
+    // -- this starts empty and is enhanced in place once evidence
+    // resolves, the exact `artByAlbumId` pattern below applied to
+    // evidence too (ADR 0059 Phase 5 PR 5b: "render the structural route
+    // as soon as it exists... and enhance... when registry metadata
+    // lands").
+    let evidenceReleasesMap: Map<number, EvidenceRelease>;
+    // Set only for the role-filtered branch -- the still-in-flight
+    // evidence fetch to enhance the already-rendered hops with, once it
+    // resolves. `null` for the unfiltered branch, which has nothing left
+    // to enhance (its evidence was already awaited before rendering).
+    let evidencePromiseToEnhance: Promise<EvidenceIndex> | null = null;
+    // Only ever set in the unfiltered branch below; used afterward by the
+    // distinct-alternate-route block, which is only ever reached when
+    // `roleFilterMode` is falsy -- the same branch that sets this. Kept
+    // as a nullable outer variable rather than narrowed by TS (which
+    // can't see that correlation across the if/else) for the same reason
+    // this file's other non-null aliases exist.
+    let unfilteredEvidenceIndex: EvidenceIndex | null = null;
     if (roleFilterMode) {
       const route = findAlbumRoute(
         graph,
@@ -839,15 +867,19 @@ export async function initConnect(): Promise<void> {
         return;
       }
       primaryRoute = route;
-      // Only now, with a real route confirmed -- rendering it is the one
-      // thing this mode needs evidence data for.
-      evidenceIndex = await loadEvidenceIndex();
-      if (stale()) return;
+      // Kicked off, never awaited here -- see the shared rendering block
+      // below for the enhancement half of this split.
+      evidenceReleasesMap = new Map();
+      evidencePromiseToEnhance = loadEvidenceIndex();
       if (eyebrowEl) eyebrowEl.textContent = "Shortest documented route";
       if (whyPrimaryEl) whyPrimaryEl.hidden = true;
     } else {
-      // Already fetching, started alongside the graph above.
-      evidenceIndex = await evidencePromise!;
+      // Already fetching, started alongside the graph above. Genuinely
+      // required before rendering: ranking needs evidence caveat data to
+      // pick a route at all, so there is no honest "structural" route to
+      // show before this resolves.
+      unfilteredEvidenceIndex = await evidencePromise!;
+      evidenceReleasesMap = unfilteredEvidenceIndex.releases;
       if (stale()) return;
       const result = selectRecommendedRoute(
         graph,
@@ -855,7 +887,7 @@ export async function initConnect(): Promise<void> {
         albumIndex,
         fromAlbum.id,
         toAlbum.id,
-        evidenceIndex,
+        unfilteredEvidenceIndex,
         4,
       );
       if (!result.ok) {
@@ -916,14 +948,14 @@ export async function initConnect(): Promise<void> {
       fromAlbum,
       toAlbum,
       nameById,
-      evidenceIndex.releases,
+      evidenceReleasesMap,
       artByAlbumId,
     );
     lastSearch = {
       primaryRoute,
       alternateRoute: null,
       nameById,
-      evidenceReleases: evidenceIndex.releases,
+      evidenceReleases: evidenceReleasesMap,
       artByAlbumId,
       mode: selectedModeValue,
     };
@@ -957,6 +989,27 @@ export async function initConnect(): Promise<void> {
       enhanceEndpoints(hopsElNonNull);
       enhanceEndpoints(hopsAlternateEl);
     });
+
+    // The role-filtered branch's own enhancement half: its route was
+    // rendered structurally (names, roles, release ids -- ADR 0059 Phase
+    // 5 PR 5b's own wording) before evidence was ever awaited, exactly
+    // because it doesn't need evidence to find a route at all. Once the
+    // kicked-off-but-never-awaited fetch resolves, patch each hop's
+    // release sub-card with its cover/title in place -- never a full
+    // re-render, same reasoning as the endpoint-art enhancement above.
+    if (evidencePromiseToEnhance) {
+      void evidencePromiseToEnhance.then((resolved) => {
+        if (stale()) return;
+        for (const [id, release] of resolved.releases) {
+          evidenceReleasesMap.set(id, release);
+        }
+        const hopEls = hopsElNonNull.querySelectorAll(".connect-hop");
+        primaryRoute.hops.forEach((hop, i) => {
+          const hopEl = hopEls[i];
+          if (hopEl) enhanceHopRelease(hopEl, hop, evidenceReleasesMap);
+        });
+      });
+    }
 
     // Distinct alternate route (ADR 0058 Slice 7, renamed post-Phase-4
     // cleanup audit): a real second search that hard-excludes every edge
@@ -996,18 +1049,20 @@ export async function initConnect(): Promise<void> {
           fromAlbum,
           toAlbum,
           nameById,
-          evidenceIndex.releases,
+          evidenceReleasesMap,
           artByAlbumId,
         );
         if (lastSearch) lastSearch.alternateRoute = alternate;
         // Explained from the SAME facts the primary ranking uses --
         // degree, evidence caveat, role substance -- never a parallel
-        // narrative computed some other way (ADR 0059).
+        // narrative computed some other way (ADR 0059). Non-null: this
+        // whole block only runs when `!roleFilterMode`, the same
+        // condition under which `unfilteredEvidenceIndex` is always set.
         const facts = computeRouteFacts(
           graph,
           artistIndex,
           alternate.hops,
-          evidenceIndex,
+          unfilteredEvidenceIndex!,
         );
         explainEl.textContent = explainRoute(facts, false).join(" · ");
       }
