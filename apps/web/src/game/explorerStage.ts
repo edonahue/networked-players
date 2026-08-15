@@ -164,7 +164,7 @@ export async function initExplorerStage(): Promise<void> {
     try {
       const response = await fetch(EVIDENCE_REGISTRY_URL);
       if (!response.ok) return new Map();
-      return buildEvidenceIndex(await response.json());
+      return buildEvidenceIndex(await response.json()).releases;
     } catch {
       return new Map();
     }

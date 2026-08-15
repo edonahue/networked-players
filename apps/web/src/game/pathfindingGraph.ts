@@ -74,7 +74,7 @@ export const ALBUM_ANCHOR_SENTINEL = "__np_album_anchor__";
  * (album -> first real contributor, last real contributor -> album) that
  * `findAlbumRoute` adds on top of a caller's real, user-facing hop
  * budget -- never surfaced as real hops once stripped. */
-const ALBUM_ANCHOR_HOP_BUDGET = 2;
+export const ALBUM_ANCHOR_HOP_BUDGET = 2;
 
 /** `no-path`: the search space was exhausted within the hop budget with no
  * path found -- a confirmed result. `inconclusive`: reserved for a future

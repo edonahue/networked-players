@@ -117,6 +117,41 @@ test("a real connected pair finds a documented route with evidence", async ({
   ).toBeVisible();
 });
 
+// The recommended-route engine (ADR 0059, Phase 5 PR 3): Discovery ->
+// Joshua Tree is the ADR's own diagnostic pair -- production's plain BFS
+// used to surface a route through "u2", evidenced by a 1998 Italian
+// mashup 12" (release #200783, now published with the `unofficial` caveat
+// flag). Verified against the real committed artifacts: an equal-hop,
+// uncaveated alternative exists (Alex And Martin <-> U2), so the ranked
+// engine should pick it and label the result accordingly -- this is a
+// real, live behavior change this PR ships, not just an internal refactor.
+test("the diagnostic pair (Discovery / Joshua Tree) is ranked away from its caveated evidence", async ({
+  page,
+}) => {
+  await page.goto("/play/connect/");
+  await selectAlbum(page, "a", "Discovery");
+  await selectAlbum(page, "b", "Joshua Tree");
+  await page.locator("[data-connect-search]").click();
+
+  await expect(page.locator("[data-connect-results]")).toBeVisible({
+    timeout: 15000,
+  });
+  await expect(page.locator("[data-connect-eyebrow]")).toHaveText(
+    "Recommended documented route",
+  );
+  const explanation = page.locator("[data-connect-explain-primary]");
+  await expect(explanation).toBeVisible();
+  await expect(explanation).toContainText(
+    "no hop's evidence carries a published caveat",
+  );
+  // The bootleg release must never appear as the recommended route's own
+  // evidence -- it may still appear elsewhere (the distinct alternate,
+  // an evidence card) since it is never hidden, only de-prioritized.
+  await expect(
+    page.locator("[data-connect-hops] a[href*='/release/200783']"),
+  ).toHaveCount(0);
+});
+
 // Distinct alternate route (ADR 0058 Slice 7, renamed post-Phase-4 cleanup
 // audit -- the old label implied a musical ranking this never actually
 // computed, see ADR 0051's addendum): a real second bounded search that
@@ -349,6 +384,57 @@ test("Rhythm Section and Guitar Paths report no connection for the same real non
   await expect(page.locator("[data-connect-status]")).toContainText(
     /no guitar-only connection/i,
   );
+});
+
+// ADR 0059 review finding: the recommended-route engine needs the
+// evidence registry BEFORE it can rank the unfiltered search, so its
+// fetch was moved to start alongside the graph -- but a role-filtered
+// search never ranks and only needs evidence to render an already-found
+// route, so unconditionally starting that fetch for every search would be
+// a real, wasted network cost on a role-filtered search and on any search
+// (filtered or not) that finds no route at all. Verifies the fix rather
+// than just the earlier parallel-fetch behavior.
+test("a role-filtered search that finds no connection never fetches the evidence registry", async ({
+  page,
+}) => {
+  let evidenceFetches = 0;
+  await page.route("**/data/evidence/release-registry.v1.json", (route) => {
+    evidenceFetches++;
+    return route.continue();
+  });
+  await page.goto("/play/connect/");
+  await selectAlbum(page, "a", "Time Out");
+  await selectAlbum(page, "b", "Rumours");
+  await selectRouteFilter(page, "behind-the-glass");
+  await page.locator("[data-connect-search]").click();
+
+  await expect(page.locator("[data-connect-status]")).toContainText(
+    /no producer\/engineer-only connection/i,
+  );
+  expect(evidenceFetches).toBe(0);
+});
+
+// The same mode DOES fetch evidence once a route is actually found --
+// deferred, not removed: it's still needed to render the hop's real
+// title/year/cover.
+test("a role-filtered search that finds a connection fetches evidence only after the route is confirmed", async ({
+  page,
+}) => {
+  let evidenceFetches = 0;
+  await page.route("**/data/evidence/release-registry.v1.json", (route) => {
+    evidenceFetches++;
+    return route.continue();
+  });
+  await page.goto("/play/connect/");
+  await selectAlbum(page, "a", "Ziggy Stardust");
+  await selectAlbum(page, "b", "A Night At The Opera");
+  await selectRouteFilter(page, "behind-the-glass");
+  await page.locator("[data-connect-search]").click();
+
+  await expect(page.locator("[data-connect-results]")).toBeVisible({
+    timeout: 15000,
+  });
+  expect(evidenceFetches).toBe(1);
 });
 
 // The radio group is mutually exclusive by construction -- selecting a

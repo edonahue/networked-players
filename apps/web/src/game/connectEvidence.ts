@@ -22,31 +22,62 @@ export interface EvidenceRelease {
   year: number | null;
   country: string | null;
   coverUri: string | null;
+  /** Format-descriptor caveat bitmask (schema_version 2 only, ADR 0059) --
+   * 0 means "nothing tagged warrants a caveat", never "confirmed clean",
+   * and also what a v1 registry or an id absent from the registry
+   * produces. Bit meaning depends on `caveatFlagNames`; never interpret
+   * this field without it, since bit order is data, not a hardcoded
+   * constant here. */
+  caveatFlags: number;
 }
 
 interface EvidenceRegistryPayload {
+  schema_version?: number;
   release_ids: number[];
   titles: string[];
   years: (number | null)[];
   countries: (string | null)[];
   cover_uri150s: (string | null)[];
+  /** Present only when schema_version === 2. */
+  caveat_flags?: number[];
+  /** Present only when schema_version === 2 -- the bit order `caveat_flags`
+   * integers are meaningless without. */
+  caveat_flag_names?: string[];
+}
+
+export interface EvidenceIndex {
+  releases: Map<number, EvidenceRelease>;
+  /** Empty for a v1 registry or a registry that fails to carry the legend
+   * -- callers that read `caveatFlags` must treat that as "no caveat
+   * vocabulary available" and degrade accordingly, never as "definitely
+   * no caveats" for released whose flags are simply 0 through absence. */
+  caveatFlagNames: string[];
 }
 
 /** Built once per fetched registry, reused across a session's searches. */
 export function buildEvidenceIndex(
   registry: EvidenceRegistryPayload,
-): Map<number, EvidenceRelease> {
-  const index = new Map<number, EvidenceRelease>();
+): EvidenceIndex {
+  const caveatFlagNames =
+    registry.schema_version === 2 && Array.isArray(registry.caveat_flag_names)
+      ? registry.caveat_flag_names
+      : [];
+  const flags =
+    registry.schema_version === 2 && Array.isArray(registry.caveat_flags)
+      ? registry.caveat_flags
+      : [];
+  const releases = new Map<number, EvidenceRelease>();
   registry.release_ids.forEach((releaseId, i) => {
-    index.set(releaseId, {
+    releases.set(releaseId, {
       releaseId,
       title: registry.titles[i],
       year: registry.years[i],
       country: registry.countries[i],
       coverUri: registry.cover_uri150s[i],
+      caveatFlags: flags[i] ?? 0,
     });
   });
-  return index;
+  return { releases, caveatFlagNames };
 }
 
 /** The registry's own `source_urls` field is the *dataset's* provenance

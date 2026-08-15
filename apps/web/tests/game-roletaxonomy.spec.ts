@@ -11,6 +11,7 @@ import {
   guitarPathsEdgeFilter,
   isEngineeringOrProductionRole,
   isGuitarRole,
+  isPerformerRole,
   isRhythmSectionRole,
   rhythmSectionEdgeFilter,
 } from "../src/game/roleTaxonomy";
@@ -103,6 +104,59 @@ test.describe("isRhythmSectionRole", () => {
 
   test("is fail-closed for empty text", () => {
     expect(isRhythmSectionRole("")).toBe(false);
+  });
+});
+
+// Pinned parity cases (ADR 0059): each verified against a real
+// `is_performer_role(...)` call in eligibility.py at the time this was
+// written. A future token-set edit on either side that isn't mirrored on
+// the other fails one of these, the same convention this file already
+// uses for the three filter-mode token sets above.
+test.describe("isPerformerRole", () => {
+  test("matches real production output verified against eligibility.py", () => {
+    const cases: Array<[string, boolean]> = [
+      ["Vocals", true],
+      ["Lead Vocals, Producer", true],
+      ["Producer", false],
+      ["Written-By", false],
+      ["Bass Guitar [Fretless]", true],
+      ["Trumpet", true],
+      ["Synth [Modular]", true],
+      ["", false],
+      ["Executive-Producer", false],
+      ["Rap", true],
+      ["Harmonica, Written-By", true],
+    ];
+    for (const [role, expected] of cases) {
+      expect(isPerformerRole(role), role).toBe(expected);
+    }
+  });
+
+  test("covers each instrument family with at least one representative", () => {
+    for (const role of [
+      "Backing Vocals",
+      "Cello",
+      "Drums",
+      "Organ",
+      "Flugelhorn",
+      "Bassoon",
+      "Sitar",
+    ]) {
+      expect(isPerformerRole(role), role).toBe(true);
+    }
+  });
+
+  test("is fail-closed for empty text and non-collaborative roles", () => {
+    expect(isPerformerRole("")).toBe(false);
+    for (const role of [
+      "Artwork By",
+      "Design",
+      "A&R",
+      "Remixed By",
+      "Written-By, Composed By",
+    ]) {
+      expect(isPerformerRole(role), role).toBe(false);
+    }
   });
 });
 
