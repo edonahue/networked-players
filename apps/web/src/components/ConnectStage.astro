@@ -141,16 +141,26 @@
   <div class="connect-status" data-connect-status role="status" aria-live="polite" hidden></div>
   <p class="visually-hidden" role="status" data-connect-announce></p>
 
+  <p class="connect-empty-state" data-connect-empty-state>
+    Pick two records above, then search to find a documented connection
+    between them.
+  </p>
+
   <div class="connect-results" data-connect-results hidden>
     <section data-connect-result="primary">
       <p class="eyebrow" data-connect-eyebrow>Shortest documented route</p>
-      <p class="connect-explain" data-connect-explain-primary hidden></p>
-      <div data-connect-hops></div>
+      <p class="connect-route-length" data-connect-route-length></p>
+      <details class="connect-why" data-connect-why-primary hidden>
+        <summary>Why this route?</summary>
+        <p class="connect-explain" data-connect-explain-primary></p>
+      </details>
+      <div class="connect-timeline" data-connect-hops></div>
     </section>
     <section data-connect-result="alternate" hidden>
       <p class="eyebrow">Distinct alternate route</p>
+      <p class="connect-route-length" data-connect-route-length-alt></p>
       <p class="connect-explain" data-connect-explain></p>
-      <div data-connect-hops-alternate></div>
+      <div class="connect-timeline" data-connect-hops-alternate></div>
     </section>
   </div>
 </div>

@@ -199,7 +199,15 @@ const isCurrent = (href: string) =>
         const fallback = (img) => {
           if (img.dataset.artFallback === 'disc') {
             const span = document.createElement('span');
-            span.className = 'album-card__placeholder';
+            // Carries over the failing image's OWN classes (e.g.
+            // `connect-endpoint__cover`) alongside the placeholder class,
+            // not instead of it -- a real review finding: a caller with
+            // its own sizing class (Connect's 72px endpoint cover, sized
+            // differently from the album grid's `.album-card__cover`)
+            // otherwise lost that sizing entirely on a real image-load
+            // failure, falling back to `.album-card__placeholder`'s own
+            // `width: 100%` instead.
+            span.className = `${img.className} album-card__placeholder`.trim();
             span.setAttribute('aria-hidden', 'true');
             const disc = document.createElement('span');
             disc.className = 'album-card__placeholder-disc';

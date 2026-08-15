@@ -23,6 +23,7 @@
 // (the same pattern `explorerStage.ts` already proved) so a stale search
 // can never overwrite a newer one's result.
 
+import { fetchAlbumArt, type ResolvedArt } from "./albumArt";
 import { filterAlbums, type PickableAlbum } from "./albumPicker";
 import {
   buildConnectSearchParams,
@@ -32,6 +33,7 @@ import {
 } from "./connectUrlState";
 import {
   buildEvidenceIndex,
+  enhanceEndpointCover,
   renderEndpointCard,
   renderEvidenceHop,
   type EvidenceIndex,
@@ -345,6 +347,23 @@ type PrimaryRoute = {
   usedEdgeKeys: Set<string>;
 };
 
+/** "1 hop documented" / "3 hops documented" -- always rendered, for every
+ * outcome (ranked, degraded, role-filtered, alternate), unlike the "why
+ * this route" disclosure which only exists for a genuinely ranked result. */
+function routeLengthText(hopCount: number): string {
+  return `${hopCount} hop${hopCount === 1 ? "" : "s"} documented`;
+}
+
+// Album art is presentation-only (ADR 0044/0045) and fetched at most once
+// per page session, the same module-level-promise shape `loadEvidenceIndex`
+// already uses -- a missing/failed registry resolves to an empty map (every
+// endpoint falls back to the placeholder), never blocking a search.
+let albumArtPromise: Promise<Map<string, ResolvedArt>> | null = null;
+function loadAlbumArt(): Promise<Map<string, ResolvedArt>> {
+  if (!albumArtPromise) albumArtPromise = fetchAlbumArt();
+  return albumArtPromise;
+}
+
 /** Renders one full route (both endpoint cards + the documented hops
  * between them) into `target`. Structural, not `AlbumRouteResult`-typed --
  * both a plain `findAlbumRoute` result and a `RankedRoute` from
@@ -360,13 +379,24 @@ function renderRoute(
   toAlbum: PickableAlbum,
   nameById: Map<number, string>,
   evidenceIndex: Map<number, EvidenceRelease>,
+  artByAlbumId: Map<string, ResolvedArt>,
 ): void {
   target.innerHTML =
-    renderEndpointCard(route.endpointA, fromAlbum.title, nameById) +
+    renderEndpointCard(
+      route.endpointA,
+      fromAlbum.title,
+      nameById,
+      artByAlbumId.get(fromAlbum.id),
+    ) +
     route.hops
       .map((hop) => renderEvidenceHop(hop, nameById, evidenceIndex))
       .join("") +
-    renderEndpointCard(route.endpointB, toAlbum.title, nameById);
+    renderEndpointCard(
+      route.endpointB,
+      toAlbum.title,
+      nameById,
+      artByAlbumId.get(toAlbum.id),
+    );
 }
 
 export async function initConnect(): Promise<void> {
@@ -398,10 +428,45 @@ export async function initConnect(): Promise<void> {
   );
   const explainEl = stage.querySelector<HTMLElement>("[data-connect-explain]");
   const eyebrowEl = stage.querySelector<HTMLElement>("[data-connect-eyebrow]");
+  const whyPrimaryEl = stage.querySelector<HTMLDetailsElement>(
+    "[data-connect-why-primary]",
+  );
   const explainPrimaryEl = stage.querySelector<HTMLElement>(
     "[data-connect-explain-primary]",
   );
+  const routeLengthEl = stage.querySelector<HTMLElement>(
+    "[data-connect-route-length]",
+  );
+  const routeLengthAltEl = stage.querySelector<HTMLElement>(
+    "[data-connect-route-length-alt]",
+  );
+  const emptyStateEl = stage.querySelector<HTMLElement>(
+    "[data-connect-empty-state]",
+  );
   if (!searchButton || !statusEl || !resultsEl || !hopsEl) return;
+
+  // Derived, not threaded through every call site that toggles
+  // `resultsEl.hidden`/`statusEl.hidden` (there are several, across
+  // runSearch/restoreFromUrl/the picker's onSelect handler): a
+  // MutationObserver keeps the pre-selection empty state in sync with
+  // whatever those two elements' real visibility ends up being, without
+  // adding a call at each site or risking one of them drifting out of
+  // sync the way the pre-consolidation `last*` variables once did.
+  if (emptyStateEl) {
+    const updateEmptyState = () => {
+      emptyStateEl.hidden = !resultsEl.hidden || !statusEl.hidden;
+    };
+    updateEmptyState();
+    const emptyStateObserver = new MutationObserver(updateEmptyState);
+    emptyStateObserver.observe(resultsEl, {
+      attributes: true,
+      attributeFilter: ["hidden"],
+    });
+    emptyStateObserver.observe(statusEl, {
+      attributes: true,
+      attributeFilter: ["hidden"],
+    });
+  }
 
   const setStatus = (message: string | null) => {
     if (!message) {
@@ -443,6 +508,7 @@ export async function initConnect(): Promise<void> {
     alternateRoute: PrimaryRoute | null;
     nameById: Map<number, string>;
     evidenceReleases: Map<number, EvidenceRelease>;
+    artByAlbumId: Map<string, ResolvedArt>;
     mode: string;
   }
   let lastSearch: LastSearch | null = null;
@@ -463,6 +529,31 @@ export async function initConnect(): Promise<void> {
     const bothPicked = Boolean(albumA && albumB && albumA.id !== albumB.id);
     searchButton.disabled = !bothPicked;
     if (swapButton) swapButton.disabled = !bothPicked;
+    // Progressive rendering (ADR 0059 Phase 5 PR 5b): begin preparing the
+    // graph on the real intent signal of a second valid pick, not the
+    // search click -- `loadPreparedGraph` is already a memoized,
+    // module-level promise, so warming it here costs nothing extra and
+    // just lets `runSearch`'s own `await` resolve immediately (or much
+    // sooner) once the visitor actually clicks Search, overlapping
+    // fetch/parse/validate time with their own think-time between picking
+    // and searching -- the single biggest piece of the measured cold-
+    // search waterfall (ADR 0059's own baseline: graph.v2.json wasn't even
+    // requested until the search click). Album art is warmed for the same
+    // reason -- also mode-independent, always needed for the endpoint
+    // cards regardless of which route is eventually found. Evidence is
+    // deliberately NOT warmed here: unlike the graph, whether it's needed
+    // at all depends on the role-filter mode, which isn't decided yet at
+    // pick time (it defaults to unfiltered, but a visitor who picks both
+    // albums and only afterward selects a role filter is a real, common
+    // order -- warming evidence unconditionally here would silently
+    // resurrect the exact wasted-fetch cost the mode-conditional fetch in
+    // `runSearch` was written to avoid). Evidence keeps loading exactly
+    // when it does today: alongside the graph for an unfiltered search,
+    // or only after a role-filtered route is confirmed.
+    if (bothPicked) {
+      void loadPreparedGraph(sessionStorageOrNull(), PATHFINDING_GRAPH_URL);
+      void loadAlbumArt();
+    }
   };
 
   // Initialization lifecycle (post-#108 P1): the pickers are wired FIRST and
@@ -637,7 +728,13 @@ export async function initConnect(): Promise<void> {
     const hopsElNonNull = hopsEl!;
 
     resultsElNonNull.hidden = true;
-    setStatus("Searching…");
+    // Honest staged status (ADR 0059 Phase 5 PR 5b): each message names the
+    // real operation actually in flight when it's set, never a fabricated
+    // percentage. This first message stays true whether the graph is a
+    // fresh fetch or already warmed from the second pick (`updateButton`) --
+    // the await below still runs either way, it just settles fast when
+    // warmed.
+    setStatus("Loading the connection graph…");
     searchButtonNonNull.disabled = true;
     if (swapButton) swapButton.disabled = true;
     // Any new attempt invalidates the previous snapshot immediately, win
@@ -672,6 +769,10 @@ export async function initConnect(): Promise<void> {
     // memoized module-level promise either way, so a role-filtered search
     // still benefits once an unfiltered search has already paid the cost.
     const evidencePromise = roleFilterMode ? null : loadEvidenceIndex();
+    // Kicked off alongside the graph/evidence fetches -- presentation-only
+    // and never awaited until render time, so a slow or failed art
+    // registry can never delay a route being found or shown.
+    const artPromise = loadAlbumArt();
     const preparedResult = await loadPreparedGraph(
       sessionStorageOrNull(),
       PATHFINDING_GRAPH_URL,
@@ -694,6 +795,15 @@ export async function initConnect(): Promise<void> {
     }
     const { graph, artistIndex, albumIndex, nameById } =
       preparedResult.prepared;
+
+    // Second stage: the graph is ready, but rendering still needs either a
+    // route search (role-filtered) or a search plus evidence-informed
+    // ranking (unfiltered) -- name whichever is actually about to happen.
+    setStatus(
+      roleFilterMode
+        ? "Searching for a documented connection…"
+        : "Ranking documented routes…",
+    );
 
     const failureMessages: Record<string, string> = {
       "unknown-album":
@@ -734,7 +844,7 @@ export async function initConnect(): Promise<void> {
       evidenceIndex = await loadEvidenceIndex();
       if (stale()) return;
       if (eyebrowEl) eyebrowEl.textContent = "Shortest documented route";
-      if (explainPrimaryEl) explainPrimaryEl.hidden = true;
+      if (whyPrimaryEl) whyPrimaryEl.hidden = true;
     } else {
       // Already fetching, started alongside the graph above.
       evidenceIndex = await evidencePromise!;
@@ -768,11 +878,11 @@ export async function initConnect(): Promise<void> {
           ? "Shortest documented route"
           : "Recommended documented route";
       }
-      if (explainPrimaryEl) {
+      if (whyPrimaryEl && explainPrimaryEl) {
         if (result.rankingDegraded) {
-          explainPrimaryEl.hidden = true;
+          whyPrimaryEl.hidden = true;
         } else {
-          explainPrimaryEl.hidden = false;
+          whyPrimaryEl.hidden = false;
           explainPrimaryEl.textContent = explainRoute(
             result.recommended.facts,
             result.usedPlusOneHop,
@@ -781,9 +891,25 @@ export async function initConnect(): Promise<void> {
       }
     }
 
+    // Never awaited here -- a real review finding: `fetchAlbumArt()` has
+    // no fetch timeout, and album art is purely presentational, so a slow
+    // or hung art registry must never delay showing a route that's already
+    // been found. Rendered with whatever's in this map RIGHT NOW (empty on
+    // a cold session, already populated if a prior search's art already
+    // resolved -- `loadAlbumArt`'s own promise is memoized, so this is
+    // instant from the second search on); `artByAlbumId` itself is
+    // deliberately the SAME mutable Map stored on `lastSearch` and closed
+    // over below, so once the registry resolves, both are updated in one
+    // place and Swap's own re-render (which reads `lastSearch.artByAlbumId`)
+    // sees the enhancement too, with no extra bookkeeping.
+    const artByAlbumId = new Map<string, ResolvedArt>();
+
     setStatus(null);
     resultsElNonNull.hidden = false;
     if (roleFilterMode && alternateSection) alternateSection.hidden = true;
+    if (routeLengthEl) {
+      routeLengthEl.textContent = routeLengthText(primaryRoute.hops.length);
+    }
     renderRoute(
       hopsElNonNull,
       primaryRoute,
@@ -791,14 +917,46 @@ export async function initConnect(): Promise<void> {
       toAlbum,
       nameById,
       evidenceIndex.releases,
+      artByAlbumId,
     );
     lastSearch = {
       primaryRoute,
       alternateRoute: null,
       nameById,
       evidenceReleases: evidenceIndex.releases,
+      artByAlbumId,
       mode: selectedModeValue,
     };
+
+    // The enhancement half of the split above: once the (already in-
+    // flight, never-awaited) art registry resolves, upgrade each
+    // endpoint's placeholder to a real cover IN PLACE -- never a full
+    // re-render of the route, which would be real layout thrash for a
+    // purely cosmetic upgrade. Reads `hopsAlternateEl`'s CURRENT DOM state
+    // at the time this callback actually runs (a later microtask), not at
+    // registration time, so it correctly sees whatever the alternate-route
+    // block below (entirely synchronous) has by then already rendered.
+    const enhanceEndpoints = (container: HTMLElement | null) => {
+      if (!container) return;
+      const cards = container.querySelectorAll(".connect-endpoint");
+      if (cards.length < 2) return;
+      enhanceEndpointCover(
+        cards[0],
+        artByAlbumId.get(fromAlbum.id),
+        fromAlbum.title,
+      );
+      enhanceEndpointCover(
+        cards[cards.length - 1],
+        artByAlbumId.get(toAlbum.id),
+        toAlbum.title,
+      );
+    };
+    void artPromise.then((resolvedArt) => {
+      if (stale()) return;
+      for (const [id, art] of resolvedArt) artByAlbumId.set(id, art);
+      enhanceEndpoints(hopsElNonNull);
+      enhanceEndpoints(hopsAlternateEl);
+    });
 
     // Distinct alternate route (ADR 0058 Slice 7, renamed post-Phase-4
     // cleanup audit): a real second search that hard-excludes every edge
@@ -824,10 +982,14 @@ export async function initConnect(): Promise<void> {
       if (stale()) return;
       alternateSection.hidden = false;
       if (!alternate.ok) {
+        if (routeLengthAltEl) routeLengthAltEl.textContent = "";
         explainEl.textContent =
           "No distinct alternate route was found within the same hop budget.";
         hopsAlternateEl.innerHTML = "";
       } else {
+        if (routeLengthAltEl) {
+          routeLengthAltEl.textContent = routeLengthText(alternate.hops.length);
+        }
         renderRoute(
           hopsAlternateEl,
           alternate,
@@ -835,6 +997,7 @@ export async function initConnect(): Promise<void> {
           toAlbum,
           nameById,
           evidenceIndex.releases,
+          artByAlbumId,
         );
         if (lastSearch) lastSearch.alternateRoute = alternate;
         // Explained from the SAME facts the primary ranking uses --
@@ -897,6 +1060,7 @@ export async function initConnect(): Promise<void> {
           albumB,
           lastSearch.nameById,
           lastSearch.evidenceReleases,
+          lastSearch.artByAlbumId,
         );
         if (lastSearch.alternateRoute && hopsAlternateEl) {
           lastSearch.alternateRoute = reverseRoute(lastSearch.alternateRoute);
@@ -907,6 +1071,7 @@ export async function initConnect(): Promise<void> {
             albumB,
             lastSearch.nameById,
             lastSearch.evidenceReleases,
+            lastSearch.artByAlbumId,
           );
         }
         // The MODE STORED ON THE CACHED SEARCH, never a live re-read of

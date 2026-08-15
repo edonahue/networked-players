@@ -13,6 +13,7 @@
 // contributor names + roles and one release's presentational metadata per
 // hop, not a full credit table.
 
+import type { ResolvedArt } from "./albumArt";
 import { escapeHtml } from "./domUtils";
 import type { AlbumEndpoint, PathHop } from "./pathfindingGraph";
 
@@ -100,9 +101,11 @@ function releaseMetaLine(release: EvidenceRelease | undefined): string {
   return `<strong>${escapeHtml(release.title)}</strong>${yearCountry}`;
 }
 
-/** One documented co-credit hop: both names/roles plus a real evidence
- * card for the bridging release (title/year/country/cover when known,
- * always a source link). */
+/** One documented co-credit hop: the two contributors' names/roles as plain
+ * prose, plus a visually distinct evidence-release sub-card (cover when
+ * known, title/year/country, always a source link) -- kept as two separate
+ * blocks rather than one run-on sentence so a reader can tell "who's
+ * connected" from "what document proves it" at a glance. */
 export function renderEvidenceHop(
   hop: PathHop,
   nameById: Map<number, string>,
@@ -117,29 +120,70 @@ export function renderEvidenceHop(
   const meta = releaseMetaLine(release);
   return (
     `<div class="connect-hop">` +
-    (cover ? `<div class="connect-hop__head">${cover}<div>` : "") +
-    `<p>${escapeHtml(nameA)} <span class="connect-hop__role">(${escapeHtml(hop.role_a)})</span>` +
+    `<p class="connect-hop__contributors">${escapeHtml(nameA)} <span class="connect-hop__role">(${escapeHtml(hop.role_a)})</span>` +
     ` and ${escapeHtml(nameB)} <span class="connect-hop__role">(${escapeHtml(hop.role_b)})</span>` +
-    ` are co-credited on the same documented release${meta ? `, ${meta}` : ""}.</p>` +
+    ` are co-credited on the same documented release.</p>` +
+    `<div class="connect-hop__release">` +
+    (cover || "") +
+    `<div class="connect-hop__release-text">` +
+    (meta ? `<p class="connect-hop__release-title">${meta}</p>` : "") +
     `<p class="connect-hop__source">Release <a href="${discogsReleaseUrl(hop.release_id)}" rel="nofollow noopener">#${hop.release_id} on Discogs</a></p>` +
-    (cover ? `</div></div>` : "") +
+    `</div>` +
+    `</div>` +
     `</div>`
   );
 }
 
 /** One album endpoint card: "X is credited on Album A's own release, as
  * Producer" -- the north-star claim's literal starting/ending point, not
- * an ordinary co-credit hop. */
+ * an ordinary co-credit hop, so it gets a cover (or the site's own
+ * established polished placeholder, `AlbumCard.astro`'s pattern -- ADR
+ * 0044/0045) rather than the bare text every other hop card uses. Cover
+ * art is presentation-only and can never block or fail a search: a missing
+ * `art` entry (registry not yet loaded, fetch failed, or no entry for this
+ * album) renders the placeholder, never a broken image or an error. */
 export function renderEndpointCard(
   endpoint: AlbumEndpoint,
   albumTitle: string,
   nameById: Map<number, string>,
+  art: ResolvedArt | undefined,
 ): string {
   const name = nameById.get(endpoint.artistId) ?? `Artist ${endpoint.artistId}`;
+  const cover = art
+    ? `<img class="connect-endpoint__cover" src="${escapeHtml(art.uri150)}" width="72" height="72" loading="lazy" alt="Cover art for ${escapeHtml(albumTitle)}" data-art-fallback="disc" />`
+    : `<span class="connect-endpoint__cover connect-endpoint__cover--placeholder album-card__placeholder" aria-hidden="true"><span class="album-card__placeholder-disc"></span></span>`;
   return (
     `<div class="connect-endpoint">` +
+    cover +
     `<p><strong>${escapeHtml(name)}</strong> is credited on <strong>${escapeHtml(albumTitle)}</strong>'s own release,` +
     ` as <span class="connect-hop__role">${escapeHtml(endpoint.roleText)}</span>.</p>` +
     `</div>`
   );
+}
+
+/** Upgrades an already-rendered endpoint card's placeholder to a real
+ * cover, in place -- never a full re-render of the card or its container.
+ * `renderRoute` never awaits the art registry before rendering a route (a
+ * real review finding: the registry has no fetch timeout, so a slow or
+ * hung request would otherwise leave an already-found route stuck behind
+ * "Searching…" indefinitely); this is the enhancement half of that split,
+ * called once the art registry resolves. A no-op if the card already shows
+ * a real image (nothing to upgrade) or `art` is still unavailable. */
+export function enhanceEndpointCover(
+  cardEl: Element,
+  art: ResolvedArt | undefined,
+  albumTitle: string,
+): void {
+  if (!art) return;
+  const existing = cardEl.querySelector(".connect-endpoint__cover");
+  if (!existing || existing.tagName === "IMG") return;
+  const img = document.createElement("img");
+  img.className = "connect-endpoint__cover";
+  img.src = art.uri150;
+  img.width = 72;
+  img.height = 72;
+  img.loading = "lazy";
+  img.alt = `Cover art for ${albumTitle}`;
+  img.dataset.artFallback = "disc";
+  existing.replaceWith(img);
 }

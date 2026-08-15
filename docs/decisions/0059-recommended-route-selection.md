@@ -667,6 +667,172 @@ codebase that combines with `hidden` today.
   real-browser assertion against the diagnostic pair
   (`apps/web/tests/game-connect.spec.ts`).
 
+## PR 5a: route timeline presentation
+
+The first slice of Phase 5 PR 5 (route timeline, progressive rendering,
+performance, closeout) -- presentation only, in `apps/web/src/game/connect.ts`,
+`connectEvidence.ts`, `ConnectStage.astro`, and `game.css`. No ranking or
+search-behavior change.
+
+**Endpoint cover art.** Endpoint cards (the route's literal start/end
+albums) now carry real cover art via the existing `albumArt.ts`
+(`fetchAlbumArt`, ADR 0044/0045) client-side module -- fetched once per page
+session alongside the graph/evidence, never blocking a search, and falling
+back to `AlbumCard.astro`'s own established polished placeholder (reused
+verbatim -- `.album-card__placeholder`/`.album-card__placeholder-disc` from
+`motif.css`, not a new placeholder design) for any album missing an entry.
+`data-art-fallback="disc"` wires the load-failure case into the SAME
+site-wide `BaseLayout.astro` error handler every other cover image already
+uses, rather than adding a second one.
+
+**Contributor vs. evidence-release separation.** Each hop card used to run
+the two contributors' names and the bridging release's title/year/country
+together into one sentence, with the cover image sitting in an unstyled,
+accidentally-malformed wrapper div (`<div class="connect-hop__head">${cover}<div>`
+-- an unclosed tag, not previously caught because no test asserted on
+`.connect-hop__head`'s own layout, only on text content via
+`toContainText`). Split into two real, separately styled blocks: a plain
+contributor-prose paragraph, and a `.connect-hop__release` sub-card (cover +
+title/year/country + source link) with its own subtle background --
+"contributor nodes visually distinct from evidence releases" from the PR 5
+plan, and a real bug fix along the way.
+
+**Route length.** `hops.length` is now always rendered ("2 hops
+documented"), for every outcome that reaches a route -- ranked, degraded,
+role-filtered, and the distinct alternate -- not just folded into the
+ranked-and-not-degraded case's "why" explanation text as it was before
+(where a role-filtered or degraded result showed no length at all).
+
+**"Why this route?" as a real disclosure.** The primary explanation used to
+be a permanently-visible paragraph; it's now a `<details data-connect-why-primary>`
+around the same explanation `<p>`, closed by default -- a genuine
+progressive disclosure rather than a permanently-shown block, matching the
+plan's own "disclosure" framing. Only rendered/openable when a real ranking
+ran (`!rankingDegraded`), same as before; a role-filtered or degraded result
+still shows no "why" section at all, since there is no real ranking to
+explain.
+
+**Timeline connector.** `.connect-timeline` (wrapping both the primary and
+alternate hop lists) adds a continuous left-edge connecting line with a
+marker per stop -- a filled accent dot for each endpoint, a hollow dot for
+each hop -- built entirely from this page's own `--line`/`--accent-strong`
+tokens, not a new visual system.
+
+**Pre-selection empty state.** A `<p data-connect-empty-state>` sits below
+the status/announce region, visible whenever neither the results panel nor
+the status message is -- covering initial page load, a popstate-driven
+clear, and (new in this slice) a real pick that discards a previously-
+completed search's cached route. Deliberately NOT threaded through every
+call site that already toggles `resultsEl.hidden`/`statusEl.hidden` (there
+are several, and PR 4's whole `LastSearch` consolidation exists specifically
+because that kind of duplication drifts); instead a `MutationObserver`
+derives it reactively from those two elements' real `hidden` attribute,
+so it can never fall out of sync with them by construction.
+
+**Verification.** All 7 new presentation-specific assertions (empty state
+before/after search, empty state reappearing after a cache-invalidating
+pick, real cover art rendering, the placeholder for a missing art entry,
+route length across ranked/role-filtered/alternate outcomes, and the
+disclosure's closed-by-default/openable behavior) were confirmed to
+actually fail against the pre-slice code before being trusted -- 7 of 8
+failed for the right reason; the 8th (role-filtered search shows no "why"
+section) was already true before this slice and stays a non-regression
+check, not a new-behavior one. Full existing Connect suite (50 tests
+including combobox, URL state, swap, and staleness) re-verified green
+against the restored code, plus a fresh `npx tsc --noEmit` and `make check`.
+
+**Review findings on this slice, both real.** An automated review of the
+pushed PR found two defects:
+
+1. `runSearch` awaited the album-art registry (`artPromise`) before
+   revealing results at all. `fetchAlbumArt()` has no fetch timeout, so a
+   slow or hung art registry would leave an already-found route stuck
+   behind "Searching…" indefinitely, with search/swap disabled, for a
+   fetch that only affects presentation. Fixed by never awaiting it:
+   `runSearch` now renders immediately with an empty (all-placeholder) art
+   map, then a `.then()` callback -- guarded by the same `stale()` check
+   every other late-arriving continuation uses -- upgrades each rendered
+   endpoint's placeholder to a real cover IN PLACE
+   (`connectEvidence.ts`'s new `enhanceEndpointCover`) once the registry
+   actually resolves, never a full re-render of the route. The map is the
+   same mutable object stored on `lastSearch`, so Swap's own re-render
+   (which reads `lastSearch.artByAlbumId`) sees the enhancement too with
+   no extra bookkeeping.
+2. `BaseLayout.astro`'s site-wide image-error fallback (the handler every
+   `data-art-fallback="disc"` image already shares) replaced a failing
+   `<img>` with a bare `<span class="album-card__placeholder">`, discarding
+   whatever OTHER classes that image carried. For Connect's 72px, flex-
+   sized `connect-endpoint__cover`, a real upstream image failure (an
+   expired or 404 hotlink) would silently fall back to
+   `.album-card__placeholder`'s own `width: 100%` sizing instead --
+   correct for the album grid this handler was originally written for,
+   wrong for an endpoint card. Fixed by carrying the failing image's own
+   `className` over onto the replacement span (`${img.className}
+   album-card__placeholder`) rather than discarding it -- a generic fix at
+   the shared handler, not a Connect-specific branch, so any future
+   `data-art-fallback="disc"` caller with its own sizing class is covered
+   the same way.
+
+A new regression test (`a slow album-art registry never delays the route
+from rendering, and covers upgrade in place once it resolves`) gates the
+art registry response and confirms the route renders fully -- status
+clears, results show, placeholders stand in -- before releasing it and
+confirming the placeholders upgrade to real `<img>`s in place.
+
+## PR 5b: progressive rendering
+
+The second slice of PR 5, in `apps/web/src/game/connect.ts` -- begins
+graph preparation on a real intent signal, and stages status text
+honestly, per the plan's own wording. No ranking or route-selection
+change.
+
+**Begin graph preparation on the second valid pick, not the search
+click.** `updateButton()` already runs on every pick and already computes
+`bothPicked`; it now also calls `loadPreparedGraph()` (and `loadAlbumArt()`)
+the moment that's true. Both are already memoized, module-level promises
+(post-Phase-4 cleanup audit F11/F12 for the graph; this PR's own PR 5a
+slice for art), so warming them here costs nothing extra -- `runSearch`'s
+own later calls to the same functions just resolve immediately, or much
+sooner, once the visitor actually clicks Search, overlapping fetch/parse/
+validate time with their own think-time between picking and searching.
+This directly targets the measured baseline's single biggest waterfall
+item: `graph.v2.json` wasn't even requested until the search click.
+
+**Evidence is deliberately NOT warmed the same way.** Unlike the graph,
+whether evidence is needed at all depends on the role-filter mode, which
+isn't decided yet at pick time (it defaults to unfiltered, but picking
+both albums and only afterward choosing a role filter -- exactly what
+`tests/game-connect.spec.ts`'s "a role-filtered search that finds no
+connection never fetches the evidence registry" already covers -- is a
+real, common order). Warming it unconditionally on pick-completion would
+silently reintroduce the exact wasted-fetch cost `runSearch`'s own
+mode-conditional evidence fetch (PR 3) was written to avoid. Evidence
+keeps loading exactly when it does today: alongside the graph for an
+unfiltered search, or only after a role-filtered route is confirmed.
+
+**Honest staged status text**, never a fabricated percentage: "Loading
+the connection graph…" (the real first operation, true whether the graph
+is a fresh fetch or already warmed -- the await still runs either way, it
+just settles fast when warmed) transitions to "Ranking documented
+routes…" (unfiltered -- about to await evidence and rank) or "Searching
+for a documented connection…" (role-filtered -- about to run the edge-
+filtered BFS) once the graph resolves. The four existing staleness/
+race-condition tests that previously asserted a flat `/searching/i`
+were updated to the new second-stage text, since all four are unfiltered
+Discovery/Joshua Tree searches whose evidence-gated construction means
+that's genuinely what's showing by the time each assertion runs.
+
+**Verification.** Five new tests confirm the graph and album-art registry
+are requested on the second pick (before any search click), that evidence
+is NOT eagerly fetched merely from picking both albums, and that both
+staged-status transitions are real and observable (gating the graph, then
+also gating evidence long enough to hold each search at its second stage
+before releasing) -- 4 of 5 confirmed to fail against the pre-slice code;
+the 5th (no eager evidence fetch) was already true and stays a non-
+regression check. Full Connect suite (76 tests across every existing
+spec file plus the two new ones) re-verified green, plus `npx tsc
+--noEmit` and `make check`.
+
 ## Revisit trigger
 
 If the catalog grows enough that the shortest layer stops being cheap —

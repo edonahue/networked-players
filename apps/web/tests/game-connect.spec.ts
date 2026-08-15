@@ -191,6 +191,11 @@ test("the diagnostic pair (Discovery / Joshua Tree) is ranked away from its cave
   await expect(page.locator("[data-connect-eyebrow]")).toHaveText(
     "Recommended documented route",
   );
+  // "Why this route?" is a real, closed-by-default disclosure (ADR 0059
+  // Phase 5 PR 5) -- expand it before reading the explanation it reveals.
+  const why = page.locator("[data-connect-why-primary]");
+  await expect(why).toBeVisible();
+  await why.locator("summary").click();
   const explanation = page.locator("[data-connect-explain-primary]");
   await expect(explanation).toBeVisible();
   await expect(explanation).toContainText(
@@ -560,7 +565,13 @@ test("an older, still-in-flight search's late completion never overwrites a newe
   await selectAlbum(page, "a", "Discovery");
   await selectAlbum(page, "b", "Joshua Tree");
   await page.locator("[data-connect-search]").click();
-  await expect(page.locator("[data-connect-status]")).toHaveText(/searching/i);
+  // Honest staged status (ADR 0059 Phase 5 PR 5b): the graph resolves fast
+  // (only the evidence registry is gated in these tests), so by the time
+  // this check runs, status has already advanced past the initial
+  // "Loading the connection graph…" to the second, ranking-specific stage.
+  await expect(page.locator("[data-connect-status]")).toHaveText(
+    /ranking documented routes/i,
+  );
 
   // Newer search: role-filtered, a real pair with NO drums/bass-only
   // connection -- finishes after just the graph fetch (already resolved,
@@ -631,7 +642,13 @@ test("a URL-restored search superseded by a faster manual search loses honestly"
   await expect(
     picker(page, "a").locator("[data-picker-selected]"),
   ).toContainText("Discovery");
-  await expect(page.locator("[data-connect-status]")).toHaveText(/searching/i);
+  // Honest staged status (ADR 0059 Phase 5 PR 5b): the graph resolves fast
+  // (only the evidence registry is gated in these tests), so by the time
+  // this check runs, status has already advanced past the initial
+  // "Loading the connection graph…" to the second, ranking-specific stage.
+  await expect(page.locator("[data-connect-status]")).toHaveText(
+    /ranking documented routes/i,
+  );
 
   await selectAlbum(page, "a", "Time Out");
   await selectAlbum(page, "b", "Rumours");
@@ -687,7 +704,13 @@ test("editing a picker selection while a search is pending invalidates it -- no 
   await selectAlbum(page, "a", "Discovery");
   await selectAlbum(page, "b", "Joshua Tree");
   await page.locator("[data-connect-search]").click();
-  await expect(page.locator("[data-connect-status]")).toHaveText(/searching/i);
+  // Honest staged status (ADR 0059 Phase 5 PR 5b): the graph resolves fast
+  // (only the evidence registry is gated in these tests), so by the time
+  // this check runs, status has already advanced past the initial
+  // "Loading the connection graph…" to the second, ranking-specific stage.
+  await expect(page.locator("[data-connect-status]")).toHaveText(
+    /ranking documented routes/i,
+  );
 
   // Edit picker A mid-flight without ever clicking Search again.
   await selectAlbum(page, "a", "Time Out");
@@ -735,7 +758,13 @@ test("changing the role filter while a search is pending invalidates it -- no st
   await selectAlbum(page, "a", "Discovery");
   await selectAlbum(page, "b", "Joshua Tree");
   await page.locator("[data-connect-search]").click();
-  await expect(page.locator("[data-connect-status]")).toHaveText(/searching/i);
+  // Honest staged status (ADR 0059 Phase 5 PR 5b): the graph resolves fast
+  // (only the evidence registry is gated in these tests), so by the time
+  // this check runs, status has already advanced past the initial
+  // "Loading the connection graph…" to the second, ranking-specific stage.
+  await expect(page.locator("[data-connect-status]")).toHaveText(
+    /ranking documented routes/i,
+  );
 
   // Change the role filter mid-flight without clicking Search again.
   await selectRouteFilter(page, "rhythm-section");
