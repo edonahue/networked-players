@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-08-14
-- **Depends on:** [ADR 0035](0035-track-scoped-credit-edges.md), [ADR 0050](0050-browser-pathfinding-architecture-selection.md), [ADR 0051](0051-connect-two-records.md), [ADR 0053](0053-role-aware-game-mode-selection.md), [ADR 0054](0054-research-lane-and-promotion-boundary.md), [ADR 0058](0058-album-credit-membership-and-evidence-registry.md)
+- **Depends on:** [ADR 0035](0035-track-scoped-credit-edges.md), [ADR 0044](0044-phase1-launch-daily-state-and-art-decoupling.md), [ADR 0045](0045-album-art-registry-and-launch-cutover.md), [ADR 0050](0050-browser-pathfinding-architecture-selection.md), [ADR 0051](0051-connect-two-records.md), [ADR 0053](0053-role-aware-game-mode-selection.md), [ADR 0054](0054-research-lane-and-promotion-boundary.md), [ADR 0058](0058-album-credit-membership-and-evidence-registry.md)
 
 ## Context
 

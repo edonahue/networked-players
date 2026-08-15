@@ -36,10 +36,16 @@ versioned static artifacts — no backend, no accounts.
   `/play/<album-id>/` URLs redirect here.)
 - **Connect Two Records** (`/play/connect/`, ADR 0058) — pick any two catalog
   albums and search a real record-to-record route between them: virtual
-  album-anchor nodes on the pathfinding graph turn the search into an ordinary
+  album-anchor nodes on the pathfinding graph turn the search into a
   single-source/single-sink BFS over every credited contributor on each album
   (not just its primary artist), with real endpoint/evidence cards and optional
-  Behind the Glass / Rhythm Section / Guitar Paths role filters (ADR 0053).
+  Behind the Glass / Rhythm Section / Guitar Paths role filters (ADR 0053). An
+  unfiltered search is ranked, not just the first path found (ADR 0059) —
+  evidence quality, hub dependence, and role substance decide among equal-hop
+  candidates, shown alongside a genuinely distinct alternate and a "Why this
+  route?" disclosure. Shareable via URL (`?a=`/`?b=`/`?mode=`), with a Swap
+  control, endpoint cover art, and a Web Worker (this app's first) doing the
+  graph's parse/canonicalize/integrity-hash off the main thread.
 - **Record Routes** (`/play/routes/`, ADR 0046) — a peer path-guessing mode on
   the same canonical catalog: guess the hop count and, for two-hop routes, the
   connecting artist, before the path is revealed.
