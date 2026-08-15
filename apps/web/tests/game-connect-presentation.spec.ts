@@ -237,3 +237,41 @@ test("a slow album-art registry never delays the route from rendering, and cover
   ).toHaveCount(2);
   await expect(placeholders).toHaveCount(0);
 });
+
+// Phone-viewport coverage (matching game-mobile.spec.ts's established
+// 390x844 probe for the flagship game) -- never checked for Connect
+// before this phase's genuinely new layout (the timeline connector,
+// endpoint cover cards, hop release sub-cards, the disclosure). Checked
+// at both the empty pre-selection state and after a real completed
+// search, the two states most likely to differ in width.
+test.describe("390px viewport", () => {
+  test.use({ viewport: { width: 390, height: 844 } });
+
+  test("Connect Two Records never scrolls sideways on a phone-sized screen, empty or with a completed search", async ({
+    page,
+  }) => {
+    const overflow = () =>
+      page.evaluate(
+        () =>
+          document.documentElement.scrollWidth -
+          document.documentElement.clientWidth,
+      );
+
+    await page.goto("/play/connect/");
+    await expect(page.locator("[data-connect-empty-state]")).toBeVisible();
+    expect(await overflow()).toBeLessThanOrEqual(0);
+
+    await selectAlbum(page, "a", "Discovery");
+    await selectAlbum(page, "b", "Joshua Tree");
+    await page.locator("[data-connect-search]").click();
+    await expect(page.locator("[data-connect-results]")).toBeVisible({
+      timeout: 15000,
+    });
+    expect(await overflow()).toBeLessThanOrEqual(0);
+
+    // The disclosure's own expansion is a real, common layout change --
+    // check it too, not just the closed default.
+    await page.locator("[data-connect-why-primary] summary").click();
+    expect(await overflow()).toBeLessThanOrEqual(0);
+  });
+});
