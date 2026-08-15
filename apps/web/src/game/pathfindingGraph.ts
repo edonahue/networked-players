@@ -22,6 +22,12 @@
 // mirroring routesResolver.ts's hardened pattern.
 
 import { contentHash } from "./canonical";
+// Type-only: `graphWorker.ts` itself imports `validatePathfindingGraph`
+// FROM this file, so a runtime import here would be circular. `import
+// type` is erased entirely at compile time, so it isn't -- the worker
+// script is only ever reached via `new Worker(new URL(...))` below, never
+// a normal module import.
+import type { GraphWorkerRequest, GraphWorkerResponse } from "./graphWorker";
 // `StorageLike` (the small getItem/setItem interface used to inject a real
 // or fake storage backend) is canonically defined in `store.ts` --
 // `flagship.ts`/`dailyArchiveStage.ts` already import it from there; this
@@ -610,6 +616,84 @@ export function findAlbumRoute(
 
 const DEFAULT_GRAPH_URL = "/data/pathfinding/graph.v2.json";
 
+// Off-main-thread parse/canonicalize/hash (ADR 0059 Phase 5 PR 5c),
+// bounded to exactly that -- see graphWorker.ts's own header for the
+// measurement that justifies it. A single worker is created lazily and
+// reused for the page's lifetime, the same load-once-reuse shape every
+// other module-level cache in this file already uses; `undefined` means
+// "not yet attempted", `null` means "unavailable or failed to construct",
+// distinguished so a real Worker-support check only ever runs once.
+let graphWorker: Worker | null | undefined;
+function getGraphWorker(): Worker | null {
+  if (graphWorker !== undefined) return graphWorker;
+  if (typeof Worker === "undefined") {
+    graphWorker = null;
+    return graphWorker;
+  }
+  try {
+    graphWorker = new Worker(new URL("./graphWorker.ts", import.meta.url), {
+      type: "module",
+    });
+  } catch {
+    graphWorker = null;
+  }
+  return graphWorker;
+}
+
+let graphWorkerRequestId = 0;
+const pendingGraphWorkerRequests = new Map<
+  number,
+  (response: GraphWorkerResponse | "worker-crashed") => void
+>();
+
+/** Wired exactly once, the first time a worker is successfully
+ * constructed. Correlates each response back to its own request by `id`
+ * -- overlapping calls are unlikely in practice (`loadPreparedGraph`'s own
+ * module-level cache means only the first real call per URL per page load
+ * ever reaches here), but never assumed impossible. */
+let graphWorkerWired = false;
+function wireGraphWorker(worker: Worker): void {
+  if (graphWorkerWired) return;
+  graphWorkerWired = true;
+  worker.addEventListener(
+    "message",
+    (event: MessageEvent<GraphWorkerResponse>) => {
+      const resolve = pendingGraphWorkerRequests.get(event.data.id);
+      if (resolve) {
+        pendingGraphWorkerRequests.delete(event.data.id);
+        resolve(event.data);
+      }
+    },
+  );
+  worker.addEventListener("error", () => {
+    // A worker-level crash -- distinct from a request the worker itself
+    // completed normally and reported a real failure for (which arrives
+    // as an ordinary `ok: false` message and is trusted as-is, never
+    // retried, since retrying would just reproduce the same real fetch/
+    // parse/validation failure). Every request still waiting on this
+    // worker falls back to the main-thread path individually, rather than
+    // hanging forever on a promise the crashed worker can never resolve.
+    for (const [id, resolve] of pendingGraphWorkerRequests) {
+      resolve("worker-crashed");
+    }
+    pendingGraphWorkerRequests.clear();
+  });
+}
+
+function requestFromWorker(
+  worker: Worker,
+  url: string,
+  cachedText: string | null,
+): Promise<GraphWorkerResponse | "worker-crashed"> {
+  wireGraphWorker(worker);
+  return new Promise((resolve) => {
+    const id = ++graphWorkerRequestId;
+    pendingGraphWorkerRequests.set(id, resolve);
+    const request: GraphWorkerRequest = { id, url, cachedText };
+    worker.postMessage(request);
+  });
+}
+
 /** Fetches and validates the pathfinding graph, caching it in
  * `sessionStorage` (not `localStorage` -- large and disposable, unlike the
  * persistent `np.game.v1` progression store) so repeated searches within one
@@ -624,19 +708,60 @@ const DEFAULT_GRAPH_URL = "/data/pathfinding/graph.v2.json";
  * 0058 -- v1 retired once every real browser consumer cut over); the
  * cache key is derived from `url` itself, so a caller that ever needs to
  * validate a differently-shaped historical export never collides with the
- * live v2 cache entry. */
+ * live v2 cache entry.
+ *
+ * Delegates the actual fetch/parse/validate to a Worker when one is
+ * available (ADR 0059 Phase 5 PR 5c), falling back to doing the identical
+ * work directly on the main thread -- same cache-read-first order, same
+ * validation, same cache write -- when a Worker can't be constructed at
+ * all, or crashes outright. A worker that completes normally and reports a
+ * real failure is trusted as final, not retried on the main thread. */
 export async function loadPathfindingGraph(
   storage: StorageLike | null,
   url: string = DEFAULT_GRAPH_URL,
 ): Promise<{ graph: PathfindingGraph } | { error: PathfindingFailureReason }> {
   const cacheKey = `np.pathfinding-graph:${url}`;
+  let cachedText: string | null = null;
   if (storage) {
     try {
-      const cached = storage.getItem(cacheKey);
-      if (cached) {
-        const parsed = await validatePathfindingGraph(JSON.parse(cached));
-        if (parsed) return { graph: parsed };
+      cachedText = storage.getItem(cacheKey);
+    } catch {
+      cachedText = null;
+    }
+  }
+
+  const worker = getGraphWorker();
+  if (worker) {
+    const response = await requestFromWorker(worker, url, cachedText);
+    if (response !== "worker-crashed") {
+      if (response.ok) {
+        if (storage && response.rawText !== cachedText) {
+          try {
+            storage.setItem(cacheKey, response.rawText);
+          } catch {
+            // sessionStorage full/unavailable -- searches still work, just refetch each time
+          }
+        }
+        return { graph: response.graph as PathfindingGraph };
       }
+      return { error: response.error };
+    }
+    // Falls through to the main-thread path below.
+  }
+
+  return loadPathfindingGraphMainThread(cacheKey, cachedText, storage, url);
+}
+
+async function loadPathfindingGraphMainThread(
+  cacheKey: string,
+  cachedText: string | null,
+  storage: StorageLike | null,
+  url: string,
+): Promise<{ graph: PathfindingGraph } | { error: PathfindingFailureReason }> {
+  if (cachedText) {
+    try {
+      const parsed = await validatePathfindingGraph(JSON.parse(cachedText));
+      if (parsed) return { graph: parsed };
     } catch {
       // fall through to a fresh fetch
     }
