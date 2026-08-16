@@ -399,6 +399,7 @@ def _contributor_index() -> dict[str, Any]:
             "connection_count": 1,
             "neighboring_contributor_ids": [200],
             "evidence": [{"release_id": 1, "role_text": "Guitar"}],
+            "interesting_next_step": None,
         },
         {
             "artist_id": 200,
@@ -410,6 +411,7 @@ def _contributor_index() -> dict[str, Any]:
             "connection_count": 1,
             "neighboring_contributor_ids": [100],
             "evidence": [{"release_id": 1, "role_text": "Bass"}],
+            "interesting_next_step": None,
         },
     ]
     return {

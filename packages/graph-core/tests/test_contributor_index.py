@@ -182,6 +182,117 @@ def test_evidence_entries_reference_real_release_ids() -> None:
     assert {"release_id": 501, "role_text": "Guitar"} in alice["evidence"]
 
 
+def test_interesting_next_step_picks_a_role_disjoint_neighbor() -> None:
+    # Alice (strings only) has one neighbor, Bob (strings + production) --
+    # not disjoint (both credit strings), so nothing qualifies.
+    index = _build()
+    alice = next(c for c in index["contributors"] if c["artist_id"] == 100)
+    assert alice["interesting_next_step"] is None
+
+    # Bob (strings + production) has two neighbors: Alice (strings, shares a
+    # category) and Carol (engineering only, fully disjoint) -- Carol wins.
+    bob = next(c for c in index["contributors"] if c["artist_id"] == 200)
+    assert bob["interesting_next_step"] == {
+        "artist_id": 300,
+        "reason": "credited in a different kind of role than this contributor",
+    }
+
+    # Carol (engineering only) has one neighbor, Bob (strings + production)
+    # -- fully disjoint from Carol's own roles, so Bob is her pick too
+    # (symmetric, but not required to be -- each side evaluates its own
+    # role_categories against the other's).
+    carol = next(c for c in index["contributors"] if c["artist_id"] == 300)
+    assert carol["interesting_next_step"] == {
+        "artist_id": 200,
+        "reason": "credited in a different kind of role than this contributor",
+    }
+
+
+def test_interesting_next_step_never_ranks_by_connection_count_alone() -> None:
+    """A real regression guard for the exact bias ADR 0059 measured and
+    rejected for Connect's old route scorer: a hub-favoring pick would
+    always point toward whichever neighbor has the highest connection_count.
+    Here Carol (engineering, connection_count 1) is Bob's ONLY disjoint-role
+    candidate even though Alice (connection_count 1 too, but same-category)
+    would otherwise tie -- role disjointness gates the candidate set before
+    connection_count ever breaks a tie."""
+    index = _build()
+    bob = next(c for c in index["contributors"] if c["artist_id"] == 200)
+    assert bob["interesting_next_step"]["artist_id"] != 100
+
+
+def test_interesting_next_step_tie_breaks_toward_the_lower_connection_count() -> None:
+    """The deliberate anti-hub tie-break: when more than one neighbor has a
+    fully disjoint role_categories set, the LOWEST connection_count wins --
+    never the highest, which would recreate the exact fame-correlated bias
+    ADR 0059 measured and rejected for Connect's old route scorer."""
+    catalog = {
+        "catalog_version": _CATALOG_VERSION,
+        "snapshot_date": _SNAPSHOT,
+        "albums": [
+            {"id": "master-10", "title": "A", "artist_id": 10, "year": 1995},
+            {"id": "master-20", "title": "B", "artist_id": 20, "year": 1996},
+            {"id": "master-30", "title": "C", "artist_id": 30, "year": 1997},
+            {"id": "master-40", "title": "D", "artist_id": 40, "year": 1998},
+        ],
+    }
+    challenge = {
+        "schema_version": 2,
+        "provenance": {"catalog_version": _CATALOG_VERSION},
+        "artists": [
+            {"artist_id": 10, "name": "X"},
+            {"artist_id": 20, "name": "Y"},
+            {"artist_id": 30, "name": "Z"},
+            {"artist_id": 40, "name": "W"},
+        ],
+        "paths": [
+            {
+                "id": "path-1",
+                "from_album_id": "master-10",
+                "to_album_id": "master-20",
+                "hops": [{"release_id": 501, "artist_a_id": 10, "artist_b_id": 20}],
+            },
+            {
+                "id": "path-2",
+                "from_album_id": "master-10",
+                "to_album_id": "master-30",
+                "hops": [{"release_id": 502, "artist_a_id": 10, "artist_b_id": 30}],
+            },
+            {
+                "id": "path-3",
+                "from_album_id": "master-30",
+                "to_album_id": "master-40",
+                "hops": [{"release_id": 503, "artist_a_id": 30, "artist_b_id": 40}],
+            },
+        ],
+        "releases": [
+            _challenge_release(501, [_credit(10, "Guitar"), _credit(20, "Producer")]),
+            _challenge_release(502, [_credit(10, "Guitar"), _credit(30, "Engineer")]),
+            _challenge_release(503, [_credit(30, "Engineer"), _credit(40, "Vocals")]),
+        ],
+    }
+    index = build_contributor_index(
+        challenge=challenge,
+        routes_universe=_routes_universe(),
+        routes_rounds={
+            "provenance": {"catalog_version": _CATALOG_VERSION},
+            "artists": [],
+            "rounds": [],
+            "releases": [],
+        },
+        catalog=catalog,
+        evidence_release_registry={"release_ids": [], "years": []},
+        generated_at="2026-08-03T00:00:00+00:00",
+    )
+    by_id = {c["artist_id"]: c for c in index["contributors"]}
+    # Y (production) connects only to X -- connection_count 1.
+    assert by_id[20]["connection_count"] == 1
+    # Z (engineering) connects to both X and W -- connection_count 2.
+    assert by_id[30]["connection_count"] == 2
+    # Both Y and Z are role-disjoint from X (strings) -- Y wins on the tie-break.
+    assert by_id[10]["interesting_next_step"]["artist_id"] == 20
+
+
 def test_deterministic_across_repeated_builds() -> None:
     assert _build() == _build()
 

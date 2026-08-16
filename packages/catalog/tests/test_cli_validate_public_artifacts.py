@@ -359,6 +359,7 @@ def _contributor_index(catalog: dict[str, Any]) -> dict[str, Any]:
             "connection_count": 0,
             "neighboring_contributor_ids": [],
             "evidence": [{"release_id": 1, "role_text": "Guitar"}],
+            "interesting_next_step": None,
         }
     ]
     return {

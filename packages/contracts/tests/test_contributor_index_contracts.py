@@ -53,6 +53,7 @@ def _contributors() -> list[dict[str, Any]]:
             "connection_count": 1,
             "neighboring_contributor_ids": [200],
             "evidence": [{"release_id": 1, "role_text": "Guitar"}],
+            "interesting_next_step": None,
         },
         {
             "artist_id": 200,
@@ -64,6 +65,7 @@ def _contributors() -> list[dict[str, Any]]:
             "connection_count": 1,
             "neighboring_contributor_ids": [100],
             "evidence": [{"release_id": 1, "role_text": "Bass"}],
+            "interesting_next_step": None,
         },
     ]
 
@@ -147,6 +149,65 @@ def test_empty_contributors_list_is_valid() -> None:
         "contributors": [],
     }
     assert contributor_index_failures(index, catalog) == []
+
+
+def test_missing_interesting_next_step_is_rejected() -> None:
+    index = deepcopy(_index())
+    del index["contributors"][0]["interesting_next_step"]
+    failures = contributor_index_failures(index, _catalog())
+    assert any("missing interesting_next_step" in f for f in failures)
+
+
+def test_interesting_next_step_null_is_valid() -> None:
+    index = deepcopy(_index())
+    index["contributors"][0]["interesting_next_step"] = None
+    assert contributor_index_failures(index, _catalog()) == []
+
+
+def test_interesting_next_step_with_extra_key_is_rejected() -> None:
+    index = deepcopy(_index())
+    index["contributors"][0]["interesting_next_step"] = {
+        "artist_id": 200,
+        "reason": "credited in a different kind of role than this contributor",
+        "score": 0.9,
+    }
+    failures = contributor_index_failures(index, _catalog())
+    assert any("interesting_next_step must be null or have keys" in f for f in failures)
+
+
+def test_interesting_next_step_artist_id_must_be_a_published_contributor() -> None:
+    index = deepcopy(_index())
+    index["contributors"][0]["interesting_next_step"] = {
+        "artist_id": 999999,
+        "reason": "credited in a different kind of role than this contributor",
+    }
+    failures = contributor_index_failures(index, _catalog())
+    assert any(
+        "interesting_next_step artist_id 999999" in f and "not a published contributor" in f
+        for f in failures
+    )
+
+
+def test_interesting_next_step_artist_id_must_be_a_real_neighbor() -> None:
+    # 200 IS a published contributor in this fixture, but not one of Alice's
+    # own neighboring_contributor_ids in this deliberately doctored case.
+    index = deepcopy(_index())
+    index["contributors"][0]["neighboring_contributor_ids"] = []
+    index["contributors"][0]["interesting_next_step"] = {
+        "artist_id": 200,
+        "reason": "credited in a different kind of role than this contributor",
+    }
+    failures = contributor_index_failures(index, _catalog())
+    assert any(
+        "not one of this contributor's own neighboring_contributor_ids" in f for f in failures
+    )
+
+
+def test_interesting_next_step_reason_must_be_a_non_empty_string() -> None:
+    index = deepcopy(_index())
+    index["contributors"][0]["interesting_next_step"] = {"artist_id": 200, "reason": ""}
+    failures = contributor_index_failures(index, _catalog())
+    assert any("reason must be a non-empty string" in f for f in failures)
 
 
 def test_forbidden_inference_phrase_is_rejected() -> None:

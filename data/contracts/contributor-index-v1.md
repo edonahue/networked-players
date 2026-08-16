@@ -43,6 +43,7 @@ The public contributor index
 | `connection_count` | int | This contributor's degree within the published `challenge.v2.json` + `routes/rounds.v1.json` graph only. |
 | `neighboring_contributor_ids` | array of int | Other contributors directly adjacent via a shared hop, ranked by shared-hop count then id, capped at 20. Every id must itself be a contributor in this same index. |
 | `evidence` | array of object | Up to 10 `{release_id, role_text}` pairs, sorted, resolving against a release referenced by either source artifact. |
+| `interesting_next_step` | object or `null` | ADR 0060. `{artist_id, reason}` naming one of this contributor's own `neighboring_contributor_ids` whose `role_categories` are ENTIRELY DISJOINT from this contributor's own — a real structural fact (a genuinely different kind of credited collaborator), never an inferred claim about interest or importance. Ties among multiple disjoint-role candidates break toward the LOWEST `connection_count` (deliberately anti-hub — never the highest), then `artist_id`. `null` when no neighbor qualifies; never a fabricated pick. |
 
 ## Validation
 
@@ -51,9 +52,11 @@ The public contributor index
 `contributor_index_version` recomputation, every `albums[]` entry resolving
 against the catalog, every `role_categories` value being a real
 `RoleCategory`, every `neighboring_contributor_ids` entry resolving to another
-contributor in the same index, no duplicate `artist_id`, and a scan for
-forbidden substrings/inference-implying phrases ("worked with", "collaborated
-with", "influenced" — the same list `catalog.py` already enforces).
+contributor in the same index, `interesting_next_step` being either `null` or
+a real neighbor of this same contributor with a non-empty `reason`, no
+duplicate `artist_id`, and a scan for forbidden substrings/inference-implying
+phrases ("worked with", "collaborated with", "influenced" — the same list
+`catalog.py` already enforces).
 
 ## Revisit trigger
 

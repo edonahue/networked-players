@@ -67,9 +67,11 @@ _CONTRIBUTOR_KEYS = frozenset(
         "connection_count",
         "neighboring_contributor_ids",
         "evidence",
+        "interesting_next_step",
     }
 )
 _EVIDENCE_KEYS = frozenset({"release_id", "role_text"})
+_INTERESTING_NEXT_STEP_KEYS = frozenset({"artist_id", "reason"})
 
 
 def contributor_index_version(contributors: list[dict[str, Any]], snapshot_date: str) -> str:
@@ -230,6 +232,37 @@ def contributor_index_failures(index: Any, catalog: Any) -> list[str]:
                 if not isinstance(entry, dict) or set(entry.keys()) != _EVIDENCE_KEYS:
                     failures.append(
                         f"contributors[{i}] evidence[{j}] must have keys {_EVIDENCE_KEYS}"
+                    )
+
+        # ADR 0060: null is a real, valid outcome (no role-disjoint neighbor
+        # exists) -- never coerced into a fabricated pick just to fill the
+        # field.
+        next_step = contributor.get("interesting_next_step", "MISSING")
+        if next_step == "MISSING":
+            failures.append(f"contributors[{i}] is missing interesting_next_step")
+        elif next_step is not None:
+            if not isinstance(next_step, dict) or set(next_step.keys()) != (
+                _INTERESTING_NEXT_STEP_KEYS
+            ):
+                failures.append(
+                    f"contributors[{i}] interesting_next_step must be null or have keys "
+                    f"{_INTERESTING_NEXT_STEP_KEYS}"
+                )
+            else:
+                next_id = next_step.get("artist_id")
+                if next_id not in all_artist_ids:
+                    failures.append(
+                        f"contributors[{i}] interesting_next_step artist_id {next_id!r} is not "
+                        f"a published contributor in this index"
+                    )
+                elif isinstance(neighbors, list) and next_id not in neighbors:
+                    failures.append(
+                        f"contributors[{i}] interesting_next_step artist_id {next_id!r} is not "
+                        f"one of this contributor's own neighboring_contributor_ids"
+                    )
+                if not isinstance(next_step.get("reason"), str) or not next_step.get("reason"):
+                    failures.append(
+                        f"contributors[{i}] interesting_next_step reason must be a non-empty string"
                     )
 
     serialized = str(index)

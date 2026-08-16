@@ -2,7 +2,7 @@
   "schema_version": 1,
   "catalog_version": "catalog-v1-20260601-0e7ec70fbb7e",
   "contributor_index_version": "contributor-index-v1-20260601-c57aee819b6f",
-  "generated_at": "2026-08-08T00:00:00+00:00",
+  "generated_at": "2026-08-16T00:00:00+00:00",
   "source": "Derived from apps/web/public/data/challenge.v2.json, apps/web/public/data/routes/{universe,rounds}.v1.json, and apps/web/public/data/evidence/release-registry.v1.json (decade_activity only) -- no fresh full-corpus graph query. See docs/DATA_AND_RIGHTS.md.",
   "license": "Derived from the Discogs monthly CC0 data dumps via the three published artifacts above. See docs/DATA_AND_RIGHTS.md.",
   "contributors": [
@@ -27,7 +27,8 @@
           "release_id": 55556,
           "role_text": "Synthesizer [Splinter Mini Moog]"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 1003,
@@ -59,7 +60,11 @@
           "release_id": 1921374,
           "role_text": "Producer"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 673305,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 1289,
@@ -99,7 +104,11 @@
           "release_id": 4572672,
           "role_text": "Synthesizer [Modular Synthesizer]"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 74169,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 1781,
@@ -123,7 +132,11 @@
           "release_id": 68600,
           "role_text": "Written-By"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 12615,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 1818,
@@ -167,7 +180,11 @@
           "release_id": 567132,
           "role_text": "Percussion"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 156347,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 2264,
@@ -200,7 +217,11 @@
           "release_id": 688468,
           "role_text": "Backing Vocals"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 24220,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 2266,
@@ -275,7 +296,11 @@
           "release_id": 649372,
           "role_text": "Remix"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 10079,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 2494,
@@ -291,7 +316,11 @@
           "release_id": 885378,
           "role_text": "Written-By"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 79704,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 2656,
@@ -319,7 +348,8 @@
           "release_id": 6492338,
           "role_text": "Producer [Additional Demo Preproduction]"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 2714,
@@ -335,7 +365,11 @@
           "release_id": 1970471,
           "role_text": "Guitar"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 229621,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 2768,
@@ -405,7 +439,11 @@
           "release_id": 45045,
           "role_text": "Engineer [Assisting]"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 83080,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 3140,
@@ -469,7 +507,8 @@
           "release_id": 7951,
           "role_text": "Written-By"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 3268,
@@ -535,7 +574,11 @@
           "release_id": 9397424,
           "role_text": "Executive-Producer"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 29923,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 3479,
@@ -558,7 +601,11 @@
           "release_id": 45045,
           "role_text": "Producer, Arranged By, Written-By"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 1999233,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 3857,
@@ -569,7 +616,11 @@
       "decade_activity": [],
       "connection_count": 2,
       "neighboring_contributor_ids": [2768, 20661],
-      "evidence": []
+      "evidence": [],
+      "interesting_next_step": {
+        "artist_id": 20661,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 3865,
@@ -654,7 +705,8 @@
           "release_id": 30040,
           "role_text": "Piano [Acoustic], Electric Piano [Fender Rhodes], Synthesizer [Arp Odyssey, Pro Soloist, 2600, String Ensemble, Oberheim Polyphonic], Clavinet [Hohner D6]"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 3880,
@@ -670,7 +722,11 @@
           "release_id": 338051,
           "role_text": "Keyboards"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 136984,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 4091,
@@ -707,7 +763,8 @@
           "release_id": 1619448,
           "role_text": "Producer"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 4719,
@@ -730,7 +787,8 @@
           "release_id": 462648,
           "role_text": "Remix, Producer"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 4800,
@@ -750,7 +808,8 @@
           "release_id": 880461,
           "role_text": "Backing Vocals"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 4854,
@@ -790,7 +849,11 @@
           "release_id": 2797126,
           "role_text": "Beats"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 18844,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 5648,
@@ -843,7 +906,8 @@
           "release_id": 4948161,
           "role_text": "Producer, Bass, Congas, Percussion"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 5951,
@@ -915,7 +979,11 @@
           "release_id": 636213,
           "role_text": "Vocals, Written-By, Layout"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 51849,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 6092,
@@ -926,7 +994,11 @@
       "decade_activity": [],
       "connection_count": 2,
       "neighboring_contributor_ids": [145072, 1967268],
-      "evidence": []
+      "evidence": [],
+      "interesting_next_step": {
+        "artist_id": 145072,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 6520,
@@ -942,7 +1014,8 @@
           "release_id": 6070854,
           "role_text": "Music By"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 6952,
@@ -962,7 +1035,11 @@
           "release_id": 3444262,
           "role_text": "Electric Guitar"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 237914,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 7699,
@@ -982,7 +1059,11 @@
           "release_id": 388941,
           "role_text": "Vocals"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 106415,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 7987,
@@ -1006,7 +1087,8 @@
           "release_id": 31318551,
           "role_text": "Producer"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 8211,
@@ -1034,7 +1116,11 @@
           "release_id": 889902,
           "role_text": "Backing Vocals"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 8887,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 8279,
@@ -1094,7 +1180,8 @@
           "release_id": 1645901,
           "role_text": "Written-By"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 8718,
@@ -1114,7 +1201,8 @@
           "release_id": 603424,
           "role_text": "Vocals"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 8760,
@@ -1184,7 +1272,11 @@
           "release_id": 24226553,
           "role_text": "Compilation Producer"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 23825,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 8887,
@@ -1195,7 +1287,11 @@
       "decade_activity": [],
       "connection_count": 2,
       "neighboring_contributor_ids": [8211, 345004],
-      "evidence": []
+      "evidence": [],
+      "interesting_next_step": {
+        "artist_id": 8211,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 9051,
@@ -1215,7 +1311,11 @@
           "release_id": 503448,
           "role_text": "Keyboards"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 13932,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 9079,
@@ -1235,7 +1335,11 @@
           "release_id": 382066,
           "role_text": "Backing Vocals"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 160906,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 9741,
@@ -1281,7 +1385,11 @@
           "release_id": 9572745,
           "role_text": "Producer"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 170365,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 9746,
@@ -1304,7 +1412,8 @@
           "release_id": 4423196,
           "role_text": "Electric Piano [Fender Rhodes]"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 10079,
@@ -1327,7 +1436,11 @@
           "release_id": 533862,
           "role_text": "Tenor Saxophone, Flute, Composed By, Alto Flute"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 2266,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 10096,
@@ -1347,7 +1460,11 @@
           "release_id": 758676,
           "role_text": "Tenor Saxophone"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 63771,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 10263,
@@ -1430,7 +1547,8 @@
           "release_id": 10929410,
           "role_text": "Arranged By"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 10421,
@@ -1496,7 +1614,8 @@
           "release_id": 1481500,
           "role_text": "Producer"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 10463,
@@ -1516,7 +1635,8 @@
           "release_id": 518863,
           "role_text": "Acoustic Guitar"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 10514,
@@ -1536,7 +1656,11 @@
           "release_id": 572160,
           "role_text": "Tenor Saxophone"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 92623,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 10578,
@@ -1578,7 +1702,11 @@
           "release_id": 767106,
           "role_text": "Musician [Musicians]"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 347691,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 10582,
@@ -1598,7 +1726,8 @@
           "release_id": 371675,
           "role_text": "Backing Vocals"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 10584,
@@ -1653,7 +1782,11 @@
           "release_id": 882713,
           "role_text": "Vocals, Keyboards"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 112836,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 10620,
@@ -1673,7 +1806,11 @@
           "release_id": 753205,
           "role_text": "Piano [Acoustic]"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 97545,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 10643,
@@ -1693,7 +1830,8 @@
           "release_id": 628427,
           "role_text": "Vocals"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 10664,
@@ -1709,7 +1847,11 @@
           "release_id": 878023,
           "role_text": "Producer"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 39766,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 10783,
@@ -1809,7 +1951,11 @@
           "release_id": 2855629,
           "role_text": "Recorded By"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 3880,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 10933,
@@ -1886,7 +2032,8 @@
           "release_id": 3095008,
           "role_text": "Vocals"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 11012,
@@ -1944,7 +2091,11 @@
           "release_id": 754422,
           "role_text": "Vocals"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 292813,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 11136,
@@ -2007,7 +2158,11 @@
           "release_id": 773058,
           "role_text": "Vocals, Backing Vocals"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 215920,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 11213,
@@ -2040,7 +2195,11 @@
           "release_id": 8886468,
           "role_text": "Featuring"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 14743,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 11449,
@@ -2073,7 +2232,11 @@
           "release_id": 84699,
           "role_text": "Written-By"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 65049,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 11831,
@@ -2126,7 +2289,11 @@
           "release_id": 84699,
           "role_text": "Arranged By"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 17961,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 11879,
@@ -2204,7 +2371,11 @@
           "release_id": 388245,
           "role_text": "Written-By, Producer [Produced By]"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 311577,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 12142,
@@ -2224,7 +2395,8 @@
           "release_id": 950888,
           "role_text": "Backing Vocals"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 12208,
@@ -2245,7 +2417,11 @@
           "release_id": 878023,
           "role_text": "Performer [Originally Performed By]"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 10664,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 12332,
@@ -2269,7 +2445,8 @@
           "release_id": 462648,
           "role_text": "Written-By, Producer"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 12387,
@@ -2292,7 +2469,8 @@
           "release_id": 3591196,
           "role_text": "Piano [Acoustic]"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 12615,
@@ -2312,7 +2490,11 @@
           "release_id": 5661296,
           "role_text": "Featuring, Rap"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 1781,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 12686,
@@ -2362,7 +2544,11 @@
           "release_id": 5439196,
           "role_text": "Backing Vocals"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 12803,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 12803,
@@ -2385,7 +2571,11 @@
           "release_id": 5439196,
           "role_text": "Keyboards"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 12686,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 13151,
@@ -2436,7 +2626,8 @@
           "release_id": 624389,
           "role_text": "Written-By"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 13247,
@@ -2464,7 +2655,8 @@
           "release_id": 1652231,
           "role_text": "Producer, Remix"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 13735,
@@ -2536,7 +2728,11 @@
           "release_id": 636438,
           "role_text": "Producer, Vocals"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 256225,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 13911,
@@ -2547,7 +2743,11 @@
       "decade_activity": [],
       "connection_count": 2,
       "neighboring_contributor_ids": [2768, 170807],
-      "evidence": []
+      "evidence": [],
+      "interesting_next_step": {
+        "artist_id": 2768,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 13932,
@@ -2604,7 +2804,11 @@
           "release_id": 639744,
           "role_text": "Backing Vocals [Background Vocals]"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 9051,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 13961,
@@ -2690,7 +2894,11 @@
           "release_id": 567132,
           "role_text": "Vocals, Bass, Synthesizer [Synclavier], Mandolin"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 24651,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 14068,
@@ -2710,7 +2918,11 @@
           "release_id": 54170,
           "role_text": "Cuica, Percussion"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 24221,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 14743,
@@ -2726,7 +2938,11 @@
           "release_id": 6479699,
           "role_text": "Featuring"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 11213,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 15152,
@@ -2746,7 +2962,8 @@
           "release_id": 721353,
           "role_text": "Piano"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 15158,
@@ -2766,7 +2983,8 @@
           "release_id": 864452,
           "role_text": "Harmonica"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 15687,
@@ -2814,7 +3032,11 @@
           "release_id": 24316196,
           "role_text": "Vocals, Performer"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 173838,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 15885,
@@ -2883,7 +3105,11 @@
           "release_id": 8871121,
           "role_text": "Musician"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 215920,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 15900,
@@ -2916,7 +3142,8 @@
           "release_id": 8438437,
           "role_text": "Composed By, Conductor"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 16661,
@@ -2939,7 +3166,11 @@
           "release_id": 171506,
           "role_text": "Band [The Dust Brothers]"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 74166,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 16797,
@@ -2977,7 +3208,11 @@
           "release_id": 732935,
           "role_text": "Backing Vocals"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 30724,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 17546,
@@ -3059,7 +3294,8 @@
           "release_id": 4461509,
           "role_text": "Executive-Producer, Producer [Album Producer]"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 17827,
@@ -3137,7 +3373,11 @@
           "release_id": 33356249,
           "role_text": "Guitar"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 229781,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 17961,
@@ -3167,7 +3407,11 @@
           "release_id": 8653298,
           "role_text": "Lead Vocals"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 193582,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 18552,
@@ -3221,7 +3465,8 @@
           "release_id": 6200098,
           "role_text": "Drawing [New 2010 Front & Back Cover Drawings]"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 18684,
@@ -3241,7 +3486,11 @@
           "release_id": 338051,
           "role_text": "Featuring"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 74169,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 18836,
@@ -3284,7 +3533,11 @@
           "release_id": 22979084,
           "role_text": "Producer"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 1034811,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 18839,
@@ -3304,7 +3557,11 @@
           "release_id": 8438437,
           "role_text": "Producer"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 515349,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 18844,
@@ -3324,7 +3581,11 @@
           "release_id": 4213596,
           "role_text": "Vocals"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 39770,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 18956,
@@ -3411,7 +3672,8 @@
           "release_id": 20444167,
           "role_text": "Piano, Harmonica"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 18977,
@@ -3431,7 +3693,8 @@
           "release_id": 686416,
           "role_text": "Organ [Hammond]"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 18984,
@@ -3483,7 +3746,11 @@
           "release_id": 492592,
           "role_text": "Backing Vocals"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 112808,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 19134,
@@ -3507,7 +3774,8 @@
           "release_id": 29123191,
           "role_text": "Mixed By"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 19298,
@@ -3565,7 +3833,11 @@
           "release_id": 636217,
           "role_text": "Backing Vocals"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 19696,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 19696,
@@ -3585,7 +3857,11 @@
           "release_id": 7996217,
           "role_text": "Drums"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 19298,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 19814,
@@ -3605,7 +3881,11 @@
           "release_id": 2710805,
           "role_text": "Producer"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 369955,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 20661,
@@ -3673,7 +3953,11 @@
           "release_id": 4404,
           "role_text": "Producer"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 3857,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 20991,
@@ -3689,7 +3973,11 @@
       "decade_activity": [],
       "connection_count": 3,
       "neighboring_contributor_ids": [36647, 52230, 62920],
-      "evidence": []
+      "evidence": [],
+      "interesting_next_step": {
+        "artist_id": 36647,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 21363,
@@ -3709,7 +3997,11 @@
           "release_id": 8613738,
           "role_text": "Producer"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 1293126,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 21658,
@@ -3729,7 +4021,8 @@
           "release_id": 340254,
           "role_text": "Bass, Other [Groitaz Beauty]"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 22757,
@@ -3749,7 +4042,8 @@
           "release_id": 2128558,
           "role_text": "Backing Vocals"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 22854,
@@ -3782,7 +4076,11 @@
           "release_id": 6225910,
           "role_text": "Producer"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 266431,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 23524,
@@ -3848,7 +4146,8 @@
           "release_id": 1511637,
           "role_text": "Vocals, Guitar, Keyboards"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 23755,
@@ -3928,7 +4227,11 @@
           "release_id": 22013314,
           "role_text": "Soloist, Trumpet"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 3293196,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 23760,
@@ -3948,7 +4251,11 @@
           "release_id": 510955,
           "role_text": "Drums"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 19298,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 23825,
@@ -3964,7 +4271,11 @@
           "release_id": 1317141,
           "role_text": "Keyboards"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 8760,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 24220,
@@ -3975,7 +4286,11 @@
       "decade_activity": [],
       "connection_count": 2,
       "neighboring_contributor_ids": [2264, 25809],
-      "evidence": []
+      "evidence": [],
+      "interesting_next_step": {
+        "artist_id": 2264,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 24221,
@@ -4044,7 +4359,11 @@
           "release_id": 8780191,
           "role_text": "Backing Vocals"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 14068,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 24651,
@@ -4064,7 +4383,11 @@
           "release_id": 369165,
           "role_text": "Trombone"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 321128,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 25495,
@@ -4097,7 +4420,11 @@
           "release_id": 4817472,
           "role_text": "Producer"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 1967265,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 25809,
@@ -4164,7 +4491,11 @@
           "release_id": 3731185,
           "role_text": "Vocals [Additional]"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 24220,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 25884,
@@ -4184,7 +4515,11 @@
           "release_id": 74316,
           "role_text": "Harmonica"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 301244,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 27518,
@@ -4228,7 +4563,11 @@
           "release_id": 7011412,
           "role_text": "Performer [W/]"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 1003,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 28630,
@@ -4248,7 +4587,8 @@
           "release_id": 9478300,
           "role_text": "Backing Vocals"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 28972,
@@ -4264,7 +4604,11 @@
       "decade_activity": [],
       "connection_count": 2,
       "neighboring_contributor_ids": [2768, 46063],
-      "evidence": []
+      "evidence": [],
+      "interesting_next_step": {
+        "artist_id": 46063,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 29923,
@@ -4280,7 +4624,11 @@
           "release_id": 7926540,
           "role_text": "Performer [Nappy Dugout]"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 301570,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 29981,
@@ -4300,7 +4648,8 @@
           "release_id": 778235,
           "role_text": "Organ, Synthesizer"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 30212,
@@ -4320,7 +4669,8 @@
           "release_id": 308061,
           "role_text": "Backing Vocals"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 30344,
@@ -4361,7 +4711,11 @@
           "release_id": 3178404,
           "role_text": "Vocals"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 255796,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 30419,
@@ -4381,7 +4735,11 @@
           "release_id": 50165,
           "role_text": "Drums [And Syndrums]"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 13932,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 30420,
@@ -4401,7 +4759,11 @@
           "release_id": 50165,
           "role_text": "Bass Guitar"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 13932,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 30542,
@@ -4475,7 +4837,11 @@
           "release_id": 769315,
           "role_text": "Backing Vocals, Lead Vocals"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 252118,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 30552,
@@ -4532,7 +4898,11 @@
           "release_id": 7996217,
           "role_text": "Soloist, Keyboards"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 10096,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 30721,
@@ -4552,7 +4922,8 @@
           "release_id": 2830960,
           "role_text": "Flute"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 30724,
@@ -4573,7 +4944,11 @@
           "release_id": 2319270,
           "role_text": "Producer"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 16797,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 31213,
@@ -4606,7 +4981,8 @@
           "release_id": 81449,
           "role_text": "Producer"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 31752,
@@ -4617,7 +4993,11 @@
       "decade_activity": [],
       "connection_count": 2,
       "neighboring_contributor_ids": [44944, 79096],
-      "evidence": []
+      "evidence": [],
+      "interesting_next_step": {
+        "artist_id": 44944,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 31844,
@@ -4645,7 +5025,11 @@
           "release_id": 974948,
           "role_text": "Performer [Original]"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 190949,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 32216,
@@ -4665,7 +5049,11 @@
           "release_id": 8560073,
           "role_text": "Musician"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 149420,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 33534,
@@ -4728,7 +5116,11 @@
           "release_id": 819849,
           "role_text": "Written-By [Uncredited]"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 200785,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 33591,
@@ -4744,7 +5136,11 @@
           "release_id": 8732146,
           "role_text": "DJ Mix"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 70828,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 33708,
@@ -4767,7 +5163,8 @@
           "release_id": 377231,
           "role_text": "Synthesizer, Organ, Lead Vocals"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 34181,
@@ -4787,7 +5184,8 @@
           "release_id": 379427,
           "role_text": "Backing Vocals"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 34278,
@@ -4798,7 +5196,11 @@
       "decade_activity": [],
       "connection_count": 2,
       "neighboring_contributor_ids": [2768, 60149],
-      "evidence": []
+      "evidence": [],
+      "interesting_next_step": {
+        "artist_id": 60149,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 34858,
@@ -4826,7 +5228,11 @@
           "release_id": 6098179,
           "role_text": "Keyboards, Synthesizer, Drum Programming"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 135926,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 35125,
@@ -4846,7 +5252,8 @@
           "release_id": 778412,
           "role_text": "Drums"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 35199,
@@ -4866,7 +5273,8 @@
           "release_id": 1289576,
           "role_text": "Drums"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 35301,
@@ -4945,7 +5353,11 @@
           "release_id": 840004,
           "role_text": "Lead Vocals, Harmony Vocals, Bass, Acoustic Guitar, Tambourine"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 106415,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 35646,
@@ -5009,7 +5421,11 @@
           "release_id": 862235,
           "role_text": "Producer"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 321128,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 35848,
@@ -5073,7 +5489,8 @@
           "release_id": 9373120,
           "role_text": "Vocals"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 36603,
@@ -5155,7 +5572,11 @@
           "release_id": 235169,
           "role_text": "Written-By"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 120623,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 36647,
@@ -5187,7 +5608,11 @@
           "release_id": 24931,
           "role_text": "Producer"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 20991,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 36862,
@@ -5207,7 +5632,8 @@
           "release_id": 974758,
           "role_text": "Backing Vocals"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 37079,
@@ -5227,7 +5653,8 @@
           "release_id": 882713,
           "role_text": "Backing Vocals"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 37082,
@@ -5247,7 +5674,8 @@
           "release_id": 950911,
           "role_text": "Backing Vocals"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 37565,
@@ -5289,7 +5717,11 @@
           "release_id": 3731185,
           "role_text": "Guitar, Bass"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 44944,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 37729,
@@ -5309,7 +5741,11 @@
           "release_id": 621819,
           "role_text": "Guitar"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 44944,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 37735,
@@ -5332,7 +5768,11 @@
           "release_id": 2255507,
           "role_text": "Guitar"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 266352,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 38258,
@@ -5352,7 +5792,8 @@
           "release_id": 370997,
           "role_text": "Backing Vocals"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 38661,
@@ -5376,7 +5817,11 @@
           "release_id": 12762102,
           "role_text": "Producer"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 449712,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 39600,
@@ -5453,7 +5898,11 @@
           "release_id": 36890284,
           "role_text": "Written-By"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 125246,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 39765,
@@ -5495,7 +5944,11 @@
           "release_id": 9127713,
           "role_text": "Arranged By"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 428789,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 39766,
@@ -5523,7 +5976,11 @@
           "release_id": 878023,
           "role_text": "Performer [Originally Performed By]"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 10664,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 39770,
@@ -5539,7 +5996,11 @@
           "release_id": 15901896,
           "role_text": "Guest [Musical Guest:]"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 18844,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 40916,
@@ -5609,7 +6070,8 @@
           "release_id": 12444418,
           "role_text": "Producer"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 41237,
@@ -5629,7 +6091,8 @@
           "release_id": 1290455,
           "role_text": "Vocals"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 41266,
@@ -5649,7 +6112,8 @@
           "release_id": 436655,
           "role_text": "Backing Vocals"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 41441,
@@ -5660,7 +6124,11 @@
       "decade_activity": [],
       "connection_count": 2,
       "neighboring_contributor_ids": [42627, 122792],
-      "evidence": []
+      "evidence": [],
+      "interesting_next_step": {
+        "artist_id": 42627,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 41642,
@@ -5680,7 +6148,11 @@
           "release_id": 31902874,
           "role_text": "Mixed By"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 60480,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 42058,
@@ -5756,7 +6228,11 @@
           "release_id": 618219,
           "role_text": "Written-By"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 297977,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 42610,
@@ -5794,7 +6270,11 @@
           "release_id": 6070854,
           "role_text": "Backing Vocals [Uncredited]"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 59795,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 42627,
@@ -5810,7 +6290,11 @@
           "release_id": 227671,
           "role_text": "Vocals"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 41441,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 43745,
@@ -5833,7 +6317,8 @@
           "release_id": 9871946,
           "role_text": "Backing Vocals"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 44566,
@@ -5861,7 +6346,8 @@
           "release_id": 5847571,
           "role_text": "Written-By"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 44944,
@@ -5925,7 +6411,11 @@
           "release_id": 6420216,
           "role_text": "Backing Vocals [Background Vocals]"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 31752,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 46063,
@@ -5953,7 +6443,11 @@
           "release_id": 308278,
           "role_text": "Producer"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 28972,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 46163,
@@ -5973,7 +6467,11 @@
           "release_id": 248703,
           "role_text": "Percussion"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 8760,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 46481,
@@ -6051,7 +6549,11 @@
           "release_id": 746221,
           "role_text": "Guitar, Vocals"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 12208,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 47333,
@@ -6071,7 +6573,11 @@
           "release_id": 758736,
           "role_text": "Producer"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 261837,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 48090,
@@ -6110,7 +6616,11 @@
           "release_id": 2456618,
           "role_text": "Producer [Album Produced By]"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 251689,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 48412,
@@ -6126,7 +6636,11 @@
           "release_id": 445811,
           "role_text": "Written-By"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 250892,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 48424,
@@ -6146,7 +6660,11 @@
           "release_id": 8677931,
           "role_text": "Producer"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 237914,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 48512,
@@ -6224,7 +6742,8 @@
           "release_id": 950909,
           "role_text": "Written-By"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 49624,
@@ -6244,7 +6763,11 @@
           "release_id": 245159,
           "role_text": "Soloist, Guitar"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 24221,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 50077,
@@ -6260,7 +6783,8 @@
           "release_id": 385114,
           "role_text": "Written-By"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 50263,
@@ -6281,7 +6805,11 @@
           "release_id": 508497,
           "role_text": "Producer"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 366507,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 50702,
@@ -6319,7 +6847,11 @@
           "release_id": 758736,
           "role_text": "Engineer [Additional Engineering At Record Plant]"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 47333,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 50997,
@@ -6362,7 +6894,8 @@
           "release_id": 862235,
           "role_text": "Producer"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 51039,
@@ -6397,7 +6930,11 @@
           "release_id": 709950,
           "role_text": "Written-By"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 112851,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 51849,
@@ -6417,7 +6954,11 @@
           "release_id": 811739,
           "role_text": "Bass Guitar"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 5951,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 52230,
@@ -6468,7 +7009,11 @@
           "release_id": 375854,
           "role_text": "Engineer"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 196766,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 53248,
@@ -6531,7 +7076,11 @@
           "release_id": 4004728,
           "role_text": "Vocals"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 211643,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 54212,
@@ -6551,7 +7100,8 @@
           "release_id": 507814,
           "role_text": "Backing Vocals"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 54650,
@@ -6572,7 +7122,11 @@
           "release_id": 472534,
           "role_text": "Producer"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 978936,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 55029,
@@ -6600,7 +7154,8 @@
           "release_id": 840004,
           "role_text": "Vocals [Second], Keyboards [Intro]"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 56621,
@@ -6624,7 +7179,8 @@
           "release_id": 219610,
           "role_text": "Producer"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 56798,
@@ -6640,7 +7196,11 @@
           "release_id": 943682,
           "role_text": "Writer"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 274429,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 57103,
@@ -6723,7 +7283,11 @@
           "release_id": 395506,
           "role_text": "Executive-Producer"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 51849,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 58687,
@@ -6739,7 +7303,11 @@
           "release_id": 692861,
           "role_text": "Producer"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 399028,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 59249,
@@ -6816,7 +7384,8 @@
           "release_id": 576614,
           "role_text": "Backing Vocals"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 59770,
@@ -6877,7 +7446,11 @@
           "release_id": 378903,
           "role_text": "Vocals"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 253111,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 59792,
@@ -6946,7 +7519,11 @@
           "release_id": 898044,
           "role_text": "Guitar"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 50702,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 59795,
@@ -6984,7 +7561,11 @@
           "release_id": 2655659,
           "role_text": "Organ"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 42610,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 60149,
@@ -7049,7 +7630,11 @@
           "release_id": 1730063,
           "role_text": "Composed By, Producer"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 34278,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 60451,
@@ -7072,7 +7657,11 @@
           "release_id": 245159,
           "role_text": "Piano, Synthesizer"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 24221,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 60454,
@@ -7120,7 +7709,8 @@
           "release_id": 676972,
           "role_text": "Written-By"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 60480,
@@ -7136,7 +7726,11 @@
       "decade_activity": [],
       "connection_count": 3,
       "neighboring_contributor_ids": [25884, 41642, 60621],
-      "evidence": []
+      "evidence": [],
+      "interesting_next_step": {
+        "artist_id": 25884,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 60621,
@@ -7173,7 +7767,11 @@
           "release_id": 219610,
           "role_text": "Producer, Engineer"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 60480,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 61430,
@@ -7193,7 +7791,8 @@
           "release_id": 767106,
           "role_text": "Musician [Musicians]"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 62920,
@@ -7267,7 +7866,11 @@
           "release_id": 741787,
           "role_text": "Music Director [Musical Director]"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 274429,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 63084,
@@ -7338,7 +7941,8 @@
           "release_id": 402827,
           "role_text": "Electric Guitar"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 63771,
@@ -7416,7 +8020,11 @@
           "release_id": 242478,
           "role_text": "Synthesizer"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 10096,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 64756,
@@ -7468,7 +8076,8 @@
           "release_id": 3395941,
           "role_text": "Mixed By"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 65049,
@@ -7479,7 +8088,11 @@
       "decade_activity": [],
       "connection_count": 2,
       "neighboring_contributor_ids": [11449, 174616],
-      "evidence": []
+      "evidence": [],
+      "interesting_next_step": {
+        "artist_id": 11449,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 66824,
@@ -7556,7 +8169,11 @@
           "release_id": 778412,
           "role_text": "Piano"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 472046,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 66916,
@@ -7572,7 +8189,8 @@
           "release_id": 974948,
           "role_text": "Performer [Original]"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 67331,
@@ -7594,7 +8212,11 @@
           "release_id": 9478300,
           "role_text": "Vocals"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 193582,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 68211,
@@ -7618,7 +8240,11 @@
           "release_id": 6860035,
           "role_text": "Written-By"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 144998,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 68693,
@@ -7667,7 +8293,11 @@
           "release_id": 880461,
           "role_text": "Backing Vocals"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 136179,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 69433,
@@ -7687,7 +8317,8 @@
           "release_id": 7098777,
           "role_text": "Vocals"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 69621,
@@ -7707,7 +8338,11 @@
           "release_id": 851940,
           "role_text": "Saxophone"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 266352,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 69722,
@@ -7774,7 +8409,11 @@
           "release_id": 779365,
           "role_text": "Backing Vocals [Ladies Man]"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 252993,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 70828,
@@ -7802,7 +8441,11 @@
           "release_id": 8732146,
           "role_text": "Featuring"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 33591,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 70829,
@@ -7828,7 +8471,11 @@
           "release_id": 450138,
           "role_text": "Producer"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 252395,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 72308,
@@ -7851,7 +8498,8 @@
           "release_id": 2860267,
           "role_text": "Vocals, Acoustic Guitar, Music By"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 72461,
@@ -7871,7 +8519,8 @@
           "release_id": 340254,
           "role_text": "Guitar, Bass"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 74166,
@@ -7891,7 +8540,11 @@
           "release_id": 31902874,
           "role_text": "Producer"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 16661,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 74169,
@@ -7911,7 +8564,11 @@
           "release_id": 1061438,
           "role_text": "Written-By"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 18684,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 74213,
@@ -7953,7 +8610,11 @@
           "release_id": 457513,
           "role_text": "Synthesizer"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 246650,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 74286,
@@ -8018,7 +8679,8 @@
           "release_id": 3276375,
           "role_text": "Piano, Keyboards, Organ [Hammond], Glockenspiel, Programmed By"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 76605,
@@ -8051,7 +8713,11 @@
           "release_id": 552469,
           "role_text": "Harmonica"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 50263,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 77354,
@@ -8084,7 +8750,8 @@
           "release_id": 3236442,
           "role_text": "Lead Vocals"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 79096,
@@ -8136,7 +8803,11 @@
           "release_id": 5192412,
           "role_text": "Recorded By"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 31752,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 79704,
@@ -8160,7 +8831,11 @@
           "release_id": 669631,
           "role_text": "Remix, Producer [Additional]"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 2494,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 79751,
@@ -8180,7 +8855,8 @@
           "release_id": 840004,
           "role_text": "Keyboards"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 80387,
@@ -8217,7 +8893,11 @@
           "release_id": 631958,
           "role_text": "Engineer [Associate]"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 67331,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 81013,
@@ -8245,7 +8925,8 @@
           "release_id": 885378,
           "role_text": "Featuring"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 81857,
@@ -8265,7 +8946,8 @@
           "release_id": 335423,
           "role_text": "Percussion"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 82294,
@@ -8341,7 +9023,11 @@
           "release_id": 3176554,
           "role_text": "Vocals, Piano"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 252996,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 82730,
@@ -8362,7 +9048,11 @@
           "release_id": 11282915,
           "role_text": "Performer [Original]"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 39765,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 83080,
@@ -8378,7 +9068,11 @@
       "decade_activity": [],
       "connection_count": 1,
       "neighboring_contributor_ids": [2768],
-      "evidence": []
+      "evidence": [],
+      "interesting_next_step": {
+        "artist_id": 2768,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 84145,
@@ -8398,7 +9092,8 @@
           "release_id": 9078897,
           "role_text": "Electric Guitar"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 85101,
@@ -8464,7 +9159,8 @@
           "release_id": 12608847,
           "role_text": "Music By, Words By"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 85929,
@@ -8543,7 +9239,11 @@
           "release_id": 686910,
           "role_text": "Electric Piano [Fender Rhodes]"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 112851,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 87519,
@@ -8563,7 +9263,8 @@
           "release_id": 389855,
           "role_text": "Bass"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 89675,
@@ -8596,7 +9297,8 @@
           "release_id": 549515,
           "role_text": "Engineer, Mixed By"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 90037,
@@ -8619,7 +9321,8 @@
           "release_id": 7230827,
           "role_text": "Vocals [Additional]"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 90154,
@@ -8642,7 +9345,8 @@
           "release_id": 595695,
           "role_text": "Vocals, Backing Vocals [Background Vocal], Guitar"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 90233,
@@ -8728,7 +9432,8 @@
           "release_id": 1570697,
           "role_text": "Music By"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 90492,
@@ -8752,7 +9457,8 @@
           "release_id": 402827,
           "role_text": "Percussion"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 90595,
@@ -8775,7 +9481,8 @@
           "release_id": 807853,
           "role_text": "Arranged By [String], Keyboards"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 92471,
@@ -8803,7 +9510,11 @@
           "release_id": 643678,
           "role_text": "Producer [Audio Produced By]"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 229621,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 92623,
@@ -8881,7 +9592,11 @@
           "release_id": 8780191,
           "role_text": "Lead Vocals, Guitar"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 10514,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 96036,
@@ -8901,7 +9616,11 @@
           "release_id": 689570,
           "role_text": "Drums"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 145072,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 97545,
@@ -8955,7 +9674,11 @@
           "release_id": 572160,
           "role_text": "Tenor Saxophone"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 10620,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 98889,
@@ -8975,7 +9698,11 @@
           "release_id": 535600,
           "role_text": "Saxophone"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 232157,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 101028,
@@ -9054,7 +9781,11 @@
           "release_id": 7098777,
           "role_text": "Vocals"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 253965,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 101883,
@@ -9124,7 +9855,11 @@
           "release_id": 6709061,
           "role_text": "Co-producer"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 321128,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 103687,
@@ -9140,7 +9875,11 @@
       "decade_activity": [],
       "connection_count": 3,
       "neighboring_contributor_ids": [18836, 170807, 175760],
-      "evidence": []
+      "evidence": [],
+      "interesting_next_step": {
+        "artist_id": 18836,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 105620,
@@ -9160,7 +9899,11 @@
           "release_id": 7307234,
           "role_text": "Acoustic Guitar"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 19298,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 106415,
@@ -9208,7 +9951,11 @@
           "release_id": 649372,
           "role_text": "Engineer [Remix]"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 7699,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 106474,
@@ -9287,7 +10034,11 @@
           "release_id": 631958,
           "role_text": "Guitar [Nylon String Guitar]"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 80387,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 106909,
@@ -9307,7 +10058,8 @@
           "release_id": 371878,
           "role_text": "Bass"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 108475,
@@ -9327,7 +10079,8 @@
           "release_id": 3527542,
           "role_text": "Piano"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 108722,
@@ -9351,7 +10104,11 @@
           "release_id": 8672906,
           "role_text": "Producer"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 204275,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 109822,
@@ -9371,7 +10128,11 @@
           "release_id": 898044,
           "role_text": "Organ"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 254259,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 110252,
@@ -9391,7 +10152,11 @@
           "release_id": 3258098,
           "role_text": "Producer, Arranged By"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 134633,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 110253,
@@ -9407,7 +10172,11 @@
           "release_id": 13102846,
           "role_text": "Producer [Produced By]"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 173104,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 110387,
@@ -9435,7 +10204,11 @@
           "release_id": 45888,
           "role_text": "Engineer [Recording Engineer]"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 254259,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 110862,
@@ -9500,7 +10273,11 @@
           "release_id": 9724085,
           "role_text": "Vocals, Acoustic Guitar"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 185751,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 111502,
@@ -9516,7 +10293,11 @@
           "release_id": 6086416,
           "role_text": "Featuring"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 321128,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 112806,
@@ -9536,7 +10317,8 @@
           "release_id": 2429269,
           "role_text": "Backing Vocals"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 112808,
@@ -9556,7 +10338,11 @@
           "release_id": 370997,
           "role_text": "Guitar"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 18984,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 112836,
@@ -9576,7 +10362,11 @@
           "release_id": 3276375,
           "role_text": "Mastered By"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 10584,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 112851,
@@ -9596,7 +10386,11 @@
           "release_id": 686910,
           "role_text": "Trumpet"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 51039,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 113655,
@@ -9607,7 +10401,11 @@
       "decade_activity": [],
       "connection_count": 2,
       "neighboring_contributor_ids": [208220, 515349],
-      "evidence": []
+      "evidence": [],
+      "interesting_next_step": {
+        "artist_id": 208220,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 114977,
@@ -9630,7 +10428,8 @@
           "release_id": 320334,
           "role_text": "Piano [Acoustic], Synthesizer [Strings]"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 117225,
@@ -9687,7 +10486,11 @@
           "release_id": 845344,
           "role_text": "Backing Vocals"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 168059,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 118532,
@@ -9712,7 +10515,11 @@
           "release_id": 13487093,
           "role_text": "Featuring [Uncredited]"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 401308,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 119840,
@@ -9735,7 +10542,8 @@
           "release_id": 939458,
           "role_text": "Backing Vocals"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 120232,
@@ -9795,7 +10603,11 @@
           "release_id": 617533,
           "role_text": "Written-By"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 173805,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 120496,
@@ -9815,7 +10627,11 @@
           "release_id": 4662326,
           "role_text": "Producer"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 153073,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 120623,
@@ -9835,7 +10651,11 @@
           "release_id": 9047311,
           "role_text": "Harmonica"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 12686,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 122381,
@@ -9877,7 +10697,11 @@
           "release_id": 998541,
           "role_text": "Written-By"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 142837,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 122792,
@@ -9936,7 +10760,11 @@
           "release_id": 741787,
           "role_text": "Music Director [Musical Director]"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 41441,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 124497,
@@ -9990,7 +10818,8 @@
           "release_id": 6981491,
           "role_text": "Vocals"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 124535,
@@ -10006,7 +10835,11 @@
           "release_id": 8069154,
           "role_text": "Producer"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 209519,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 124907,
@@ -10030,7 +10863,8 @@
           "release_id": 1413289,
           "role_text": "Producer"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 125246,
@@ -10041,7 +10875,11 @@
       "decade_activity": [],
       "connection_count": 1,
       "neighboring_contributor_ids": [39600],
-      "evidence": []
+      "evidence": [],
+      "interesting_next_step": {
+        "artist_id": 39600,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 125660,
@@ -10061,7 +10899,11 @@
           "release_id": 6433023,
           "role_text": "Mixed By"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 317140,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 129348,
@@ -10090,7 +10932,11 @@
           "release_id": 8061122,
           "role_text": "Backing Band"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 200805,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 129495,
@@ -10114,7 +10960,8 @@
           "release_id": 378726,
           "role_text": "Producer"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 129663,
@@ -10134,7 +10981,8 @@
           "release_id": 369931,
           "role_text": "Backing Vocals"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 132290,
@@ -10157,7 +11005,11 @@
           "release_id": 507814,
           "role_text": "Programmed By, Bass, Keyboards, Guitar, Drum Programming"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 51039,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 134633,
@@ -10177,7 +11029,11 @@
           "release_id": 3258098,
           "role_text": "Mixed By [5.1 Surround Mix]"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 110252,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 135478,
@@ -10197,7 +11053,11 @@
           "release_id": 389891,
           "role_text": "Written-By"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 241495,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 135847,
@@ -10217,7 +11077,8 @@
           "release_id": 463291,
           "role_text": "Tenor Saxophone"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 135850,
@@ -10237,7 +11098,11 @@
           "release_id": 882713,
           "role_text": "Guitar"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 10584,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 135926,
@@ -10248,7 +11113,11 @@
       "decade_activity": [],
       "connection_count": 2,
       "neighboring_contributor_ids": [34858, 245423],
-      "evidence": []
+      "evidence": [],
+      "interesting_next_step": {
+        "artist_id": 34858,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 136179,
@@ -10268,7 +11137,11 @@
           "release_id": 4111553,
           "role_text": "Electric Guitar"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 68693,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 136198,
@@ -10288,7 +11161,8 @@
           "release_id": 688194,
           "role_text": "Congas, Percussion"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 136984,
@@ -10308,7 +11182,11 @@
           "release_id": 918580,
           "role_text": "Bass"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 3880,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 137418,
@@ -10376,7 +11254,11 @@
           "release_id": 587454,
           "role_text": "Vocals, Organ, Piano, Synthesizer"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 185751,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 137927,
@@ -10396,7 +11278,8 @@
           "release_id": 1954960,
           "role_text": "Acoustic Guitar"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 138556,
@@ -10474,7 +11357,11 @@
           "release_id": 694074,
           "role_text": "Guitar, Piano, Vocals"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 4854,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 139508,
@@ -10498,7 +11385,8 @@
           "release_id": 1408330,
           "role_text": "Producer"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 141624,
@@ -10528,7 +11416,8 @@
           "release_id": 9510689,
           "role_text": "Producer"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 142837,
@@ -10551,7 +11440,11 @@
           "release_id": 448419,
           "role_text": "Technician"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 122381,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 144589,
@@ -10571,7 +11464,11 @@
           "release_id": 76870,
           "role_text": "Percussion"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 8760,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 144998,
@@ -10592,7 +11489,11 @@
           "release_id": 9397424,
           "role_text": "Performer [Behind The Wall Of Sleep]"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 68211,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 145072,
@@ -10650,7 +11551,11 @@
           "release_id": 946433,
           "role_text": "Written-By"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 6092,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 147827,
@@ -10670,7 +11575,11 @@
           "release_id": 5451849,
           "role_text": "Mastered By"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 149420,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 147878,
@@ -10694,7 +11603,8 @@
           "release_id": 86141,
           "role_text": "Choir"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 149420,
@@ -10767,7 +11677,11 @@
           "release_id": 5451849,
           "role_text": "Adapted By, Arranged By, Producer"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 32216,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 150321,
@@ -10787,7 +11701,11 @@
           "release_id": 1642684,
           "role_text": "Producer"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 251689,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 152377,
@@ -10807,7 +11725,11 @@
           "release_id": 4834856,
           "role_text": "Composed By"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 1034811,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 152685,
@@ -10887,7 +11809,11 @@
           "release_id": 14437797,
           "role_text": "Electric Piano"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 170807,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 153073,
@@ -10898,7 +11824,11 @@
       "decade_activity": [],
       "connection_count": 2,
       "neighboring_contributor_ids": [120496, 332112],
-      "evidence": []
+      "evidence": [],
+      "interesting_next_step": {
+        "artist_id": 120496,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 153219,
@@ -10931,7 +11861,11 @@
           "release_id": 6433023,
           "role_text": "Engineer, Mixed By"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 317140,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 154225,
@@ -10951,7 +11885,11 @@
           "release_id": 46176,
           "role_text": "Synthesizer"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 254259,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 156347,
@@ -10971,7 +11909,11 @@
           "release_id": 3424183,
           "role_text": "Edited By, Engineer, Producer"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 252102,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 157838,
@@ -11023,7 +11965,11 @@
           "release_id": 8010502,
           "role_text": "Remix"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 144998,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 160906,
@@ -11034,7 +11980,11 @@
       "decade_activity": [],
       "connection_count": 2,
       "neighboring_contributor_ids": [9079, 401308],
-      "evidence": []
+      "evidence": [],
+      "interesting_next_step": {
+        "artist_id": 9079,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 161091,
@@ -11243,7 +12193,8 @@
           "release_id": 1081500,
           "role_text": "Producer"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 162614,
@@ -11263,7 +12214,8 @@
           "release_id": 385461,
           "role_text": "Vocals"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 163505,
@@ -11283,7 +12235,11 @@
           "release_id": 974948,
           "role_text": "Performer [Original]"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 190949,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 164557,
@@ -11303,7 +12259,8 @@
           "release_id": 9510689,
           "role_text": "Engineer"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 168059,
@@ -11323,7 +12280,11 @@
           "release_id": 608533,
           "role_text": "Guitar"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 117225,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 168907,
@@ -11344,7 +12305,11 @@
           "release_id": 708657,
           "role_text": "Backing Vocals"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 292813,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 169117,
@@ -11364,7 +12329,11 @@
           "release_id": 29300728,
           "role_text": "Author"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 13943914,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 169574,
@@ -11384,7 +12353,11 @@
           "release_id": 4762682,
           "role_text": "Guitar"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 18984,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 170365,
@@ -11413,7 +12386,11 @@
           "release_id": 9373120,
           "role_text": "Vocals"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 9741,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 170807,
@@ -11481,7 +12458,11 @@
           "release_id": 7049505,
           "role_text": "Producer"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 13911,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 173104,
@@ -11527,7 +12508,11 @@
           "release_id": 853949,
           "role_text": "Guitar"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 110253,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 173805,
@@ -11547,7 +12532,11 @@
           "release_id": 617533,
           "role_text": "Producer [P]"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 292542,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 173838,
@@ -11567,7 +12556,11 @@
           "release_id": 294216,
           "role_text": "Mixed By"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 15687,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 173865,
@@ -11587,7 +12580,8 @@
           "release_id": 693253,
           "role_text": "Drums, Synthesizer, Vocals"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 174046,
@@ -11607,7 +12601,8 @@
           "release_id": 2538659,
           "role_text": "Bass"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 174616,
@@ -11627,7 +12622,11 @@
           "release_id": 2485776,
           "role_text": "Producer"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 65049,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 175395,
@@ -11643,7 +12642,11 @@
           "release_id": 378726,
           "role_text": "Producer"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 27518,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 175760,
@@ -11663,7 +12666,11 @@
           "release_id": 6225910,
           "role_text": "Producer, Engineer"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 103687,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 177374,
@@ -11731,7 +12738,8 @@
           "release_id": 892036,
           "role_text": "Producer, Recorded By, Mixed By"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 177516,
@@ -11775,7 +12783,8 @@
           "release_id": 517165,
           "role_text": "Musician [Additional Musician], Violin"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 180664,
@@ -11799,7 +12808,8 @@
           "release_id": 232869,
           "role_text": "Vocals"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 183231,
@@ -11832,7 +12842,11 @@
           "release_id": 2741572,
           "role_text": "Engineer [Additional]"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 330380,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 185751,
@@ -11852,7 +12866,11 @@
           "release_id": 378245,
           "role_text": "Saxophone"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 110862,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 190949,
@@ -11863,7 +12881,11 @@
       "decade_activity": [],
       "connection_count": 3,
       "neighboring_contributor_ids": [66916, 31844, 163505],
-      "evidence": []
+      "evidence": [],
+      "interesting_next_step": {
+        "artist_id": 31844,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 192112,
@@ -11883,7 +12905,11 @@
           "release_id": 533862,
           "role_text": "Drums"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 24221,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 193582,
@@ -11903,7 +12929,11 @@
           "release_id": 9478300,
           "role_text": "Synthesizer"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 67331,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 194118,
@@ -11923,7 +12953,8 @@
           "release_id": 694074,
           "role_text": "Drums, Percussion"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 196766,
@@ -11934,7 +12965,11 @@
       "decade_activity": [],
       "connection_count": 2,
       "neighboring_contributor_ids": [52230, 129348],
-      "evidence": []
+      "evidence": [],
+      "interesting_next_step": {
+        "artist_id": 52230,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 200567,
@@ -12015,7 +13050,8 @@
           "release_id": 853949,
           "role_text": "Backing Vocals"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 200762,
@@ -12035,7 +13071,8 @@
           "release_id": 1434955,
           "role_text": "Drums"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 200785,
@@ -12055,7 +13092,11 @@
           "release_id": 6128006,
           "role_text": "Bass"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 33534,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 200805,
@@ -12083,7 +13124,11 @@
           "release_id": 517165,
           "role_text": "Engineer [Assistant Engineer At The Site]"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 129348,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 201472,
@@ -12103,7 +13148,8 @@
           "release_id": 631958,
           "role_text": "Backing Vocals"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 201685,
@@ -12126,7 +13172,11 @@
           "release_id": 1738028,
           "role_text": "Mixed By [Festival Express concert material]"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 120232,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 202252,
@@ -12154,7 +13204,11 @@
           "release_id": 531999,
           "role_text": "Written-By"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 221444,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 204275,
@@ -12177,7 +13231,11 @@
           "release_id": 517165,
           "role_text": "Engineer [Assistant Engineer At Scream Studios]"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 108722,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 204600,
@@ -12197,7 +13255,8 @@
           "release_id": 880461,
           "role_text": "Backing Vocals"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 208220,
@@ -12235,7 +13294,11 @@
           "release_id": 728670,
           "role_text": "Guitar, Vocals"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 113655,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 208234,
@@ -12255,7 +13318,8 @@
           "release_id": 939458,
           "role_text": "Piano"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 209519,
@@ -12278,7 +13342,11 @@
           "release_id": 8069154,
           "role_text": "Engineer [Assistant Engineers]"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 124535,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 211619,
@@ -12298,7 +13366,11 @@
           "release_id": 439425,
           "role_text": "Guitar"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 33534,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 211633,
@@ -12318,7 +13390,11 @@
           "release_id": 8417928,
           "role_text": "Guitar"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 18984,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 211643,
@@ -12338,7 +13414,11 @@
           "release_id": 6420216,
           "role_text": "Drums"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 53248,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 215471,
@@ -12358,7 +13438,11 @@
           "release_id": 4404080,
           "role_text": "Producer"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 925545,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 215920,
@@ -12378,7 +13462,11 @@
           "release_id": 247822,
           "role_text": "Bass"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 15885,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 219213,
@@ -12411,7 +13499,8 @@
           "release_id": 9572745,
           "role_text": "Performer [Jam Master Jay]"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 219420,
@@ -12431,7 +13520,8 @@
           "release_id": 754422,
           "role_text": "Guitar"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 219823,
@@ -12451,7 +13541,8 @@
           "release_id": 320334,
           "role_text": "Backing Vocals"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 219986,
@@ -12527,7 +13618,11 @@
           "release_id": 478721,
           "role_text": "Vocals [Vocal], Guitar, Harmonica"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 673305,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 220565,
@@ -12592,7 +13687,8 @@
           "release_id": 379446,
           "role_text": "Performer [Music Played By]"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 221444,
@@ -12612,7 +13708,11 @@
           "release_id": 531999,
           "role_text": "Producer"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 202252,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 229494,
@@ -12632,7 +13732,11 @@
           "release_id": 407356,
           "role_text": "Drums"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 27518,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 229621,
@@ -12643,7 +13747,11 @@
       "decade_activity": [],
       "connection_count": 2,
       "neighboring_contributor_ids": [2714, 92471],
-      "evidence": []
+      "evidence": [],
+      "interesting_next_step": {
+        "artist_id": 2714,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 229781,
@@ -12663,7 +13771,11 @@
           "release_id": 982812,
           "role_text": "Synthesizer"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 27518,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 229987,
@@ -12687,7 +13799,11 @@
           "release_id": 1321789,
           "role_text": "Producer"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 339644,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 232157,
@@ -12708,7 +13824,11 @@
           "release_id": 6125754,
           "role_text": "Arranged By"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 98889,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 237914,
@@ -12758,7 +13878,11 @@
           "release_id": 8677931,
           "role_text": "Mastered By"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 6952,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 237978,
@@ -12781,7 +13905,11 @@
           "release_id": 442865,
           "role_text": "Producer"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 268361,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 241495,
@@ -12809,7 +13937,11 @@
           "release_id": 389891,
           "role_text": "Producer"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 135478,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 243955,
@@ -12891,7 +14023,8 @@
           "release_id": 8199827,
           "role_text": "Guitar, Vocals"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 244728,
@@ -12911,7 +14044,8 @@
           "release_id": 8417928,
           "role_text": "Drums"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 245423,
@@ -12975,7 +14109,11 @@
           "release_id": 3731185,
           "role_text": "Producer"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 135926,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 246650,
@@ -12986,7 +14124,11 @@
       "decade_activity": [],
       "connection_count": 2,
       "neighboring_contributor_ids": [74213, 479416],
-      "evidence": []
+      "evidence": [],
+      "interesting_next_step": {
+        "artist_id": 479416,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 249597,
@@ -13047,7 +14189,11 @@
           "release_id": 9724085,
           "role_text": "Vocals"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 258154,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 249829,
@@ -13069,7 +14215,8 @@
           "release_id": 948564,
           "role_text": "Producer, Guitar, Piano"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 250892,
@@ -13089,7 +14236,11 @@
           "release_id": 564489,
           "role_text": "Remastered By"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 48412,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 251634,
@@ -13109,7 +14260,8 @@
           "release_id": 3176554,
           "role_text": "Keyboards"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 251689,
@@ -13130,7 +14282,11 @@
           "release_id": 15783334,
           "role_text": "Performer"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 48090,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 251877,
@@ -13150,7 +14306,8 @@
           "release_id": 2223081,
           "role_text": "Vocals, Lead Guitar"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 252102,
@@ -13161,7 +14318,11 @@
       "decade_activity": [],
       "connection_count": 2,
       "neighboring_contributor_ids": [129348, 156347],
-      "evidence": []
+      "evidence": [],
+      "interesting_next_step": {
+        "artist_id": 156347,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 252118,
@@ -13181,7 +14342,11 @@
           "release_id": 769315,
           "role_text": "Drums"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 30542,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 252196,
@@ -13201,7 +14366,8 @@
           "release_id": 4438861,
           "role_text": "Percussion"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 252346,
@@ -13229,7 +14395,8 @@
           "release_id": 517165,
           "role_text": "Band [Tracy's Band], Electric Guitar, Backing Vocals"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 252395,
@@ -13252,7 +14419,11 @@
           "release_id": 587454,
           "role_text": "Guitar"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 70829,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 252409,
@@ -13289,7 +14460,11 @@
           "release_id": 7174687,
           "role_text": "Producer, Written-By"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 961049,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 252489,
@@ -13305,7 +14480,11 @@
           "release_id": 1856276,
           "role_text": "Performer [\"Flute Thing\" Elements]"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 253021,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 252993,
@@ -13325,7 +14504,11 @@
           "release_id": 746194,
           "role_text": "Saxophone, Soloist [Sax Solo]"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 92623,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 252996,
@@ -13345,7 +14528,11 @@
           "release_id": 3089978,
           "role_text": "Trombone"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 82294,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 253021,
@@ -13365,7 +14552,11 @@
           "release_id": 3764585,
           "role_text": "Producer"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 252489,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 253111,
@@ -13385,7 +14576,11 @@
           "release_id": 421279,
           "role_text": "Synthesizer [Prophet 5]"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 59770,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 253203,
@@ -13408,7 +14603,8 @@
           "release_id": 406584,
           "role_text": "Vocals, Clarinet, Keyboards, Synthesizer"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 253216,
@@ -13440,7 +14636,11 @@
           "release_id": 998541,
           "role_text": "Other [Special Thanks, Musician's Ear]"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 122381,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 253394,
@@ -13460,7 +14660,11 @@
           "release_id": 618219,
           "role_text": "Drums"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 25809,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 253431,
@@ -13483,7 +14687,8 @@
           "release_id": 386010,
           "role_text": "Bass"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 253433,
@@ -13503,7 +14708,8 @@
           "release_id": 948564,
           "role_text": "Bass"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 253490,
@@ -13523,7 +14729,11 @@
           "release_id": 608533,
           "role_text": "Guitar"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 117225,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 253545,
@@ -13543,7 +14753,11 @@
           "release_id": 7572816,
           "role_text": "Guitar [Riffs]"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 2445772,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 253548,
@@ -13610,7 +14824,11 @@
           "release_id": 692861,
           "role_text": "Keyboards"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 58687,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 253791,
@@ -13621,7 +14839,11 @@
       "decade_activity": [],
       "connection_count": 2,
       "neighboring_contributor_ids": [11213, 261361],
-      "evidence": []
+      "evidence": [],
+      "interesting_next_step": {
+        "artist_id": 11213,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 253965,
@@ -13649,7 +14871,11 @@
           "release_id": 517165,
           "role_text": "Musician [Additional Musician], Smallpipes [Scottish Small-pipes], Whistle"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 33534,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 253974,
@@ -13669,7 +14895,11 @@
           "release_id": 628427,
           "role_text": "Electric Guitar"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 33534,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 254259,
@@ -13739,7 +14969,11 @@
           "release_id": 381133,
           "role_text": "Backing Vocals"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 109822,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 254439,
@@ -13797,7 +15031,11 @@
           "release_id": 8199827,
           "role_text": "Guitar"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 255672,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 254479,
@@ -13825,7 +15063,8 @@
           "release_id": 2479870,
           "role_text": "Vocals, Guitar"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 254878,
@@ -13876,7 +15115,11 @@
           "release_id": 507184,
           "role_text": "Piano"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 30344,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 255276,
@@ -13896,7 +15139,8 @@
           "release_id": 3089978,
           "role_text": "Organ"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 255368,
@@ -13916,7 +15160,8 @@
           "release_id": 2234231,
           "role_text": "Backing Vocals"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 255388,
@@ -13936,7 +15181,8 @@
           "release_id": 6830881,
           "role_text": "Steel Guitar"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 255405,
@@ -13956,7 +15202,11 @@
           "release_id": 4423196,
           "role_text": "Trumpet"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 27518,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 255445,
@@ -13976,7 +15226,11 @@
           "release_id": 636438,
           "role_text": "Keyboards"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 12686,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 255672,
@@ -13992,7 +15246,11 @@
       "decade_activity": [],
       "connection_count": 3,
       "neighboring_contributor_ids": [129348, 253216, 254439],
-      "evidence": []
+      "evidence": [],
+      "interesting_next_step": {
+        "artist_id": 253216,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 255680,
@@ -14008,7 +15266,11 @@
           "release_id": 8672906,
           "role_text": "Performer [Life In The Fast Lane]"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 108722,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 255752,
@@ -14028,7 +15290,8 @@
           "release_id": 876309,
           "role_text": "Percussion"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 255796,
@@ -14048,7 +15311,11 @@
           "release_id": 3089978,
           "role_text": "Trumpet"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 10584,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 256225,
@@ -14068,7 +15335,11 @@
           "release_id": 1889074,
           "role_text": "Bass"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 30344,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 256804,
@@ -14088,7 +15359,11 @@
           "release_id": 3354383,
           "role_text": "Guitar"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 2445772,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 257415,
@@ -14108,7 +15383,11 @@
           "release_id": 436655,
           "role_text": "Drums"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 30344,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 258114,
@@ -14128,7 +15407,11 @@
           "release_id": 381133,
           "role_text": "Drums"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 254259,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 258118,
@@ -14148,7 +15431,8 @@
           "release_id": 509125,
           "role_text": "Drums"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 258154,
@@ -14168,7 +15452,11 @@
           "release_id": 576614,
           "role_text": "Guitar"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 249597,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 259352,
@@ -14188,7 +15476,11 @@
           "release_id": 874397,
           "role_text": "Percussion"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 938844,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 259384,
@@ -14208,7 +15500,11 @@
           "release_id": 958024,
           "role_text": "Congas, Tambourine"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 120232,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 260670,
@@ -14232,7 +15528,11 @@
           "release_id": 517170,
           "role_text": "Mixed By"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 208220,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 261361,
@@ -14280,7 +15580,11 @@
           "release_id": 812513,
           "role_text": "Producer, Engineer, Mixed By"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 253791,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 261760,
@@ -14300,7 +15604,8 @@
           "release_id": 2167887,
           "role_text": "Producer"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 261834,
@@ -14320,7 +15625,8 @@
           "release_id": 845344,
           "role_text": "Vocals [Ornithologist]"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 261837,
@@ -14378,7 +15684,11 @@
           "release_id": 532460,
           "role_text": "Written-By"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 47333,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 262270,
@@ -14398,7 +15708,11 @@
           "release_id": 7164030,
           "role_text": "Drums"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 30344,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 262691,
@@ -14414,7 +15728,11 @@
           "release_id": 889902,
           "role_text": "Producer"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 8211,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 262727,
@@ -14434,7 +15752,11 @@
           "release_id": 4550231,
           "role_text": "Mixed By"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 1513560,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 262944,
@@ -14522,7 +15844,8 @@
           "release_id": 1670608,
           "role_text": "Written-By"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 265119,
@@ -14542,7 +15865,8 @@
           "release_id": 7996217,
           "role_text": "Backing Vocals"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 266264,
@@ -14608,7 +15932,8 @@
           "release_id": 10811667,
           "role_text": "Organ"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 266352,
@@ -14686,7 +16011,11 @@
           "release_id": 851940,
           "role_text": "Keyboards, Vocals, Backing Vocals, Arranged By [Strings], Arranged By [Horns], Written-By"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 37735,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 266403,
@@ -14706,7 +16035,11 @@
           "release_id": 7996217,
           "role_text": "Guitar"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 8760,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 266431,
@@ -14722,7 +16055,11 @@
           "release_id": 6860035,
           "role_text": "Performer [Sonic Reducer]"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 175760,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 267872,
@@ -14767,7 +16104,11 @@
           "release_id": 378137,
           "role_text": "Violin"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 296983,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 268361,
@@ -14787,7 +16128,11 @@
           "release_id": 6860035,
           "role_text": "Performer [Choir]"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 237978,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 268583,
@@ -14862,7 +16207,8 @@
           "release_id": 4355864,
           "role_text": "Guitar"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 270195,
@@ -14930,7 +16276,11 @@
           "release_id": 5056532,
           "role_text": "Engineer [Additional]"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 15687,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 270964,
@@ -14950,7 +16300,11 @@
           "release_id": 25920772,
           "role_text": "Film Director"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 39600,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 271387,
@@ -14970,7 +16324,11 @@
           "release_id": 7461030,
           "role_text": "Drums [Live Drums]"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 2445772,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 271389,
@@ -14990,7 +16348,8 @@
           "release_id": 1826508,
           "role_text": "Backing Vocals"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 271392,
@@ -15013,7 +16372,8 @@
           "release_id": 621819,
           "role_text": "Slide Guitar"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 272435,
@@ -15033,7 +16393,11 @@
           "release_id": 618219,
           "role_text": "Bass"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 1289,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 273591,
@@ -15053,7 +16417,8 @@
           "release_id": 1290455,
           "role_text": "Vocals"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 273594,
@@ -15073,7 +16438,8 @@
           "release_id": 639744,
           "role_text": "Backing Vocals [Background Vocals]"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 274429,
@@ -15097,7 +16463,11 @@
           "release_id": 954153,
           "role_text": "Tenor Saxophone"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 56798,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 276418,
@@ -15117,7 +16487,8 @@
           "release_id": 36471412,
           "role_text": "Featuring"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 277531,
@@ -15137,7 +16508,8 @@
           "release_id": 2422236,
           "role_text": "Bass"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 277673,
@@ -15166,7 +16538,8 @@
           "release_id": 5785341,
           "role_text": "Bass Guitar, Drums, Guitar, Keyboards, Mixed By, Producer, Written-By"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 279174,
@@ -15199,7 +16572,11 @@
           "release_id": 950909,
           "role_text": "Bass"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 11136,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 280706,
@@ -15223,7 +16600,11 @@
           "release_id": 880461,
           "role_text": "Trumpet"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 68693,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 284968,
@@ -15255,7 +16636,8 @@
           "release_id": 4755789,
           "role_text": "Producer, Arranged By"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 285408,
@@ -15275,7 +16657,8 @@
           "release_id": 892036,
           "role_text": "Producer, Mixed By"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 287868,
@@ -15298,7 +16681,11 @@
           "release_id": 36890284,
           "role_text": "Percussion"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 861083,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 292535,
@@ -15318,7 +16705,11 @@
           "release_id": 1045354,
           "role_text": "Producer"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 134633,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 292542,
@@ -15346,7 +16737,11 @@
           "release_id": 3264678,
           "role_text": "Wind"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 173805,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 292813,
@@ -15366,7 +16761,11 @@
           "release_id": 708657,
           "role_text": "Soloist, Tenor Saxophone"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 168907,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 293896,
@@ -15389,7 +16788,11 @@
           "release_id": 510955,
           "role_text": "Keyboards"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 19298,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 296983,
@@ -15409,7 +16812,11 @@
           "release_id": 459185,
           "role_text": "Engineer [Assistant]"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 451329,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 297977,
@@ -15429,7 +16836,11 @@
           "release_id": 4762682,
           "role_text": "Trombone"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 42058,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 298002,
@@ -15449,7 +16860,11 @@
           "release_id": 2309148,
           "role_text": "Viola"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 97545,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 301244,
@@ -15495,7 +16910,11 @@
           "release_id": 2540621,
           "role_text": "Written-By"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 25884,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 301570,
@@ -15523,7 +16942,11 @@
           "release_id": 410412,
           "role_text": "Vocals"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 29923,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 302594,
@@ -15556,7 +16979,8 @@
           "release_id": 7393682,
           "role_text": "Guitar [Guitars]"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 303282,
@@ -15579,7 +17003,8 @@
           "release_id": 3731185,
           "role_text": "Drums, Programmed By [Additional Programming]"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 303390,
@@ -15605,7 +17030,11 @@
           "release_id": 3731185,
           "role_text": "Brass"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 1818,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 304095,
@@ -15625,7 +17054,11 @@
           "release_id": 4293448,
           "role_text": "Acoustic Guitar"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 69722,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 304307,
@@ -15645,7 +17078,11 @@
           "release_id": 3181980,
           "role_text": "Violin"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 97545,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 306264,
@@ -15665,7 +17102,8 @@
           "release_id": 948564,
           "role_text": "Percussion, Drums"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 308343,
@@ -15707,7 +17145,8 @@
           "release_id": 378137,
           "role_text": "Organ"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 309111,
@@ -15727,7 +17166,11 @@
           "release_id": 507814,
           "role_text": "Trumpet, Flugelhorn"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 51039,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 310251,
@@ -15747,7 +17190,11 @@
           "release_id": 5439196,
           "role_text": "Drums"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 12686,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 311577,
@@ -15767,7 +17214,11 @@
           "release_id": 414374,
           "role_text": "Drums"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 11879,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 311936,
@@ -15787,7 +17238,11 @@
           "release_id": 450138,
           "role_text": "Harpsichord"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 70829,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 313820,
@@ -15807,7 +17262,11 @@
           "release_id": 5439196,
           "role_text": "Bass"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 12686,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 317140,
@@ -15883,7 +17342,11 @@
           "release_id": 1956932,
           "role_text": "Producer"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 125660,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 321127,
@@ -15911,7 +17374,8 @@
           "release_id": 709950,
           "role_text": "Keyboards [Additional]"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 321128,
@@ -15949,7 +17413,11 @@
           "release_id": 6086416,
           "role_text": "Backing Vocals"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 24651,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 325232,
@@ -15969,7 +17437,11 @@
           "release_id": 4632886,
           "role_text": "Guest, Vocals"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 149420,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 325903,
@@ -15992,7 +17464,8 @@
           "release_id": 421279,
           "role_text": "Synthesizer [Prophet]"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 328530,
@@ -16012,7 +17485,11 @@
           "release_id": 2435733,
           "role_text": "Drums"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 70829,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 330380,
@@ -16067,7 +17544,11 @@
           "release_id": 5978306,
           "role_text": "Featuring"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 183231,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 332112,
@@ -16087,7 +17568,11 @@
           "release_id": 2317354,
           "role_text": "Drums"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 153073,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 332625,
@@ -16107,7 +17592,8 @@
           "release_id": 785266,
           "role_text": "Drums"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 335434,
@@ -16127,7 +17613,8 @@
           "release_id": 2368188,
           "role_text": "Bass"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 339644,
@@ -16189,7 +17676,11 @@
           "release_id": 819849,
           "role_text": "Strings"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 19814,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 340100,
@@ -16209,7 +17700,11 @@
           "release_id": 510955,
           "role_text": "Backing Vocals"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 149420,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 342235,
@@ -16229,7 +17724,8 @@
           "release_id": 950900,
           "role_text": "Backing Vocals"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 344842,
@@ -16271,7 +17767,8 @@
           "release_id": 371951,
           "role_text": "Percussion, Drums"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 345003,
@@ -16313,7 +17810,8 @@
           "release_id": 517170,
           "role_text": "Electric Guitar"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 345004,
@@ -16333,7 +17831,11 @@
           "release_id": 1901196,
           "role_text": "Bass"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 8887,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 347691,
@@ -16387,7 +17889,11 @@
           "release_id": 345788,
           "role_text": "Written-By [Wrote The Story]"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 10578,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 350510,
@@ -16463,7 +17969,11 @@
           "release_id": 8320738,
           "role_text": "Producer [Produced For CD By]"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 32216,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 365794,
@@ -16537,7 +18047,8 @@
           "release_id": 15188231,
           "role_text": "Vocals [Vox], Guitar, Bass, Percussion, Loops"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 366507,
@@ -16557,7 +18068,11 @@
           "release_id": 4487028,
           "role_text": "Mastered By"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 50263,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 369955,
@@ -16585,7 +18100,11 @@
           "release_id": 2116432,
           "role_text": "Mastered By [Direct Metal Mastering]"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 19814,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 386834,
@@ -16605,7 +18124,8 @@
           "release_id": 882713,
           "role_text": "Piano"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 395978,
@@ -16625,7 +18145,8 @@
           "release_id": 371951,
           "role_text": "Electric Violin"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 399028,
@@ -16649,7 +18170,11 @@
           "release_id": 368345,
           "role_text": "Written-By"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 58687,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 401308,
@@ -16669,7 +18194,11 @@
           "release_id": 1505485,
           "role_text": "Engineer [Assistant]"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 160906,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 428789,
@@ -16692,7 +18221,11 @@
           "release_id": 517170,
           "role_text": "Engineer [Assistant Engineer At Royaltone]"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 39765,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 429108,
@@ -16773,7 +18306,11 @@
           "release_id": 18255697,
           "role_text": "Piano, Melodica"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 33591,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 443558,
@@ -16837,7 +18374,11 @@
           "release_id": 10400067,
           "role_text": "Lyrics By, Harmony Vocals, Arranged By"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 237914,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 447673,
@@ -16857,7 +18398,11 @@
           "release_id": 365246,
           "role_text": "Trombone"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 82294,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 449712,
@@ -16880,7 +18425,11 @@
           "release_id": 517165,
           "role_text": "Musician [Additional Musician], Cello"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 38661,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 451329,
@@ -16896,7 +18445,11 @@
           "release_id": 6200098,
           "role_text": "Art Direction"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 296983,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 470007,
@@ -16938,7 +18491,11 @@
           "release_id": 8601553,
           "role_text": "Cello"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 163505,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 472046,
@@ -16958,7 +18515,11 @@
           "release_id": 861009,
           "role_text": "Recorded By"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 66824,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 479416,
@@ -16981,7 +18542,11 @@
           "release_id": 517165,
           "role_text": "Musician [Additional Musician], Piano [Piano By]"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 246650,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 482142,
@@ -17047,7 +18612,11 @@
           "release_id": 36029641,
           "role_text": "Vocals, Guitar, Bass"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 52230,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 489089,
@@ -17058,7 +18627,11 @@
       "decade_activity": [],
       "connection_count": 2,
       "neighboring_contributor_ids": [15687, 161091],
-      "evidence": []
+      "evidence": [],
+      "interesting_next_step": {
+        "artist_id": 15687,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 514448,
@@ -17081,7 +18654,11 @@
           "release_id": 4503945,
           "role_text": "Engineer [Assistant Engineer]"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 1289,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 515349,
@@ -17125,7 +18702,11 @@
           "release_id": 8438437,
           "role_text": "Mastered By, Mastered By [Vinyl Masters By]"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 18839,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 533034,
@@ -17177,7 +18758,8 @@
           "release_id": 445811,
           "role_text": "Featuring [With]"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 548816,
@@ -17197,7 +18779,8 @@
           "release_id": 597519,
           "role_text": "Organ"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 567737,
@@ -17217,7 +18800,8 @@
           "release_id": 676972,
           "role_text": "Accordion [Musette]"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 600317,
@@ -17237,7 +18821,8 @@
           "release_id": 2930316,
           "role_text": "Backing Vocals [Background Vocals]"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 600573,
@@ -17257,7 +18842,11 @@
           "release_id": 6235078,
           "role_text": "Engineer"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 292535,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 614092,
@@ -17280,7 +18869,8 @@
           "release_id": 4991999,
           "role_text": "Drums, Bass, Piano, Electric Piano [Fender Rhodes], Mellotron, Bells [Millennium], Organ [Hammond], Vibraphone [Vibes], Percussion, Vocals"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 670257,
@@ -17304,7 +18894,11 @@
           "release_id": 1642684,
           "role_text": "Written-By"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 98889,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 673305,
@@ -17332,7 +18926,11 @@
           "release_id": 3731185,
           "role_text": "Mixed By [Assistant Mixer]"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 1003,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 724168,
@@ -17399,7 +18997,8 @@
           "release_id": 13856005,
           "role_text": "Producer"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 861083,
@@ -17420,7 +19019,11 @@
           "release_id": 1220925,
           "role_text": "Music By"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 262727,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 925545,
@@ -17440,7 +19043,11 @@
           "release_id": 302959,
           "role_text": "Mastered By"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 215471,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 938844,
@@ -17481,7 +19088,11 @@
           "release_id": 874397,
           "role_text": "Backing Vocals"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 259352,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 961049,
@@ -17509,7 +19120,11 @@
           "release_id": 3969722,
           "role_text": "Engineer [Assistant Engineer]"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 252409,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 978936,
@@ -17534,7 +19149,11 @@
           "release_id": 3731185,
           "role_text": "Engineer"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 54650,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 1004502,
@@ -17602,7 +19221,8 @@
           "release_id": 3151604,
           "role_text": "Electric Guitar, Acoustic Guitar"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 1034811,
@@ -17622,7 +19242,11 @@
           "release_id": 4834856,
           "role_text": "Music Director"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 18836,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 1124645,
@@ -17697,7 +19321,8 @@
           "release_id": 11803056,
           "role_text": "Written-By"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 1293126,
@@ -17725,7 +19350,11 @@
           "release_id": 8613738,
           "role_text": "Written-By"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 21363,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 1513560,
@@ -17749,7 +19378,11 @@
           "release_id": 3565786,
           "role_text": "Producer"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 262727,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 1763131,
@@ -17769,7 +19402,11 @@
           "release_id": 3731185,
           "role_text": "Guitar"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 2013868,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 1815429,
@@ -17792,7 +19429,11 @@
           "release_id": 4619600,
           "role_text": "Engineer [Additional], Effects [Pro Tools]"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 11012,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 1942059,
@@ -17817,7 +19458,11 @@
           "release_id": 3731185,
           "role_text": "Legal"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 2013868,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 1967265,
@@ -17833,7 +19478,11 @@
           "release_id": 3725771,
           "role_text": "Featuring"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 25495,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 1967268,
@@ -17853,7 +19502,11 @@
           "release_id": 4118109,
           "role_text": "Featuring"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 2013868,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 1999233,
@@ -17869,7 +19522,11 @@
       "decade_activity": [],
       "connection_count": 3,
       "neighboring_contributor_ids": [10783, 3479, 82730],
-      "evidence": []
+      "evidence": [],
+      "interesting_next_step": {
+        "artist_id": 3479,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 2013868,
@@ -18074,7 +19731,11 @@
           "release_id": 4118109,
           "role_text": "Written-By"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 303390,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 2284219,
@@ -18097,7 +19758,11 @@
           "release_id": 6587146,
           "role_text": "Musician [Additional Musicians], Trombone"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 2013868,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 2445772,
@@ -18172,7 +19837,11 @@
           "release_id": 20686477,
           "role_text": "Arranged By"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 253545,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 2515275,
@@ -18195,7 +19864,11 @@
           "release_id": 4503945,
           "role_text": "Engineer [Assistant Engineer]"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 1289,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 3237636,
@@ -18215,7 +19888,8 @@
           "release_id": 27808809,
           "role_text": "Backing Vocals"
         }
-      ]
+      ],
+      "interesting_next_step": null
     },
     {
       "artist_id": 3293196,
@@ -18238,7 +19912,11 @@
           "release_id": 6420216,
           "role_text": "Guitar, Steel Guitar, Classical Guitar [Nylon Guitar]"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 44944,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 5262065,
@@ -18258,7 +19936,11 @@
           "release_id": 14811672,
           "role_text": "Keyboards"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 59770,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     },
     {
       "artist_id": 13943914,
@@ -18278,7 +19960,11 @@
           "release_id": 29300728,
           "role_text": "Performer [Uncredited]"
         }
-      ]
+      ],
+      "interesting_next_step": {
+        "artist_id": 169117,
+        "reason": "credited in a different kind of role than this contributor"
+      }
     }
   ]
 }
