@@ -17,14 +17,18 @@ const contributorIdsWithPages = new Set(
 
 export function getStaticPaths() {
   const data = challengeData as ChallengeV2;
-  const connectedAlbumIds = new Set<string>();
-  for (const path of data.paths) {
-    connectedAlbumIds.add(path.from_album_id);
-    connectedAlbumIds.add(path.to_album_id);
-  }
-  return data.albums
-    .filter((album) => connectedAlbumIds.has(album.id))
-    .map((album) => ({ params: { album: album.id }, props: { album } }));
+  // Phase 6 PR 6-07: every catalog album gets a real page, not just the
+  // ones with a documented challenge.v2 path -- the page body already
+  // handles zero connections gracefully ("No documented connections from
+  // this album yet."). Narrowing this to path-endpoint albums left 3 real
+  // catalog albums (each a real pathfinding-graph node, individually
+  // reachable via a live Connect Two Records search) with no page to link
+  // to at all -- a genuine dangling-href risk once Connect's own endpoint
+  // cards started linking back to /albums/<id>/ in this same PR.
+  return data.albums.map((album) => ({
+    params: { album: album.id },
+    props: { album },
+  }));
 }
 
 interface Props {

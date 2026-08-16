@@ -410,6 +410,7 @@ function renderRoute(
   target.innerHTML =
     renderEndpointCard(
       route.endpointA,
+      fromAlbum.id,
       fromAlbum.title,
       nameById,
       artByAlbumId.get(fromAlbum.id),
@@ -419,6 +420,7 @@ function renderRoute(
       .join("") +
     renderEndpointCard(
       route.endpointB,
+      toAlbum.id,
       toAlbum.title,
       nameById,
       artByAlbumId.get(toAlbum.id),

@@ -169,6 +169,51 @@ test("a real connected pair finds a documented route with evidence", async ({
   ).toBeVisible();
 });
 
+// Phase 6 PR 6-07: each endpoint card's album title links to its own
+// /albums/<id>/ page (mirroring PR 6-01's album-page-to-Connect link).
+// Both real catalog ids read from the artifact itself, not hardcoded.
+test("endpoint cards link back to their own album page", async ({
+  page,
+  request,
+}) => {
+  const res = await request.get("/data/catalog/albums.v1.json");
+  const { albums } = (await res.json()) as {
+    albums: { id: string; title: string }[];
+  };
+  const discovery = albums.find((a) => a.title === "Discovery");
+  const joshuaTree = albums.find((a) => a.title === "The Joshua Tree");
+  if (!discovery || !joshuaTree) {
+    throw new Error(
+      "Discovery / The Joshua Tree missing from the real catalog",
+    );
+  }
+
+  await page.goto("/play/connect/");
+  await selectAlbum(page, "a", "Discovery");
+  await selectAlbum(page, "b", "Joshua Tree");
+  await page.locator("[data-connect-search]").click();
+
+  await expect(page.locator("[data-connect-results]")).toBeVisible({
+    timeout: 15000,
+  });
+  const endpoints = page.locator("[data-connect-hops] .connect-endpoint");
+  await expect(endpoints).toHaveCount(2);
+  await expect(
+    endpoints.first().locator(`a[href='/albums/${discovery.id}/']`),
+  ).toBeVisible();
+  await expect(
+    endpoints.last().locator(`a[href='/albums/${joshuaTree.id}/']`),
+  ).toBeVisible();
+
+  // The link must actually resolve, not just render -- a real regression
+  // guard for the 3 real catalog albums that have no challenge.v2 path
+  // (and so, before this PR, no /albums/<id>/ page at all).
+  await endpoints.first().locator(`a[href='/albums/${discovery.id}/']`).click();
+  await expect(page.getByRole("heading", { level: 1 })).toContainText(
+    "Discovery",
+  );
+});
+
 // Phase 6 PR 6-06: every hop name carries the contributor's own artist_id
 // (data-hop-artist-id) regardless of whether that person has a published
 // contributor page -- a general property test against the real contributor
