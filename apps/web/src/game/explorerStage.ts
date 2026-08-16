@@ -238,6 +238,18 @@ export async function initExplorerStage(): Promise<void> {
       [view.center, ...view.neighbors].map((n) => [n.artistId, n.name]),
     );
 
+    // ADR 0060: highlight the center's own interesting_next_step neighbor,
+    // when currently rendered -- a small, additive marker, never hiding or
+    // reordering any other neighbor. `undefined` (no signal, the signaled
+    // artist isn't in this bounded view, or -- measured, real, ~27% of the
+    // time -- the contributor index's own small curated graph and this
+    // pathfinding graph simply don't share that edge, since they're built
+    // from different published artifacts) simply highlights nothing,
+    // matching the source field's own null-is-valid contract.
+    const interestingNextStepArtistId = contributorByArtistId.get(
+      view.center.artistId,
+    )?.interesting_next_step?.artist_id;
+
     // Each edge is a <g> wrapping a wide, invisible hit-area rect (see
     // EDGE_HIT_AREA_WIDTH -- post-Phase-4 cleanup audit F15, the visible
     // line alone was a bare 1.5px stroke, ~15-25x under a real
@@ -288,10 +300,16 @@ export async function initExplorerStage(): Promise<void> {
       const pos = nodePositions.get(node.artistId)!;
       const dimmed = isDimmed(node, activeCategories);
       const r = node.isCenter ? CENTER_NODE_RADIUS : NODE_RADIUS;
+      const isInterestingNextStep =
+        !node.isCenter && node.artistId === interestingNextStepArtistId;
+      const label = isInterestingNextStep
+        ? `${escapeHtml(node.name)} (credited in a different kind of role -- worth a look)`
+        : `${escapeHtml(node.name)}${node.isCenter ? " (center)" : ""}`;
       return (
-        `<g class="explorer-node${dimmed ? " explorer-node--dimmed" : ""}" ` +
-        `data-artist-id="${node.artistId}" data-is-center="${node.isCenter}" tabindex="${node.isCenter ? "0" : "-1"}" role="button" ` +
-        `aria-label="${escapeHtml(node.name)}${node.isCenter ? " (center)" : ""}">` +
+        `<g class="explorer-node${dimmed ? " explorer-node--dimmed" : ""}${isInterestingNextStep ? " explorer-node--interesting" : ""}" ` +
+        `data-artist-id="${node.artistId}" data-is-center="${node.isCenter}" ` +
+        `data-is-interesting-next-step="${isInterestingNextStep}" ` +
+        `tabindex="${node.isCenter ? "0" : "-1"}" role="button" aria-label="${label}">` +
         `<circle cx="${pos.x}" cy="${pos.y}" r="${r}" />` +
         `<text x="${pos.x}" y="${pos.y + r + 12}" text-anchor="middle">${escapeHtml(node.name)}</text>` +
         `</g>`

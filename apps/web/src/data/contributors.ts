@@ -12,6 +12,15 @@ export interface ContributorEvidence {
   role_text: string;
 }
 
+/** ADR 0060: one of this contributor's own `neighboring_contributor_ids`
+ * whose `role_categories` are entirely disjoint from this contributor's own
+ * -- a real structural fact, never an inferred claim about interest or
+ * importance. `null` when no neighbor qualifies. */
+export interface InterestingNextStep {
+  artist_id: number;
+  reason: string;
+}
+
 export interface Contributor {
   artist_id: number;
   name: string;
@@ -25,6 +34,7 @@ export interface Contributor {
   connection_count: number;
   neighboring_contributor_ids: number[];
   evidence: ContributorEvidence[];
+  interesting_next_step: InterestingNextStep | null;
 }
 
 export interface ContributorIndex {
