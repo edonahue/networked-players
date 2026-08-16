@@ -109,6 +109,17 @@ const description = `Documented credits and connections for ${contributor.name} 
 
     {
       albums.length > 0 && (
+        <p class="lede" style="max-width:720px;font-size:0.98rem">
+          <a href={`/explore/${albums[0].id}/?center=${contributor.artist_id}`}>
+            Open the Network Explorer
+          </a>{' '}
+          centered on {contributor.name}.
+        </p>
+      )
+    }
+
+    {
+      albums.length > 0 && (
         <section aria-label="Connected albums" style="margin-top:28px">
           <p class="eyebrow" style="margin-bottom:10px">
             Albums whose documented connection involves this contributor

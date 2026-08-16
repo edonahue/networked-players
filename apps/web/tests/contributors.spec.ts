@@ -57,6 +57,34 @@ test("an album page links to a contributor page that resolves", async ({
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
 });
 
+// Phase 6 PR 6-04: a contributor page links into the Network Explorer
+// centered on that contributor specifically -- routed through the first
+// of their own connected albums (contributor_index.py's `albums` field is
+// built from challenge.v2.json path endpoints, the same set that backs
+// every /explore/<album.id>/ static page, so this route always resolves).
+test("a contributor page links into the Network Explorer centered on themselves", async ({
+  page,
+  request,
+}) => {
+  const contributor = await firstContributor(request);
+  await page.goto(`/contributors/${contributor.artist_id}/`);
+
+  const exploreLink = page.locator(
+    `a[href='/explore/${contributor.albums[0]}/?center=${contributor.artist_id}']`,
+  );
+  await expect(exploreLink).toBeVisible();
+
+  await exploreLink.click();
+  await page.waitForURL(
+    `**/explore/${contributor.albums[0]}/?center=${contributor.artist_id}`,
+  );
+  await expect(
+    page.locator("[data-explorer-nodes] .explorer-node[data-is-center='true']"),
+  ).toHaveAttribute("data-artist-id", String(contributor.artist_id), {
+    timeout: 15000,
+  });
+});
+
 test("an unknown contributor id 404s gracefully", async ({ page }) => {
   const response = await page.goto("/contributors/999999999999/");
   expect(response?.status()).toBe(404);
