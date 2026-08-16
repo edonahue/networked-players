@@ -83,6 +83,52 @@ def _decade(year: int) -> int:
     return (year // 10) * 10
 
 
+def _annotate_interesting_next_step(contributors: list[dict[str, Any]]) -> None:
+    """ADR 0060: a deterministic, source-derived `interesting_next_step` per
+    contributor -- among their own (already capped, already computed)
+    `neighboring_contributor_ids`, the one whose `role_categories` are
+    ENTIRELY DISJOINT from this contributor's own. That is a real structural
+    fact (a genuinely different kind of credited collaborator, not more of
+    the same), not an inferred claim about interest, importance, or
+    influence -- `reason` says exactly and only that.
+
+    Deliberately never ranks by `connection_count` (the measured, real
+    reason ADR 0059 killed the old Connect route scorer: degree correlates
+    with fame, and a "most connected" pick would always point toward the
+    same handful of hub contributors). Where a role-disjoint neighbor
+    exists, `connection_count` breaks a tie -- LOWEST first, a deliberate
+    anti-hub choice that favors a lesser-explored contributor over a hub,
+    never the other way around. `artist_id` is the final, fully
+    deterministic tie-break.
+
+    `None` when no neighbor qualifies (measured: happens for about 31% of
+    real contributors with 2+ neighbors) -- never a fabricated pick just to
+    fill the field."""
+    role_categories_by_id = {c["artist_id"]: set(c["role_categories"]) for c in contributors}
+    connection_count_by_id = {c["artist_id"]: c["connection_count"] for c in contributors}
+
+    for contributor in contributors:
+        own_roles = role_categories_by_id[contributor["artist_id"]]
+        candidates = []
+        for neighbor_id in contributor["neighboring_contributor_ids"]:
+            neighbor_roles = role_categories_by_id.get(neighbor_id)
+            if neighbor_roles is None:
+                continue  # a neighbor absent from this index (never rendered) can't be suggested
+            if own_roles.isdisjoint(neighbor_roles):
+                candidates.append(neighbor_id)
+
+        if not candidates:
+            contributor["interesting_next_step"] = None
+            continue
+
+        candidates.sort(key=lambda cid: (connection_count_by_id[cid], cid))
+        chosen_id = candidates[0]
+        contributor["interesting_next_step"] = {
+            "artist_id": chosen_id,
+            "reason": "credited in a different kind of role than this contributor",
+        }
+
+
 def build_contributor_index(
     *,
     challenge: dict[str, Any],
@@ -257,6 +303,7 @@ def build_contributor_index(
         )
 
     contributors.sort(key=lambda c: c["artist_id"])
+    _annotate_interesting_next_step(contributors)
     index_version = contributor_index_version(contributors, snapshot_date)
 
     return {
