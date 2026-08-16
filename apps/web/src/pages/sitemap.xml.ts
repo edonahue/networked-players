@@ -1,7 +1,6 @@
 import type { APIRoute } from "astro";
 import type { ChallengeV2 } from "../data/challenge";
 import challengeData from "../../public/data/challenge.v2.json";
-import { connectedCatalogAlbums } from "../data/connectedAlbums";
 
 export const prerender = true;
 
@@ -13,9 +12,12 @@ const escapeXml = (value: string) =>
     .replaceAll('"', "&quot;");
 
 const challenge = challengeData as ChallengeV2;
-const connectedAlbums = connectedCatalogAlbums(challenge);
-const albumPaths = connectedAlbums.map((album) => `/albums/${album.id}/`);
-const explorePaths = connectedAlbums.map((album) => `/explore/${album.id}/`);
+// Phase 6 PR 6-07: every catalog album now has a real /albums/<id>/ and
+// /explore/<id>/ page (getStaticPaths widened in this same PR), not just
+// the connectedCatalogAlbums subset -- list every real page, not a
+// narrower historical subset.
+const albumPaths = challenge.albums.map((album) => `/albums/${album.id}/`);
+const explorePaths = challenge.albums.map((album) => `/explore/${album.id}/`);
 
 import cohortManifest from "../../public/data/cohorts/index.json";
 

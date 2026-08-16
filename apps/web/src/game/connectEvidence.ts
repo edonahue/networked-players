@@ -218,6 +218,7 @@ export function enhanceHopContributorLinks(
  * album) renders the placeholder, never a broken image or an error. */
 export function renderEndpointCard(
   endpoint: AlbumEndpoint,
+  albumId: string,
   albumTitle: string,
   nameById: Map<number, string>,
   art: ResolvedArt | undefined,
@@ -226,10 +227,14 @@ export function renderEndpointCard(
   const cover = art
     ? `<img class="connect-endpoint__cover" src="${escapeHtml(art.uri150)}" width="72" height="72" loading="lazy" alt="Cover art for ${escapeHtml(albumTitle)}" data-art-fallback="disc" />`
     : `<span class="connect-endpoint__cover connect-endpoint__cover--placeholder album-card__placeholder" aria-hidden="true"><span class="album-card__placeholder-disc"></span></span>`;
+  // Phase 6 PR 6-07: the album title links to its own /albums/<id>/ page --
+  // the mirror of PR 6-01's album-page-to-Connect link, completing the
+  // round trip between the two surfaces.
+  const albumLink = `<a href="/albums/${escapeHtml(albumId)}/">${escapeHtml(albumTitle)}</a>`;
   return (
     `<div class="connect-endpoint">` +
     cover +
-    `<p><strong>${escapeHtml(name)}</strong> is credited on <strong>${escapeHtml(albumTitle)}</strong>'s own release,` +
+    `<p><strong>${escapeHtml(name)}</strong> is credited on <strong>${albumLink}</strong>'s own release,` +
     ` as <span class="connect-hop__role">${escapeHtml(endpoint.roleText)}</span>.</p>` +
     `</div>`
   );

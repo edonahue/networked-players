@@ -3,14 +3,21 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import NetworkExplorer from '../../components/NetworkExplorer.astro';
 import type { AlbumV2, ChallengeV2 } from '../../data/challenge';
 import challengeData from '../../../public/data/challenge.v2.json';
-import { connectedCatalogAlbums } from '../../data/connectedAlbums';
 
 // Network Explorer (Phase 2 Slice G, ADR 0052): centers on one album's
 // primary artist and shows a bounded, real neighborhood from the same
 // pathfinding graph Connect Two Records uses -- never the whole graph.
 export function getStaticPaths() {
   const data = challengeData as ChallengeV2;
-  return connectedCatalogAlbums(data).map((album) => ({
+  // Phase 6 PR 6-07: every catalog album, not just connectedCatalogAlbums'
+  // narrower "has a documented challenge.v2 path" subset -- matching the
+  // same widening on /albums/[album].astro and for the same reason: a
+  // catalog album can be a real, individually reachable pathfinding-graph
+  // node (and so a valid Connect/Explore destination) without ever being a
+  // challenge.v2 path endpoint. Album pages link here unconditionally
+  // (PR 6-02), so leaving this narrower would reopen the exact
+  // dangling-href risk that widening fixed there.
+  return data.albums.map((album) => ({
     params: { album: album.id },
     props: { album },
   }));
@@ -44,6 +51,9 @@ const description = `Explore the documented credit network around ${album.title}
       This view shows a bounded neighborhood, not the whole credit graph — the same scope
       <a href="/play/connect/">Connect Two Records</a> searches. A shared credit proves
       documented participation, never friendship, influence, or artistic lineage.
+    </p>
+    <p class="lede" style="font-size:0.92rem">
+      <a href={`/albums/${album.id}/`}>View the {album.title} page →</a>
     </p>
   </section>
 </BaseLayout>
