@@ -141,6 +141,35 @@ test("a keyboard-activated recenter moves focus to the new center and announces 
   );
 });
 
+// Phase 6 PR 6-03: a read-only ?center= deep link overrides the default
+// album-artist center. U2 (artist_id 6520) is a real, documented neighbor
+// of Elvis in the committed graph (verified against graph.v2.json) -- this
+// exercises a genuine override, not a no-op landing on the same node.
+test("a valid ?center= query param overrides the album's default center", async ({
+  page,
+}) => {
+  await page.goto("/explore/master-107325/?center=6520");
+  await expect(
+    page.locator("[data-explorer-nodes] .explorer-node[data-is-center='true']"),
+  ).toHaveAttribute("data-artist-id", "6520", { timeout: 15000 });
+  await expect(page.locator("[data-explorer-status]")).toContainText(
+    /Centered on U2/i,
+  );
+});
+
+test("an unknown ?center= id is silently ignored and the default center still renders", async ({
+  page,
+}) => {
+  await page.goto("/explore/master-107325/?center=999999999");
+  await expect(
+    page.locator("[data-explorer-nodes] .explorer-node[data-is-center='true']"),
+  ).toBeVisible({ timeout: 15000 });
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("Elvis");
+  await expect(page.locator("[data-explorer-status]")).toContainText(
+    /Centered on Elvis/i,
+  );
+});
+
 test("an unknown artist id shows a graceful message instead of a blank graph", async ({
   page,
 }) => {
