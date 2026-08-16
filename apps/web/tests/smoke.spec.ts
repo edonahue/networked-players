@@ -152,6 +152,29 @@ test("an album page renders mode controls and reveals evidence", async ({
   ).toBeVisible();
 });
 
+// Phase 6 PR 6-02: every album page links directly into the Network
+// Explorer, centered on the album's own artist -- `/explore/<album.id>/`
+// already exists as a static page for every connected album (same
+// connectedCatalogAlbums set backs both routes), so this is a pure
+// cross-link with no new URL-state contract.
+test("an album page links directly into the Network Explorer", async ({
+  page,
+  request,
+}) => {
+  const { album } = await pickBoundedConnectedAlbum(request);
+  await stubCoverArt(page);
+
+  await page.goto(`/albums/${album.id}/`);
+  const exploreLink = page.locator(
+    `.play-from-here a[href='/explore/${album.id}/']`,
+  );
+  await expect(exploreLink).toBeVisible();
+
+  await exploreLink.click();
+  await page.waitForURL(`**/explore/${album.id}/`);
+  await expect(page.locator("[data-testid='explorer-stage']")).toBeVisible();
+});
+
 // Phase 6: continuous navigation -- every documented connection shown on an
 // album page is also a direct, prefilled entry point into Connect Two
 // Records, reusing connectUrlState.ts's existing ?a=/?b= contract untouched
