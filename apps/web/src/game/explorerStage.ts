@@ -106,6 +106,9 @@ export async function initExplorerStage(): Promise<void> {
   const evidenceClose = stage.querySelector<HTMLButtonElement>(
     "[data-explorer-evidence-close]",
   );
+  const centerLinkEl = stage.querySelector<HTMLElement>(
+    "[data-explorer-center-link]",
+  );
   if (
     !svg ||
     !nodesLayer ||
@@ -115,7 +118,8 @@ export async function initExplorerStage(): Promise<void> {
     !truncatedEl ||
     !evidenceDrawer ||
     !evidenceContent ||
-    !evidenceClose
+    !evidenceClose ||
+    !centerLinkEl
   )
     return;
 
@@ -323,6 +327,21 @@ export async function initExplorerStage(): Promise<void> {
     // previously focused, so without this a screen reader gets no signal
     // the view changed at all.
     setStatus(`Centered on ${view.center.name}.`);
+
+    // Phase 6 PR 6-05: link back to the center's own contributor page, when
+    // one exists -- not every graph node clears the contributor index's own
+    // inclusion rule (and a virtual album-anchor node, negative artistId,
+    // never has one), so this hides rather than rendering a dangling href.
+    const centerContributor = contributorByArtistId.get(view.center.artistId);
+    if (centerContributor) {
+      centerLinkEl!.hidden = false;
+      centerLinkEl!.innerHTML =
+        `<a href="/contributors/${centerContributor.artist_id}/" data-explorer-center-contributor-link>` +
+        `View ${escapeHtml(view.center.name)}'s full contributor page →</a>`;
+    } else {
+      centerLinkEl!.hidden = true;
+      centerLinkEl!.innerHTML = "";
+    }
     if (options.moveFocus) {
       nodesLayer!
         .querySelector<SVGGElement>(
