@@ -170,6 +170,41 @@ test("an unknown ?center= id is silently ignored and the default center still re
   );
 });
 
+// Phase 6 PR 6-05: the explorer links its current center back to that
+// person's own contributor page, when one exists, and updates on recenter.
+test("the center node links to its own contributor page, and updates on recenter", async ({
+  page,
+}) => {
+  await page.goto("/explore/master-107325/");
+  const centerLink = page.locator("[data-explorer-center-link] a");
+  await expect(centerLink).toBeVisible({ timeout: 15000 });
+  await expect(centerLink).toHaveAttribute("href", "/contributors/27518/");
+  await expect(centerLink).toContainText("Elvis Presley");
+
+  const nodes = page.locator("[data-explorer-nodes] .explorer-node");
+  await expect(nodes.first()).toBeVisible({ timeout: 15000 });
+  const u2Neighbor = page.locator(
+    "[data-explorer-nodes] .explorer-node[data-artist-id='6520']",
+  );
+  await u2Neighbor.click();
+
+  await expect(centerLink).toHaveAttribute("href", "/contributors/6520/");
+  await expect(centerLink).toContainText("U2");
+});
+
+test("the center link stays hidden when the current center has no contributor page", async ({
+  page,
+}) => {
+  await page.route("**/data/contributors/index.v1.json", async (route) => {
+    await route.fulfill({ json: { schema_version: 1, contributors: [] } });
+  });
+  await page.goto("/explore/master-107325/");
+  await expect(
+    page.locator("[data-explorer-nodes] .explorer-node").first(),
+  ).toBeVisible({ timeout: 15000 });
+  await expect(page.locator("[data-explorer-center-link]")).toBeHidden();
+});
+
 test("an unknown artist id shows a graceful message instead of a blank graph", async ({
   page,
 }) => {
