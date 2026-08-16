@@ -579,6 +579,30 @@ def _parser() -> argparse.ArgumentParser:
     )
     validate_album_catalog.add_argument("--input", type=Path, required=True)
 
+    review_candidates = subparsers.add_parser(
+        "review-album-candidates",
+        help=(
+            "PLANNER, NOT EXECUTOR: decorate a rank-album-candidates shortlist with a "
+            "structural new-contributor-count (against the real published pathfinding "
+            "graph) and evidence-format caveats, for a human reviewer -- never adds a "
+            "candidate to any catalog itself (local-only output)"
+        ),
+    )
+    review_candidates.add_argument("--dataset", type=Path, required=True)
+    review_candidates.add_argument(
+        "--candidates", type=Path, required=True, help="rank-album-candidates output"
+    )
+    review_candidates.add_argument(
+        "--pathfinding-graph",
+        type=Path,
+        required=True,
+        help="apps/web/public/data/graph.v2.json -- supplies the published node_ids "
+        "this report treats as 'already in the graph'",
+    )
+    review_candidates.add_argument("--output", type=Path, required=True)
+    review_candidates.add_argument("--memory-limit", default="1GB")
+    review_candidates.add_argument("--threads", type=int, default=2)
+
     rank_exploration_tier = subparsers.add_parser(
         "rank-exploration-tier",
         help=(
@@ -2239,6 +2263,38 @@ def main(argv: Sequence[str] | None = None) -> int:
         catalog = json.loads(args.input.read_text())
         validate_album_catalog(catalog)
         print(json.dumps({"ok": True}, indent=2))
+        return 0
+
+    if args.command == "review-album-candidates":
+        from networked_players_graph_core.candidate_review import review_album_candidates
+        from networked_players_graph_core.graph import CreditGraph
+
+        candidates = json.loads(args.candidates.read_text())
+        pathfinding_graph = json.loads(args.pathfinding_graph.read_text())
+        published_graph_artist_ids = frozenset(
+            int(nid) for nid in pathfinding_graph["node_ids"] if int(nid) > 0
+        )
+
+        with CreditGraph.open(
+            args.dataset,
+            memory_limit=args.memory_limit,
+            threads=args.threads,
+            build_edges=False,
+        ) as graph:
+            report = review_album_candidates(
+                graph,
+                candidates,
+                published_graph_artist_ids=published_graph_artist_ids,
+            )
+
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(json.dumps(report, indent=2) + "\n")
+        print(
+            json.dumps(
+                {"output": str(args.output), "candidate_count": report["candidate_count"]},
+                indent=2,
+            )
+        )
         return 0
 
     if args.command == "rank-exploration-tier":
