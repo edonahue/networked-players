@@ -34,6 +34,7 @@ import {
 import {
   buildEvidenceIndex,
   enhanceEndpointCover,
+  enhanceHopContributorLinks,
   enhanceHopRelease,
   renderEndpointCard,
   renderEvidenceHop,
@@ -62,6 +63,7 @@ import {
 const PATHFINDING_GRAPH_URL = "/data/pathfinding/graph.v2.json";
 const EVIDENCE_REGISTRY_URL = "/data/evidence/release-registry.v1.json";
 const ALBUM_CATALOG_URL = "/data/catalog/albums.v1.json";
+const CONTRIBUTOR_INDEX_URL = "/data/contributors/index.v1.json";
 
 interface CatalogAlbum {
   id: string;
@@ -120,6 +122,29 @@ function loadEvidenceIndex(): Promise<EvidenceIndex> {
     })();
   }
   return evidenceIndexPromise;
+}
+
+// Phase 6 PR 6-06: the contributor index, memoized the same way as
+// `loadEvidenceIndex` above -- only artist_ids are needed here (unlike
+// Explorer, which also wants names/roles for other purposes), so this
+// resolves to a plain id Set rather than the full Contributor objects.
+let contributorIdsPromise: Promise<Set<number>> | null = null;
+function loadContributorIds(): Promise<Set<number>> {
+  if (!contributorIdsPromise) {
+    contributorIdsPromise = (async (): Promise<Set<number>> => {
+      try {
+        const response = await fetch(CONTRIBUTOR_INDEX_URL);
+        if (!response.ok) return new Set();
+        const index = (await response.json()) as {
+          contributors: { artist_id: number }[];
+        };
+        return new Set(index.contributors.map((c) => c.artist_id));
+      } catch {
+        return new Set();
+      }
+    })();
+  }
+  return contributorIdsPromise;
 }
 
 // The album catalog is fetched asynchronously, so a picker exists in one of
@@ -778,6 +803,9 @@ export async function initConnect(): Promise<void> {
     // and never awaited until render time, so a slow or failed art
     // registry can never delay a route being found or shown.
     const artPromise = loadAlbumArt();
+    // Same reasoning as artPromise: contributor cross-linking is a pure
+    // enhancement, never awaited before a route renders.
+    const contributorIdsPromise = loadContributorIds();
     const preparedResult = await loadPreparedGraph(
       sessionStorageOrNull(),
       PATHFINDING_GRAPH_URL,
@@ -990,6 +1018,20 @@ export async function initConnect(): Promise<void> {
       enhanceEndpoints(hopsAlternateEl);
     });
 
+    // Same enhance-in-place split as the art registry above, applied to
+    // Phase 6 PR 6-06's contributor cross-linking: reads whatever hops are
+    // CURRENT in the DOM when the (already in-flight) contributor index
+    // resolves, so it correctly covers the alternate-route block below
+    // (entirely synchronous) too, whether or not it has rendered yet by
+    // then.
+    void contributorIdsPromise.then((contributorIds) => {
+      if (stale()) return;
+      enhanceHopContributorLinks(hopsElNonNull, contributorIds);
+      if (hopsAlternateEl) {
+        enhanceHopContributorLinks(hopsAlternateEl, contributorIds);
+      }
+    });
+
     // The role-filtered branch's own enhancement half: its route was
     // rendered structurally (names, roles, release ids -- ADR 0059 Phase
     // 5 PR 5b's own wording) before evidence was ever awaited, exactly
@@ -1129,6 +1171,19 @@ export async function initConnect(): Promise<void> {
             lastSearch.artByAlbumId,
           );
         }
+        // Swap re-renders outside runSearch's own enhancement `.then()`
+        // (which already fired once, for the original search), so it needs
+        // its own pass -- `loadContributorIds()` is memoized, so this
+        // resolves instantly whenever the original search already paid the
+        // fetch cost.
+        void loadContributorIds().then((contributorIds) => {
+          if (!hopsEl) return;
+          enhanceHopContributorLinks(hopsEl, contributorIds);
+          if (hopsAlternateEl) {
+            enhanceHopContributorLinks(hopsAlternateEl, contributorIds);
+          }
+        });
+
         // The MODE STORED ON THE CACHED SEARCH, never a live re-read of
         // the mode radio group -- a real review finding: the checked
         // radio can legitimately differ from what the on-screen route was
