@@ -150,9 +150,7 @@ test("a valid ?center= query param overrides the album's default center", async 
 }) => {
   await page.goto("/explore/master-107325/?center=6520");
   await expect(
-    page.locator(
-      "[data-explorer-nodes] .explorer-node[data-is-center='true']",
-    ),
+    page.locator("[data-explorer-nodes] .explorer-node[data-is-center='true']"),
   ).toHaveAttribute("data-artist-id", "6520", { timeout: 15000 });
   await expect(page.locator("[data-explorer-status]")).toContainText(
     /Centered on U2/i,
@@ -164,13 +162,9 @@ test("an unknown ?center= id is silently ignored and the default center still re
 }) => {
   await page.goto("/explore/master-107325/?center=999999999");
   await expect(
-    page.locator(
-      "[data-explorer-nodes] .explorer-node[data-is-center='true']",
-    ),
+    page.locator("[data-explorer-nodes] .explorer-node[data-is-center='true']"),
   ).toBeVisible({ timeout: 15000 });
-  await expect(page.getByRole("heading", { level: 1 })).toContainText(
-    "Elvis",
-  );
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("Elvis");
   await expect(page.locator("[data-explorer-status]")).toContainText(
     /Centered on Elvis/i,
   );
