@@ -1,10 +1,25 @@
-# Next-path decision brief (post-Phase-3 cleanup, 2026-08-04)
+# Next-path decision brief (originally post-Phase-3 cleanup, 2026-08-04; last corrected 2026-08-16)
 
 A factual decision-support document, not a plan for a next phase. The
 repository is now internally coherent (see `docs/PHASE3_REPORT.md`'s
 follow-up section and ADR 0056) — this names the strongest real next
 directions the current, clean architecture supports, with the evidence
-behind each, and does not select one. None of these are started.
+behind each, and does not select one. None of the items below were
+started as of this document's own most recent prior edit (2026-08-09).
+
+**Correction (2026-08-16):** this document's title/date was never
+updated as its own body accumulated post-Phase-3 material through
+2026-08-09, and it was never updated at all for Phase 4 (ADR 0058 —
+album-credit membership, evidence-release registry v2, record-to-record
+pathfinding) or Phase 5 (ADR 0059 — recommended-route ranking, canonical
+names, evidence-release registry v2 extended with caveat flags,
+Connect Two Records' shareable URL state/Swap/accessible combobox, and
+the codebase's first Web Worker), both of which fully shipped and are
+live in production (Phase 5: PRs #112–121, 2026-08-09 through
+2026-08-15). None of the five candidate directions below were touched by
+either phase. A second correction, to the "Most-connected-contributors
+view" entry below, fixes a real overstatement about what
+`contributor_network` actually consumes — see that entry.
 
 ## Research quality / data model
 
@@ -118,19 +133,36 @@ daemons on what should be a headless worker).
 ## Public product
 
 **Most-connected-contributors view (raw co-credit degree).** A real,
-already-built research-pack addition (Phase 3 Slice G) uses only
-already-public production `graph.py` data — not research-only data — so
-it isn't blocked by the research/publication boundary. Not promoted
-during Phase 3 because it was new UI/design scope, not because of a data
-concern.
+already-built research-pack addition (Phase 3 Slice G).
+- **Correction (2026-08-16):** this entry previously claimed
+  `contributor_network` "uses only already-public production `graph.py`
+  data — not research-only data" and "already exists and runs against
+  production data today." Verified against the actual function signature
+  (`packages/research/src/networked_players_research/graph_analysis.py`):
+  `contributor_network(corpus_snapshot_root: Path)` reads
+  `table=credits/*.parquet` under a research-lane Topic Corpus snapshot,
+  not any published `apps/web/public/data/**` artifact. It is real,
+  working, tested code — but it is a research-lane consumer, not a
+  production one, and promoting it to a public surface is real new work
+  (a public artifact + contract + validator), not a data-boundary
+  non-issue as this entry previously implied.
 - *User value*: a second, simpler, complementary lens on contributor
   connectivity alongside the existing betweenness-based "bridge
-  contributors" signal.
-- *Backend leverage*: the underlying computation (`contributor_network`)
-  already exists and runs against production data today.
+  contributors" signal (also research-lane only today, see
+  `bridge_analysis` in the same module).
+- *Backend leverage*: the algorithm exists and is proven in the research
+  lane; the published `contributors/index.v1.json` already carries a
+  cheaper substitute (`connection_count`, a raw degree count computed
+  from the same two published artifacts the index itself is built from,
+  no corpus snapshot needed) that already powers `/contributors/`'s
+  "most connected" view today — the real gap is a richer signal beyond
+  raw degree, not raw degree itself.
 - *Biggest uncertainty*: whether this belongs on the existing Network
   Explorer or as a new view — a real design decision, not yet made.
-- *Prerequisite measurement*: none additional needed.
+- *Prerequisite measurement*: none additional needed for raw degree
+  (already shipped, see above); promoting `contributor_network` itself,
+  or anything richer, needs a real production-data adaptation, not a
+  simple copy.
 - *What not to build yet*: don't build a whole new page speculatively;
   scope it as an addition to an existing surface first.
 
