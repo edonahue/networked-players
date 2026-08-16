@@ -177,6 +177,28 @@ export async function initExplorerStage(): Promise<void> {
   const initialArtistId = Number(stage.dataset.initialArtistId);
   let activeCategories = new Set<string>();
 
+  // Phase 6 PR 6-03: an optional, READ-ONLY `?center=<artist_id>` deep link
+  // overrides which node the view opens on -- used by contributor pages to
+  // land on an arbitrary contributor, not just an album's own primary
+  // artist. Read once at init, matching flagship.ts/routes.ts's existing
+  // read-once convention (this page never calls pushState/replaceState of
+  // its own). Validated against the real loaded graph before use: an
+  // unknown, malformed, or stale id is silently ignored and the page's own
+  // default album-artist center renders instead, never a blank/error state
+  // from a bad deep link.
+  let initialCenterArtistId = initialArtistId;
+  let initialCenterLabel: string | undefined = stage.dataset.initialLabel;
+  const requestedCenter = new URLSearchParams(window.location.search).get(
+    "center",
+  );
+  if (requestedCenter !== null) {
+    const parsed = Number(requestedCenter);
+    if (Number.isInteger(parsed) && artistIndex.has(parsed)) {
+      initialCenterArtistId = parsed;
+      initialCenterLabel = undefined; // resolved from the graph itself
+    }
+  }
+
   function renderRoleFilter(view: ExplorerView) {
     const categories = new Set<string>();
     for (const node of [view.center, ...view.neighbors]) {
@@ -544,5 +566,5 @@ export async function initExplorerStage(): Promise<void> {
     }
   }
 
-  centerOn(initialArtistId, stage.dataset.initialLabel);
+  centerOn(initialCenterArtistId, initialCenterLabel);
 }
