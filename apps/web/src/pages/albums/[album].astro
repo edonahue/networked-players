@@ -139,7 +139,10 @@ const description = [
                       aria-controls={evidenceId}
                     >
                       Reveal
-                    </button>
+                    </button>{' '}
+                    <a href={`/play/connect/?a=${album.id}&b=${otherAlbum.id}`}>
+                      Search this route in Connect Two Records →
+                    </a>
                   </p>
                   <EvidencePanel
                     class="evidence-card"

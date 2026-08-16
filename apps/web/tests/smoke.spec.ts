@@ -152,6 +152,59 @@ test("an album page renders mode controls and reveals evidence", async ({
   ).toBeVisible();
 });
 
+// Phase 6: continuous navigation -- every documented connection shown on an
+// album page is also a direct, prefilled entry point into Connect Two
+// Records, reusing connectUrlState.ts's existing ?a=/?b= contract untouched
+// (no new URL-parsing code; this only adds a link to an already-shipped,
+// already-tested restore-from-URL path).
+test("an album page's documented connections link directly into Connect Two Records", async ({
+  page,
+  request,
+}) => {
+  const { album } = await pickBoundedConnectedAlbum(request);
+  const challengeRes = await request.get("/data/challenge.v2.json");
+  const { albums, paths } = (await challengeRes.json()) as {
+    albums: { id: string; title: string }[];
+    paths: { from_album_id: string; to_album_id: string }[];
+  };
+  const albumById = new Map(albums.map((a) => [a.id, a]));
+  const firstPath = paths.find(
+    (p) => p.from_album_id === album.id || p.to_album_id === album.id,
+  );
+  if (!firstPath) throw new Error(`no path found for ${album.id}`);
+  const otherAlbumId =
+    firstPath.from_album_id === album.id
+      ? firstPath.to_album_id
+      : firstPath.from_album_id;
+  const otherAlbum = albumById.get(otherAlbumId);
+  if (!otherAlbum)
+    throw new Error(`album ${otherAlbumId} missing from challenge.v2.json`);
+
+  await page.goto(`/albums/${album.id}/`);
+  const connectLink = page
+    .locator(".play-path")
+    .first()
+    .getByRole("link", { name: /search this route in connect two records/i });
+  await expect(connectLink).toHaveAttribute(
+    "href",
+    `/play/connect/?a=${album.id}&b=${otherAlbumId}`,
+  );
+
+  await connectLink.click();
+  await expect(page).toHaveURL(
+    new RegExp(`/play/connect/\\?a=${album.id}&b=${otherAlbumId}$`),
+  );
+  await expect(page.locator("[data-connect-results]")).toBeVisible({
+    timeout: 15000,
+  });
+  await expect(
+    page.locator('[data-picker="a"] [data-picker-selected]'),
+  ).toContainText(album.title);
+  await expect(
+    page.locator('[data-picker="b"] [data-picker-selected]'),
+  ).toContainText(otherAlbum.title);
+});
+
 // Dedicated hotlink-contract coverage (AGENTS.md: cover art is served from
 // Discogs' own CDN, never downloaded/rehosted here), decoupled from the
 // interaction test above -- this album is deterministically known to have
