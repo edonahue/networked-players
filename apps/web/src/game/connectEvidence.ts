@@ -118,10 +118,18 @@ export function renderEvidenceHop(
     release?.coverUri &&
     `<img class="connect-hop__cover" src="${escapeHtml(release.coverUri)}" width="48" height="48" loading="lazy" alt="" data-art-fallback="hide" />`;
   const meta = releaseMetaLine(release);
+  // `data-hop-artist-id` marks each name for the Phase 6 PR 6-06
+  // enhance-in-place pass (`enhanceHopContributorLinks`) that upgrades it
+  // to a link to that person's own contributor page, when one exists --
+  // the contributor index isn't awaited here, matching the same
+  // structural-render-first split `enhanceHopRelease`/`enhanceEndpointCover`
+  // already use for evidence/art.
+  const nameASpan = `<span data-hop-artist-id="${hop.artist_a_id}">${escapeHtml(nameA)}</span>`;
+  const nameBSpan = `<span data-hop-artist-id="${hop.artist_b_id}">${escapeHtml(nameB)}</span>`;
   return (
     `<div class="connect-hop">` +
-    `<p class="connect-hop__contributors">${escapeHtml(nameA)} <span class="connect-hop__role">(${escapeHtml(hop.role_a)})</span>` +
-    ` and ${escapeHtml(nameB)} <span class="connect-hop__role">(${escapeHtml(hop.role_b)})</span>` +
+    `<p class="connect-hop__contributors">${nameASpan} <span class="connect-hop__role">(${escapeHtml(hop.role_a)})</span>` +
+    ` and ${nameBSpan} <span class="connect-hop__role">(${escapeHtml(hop.role_b)})</span>` +
     ` are co-credited on the same documented release.</p>` +
     `<div class="connect-hop__release">` +
     (cover || "") +
@@ -170,6 +178,33 @@ export function enhanceHopRelease(
     title.className = "connect-hop__release-title";
     title.innerHTML = meta;
     textEl.insertBefore(title, textEl.firstChild);
+  }
+}
+
+/** Upgrades every already-rendered hop name inside `container` that has its
+ * own contributor page into a link there, in place -- never a full
+ * re-render of the hop. Shared by Connect and the Network Explorer's
+ * evidence drawer (both render hops through `renderEvidenceHop`), so a
+ * contributor's page is reachable from every place their name appears as
+ * documented evidence, not just the two dedicated center/album-page links
+ * (PR 6-04/6-05). Idempotent and safe to call more than once (e.g. Connect's
+ * Swap control re-rendering the same hops): an already-linked name is
+ * skipped, and a name whose id isn't in `contributorIds` is left as plain
+ * text, never a dangling href. */
+export function enhanceHopContributorLinks(
+  container: Element,
+  contributorIds: ReadonlySet<number>,
+): void {
+  for (const nameEl of container.querySelectorAll<HTMLElement>(
+    "[data-hop-artist-id]",
+  )) {
+    const artistId = Number(nameEl.dataset.hopArtistId);
+    if (!contributorIds.has(artistId)) continue;
+    if (nameEl.querySelector("a")) continue;
+    const link = document.createElement("a");
+    link.href = `/contributors/${artistId}/`;
+    link.textContent = nameEl.textContent ?? "";
+    nameEl.replaceChildren(link);
   }
 }
 

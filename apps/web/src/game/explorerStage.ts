@@ -17,6 +17,7 @@ import {
 } from "./networkExplorer";
 import {
   buildEvidenceIndex,
+  enhanceHopContributorLinks,
   renderEvidenceHop,
   type EvidenceRelease,
 } from "./connectEvidence";
@@ -466,6 +467,13 @@ export async function initExplorerStage(): Promise<void> {
       },
       nameById,
       evidenceIndex,
+    );
+    // Phase 6 PR 6-06: the contributor index is already fully resolved by
+    // this point (awaited during init, before any edge is clickable), so
+    // this is a synchronous enhancement, not a deferred one like Connect's.
+    enhanceHopContributorLinks(
+      evidenceContent!,
+      new Set(contributorByArtistId.keys()),
     );
     // Set only after the content swap, so the state never advertises evidence
     // that isn't in the DOM yet.

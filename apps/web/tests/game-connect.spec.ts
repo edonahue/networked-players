@@ -169,6 +169,51 @@ test("a real connected pair finds a documented route with evidence", async ({
   ).toBeVisible();
 });
 
+// Phase 6 PR 6-06: every hop name carries the contributor's own artist_id
+// (data-hop-artist-id) regardless of whether that person has a published
+// contributor page -- a general property test against the real contributor
+// index, not a hardcoded name, so it survives a future regeneration.
+test("hop names link to their own contributor page when one is published", async ({
+  page,
+  request,
+}) => {
+  const res = await request.get("/data/contributors/index.v1.json");
+  const { contributors } = (await res.json()) as {
+    contributors: { artist_id: number }[];
+  };
+  const contributorIds = new Set(contributors.map((c) => c.artist_id));
+
+  await page.goto("/play/connect/");
+  await selectAlbum(page, "a", "Discovery");
+  await selectAlbum(page, "b", "Joshua Tree");
+  await page.locator("[data-connect-search]").click();
+
+  await expect(page.locator("[data-connect-results]")).toBeVisible({
+    timeout: 15000,
+  });
+  const nameEls = page.locator("[data-connect-hops] [data-hop-artist-id]");
+  await expect(nameEls.first()).toBeVisible();
+  const count = await nameEls.count();
+  expect(count).toBeGreaterThan(0);
+
+  let linkedAtLeastOne = false;
+  for (let i = 0; i < count; i++) {
+    const el = nameEls.nth(i);
+    const artistId = Number(await el.getAttribute("data-hop-artist-id"));
+    const link = el.locator("a");
+    if (contributorIds.has(artistId)) {
+      await expect(link).toHaveAttribute("href", `/contributors/${artistId}/`);
+      linkedAtLeastOne = true;
+    } else {
+      await expect(link).toHaveCount(0);
+    }
+  }
+  // A vacuously-true loop (every hop name lacking a page) would prove
+  // nothing about the linking behavior itself -- this pair's real data has
+  // at least one linked contributor, so this genuinely exercises it.
+  expect(linkedAtLeastOne).toBe(true);
+});
+
 // The recommended-route engine (ADR 0059, Phase 5 PR 3): Discovery ->
 // Joshua Tree is the ADR's own diagnostic pair -- production's plain BFS
 // used to surface a route through "u2", evidenced by a 1998 Italian

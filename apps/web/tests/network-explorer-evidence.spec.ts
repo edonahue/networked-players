@@ -53,6 +53,50 @@ test("clicking an edge shows real evidence in the drawer", async ({ page }) => {
   ).toBeVisible();
 });
 
+// Phase 6 PR 6-06: the drawer's two hop names link to their own contributor
+// page when one is published -- shared logic with Connect
+// (enhanceHopContributorLinks), general property test against the real
+// contributor index rather than a hardcoded name.
+test("evidence drawer hop names link to their own contributor page when one is published", async ({
+  page,
+  request,
+}) => {
+  const res = await request.get("/data/contributors/index.v1.json");
+  const { contributors } = (await res.json()) as {
+    contributors: { artist_id: number }[];
+  };
+  const contributorIds = new Set(contributors.map((c) => c.artist_id));
+
+  await page.goto("/explore/master-107325/");
+  await waitForGraph(page);
+  await firstEdge(page).click();
+
+  const content = page.locator("[data-explorer-evidence-content]");
+  await expect(content).toContainText(
+    /co-credited on the same documented release/i,
+  );
+  const nameEls = content.locator("[data-hop-artist-id]");
+  await expect(nameEls).toHaveCount(2);
+
+  let linkedAtLeastOne = false;
+  for (let i = 0; i < 2; i++) {
+    const el = nameEls.nth(i);
+    const artistId = Number(await el.getAttribute("data-hop-artist-id"));
+    const link = el.locator("a");
+    if (contributorIds.has(artistId)) {
+      await expect(link).toHaveAttribute("href", `/contributors/${artistId}/`);
+      linkedAtLeastOne = true;
+    } else {
+      await expect(link).toHaveCount(0);
+    }
+  }
+  // Elvis (the center, artist_id 27518) is always one of the two names on
+  // his own high-degree first edge, and always has a real contributor page
+  // -- this pair genuinely exercises the linking behavior, not a vacuous
+  // "nothing had a page" pass.
+  expect(linkedAtLeastOne).toBe(true);
+});
+
 // The drawer's advertised state must distinguish "open but still fetching"
 // from "open and settled" -- a visitor (and a screen reader, via aria-busy)
 // otherwise cannot tell a slow load from an empty result.
