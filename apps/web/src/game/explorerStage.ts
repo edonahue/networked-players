@@ -110,6 +110,22 @@ export async function initExplorerStage(): Promise<void> {
   const centerLinkEl = stage.querySelector<HTMLElement>(
     "[data-explorer-center-link]",
   );
+  const infoPanelEl = stage.querySelector<HTMLElement>(
+    "[data-explorer-info-panel]",
+  );
+  const infoSummaryEl = stage.querySelector<HTMLElement>(
+    "[data-explorer-info-summary]",
+  );
+  const infoWorthALookEl = stage.querySelector<HTMLElement>(
+    "[data-explorer-info-worth-a-look]",
+  );
+  const infoEmptyEl = stage.querySelector<HTMLElement>(
+    "[data-explorer-info-empty]",
+  );
+  const infoLinksEl = stage.querySelector<HTMLElement>(
+    "[data-explorer-info-links]",
+  );
+  const trailEl = stage.querySelector<HTMLElement>("[data-explorer-trail]");
   if (
     !svg ||
     !nodesLayer ||
@@ -120,7 +136,13 @@ export async function initExplorerStage(): Promise<void> {
     !evidenceDrawer ||
     !evidenceContent ||
     !evidenceClose ||
-    !centerLinkEl
+    !centerLinkEl ||
+    !infoPanelEl ||
+    !infoSummaryEl ||
+    !infoWorthALookEl ||
+    !infoEmptyEl ||
+    !infoLinksEl ||
+    !trailEl
   )
     return;
 
@@ -323,6 +345,42 @@ export async function initExplorerStage(): Promise<void> {
 
   let currentView: ExplorerView | null = null;
 
+  // Session-only "recently centered on" trail (plan §12.7's continuity
+  // pass): a capped, in-memory list, never persisted and never touching
+  // history/URL state -- recentering elsewhere in the app (a fresh page
+  // load) starts a fresh trail, matching this page's existing
+  // never-calls-pushState convention. Consecutive re-centers on the same
+  // node don't grow it. Each entry re-invokes centerOn() directly (a real
+  // in-page state change), not a navigation.
+  const MAX_TRAIL_LENGTH = 5;
+  const recentCenters: { artistId: number; name: string }[] = [];
+
+  function pushTrail(artistId: number, name: string) {
+    if (recentCenters[recentCenters.length - 1]?.artistId === artistId) return;
+    recentCenters.push({ artistId, name });
+    while (recentCenters.length > MAX_TRAIL_LENGTH) recentCenters.shift();
+  }
+
+  function renderTrail() {
+    if (recentCenters.length < 2) {
+      trailEl!.hidden = true;
+      trailEl!.innerHTML = "";
+      return;
+    }
+    trailEl!.hidden = false;
+    trailEl!.innerHTML =
+      `<span class="explorer-trail__label">Recently: </span>` +
+      recentCenters
+        .map((entry, i) => {
+          const isCurrent = i === recentCenters.length - 1;
+          const sep = i > 0 ? '<span aria-hidden="true"> → </span>' : "";
+          return isCurrent
+            ? `${sep}<span class="explorer-trail__current" aria-current="true">${escapeHtml(entry.name)}</span>`
+            : `${sep}<button type="button" class="explorer-trail__step" data-trail-artist-id="${entry.artistId}">${escapeHtml(entry.name)}</button>`;
+        })
+        .join("");
+  }
+
   function centerOn(
     artistId: number,
     label?: string,
@@ -361,6 +419,48 @@ export async function initExplorerStage(): Promise<void> {
       centerLinkEl!.hidden = true;
       centerLinkEl!.innerHTML = "";
     }
+
+    // The info panel: a sighted-user-visible parity fix for what the
+    // SR-only status region above already announces, plus real "continue
+    // wandering" affordances the center previously had no way to offer
+    // beyond a single conditional contributor-page link.
+    infoPanelEl!.hidden = false;
+    const roleSummary = view.center.roleCategories
+      .map((c) => ROLE_CATEGORY_LABEL[c] ?? c)
+      .join(", ");
+    infoSummaryEl!.textContent = roleSummary
+      ? `Centered on ${view.center.name} — credited for ${roleSummary}.`
+      : `Centered on ${view.center.name}.`;
+
+    // Same guard renderView uses for the node highlight -- only mention a
+    // "worth a look" neighbor when it's actually one of the rendered
+    // nodes. ~27% of the time (measured, Phase 6 PR 6-10) the signal's
+    // target isn't a real edge in this published graph at all; silence is
+    // the honest behavior there, matching the field's own null-is-valid
+    // contract, not a forced or misleading mention.
+    const nextStep = centerContributor?.interesting_next_step;
+    const worthALookNeighbor = nextStep
+      ? view.neighbors.find((n) => n.artistId === nextStep.artist_id)
+      : undefined;
+    if (nextStep && worthALookNeighbor) {
+      infoWorthALookEl!.hidden = false;
+      infoWorthALookEl!.innerHTML = `Worth a look: <a href="/contributors/${nextStep.artist_id}/">${escapeHtml(worthALookNeighbor.name)}</a> -- ${escapeHtml(nextStep.reason)}.`;
+    } else {
+      infoWorthALookEl!.hidden = true;
+      infoWorthALookEl!.innerHTML = "";
+    }
+
+    infoEmptyEl!.hidden = view.neighbors.length > 0;
+
+    const centerAlbumId = centerContributor?.albums[0];
+    infoLinksEl!.innerHTML = centerAlbumId
+      ? `<a href="/albums/${centerAlbumId}/">View ${escapeHtml(view.center.name)}'s record →</a>` +
+        ` · <a href="/play/connect/?a=${centerAlbumId}">Continue in Connect Two Records →</a>`
+      : "";
+
+    pushTrail(view.center.artistId, view.center.name);
+    renderTrail();
+
     if (options.moveFocus) {
       nodesLayer!
         .querySelector<SVGGElement>(
@@ -610,6 +710,16 @@ export async function initExplorerStage(): Promise<void> {
       );
     }
   }
+
+  trailEl.addEventListener("click", (event) => {
+    const button = (event.target as HTMLElement).closest<HTMLButtonElement>(
+      "[data-trail-artist-id]",
+    );
+    if (!button) return;
+    const artistId = Number(button.dataset.trailArtistId);
+    if (Number.isNaN(artistId)) return;
+    centerOn(artistId, undefined, { moveFocus: true });
+  });
 
   centerOn(initialCenterArtistId, initialCenterLabel);
 }

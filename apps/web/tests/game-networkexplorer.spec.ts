@@ -7,6 +7,55 @@
 import { expect, test } from "@playwright/test";
 import { pathfindingGraphVersion } from "../src/game/pathfindingGraph";
 
+interface ContributorLite {
+  artist_id: number;
+  albums: string[];
+  interesting_next_step: { artist_id: number; reason: string } | null;
+}
+
+// Shared with "the center's interesting_next_step neighbor is visually
+// highlighted" below and the new info-panel text test -- both need the
+// same real, bounded, cross-artifact-verified fixture (contributor index
+// and pathfinding graph are built from different published artifacts and
+// only agree on an edge ~73% of the time, measured in Phase 6 PR 6-10).
+async function findBoundedRealInterestingNextStep(
+  request: import("@playwright/test").APIRequestContext,
+): Promise<{ contributor: ContributorLite; neighborId: number }> {
+  const [contributorRes, graphRes] = await Promise.all([
+    request.get("/data/contributors/index.v1.json"),
+    request.get("/data/pathfinding/graph.v2.json"),
+  ]);
+  const { contributors } = (await contributorRes.json()) as {
+    contributors: ContributorLite[];
+  };
+  const graph = (await graphRes.json()) as {
+    node_ids: number[];
+    offsets: number[];
+    neighbors: number[];
+  };
+  const nodeIndexById = new Map(graph.node_ids.map((id, i) => [id, i]));
+  const realNeighbors = (artistId: number): Set<number> | null => {
+    const i = nodeIndexById.get(artistId);
+    if (i === undefined) return null;
+    return new Set(
+      graph.neighbors
+        .slice(graph.offsets[i], graph.offsets[i + 1])
+        .map((j) => graph.node_ids[j]),
+    );
+  };
+
+  for (const c of contributors) {
+    if (!c.interesting_next_step || c.albums.length === 0) continue;
+    const neighbors = realNeighbors(c.artist_id);
+    if (!neighbors || neighbors.size === 0 || neighbors.size > 20) continue;
+    if (!neighbors.has(c.interesting_next_step.artist_id)) continue;
+    return { contributor: c, neighborId: c.interesting_next_step.artist_id };
+  }
+  throw new Error(
+    "no contributor with a bounded, real pathfinding-graph interesting_next_step edge",
+  );
+}
+
 test("the explorer centers on the album's artist and shows a bounded neighborhood", async ({
   page,
 }) => {
@@ -220,49 +269,8 @@ test("the center's interesting_next_step neighbor is visually highlighted", asyn
   page,
   request,
 }) => {
-  const [contributorRes, graphRes] = await Promise.all([
-    request.get("/data/contributors/index.v1.json"),
-    request.get("/data/pathfinding/graph.v2.json"),
-  ]);
-  const { contributors } = (await contributorRes.json()) as {
-    contributors: {
-      artist_id: number;
-      albums: string[];
-      interesting_next_step: { artist_id: number } | null;
-    }[];
-  };
-  const graph = (await graphRes.json()) as {
-    node_ids: number[];
-    offsets: number[];
-    neighbors: number[];
-  };
-  const nodeIndexById = new Map(graph.node_ids.map((id, i) => [id, i]));
-  const realNeighbors = (artistId: number): Set<number> | null => {
-    const i = nodeIndexById.get(artistId);
-    if (i === undefined) return null;
-    return new Set(
-      graph.neighbors
-        .slice(graph.offsets[i], graph.offsets[i + 1])
-        .map((j) => graph.node_ids[j]),
-    );
-  };
-
-  let contributor: (typeof contributors)[number] | undefined;
-  let neighborId = -1;
-  for (const c of contributors) {
-    if (!c.interesting_next_step || c.albums.length === 0) continue;
-    const neighbors = realNeighbors(c.artist_id);
-    if (!neighbors || neighbors.size === 0 || neighbors.size > 20) continue;
-    if (!neighbors.has(c.interesting_next_step.artist_id)) continue;
-    contributor = c;
-    neighborId = c.interesting_next_step.artist_id;
-    break;
-  }
-  if (!contributor) {
-    throw new Error(
-      "no contributor with a bounded, real pathfinding-graph interesting_next_step edge",
-    );
-  }
+  const { contributor, neighborId } =
+    await findBoundedRealInterestingNextStep(request);
 
   await page.goto(
     `/explore/${contributor.albums[0]}/?center=${contributor.artist_id}`,
@@ -289,6 +297,115 @@ test("the center's interesting_next_step neighbor is visually highlighted", asyn
       "false",
     );
   }
+});
+
+// Continuity pass (plan §12.7): a sighted-user-visible info panel, real
+// links out, and a session trail -- previously Explorer only announced its
+// center via an SR-only status region and a single conditional
+// contributor-page link.
+test("the info panel shows a visible centered-on summary with role text", async ({
+  page,
+}) => {
+  await page.goto("/explore/master-107325/");
+  const summary = page.locator("[data-explorer-info-summary]");
+  await expect(summary).toBeVisible({ timeout: 15000 });
+  await expect(summary).toContainText("Centered on");
+  await expect(summary).toContainText("Elvis Presley");
+});
+
+test("the info panel links to the center's own record page and Connect, prefilled", async ({
+  page,
+  request,
+}) => {
+  // The center's own record link uses THAT contributor's own albums[0]
+  // (contributor_index.py's own shared-hop-count order) -- not necessarily
+  // the album this Explorer page happened to launch from, which centers on
+  // the album's primary artist but doesn't imply their own albums[0] is
+  // this same record.
+  const res = await request.get("/data/contributors/index.v1.json");
+  const { contributors } = (await res.json()) as {
+    contributors: { artist_id: number; albums: string[] }[];
+  };
+  const elvis = contributors.find((c) => c.artist_id === 27518);
+  if (!elvis || elvis.albums.length === 0)
+    throw new Error(
+      "Elvis Presley (27518) missing or has no albums in the real index",
+    );
+  const ownAlbumId = elvis.albums[0];
+
+  await page.goto("/explore/master-107325/");
+  const recordLink = page.locator(
+    `[data-explorer-info-links] a[href='/albums/${ownAlbumId}/']`,
+  );
+  await expect(recordLink).toBeVisible({ timeout: 15000 });
+
+  const connectLink = page.locator(
+    `[data-explorer-info-links] a[href='/play/connect/?a=${ownAlbumId}']`,
+  );
+  await expect(connectLink).toBeVisible();
+  await connectLink.click();
+  await page.waitForURL(`**/play/connect/?a=${ownAlbumId}`);
+  await expect(
+    page.locator("[data-picker='a'] [data-picker-selected]"),
+  ).toBeVisible();
+});
+
+test("the info panel explains a real, bounded interesting_next_step highlight in plain text", async ({
+  page,
+  request,
+}) => {
+  const { contributor, neighborId } =
+    await findBoundedRealInterestingNextStep(request);
+  const reason = contributor.interesting_next_step!.reason;
+
+  await page.goto(
+    `/explore/${contributor.albums[0]}/?center=${contributor.artist_id}`,
+  );
+  const worthALook = page.locator("[data-explorer-info-worth-a-look]");
+  await expect(worthALook).toBeVisible({ timeout: 15000 });
+  await expect(worthALook).toContainText("Worth a look");
+  await expect(worthALook).toContainText(reason);
+  await expect(
+    worthALook.locator(`a[href='/contributors/${neighborId}/']`),
+  ).toBeVisible();
+});
+
+test("recentering builds a session trail, and a trail step re-centers back", async ({
+  page,
+}) => {
+  await page.goto("/explore/master-107325/");
+  const trail = page.locator("[data-explorer-trail]");
+  // A single center is not a "trail" yet.
+  await expect(trail).toBeHidden({ timeout: 15000 });
+
+  const centerNode = page.locator(
+    "[data-explorer-nodes] .explorer-node[data-is-center='true']",
+  );
+  await expect(centerNode).toBeVisible({ timeout: 15000 });
+  const originalArtistId = await centerNode.getAttribute("data-artist-id");
+  if (!originalArtistId) throw new Error("center node has no data-artist-id");
+
+  const firstNeighbor = page
+    .locator("[data-explorer-nodes] .explorer-node[data-is-center='false']")
+    .first();
+  await expect(firstNeighbor).toBeVisible();
+  await firstNeighbor.click();
+
+  await expect(trail).toBeVisible();
+  const step = trail.locator(`[data-trail-artist-id='${originalArtistId}']`);
+  await expect(step).toBeVisible();
+  await expect(step).toContainText("Elvis Presley");
+
+  await step.click();
+  await expect(centerNode).toHaveAttribute("data-artist-id", originalArtistId, {
+    timeout: 15000,
+  });
+  // Re-centering via a trail step is itself a real centerOn(), so it
+  // grows the trail (now 3 entries: Elvis -> neighbor -> Elvis again)
+  // rather than erasing it.
+  await expect(trail.locator(".explorer-trail__current")).toContainText(
+    "Elvis Presley",
+  );
 });
 
 test("an unknown artist id shows a graceful message instead of a blank graph", async ({
@@ -322,4 +439,30 @@ test("an unknown artist id shows a graceful message instead of a blank graph", a
   await expect(page.locator("[data-explorer-status]")).toContainText(
     /isn't in the documented/i,
   );
+});
+
+test.describe("mobile layout", () => {
+  test.use({ viewport: { width: 390, height: 844 } });
+
+  test("the new info panel and trail don't cause sideways scroll on a phone-sized screen", async ({
+    page,
+  }) => {
+    await page.goto("/explore/master-107325/");
+    await expect(page.locator("[data-explorer-info-summary]")).toBeVisible({
+      timeout: 15000,
+    });
+
+    const firstNeighbor = page
+      .locator("[data-explorer-nodes] .explorer-node[data-is-center='false']")
+      .first();
+    await firstNeighbor.click();
+    await expect(page.locator("[data-explorer-trail]")).toBeVisible();
+
+    const overflow = await page.evaluate(
+      () =>
+        document.documentElement.scrollWidth -
+        document.documentElement.clientWidth,
+    );
+    expect(overflow).toBeLessThanOrEqual(0);
+  });
 });
