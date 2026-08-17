@@ -51,6 +51,23 @@ Corpus contract asks one artifact to do both jobs.
 - *What not to build yet*: don't touch the Topic Corpus contract itself
   without a real design pass — this cleanup pass deliberately only
   measured, per its own scope boundary.
+- *2026-08-16 update*: the hand-run measurement above is now reusable,
+  tested tooling (`networked-players-research research-scope-tier`,
+  `packages/research/src/networked_players_research/scope_tier.py`) —
+  tiers A/B/C (full corpus, direct-billed, main-release-only) over any
+  already-built topic corpus, reusing `graph.py`'s own production
+  `credit_edges_sql`. Running it against the real Jamiroquai corpus
+  reproduces Tier A exactly (656 nodes/680 edges/13 components/617
+  largest) but finds MORE graph structure at Tiers B/C than the original
+  hand script recorded (292 vs. 291 nodes at B; 149 vs. 55 at C) — the
+  original script under-counted edges, most likely by not exercising the
+  full `credit_edges_sql` rule set; this tool supersedes those numbers as
+  the more complete, tested measurement, while confirming the same
+  qualitative star/tree-topology finding at both narrowed tiers. Tier D
+  ("studio albums only") is NOT reproduced by this tool — it was a
+  hand-curated release-title list, not a data-derived filter, and stays
+  a manual follow-up. Still no decision on corpus/contract shape; this
+  is measurement tooling, not a design change.
 
 **Multi-artist follow-up measurement (2026-08-09).** Extended the
 Jamiroquai scope-tier measurement above to four more real catalog
