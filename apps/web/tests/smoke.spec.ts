@@ -364,6 +364,78 @@ test("primary nav marks the current section with aria-current", async ({
   await expect(
     page.locator("nav[aria-label='Primary'] a[aria-current='page']"),
   ).toHaveText("Find a Connection");
+  await page.goto("/contributors/");
+  await expect(
+    page.locator("nav[aria-label='Primary'] a[aria-current='page']"),
+  ).toHaveText("Contributors");
+});
+
+test("primary nav includes a real, working Contributors link", async ({
+  page,
+}) => {
+  await page.goto("/");
+  const navLink = page.locator(
+    "nav[aria-label='Primary'] a[href='/contributors/']",
+  );
+  await expect(navLink).toBeVisible();
+  await navLink.click();
+  await page.waitForURL("**/contributors/");
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+});
+
+test("the play hub is reachable from the homepage, not just by URL", async ({
+  page,
+}) => {
+  await page.goto("/");
+  const playHubLink = page.locator("a[href='/play/']").first();
+  await expect(playHubLink).toBeVisible();
+  await playHubLink.click();
+  await page.waitForURL("**/play/");
+  await expect(page.getByRole("heading", { level: 1 })).toContainText(
+    "Pick a game",
+  );
+});
+
+test("the play hub lists Contributors as a real, live mode card", async ({
+  page,
+}) => {
+  await page.goto("/play/");
+  const contributorsCard = page.locator(
+    "[data-testid='mode-card'][href='/contributors/']",
+  );
+  await expect(contributorsCard).toBeVisible();
+  await expect(contributorsCard).toHaveAttribute("data-mode-status", "live");
+});
+
+test("the homepage features a real contributor, deterministically picked from the published index", async ({
+  page,
+  request,
+}) => {
+  const res = await request.get("/data/contributors/index.v1.json");
+  const { contributors } = (await res.json()) as {
+    contributors: Array<{
+      artist_id: number;
+      name: string;
+      albums: string[];
+      interesting_next_step: { artist_id: number } | null;
+    }>;
+  };
+  const expected = contributors.find(
+    (c) => c.interesting_next_step !== null && c.albums.length > 0,
+  );
+  test.skip(!expected, "no contributor in the real index qualifies today");
+
+  await page.goto("/");
+  const featuredLink = page.locator(
+    `a.contributor-card[href='/contributors/${expected!.artist_id}/']`,
+  );
+  await expect(featuredLink).toBeVisible();
+  await expect(featuredLink).toContainText(expected!.name);
+  await featuredLink.click();
+  await page.waitForURL(`**/contributors/${expected!.artist_id}/`);
+  await expect(page.getByRole("heading", { level: 1 })).toContainText(
+    expected!.name,
+  );
 });
 
 test("sitemap includes every play mode, including record routes", async ({

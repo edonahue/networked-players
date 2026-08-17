@@ -4,13 +4,16 @@ import SpinningRecord from '../components/SpinningRecord.astro';
 import AlbumCard from '../components/AlbumCard.astro';
 import site from '../data/site.json';
 import type { ChallengeV2 } from '../data/challenge';
+import type { Contributor, ContributorIndex } from '../data/contributors';
 import challengeData from '../../public/data/challenge.v2.json';
+import contributorIndexData from '../../public/data/contributors/index.v1.json';
 import { connectedCatalogAlbums } from '../data/connectedAlbums';
 
 const { hero, focus } = site;
 
 const challenge = challengeData as ChallengeV2;
 const albums = connectedCatalogAlbums(challenge);
+const contributorIndex = contributorIndexData as ContributorIndex;
 
 // Deterministic, not random: challenge.paths[0] is a real documented route,
 // content-hash versioned along with the rest of challenge.v2.json (ADR
@@ -20,6 +23,19 @@ const featuredPath = challenge.paths[0];
 const albumsById = new Map(challenge.albums.map((album) => [album.id, album]));
 const featuredFrom = albumsById.get(featuredPath.from_album_id);
 const featuredTo = albumsById.get(featuredPath.to_album_id);
+
+// Same "deterministic, not random" discipline as featuredPath above: the
+// first contributor (the index's own artist_id-sorted order) that has both
+// a real ADR 0060 interesting_next_step and a connected album to launch
+// Explore from. Content-hash versioned along with the rest of
+// contributor-index-v1, not a pick made at render time.
+const featuredContributor = contributorIndex.contributors.find(
+  (c): c is Contributor => c.interesting_next_step !== null && c.albums.length > 0,
+);
+const contributorById = new Map(contributorIndex.contributors.map((c) => [c.artist_id, c]));
+const featuredNeighbor = featuredContributor
+  ? contributorById.get(featuredContributor.interesting_next_step!.artist_id)
+  : undefined;
 ---
 
 <BaseLayout>
@@ -67,7 +83,53 @@ const featuredTo = albumsById.get(featuredPath.to_album_id);
         <p>Step into one album's bounded credit network and follow it wherever it leads.</p>
       </a>
     </div>
+    <p class="lede" style="margin-top:20px">
+      Want the full shelf? <a href="/play/">See every way to play</a>.
+    </p>
   </section>
+
+  {
+    featuredContributor && (
+      <section class="section shell" id="people" aria-labelledby="people-title">
+        <div class="section-heading">
+          <p class="eyebrow">Follow the credits</p>
+          <h2 id="people-title">Every record has people behind it.</h2>
+          <p class="lede">
+            Each album page lists who's documented on it. Open any name and you land on a real
+            person's page: their role categories, the records they connect, and — where the data
+            supports it — a "worth a look" nudge toward someone credited in a different kind of
+            role. No graph theory required, just follow the names.
+          </p>
+        </div>
+        <div class="contributor-grid">
+          <a class="contributor-card" href={`/contributors/${featuredContributor.artist_id}/`}>
+            <span class="contributor-card__name">{featuredContributor.name}</span>
+            <span class="lede" style="font-size:0.9rem">
+              {featuredContributor.role_categories.length} documented role
+              {featuredContributor.role_categories.length === 1 ? '' : 's'} · appears on{' '}
+              {featuredContributor.albums.length} connected album
+              {featuredContributor.albums.length === 1 ? '' : 's'}
+            </span>
+          </a>
+          {featuredNeighbor && (
+            <a class="contributor-card" href={`/contributors/${featuredNeighbor.artist_id}/`}>
+              <span class="contributor-card__name">
+                {featuredNeighbor.name}
+                <span class="tag tag--highlight" style="margin-left:6px">Different role</span>
+              </span>
+              <span class="lede" style="font-size:0.9rem">
+                Worth a look from {featuredContributor.name}'s page — credited in a different kind
+                of role.
+              </span>
+            </a>
+          )}
+        </div>
+        <p class="lede" style="margin-top:20px">
+          Browse everyone documented in the graph at <a href="/contributors/">/contributors/</a>.
+        </p>
+      </section>
+    )
+  }
 
   <section class="section shell" id="albums" aria-labelledby="albums-title">
     <div class="section-heading">
