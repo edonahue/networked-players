@@ -4,6 +4,7 @@ import AlbumCard from '../../components/AlbumCard.astro';
 import EvidencePanel from '../../components/EvidencePanel.astro';
 import { buildHopViews } from '../../data/evidence';
 import { ROLE_CATEGORY_LABEL, type Contributor, type ContributorIndex } from '../../data/contributors';
+import { coverFor } from '../../data/albumArt';
 import type { AlbumV2, ChallengeV2 } from '../../data/challenge';
 import type { RoutesRounds } from '../../game/routesTypes';
 import contributorIndexData from '../../../public/data/contributors/index.v1.json';
@@ -71,12 +72,60 @@ const evidenceHops = [
   ...buildHopViews(routeHops, routesRounds.releases, routesRounds.artists),
 ];
 
+// A real visual anchor when one exists -- the contributor's own first
+// connected album's cover (ADR 0045 registry), never an invented image.
+// Falls back to the same vinyl-disc placeholder album pages already use
+// (`play-header__placeholder`/`album-card__placeholder`), so a contributor
+// with no registry-covered album still gets the same honest treatment an
+// album with no cover gets, not a blank header.
+const contributorCover = albums.length > 0 ? coverFor(albums[0].id) : null;
+
+// A one-line human summary of role_categories, alongside (not instead of)
+// the tag chips below -- "Primarily credited for: X, Y" rather than
+// requiring a visitor to parse a row of tags on their own.
+const roleSummary = contributor.role_categories
+  .map((category) => ROLE_CATEGORY_LABEL[category] ?? category)
+  .join(', ');
+
+// "Connect records through this contributor": only offered when there are
+// genuinely two distinct connected albums to prefill Connect Two Records
+// with -- never a single-album or self-paired link.
+const connectAlbumA = albums[0];
+const connectAlbumB = albums.length > 1 ? albums[1] : undefined;
+
+// A concrete "why" for the ADR 0060 nudge, not just "a different kind of
+// role" -- interestingNeighbor's own role_categories are guaranteed
+// disjoint from contributor's own (that's the field's own selection rule),
+// so naming them directly is always accurate, never inferred.
+const interestingNeighborRoleSummary = interestingNeighbor
+  ? interestingNeighbor.role_categories
+      .map((category) => ROLE_CATEGORY_LABEL[category] ?? category)
+      .join(', ')
+  : null;
+
 const description = `Documented credits and connections for ${contributor.name} in the Networked Players credit graph.`;
 ---
 
 <BaseLayout title={contributor.name} description={description}>
   <section class="shell" style="padding-top:40px">
     <div class="play-header">
+      {
+        contributorCover ? (
+          <img
+            class="play-header__cover"
+            src={contributorCover.uri150}
+            width="96"
+            height="96"
+            alt=""
+            loading="lazy"
+            data-art-fallback="disc"
+          />
+        ) : (
+          <span class="play-header__placeholder album-card__placeholder" aria-hidden="true">
+            <span class="album-card__placeholder-disc" />
+          </span>
+        )
+      }
       <div>
         <p class="eyebrow" style="margin-bottom:6px">
           <a href="/contributors/">Contributors</a>
@@ -85,6 +134,13 @@ const description = `Documented credits and connections for ${contributor.name} 
         <p class="lede" style="margin-top:6px;font-size:1rem">
           #{contributor.artist_id} · linked identity
         </p>
+        {
+          roleSummary && (
+            <p class="lede" style="margin-top:6px;font-size:0.95rem">
+              Primarily credited for: {roleSummary}
+            </p>
+          )
+        }
         <div class="contributor-grid" style="margin-top:14px;gap:8px">
           {
             contributor.role_categories.map((category) => (
@@ -118,12 +174,26 @@ const description = `Documented credits and connections for ${contributor.name} 
     </p>
 
     {
-      albums.length > 0 && (
+      albums.length > 0 ? (
         <p class="lede" style="max-width:720px;font-size:0.98rem">
           <a href={`/explore/${albums[0].id}/?center=${contributor.artist_id}`}>
-            Open the Network Explorer
+            Explore {contributor.name}'s documented credit neighborhood
           </a>{' '}
-          centered on {contributor.name}.
+          in the Network Explorer.
+          {connectAlbumB && (
+            <>
+              {' '}Or{' '}
+              <a href={`/play/connect/?a=${connectAlbumA.id}&b=${connectAlbumB.id}`}>
+                connect two of their records
+              </a>{' '}
+              directly.
+            </>
+          )}
+        </p>
+      ) : (
+        <p class="lede" style="max-width:720px;font-size:0.98rem">
+          No documented album connection is indexed for {contributor.name} yet. Browse{' '}
+          <a href="/contributors/">everyone else in the graph</a> instead.
         </p>
       )
     }
@@ -142,19 +212,20 @@ const description = `Documented credits and connections for ${contributor.name} 
     }
 
     {
-      neighbors.length > 0 && (
+      neighbors.length > 0 ? (
         <section aria-label="Neighboring contributors" style="margin-top:28px">
           <p class="eyebrow" style="margin-bottom:10px">
             Other contributors co-credited on the same documented releases
           </p>
           {
-            interestingNeighbor && (
+            interestingNeighbor && interestingNeighborRoleSummary && (
               <p class="lede" style="margin-bottom:14px;font-size:0.92rem">
                 Worth a look:{' '}
                 <a href={`/contributors/${interestingNeighbor.artist_id}/`}>
                   {interestingNeighbor.name}
                 </a>{' '}
-                is credited in a different kind of role than {contributor.name}.
+                is credited for {interestingNeighborRoleSummary} — a different kind of role than
+                {roleSummary ? ` ${contributor.name}'s ${roleSummary}` : ` ${contributor.name}'s`}.
               </p>
             )
           }
@@ -174,6 +245,12 @@ const description = `Documented credits and connections for ${contributor.name} 
             ))}
           </div>
         </section>
+      ) : (
+        <p class="lede" style="max-width:720px;margin-top:28px;font-size:0.95rem">
+          No other contributor is indexed alongside {contributor.name} on a documented release
+          yet. <a href="/contributors/">Browse the full directory</a> to find someone else worth
+          following.
+        </p>
       )
     }
 

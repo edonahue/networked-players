@@ -124,13 +124,17 @@ test("a contributor page highlights its interesting_next_step neighbor without h
     await contributorWithInterestingNextStep(request);
   await page.goto(`/contributors/${contributor.artist_id}/`);
 
+  // Scoped to the specific "worth a look" paragraph (the one that also
+  // links to the neighbor) -- both the contributor's own name and the
+  // phrase "different kind of role" also appear elsewhere on the page
+  // (the Explore link, the header) since PR 2's role-summary additions.
+  const worthALookPara = page.locator(
+    `.lede:has(a[href='/contributors/${neighbor.artist_id}/'])`,
+  );
+  await expect(worthALookPara).toContainText("a different kind of role than");
+  await expect(worthALookPara).toContainText(`${contributor.name}'s`);
   await expect(
-    page.getByText(
-      `is credited in a different kind of role than ${contributor.name}`,
-    ),
-  ).toBeVisible();
-  await expect(
-    page.locator(`.lede a[href='/contributors/${neighbor.artist_id}/']`),
+    worthALookPara.locator(`a[href='/contributors/${neighbor.artist_id}/']`),
   ).toHaveText(neighbor.name);
 
   // The full neighbor list stays intact -- every id, including the
@@ -150,6 +154,118 @@ test("a contributor page highlights its interesting_next_step neighbor without h
   );
 });
 
+test("a contributor page shows a visual anchor -- a real cover or the house placeholder", async ({
+  page,
+  request,
+}) => {
+  const contributor = await firstContributor(request);
+  await page.goto(`/contributors/${contributor.artist_id}/`);
+
+  const cover = page.locator(".play-header__cover");
+  const placeholder = page.locator(".play-header__placeholder");
+  const coverCount = await cover.count();
+  const placeholderCount = await placeholder.count();
+  expect(coverCount + placeholderCount).toBe(1);
+});
+
+test("a contributor page summarizes its role categories in plain language", async ({
+  page,
+  request,
+}) => {
+  const contributor = await firstContributor(request);
+  await page.goto(`/contributors/${contributor.artist_id}/`);
+
+  await expect(
+    page.getByText("Primarily credited for:", { exact: false }),
+  ).toBeVisible();
+});
+
+// Every real contributor in the committed index has at least 2 connected
+// albums today, so this exercises the real, common case, not an edge case.
+test("a contributor page offers to connect two of their own records", async ({
+  page,
+  request,
+}) => {
+  const contributor = await firstContributor(request);
+  test.skip(
+    contributor.albums.length < 2,
+    "this contributor has fewer than 2 connected albums in the real index",
+  );
+  const challengeRes = await request.get("/data/challenge.v2.json");
+  const { albums } = (await challengeRes.json()) as {
+    albums: { id: string; title: string }[];
+  };
+  const albumById = new Map(albums.map((a) => [a.id, a]));
+  const albumA = albumById.get(contributor.albums[0]);
+  const albumB = albumById.get(contributor.albums[1]);
+  if (!albumA || !albumB)
+    throw new Error("connected album missing from challenge.v2.json");
+
+  await page.goto(`/contributors/${contributor.artist_id}/`);
+  const connectLink = page.locator(
+    `a[href='/play/connect/?a=${contributor.albums[0]}&b=${contributor.albums[1]}']`,
+  );
+  await expect(connectLink).toBeVisible();
+
+  await connectLink.click();
+  await expect(page).toHaveURL(
+    new RegExp(
+      `/play/connect/\\?a=${contributor.albums[0]}&b=${contributor.albums[1]}$`,
+    ),
+  );
+  await expect(page.locator("[data-connect-results]")).toBeVisible({
+    timeout: 15000,
+  });
+  await expect(
+    page.locator('[data-picker="a"] [data-picker-selected]'),
+  ).toContainText(albumA.title);
+  await expect(
+    page.locator('[data-picker="b"] [data-picker-selected]'),
+  ).toContainText(albumB.title);
+});
+
+test("a contributor page never leaves a zero-connection contributor without a CTA", async ({
+  page,
+  request,
+}) => {
+  const res = await request.get("/data/contributors/index.v1.json");
+  const { contributors } = (await res.json()) as {
+    contributors: ContributorLite[];
+  };
+  const noAlbums = contributors.find((c) => c.albums.length === 0);
+  test.skip(
+    !noAlbums,
+    "no contributor with zero connected albums exists in the real index today",
+  );
+
+  await page.goto(`/contributors/${noAlbums!.artist_id}/`);
+  await expect(
+    page.getByText("Browse everyone else in the graph", { exact: false }),
+  ).toBeVisible();
+});
+
+test("a contributor page never leaves a neighbor-less contributor without a CTA", async ({
+  page,
+  request,
+}) => {
+  const res = await request.get("/data/contributors/index.v1.json");
+  const { contributors } = (await res.json()) as {
+    contributors: ContributorLite[];
+  };
+  const noNeighbors = contributors.find(
+    (c) => c.neighboring_contributor_ids.length === 0,
+  );
+  test.skip(
+    !noNeighbors,
+    "no contributor with zero neighbors exists in the real index today",
+  );
+
+  await page.goto(`/contributors/${noNeighbors!.artist_id}/`);
+  await expect(
+    page.getByText("Browse the full directory", { exact: false }),
+  ).toBeVisible();
+});
+
 test("an unknown contributor id 404s gracefully", async ({ page }) => {
   const response = await page.goto("/contributors/999999999999/");
   expect(response?.status()).toBe(404);
@@ -160,4 +276,24 @@ test("sitemap includes contributor pages", async ({ request }) => {
   const res = await request.get("/sitemap.xml");
   const body = await res.text();
   expect(body).toContain(`/contributors/${contributor.artist_id}/`);
+});
+
+test.describe("mobile layout", () => {
+  test.use({ viewport: { width: 390, height: 844 } });
+
+  test("a contributor page's new header/CTA modules don't cause sideways scroll on a phone-sized screen", async ({
+    page,
+    request,
+  }) => {
+    const contributor = await firstContributor(request);
+    await page.goto(`/contributors/${contributor.artist_id}/`);
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+
+    const overflow = await page.evaluate(
+      () =>
+        document.documentElement.scrollWidth -
+        document.documentElement.clientWidth,
+    );
+    expect(overflow).toBeLessThanOrEqual(0);
+  });
 });

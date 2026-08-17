@@ -155,6 +155,21 @@ test("contributors directory has no automated accessibility violations", async (
   await expectNoViolations(page);
 });
 
+test("a contributor page has no automated accessibility violations", async ({
+  page,
+  request,
+}) => {
+  const res = await request.get("/data/contributors/index.v1.json");
+  const { contributors } = (await res.json()) as {
+    contributors: { artist_id: number; albums: string[] }[];
+  };
+  const withAlbum = contributors.find((c) => c.albums.length > 0);
+  if (!withAlbum) throw new Error("no contributor with an album in the index");
+
+  await page.goto(`/contributors/${withAlbum.artist_id}/`);
+  await expectNoViolations(page);
+});
+
 test("albums grid has no automated accessibility violations", async ({
   page,
 }) => {
