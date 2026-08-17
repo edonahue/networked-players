@@ -34,6 +34,7 @@ from .report import (
 )
 from .request import ResearchRequest, ResearchRequestError, load_request
 from .runs import RESEARCH_ROOT, corpus_root, new_run_id, new_run_paths, write_run_manifest
+from .scope_tier import ScopeTierError, measure_scope_tiers, render_scope_tier_table
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -135,6 +136,36 @@ def _parser() -> argparse.ArgumentParser:
         help="per-pair enumeration expansion cap",
     )
     route_quality.add_argument(
+        "--output", type=Path, default=None, help="optional JSON report path (local-only)"
+    )
+
+    scope_tier = subparsers.add_parser(
+        "research-scope-tier",
+        help=(
+            "measure the core-discography-vs-exploration-neighborhood corpus-scope "
+            "tradeoff (docs/NEXT_PATH_BRIEF.md) over an already-built topic corpus "
+            "-- reusable, tested replacement for the hand-run five-artist measurement"
+        ),
+    )
+    scope_tier.add_argument(
+        "--corpus-snapshot",
+        type=Path,
+        required=True,
+        help="a built topic corpus's snapshot=<date>/ dir",
+    )
+    scope_tier.add_argument(
+        "--seed-artist-id",
+        type=int,
+        default=None,
+        help="defaults to the corpus manifest's own seed_artist_ids, when there's exactly one",
+    )
+    scope_tier.add_argument(
+        "--max-artists-per-release",
+        type=int,
+        default=50,
+        help="passed through to credit_edges_sql's compilation guard",
+    )
+    scope_tier.add_argument(
         "--output", type=Path, default=None, help="optional JSON report path (local-only)"
     )
 
@@ -408,6 +439,38 @@ def main(argv: list[str] | None = None) -> int:
             print(json.dumps(report["summary"], indent=2, sort_keys=True))
             return 0
 
+        if args.command == "research-scope-tier":
+            seed_artist_id = args.seed_artist_id
+            if seed_artist_id is None:
+                manifest_path = args.corpus_snapshot / "manifest.json"
+                if not manifest_path.is_file():
+                    raise ScopeTierError(
+                        f"no manifest.json under {args.corpus_snapshot} -- pass "
+                        "--seed-artist-id explicitly"
+                    )
+                seed_ids = (
+                    json.loads(manifest_path.read_text()).get("topic", {}).get("seed_artist_ids")
+                    or []
+                )
+                if len(seed_ids) != 1:
+                    raise ScopeTierError(
+                        f"corpus manifest has {len(seed_ids)} seed_artist_ids "
+                        f"({seed_ids}) -- pass --seed-artist-id explicitly to disambiguate"
+                    )
+                seed_artist_id = int(seed_ids[0])
+
+            report = measure_scope_tiers(
+                args.corpus_snapshot,
+                seed_artist_id,
+                max_artists_per_release=args.max_artists_per_release,
+            )
+            if args.output is not None:
+                args.output.parent.mkdir(parents=True, exist_ok=True)
+                args.output.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n")
+            print(render_scope_tier_table(report), file=sys.stderr)
+            print(json.dumps(report, indent=2, sort_keys=True))
+            return 0
+
         raise AssertionError(f"unhandled command: {args.command}")
     except (
         ResearchRequestError,
@@ -415,6 +478,7 @@ def main(argv: list[str] | None = None) -> int:
         AmbiguousSeedError,
         NoSeedMatchError,
         ResearchReportError,
+        ScopeTierError,
     ) as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 1
