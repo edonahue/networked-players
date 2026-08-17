@@ -40,8 +40,11 @@ Corpus contract asks one artifact to do both jobs.
   already computes most of what a tighter tier needs (it's a filter on
   what's already retained, not new ingestion).
 - *Biggest uncertainty*: whether "two corpora" is the right shape, or a
-  single corpus with a scope-tier field per analysis is cleaner — not yet
-  designed.
+  single corpus with a scope-tier field per analysis is cleaner —
+  **deliberately deferred, see ADR 0061**: every current consumer of
+  scope-sensitive analysis is research-lane-only (ADR 0054), so no
+  public-facing feature is blocked by leaving the contract as-is; revisit
+  when a real promotion candidate or a caching need actually requires it.
 - *Prerequisite measurement*: done for Jamiroquai (this cleanup pass) and
   four more real, structurally different catalog artists (Wu-Tang Clan,
   D'Angelo, Nirvana, Miles Davis — 2026-08-09, see the summary paragraph
@@ -66,8 +69,9 @@ Corpus contract asks one artifact to do both jobs.
   qualitative star/tree-topology finding at both narrowed tiers. Tier D
   ("studio albums only") is NOT reproduced by this tool — it was a
   hand-curated release-title list, not a data-derived filter, and stays
-  a manual follow-up. Still no decision on corpus/contract shape; this
-  is measurement tooling, not a design change.
+  a manual follow-up. This is measurement tooling, not a design change —
+  see ADR 0061 for the deliberate decision to defer the contract
+  question itself.
 
 **Multi-artist follow-up measurement (2026-08-09).** Extended the
 Jamiroquai scope-tier measurement above to four more real catalog
