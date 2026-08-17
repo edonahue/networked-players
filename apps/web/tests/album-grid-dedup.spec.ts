@@ -15,7 +15,7 @@ interface ChallengePath {
   to_album_id: string;
 }
 interface ChallengeData {
-  albums: { id: string }[];
+  albums: { id: string; title: string }[];
   paths: ChallengePath[];
 }
 
