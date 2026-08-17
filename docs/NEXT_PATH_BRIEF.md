@@ -177,8 +177,24 @@ daemons on what should be a headless worker).
 
 ## Public product
 
-**Most-connected-contributors view (raw co-credit degree).** A real,
-already-built research-pack addition (Phase 3 Slice G).
+**Most-connected-contributors view (raw co-credit degree) — resolved
+(2026-08-17, ADR 0063).** A real, already-built research-pack addition
+(Phase 3 Slice G).
+- **Resolved (2026-08-17, ADR 0063):** the entry's own "biggest
+  uncertainty" (below) is answered, and the answer closes the entry
+  rather than opening more work. Real measurement against the actual
+  published production graph (`graph.v2.json`, 36,959 nodes/65,133 real
+  edges) found betweenness centrality (`bridge_analysis()`) takes ~21
+  minutes at this scale and, more decisively, that the graph has **zero**
+  real multi-node "bridge" structure — every one of its 140 cut vertices,
+  on removal, only sheds a single isolated leaf node, and the
+  highest-degree ones are exactly the most famous artists in the catalog.
+  A "bridge contributors" feature built from this data would just be an
+  expensive way to re-rank by fame, redundant with the already-published
+  `connection_count`. **Not promoted** — a measured "no," not a deferral.
+  `community_detection()`/Leiden is explicitly untouched by this finding
+  and remains its own, still fully open question. See ADR 0063 for the
+  full measurement.
 - **Partial update (2026-08-17, Phase 6):** the *user value* named below
   — "a second, simpler, complementary lens on contributor connectivity"
   — shipped, but via a genuinely different mechanism, not this entry's
@@ -212,14 +228,19 @@ already-built research-pack addition (Phase 3 Slice G).
   no corpus snapshot needed) that already powers `/contributors/`'s
   "most connected" view today — the real gap is a richer signal beyond
   raw degree, not raw degree itself.
-- *Biggest uncertainty*: whether this belongs on the existing Network
-  Explorer or as a new view — a real design decision, not yet made.
-- *Prerequisite measurement*: none additional needed for raw degree
-  (already shipped, see above); promoting `contributor_network` itself,
-  or anything richer, needs a real production-data adaptation, not a
-  simple copy.
-- *What not to build yet*: don't build a whole new page speculatively;
-  scope it as an addition to an existing surface first.
+- *Biggest uncertainty — resolved (ADR 0063)*: was "whether this belongs
+  on the existing Network Explorer or as a new view." Turned out moot —
+  the underlying betweenness signal doesn't hold up on real data (see
+  above), so there's no feature left to place. Had it held up, real
+  investigation found `/contributors/`'s directory (already list-shaped,
+  already sorts by a connectivity metric) would have been the fit, not
+  the Explorer (whose entire rendering model is one-center-plus-neighbor-
+  circle, structurally wrong for a global ranked list) — recorded here in
+  case `community_detection` or a future signal revives the question.
+- *Prerequisite measurement*: done (ADR 0063) — real production-scale
+  igraph measurement, the first at this scale for any of
+  `packages/research`'s graph tooling.
+- *What not to build yet*: nothing — not promoted, per ADR 0063.
 
 **Any Jamiroquai-specific public feature.** Explicitly reviewed and not
 promoted twice now (Phase 3 Slice G, and implicitly again by this
