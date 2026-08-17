@@ -142,11 +142,22 @@ deliberately untouched by this pass, real remaining migration surface.
 - *User value*: operator confidence, not end-player-visible.
 - *Backend leverage*: the capability platform already exists; this is
   wiring more workloads onto it, not new architecture.
-- *Biggest uncertainty*: whether `enqueue_verify_challenge.py`'s sharded
-  pattern needs its own new primitive in `packages/platform`, or fits the
-  existing `select_worker()`/`RunRequest` shape as-is.
+- *Biggest uncertainty — resolved (ADR 0062, 2026-08-17)*: confirmed
+  `select_worker()`/`RunRequest` support only single-worker dispatch, and
+  the existing "fan-out" (`submit_artifact_check.py`) is sequential and
+  redundant (same payload to every worker), not parallel and sharded — the
+  opposite of `enqueue_verify_challenge.py`'s already-correct pattern.
+  Migrating it would mean building a genuinely new primitive for a single
+  consumer; deliberately deferred, with real test coverage added for
+  `enqueue_verify_challenge.py`'s previously-untested dispatch logic
+  instead. `rounds_check_job.py` is fully dead on the fleet (no deploy
+  playbook, no live caller) and named as a deletion candidate, not a
+  migration one. See ADR 0062 for the full investigation and revisit
+  triggers.
 - *Prerequisite measurement*: none — this is mostly known, bounded work.
 - *What not to build yet*: don't build a new scheduler; reuse what's there.
+  Per ADR 0062, don't build the new sharded-dispatch primitive either,
+  until a second real consumer justifies it.
 
 **zimaworker1 disk capacity — resolved (ADR 0057, 2026-08-05).** The
 100%-full incident named here previously is closed: root-caused as
