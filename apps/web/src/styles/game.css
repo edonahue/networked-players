@@ -1030,6 +1030,62 @@ a.contributor-card:focus-visible {
   text-align: center;
 }
 
+/* Continuity pass (plan §12.7): a sighted-user-visible summary/CTA panel
+   alongside the SVG, and a small session-only trail of recent centers.
+   Reuses the card surface tokens every other module already does, rather
+   than inventing a new visual language for this one. */
+.explorer-info-panel {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-soft);
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.explorer-info-panel__summary {
+  margin: 0;
+  font-weight: 600;
+  color: var(--ink-strong);
+}
+.explorer-info-panel__worth-a-look {
+  margin: 0;
+  font-size: 0.9rem;
+}
+.explorer-info-panel__empty,
+.explorer-info-panel__links {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+.explorer-trail {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.explorer-trail__step {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  border-radius: 999px;
+  padding: 4px 12px;
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.explorer-trail__step:hover,
+.explorer-trail__step:focus-visible {
+  border-color: var(--accent);
+  color: var(--accent-strong);
+}
+.explorer-trail__current {
+  font-weight: 600;
+  color: var(--ink-strong);
+}
+
 :root[data-motion="off"] .explorer-node circle,
 :root[data-motion="off"] .explorer-edge {
   transition: none;

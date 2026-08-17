@@ -24,7 +24,24 @@ const { initialArtistId, initialLabel } = Astro.props;
 
   <div class="explorer-status" data-explorer-status role="status" aria-live="polite" hidden></div>
 
+  <div class="explorer-info-panel" data-explorer-info-panel hidden>
+    <p class="lede explorer-info-panel__summary" data-explorer-info-summary></p>
+    <p class="lede explorer-info-panel__worth-a-look" data-explorer-info-worth-a-look hidden></p>
+    <p class="lede explorer-info-panel__empty" data-explorer-info-empty hidden>
+      No documented connections from here in this bounded view.
+    </p>
+    <p class="lede explorer-info-panel__links" data-explorer-info-links></p>
+  </div>
+
   <p class="lede explorer-center-link" data-explorer-center-link hidden></p>
+
+  <div
+    class="explorer-trail"
+    data-explorer-trail
+    role="group"
+    aria-label="Recently centered on"
+    hidden
+  ></div>
 
   <svg
     class="explorer-svg"
