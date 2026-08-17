@@ -2,6 +2,7 @@
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import EvidencePanel from '../../components/EvidencePanel.astro';
 import RevealControls from '../../components/RevealControls.astro';
+import AlbumCard from '../../components/AlbumCard.astro';
 import { buildHopViews } from '../../data/evidence';
 import type { AlbumV2, ChallengeV2 } from '../../data/challenge';
 import { coverFor } from '../../data/albumArt';
@@ -13,6 +14,9 @@ const challenge = challengeData as ChallengeV2;
 const contributorIndex = contributorIndexData as ContributorIndex;
 const contributorIdsWithPages = new Set(
   contributorIndex.contributors.map((c) => c.artist_id),
+);
+const contributorById = new Map(
+  contributorIndex.contributors.map((c) => [c.artist_id, c]),
 );
 
 export function getStaticPaths() {
@@ -70,6 +74,38 @@ const contributorIds = new Set(
 );
 const contributors = artists.filter((artist) => contributorIds.has(artist.artist_id));
 
+// "Nearby in the credit network" (plan §12.7): a real, two-hop, build-time
+// join over already-published data -- no new fetch, no new artifact. For
+// each of this album's own indexed contributors, look at their
+// neighboring_contributor_ids (ADR 0048's own published field), then at
+// THOSE neighbors' own albums. A genuinely documented path back to this
+// album (shared contributor -> that contributor's documented neighbor ->
+// the neighbor's own record), never a similarity claim -- language stays
+// "documented through shared contributors," never "similar."
+const directlyConnectedAlbumIds = new Set(
+  connectedPaths.map(({ otherAlbum }) => otherAlbum.id),
+);
+const nearbyAlbumIds: string[] = [];
+const seenNearbyIds = new Set<string>([album.id, ...directlyConnectedAlbumIds]);
+for (const artist of contributors) {
+  const indexed = contributorById.get(artist.artist_id);
+  if (!indexed) continue;
+  for (const neighborId of indexed.neighboring_contributor_ids) {
+    const neighbor = contributorById.get(neighborId);
+    if (!neighbor) continue;
+    for (const nearbyId of neighbor.albums) {
+      if (!seenNearbyIds.has(nearbyId)) {
+        seenNearbyIds.add(nearbyId);
+        nearbyAlbumIds.push(nearbyId);
+      }
+    }
+  }
+}
+const nearbyAlbums = nearbyAlbumIds
+  .map((id) => albumById.get(id))
+  .filter((a): a is AlbumV2 => Boolean(a))
+  .slice(0, 6);
+
 const description = [
   `Find the documented connections between ${album.title}`,
   'and other albums, with credit evidence at every hop.',
@@ -107,7 +143,11 @@ const description = [
 
     {
       connectedPaths.length === 0 ? (
-        <p class="lede">No documented connections from this album yet.</p>
+        <p class="lede">
+          No documented connection is indexed from {album.title} yet.{' '}
+          <a href={`/explore/${album.id}/`}>Explore its documented credit network</a> instead, or{' '}
+          <a href={`/play/connect/?a=${album.id}`}>try connecting it to another record</a>.
+        </p>
       ) : (
         <>
           <div class="mode-toggle" role="group" aria-label="Play mode">
@@ -210,15 +250,32 @@ const description = [
                           </span>
                         </a>
                       ) : (
-                        <div class="contributor-card">
+                        <div class="contributor-card" title="Not yet in the published contributor index -- credited here, but without its own page yet">
                           <span class="contributor-card__name">{artist.name}</span>
                           <span class="contributor-card__id">
-                            #{artist.artist_id} · linked identity
+                            #{artist.artist_id} · not yet indexed
                           </span>
                         </div>
                       ),
                     )
                   }
+                </div>
+              </section>
+            )
+          }
+
+          {
+            nearbyAlbums.length > 0 && (
+              <section aria-label="Nearby records" style="margin-top:28px">
+                <p class="eyebrow" style="margin-bottom:10px">
+                  Nearby in the credit network
+                </p>
+                <p class="lede" style="margin-bottom:14px;font-size:0.92rem">
+                  Documented through shared contributors — not a claim these records sound
+                  alike, only that the credit graph connects them.
+                </p>
+                <div class="album-grid">
+                  {nearbyAlbums.map((nearbyAlbum) => <AlbumCard album={nearbyAlbum} />)}
                 </div>
               </section>
             )
@@ -236,7 +293,8 @@ const description = [
       </p>
       <p class="lede" style="font-size:0.98rem">
         Curious how {album.title} connects to everything else?{' '}
-        <a href={`/explore/${album.id}/`}>Open the Network Explorer</a> centered on {album.artist}.
+        <a href={`/explore/${album.id}/`}>Open the Network Explorer</a> centered on {album.artist}, or{' '}
+        <a href={`/play/connect/?a=${album.id}`}>try connecting it to another record</a> yourself.
       </p>
     </section>
   </section>

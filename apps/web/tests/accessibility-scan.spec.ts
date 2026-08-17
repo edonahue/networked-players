@@ -12,6 +12,7 @@
 import { expect, test } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { selectAlbum } from "./helpers/connectPicker";
+import { pickBoundedConnectedAlbum } from "./helpers/challengeAlbums";
 
 async function expectNoViolations(page: import("@playwright/test").Page) {
   const results = await new AxeBuilder({ page }).analyze();
@@ -174,5 +175,14 @@ test("albums grid has no automated accessibility violations", async ({
   page,
 }) => {
   await page.goto("/albums/");
+  await expectNoViolations(page);
+});
+
+test("an album page with the new discovery modules has no automated accessibility violations", async ({
+  page,
+  request,
+}) => {
+  const { album } = await pickBoundedConnectedAlbum(request);
+  await page.goto(`/albums/${album.id}/`);
   await expectNoViolations(page);
 });

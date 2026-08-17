@@ -6,6 +6,7 @@ import {
   buildConnectSearchParams,
   isSameConnectAlbumPair,
   parseConnectUrlParams,
+  parsePartialConnectUrlParams,
 } from "../src/game/connectUrlState";
 
 const VALID_MODES = new Set([
@@ -149,5 +150,33 @@ test.describe("isSameConnectAlbumPair", () => {
         VALID_MODES,
       ),
     ).toBe(false);
+  });
+});
+
+test.describe("parsePartialConnectUrlParams", () => {
+  test("parses a real single a= query string", () => {
+    expect(parsePartialConnectUrlParams("?a=master-1")).toEqual({
+      albumAId: "master-1",
+    });
+  });
+
+  test("null when a is absent", () => {
+    expect(parsePartialConnectUrlParams("")).toBeNull();
+    expect(parsePartialConnectUrlParams("?b=master-2")).toBeNull();
+  });
+
+  test("null when a is present but empty", () => {
+    expect(parsePartialConnectUrlParams("?a=")).toBeNull();
+  });
+
+  // A URL naming a b at all -- even a self-referential a===b -- belongs
+  // entirely to parseConnectUrlParams's own "reject, populate nothing"
+  // contract; this function must never quietly override that by treating
+  // a rejected pair as a valid single-sided one.
+  test("null whenever b is present, even self-referentially", () => {
+    expect(
+      parsePartialConnectUrlParams("?a=master-1&b=master-2&mode=x"),
+    ).toBeNull();
+    expect(parsePartialConnectUrlParams("?a=master-1&b=master-1")).toBeNull();
   });
 });
