@@ -1,4 +1,4 @@
-# Next-path decision brief (originally post-Phase-3 cleanup, 2026-08-04; last corrected 2026-08-16)
+# Next-path decision brief (originally post-Phase-3 cleanup, 2026-08-04; last corrected 2026-08-17)
 
 A factual decision-support document, not a plan for a next phase. The
 repository is now internally coherent (see `docs/PHASE3_REPORT.md`'s
@@ -20,6 +20,19 @@ live in production (Phase 5: PRs #112–121, 2026-08-09 through
 either phase. A second correction, to the "Most-connected-contributors
 view" entry below, fixes a real overstatement about what
 `contributor_network` actually consumes — see that entry.
+
+**Phase 6 close (2026-08-17):** this document is what Phase 6 was
+scoped from. It shipped: (1) a cross-link audit closing real gaps
+between album pages, contributor pages, the Network Explorer, and
+Connect Two Records; (2) `interesting_next_step` (ADR 0060), a real,
+measured, anti-hub-bias discovery signal on the contributor index,
+surfaced on `/contributors/` and in the Explorer; and (3)
+`research-scope-tier` tooling plus ADR 0061, which deliberately defers
+(rather than answers) the "Core-discography vs. exploration-neighborhood
+corpus split" entry below. Full detail in `docs/PHASE6_REPORT.md`
+(PRs #122–134). The "Most-connected-contributors view" entry below is
+now partially addressed — see the note added there — and every other
+entry in this document is untouched by Phase 6 and remains open.
 
 ## Research quality / data model
 
@@ -155,6 +168,16 @@ daemons on what should be a headless worker).
 
 **Most-connected-contributors view (raw co-credit degree).** A real,
 already-built research-pack addition (Phase 3 Slice G).
+- **Partial update (2026-08-17, Phase 6):** the *user value* named below
+  — "a second, simpler, complementary lens on contributor connectivity"
+  — shipped, but via a genuinely different mechanism, not this entry's
+  `contributor_network`/betweenness path: ADR 0060's `interesting_next_step`
+  (PRs 6-09/6-10) is a role-disjointness signal computed entirely from
+  the already-published contributor index, no research-lane promotion
+  needed. `contributor_network`/`community_detection`/`bridge_analysis`
+  themselves remain exactly as described below — real, working,
+  research-lane-only, not promoted. This entry stays open for that
+  specific promotion question.
 - **Correction (2026-08-16):** this entry previously claimed
   `contributor_network` "uses only already-public production `graph.py`
   data — not research-only data" and "already exists and runs against
