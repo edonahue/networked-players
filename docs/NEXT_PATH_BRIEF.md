@@ -252,6 +252,43 @@ specifically.
 - *What not to build yet*: nothing here until the corpus-scope question
   above has a real answer.
 
+**Catalog-expansion readiness (2026-08-17) — measured, not acted on.**
+Ran the existing `rank-album-candidates` → `review-album-candidates`
+pipeline (`packages/graph-core/.../candidate_review.py`, real, already
+built, never mutates any catalog artifact — structurally guarded by its
+own test) against the real private one-hop corpus, producing a
+local-only, 200-candidate report. `review-album-candidates`'s own input
+is the collection-seeded one-hop corpus, so per-candidate detail
+(titles, master ids, individual counts) is collection-membership-
+adjacent and stays local-only (`local/research/catalog-expansion/`,
+gitignored) — only aggregate counts and method are recorded here, per
+`docs/PUBLIC_PRIVATE_BOUNDARY.md`'s own checklist.
+- *Real, aggregate findings*: of 200 ranked candidates, a third (33.5%)
+  would add zero new contributors beyond the already-published graph —
+  low-value additions structurally, not worth prioritizing. Only 9%
+  would add more than 10 new contributors each; only 4% more than 20.
+  A hypothetical top-20-by-value pilot would add ~448 new contributors
+  total (~22/album average); a top-40 pilot ~570 total (~14/album
+  average — real, measured diminishing returns past the first 20). No
+  format-descriptor caveats were found on any of the 200 candidates'
+  main releases at all — a real, measured result, not a positive
+  quality claim (the tool's own method note is explicit that an empty
+  caveat list is never confirmation of clean provenance, only absence
+  of a known red flag).
+- *What this does NOT do*: propose, rank-and-ship, or even name any
+  specific candidate publicly. No catalog artifact
+  (`data/albums/top-albums-v1.json`, `apps/web/public/data/catalog/
+  albums.v1.json`) was touched — confirmed via `git status` before and
+  after this run.
+- *Biggest uncertainty*: whether a +20/+40 pilot is worth the editorial
+  review cost this measurement doesn't capture (each candidate still
+  needs a human look before promotion, per `build-public-album-catalog`'s
+  own required-inputs contract) — a real, unmeasured cost, not decided
+  here.
+- *What not to build yet*: no catalog expansion. This is readiness
+  measurement only; promotion stays the explicit human editorial
+  decision `candidate_review.py`'s own `method_note` already states.
+
 ## Publication/data operations
 
 **Repeated publication and rollback verification -- done.** This was a real, open,
