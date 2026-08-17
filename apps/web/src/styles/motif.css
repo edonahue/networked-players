@@ -512,6 +512,11 @@
   color: var(--gold);
   border-color: color-mix(in srgb, var(--gold) 55%, var(--line));
 }
+.tag--highlight {
+  color: var(--gold);
+  border-color: color-mix(in srgb, var(--gold) 55%, var(--line));
+  background: color-mix(in srgb, var(--gold) 10%, transparent);
+}
 
 .provenance {
   margin-top: 26px;

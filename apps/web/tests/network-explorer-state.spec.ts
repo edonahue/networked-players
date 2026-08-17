@@ -104,6 +104,7 @@ function contributor(
     connection_count: 1,
     neighboring_contributor_ids: [],
     evidence: [],
+    interesting_next_step: null,
     ...overrides,
   };
 }

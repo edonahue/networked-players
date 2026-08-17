@@ -205,6 +205,92 @@ test("the center link stays hidden when the current center has no contributor pa
   await expect(page.locator("[data-explorer-center-link]")).toBeHidden();
 });
 
+// Phase 6 PR 6-10 / ADR 0060: the center's own interesting_next_step
+// neighbor, when currently rendered, gets a visual highlight -- picked from
+// the two real committed artifacts together, not a hardcoded name.
+//
+// The contributor index and the pathfinding graph are built from different
+// published artifacts (the index from the small curated challenge/routes
+// pair, the graph from the full one-hop corpus) -- measured, a real
+// interesting_next_step pick is an actual pathfinding-graph edge only about
+// 73% of the time. This search checks BOTH artifacts to find a case where
+// it genuinely is one, with a low enough real graph degree to guarantee
+// it's inside the MAX_NEIGHBORS cap too.
+test("the center's interesting_next_step neighbor is visually highlighted", async ({
+  page,
+  request,
+}) => {
+  const [contributorRes, graphRes] = await Promise.all([
+    request.get("/data/contributors/index.v1.json"),
+    request.get("/data/pathfinding/graph.v2.json"),
+  ]);
+  const { contributors } = (await contributorRes.json()) as {
+    contributors: {
+      artist_id: number;
+      albums: string[];
+      interesting_next_step: { artist_id: number } | null;
+    }[];
+  };
+  const graph = (await graphRes.json()) as {
+    node_ids: number[];
+    offsets: number[];
+    neighbors: number[];
+  };
+  const nodeIndexById = new Map(graph.node_ids.map((id, i) => [id, i]));
+  const realNeighbors = (artistId: number): Set<number> | null => {
+    const i = nodeIndexById.get(artistId);
+    if (i === undefined) return null;
+    return new Set(
+      graph.neighbors
+        .slice(graph.offsets[i], graph.offsets[i + 1])
+        .map((j) => graph.node_ids[j]),
+    );
+  };
+
+  let contributor: (typeof contributors)[number] | undefined;
+  let neighborId = -1;
+  for (const c of contributors) {
+    if (!c.interesting_next_step || c.albums.length === 0) continue;
+    const neighbors = realNeighbors(c.artist_id);
+    if (!neighbors || neighbors.size === 0 || neighbors.size > 20) continue;
+    if (!neighbors.has(c.interesting_next_step.artist_id)) continue;
+    contributor = c;
+    neighborId = c.interesting_next_step.artist_id;
+    break;
+  }
+  if (!contributor) {
+    throw new Error(
+      "no contributor with a bounded, real pathfinding-graph interesting_next_step edge",
+    );
+  }
+
+  await page.goto(
+    `/explore/${contributor.albums[0]}/?center=${contributor.artist_id}`,
+  );
+  const highlighted = page.locator(
+    `[data-explorer-nodes] .explorer-node[data-artist-id='${neighborId}']`,
+  );
+  await expect(highlighted).toBeVisible({ timeout: 15000 });
+  await expect(highlighted).toHaveAttribute(
+    "data-is-interesting-next-step",
+    "true",
+  );
+  await expect(highlighted).toHaveClass(/explorer-node--interesting/);
+
+  // Every other rendered neighbor is NOT highlighted -- this decorates one
+  // node, it doesn't restyle the whole set.
+  const others = page.locator(
+    `[data-explorer-nodes] .explorer-node[data-is-center='false']:not([data-artist-id='${neighborId}'])`,
+  );
+  const othersCount = await others.count();
+  for (let i = 0; i < othersCount; i++) {
+    await expect(others.nth(i)).toHaveAttribute(
+      "data-is-interesting-next-step",
+      "false",
+    );
+  }
+});
+
 test("an unknown artist id shows a graceful message instead of a blank graph", async ({
   page,
 }) => {

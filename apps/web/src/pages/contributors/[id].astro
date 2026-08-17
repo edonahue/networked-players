@@ -40,6 +40,16 @@ const neighbors = contributor.neighboring_contributor_ids
   .map((id) => contributorById.get(id))
   .filter((c): c is Contributor => Boolean(c));
 
+// ADR 0060: a single highlighted neighbor, never a replacement for the full
+// list above -- every neighbor stays visible either way. Resolved through
+// the same contributorById lookup as the list itself, so a next-step id
+// that somehow doesn't resolve to a real, currently-listed neighbor simply
+// renders nothing extra, never a dangling reference.
+const interestingNextStep = contributor.interesting_next_step;
+const interestingNeighbor = interestingNextStep
+  ? contributorById.get(interestingNextStep.artist_id)
+  : undefined;
+
 // Every documented hop this contributor is party to, from both real-data
 // sources this index is built from -- the same evidence component every
 // other surface (album pages, the demo, cohorts) already renders through.
@@ -137,10 +147,28 @@ const description = `Documented credits and connections for ${contributor.name} 
           <p class="eyebrow" style="margin-bottom:10px">
             Other contributors co-credited on the same documented releases
           </p>
+          {
+            interestingNeighbor && (
+              <p class="lede" style="margin-bottom:14px;font-size:0.92rem">
+                Worth a look:{' '}
+                <a href={`/contributors/${interestingNeighbor.artist_id}/`}>
+                  {interestingNeighbor.name}
+                </a>{' '}
+                is credited in a different kind of role than {contributor.name}.
+              </p>
+            )
+          }
           <div class="contributor-grid">
             {neighbors.map((neighbor) => (
               <a class="contributor-card" href={`/contributors/${neighbor.artist_id}/`}>
-                <span class="contributor-card__name">{neighbor.name}</span>
+                <span class="contributor-card__name">
+                  {neighbor.name}
+                  {interestingNeighbor && neighbor.artist_id === interestingNeighbor.artist_id && (
+                    <span class="tag tag--highlight" style="margin-left:6px">
+                      Different role
+                    </span>
+                  )}
+                </span>
                 <span class="contributor-card__id">#{neighbor.artist_id} · linked identity</span>
               </a>
             ))}

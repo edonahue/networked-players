@@ -1017,6 +1017,13 @@ a.contributor-card:focus-visible {
 .explorer-node--dimmed text {
   opacity: 0.35;
 }
+/* ADR 0060: the center's own interesting_next_step neighbor, when currently
+   rendered -- an additive highlight, never a replacement for the node's own
+   center/dimmed styling above (both can combine). */
+.explorer-node--interesting circle {
+  stroke: var(--gold);
+  stroke-width: 3;
+}
 .explorer-truncated-note {
   font-size: 0.82rem;
   color: var(--muted);
