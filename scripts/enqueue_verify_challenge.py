@@ -128,6 +128,41 @@ def shard_path_ids(path_ids: list[str], shard_size: int) -> list[list[str]]:
     return [path_ids[i : i + shard_size] for i in range(0, len(path_ids), shard_size)]
 
 
+def build_run_record(
+    *,
+    artifact_path: Path,
+    workers: list[str],
+    enqueued: list[tuple[str, list[str], Job]],
+    finished_jobs: list[Job],
+) -> dict[str, Any]:
+    """Aggregate each shard's collected `Job` into the record written to
+    `local/jobs/`. Pure (no I/O, no clock reads beyond `measured_at_utc`) so
+    it's testable without a real broker -- separated from `main()`'s
+    argparse/subprocess/Redis orchestration for exactly that reason."""
+    results = []
+    all_failures: list[str] = []
+    failed_job_ids: list[str] = []
+    for (worker, shard, _), job in zip(enqueued, finished_jobs, strict=True):
+        if job.is_failed:
+            failed_job_ids.append(job.id)
+        result = job.result if job.is_finished else None
+        results.append({"worker": worker, "path_ids": shard, "result": result})
+        if result:
+            all_failures.extend(result.get("failures", []))
+
+    return {
+        "observed": True,
+        "measured_at_utc": datetime.now(UTC).isoformat(),
+        "artifact": str(artifact_path),
+        "workers": workers,
+        "shard_count": len(results),
+        "shards": results,
+        "job_failures": failed_job_ids,
+        "evidence_failures": all_failures,
+        "ok": not failed_job_ids and not all_failures,
+    }
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -183,28 +218,12 @@ def main() -> None:
     job_ids = [job.id for _, _, job in enqueued]
     finished_jobs = wait_for_jobs(redis_conn, job_ids)
 
-    results = []
-    all_failures: list[str] = []
-    failed_job_ids: list[str] = []
-    for (worker, shard, _), job in zip(enqueued, finished_jobs, strict=True):
-        if job.is_failed:
-            failed_job_ids.append(job.id)
-        result = job.result if job.is_finished else None
-        results.append({"worker": worker, "path_ids": shard, "result": result})
-        if result:
-            all_failures.extend(result.get("failures", []))
-
-    record: dict[str, Any] = {
-        "observed": True,
-        "measured_at_utc": datetime.now(UTC).isoformat(),
-        "artifact": str(args.artifact),
-        "workers": workers,
-        "shard_count": len(shards),
-        "shards": results,
-        "job_failures": failed_job_ids,
-        "evidence_failures": all_failures,
-        "ok": not failed_job_ids and not all_failures,
-    }
+    record = build_run_record(
+        artifact_path=args.artifact,
+        workers=workers,
+        enqueued=enqueued,
+        finished_jobs=finished_jobs,
+    )
 
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
@@ -216,8 +235,8 @@ def main() -> None:
         print("==> PASS: every shard's evidence checks out.")
     else:
         print(
-            f"==> FAIL: {len(failed_job_ids)} job failure(s), "
-            f"{len(all_failures)} evidence failure(s)."
+            f"==> FAIL: {len(record['job_failures'])} job failure(s), "
+            f"{len(record['evidence_failures'])} evidence failure(s)."
         )
         raise SystemExit(1)
 
