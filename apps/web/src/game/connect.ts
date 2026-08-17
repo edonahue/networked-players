@@ -29,6 +29,7 @@ import {
   buildConnectSearchParams,
   isSameConnectAlbumPair,
   parseConnectUrlParams,
+  parsePartialConnectUrlParams,
   type ConnectUrlState,
 } from "./connectUrlState";
 import {
@@ -1251,6 +1252,25 @@ export async function initConnect(): Promise<void> {
 
     const parsed = parseConnectUrlParams(search, VALID_MODES);
     if (!parsed) {
+      // A single `a=<id>` (no `b`) prefills picker A only, never a
+      // search -- the "try connecting this record" CTAs on album/
+      // contributor pages use this. Only on real page load, not
+      // `popstate`: a back/forward step that lands on a single-param URL
+      // came from a browser history entry this session's own pushState
+      // never wrote (a full `a`+`b` search is the only state this module
+      // ever pushes), so there's nothing meaningful to restore there.
+      if (!isPopstate && albums.length > 0) {
+        const partial = parsePartialConnectUrlParams(search);
+        const albumFromUrl = partial
+          ? albums.find((a) => a.id === partial.albumAId)
+          : undefined;
+        if (albumFromUrl) {
+          albumA = albumFromUrl;
+          pickerA?.setSelection(albumFromUrl);
+          updateButton();
+          return;
+        }
+      }
       if (isPopstate) {
         // Explicit history navigation back to a state with no real
         // search encoded -- reflect that, don't leave a stale result on

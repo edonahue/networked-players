@@ -175,6 +175,131 @@ test("an album page links directly into the Network Explorer", async ({
   await expect(page.locator("[data-testid='explorer-stage']")).toBeVisible();
 });
 
+// Phase "make it fun to wander": "nearby in the credit network" is a real,
+// build-time join over the already-published contributor index (this
+// album's own contributors' neighboring_contributor_ids, then THOSE
+// neighbors' own albums) -- not a new artifact. 137 of 140 real catalog
+// albums have at least one such suggestion today.
+test("an album page surfaces nearby records via shared contributors", async ({
+  page,
+  request,
+}) => {
+  const { album } = await pickBoundedConnectedAlbum(request);
+  await stubCoverArt(page);
+
+  await page.goto(`/albums/${album.id}/`);
+  const nearbySection = page.locator("section[aria-label='Nearby records']");
+  test.skip(
+    (await nearbySection.count()) === 0,
+    "this album has no nearby-record suggestion in the real index today",
+  );
+
+  await expect(
+    nearbySection.getByText("Nearby in the credit network"),
+  ).toBeVisible();
+  // Honest framing, not a similarity claim.
+  await expect(nearbySection).toContainText(
+    "Documented through shared contributors",
+  );
+  await expect(nearbySection.locator(".album-card").first()).toBeVisible();
+});
+
+// The 3 real catalog albums with zero documented challenge.v2 paths
+// (Phase 6 PR 6-07 widened getStaticPaths to cover them) used to be a
+// silent, CTA-less dead end.
+test("an album with zero documented connections still offers a real way onward", async ({
+  page,
+  request,
+}) => {
+  const res = await request.get("/data/challenge.v2.json");
+  const { albums, paths } = (await res.json()) as {
+    albums: { id: string; title: string }[];
+    paths: { from_album_id: string; to_album_id: string }[];
+  };
+  const connectedIds = new Set(
+    paths.flatMap((p) => [p.from_album_id, p.to_album_id]),
+  );
+  const zeroConnection = albums.find((a) => !connectedIds.has(a.id));
+  if (!zeroConnection)
+    throw new Error("no zero-connection album in the real catalog artifact");
+
+  await stubCoverArt(page);
+  await page.goto(`/albums/${zeroConnection.id}/`);
+  // The empty-state message and the "Play from here" footer both link to
+  // Explore -- deliberate, harmless redundancy (top-of-page and
+  // bottom-of-page CTAs to the same real destination), so scope to the
+  // first occurrence rather than asserting a single match.
+  const exploreLink = page
+    .locator(`a[href='/explore/${zeroConnection.id}/']`)
+    .first();
+  await expect(exploreLink).toBeVisible();
+  const connectLink = page
+    .locator(`a[href='/play/connect/?a=${zeroConnection.id}']`)
+    .first();
+  await expect(connectLink).toBeVisible();
+
+  await connectLink.click();
+  await page.waitForURL(`**/play/connect/?a=${zeroConnection.id}`);
+  await expect(
+    page.locator("[data-picker='a'] [data-picker-selected]"),
+  ).toContainText(zeroConnection.title);
+  // No search runs -- there's no second record chosen yet.
+  await expect(page.locator("[data-connect-results]")).toBeHidden();
+});
+
+// No real catalog album currently has a non-indexed contributor (every
+// artist tied to a documented path already clears the index's own
+// inclusion rule) -- skip-guarded, honest defensive coverage for a future
+// regeneration where one might.
+test("a non-indexed contributor card explains itself instead of silently failing to link", async ({
+  page,
+  request,
+}) => {
+  const [challengeRes, contributorRes] = await Promise.all([
+    request.get("/data/challenge.v2.json"),
+    request.get("/data/contributors/index.v1.json"),
+  ]);
+  const { albums, paths } = (await challengeRes.json()) as {
+    albums: { id: string }[];
+    paths: {
+      from_album_id: string;
+      to_album_id: string;
+      hops: { artist_a_id: number; artist_b_id: number }[];
+    }[];
+  };
+  const { contributors } = (await contributorRes.json()) as {
+    contributors: { artist_id: number }[];
+  };
+  const indexedIds = new Set(contributors.map((c) => c.artist_id));
+
+  let targetAlbumId: string | null = null;
+  for (const album of albums) {
+    const connectedPaths = paths.filter(
+      (p) => p.from_album_id === album.id || p.to_album_id === album.id,
+    );
+    const hasNonIndexed = connectedPaths.some((p) =>
+      p.hops.some(
+        (h) => !indexedIds.has(h.artist_a_id) || !indexedIds.has(h.artist_b_id),
+      ),
+    );
+    if (hasNonIndexed) {
+      targetAlbumId = album.id;
+      break;
+    }
+  }
+  test.skip(
+    !targetAlbumId,
+    "no album with a non-indexed contributor exists in the real catalog today",
+  );
+
+  await stubCoverArt(page);
+  await page.goto(`/albums/${targetAlbumId}/`);
+  const nonLinkedCard = page.locator(
+    "div.contributor-card:has-text('not yet indexed')",
+  );
+  await expect(nonLinkedCard.first()).toBeVisible();
+});
+
 // Phase 6: continuous navigation -- every documented connection shown on an
 // album page is also a direct, prefilled entry point into Connect Two
 // Records, reusing connectUrlState.ts's existing ?a=/?b= contract untouched
@@ -452,4 +577,25 @@ test("sitemap includes every play mode, including record routes", async ({
     expect(body).toContain(`<loc>`);
     expect(body).toContain(path);
   }
+});
+
+test.describe("mobile layout", () => {
+  test.use({ viewport: { width: 390, height: 844 } });
+
+  test("an album page's new discovery modules don't cause sideways scroll on a phone-sized screen", async ({
+    page,
+    request,
+  }) => {
+    const { album } = await pickBoundedConnectedAlbum(request);
+    await stubCoverArt(page);
+    await page.goto(`/albums/${album.id}/`);
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+
+    const overflow = await page.evaluate(
+      () =>
+        document.documentElement.scrollWidth -
+        document.documentElement.clientWidth,
+    );
+    expect(overflow).toBeLessThanOrEqual(0);
+  });
 });

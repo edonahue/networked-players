@@ -82,6 +82,27 @@ export function buildConnectSearchParams(
   return params;
 }
 
+/** Reads a single `a` param, for a "come here with one side already
+ * chosen" link (album/contributor pages' "try connecting this record"
+ * CTAs) -- deliberately additive alongside `parseConnectUrlParams`, not a
+ * replacement: this never triggers a search (there's no `b` to search
+ * against), only a picker prefill. Returns `null` when `a` is absent or
+ * empty, OR when `b` is present at all (including a self-referential
+ * `a === b`) -- that case belongs entirely to `parseConnectUrlParams`'s
+ * own "reject, populate nothing" contract, which this function must never
+ * quietly override by treating a rejected pair as a valid single-sided
+ * one. This function is strictly for a URL that never named a `b` in the
+ * first place. */
+export function parsePartialConnectUrlParams(
+  search: string,
+): { albumAId: string } | null {
+  const params = new URLSearchParams(search);
+  if (params.has("b")) return null;
+  const albumAId = params.get("a");
+  if (!albumAId) return null;
+  return { albumAId };
+}
+
 /** Whether `state` names the SAME two records as the current URL --
  * `mode` deliberately excluded. This is the real push-vs-replace test
  * `connect.ts` uses: re-running the identical pair under a different role

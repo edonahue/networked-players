@@ -15,7 +15,7 @@ interface ChallengePath {
   to_album_id: string;
 }
 interface ChallengeData {
-  albums: { id: string }[];
+  albums: { id: string; title: string }[];
   paths: ChallengePath[];
 }
 
@@ -57,7 +57,12 @@ test("an album excluded from the connected set still has a real /albums/ and /ex
   expect(albumRes?.status()).toBe(200);
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   await expect(
-    page.getByText("No documented connections from this album yet."),
+    page.getByText(
+      `No documented connection is indexed from ${excluded.title} yet.`,
+      {
+        exact: false,
+      },
+    ),
   ).toBeVisible();
   // The Explore cross-link (PR 6-02) renders unconditionally, so it must
   // point somewhere real, not a page that doesn't exist.
