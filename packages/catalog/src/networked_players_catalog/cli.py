@@ -7,6 +7,7 @@ import json
 from collections.abc import Callable, Sequence
 from datetime import UTC, date, datetime
 from pathlib import Path
+from typing import Any
 
 from . import __version__
 from .discogs.download import download_file
@@ -665,6 +666,39 @@ def _parser() -> argparse.ArgumentParser:
         help="validate the canonical apps/web/public/data/catalog/albums.v1.json artifact",
     )
     validate_album_catalog.add_argument("--input", type=Path, required=True)
+
+    select_graph_rich = subparsers.add_parser(
+        "select-graph-rich-candidates",
+        help=(
+            "deterministic greedy selection by TRUE marginal credit_edges_sql value -- "
+            "Phase 7 Bucket B, local-only, never a publication step"
+        ),
+    )
+    select_graph_rich.add_argument(
+        "--dataset", type=Path, required=True, help="the widened one-hop working set (v4)"
+    )
+    select_graph_rich.add_argument(
+        "--baseline-catalog",
+        type=Path,
+        required=True,
+        help="apps/web/public/data/catalog/albums.v1.json -- defines the starting edge scope",
+    )
+    select_graph_rich.add_argument(
+        "--additional-baseline",
+        type=Path,
+        default=None,
+        help="optional data/albums/editorial-seed-v1.json -- Bucket A additions also in scope",
+    )
+    select_graph_rich.add_argument(
+        "--finalists",
+        type=Path,
+        required=True,
+        help="a bounded shortlist, e.g. rank-album-candidates output already policy-filtered",
+    )
+    select_graph_rich.add_argument("--count", type=int, required=True)
+    select_graph_rich.add_argument("--memory-limit", default="2GB")
+    select_graph_rich.add_argument("--threads", type=int, default=2)
+    select_graph_rich.add_argument("--output", type=Path, required=True)
 
     measure_coverage = subparsers.add_parser(
         "measure-coverage-gaps",
@@ -2480,6 +2514,85 @@ def main(argv: Sequence[str] | None = None) -> int:
                 indent=2,
             )
         )
+        return 0
+
+    if args.command == "select-graph-rich-candidates":
+        from networked_players_graph_core.marginal_evaluation import greedy_marginal_selection
+
+        _require_local_only_output(
+            args.output,
+            command="select-graph-rich-candidates",
+            why=(
+                "this is Bucket B's selection evidence, an editorial-selection input, "
+                "never itself a publication step -- publication stays the real "
+                "catalog-build path"
+            ),
+        )
+
+        dataset_manifest_path = args.dataset / "manifest.json"
+        if not dataset_manifest_path.is_file():
+            raise ValueError(
+                f"--dataset manifest is required and must exist: {dataset_manifest_path} not found."
+            )
+        dataset_manifest = json.loads(dataset_manifest_path.read_text())
+        dataset_snapshot = str(
+            dataset_manifest.get("snapshot_date")
+            or (dataset_manifest.get("expansion") or {}).get("source_snapshot_date")
+            or ""
+        )
+
+        def _snapshot_checked_albums(path: Path, *, label: str) -> list[dict[str, Any]]:
+            payload = json.loads(path.read_text())
+            payload_snapshot = str(payload.get("snapshot_date") or "")
+            if not dataset_snapshot or not payload_snapshot or payload_snapshot != dataset_snapshot:
+                raise ValueError(
+                    f"--dataset snapshot_date {dataset_snapshot!r} does not match "
+                    f"{label} snapshot_date {payload_snapshot!r} -- mismatched-snapshot "
+                    "inputs refused (a stale or mismatched source can silently change "
+                    "which albums are evaluated and selected)"
+                )
+            return list(payload["albums"])
+
+        baseline_albums = _snapshot_checked_albums(
+            args.baseline_catalog, label="--baseline-catalog"
+        )
+        if args.additional_baseline is not None:
+            baseline_albums += _snapshot_checked_albums(
+                args.additional_baseline, label="--additional-baseline"
+            )
+
+        baseline_release_ids = {
+            int(a["main_release_id"])
+            for a in baseline_albums
+            if a.get("main_release_id") is not None
+        }
+        baseline_artist_ids = {
+            int(a["artist_id"]) for a in baseline_albums if a.get("artist_id") is not None
+        }
+
+        finalists = json.loads(args.finalists.read_text())
+        selected = greedy_marginal_selection(
+            args.dataset,
+            baseline_release_ids=frozenset(baseline_release_ids),
+            baseline_artist_ids=frozenset(baseline_artist_ids),
+            finalists=finalists,
+            count=args.count,
+            memory_limit=args.memory_limit,
+            threads=args.threads,
+        )
+
+        payload = {
+            "snapshot_date": dataset_snapshot,
+            "baseline_release_count": len(baseline_release_ids),
+            "baseline_artist_count": len(baseline_artist_ids),
+            "finalist_count": len(finalists),
+            "requested_count": args.count,
+            "selected_count": len(selected),
+            "selected": selected,
+        }
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
+        print(json.dumps({"output": str(args.output), "selected_count": len(selected)}, indent=2))
         return 0
 
     if args.command == "measure-coverage-gaps":
