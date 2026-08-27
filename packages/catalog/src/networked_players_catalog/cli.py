@@ -666,6 +666,20 @@ def _parser() -> argparse.ArgumentParser:
     )
     validate_album_catalog.add_argument("--input", type=Path, required=True)
 
+    measure_coverage = subparsers.add_parser(
+        "measure-coverage-gaps",
+        help=(
+            "measure catalog decade/genre/style composition and flag thin buckets -- "
+            "Phase 7 Bucket C input, local-only, never a selection tool"
+        ),
+    )
+    measure_coverage.add_argument(
+        "--catalog", type=Path, required=True, help="apps/web/public/data/catalog/albums.v1.json"
+    )
+    measure_coverage.add_argument("--masters-root", type=Path, required=True)
+    measure_coverage.add_argument("--min-count", type=int, default=3)
+    measure_coverage.add_argument("--output", type=Path, required=True)
+
     review_candidates = subparsers.add_parser(
         "review-album-candidates",
         help=(
@@ -2466,6 +2480,61 @@ def main(argv: Sequence[str] | None = None) -> int:
                 indent=2,
             )
         )
+        return 0
+
+    if args.command == "measure-coverage-gaps":
+        import duckdb
+
+        from networked_players_graph_core.coverage_gaps import (
+            catalog_composition,
+            identify_underrepresented,
+        )
+
+        _require_local_only_output(
+            args.output,
+            command="measure-coverage-gaps",
+            why=(
+                "this is a measurement input to Bucket C's editorial selection, never "
+                "itself a selection or a public artifact -- publication stays the real "
+                "catalog-build path"
+            ),
+        )
+
+        catalog_payload = json.loads(args.catalog.read_text())
+        albums = catalog_payload["albums"]
+        master_ids = sorted({int(a["master_id"]) for a in albums if a.get("master_id") is not None})
+
+        masters_by_id: dict[int, dict[str, object]] = {}
+        if master_ids:
+            masters_glob = str(Path(args.masters_root) / "table=masters" / "*.parquet")
+            placeholders = ", ".join(str(mid) for mid in master_ids)
+            rows = (
+                duckdb.connect()
+                .execute(
+                    f"SELECT master_id, year, genres, styles FROM read_parquet('{masters_glob}') "
+                    f"WHERE master_id IN ({placeholders})"
+                )
+                .fetchall()
+            )
+            masters_by_id = {
+                int(mid): {"year": year, "genres": genres or [], "styles": styles or []}
+                for mid, year, genres, styles in rows
+            }
+
+        composition = catalog_composition(albums, masters_by_id)
+        findings = identify_underrepresented(composition, min_count=args.min_count)
+        payload = {
+            "catalog_version": catalog_payload.get("catalog_version"),
+            "album_count": len(albums),
+            "masters_resolved": len(masters_by_id),
+            "composition": {
+                dimension: dict(sorted(counts.items())) for dimension, counts in composition.items()
+            },
+            "underrepresented": findings,
+        }
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
+        print(json.dumps({"output": str(args.output), "gap_count": len(findings)}, indent=2))
         return 0
 
     if args.command == "validate-album-catalog":
