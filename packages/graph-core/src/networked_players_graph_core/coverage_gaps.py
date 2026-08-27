@@ -53,7 +53,14 @@ def catalog_composition(
         master_id = album.get("master_id")
         master = masters_by_id.get(master_id) if master_id is not None else None
         if master is not None:
-            decades[_decade(master.get("year"))] += 1
+            # A resolved master can still have a NULL year -- the masters
+            # parser explicitly nulls out missing or non-positive Discogs
+            # years, it is not a "master not found" case. Falling back to
+            # the catalog album's own year (the same fallback the editorial
+            # and challenge resolution paths already use) keeps a real album
+            # in its real decade instead of manufacturing a false gap by
+            # dumping it into "unknown".
+            decades[_decade(master.get("year") or album.get("year"))] += 1
             for genre in master.get("genres") or []:
                 genres[genre] += 1
             for style in master.get("styles") or []:

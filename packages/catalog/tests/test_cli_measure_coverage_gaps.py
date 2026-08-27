@@ -1,7 +1,8 @@
 """CLI round-trip for `measure-coverage-gaps` -- Phase 7 Bucket C's
 measurement input. Unit coverage for the underlying pure functions lives in
 packages/graph-core/tests/test_coverage_gaps.py; this pins the CLI wiring,
-the local-only output guard, and the masters-lookup batching only."""
+the snapshot cross-check, the known-vocabulary derivation, and the
+local-only output guard."""
 
 from __future__ import annotations
 
@@ -18,8 +19,10 @@ import pyarrow.parquet as pq
 
 from networked_players_catalog.cli import main
 
+SNAPSHOT = "20260601"
 
-def _write_masters(root: Path, rows: list[dict]) -> Path:
+
+def _write_masters(root: Path, rows: list[dict], *, snapshot_date: str = SNAPSHOT) -> Path:
     (root / "table=masters").mkdir(parents=True)
     schema = pa.schema(
         [
@@ -32,22 +35,31 @@ def _write_masters(root: Path, rows: list[dict]) -> Path:
     pq.write_table(
         pa.Table.from_pylist(rows, schema=schema), root / "table=masters" / "part-00000.parquet"
     )
+    (root / "manifest.json").write_text(json.dumps({"snapshot_date": snapshot_date}))
     return root
 
 
-def test_measures_composition_and_writes_underrepresented_gaps(tmp_path: Path) -> None:
-    catalog_path = tmp_path / "albums.v1.json"
-    catalog_path.write_text(
+def _write_catalog(path: Path, albums: list[dict], *, snapshot_date: str = SNAPSHOT) -> Path:
+    path.write_text(
         json.dumps(
             {
-                "catalog_version": "catalog-v1-20260601-test",
-                "albums": [
-                    {"master_id": 1, "year": 1999},
-                    {"master_id": 2, "year": 1999},
-                    {"master_id": 3, "year": 1999},
-                ],
+                "catalog_version": f"catalog-v1-{snapshot_date}-test",
+                "snapshot_date": snapshot_date,
+                "albums": albums,
             }
         )
+    )
+    return path
+
+
+def test_measures_composition_and_writes_underrepresented_gaps(tmp_path: Path) -> None:
+    catalog_path = _write_catalog(
+        tmp_path / "albums.v1.json",
+        [
+            {"master_id": 1, "year": 1999},
+            {"master_id": 2, "year": 1999},
+            {"master_id": 3, "year": 1999},
+        ],
     )
     masters_root = _write_masters(
         tmp_path / "masters",
@@ -75,7 +87,6 @@ def test_measures_composition_and_writes_underrepresented_gaps(tmp_path: Path) -
     assert exit_code == 0
 
     payload = json.loads(output.read_text())
-    assert payload["catalog_version"] == "catalog-v1-20260601-test"
     assert payload["album_count"] == 3
     assert payload["masters_resolved"] == 3
     assert payload["composition"]["decades"] == {"1970s": 2, "2000s": 1}
@@ -86,9 +97,67 @@ def test_measures_composition_and_writes_underrepresented_gaps(tmp_path: Path) -
     assert ("decades", "1970s") not in gap_buckets
 
 
+def test_a_genre_absent_from_the_catalog_but_real_in_the_masters_snapshot_is_a_zero_gap(
+    tmp_path: Path,
+) -> None:
+    """The real bug this guards: without deriving a known vocabulary from the
+    full masters snapshot, a genre with zero catalog representation never
+    gets a key in `composition` at all -- the strongest possible coverage
+    gap would be silently invisible."""
+    catalog_path = _write_catalog(tmp_path / "albums.v1.json", [{"master_id": 1, "year": 1999}])
+    # The masters table carries a master for a genre no catalog album uses
+    # (Reggae, master_id=2) -- real evidence the genre exists in the wider
+    # snapshot, even though nothing in the small catalog above references it.
+    masters_root = _write_masters(
+        tmp_path / "masters",
+        [
+            {"master_id": 1, "year": 1999, "genres": ["Rock"], "styles": []},
+            {"master_id": 2, "year": 1999, "genres": ["Reggae"], "styles": []},
+        ],
+    )
+    output = tmp_path / "local" / "gaps.json"
+
+    exit_code = main(
+        [
+            "measure-coverage-gaps",
+            "--catalog",
+            str(catalog_path),
+            "--masters-root",
+            str(masters_root),
+            "--min-count",
+            "1",
+            "--output",
+            str(output),
+        ]
+    )
+    assert exit_code == 0
+    payload = json.loads(output.read_text())
+    reggae = [f for f in payload["underrepresented"] if f["bucket"] == "Reggae"]
+    assert reggae == [{"dimension": "genres", "bucket": "Reggae", "count": 0}]
+
+
+def test_masters_snapshot_mismatch_is_refused(tmp_path: Path) -> None:
+    catalog_path = _write_catalog(tmp_path / "albums.v1.json", [], snapshot_date="20260601")
+    masters_root = _write_masters(tmp_path / "masters", [], snapshot_date="20200101")
+    output = tmp_path / "local" / "gaps.json"
+
+    with pytest.raises(ValueError, match="mismatched-snapshot"):
+        main(
+            [
+                "measure-coverage-gaps",
+                "--catalog",
+                str(catalog_path),
+                "--masters-root",
+                str(masters_root),
+                "--output",
+                str(output),
+            ]
+        )
+    assert not output.exists()
+
+
 def test_refuses_to_write_outside_local(tmp_path: Path) -> None:
-    catalog_path = tmp_path / "albums.v1.json"
-    catalog_path.write_text(json.dumps({"catalog_version": "x", "albums": []}))
+    catalog_path = _write_catalog(tmp_path / "albums.v1.json", [])
     masters_root = _write_masters(tmp_path / "masters", [])
     output = tmp_path / "apps" / "web" / "public" / "data" / "gaps.json"
 

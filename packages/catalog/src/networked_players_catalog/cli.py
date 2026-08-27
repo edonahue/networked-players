@@ -2501,28 +2501,86 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
 
         catalog_payload = json.loads(args.catalog.read_text())
+        catalog_snapshot = str(catalog_payload.get("snapshot_date") or "")
+
+        masters_manifest_path = args.masters_root / "manifest.json"
+        if not masters_manifest_path.is_file():
+            raise ValueError(
+                f"--masters-root manifest is required and must exist: "
+                f"{masters_manifest_path} not found."
+            )
+        masters_snapshot = str(
+            json.loads(masters_manifest_path.read_text()).get("snapshot_date") or ""
+        )
+        if not catalog_snapshot or not masters_snapshot or masters_snapshot != catalog_snapshot:
+            raise ValueError(
+                f"--masters-root snapshot_date {masters_snapshot!r} does not match "
+                f"--catalog snapshot_date {catalog_snapshot!r} -- mismatched-snapshot "
+                "inputs refused (a stale masters snapshot can silently change the "
+                "measured year, genre, or style for any album)"
+            )
+
         albums = catalog_payload["albums"]
         master_ids = sorted({int(a["master_id"]) for a in albums if a.get("master_id") is not None})
 
+        masters_glob = str(Path(args.masters_root) / "table=masters" / "*.parquet")
+        connection = duckdb.connect()
+
         masters_by_id: dict[int, dict[str, object]] = {}
         if master_ids:
-            masters_glob = str(Path(args.masters_root) / "table=masters" / "*.parquet")
             placeholders = ", ".join(str(mid) for mid in master_ids)
-            rows = (
-                duckdb.connect()
-                .execute(
-                    f"SELECT master_id, year, genres, styles FROM read_parquet('{masters_glob}') "
-                    f"WHERE master_id IN ({placeholders})"
-                )
-                .fetchall()
-            )
+            rows = connection.execute(
+                f"SELECT master_id, year, genres, styles FROM read_parquet('{masters_glob}') "
+                f"WHERE master_id IN ({placeholders})"
+            ).fetchall()
             masters_by_id = {
                 int(mid): {"year": year, "genres": genres or [], "styles": styles or []}
                 for mid, year, genres, styles in rows
             }
 
+        # The real Discogs genre/style vocabulary from the FULL masters
+        # table (not just this catalog's own masters) -- without this, a
+        # genre with zero catalog representation never has a key in
+        # `composition` at all, so it can never be reported as an
+        # underrepresented bucket; the strongest possible coverage gap would
+        # be invisible. Decades are derived the same way, from the real
+        # observed year range, rather than an arbitrary hardcoded span.
+        vocab_rows = connection.execute(
+            f"""
+            SELECT DISTINCT unnest(genres) AS g FROM read_parquet('{masters_glob}')
+            WHERE genres IS NOT NULL
+            """
+        ).fetchall()
+        genre_vocabulary = frozenset(row[0] for row in vocab_rows if row[0])
+        vocab_rows = connection.execute(
+            f"""
+            SELECT DISTINCT unnest(styles) AS s FROM read_parquet('{masters_glob}')
+            WHERE styles IS NOT NULL
+            """
+        ).fetchall()
+        style_vocabulary = frozenset(row[0] for row in vocab_rows if row[0])
+        year_bounds = connection.execute(
+            f"SELECT min(year), max(year) FROM read_parquet('{masters_glob}') WHERE year > 0"
+        ).fetchone()
+        decade_vocabulary: frozenset[str] = frozenset()
+        if year_bounds and year_bounds[0] is not None and year_bounds[1] is not None:
+            decade_vocabulary = frozenset(
+                f"{decade}s"
+                for decade in range(
+                    (int(year_bounds[0]) // 10) * 10, (int(year_bounds[1]) // 10) * 10 + 10, 10
+                )
+            )
+
         composition = catalog_composition(albums, masters_by_id)
-        findings = identify_underrepresented(composition, min_count=args.min_count)
+        findings = identify_underrepresented(
+            composition,
+            min_count=args.min_count,
+            known_vocabulary={
+                "decades": decade_vocabulary,
+                "genres": genre_vocabulary,
+                "styles": style_vocabulary,
+            },
+        )
         payload = {
             "catalog_version": catalog_payload.get("catalog_version"),
             "album_count": len(albums),

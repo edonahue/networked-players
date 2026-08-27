@@ -45,6 +45,20 @@ def test_album_without_a_master_falls_back_to_its_own_year_for_decade_only() -> 
     assert composition["styles"] == {}
 
 
+def test_null_master_year_falls_back_to_the_album_own_year() -> None:
+    """The masters parser explicitly nulls out a missing/non-positive year --
+    a resolved master with year=None is not a "not found" case, and must not
+    dump a real, dateable album into "unknown" when the catalog's own album
+    dict already carries a usable year (the same fallback the editorial and
+    challenge resolution paths already use)."""
+    albums = [{"master_id": 1, "year": 1985}]
+    masters = {1: {"genres": ["Rock"], "styles": [], "year": None}}
+    composition = catalog_composition(albums, masters)
+    assert composition["decades"] == {"1980s": 1}
+    # Genre/style still come from the master, independent of the year fallback.
+    assert composition["genres"] == {"Rock": 1}
+
+
 def test_missing_year_and_missing_master_is_unknown_decade_not_dropped() -> None:
     albums = [{"master_id": None, "year": None}]
     composition = catalog_composition(albums, masters_by_id={})
