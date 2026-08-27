@@ -187,13 +187,25 @@ def expand_one_hop(
     dataset_root: Path,
     output_root: Path,
     *,
+    additional_seed_path: Path | None = None,
     memory_limit: str = "3GB",
     threads: int = 2,
     temp_dir: Path | None = None,
     max_retained_releases: int | None = None,
     overwrite: bool = False,
 ) -> dict[str, object]:
-    """Expand the seed one hop over a parsed snapshot; returns the manifest."""
+    """Expand the seed one hop over a parsed snapshot; returns the manifest.
+
+    `additional_seed_path`, when given, points at a committed, PUBLIC editorial
+    seed (`data/albums/editorial-seed-v1.json`, see
+    `data/contracts/editorial-seed-v1.md` and
+    `networked_players_graph_core.editorial_seed`) whose release IDs are
+    UNIONED into the frontier alongside the private seed's -- never instead of
+    it. This is the one place the two seed kinds meet; everywhere else in this
+    module, "the seed" still means exactly what it always meant. The output
+    manifest records each seed's contribution separately (see below) so
+    neither provenance can be read as implying something about the other.
+    """
 
     source_manifest_path = dataset_root / "manifest.json"
     if not source_manifest_path.is_file():
@@ -208,6 +220,27 @@ def expand_one_hop(
 
     seed = SeedManifest.read(seed_path)
     seed_digest = hashlib.sha256(json.dumps(sorted(seed.release_ids)).encode("utf-8")).hexdigest()
+
+    additional_release_ids: list[int] = []
+    additional_seed_digest: str | None = None
+    if additional_seed_path is not None:
+        # Lazy import: keeps onehop.py's own import graph unchanged for the
+        # common (private-seed-only) path, matching this repo's convention of
+        # importing a sibling package's module only where it is actually used
+        # (see cli.py's own function-local graph-core imports).
+        from networked_players_graph_core.editorial_seed import editorial_seed_release_ids
+
+        additional_payload = json.loads(additional_seed_path.read_text())
+        if additional_payload.get("kind") != "public-editorial-seed":
+            raise OneHopError(
+                f"{additional_seed_path} does not carry "
+                "kind='public-editorial-seed' -- refusing to seed the frontier from "
+                "a file that isn't the documented editorial-seed contract"
+            )
+        additional_release_ids = editorial_seed_release_ids(additional_payload)
+        additional_seed_digest = _sha256(additional_seed_path)
+
+    combined_release_ids = sorted(set(seed.release_ids) | set(additional_release_ids))
 
     final_root = output_root / f"snapshot={snapshot_date}"
     if final_root.exists() and not overwrite:
@@ -232,7 +265,7 @@ def expand_one_hop(
         connection.execute("CREATE TEMP TABLE seed_release_ids(release_id BIGINT)")
         connection.executemany(
             "INSERT INTO seed_release_ids VALUES (?)",
-            [(release_id,) for release_id in seed.release_ids],
+            [(release_id,) for release_id in combined_release_ids],
         )
 
         # Pass 1 over credits: the artist frontier. Projection pushdown means
@@ -358,9 +391,22 @@ def expand_one_hop(
                 "kind": "one-hop",
                 "source_snapshot_date": snapshot_date,
                 "source_manifest_sha256": _sha256(source_manifest_path),
+                # Private, ownership-derived seed: aggregate-only provenance,
+                # exactly as before this field ever had a sibling -- never the
+                # release IDs themselves, never a private filesystem path.
                 "seed_version": seed.seed_version,
                 "seed_release_count": len(seed.release_ids),
                 "seed_sha256": seed_digest,
+                # Public, editorial-intent seed (Phase 7): safe to record in
+                # full since the file itself is already committed and public.
+                # `None` when no --additional-seed was given, so a one-hop
+                # generation with only the private seed looks exactly as it
+                # always has -- this key set is additive, not a schema break.
+                "additional_seed_path": (
+                    str(additional_seed_path) if additional_seed_path is not None else None
+                ),
+                "additional_seed_sha256": additional_seed_digest,
+                "additional_seed_release_count": len(additional_release_ids),
                 "frontier_artist_count": frontier_count,
                 "retained_release_count": retained_count,
                 "seed_releases_missing_from_snapshot": seed_missing,
