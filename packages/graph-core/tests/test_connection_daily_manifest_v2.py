@@ -205,7 +205,7 @@ def test_migration_appends_exactly_one_new_generation() -> None:
 
 def test_migration_rejects_a_cutover_date_not_strictly_after_generated_at() -> None:
     v2, gen1_pool = _v2_manifest(days=5)
-    with pytest.raises(ConnectionDailyManifestError, match="strictly after"):
+    with pytest.raises(ConnectionDailyManifestError, match="too soon after"):
         migrate_connection_daily_manifest_generation(
             v2,
             _real_pool_gen2(),
@@ -218,9 +218,30 @@ def test_migration_rejects_a_cutover_date_not_strictly_after_generated_at() -> N
         )
 
 
+def test_migration_rejects_a_cutover_date_one_day_after_generated_at() -> None:
+    """The exact scenario a Codex review found: `apps/web/src/game/localDate.ts`
+    rolls a date over at each PLAYER'S OWN local midnight, not UTC midnight, so
+    a cutover only one day after `generated_at`'s own UTC date could already
+    have been reached by a player in a timezone far ahead of UTC. A one-day
+    margin (the original, too-weak check) must now be rejected; only a margin
+    of `_MIN_CUTOVER_LEAD_DAYS` (2) full days or more is accepted."""
+    v2, gen1_pool = _v2_manifest(days=5)
+    with pytest.raises(ConnectionDailyManifestError, match="too soon after"):
+        migrate_connection_daily_manifest_generation(
+            v2,
+            _real_pool_gen2(),
+            cutover_date="2026-07-24",  # exactly one day after generated_at
+            new_generation_id="gen-2",
+            new_rounds_url="/data/game/rounds.v1.json",
+            days=5,
+            generated_at="2026-07-23T00:00:00+00:00",
+            existing_generation_rounds={"gen-1": gen1_pool},
+        )
+
+
 def test_migration_rejects_a_cutover_date_in_the_past() -> None:
     v2, gen1_pool = _v2_manifest(days=5)
-    with pytest.raises(ConnectionDailyManifestError, match="strictly after"):
+    with pytest.raises(ConnectionDailyManifestError, match="too soon after"):
         migrate_connection_daily_manifest_generation(
             v2,
             _real_pool_gen2(),
@@ -332,7 +353,7 @@ def test_migration_that_empties_the_kept_schedule_still_works() -> None:
         new_generation_id="gen-2",
         new_rounds_url="/data/game/rounds.v1.json",
         days=5,
-        generated_at="2026-07-21T00:00:00+00:00",  # before the schedule's own start
+        generated_at="2026-07-20T00:00:00+00:00",  # 2 full days before the cutover
         existing_generation_rounds={"gen-1": gen1_pool},
     )
     assert all(e["generation"] == "gen-2" for e in migrated["schedule"])
@@ -452,6 +473,23 @@ def test_validator_rejects_a_content_change_to_a_frozen_generation() -> None:
     tampered_pool["rounds"][0]["answer_set"][0]["name"] = "Tampered"
     with pytest.raises(ConnectionDailyManifestError, match="fingerprint mismatch"):
         validate_connection_daily_manifest_v2(v2, {"gen-1": tampered_pool})
+
+
+def test_validator_rejects_a_generation_entry_whose_versions_dont_match_its_artifact() -> None:
+    """Real Codex finding: schema v1's `_version_mismatches` guarantee -- the
+    manifest's claimed catalog/pool/artifact versions must match the actual
+    artifact used to verify it -- was only checked per schedule-entry
+    fingerprint, never against `generations[]`'s own version fields. A
+    hand-edited generation entry (or a validator call given the wrong rounds
+    artifact for that generation_id) that still contains the right round ids
+    would otherwise pass silently."""
+    v1 = _v1_manifest()
+    v2 = upgrade_connection_daily_manifest_to_v2(
+        v1, generation_id="gen-1", rounds_url="/data/game/generations/gen-1/rounds.json"
+    )
+    v2["generations"][0]["catalog_version"] = "catalog-v1-20260601-tampered"
+    with pytest.raises(ConnectionDailyManifestError, match="does not match"):
+        validate_connection_daily_manifest_v2(v2, {"gen-1": _real_pool()})
 
 
 def test_validator_rejects_a_nested_seed_key() -> None:

@@ -605,7 +605,8 @@ def schedule_expiry_status(
 # Phase 7 needs exactly that: the catalog expansion regenerates the whole
 # Connection Guesser pool, and every one of the 90 dates already scheduled
 # under v1 must remain resolvable to its EXACT original round, forever --
-# ADR (Phase 7 daily-manifest migration) records the full design.
+# ADR 0066 records the full design and why it is a bounded, human-authored
+# exception to ADR 0041's own revisit trigger, not a general rewrite path.
 #
 # v2 adds one thing to v1's shape: a `generations[]` list, each entry naming
 # one pool generation's `catalog_version`/`pool_version`/`artifact_version`
@@ -628,6 +629,14 @@ def schedule_expiry_status(
 # is the one function allowed to do this, and only for dates `>= cutover_date`.
 
 CONNECTION_DAILY_MANIFEST_SCHEMA_VERSION_V2 = 2
+
+# Real timezone spread is ~26 hours (UTC-12 to UTC+14): at any instant,
+# player-local calendar dates (apps/web/src/game/localDate.ts's
+# localIsoDate, which deliberately never uses UTC) span at most two
+# consecutive date labels. A cutover must land at least this many full days
+# after generated_at's own UTC date so no player's local calendar could
+# already have reached it -- see migrate_connection_daily_manifest_generation.
+_MIN_CUTOVER_LEAD_DAYS = 2
 
 _GENERATION_KEYS = frozenset(
     {"generation_id", "catalog_version", "pool_version", "artifact_version", "rounds_url"}
@@ -699,9 +708,15 @@ def migrate_connection_daily_manifest_generation(
     replaced by newly-scheduled entries drawn from `new_rounds_artifact`.
     This is the one sanctioned mutation of an already-published schedule
     (see the module-level note above for why it is safe); this function
-    refuses to run at all if `cutover_date` is not strictly after
-    `generated_at`'s own date, so it can never be used to rewrite a date
-    that might already have been reached.
+    refuses to run at all if `cutover_date` is less than
+    `_MIN_CUTOVER_LEAD_DAYS` (2) full days after `generated_at`'s own date.
+    A plain "strictly after" (1-day) margin is not enough: Connection of the
+    Day rolls over at each PLAYER'S OWN local midnight
+    (`apps/web/src/game/localDate.ts`), not UTC midnight, so a player in a
+    timezone far enough ahead of UTC could already be on a later local date
+    than `generated_at`'s own UTC date. Requiring two full days closes that
+    gap, so this can never be used to rewrite a date that might already have
+    been reached by any player, anywhere.
 
     `existing_generation_rounds` must map every generation_id referenced by
     a KEPT entry to that generation's own rounds artifact, so every kept
@@ -727,12 +742,29 @@ def migrate_connection_daily_manifest_generation(
 
     generated_at_dt = _parse_iso_datetime(generated_at, context="generated_at")
     cutover = _parse_iso_date(cutover_date, context="cutover_date")
-    if cutover <= generated_at_dt.date():
+    # `apps/web/src/game/localDate.ts` deliberately rolls a date over at each
+    # PLAYER'S OWN local midnight, not UTC midnight -- a real player's local
+    # calendar date can already be one day ahead of generated_at's own UTC
+    # date at the instant this function runs (the real timezone spread is
+    # ~26 hours, UTC-12 to UTC+14, so at any instant player-local dates span
+    # at most two consecutive calendar-date labels). Requiring only "the day
+    # after generated_at" would let a cutover target a date some player's
+    # browser has ALREADY reached -- exactly the "already reached or passed"
+    # case this check exists to refuse, just missed by one day. Requiring
+    # two full days closes that gap: no player's local calendar can reach
+    # `generated_at.date() + 2` before a full day has passed in every
+    # timezone following the furthest-ahead one.
+    earliest_safe_cutover = generated_at_dt.date() + timedelta(days=_MIN_CUTOVER_LEAD_DAYS)
+    if cutover < earliest_safe_cutover:
         raise ConnectionDailyManifestError(
-            f"cutover_date {cutover_date!r} must be strictly after generated_at's own date "
-            f"({generated_at_dt.date().isoformat()}) -- a cutover may only ever remove "
-            "schedule entries that have never been reachable as 'today', never one that "
-            "might already have been reached or passed"
+            f"cutover_date {cutover_date!r} is too soon after generated_at "
+            f"({generated_at_dt.date().isoformat()}) -- the earliest safe cutover is "
+            f"{earliest_safe_cutover.isoformat()} ({_MIN_CUTOVER_LEAD_DAYS} full days out). "
+            "Connection of the Day rolls over at each PLAYER'S OWN local midnight "
+            "(apps/web/src/game/localDate.ts), not UTC midnight, so a player in a "
+            "timezone far ahead of UTC could already be on a later local date than "
+            "generated_at's own date -- a cutover may only ever remove schedule entries "
+            "that no player's local calendar could possibly have reached yet"
         )
 
     existing_generation_ids = {g["generation_id"] for g in manifest["generations"]}
@@ -902,6 +934,27 @@ def validate_connection_daily_manifest_v2(
                 failures.append(f"generation {generation_id} is missing {field_name}")
         if not generation.get("rounds_url"):
             failures.append(f"generation {generation_id} is missing rounds_url")
+        # A generation entry's version fields are the manifest's own claim
+        # about which frozen artifact a generation resolves against; without
+        # comparing them to the SUPPLIED artifact's own provenance, a
+        # hand-edited generation entry (or a validator call given the wrong
+        # rounds artifact for that generation_id) would pass this loop's
+        # non-emptiness checks while naming a different frozen generation
+        # than the one actually being verified -- exactly schema v1's
+        # `_version_mismatches` guarantee, extended per-generation here.
+        rounds_artifact_for_generation = rounds_by_generation.get(generation_id)
+        if rounds_artifact_for_generation is not None:
+            generation_provenance = rounds_artifact_for_generation.get("provenance", {})
+            for field_name in _VERSION_FIELDS:
+                manifest_value = generation.get(field_name)
+                artifact_value = generation_provenance.get(field_name)
+                if manifest_value and artifact_value and manifest_value != artifact_value:
+                    failures.append(
+                        f"generation {generation_id} {field_name} {manifest_value!r} does not "
+                        f"match the supplied rounds artifact's provenance.{field_name} "
+                        f"{artifact_value!r} -- this manifest identifies a different frozen "
+                        "generation than the artifact used to verify it"
+                    )
 
     schedule = manifest.get("schedule")
     if not isinstance(schedule, list) or not schedule:
