@@ -17,7 +17,7 @@ from typing import Any
 import duckdb
 
 from .album_policy import master_non_studio_sql
-from .challenge import MatchedAlbum, _year_from_released, match_albums
+from .challenge import MatchedAlbum, _year_from_released, match_albums, release_eligibility_reason
 from .graph import CreditGraph, _not_placeholder_sql, read_parquet_sql
 
 
@@ -205,21 +205,52 @@ def exploration_corpus_version(albums: list[dict[str, Any]], snapshot_date: str 
     return f"{prefix}-{digest}"
 
 
+def _pre_resolved_to_matched_album(graph: CreditGraph, album: dict[str, Any]) -> MatchedAlbum:
+    """`data/albums/editorial-seed-v1.json`'s shape -> `MatchedAlbum`,
+    without any text search: identity (`artist_id`/`main_release_id`) is
+    already resolved (see `data/contracts/editorial-seed-v1.md`) and is
+    never re-derived here. Title/year still prefer the CURRENTLY attached
+    master over the seed file's own values, exactly like `match_albums`'s
+    editorial path -- both paths should stay in sync with the master data a
+    given catalog build actually runs against, not a value frozen at
+    editorial-seed resolution time, which could predate a later Discogs
+    correction to that master's title or year."""
+    master_id = int(album["master_id"]) if album.get("master_id") is not None else None
+    master = graph.master(master_id) if master_id is not None else None
+    title = str(album["title"])
+    year = album.get("year")
+    if master is not None:
+        title = master["title"] or title
+        year = int(master["year"]) if master["year"] else year
+    return MatchedAlbum(
+        artist_query=str(album.get("query_artist") or album.get("artist") or ""),
+        title_query=str(album.get("query_title") or album.get("title") or ""),
+        master_id=master_id,
+        main_release_id=int(album["main_release_id"]),
+        title=title,
+        artist_id=int(album["artist_id"]),
+        artist_name=str(album["artist"]),
+        year=year,
+    )
+
+
 def assemble_album_catalog(
     graph: CreditGraph,
     editorial_albums: list[dict[str, str]],
     candidates: list[dict[str, Any]],
     *,
     target_count: int,
+    pre_resolved_albums: list[dict[str, Any]] | None = None,
     private_weight_fn: Callable[[int], float] | None = None,
     allowed_release_ids: frozenset[int] | None = None,
     master_exclusions: frozenset[int] | None = None,
     snapshot_date: str | None = None,
     generated_by: str | None = None,
 ) -> dict[str, Any]:
-    """Combine the editorial backbone with graph-rich candidates up to
-    `target_count` (see ADR 0038). Deterministic given a fixed graph
-    snapshot, editorial list, candidate list, and weighting function.
+    """Combine the editorial backbone, an already-resolved personal bucket,
+    and graph-rich candidates up to `target_count` (see ADR 0038, ADR 0065).
+    Deterministic given a fixed graph snapshot, editorial list, pre-resolved
+    list, candidate list, and weighting function.
 
     The editorial list always wins: every editorial entry is kept exactly as
     given, and any candidate whose artist_id matches an already-matched
@@ -230,21 +261,41 @@ def assemble_album_catalog(
     added in that order until `target_count` is reached or candidates run
     out. Never pads past what real candidates support.
 
-    `allowed_release_ids`, when given, fail-closed gates the *editorial* side
-    by the same studio-album-v1 policy `candidates` was already filtered by
-    upstream in `rank_album_candidates` -- an editorial entry whose matched
-    release isn't in the allow-list is dropped, never silently included, and
-    never fabricated back in from the candidate pool.
+    `allowed_release_ids`, when given, fail-closed gates the *editorial* and
+    *pre-resolved* sides by the same studio-album-v1 policy `candidates` was
+    already filtered by upstream in `rank_album_candidates` -- an entry
+    whose release isn't in the allow-list is dropped, never silently
+    included, and never fabricated back in from the candidate pool.
+
+    `pre_resolved_albums` (Phase 7 Bucket A: a personal/editorial anchor
+    lane deliberately allowed MULTIPLE albums by the same artist -- e.g.
+    five Jamiroquai albums) is **never** run through `match_albums`. That
+    function's `seen_artist_ids` dedup keeps at most one album per artist,
+    which is correct for `editorial_albums` (`top-albums-v1.json`'s
+    one-album-per-notable-artist backbone) and would be a real, silent bug
+    here: it would keep only the first of five Jamiroquai entries and drop
+    the other four to nothing (ADR 0065 recorded this exact risk before any
+    code existed to cause it). Each pre-resolved entry already carries a
+    real identity, so it is converted to a `MatchedAlbum` directly and
+    re-checked against `allowed_release_ids`/`master_exclusions` via the
+    same `release_eligibility_reason` `match_albums` itself calls -- one
+    rule, two entry points, never two copies of it. A pre-resolved entry
+    whose `master_id` duplicates the editorial list or an earlier
+    pre-resolved entry is dropped and reported in `pre_resolved_missed`,
+    never silently included twice. Candidates -- and each other -- are
+    excluded by ARTIST for both editorial and pre-resolved entries (an
+    artist already covered by either lane doesn't need a graph-rich pick
+    too), the one place multiple-albums-per-artist is deliberately NOT
+    extended to Bucket B.
 
     The returned `albums[]` are ID-resolved (`MatchedAlbum.to_resolved_dict()`
     shape: `artist_id`, `main_release_id`, ...), not `{artist, title}` name
-    queries -- both the editorial entries (already resolved by the
-    `match_albums` call below) and the candidates (already resolved by
-    `rank_album_candidates`) carry a real, known `artist_id`. Re-serializing
-    either back to a name string and re-matching downstream would reopen
-    exactly the collision risk this function's own `match_albums` call
-    already resolved once -- a common display name, or a placeholder
-    identity, could resolve to the wrong artist on a second, blind pass.
+    queries -- editorial, pre-resolved, and candidate entries alike already
+    carry a real, known `artist_id`. Re-serializing any of them back to a
+    name string and re-matching downstream would reopen exactly the
+    collision risk `match_albums` already resolved once -- a common display
+    name, or a placeholder identity, could resolve to the wrong artist on a
+    second, blind pass.
     """
     if target_count <= 0:
         raise ValueError("target_count must be positive")
@@ -256,6 +307,34 @@ def assemble_album_catalog(
         master_exclusions=master_exclusions,
     )
     editorial_artist_ids = {m.artist_id for m in matched_editorial}
+    seen_master_ids: set[int] = {m.master_id for m in matched_editorial if m.master_id is not None}
+
+    pre_resolved_kept: list[MatchedAlbum] = []
+    pre_resolved_missed: list[dict[str, Any]] = []
+    for album in pre_resolved_albums or []:
+        master_id = album.get("master_id")
+        main_release_id = int(album["main_release_id"])
+        if master_id is not None and int(master_id) in seen_master_ids:
+            pre_resolved_missed.append(
+                {**album, "reason": "duplicate master_id already resolved earlier"}
+            )
+            continue
+        reason = release_eligibility_reason(
+            graph,
+            release_id=main_release_id,
+            master_id=int(master_id) if master_id is not None else None,
+            allowed_release_ids=allowed_release_ids,
+            master_exclusions=master_exclusions,
+        )
+        if reason is not None:
+            pre_resolved_missed.append({**album, "reason": reason})
+            continue
+        if master_id is not None:
+            seen_master_ids.add(int(master_id))
+        pre_resolved_kept.append(_pre_resolved_to_matched_album(graph, album))
+
+    pre_resolved_artist_ids = {m.artist_id for m in pre_resolved_kept}
+    excluded_artist_ids = editorial_artist_ids | pre_resolved_artist_ids
 
     def _weighted_score(candidate: dict[str, Any]) -> float:
         base = float(candidate["score"])
@@ -267,26 +346,31 @@ def assemble_album_catalog(
     eligible_candidates = [
         c
         for c in candidates
-        if c["artist_id"] not in editorial_artist_ids
+        if c["artist_id"] not in excluded_artist_ids
         and (c.get("master_id") is None or int(c["master_id"]) not in excluded_masters)
     ]
     ranked_candidates = sorted(
         eligible_candidates, key=lambda c: (-_weighted_score(c), c["master_id"])
     )
 
-    # Sized against matched_editorial (real matches), not len(editorial_albums)
-    # (the raw query count) -- an editorial entry that misses the snapshot
-    # shouldn't silently shrink how many candidates fill out the target.
-    remaining_slots = max(0, target_count - len(matched_editorial))
+    # Sized against matched_editorial + pre_resolved_kept (real inclusions),
+    # not the raw input counts -- an entry that misses the snapshot or fails
+    # policy shouldn't silently shrink how many candidates fill out the target.
+    remaining_slots = max(0, target_count - len(matched_editorial) - len(pre_resolved_kept))
     added_candidate_ids: set[int] = set()
     candidate_albums: list[MatchedAlbum] = []
     for candidate in ranked_candidates:
         if len(candidate_albums) >= remaining_slots:
             break
         artist_id = int(candidate["artist_id"])
+        candidate_master_id = candidate.get("master_id")
         if artist_id in added_candidate_ids:
             continue
+        if candidate_master_id is not None and int(candidate_master_id) in seen_master_ids:
+            continue
         added_candidate_ids.add(artist_id)
+        if candidate_master_id is not None:
+            seen_master_ids.add(int(candidate_master_id))
         candidate_albums.append(
             MatchedAlbum(
                 artist_query=candidate["artist_name"],
@@ -302,6 +386,7 @@ def assemble_album_catalog(
 
     albums = [
         *(m.to_resolved_dict() for m in matched_editorial),
+        *(m.to_resolved_dict() for m in pre_resolved_kept),
         *(m.to_resolved_dict() for m in candidate_albums),
     ]
 
@@ -311,18 +396,22 @@ def assemble_album_catalog(
         "snapshot_date": snapshot_date,
         "generated_by": generated_by,
         "source_note": (
-            "Hybrid catalog: an editorial backbone plus graph-rich additions selected by "
-            "deterministic candidate scoring (ADR 0038). The canonical, single source of "
-            "truth for which albums exist across every real public surface (album browser, "
-            "Connection Guesser, Record Routes) -- every one derives its album set from "
-            "this artifact's own catalog_version, never re-deriving or narrowing it "
+            "Hybrid catalog: an editorial backbone, a personal/editorial anchor lane, "
+            "and graph-rich additions selected by deterministic candidate scoring "
+            "(ADR 0038, ADR 0065). The canonical, single source of truth for which "
+            "albums exist across every real public surface (album browser, Connection "
+            "Guesser, Record Routes) -- every one derives its album set from this "
+            "artifact's own catalog_version, never re-deriving or narrowing it "
             "independently (see ADR 0043). Combined at build time from "
-            "data/albums/top-albums-v1.json and a rank-album-candidates shortlist. Albums "
-            "are ID-resolved (artist_id/main_release_id), not name queries."
+            "data/albums/top-albums-v1.json, data/albums/editorial-seed-v1.json, and a "
+            "rank-album-candidates shortlist. Albums are ID-resolved "
+            "(artist_id/main_release_id), not name queries."
         ),
         "target_count": target_count,
         "editorial_count": len(matched_editorial),
         "editorial_missed": missed_editorial,
+        "pre_resolved_count": len(pre_resolved_kept),
+        "pre_resolved_missed": pre_resolved_missed,
         "candidate_count_considered": len(candidates),
         "candidate_count_added": len(candidate_albums),
         "albums": albums,

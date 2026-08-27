@@ -652,3 +652,179 @@ def test_accepts_a_genuinely_empty_exclusions_array(tmp_path: Path) -> None:
     ]
     assert main(args) == 0
     assert output_path.exists()
+
+
+# --- Phase 7: --personal-seed (Bucket A, ADR 0065) --------------------------
+
+
+def _write_personal_seed(path: Path, *, snapshot_date: str = SNAPSHOT_DATE) -> Path:
+    path.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "kind": "public-editorial-seed",
+                "snapshot_date": snapshot_date,
+                "generated_by": "test",
+                "generated_at": "2026-08-27T00:00:00+00:00",
+                "note": "",
+                "albums": [
+                    {
+                        "query_artist": "Fictoquai",
+                        "query_title": "Personal Pick",
+                        "master_id": None,
+                        "main_release_id": 3,
+                        "artist_id": 700,
+                        "artist": "Fictoquai",
+                        "title": "Personal Pick",
+                        "year": 1999,
+                    }
+                ],
+            }
+        )
+    )
+    return path
+
+
+def test_personal_seed_adds_a_pre_resolved_album(tmp_path: Path) -> None:
+    onehop_root = _write_onehop_dataset(tmp_path / "onehop")
+    masters_root = _write_masters_dataset(tmp_path / "masters")
+    # Widened allow-list: the personal-seed fixture's main_release_id (3) is
+    # a Bucket-A release that need not physically exist in this small onehop
+    # fixture at all (pre-resolved entries with master_id=None skip both the
+    # graph's master lookup and any existence check) -- only the policy
+    # allow-list still has to admit it.
+    policy_path = tmp_path / "policy.json"
+    policy_path.write_text(
+        json.dumps(
+            {
+                "kind": "release-format-scoring-index",
+                "policy_name": "studio-album-v1",
+                "policy_version": 1,
+                "schema_version": 1,
+                "snapshot_date": SNAPSHOT_DATE,
+                "allowed_release_ids": [1, 2, 3],
+                "allowed_release_count": 3,
+                "source_policy_sha256": "deadbeef",
+            }
+        )
+    )
+    exclusions_path = _write_exclusions(tmp_path / "exclusions.json")
+    personal_seed_path = _write_personal_seed(tmp_path / "editorial-seed.json")
+    output_path = tmp_path / "albums.v1.json"
+
+    args = _base_args(tmp_path, onehop_root=onehop_root, output=output_path)
+    args += [
+        "--release-format-policy",
+        str(policy_path),
+        "--masters-root",
+        str(masters_root),
+        "--studio-album-exclusions",
+        str(exclusions_path),
+        "--personal-seed",
+        str(personal_seed_path),
+        "--target-count",
+        "3",
+    ]
+    assert main(args) == 0
+    catalog = json.loads(output_path.read_text())
+    assert catalog["pre_resolved_count"] == 1
+    assert catalog["pre_resolved_missed"] == []
+    assert any(a["artist"] == "Fictoquai" for a in catalog["albums"])
+
+
+def test_personal_seed_omitted_is_backward_compatible(tmp_path: Path) -> None:
+    onehop_root = _write_onehop_dataset(tmp_path / "onehop")
+    masters_root = _write_masters_dataset(tmp_path / "masters")
+    policy_path = _write_release_format_policy(tmp_path / "policy.json")
+    exclusions_path = _write_exclusions(tmp_path / "exclusions.json")
+    output_path = tmp_path / "albums.v1.json"
+
+    args = _base_args(tmp_path, onehop_root=onehop_root, output=output_path)
+    args += [
+        "--release-format-policy",
+        str(policy_path),
+        "--masters-root",
+        str(masters_root),
+        "--studio-album-exclusions",
+        str(exclusions_path),
+    ]
+    assert main(args) == 0
+    catalog = json.loads(output_path.read_text())
+    assert catalog["pre_resolved_count"] == 0
+    assert catalog["pre_resolved_missed"] == []
+
+
+def test_personal_seed_wrong_kind_refused(tmp_path: Path) -> None:
+    onehop_root = _write_onehop_dataset(tmp_path / "onehop")
+    masters_root = _write_masters_dataset(tmp_path / "masters")
+    policy_path = _write_release_format_policy(tmp_path / "policy.json")
+    exclusions_path = _write_exclusions(tmp_path / "exclusions.json")
+    personal_seed_path = tmp_path / "editorial-seed.json"
+    personal_seed_path.write_text(json.dumps({"kind": "private-collection-seed", "albums": []}))
+    output_path = tmp_path / "albums.v1.json"
+
+    args = _base_args(tmp_path, onehop_root=onehop_root, output=output_path)
+    args += [
+        "--release-format-policy",
+        str(policy_path),
+        "--masters-root",
+        str(masters_root),
+        "--studio-album-exclusions",
+        str(exclusions_path),
+        "--personal-seed",
+        str(personal_seed_path),
+    ]
+    with pytest.raises(ValueError, match="public-editorial-seed"):
+        main(args)
+    assert not output_path.exists()
+
+
+def test_personal_seed_mismatched_snapshot_refused(tmp_path: Path) -> None:
+    onehop_root = _write_onehop_dataset(tmp_path / "onehop")
+    masters_root = _write_masters_dataset(tmp_path / "masters")
+    policy_path = _write_release_format_policy(tmp_path / "policy.json")
+    exclusions_path = _write_exclusions(tmp_path / "exclusions.json")
+    personal_seed_path = _write_personal_seed(
+        tmp_path / "editorial-seed.json", snapshot_date="20200101"
+    )
+    output_path = tmp_path / "albums.v1.json"
+
+    args = _base_args(tmp_path, onehop_root=onehop_root, output=output_path)
+    args += [
+        "--release-format-policy",
+        str(policy_path),
+        "--masters-root",
+        str(masters_root),
+        "--studio-album-exclusions",
+        str(exclusions_path),
+        "--personal-seed",
+        str(personal_seed_path),
+    ]
+    with pytest.raises(ValueError, match="mismatched-snapshot"):
+        main(args)
+    assert not output_path.exists()
+
+
+def test_personal_seed_missing_snapshot_refused(tmp_path: Path) -> None:
+    onehop_root = _write_onehop_dataset(tmp_path / "onehop")
+    masters_root = _write_masters_dataset(tmp_path / "masters")
+    policy_path = _write_release_format_policy(tmp_path / "policy.json")
+    exclusions_path = _write_exclusions(tmp_path / "exclusions.json")
+    personal_seed_path = tmp_path / "editorial-seed.json"
+    personal_seed_path.write_text(json.dumps({"kind": "public-editorial-seed", "albums": []}))
+    output_path = tmp_path / "albums.v1.json"
+
+    args = _base_args(tmp_path, onehop_root=onehop_root, output=output_path)
+    args += [
+        "--release-format-policy",
+        str(policy_path),
+        "--masters-root",
+        str(masters_root),
+        "--studio-album-exclusions",
+        str(exclusions_path),
+        "--personal-seed",
+        str(personal_seed_path),
+    ]
+    with pytest.raises(ValueError, match="personal-seed"):
+        main(args)
+    assert not output_path.exists()

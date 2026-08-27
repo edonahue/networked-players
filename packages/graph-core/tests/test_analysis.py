@@ -171,6 +171,182 @@ def test_assemble_album_catalog_rejects_non_positive_target(dataset_root: Path) 
             assemble_album_catalog(graph, [], [], target_count=0)
 
 
+def _pre_resolved(
+    master_id: int | None,
+    main_release_id: int,
+    artist_id: int,
+    artist: str,
+    title: str,
+    year: int = 2000,
+) -> dict:
+    return {
+        "query_artist": artist,
+        "query_title": title,
+        "master_id": master_id,
+        "main_release_id": main_release_id,
+        "artist_id": artist_id,
+        "artist": artist,
+        "title": title,
+        "year": year,
+    }
+
+
+def test_pre_resolved_allows_multiple_albums_by_the_same_artist(dataset_root: Path) -> None:
+    """The exact bug ADR 0065 recorded before any code existed to cause it:
+    a personal-lane artist with several albums (five Jamiroquai albums in
+    the real Phase 7 slate) must NOT be silently reduced to one by a
+    per-artist dedup. Three fabricated albums, all artist_id=700, none of
+    which need to exist in the fixture graph -- pre-resolved entries carry
+    their own identity and are never re-resolved by text search."""
+    pre_resolved = [
+        _pre_resolved(9001, 9001, 700, "Fictoquai", "Album One"),
+        _pre_resolved(9002, 9002, 700, "Fictoquai", "Album Two"),
+        _pre_resolved(9003, 9003, 700, "Fictoquai", "Album Three"),
+    ]
+    with CreditGraph.open(dataset_root) as graph:
+        catalog = assemble_album_catalog(
+            graph, [], [], target_count=10, pre_resolved_albums=pre_resolved
+        )
+    assert catalog["pre_resolved_count"] == 3
+    assert catalog["pre_resolved_missed"] == []
+    fictoquai_albums = [a for a in catalog["albums"] if a["artist"] == "Fictoquai"]
+    assert len(fictoquai_albums) == 3
+    assert {a["title"] for a in fictoquai_albums} == {"Album One", "Album Two", "Album Three"}
+
+
+def test_pre_resolved_excludes_a_ranked_candidate_by_the_same_artist(dataset_root: Path) -> None:
+    """Master 904 resolves to artist_id 100 (Alice) in the shared fixture --
+    once Alice is covered by a pre-resolved (Bucket A) entry, a ranked
+    candidate by the same artist must not ALSO take a graph-rich slot."""
+    pre_resolved = [_pre_resolved(9001, 9001, 100, "Alice", "Pre-Resolved Alice Album")]
+    with CreditGraph.open(dataset_root) as graph:
+        candidates = rank_album_candidates(dataset_root)
+        catalog = assemble_album_catalog(
+            graph, [], candidates, target_count=10, pre_resolved_albums=pre_resolved
+        )
+    added_via_candidates = {
+        a["artist"] for a in catalog["albums"] if a["title"] != "Pre-Resolved Alice Album"
+    }
+    assert "Alice" not in added_via_candidates
+    assert catalog["candidate_count_added"] == 2  # Cara, Dan -- not Alice's master 904
+
+
+def test_pre_resolved_deduplicates_against_editorial_by_master_id(dataset_root: Path) -> None:
+    editorial = [{"artist": "Alice", "title": "First Light"}]  # resolves to master 901
+    pre_resolved = [_pre_resolved(901, 1, 999, "Someone Else", "Duplicate Of Editorial")]
+    with CreditGraph.open(dataset_root) as graph:
+        catalog = assemble_album_catalog(
+            graph, editorial, [], target_count=10, pre_resolved_albums=pre_resolved
+        )
+    assert catalog["pre_resolved_count"] == 0
+    assert len(catalog["pre_resolved_missed"]) == 1
+    assert "duplicate master_id" in catalog["pre_resolved_missed"][0]["reason"]
+
+
+def test_pre_resolved_deduplicates_against_itself_by_master_id(dataset_root: Path) -> None:
+    pre_resolved = [
+        _pre_resolved(9001, 9001, 700, "Fictoquai", "First Copy"),
+        _pre_resolved(9001, 9001, 701, "Someone Else", "Duplicate Master"),
+    ]
+    with CreditGraph.open(dataset_root) as graph:
+        catalog = assemble_album_catalog(
+            graph, [], [], target_count=10, pre_resolved_albums=pre_resolved
+        )
+    assert catalog["pre_resolved_count"] == 1
+    assert catalog["albums"][0]["title"] == "First Copy"
+    assert len(catalog["pre_resolved_missed"]) == 1
+    assert "duplicate master_id" in catalog["pre_resolved_missed"][0]["reason"]
+
+
+def test_pre_resolved_respects_allowed_release_ids(dataset_root: Path) -> None:
+    pre_resolved = [_pre_resolved(9001, 9001, 700, "Fictoquai", "Not Allowed")]
+    with CreditGraph.open(dataset_root) as graph:
+        catalog = assemble_album_catalog(
+            graph,
+            [],
+            [],
+            target_count=10,
+            pre_resolved_albums=pre_resolved,
+            allowed_release_ids=frozenset({1, 2, 3}),  # 9001 not included
+        )
+    assert catalog["pre_resolved_count"] == 0
+    assert "allow-list" in catalog["pre_resolved_missed"][0]["reason"]
+
+
+def test_pre_resolved_respects_master_exclusions(dataset_root: Path) -> None:
+    pre_resolved = [_pre_resolved(9001, 9001, 700, "Fictoquai", "Excluded Master")]
+    with CreditGraph.open(dataset_root) as graph:
+        catalog = assemble_album_catalog(
+            graph,
+            [],
+            [],
+            target_count=10,
+            pre_resolved_albums=pre_resolved,
+            master_exclusions=frozenset({9001}),
+        )
+    assert catalog["pre_resolved_count"] == 0
+    assert "exclusions" in catalog["pre_resolved_missed"][0]["reason"]
+
+
+def test_pre_resolved_respects_non_studio_genre_when_masters_attached(
+    dataset_root: Path, masters_root: Path
+) -> None:
+    """Master 901 IS in the masters fixture but with empty genres/styles
+    (see conftest.py's FIXTURE_MASTERS) -- confirm a pre-resolved entry
+    pointed at it still passes (no false positive), proving this path is
+    genuinely wired to the same real policy check, not a stub."""
+    pre_resolved = [_pre_resolved(901, 1, 999, "Someone Else", "Reuses Master 901 Deliberately")]
+    with CreditGraph.open(dataset_root) as graph:
+        graph.attach_masters(masters_root)
+        catalog = assemble_album_catalog(
+            graph, [], [], target_count=10, pre_resolved_albums=pre_resolved
+        )
+    assert catalog["pre_resolved_count"] == 1
+    # Masters attached: title/year come from the master, not the query --
+    # same override behavior match_albums's own editorial path already has.
+    assert catalog["albums"][0]["title"] == "First Light (Deluxe)"
+    assert catalog["albums"][0]["year"] == 1995
+
+
+def test_pre_resolved_counts_toward_target(dataset_root: Path) -> None:
+    pre_resolved = [_pre_resolved(9001, 9001, 700, "Fictoquai", "One Album")]
+    with CreditGraph.open(dataset_root) as graph:
+        candidates = rank_album_candidates(dataset_root)
+        catalog = assemble_album_catalog(
+            graph, [], candidates, target_count=2, pre_resolved_albums=pre_resolved
+        )
+    assert catalog["pre_resolved_count"] == 1
+    assert catalog["candidate_count_added"] == 1
+    assert len(catalog["albums"]) == 2
+
+
+def test_a_candidate_sharing_a_pre_resolved_master_id_is_excluded_even_with_a_different_artist(
+    dataset_root: Path,
+) -> None:
+    """Defensive edge case: a ranked candidate whose master_id coincidentally
+    matches a pre-resolved entry's master_id must never be double-added,
+    even if the candidate's own artist_id label differs (which should not
+    happen with real Discogs data, but the guard costs two lines)."""
+    pre_resolved = [_pre_resolved(903, 3, 999, "Someone Else", "Claims Master 903")]
+    with CreditGraph.open(dataset_root) as graph:
+        candidates = rank_album_candidates(dataset_root)
+        catalog = assemble_album_catalog(
+            graph, [], candidates, target_count=10, pre_resolved_albums=pre_resolved
+        )
+    master_ids_in_catalog = [a["master_id"] for a in catalog["albums"] if a["master_id"] == 903]
+    assert len(master_ids_in_catalog) == 1  # not duplicated
+
+
+def test_no_pre_resolved_albums_is_fully_backward_compatible(dataset_root: Path) -> None:
+    editorial = [{"artist": "Alice", "title": "First Light"}]
+    with CreditGraph.open(dataset_root) as graph:
+        candidates = rank_album_candidates(dataset_root)
+        catalog = assemble_album_catalog(graph, editorial, candidates, target_count=3)
+    assert catalog["pre_resolved_count"] == 0
+    assert catalog["pre_resolved_missed"] == []
+    assert len(catalog["albums"]) == 3
+
+
 def test_assemble_album_catalog_resolves_candidates_by_id_not_name(tmp_path: Path) -> None:
     """Two real, unrelated Discogs artists can share a display name (exactly
     why Discogs itself disambiguates with numeric IDs). A candidate resolved

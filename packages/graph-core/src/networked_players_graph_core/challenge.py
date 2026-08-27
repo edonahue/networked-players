@@ -86,6 +86,39 @@ def _year_from_released(released: str | None) -> int | None:
     return None
 
 
+def release_eligibility_reason(
+    graph: CreditGraph,
+    *,
+    release_id: int,
+    master_id: int | None,
+    allowed_release_ids: frozenset[int] | None,
+    master_exclusions: frozenset[int] | None,
+) -> str | None:
+    """`None` when a release passes the real studio-album-v1 policy;
+    otherwise a short, human-readable reason it doesn't.
+
+    Shared by `match_albums` (text-resolved editorial/candidate albums) and
+    `analysis.py::assemble_album_catalog`'s pre-resolved path (albums that
+    already carry a real identity -- e.g. `data/albums/editorial-seed-v1.json`
+    -- and so skip `find_release_by_title_artist` entirely) so both apply
+    the IDENTICAL policy, never two copies of the same rule.
+    """
+    if allowed_release_ids is not None and release_id not in allowed_release_ids:
+        return "release not in the release-format allow-list"
+    master = graph.master(master_id) if master_id is not None else None
+    # Fail-closed master-level exclusion: soundtracks/stage recordings the
+    # release-format gate can't see (via Discogs genre/style), plus the
+    # curated human-reviewed deny-list for non-studio masters that carry no
+    # structured signal at all.
+    if master is not None:
+        non_studio_reason = master_non_studio_reason(master["genres"], master["styles"])
+        if non_studio_reason:
+            return f"non-studio master: {non_studio_reason}"
+    if master_exclusions and master_id in master_exclusions:
+        return "curated studio-album-master-exclusions-v1 entry"
+    return None
+
+
 def match_albums(
     graph: CreditGraph,
     albums: list[dict[str, str]],
@@ -118,24 +151,21 @@ def match_albums(
         if found is None or found["artist_id"] in seen_artist_ids:
             missed.append(album)
             continue
-        if allowed_release_ids is not None and found["release_id"] not in allowed_release_ids:
-            missed.append(album)
-            continue
-
-        master = graph.master(found["master_id"]) if found["master_id"] is not None else None
-        # Fail-closed master-level exclusion: soundtracks/stage recordings the
-        # release-format gate can't see (via Discogs genre/style), plus the
-        # curated human-reviewed deny-list for non-studio masters that carry no
-        # structured signal at all. Excluded albums are treated exactly like an
-        # unmatched query -- reported in missed, never silently included.
-        if master is not None and master_non_studio_reason(master["genres"], master["styles"]):
-            missed.append(album)
-            continue
-        if master_exclusions and found["master_id"] in master_exclusions:
+        if (
+            release_eligibility_reason(
+                graph,
+                release_id=found["release_id"],
+                master_id=found["master_id"],
+                allowed_release_ids=allowed_release_ids,
+                master_exclusions=master_exclusions,
+            )
+            is not None
+        ):
             missed.append(album)
             continue
         seen_artist_ids.add(found["artist_id"])
 
+        master = graph.master(found["master_id"]) if found["master_id"] is not None else None
         year = _year_from_released(found["released"])
         resolved_title = found["title"]
         if master is not None:
