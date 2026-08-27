@@ -100,6 +100,131 @@ def test_frontier_retention_and_evidence(tmp_path: Path) -> None:
     assert "release_ids" not in json.dumps(manifest)
 
 
+def _write_editorial_seed(tmp_path: Path, *, main_release_ids: list[int]) -> Path:
+    path = tmp_path / "editorial-seed.json"
+    path.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "kind": "public-editorial-seed",
+                "snapshot_date": SNAPSHOT,
+                "generated_by": "test",
+                "generated_at": "2026-08-27T00:00:00+00:00",
+                "note": "",
+                "albums": [
+                    {
+                        "query_artist": "Unrelated Act",
+                        "query_title": "Different Scene",
+                        "master_id": None,
+                        "main_release_id": rid,
+                        "artist_id": 99,
+                        "artist": "Unrelated Act",
+                        "title": "Different Scene",
+                        "year": 2005,
+                    }
+                    for rid in main_release_ids
+                ],
+            }
+        )
+    )
+    return path
+
+
+def test_additional_seed_reaches_a_release_the_private_seed_cannot(tmp_path: Path) -> None:
+    """Release 104 (artist 99, "Unrelated Act") shares nothing with seed 101's
+    frontier -- test_frontier_retention_and_evidence above pins it as
+    correctly EXCLUDED under the private seed alone. This is the real Phase 7
+    working-set gap, reduced: a public editorial pick outside the private
+    seed's one-hop reach. Its release id must appear in the output ONLY when
+    named through --additional-seed, and the private seed's own retention
+    must be completely unaffected -- 103 still comes in via seed 101, not via
+    the editorial seed touching it."""
+    dataset = _write_source_dataset(tmp_path)
+    seed_path = _write_seed(tmp_path, [101])
+    editorial_seed_path = _write_editorial_seed(tmp_path, main_release_ids=[104])
+
+    manifest = expand_one_hop(
+        seed_path,
+        dataset,
+        tmp_path / "onehop",
+        additional_seed_path=editorial_seed_path,
+    )
+    output = tmp_path / "onehop" / f"snapshot={SNAPSHOT}"
+
+    # Artist 99 also authored release 113 ("Only Mastered By 42") --
+    # correctly retained too, once 99 joins the frontier via 104.
+    assert _column(output, "releases", "release_id") == [101, 103, 104, 113]
+    # The editorial seed's release lands in seed_releases too -- expand_one_hop
+    # unions BEFORE frontier/retention run, so it is seeded exactly like a
+    # private-seed release, not bolted on afterward.
+    assert _column(output, "seed_releases", "release_id") == [101, 104]
+    assert _column(output, "frontier_artists", "artist_id") == [11, 12, 31, 32, 99]
+
+    expansion = manifest["expansion"]
+    assert isinstance(expansion, dict)
+    # The private seed's own provenance is untouched by the union.
+    assert expansion["seed_release_count"] == 1
+    assert expansion["additional_seed_release_count"] == 1
+    assert expansion["additional_seed_path"] == str(editorial_seed_path)
+    assert expansion["additional_seed_sha256"]
+    # The manifest may name the editorial seed's own path (it is public), but
+    # never the private seed's contents beyond its existing aggregate.
+    assert "release_ids" not in json.dumps(expansion)
+
+
+def test_release_reached_only_via_editorial_seed_is_schema_identical_to_a_private_one(
+    tmp_path: Path,
+) -> None:
+    """The privacy invariant this design depends on: nothing in the retained
+    releases/credits/tracks tables tags a row by which seed retained it. If
+    it did, a downstream consumer could reconstruct which releases came from
+    the private collection -- exactly what data/contracts/editorial-seed-v1.md
+    promises never happens."""
+    dataset = _write_source_dataset(tmp_path)
+    seed_path = _write_seed(tmp_path, [101])
+    editorial_seed_path = _write_editorial_seed(tmp_path, main_release_ids=[104])
+
+    expand_one_hop(
+        seed_path,
+        dataset,
+        tmp_path / "onehop",
+        additional_seed_path=editorial_seed_path,
+    )
+    output = tmp_path / "onehop" / f"snapshot={SNAPSHOT}"
+
+    glob = str(output / "table=releases" / "*.parquet")
+    columns = duckdb.connect().execute(f"DESCRIBE SELECT * FROM read_parquet('{glob}')").fetchall()
+    column_names = {row[0] for row in columns}
+    assert "seed_kind" not in column_names
+    assert "seed_source" not in column_names
+    private_row = (
+        duckdb.connect()
+        .execute(f"SELECT * EXCLUDE(release_id) FROM read_parquet('{glob}') WHERE release_id = 101")
+        .description
+    )
+    editorial_row = (
+        duckdb.connect()
+        .execute(f"SELECT * EXCLUDE(release_id) FROM read_parquet('{glob}') WHERE release_id = 104")
+        .description
+    )
+    assert private_row == editorial_row
+
+
+def test_additional_seed_must_carry_the_documented_kind(tmp_path: Path) -> None:
+    dataset = _write_source_dataset(tmp_path)
+    seed_path = _write_seed(tmp_path, [101])
+    wrong_kind_path = tmp_path / "not-an-editorial-seed.json"
+    wrong_kind_path.write_text(json.dumps({"kind": "something-else", "albums": []}))
+
+    with pytest.raises(OneHopError, match="public-editorial-seed"):
+        expand_one_hop(
+            seed_path,
+            dataset,
+            tmp_path / "onehop",
+            additional_seed_path=wrong_kind_path,
+        )
+
+
 def test_placeholder_hub_artists_excluded_from_frontier(tmp_path: Path) -> None:
     dataset = _write_source_dataset(tmp_path)
     seed_path = _write_seed(tmp_path, [110])

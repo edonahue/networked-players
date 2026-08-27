@@ -187,6 +187,54 @@ def _parser() -> argparse.ArgumentParser:
         help="abort (writing nothing) if the retained release count exceeds this bound",
     )
     expand.add_argument("--overwrite", action="store_true")
+    expand.add_argument(
+        "--additional-seed",
+        type=Path,
+        default=None,
+        help=(
+            "a committed, PUBLIC editorial seed (data/albums/editorial-seed-v1.json, "
+            "kind='public-editorial-seed') whose release IDs are unioned into the "
+            "frontier alongside the private seed's -- see data/contracts/editorial-seed-v1.md"
+        ),
+    )
+
+    resolve_editorial = subparsers.add_parser(
+        "resolve-editorial-albums",
+        help=(
+            "resolve a human-curated {artist, title} (or master_id-pinned) query list "
+            "against the FULL parsed snapshot into a committed, public editorial-seed file"
+        ),
+    )
+    resolve_editorial.add_argument(
+        "--dataset", type=Path, required=True, help="FULL parsed snapshot root (not one-hop)"
+    )
+    resolve_editorial.add_argument(
+        "--queries", type=Path, required=True, help='JSON {"queries": [{"artist","title"}, ...]}'
+    )
+    resolve_editorial.add_argument(
+        "--masters-root",
+        type=Path,
+        default=None,
+        help="parsed masters snapshot -- without it, the genre/style gate is reported unchecked",
+    )
+    resolve_editorial.add_argument(
+        "--studio-album-exclusions",
+        type=Path,
+        default=None,
+        help="data/albums/studio-album-master-exclusions-v1.json",
+    )
+    resolve_editorial.add_argument("--memory-limit", default="2GB")
+    resolve_editorial.add_argument("--threads", type=int, default=2)
+    resolve_editorial.add_argument(
+        "--output", type=Path, required=True, help="data/albums/editorial-seed-v1.json"
+    )
+    resolve_editorial.add_argument(
+        "--unresolved-output",
+        type=Path,
+        default=None,
+        help="optional: also write the unresolved/excluded queries with reasons",
+    )
+    resolve_editorial.add_argument("--note", default="")
 
     build_demo = subparsers.add_parser(
         "build-demo-challenge",
@@ -1588,6 +1636,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             args.seed,
             args.dataset,
             args.output_root,
+            additional_seed_path=args.additional_seed,
             memory_limit=args.memory_limit,
             threads=args.threads,
             temp_dir=args.temp_dir,
@@ -1595,6 +1644,81 @@ def main(argv: Sequence[str] | None = None) -> int:
             overwrite=args.overwrite,
         )
         print(json.dumps(onehop_manifest, indent=2, sort_keys=True))
+        return 0
+
+    if args.command == "resolve-editorial-albums":
+        from networked_players_graph_core.editorial_seed import (
+            EDITORIAL_SEED_KIND,
+            EDITORIAL_SEED_SCHEMA_VERSION,
+            editorial_seed_failures,
+            resolve_editorial_albums,
+        )
+        from networked_players_graph_core.graph import CreditGraph
+
+        from .discogs.release_format_policy import load_master_exclusions
+
+        source_manifest = json.loads((args.dataset / "manifest.json").read_text())
+        snapshot_date = str(source_manifest["snapshot_date"])
+
+        editorial_exclusions: frozenset[int] = frozenset()
+        if args.studio_album_exclusions is not None:
+            editorial_exclusions = load_master_exclusions(args.studio_album_exclusions)
+
+        queries = json.loads(args.queries.read_text())["queries"]
+
+        with CreditGraph.open(
+            args.dataset,
+            memory_limit=args.memory_limit,
+            threads=args.threads,
+            build_edges=False,
+        ) as graph:
+            if args.masters_root is not None:
+                graph.attach_masters(args.masters_root)
+            resolution = resolve_editorial_albums(
+                graph, queries, master_exclusions=editorial_exclusions
+            )
+
+        # Never publish the `eligibility` diagnostic dict: it belongs in the
+        # console summary and the optional --unresolved-output, not the
+        # committed contract, which promises exactly the documented key set
+        # (data/contracts/editorial-seed-v1.md) -- policy re-applies at build
+        # time regardless of what this command already observed.
+        published_albums = [
+            {key: value for key, value in album.items() if key != "eligibility"}
+            for album in resolution["resolved"]
+        ]
+        payload = {
+            "schema_version": EDITORIAL_SEED_SCHEMA_VERSION,
+            "kind": EDITORIAL_SEED_KIND,
+            "snapshot_date": snapshot_date,
+            "generated_by": f"networked-players-catalog resolve-editorial-albums {__version__}",
+            "generated_at": datetime.now(UTC).isoformat(),
+            "note": args.note,
+            "albums": published_albums,
+        }
+        failures = editorial_seed_failures(payload)
+        if failures:
+            raise ValueError(f"refusing to write an invalid editorial seed: {failures}")
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
+
+        if args.unresolved_output is not None:
+            args.unresolved_output.parent.mkdir(parents=True, exist_ok=True)
+            args.unresolved_output.write_text(
+                json.dumps({"unresolved": resolution["unresolved"]}, indent=2, sort_keys=True)
+                + "\n"
+            )
+
+        print(
+            json.dumps(
+                {
+                    "output": str(args.output),
+                    "resolved_count": len(resolution["resolved"]),
+                    "unresolved_count": len(resolution["unresolved"]),
+                },
+                indent=2,
+            )
+        )
         return 0
 
     if args.command == "build-demo-challenge":
