@@ -95,6 +95,57 @@ def test_structured_formats_preserve_rows_and_descriptions() -> None:
     ]
 
 
+def test_a_quantity_too_large_for_int32_is_treated_as_unparseable_not_a_crash() -> None:
+    """Real production bug (found migrating the real 20260601 dump to schema
+    v3): one release's real qty attribute was large enough that even
+    Python's arbitrary-precision int overflowed pyarrow's int32 quantity
+    column, crashing a ~2-hour full-dump run at the write step. quantity
+    isn't a barcode or catalog number -- nothing legitimate calls for a
+    value outside a small pressing-count range -- so an out-of-range value
+    is treated exactly like the existing qty="bad" case above: the format
+    row survives with quantity=None, never a parse failure that takes down
+    the whole release, let alone the whole run."""
+    element = etree.fromstring(
+        """<release id="1000"><title>Overflow Fixture</title><formats>
+          <format name="Vinyl" qty="99999999999999999999" text="">
+            <descriptions><description>LP</description></descriptions>
+          </format>
+        </formats></release>"""
+    )
+    parsed = parse_release_element(
+        element,
+        snapshot_date="20260501",
+        source_url="https://example.test/releases.xml.gz",
+    )
+    assert parsed.formats == [
+        {
+            "snapshot_date": "20260501",
+            "release_id": 1000,
+            "format_index": 0,
+            "format_name": "Vinyl",
+            "quantity": None,
+            "format_text": None,
+            "descriptions": ["LP"],
+        }
+    ]
+
+
+def test_a_quantity_exactly_at_int32_max_is_kept() -> None:
+    element = etree.fromstring(
+        """<release id="1001"><title>Boundary Fixture</title><formats>
+          <format name="Vinyl" qty="2147483647" text="">
+            <descriptions></descriptions>
+          </format>
+        </formats></release>"""
+    )
+    parsed = parse_release_element(
+        element,
+        snapshot_date="20260501",
+        source_url="https://example.test/releases.xml.gz",
+    )
+    assert parsed.formats[0]["quantity"] == 2147483647
+
+
 def test_stream_parser_can_stop_after_a_bounded_slice() -> None:
     records = list(
         iter_releases(
