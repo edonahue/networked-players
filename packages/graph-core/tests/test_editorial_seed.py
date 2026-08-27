@@ -199,3 +199,50 @@ def test_editorial_seed_failures_rejects_forbidden_substrings() -> None:
     payload = _valid_payload()
     payload["note"] = "resolved from local/research/catalog-expansion notes"
     assert any("forbidden substring" in f for f in editorial_seed_failures(payload))
+
+
+def test_pinned_master_id_with_mismatched_artist_is_unresolved(dataset_root: Path) -> None:
+    """Master 903 (Third Wave) is billed to Cara (300). Pinning that master_id
+    but querying a different artist must not fall through to
+    `_release_with_artist`'s silent first-billed-artist fallback and publish
+    Cara's release under the wrong artist's name."""
+    with CreditGraph.open(dataset_root, build_edges=False) as graph:
+        result = resolve_editorial_albums(
+            graph, [{"artist": "Someone Else Entirely", "title": "x", "master_id": 903}]
+        )
+    assert result["resolved"] == []
+    assert "resolved to billed artist" in result["unresolved"][0]["reason"]
+    assert "refusing to publish a mismatched identity" in result["unresolved"][0]["reason"]
+
+
+def test_pinned_master_id_with_matching_artist_still_resolves(dataset_root: Path) -> None:
+    with CreditGraph.open(dataset_root, build_edges=False) as graph:
+        result = resolve_editorial_albums(
+            graph, [{"artist": "Cara", "title": "ignored text", "master_id": 903}]
+        )
+    assert result["unresolved"] == []
+    assert result["resolved"][0]["main_release_id"] == 3
+
+
+def test_pinned_master_id_without_an_artist_query_is_not_second_guessed(
+    dataset_root: Path,
+) -> None:
+    """No artist_query at all means nothing to verify against -- an
+    id-only pin (a genuinely unambiguous identity) must still resolve."""
+    with CreditGraph.open(dataset_root, build_edges=False) as graph:
+        result = resolve_editorial_albums(graph, [{"master_id": 903}])
+    assert result["unresolved"] == []
+    assert result["resolved"][0]["main_release_id"] == 3
+
+
+def test_editorial_seed_failures_rejects_ownership_phrases_case_insensitively() -> None:
+    payload = _valid_payload()
+    payload["note"] = "Picked from MY COLLECTION for the personal lane"
+    failures = editorial_seed_failures(payload)
+    assert any("forbidden ownership phrase" in f for f in failures)
+
+
+def test_editorial_seed_failures_accepts_ordinary_editorial_language() -> None:
+    payload = _valid_payload()
+    payload["note"] = "Personal/editorial anchor: classic guitar-centered lane"
+    assert editorial_seed_failures(payload) == []

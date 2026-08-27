@@ -69,6 +69,24 @@ _TOP_LEVEL_KEYS = frozenset(
     }
 )
 _FORBIDDEN_SUBSTRINGS = ("/home/", "data/private", "local/", "DISCOGS_TOKEN", ".ssh")
+# Phrases that would turn this committed public file into an ownership
+# signal -- "editorial intent," this contract's whole reason to exist
+# separately from the private seed, explicitly does not include "I own
+# this" (docs/PUBLIC_PRIVATE_BOUNDARY.md, ADR 0011). Checked case-insensitively
+# against the whole serialized payload, mirroring `connection_daily_manifest.py`'s
+# `_FORBIDDEN_PHRASES` pattern for the same class of risk (free-text `note`
+# fields are the one place an operator can type something this schema cannot
+# structurally prevent).
+_FORBIDDEN_PHRASES = (
+    "my collection",
+    "my copy",
+    "i own",
+    "we own",
+    "private collection",
+    "personal collection",
+    "from my discogs",
+    "own copy of",
+)
 
 
 def resolve_editorial_albums(
@@ -116,6 +134,51 @@ def resolve_editorial_albums(
         if found is None:
             unresolved.append({**query, "reason": "no matching release in this snapshot"})
             continue
+
+        # `find_release_by_id_hint`'s `artist_hint` is best-effort, not a
+        # guard: when no credited name/ANV matches it, the graph layer falls
+        # back to the release's first billed artist by artist_id order
+        # (`CreditGraph._release_with_artist`) rather than failing -- correct
+        # for that function's other callers, which pass a hint only as a
+        # display-name tiebreak, never as an identity check. A pinned
+        # `master_id` here IS meant as an identity check (that is the entire
+        # reason to prefer it over a text match), so a mismatch must be
+        # unresolved, not silently published as the wrong PAN identity under
+        # the query's artist label.
+        #
+        # Verified independently against the release's own release_artist
+        # credits (name OR anv, matching `_release_with_artist`'s own match
+        # rule) rather than trusting `found["name"]` alone: `found["name"]`
+        # is always the canonical display name of whichever row was chosen,
+        # even when the match that chose it was on the ANV -- comparing it
+        # directly against a query that used the ANV would wrongly reject a
+        # correct resolution.
+        if master_hint is not None and artist_query:
+            lowered_query = artist_query.strip().lower()
+            release_credits = graph.credit_rows_for_releases([found["release_id"]]).get(
+                found["release_id"], []
+            )
+            billed_names = {
+                (row.get("name") or "").strip().lower()
+                for row in release_credits
+                if row.get("credit_scope") == "release_artist"
+            } | {
+                (row.get("anv") or "").strip().lower()
+                for row in release_credits
+                if row.get("credit_scope") == "release_artist" and row.get("anv")
+            }
+            if lowered_query not in billed_names:
+                unresolved.append(
+                    {
+                        **query,
+                        "reason": (
+                            f"master_id {master_hint} resolved to billed artist "
+                            f"{found['name']!r}, not the queried {artist_query!r} -- "
+                            "refusing to publish a mismatched identity"
+                        ),
+                    }
+                )
+                continue
 
         master_id = found["master_id"]
         if master_id is not None and master_id in seen_master_ids:
@@ -246,5 +309,11 @@ def editorial_seed_failures(payload: dict[str, Any]) -> list[str]:
         f"payload contains forbidden substring: {forbidden!r}"
         for forbidden in _FORBIDDEN_SUBSTRINGS
         if forbidden in serialized
+    )
+    lowered = serialized.lower()
+    failures.extend(
+        f"payload contains forbidden ownership phrase: {phrase!r}"
+        for phrase in _FORBIDDEN_PHRASES
+        if phrase in lowered
     )
     return failures

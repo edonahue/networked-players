@@ -1660,8 +1660,40 @@ def main(argv: Sequence[str] | None = None) -> int:
         source_manifest = json.loads((args.dataset / "manifest.json").read_text())
         snapshot_date = str(source_manifest["snapshot_date"])
 
+        # Both auxiliary inputs are optional here (unlike build-public-album-
+        # catalog, where they're required and this same cross-check already
+        # applies) -- but "optional" must not mean "unchecked when given."
+        # Stale masters can silently change the emitted main release, title,
+        # year, or genre decision; stale exclusions can reject the wrong IDs.
+        # Fail closed exactly like the required-input path does, rather than
+        # trusting whatever snapshot happens to be sitting at the given path.
+        if args.masters_root is not None:
+            masters_manifest_path = args.masters_root / "manifest.json"
+            if not masters_manifest_path.is_file():
+                raise ValueError(
+                    f"--masters-root manifest is required and must exist: "
+                    f"{masters_manifest_path} not found."
+                )
+            masters_snapshot = str(
+                json.loads(masters_manifest_path.read_text()).get("snapshot_date") or ""
+            )
+            if not masters_snapshot or masters_snapshot != snapshot_date:
+                raise ValueError(
+                    f"--masters-root snapshot_date {masters_snapshot!r} does not match "
+                    f"--dataset snapshot_date {snapshot_date!r} -- mismatched-snapshot "
+                    "inputs refused"
+                )
+
         editorial_exclusions: frozenset[int] = frozenset()
         if args.studio_album_exclusions is not None:
+            exclusions_payload = json.loads(args.studio_album_exclusions.read_text())
+            exclusions_snapshot = str(exclusions_payload.get("snapshot_date") or "")
+            if not exclusions_snapshot or exclusions_snapshot != snapshot_date:
+                raise ValueError(
+                    f"--studio-album-exclusions snapshot_date {exclusions_snapshot!r} does "
+                    f"not match --dataset snapshot_date {snapshot_date!r} -- "
+                    "mismatched-snapshot inputs refused"
+                )
             editorial_exclusions = load_master_exclusions(args.studio_album_exclusions)
 
         queries = json.loads(args.queries.read_text())["queries"]

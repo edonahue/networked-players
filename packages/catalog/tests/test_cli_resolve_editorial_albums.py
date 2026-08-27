@@ -120,3 +120,50 @@ def test_unresolved_output_is_optional(tmp_path: Path) -> None:
     )
     assert exit_code == 0
     assert output.exists()
+
+
+def test_masters_root_snapshot_mismatch_is_refused(tmp_path: Path) -> None:
+    dataset = _write_full_dataset(tmp_path)
+    queries_path = _write_queries(tmp_path, [{"artist": "Alpha Group", "title": "Seed Record"}])
+    masters_root = tmp_path / "masters-wrong-snapshot"
+    masters_root.mkdir()
+    (masters_root / "manifest.json").write_text(json.dumps({"snapshot_date": "20200101"}))
+
+    with pytest.raises(ValueError, match="mismatched-snapshot"):
+        main(
+            [
+                "resolve-editorial-albums",
+                "--dataset",
+                str(dataset),
+                "--queries",
+                str(queries_path),
+                "--masters-root",
+                str(masters_root),
+                "--output",
+                str(tmp_path / "out.json"),
+            ]
+        )
+
+
+def test_studio_album_exclusions_snapshot_mismatch_is_refused(tmp_path: Path) -> None:
+    dataset = _write_full_dataset(tmp_path)
+    queries_path = _write_queries(tmp_path, [{"artist": "Alpha Group", "title": "Seed Record"}])
+    exclusions_path = tmp_path / "exclusions-wrong-snapshot.json"
+    exclusions_path.write_text(
+        json.dumps({"schema_version": 1, "snapshot_date": "20200101", "exclusions": []})
+    )
+
+    with pytest.raises(ValueError, match="mismatched-snapshot"):
+        main(
+            [
+                "resolve-editorial-albums",
+                "--dataset",
+                str(dataset),
+                "--queries",
+                str(queries_path),
+                "--studio-album-exclusions",
+                str(exclusions_path),
+                "--output",
+                str(tmp_path / "out.json"),
+            ]
+        )
