@@ -854,6 +854,16 @@ def _parser() -> argparse.ArgumentParser:
         "--editorial-albums", type=Path, default=Path("data/albums/top-albums-v1.json")
     )
     build_public_album_catalog.add_argument(
+        "--personal-seed",
+        type=Path,
+        default=None,
+        help=(
+            "data/albums/editorial-seed-v1.json -- Phase 7 Bucket A, already-resolved "
+            "(never text-matched, never per-artist deduped: see ADR 0065). Optional; "
+            "omit to build a catalog with editorial-albums + candidates only"
+        ),
+    )
+    build_public_album_catalog.add_argument(
         "--candidates", type=Path, required=True, help="rank-album-candidates output"
     )
     build_public_album_catalog.add_argument("--target-count", type=int, required=True)
@@ -3069,6 +3079,33 @@ def main(argv: Sequence[str] | None = None) -> int:
         editorial_albums = json.loads(args.editorial_albums.read_text())["albums"]
         candidates = json.loads(args.candidates.read_text())
 
+        pre_resolved_albums: list[dict[str, Any]] = []
+        if args.personal_seed is not None:
+            from networked_players_graph_core.editorial_seed import editorial_seed_failures
+
+            personal_seed_payload = json.loads(args.personal_seed.read_text())
+            # Full contract validation, not just kind/snapshot_date: the seed
+            # file's own contract (data/contracts/editorial-seed-v1.md)
+            # promises an exact key set and no leaked diagnostic fields, but
+            # nothing enforced that promise at THIS consumption point before
+            # now -- an out-of-contract field could otherwise ride an
+            # accepted OR a rejected pre-resolved entry straight into the
+            # committed public catalog artifact.
+            seed_failures = editorial_seed_failures(personal_seed_payload)
+            if seed_failures:
+                raise ValueError(
+                    f"--personal-seed {args.personal_seed} failed contract validation: "
+                    f"{seed_failures}"
+                )
+            personal_seed_snapshot = str(personal_seed_payload.get("snapshot_date") or "")
+            if personal_seed_snapshot != snapshot_date:
+                raise ValueError(
+                    f"--personal-seed snapshot_date {personal_seed_snapshot!r} does not "
+                    f"match --onehop-root snapshot_date {snapshot_date!r} -- "
+                    "mismatched-snapshot inputs refused"
+                )
+            pre_resolved_albums = list(personal_seed_payload.get("albums", []))
+
         with CreditGraph.open(
             args.onehop_root,
             memory_limit=args.memory_limit,
@@ -3081,6 +3118,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 editorial_albums,
                 candidates,
                 target_count=args.target_count,
+                pre_resolved_albums=pre_resolved_albums,
                 allowed_release_ids=frozenset(allowed_release_ids),
                 master_exclusions=master_exclusions,
                 snapshot_date=snapshot_date,
@@ -3099,6 +3137,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                     "catalog_version": catalog["catalog_version"],
                     "editorial_count": catalog["editorial_count"],
                     "editorial_missed": len(catalog["editorial_missed"]),
+                    "pre_resolved_count": catalog["pre_resolved_count"],
+                    "pre_resolved_missed": len(catalog["pre_resolved_missed"]),
                     "candidate_count_added": catalog["candidate_count_added"],
                     "total_albums": len(catalog["albums"]),
                 },

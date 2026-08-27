@@ -60,6 +60,53 @@ def test_audit_marks_editorial_vs_graph_candidate_selection_source(
         assert row["selection_source"] == expected
 
 
+def test_audit_marks_pre_resolved_as_personal_editorial_not_graph_candidate(
+    dataset_root: Path, masters_root: Path
+) -> None:
+    """Real regression: build_album_catalog_audit classifies purely by list
+    POSITION against editorial_count. Before this test existed to prove it,
+    a Bucket A (pre-resolved) album -- inserted right after the editorial
+    segment in assemble_album_catalog's own albums list -- would land at an
+    index >= editorial_count and be silently mislabeled graph_candidate."""
+    editorial = [{"artist": "Alice", "title": "First Light"}]
+    pre_resolved = [
+        {
+            "query_artist": "Fictoquai",
+            "query_title": "Personal Pick",
+            "master_id": None,
+            "main_release_id": 3,
+            "artist_id": 700,
+            "artist": "Fictoquai",
+            "title": "Personal Pick",
+            "year": 1999,
+        }
+    ]
+    with CreditGraph.open(dataset_root) as graph:
+        graph.attach_masters(masters_root)
+        candidates = rank_album_candidates(dataset_root)
+        catalog = assemble_album_catalog(
+            graph,
+            editorial,
+            candidates,
+            target_count=4,
+            pre_resolved_albums=pre_resolved,
+            snapshot_date=SNAPSHOT_DATE,
+            generated_by="test",
+        )
+        audit = build_album_catalog_audit(
+            graph, catalog, allowed_release_ids=frozenset(), master_exclusions=frozenset()
+        )
+    by_id = {row["album_id"]: row for row in audit["albums"]}
+    fictoquai_id = next(a["id"] for a in catalog["albums"] if a["artist"] == "Fictoquai")
+    assert by_id[fictoquai_id]["selection_source"] == "personal_editorial"
+    # The editorial and graph-candidate segments are still classified
+    # correctly around the inserted personal_editorial segment.
+    alice_id = next(a["id"] for a in catalog["albums"] if a["artist"] == "Alice")
+    assert by_id[alice_id]["selection_source"] == "editorial"
+    other_ids = {a["id"] for a in catalog["albums"] if a["artist"] not in ("Alice", "Fictoquai")}
+    assert all(by_id[aid]["selection_source"] == "graph_candidate" for aid in other_ids)
+
+
 def test_audit_records_master_genre_style_and_release_format_results(
     dataset_root: Path, masters_root: Path
 ) -> None:
