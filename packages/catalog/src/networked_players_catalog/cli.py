@@ -608,6 +608,16 @@ def _parser() -> argparse.ArgumentParser:
         default=None,
         help="optional studio-album-master-exclusions-v1.json; curated master-ID deny-list",
     )
+    rank_albums.add_argument(
+        "--exclude-published-catalog",
+        type=Path,
+        default=None,
+        help=(
+            "optional apps/web/public/data/catalog/albums.v1.json; drops any master already "
+            "published before ranking, so every count in the output is over real, addable "
+            "candidates (see rank_album_candidates' own docstring for the measured reason)"
+        ),
+    )
 
     build_album_catalog = subparsers.add_parser(
         "build-album-catalog",
@@ -2367,6 +2377,13 @@ def main(argv: Sequence[str] | None = None) -> int:
 
         from .discogs.release_format_policy import load_master_exclusions
 
+        already_published: frozenset[int] = frozenset()
+        if args.exclude_published_catalog is not None:
+            catalog_payload = json.loads(args.exclude_published_catalog.read_text())
+            already_published = frozenset(
+                int(a["master_id"]) for a in catalog_payload.get("albums", [])
+            )
+
         candidates = rank_album_candidates(
             args.dataset,
             limit=args.limit,
@@ -2375,6 +2392,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             release_format_policy=args.release_format_policy,
             masters_root=args.masters_root,
             master_exclusions=load_master_exclusions(args.studio_album_exclusions),
+            already_published_master_ids=already_published,
         )
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(json.dumps(candidates, indent=2) + "\n")

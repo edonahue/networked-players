@@ -30,6 +30,7 @@ def rank_album_candidates(
     release_format_policy: Path | None = None,
     masters_root: Path | None = None,
     master_exclusions: frozenset[int] | None = None,
+    already_published_master_ids: frozenset[int] | None = None,
 ) -> list[dict[str, Any]]:
     """Rank master_ids by variant_count * credit_rows, resolved to a real
     {artist, title} query pair via the main release's release_artist credit.
@@ -41,6 +42,18 @@ def rank_album_candidates(
     for the hybrid catalog in the first place. A candidate whose main
     release has no resolvable release-artist credit is dropped -- there is
     no `{artist, title}` query to hand to `match_albums` without one.
+
+    `already_published_master_ids`, when given, drops any master already in
+    the published catalog before ranking -- not after. Measured on the real
+    catalog-expansion readiness report (Phase 7 preflight, 2026-08-27): 76 of
+    200 candidates (38%) were already-published masters, including 7 of the
+    top 20 by score, which meant a "top-20 pilot" figure derived from that
+    report over-counted its own marginal value by ~36%. This was never a
+    review-time filter (`candidate_review.py` decorates whatever it's given,
+    it does not gate membership) -- excluding here, at the ranking stage,
+    means every count downstream of this function (the shortlist size, the
+    percentile breakdowns, a "top N" slice) is honestly over candidates that
+    could actually be added, not a mix of new and already-there.
     """
     dataset_root = Path(dataset_root)
     releases_glob = str(dataset_root / "table=releases" / "*.parquet")
@@ -68,6 +81,9 @@ def rank_album_candidates(
         master_exclude_filter = f"AND NOT {master_non_studio_sql('m.genres', 'm.styles')}"
     if master_exclusions:
         ids = ", ".join(str(int(mid)) for mid in sorted(master_exclusions))
+        master_exclude_filter += f" AND v.master_id NOT IN ({ids})"
+    if already_published_master_ids:
+        ids = ", ".join(str(int(mid)) for mid in sorted(already_published_master_ids))
         master_exclude_filter += f" AND v.master_id NOT IN ({ids})"
 
     not_placeholder = _not_placeholder_sql()

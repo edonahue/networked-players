@@ -259,6 +259,46 @@ def test_assemble_album_catalog_resolves_candidates_by_id_not_name(tmp_path: Pat
     assert sam_entries[0]["main_release_id"] == 1
 
 
+def test_rank_album_candidates_excludes_already_published_masters(dataset_root: Path) -> None:
+    """Master 901 (release 1, "First Light") would otherwise rank -- confirm
+    it's present unfiltered, then confirm excluding it removes it and nothing
+    else, without shifting any other candidate's score."""
+    unfiltered = rank_album_candidates(dataset_root)
+    assert 901 in {c["master_id"] for c in unfiltered}
+
+    filtered = rank_album_candidates(dataset_root, already_published_master_ids=frozenset({901}))
+    filtered_ids = {c["master_id"] for c in filtered}
+    assert 901 not in filtered_ids
+    assert filtered_ids == {c["master_id"] for c in unfiltered} - {901}
+
+    unfiltered_by_id = {c["master_id"]: c for c in unfiltered}
+    for c in filtered:
+        assert c == unfiltered_by_id[c["master_id"]]
+
+
+def test_rank_album_candidates_already_published_composes_with_curated_exclusions(
+    dataset_root: Path,
+) -> None:
+    """Both exclusion mechanisms narrow the same WHERE clause -- confirm they
+    stack rather than one silently overriding the other."""
+    candidates = rank_album_candidates(
+        dataset_root,
+        already_published_master_ids=frozenset({901}),
+        master_exclusions=frozenset({903}),
+    )
+    ids = {c["master_id"] for c in candidates}
+    assert 901 not in ids
+    assert 903 not in ids
+
+
+def test_rank_album_candidates_empty_already_published_set_excludes_nothing(
+    dataset_root: Path,
+) -> None:
+    with_empty = rank_album_candidates(dataset_root, already_published_master_ids=frozenset())
+    without = rank_album_candidates(dataset_root)
+    assert {c["master_id"] for c in with_empty} == {c["master_id"] for c in without}
+
+
 def test_rank_album_candidates_excludes_placeholder_artists(tmp_path: Path) -> None:
     """Real bug found in a real generation run: a compilation billed to
     artist 194 ("Various Artists" -- see placeholder_artists.json / ADR 0035)
