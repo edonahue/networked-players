@@ -75,6 +75,32 @@ def test_exclude_published_catalog_drops_the_named_master(tmp_path: Path) -> Non
     assert filtered == []
 
 
+def test_exclude_published_catalog_tolerates_a_null_master_id(tmp_path: Path) -> None:
+    """A published album resolved only by main_release_id, with no Discogs
+    master, is valid (MatchedAlbum.master_id: int | None; the catalog
+    validator does not require one) and must not crash the whole ranking
+    run on int(None) -- it's simply skipped from the exclusion set, since
+    there's no master_id to exclude by."""
+    dataset = _write_full_dataset(tmp_path)
+    catalog_with_null = tmp_path / "albums-with-null-master.json"
+    catalog_with_null.write_text(json.dumps({"albums": [{"master_id": None}, {"master_id": 501}]}))
+    output = tmp_path / "out.json"
+
+    exit_code = main(
+        [
+            "rank-album-candidates",
+            "--dataset",
+            str(dataset),
+            "--output",
+            str(output),
+            "--exclude-published-catalog",
+            str(catalog_with_null),
+        ]
+    )
+    assert exit_code == 0
+    assert json.loads(output.read_text()) == []
+
+
 def test_no_exclude_published_catalog_flag_behaves_exactly_as_before(tmp_path: Path) -> None:
     dataset = _write_full_dataset(tmp_path)
     output = tmp_path / "out.json"

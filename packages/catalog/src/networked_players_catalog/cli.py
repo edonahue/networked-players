@@ -2380,8 +2380,16 @@ def main(argv: Sequence[str] | None = None) -> int:
         already_published: frozenset[int] = frozenset()
         if args.exclude_published_catalog is not None:
             catalog_payload = json.loads(args.exclude_published_catalog.read_text())
+            # A published album may be resolved only by main_release_id, with
+            # no Discogs master (MatchedAlbum.master_id: int | None;
+            # validate_album_catalog does not require one) -- skip those
+            # rather than crashing the whole ranking run on int(None). They
+            # simply can't be excluded by master_id, which is the only key
+            # rank_album_candidates groups candidates by in the first place.
             already_published = frozenset(
-                int(a["master_id"]) for a in catalog_payload.get("albums", [])
+                int(a["master_id"])
+                for a in catalog_payload.get("albums", [])
+                if a.get("master_id") is not None
             )
 
         candidates = rank_album_candidates(
