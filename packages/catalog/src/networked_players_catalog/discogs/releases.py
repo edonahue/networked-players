@@ -38,7 +38,7 @@ def _format_rows(
                 "release_id": release_id,
                 "format_index": format_index,
                 "format_name": _normalize_text(format_element.attrib.get("name")),
-                "quantity": _integer(format_element.attrib.get("qty")),
+                "quantity": _bounded_quantity(format_element.attrib.get("qty")),
                 "format_text": _normalize_text(format_element.attrib.get("text")),
                 "descriptions": descriptions,
             }
@@ -82,6 +82,31 @@ def _integer(value: str | None) -> int | None:
     except ValueError:
         return None
     return parsed if parsed > 0 else None
+
+
+# The narrowest fixed-width column any field parsed by this module is stored
+# in (RELEASE_FORMAT_SCHEMA.quantity: pa.int32()). Every other _integer()
+# caller (artist_id, master_id) targets an int64 column and real Discogs IDs
+# never approach that bound, so this guard is scoped to the one field that
+# actually needs it rather than narrowing _integer()'s general contract.
+_INT32_MAX = 2_147_483_647
+
+
+def _bounded_quantity(value: str | None) -> int | None:
+    """`_integer`, plus: a `qty` attribute is real production data, and real
+    production data occasionally has a garbage value in it -- confirmed on
+    the 20260601 dump, where one release's `qty` attribute overflowed even
+    Python's arbitrary-precision int trying to fit into pa.int32() (`quantity`
+    isn't a barcode or a catalog number; nothing legitimate calls for a value
+    outside a small pressing-count range). Treated exactly like an
+    unparseable string: this format row is still kept (release/format
+    identity is never in doubt), just with an absent quantity, rather than
+    letting one malformed attribute crash a run that had already processed
+    millions of releases correctly."""
+    parsed = _integer(value)
+    if parsed is not None and parsed > _INT32_MAX:
+        return None
+    return parsed
 
 
 def _parse_formats(
