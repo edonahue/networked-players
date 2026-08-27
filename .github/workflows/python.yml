@@ -40,3 +40,9 @@ jobs:
         run: uv run pytest
       - name: Validate real public artifacts
         run: uv run networked-players-catalog validate-public-artifacts
+      # `make check` has always run this too, but CI did not -- so the
+      # committed inclusion audit could drift from the catalog on main without
+      # anything noticing. Added 2026-08-27 (Phase 7 preflight); CI and
+      # `make check` now gate on the same set.
+      - name: Validate the committed album-catalog inclusion audit
+        run: uv run networked-players-catalog validate-album-catalog-audit

@@ -35,6 +35,11 @@ _VALID_ROLE_CATEGORIES = frozenset(
         "composition",
         "rework",
         "packaging_business",
+        # Added 2026-08-27 (Phase 7 preflight) alongside
+        # `role_taxonomy.RoleCategory.AUDIOVISUAL_PRODUCTION`. Purely additive:
+        # every value an already-published index carries stays valid, so this
+        # accepts both the current artifact and the next regeneration.
+        "audiovisual_production",
         "unknown",
     }
 )

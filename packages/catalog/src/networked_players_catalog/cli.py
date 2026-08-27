@@ -2269,6 +2269,21 @@ def main(argv: Sequence[str] | None = None) -> int:
         from networked_players_graph_core.candidate_review import review_album_candidates
         from networked_players_graph_core.graph import CreditGraph
 
+        # This command's own --help has always promised "local-only output",
+        # and its input is the collection-seeded one-hop corpus, so its
+        # per-candidate detail (titles, master ids, counts) is
+        # collection-membership-adjacent per docs/PUBLIC_PRIVATE_BOUNDARY.md.
+        # Nothing enforced the promise until now, while its sibling
+        # `rank-exploration-tier` already did -- same guard, same wording.
+        output_str = str(args.output)
+        if not (output_str.startswith("local/") or "/local/" in output_str):
+            raise ValueError(
+                f"review-album-candidates refuses to write outside local/: {output_str!r} -- "
+                "this report is derived from the private collection-seeded one-hop corpus, "
+                "so its per-candidate detail is collection-membership-adjacent and stays "
+                "local-only (docs/PUBLIC_PRIVATE_BOUNDARY.md)"
+            )
+
         candidates = json.loads(args.candidates.read_text())
         pathfinding_graph = json.loads(args.pathfinding_graph.read_text())
         published_graph_artist_ids = frozenset(

@@ -1145,6 +1145,15 @@ ROLE_PARITY_CASES = [
     "Songwriter [Songs By]",
     "Vocals",
     "Backing Band [Uncredited]",
+    "Film Director",
+    "Film Director [Video Director]",
+    "Cinematographer",
+    "Film Director, Film Producer",
+    "Acoustic Guitar, Producer, Vocals, Film Director",
+    "Film Director, Producer",
+    "Music Director",
+    "Directed By [Musical Director]",
+    "Creative Director [Packaging Creative]",
     "",
 ]
 
@@ -1180,6 +1189,22 @@ def test_edge_ineligible_role_matches_the_sql(tmp_path: Path) -> None:
     assert edge_ineligible_role("Mixed By") is False
     assert edge_ineligible_role("Sampler [Fairlight]") is False
     assert edge_ineligible_role("Performer [Sample]") is True
+
+    # Film/video production (Phase 7 preflight, 2026-08-27). A music-video
+    # director worked on a film, not on the recording.
+    assert edge_ineligible_role("Film Director") is True
+    assert edge_ineligible_role("Film Director [Video Director]") is True
+    assert edge_ineligible_role("Cinematographer") is True
+    assert edge_ineligible_role("Film Director, Film Producer") is True
+    assert edge_ineligible_role("Design Concept, Art Direction") is True
+    # ...but the every-component rule still protects the musician who ALSO
+    # directed the video -- this is the case that must never regress.
+    assert edge_ineligible_role("Acoustic Guitar, Producer, Vocals, Film Director") is False
+    assert edge_ineligible_role("Film Director, Producer") is False
+    # Deliberately still eligible: musical direction, and a bare `Directed By`
+    # whose bracket qualifier (stripped before lookup) may name a musical role.
+    assert edge_ineligible_role("Music Director") is False
+    assert edge_ineligible_role("Directed By [Musical Director]") is False
     assert edge_ineligible_role(None) is False
 
 

@@ -45,7 +45,7 @@ from typing import Any
 from networked_players_contracts.canonical import content_hash
 
 from .compact_graph_bench import build_csr_adjacency
-from .graph import CreditGraph
+from .graph import CreditGraph, edge_ineligible_role
 
 _MAX_JOINED_ROLE_LEN = 200
 
@@ -108,6 +108,48 @@ def _membership_roles_by_album(
         (album_id, artist_id): _join_role_texts(texts_by_key.get((album_id, artist_id), []))
         for album_id, artist_ids in artist_ids_by_album.items()
         for artist_id in artist_ids
+    }
+
+
+def edge_eligible_membership_artist_ids(membership: dict[str, Any]) -> set[int]:
+    """The artists on one album whose credits actually justify a traversal hop.
+
+    `album_credit_membership` is deliberately inclusive -- it is an album's
+    *credits list*, so a sleeve designer, a photographer and a lacquer-cutting
+    engineer all belong in it, and the album page renders them. Turning that
+    list 1:1 into album-anchor EDGES was a real traversal-policy gap: the exact
+    role text `graph.py` already refuses to build a contributor-to-contributor
+    edge from (`Design Concept, Art Direction`) became a first-class routing hop
+    the moment one endpoint was an album anchor. The same credit cannot be
+    non-collaborative in one edge class and substantive in another.
+
+    So this reuses `graph.py`'s own `edge_ineligible_role` -- never a second
+    copy of the rule -- and applies it at the right granularity: an artist is
+    kept when ANY of their credits on the album is edge-eligible, and dropped
+    only when EVERY one is non-collaborative. Granularity is the whole fix.
+    Evaluating the single joined display role instead would detach nine real
+    catalog albums from their own billed artist (measured 2026-08-27: Bob Dylan
+    from `Blood On The Tracks`, U2 from `The Joshua Tree`, Wu-Tang Clan from
+    `36 Chambers`, ...), because the joined text for those happens to read
+    `Written-By` or `Composed By`. A billed artist's `release_artist` credit
+    carries a NULL role, and `edge_ineligible_role(None)` is False -- the same
+    always-eligible main-artist rule `credit_edges_sql` uses -- so evaluating
+    per credit keeps them, correctly.
+
+    Measured on the real published artifacts before this changed: 1,219 of
+    5,446 (album, artist) anchor pairs are dropped, no album loses its primary
+    artist, and no album is left with zero anchors.
+    """
+    roles_by_artist: dict[int, list[str | None]] = defaultdict(list)
+    for credit in membership.get("credits", []):
+        role_text = credit.get("role_text")
+        roles_by_artist[int(credit["artist_id"])].append(
+            str(role_text) if isinstance(role_text, str) else None
+        )
+    return {
+        artist_id
+        for artist_id, roles in roles_by_artist.items()
+        if any(not edge_ineligible_role(role) for role in roles)
     }
 
 
@@ -197,7 +239,7 @@ def build_pathfinding_graph(
         membership = membership_by_album_id.get(album_id)
         if membership is None:
             continue  # no membership entry -- isolated virtual node, real edge case
-        credited_artist_ids = {int(c["artist_id"]) for c in membership.get("credits", [])}
+        credited_artist_ids = edge_eligible_membership_artist_ids(membership)
         for artist_id in sorted(credited_artist_ids):
             if artist_id in real_node_id_set:
                 virtual_edges.append((virtual_id, artist_id, main_release_id))

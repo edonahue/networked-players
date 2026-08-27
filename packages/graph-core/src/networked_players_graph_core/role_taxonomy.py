@@ -77,6 +77,7 @@ class RoleCategory(StrEnum):
     COMPOSITION = "composition"
     REWORK = "rework"
     PACKAGING_BUSINESS = "packaging_business"
+    AUDIOVISUAL_PRODUCTION = "audiovisual_production"
     UNKNOWN = "unknown"
 
 
@@ -95,6 +96,7 @@ CATEGORY_TRAVERSABLE: dict[RoleCategory, bool] = {
     RoleCategory.COMPOSITION: False,
     RoleCategory.REWORK: False,
     RoleCategory.PACKAGING_BUSINESS: False,
+    RoleCategory.AUDIOVISUAL_PRODUCTION: False,
     # graph.py's denylist is permissive-by-default: an unrecognized role
     # component is NOT excluded from credit_edges. UNKNOWN documents that
     # existing default, it does not grant it.
@@ -222,6 +224,30 @@ _PACKAGING_BUSINESS_TOKENS = frozenset(
         "other",
     }
 )
+# Film/video-production credits. Added 2026-08-27 (Phase 7 preflight) together
+# with the matching `graph.py` denylist entries -- see the note below, which
+# anticipated exactly this set and deferred it. These are not packaging and
+# not business: a cinematographer or film editor made a *film*. Calling that
+# "packaging & business" on a contributor page would be wrong, so this is its
+# own category rather than a stretch of an existing one. Non-traversable, like
+# every other category sourced from `_NON_COLLABORATIVE_ROLE_TOKENS`.
+_AUDIOVISUAL_TOKENS = frozenset(
+    {
+        "film director",
+        "film producer",
+        "film editor",
+        "cinematographer",
+        "camera operator",
+        "director of photography",
+        "film technician",
+        "video director",
+        "video editor",
+        "lighting director",
+        "creative director",
+        "choreography",
+        "choreographer",
+    }
+)
 
 # Real, frequent role strings from the same 2026-08-04 `classify-roles` run
 # that were deliberately NOT added, and why: `_COMPOSITION_TOKENS`/
@@ -242,12 +268,14 @@ _PACKAGING_BUSINESS_TOKENS = frozenset(
 # there -- it names a billing relationship, not an instrument/vocal type),
 # and this module's `_PERFORMANCE_SUBCATEGORY` only remaps categories
 # `eligibility.py` already recognizes, never invents new performance
-# tokens independently. Several other frequent strings (Film Director,
-# Director Of Photography, Film Producer, Film Editor, Video Editor,
-# Presenter, Interviewee) are film/video-production roles this taxonomy's
-# ten music-contribution categories have no honest home for -- inventing a
-# new category for them is a real design decision, not a coverage-fix
-# detail, and is left for a future pass if it's ever justified.
+# tokens independently. The film/video-production strings this note previously
+# deferred (Film Director, Director Of Photography, Film Producer, Film
+# Editor, Video Editor) ARE now classified: 2026-08-27's Phase 7 preflight
+# measured them on the real published graph, added them to `graph.py`'s
+# denylist, and gave them the honest home this note called for --
+# `RoleCategory.AUDIOVISUAL_PRODUCTION` (see `_AUDIOVISUAL_TOKENS` above).
+# "Presenter" and "Interviewee" stay UNKNOWN: they are broadcast/spoken-word
+# billing, not audiovisual *production*, and no measurement justified them.
 
 # Token -> category, built once at import time. Order matters only in that a
 # token must not appear in two of these source dicts (tested explicitly).
@@ -268,6 +296,8 @@ for _token in _REWORK_TOKENS:
     _TOKEN_CATEGORY[_token] = RoleCategory.REWORK
 for _token in _PACKAGING_BUSINESS_TOKENS:
     _TOKEN_CATEGORY[_token] = RoleCategory.PACKAGING_BUSINESS
+for _token in _AUDIOVISUAL_TOKENS:
+    _TOKEN_CATEGORY[_token] = RoleCategory.AUDIOVISUAL_PRODUCTION
 del _token, _sub
 
 

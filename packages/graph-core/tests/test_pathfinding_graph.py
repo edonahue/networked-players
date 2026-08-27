@@ -9,6 +9,7 @@ from networked_players_graph_core.graph import CreditGraph
 from networked_players_graph_core.pathfinding_graph import (
     ALBUM_ANCHOR_SENTINEL,
     build_pathfinding_graph,
+    edge_eligible_membership_artist_ids,
 )
 
 _SNAPSHOT = "20260601"
@@ -425,6 +426,117 @@ def test_virtual_node_connects_to_every_real_credited_contributor(onehop_dataset
     start, end = payload["offsets"][virtual_index], payload["offsets"][virtual_index + 1]
     neighbor_ids = {node_ids[payload["neighbors"][slot]] for slot in range(start, end)}
     assert neighbor_ids == {100, 200}
+
+
+def test_packaging_only_membership_credit_creates_no_anchor_edge(onehop_dataset: Path) -> None:
+    """A contributor whose ONLY credit on the album is non-collaborative by
+    `graph.py`'s own denylist must not become a routing hop.
+
+    This is the real Discovery -> The Joshua Tree defect, reduced: `Alex And
+    Martin` were credited `Design Concept, Art Direction` on Discovery -- every
+    component of which `graph.py` already refuses to build a contributor edge
+    from -- and the album anchor made them a first-class hop anyway, so the
+    recommended route between two records ran through a sleeve designer who
+    also directed a U2 video."""
+    membership = _membership(
+        credits=[
+            {
+                "artist_id": 100,
+                "name": "Alice",
+                "anv": None,
+                "role_text": "Producer",
+                "credit_scope": "release_artist",
+                "track_position": None,
+                "track_title": None,
+            },
+            {
+                "artist_id": 200,
+                "name": "Bob",
+                "anv": None,
+                "role_text": "Design Concept, Art Direction",
+                "credit_scope": "release_credit",
+                "track_position": None,
+                "track_title": None,
+            },
+        ]
+    )
+    with CreditGraph.open(onehop_dataset) as graph:
+        payload = build_pathfinding_graph(
+            graph,
+            _catalog(),
+            membership,
+            snapshot_date=_SNAPSHOT,
+            generated_at="2026-08-07T00:00:00+00:00",
+        )
+    virtual_id = payload["album_virtual_nodes"][0]["virtual_artist_id"]
+    node_ids = payload["node_ids"]
+    virtual_index = node_ids.index(virtual_id)
+    start, end = payload["offsets"][virtual_index], payload["offsets"][virtual_index + 1]
+    neighbor_ids = {node_ids[payload["neighbors"][slot]] for slot in range(start, end)}
+    assert neighbor_ids == {100}
+
+
+def test_a_billed_artist_keeps_its_anchor_edge_despite_a_non_collaborative_role(
+    onehop_dataset: Path,
+) -> None:
+    """Eligibility is decided per credit, never on the joined display role.
+
+    Measured on the real artifacts: nine catalog albums join to a display role
+    of `Written-By`/`Composed By`/`Songwriter` for their OWN billed artist. If
+    the filter read that joined string it would detach Bob Dylan from `Blood On
+    The Tracks`. A billed artist's `release_artist` credit carries a NULL role,
+    which is always edge-eligible (the same rule `credit_edges_sql` applies),
+    so evaluating each credit separately keeps them."""
+    membership = _membership(
+        credits=[
+            {
+                "artist_id": 100,
+                "name": "Alice",
+                "anv": None,
+                "role_text": None,
+                "credit_scope": "release_artist",
+                "track_position": None,
+                "track_title": None,
+            },
+            {
+                "artist_id": 100,
+                "name": "Alice",
+                "anv": None,
+                "role_text": "Written-By",
+                "credit_scope": "release_credit",
+                "track_position": None,
+                "track_title": None,
+            },
+        ]
+    )
+    with CreditGraph.open(onehop_dataset) as graph:
+        payload = build_pathfinding_graph(
+            graph,
+            _catalog(),
+            membership,
+            snapshot_date=_SNAPSHOT,
+            generated_at="2026-08-07T00:00:00+00:00",
+        )
+    virtual_id = payload["album_virtual_nodes"][0]["virtual_artist_id"]
+    node_ids = payload["node_ids"]
+    virtual_index = node_ids.index(virtual_id)
+    start, end = payload["offsets"][virtual_index], payload["offsets"][virtual_index + 1]
+    neighbor_ids = {node_ids[payload["neighbors"][slot]] for slot in range(start, end)}
+    assert neighbor_ids == {100}
+
+
+def test_edge_eligible_membership_artist_ids_keeps_an_artist_with_any_eligible_credit() -> None:
+    membership = {
+        "credits": [
+            {"artist_id": 1, "role_text": "Photography By"},
+            {"artist_id": 1, "role_text": "Bass"},
+            {"artist_id": 2, "role_text": "Art Direction"},
+            {"artist_id": 2, "role_text": "Design"},
+            {"artist_id": 3, "role_text": None},
+            {"artist_id": 4, "role_text": "Film Director"},
+        ]
+    }
+    assert edge_eligible_membership_artist_ids(membership) == {1, 3}
 
 
 def test_virtual_edge_role_is_sentinel_on_virtual_side_and_membership_role_on_real_side(

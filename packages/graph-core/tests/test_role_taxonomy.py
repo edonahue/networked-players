@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import itertools
+
 import duckdb
 
 from networked_players_graph_core.eligibility import _ROLE_CATEGORY_BY_TOKEN
 from networked_players_graph_core.graph import _NON_COLLABORATIVE_ROLE_TOKENS
 from networked_players_graph_core.role_taxonomy import (
+    _AUDIOVISUAL_TOKENS,
     _COMPOSITION_TOKENS,
     _PACKAGING_BUSINESS_TOKENS,
     _PERFORMANCE_SUBCATEGORY,
@@ -172,13 +175,18 @@ def test_every_performance_display_category_is_mapped() -> None:
 
 def test_non_collaborative_tokens_are_fully_partitioned() -> None:
     """graph.py's denylist tokens must be triaged into exactly one of this
-    taxonomy's three non-traversable categories -- no overlaps, no gaps. A
+    taxonomy's four non-traversable categories -- no overlaps, no gaps. A
     future addition to graph.py's denylist that isn't triaged here should
     fail this test loudly rather than silently classifying as UNKNOWN."""
-    assert _COMPOSITION_TOKENS.isdisjoint(_REWORK_TOKENS)
-    assert _COMPOSITION_TOKENS.isdisjoint(_PACKAGING_BUSINESS_TOKENS)
-    assert _REWORK_TOKENS.isdisjoint(_PACKAGING_BUSINESS_TOKENS)
-    union = _COMPOSITION_TOKENS | _REWORK_TOKENS | _PACKAGING_BUSINESS_TOKENS
+    sets = {
+        "composition": _COMPOSITION_TOKENS,
+        "rework": _REWORK_TOKENS,
+        "packaging_business": _PACKAGING_BUSINESS_TOKENS,
+        "audiovisual_production": _AUDIOVISUAL_TOKENS,
+    }
+    for left, right in itertools.combinations(sorted(sets), 2):
+        assert sets[left].isdisjoint(sets[right]), f"{left} overlaps {right}"
+    union = frozenset().union(*sets.values())
     assert union == _NON_COLLABORATIVE_ROLE_TOKENS
 
 
