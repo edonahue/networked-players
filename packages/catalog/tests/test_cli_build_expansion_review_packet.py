@@ -19,19 +19,32 @@ def _write(path: Path, payload: object) -> Path:
     return path
 
 
+SNAPSHOT = "20260601"
+
+
 def test_builds_a_packet_from_real_files(tmp_path: Path) -> None:
-    catalog = _write(tmp_path / "albums.v1.json", {"albums": [{"master_id": 1}]})
+    catalog = _write(
+        tmp_path / "albums.v1.json",
+        {"snapshot_date": SNAPSHOT, "albums": [{"master_id": 1}]},
+    )
     personal_seed = _write(
         tmp_path / "editorial-seed.json",
-        {"albums": [{"master_id": 10, "artist": "A", "title": "Alpha"}]},
+        {
+            "snapshot_date": SNAPSHOT,
+            "albums": [{"master_id": 10, "artist": "A", "title": "Alpha"}],
+        },
     )
     graph_rich = _write(
         tmp_path / "graph-rich.json",
-        {"selected": [{"master_id": 20, "artist_name": "B", "sample_title": "Beta"}]},
+        {
+            "snapshot_date": SNAPSHOT,
+            "selected": [{"master_id": 20, "artist_name": "B", "sample_title": "Beta"}],
+        },
     )
     coverage_gap = _write(
         tmp_path / "coverage-gap.json",
         {
+            "snapshot_date": SNAPSHOT,
             "candidates": [
                 {
                     "master_id": 30,
@@ -41,7 +54,7 @@ def test_builds_a_packet_from_real_files(tmp_path: Path) -> None:
                     "gap_bucket": "Reggae",
                     "gap_rationale": "zero representation",
                 }
-            ]
+            ],
         },
     )
     output = tmp_path / "data" / "private" / "catalog-expansion" / "review.json"
@@ -65,8 +78,41 @@ def test_builds_a_packet_from_real_files(tmp_path: Path) -> None:
     )
     assert exit_code == 0
     payload = json.loads(output.read_text())
+    assert payload["snapshot_date"] == SNAPSHOT
     assert payload["proposed_addition_count"] == 3
     assert payload["bucket_counts"] == {"personal": 1, "graph_rich": 1, "coverage_gap": 1}
+
+
+def test_a_mismatched_source_snapshot_is_refused(tmp_path: Path) -> None:
+    catalog = _write(tmp_path / "albums.v1.json", {"snapshot_date": SNAPSHOT, "albums": []})
+    personal_seed = _write(
+        tmp_path / "editorial-seed.json", {"snapshot_date": "20200101", "albums": []}
+    )
+    graph_rich = _write(tmp_path / "graph-rich.json", {"snapshot_date": SNAPSHOT, "selected": []})
+    coverage_gap = _write(
+        tmp_path / "coverage-gap.json", {"snapshot_date": SNAPSHOT, "candidates": []}
+    )
+    output = tmp_path / "data" / "private" / "catalog-expansion" / "review.json"
+
+    with pytest.raises(ValueError, match="mismatched snapshot_date"):
+        main(
+            [
+                "build-expansion-review-packet",
+                "--catalog",
+                str(catalog),
+                "--personal-seed",
+                str(personal_seed),
+                "--graph-rich-selection",
+                str(graph_rich),
+                "--coverage-gap-candidates",
+                str(coverage_gap),
+                "--generated-at",
+                "2026-08-27T00:00:00+00:00",
+                "--output",
+                str(output),
+            ]
+        )
+    assert not output.exists()
 
 
 def test_refuses_to_write_outside_data_private(tmp_path: Path) -> None:

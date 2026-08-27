@@ -744,7 +744,10 @@ def _parser() -> argparse.ArgumentParser:
         "--coverage-gap-candidates",
         type=Path,
         required=True,
-        help='JSON {"candidates": [...]} -- already-resolved Bucket C picks with gap rationale',
+        help=(
+            'JSON {"snapshot_date": "YYYYMMDD", "candidates": [...]} -- already-resolved '
+            "Bucket C picks with gap rationale; snapshot_date must match every other input"
+        ),
     )
     build_expansion_packet.add_argument("--generated-at", required=True)
     build_expansion_packet.add_argument(
@@ -2667,9 +2670,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             current_catalog=json.loads(args.catalog.read_text()),
             personal_seed=json.loads(args.personal_seed.read_text()),
             graph_rich_selection=json.loads(args.graph_rich_selection.read_text()),
-            coverage_gap_candidates=json.loads(args.coverage_gap_candidates.read_text()).get(
-                "candidates", []
-            ),
+            coverage_gap=json.loads(args.coverage_gap_candidates.read_text()),
         )
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(json.dumps(packet, indent=2, sort_keys=True) + "\n")
