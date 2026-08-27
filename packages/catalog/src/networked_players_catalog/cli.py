@@ -43,6 +43,27 @@ def _require_local_only_output(output: Path, *, command: str, why: str) -> None:
         raise ValueError(f"{command} refuses to write outside local/: {str(output)!r} -- {why}")
 
 
+def _require_private_only_output(output: Path, *, command: str, why: str) -> None:
+    """Refuse an `--output` that does not land inside a real `data/private/`
+    directory -- the same resolved-path discipline
+    `_require_local_only_output` already applies to `local/`, applied here
+    to the OTHER private location this repo recognizes
+    (`docs/PUBLIC_PRIVATE_BOUNDARY.md`). Resolves before deciding, so
+    `data/private/../../apps/web/public/data/x.json` cannot satisfy a
+    textual prefix check and then escape via `..`.
+    """
+    resolved = output.resolve()
+    parts = resolved.parts
+    is_under_private = any(
+        parts[i] == "data" and i + 1 < len(parts) and parts[i + 1] == "private"
+        for i in range(len(parts))
+    )
+    if not is_under_private:
+        raise ValueError(
+            f"{command} refuses to write outside data/private/: {str(output)!r} -- {why}"
+        )
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="networked-players-catalog")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -699,6 +720,39 @@ def _parser() -> argparse.ArgumentParser:
     select_graph_rich.add_argument("--memory-limit", default="2GB")
     select_graph_rich.add_argument("--threads", type=int, default=2)
     select_graph_rich.add_argument("--output", type=Path, required=True)
+
+    build_expansion_packet = subparsers.add_parser(
+        "build-expansion-review-packet",
+        help=(
+            "combine Bucket A/B/C sources into one human-reviewable packet -- never "
+            "promotes, never selects; writes under data/private/ only"
+        ),
+    )
+    build_expansion_packet.add_argument(
+        "--catalog", type=Path, required=True, help="apps/web/public/data/catalog/albums.v1.json"
+    )
+    build_expansion_packet.add_argument(
+        "--personal-seed", type=Path, required=True, help="data/albums/editorial-seed-v1.json"
+    )
+    build_expansion_packet.add_argument(
+        "--graph-rich-selection",
+        type=Path,
+        required=True,
+        help="select-graph-rich-candidates output",
+    )
+    build_expansion_packet.add_argument(
+        "--coverage-gap-candidates",
+        type=Path,
+        required=True,
+        help='JSON {"candidates": [...]} -- already-resolved Bucket C picks with gap rationale',
+    )
+    build_expansion_packet.add_argument("--generated-at", required=True)
+    build_expansion_packet.add_argument(
+        "--output",
+        type=Path,
+        required=True,
+        help="must resolve under data/private/ -- never a committed or public path",
+    )
 
     measure_coverage = subparsers.add_parser(
         "measure-coverage-gaps",
@@ -2593,6 +2647,42 @@ def main(argv: Sequence[str] | None = None) -> int:
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
         print(json.dumps({"output": str(args.output), "selected_count": len(selected)}, indent=2))
+        return 0
+
+    if args.command == "build-expansion-review-packet":
+        from .expansion_review import build_expansion_review_packet
+
+        _require_private_only_output(
+            args.output,
+            command="build-expansion-review-packet",
+            why=(
+                "this packet combines candidate-ranking detail across all three "
+                "buckets and is a pre-decision editorial-review input, never a "
+                "committed or public artifact -- see docs/PUBLIC_PRIVATE_BOUNDARY.md"
+            ),
+        )
+
+        packet = build_expansion_review_packet(
+            generated_at=args.generated_at,
+            current_catalog=json.loads(args.catalog.read_text()),
+            personal_seed=json.loads(args.personal_seed.read_text()),
+            graph_rich_selection=json.loads(args.graph_rich_selection.read_text()),
+            coverage_gap_candidates=json.loads(args.coverage_gap_candidates.read_text()).get(
+                "candidates", []
+            ),
+        )
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(json.dumps(packet, indent=2, sort_keys=True) + "\n")
+        print(
+            json.dumps(
+                {
+                    "output": str(args.output),
+                    "proposed_addition_count": packet["proposed_addition_count"],
+                    "warning_count": len(packet["warnings"]),
+                },
+                indent=2,
+            )
+        )
         return 0
 
     if args.command == "measure-coverage-gaps":
