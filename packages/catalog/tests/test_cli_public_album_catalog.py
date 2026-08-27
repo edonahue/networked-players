@@ -828,3 +828,58 @@ def test_personal_seed_missing_snapshot_refused(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="personal-seed"):
         main(args)
     assert not output_path.exists()
+
+
+def test_personal_seed_full_contract_validation_rejects_a_leaked_field(tmp_path: Path) -> None:
+    """Real gap found in review: the CLI previously only checked `kind` and
+    `snapshot_date`, never the seed's full contract (exact key set, no
+    forbidden substrings/phrases). A same-kind, same-snapshot seed carrying
+    an out-of-contract field must still be refused outright, not silently
+    accepted and left to `pre_resolved_missed`'s own field whitelist as the
+    only defense."""
+    onehop_root = _write_onehop_dataset(tmp_path / "onehop")
+    masters_root = _write_masters_dataset(tmp_path / "masters")
+    policy_path = _write_release_format_policy(tmp_path / "policy.json")
+    exclusions_path = _write_exclusions(tmp_path / "exclusions.json")
+    personal_seed_path = tmp_path / "editorial-seed.json"
+    personal_seed_path.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "kind": "public-editorial-seed",
+                "snapshot_date": SNAPSHOT_DATE,
+                "generated_by": "test",
+                "generated_at": "2026-08-27T00:00:00+00:00",
+                "note": "",
+                "albums": [
+                    {
+                        "query_artist": "Fictoquai",
+                        "query_title": "Personal Pick",
+                        "master_id": None,
+                        "main_release_id": 3,
+                        "artist_id": 700,
+                        "artist": "Fictoquai",
+                        "title": "Personal Pick",
+                        "year": 1999,
+                        "eligibility": {"curated_exclusion": False},  # not a documented field
+                    }
+                ],
+            }
+        )
+    )
+    output_path = tmp_path / "albums.v1.json"
+
+    args = _base_args(tmp_path, onehop_root=onehop_root, output=output_path)
+    args += [
+        "--release-format-policy",
+        str(policy_path),
+        "--masters-root",
+        str(masters_root),
+        "--studio-album-exclusions",
+        str(exclusions_path),
+        "--personal-seed",
+        str(personal_seed_path),
+    ]
+    with pytest.raises(ValueError, match="failed contract validation"):
+        main(args)
+    assert not output_path.exists()

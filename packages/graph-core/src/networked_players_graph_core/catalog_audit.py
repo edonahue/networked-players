@@ -69,6 +69,20 @@ def build_album_catalog_audit(
     `graph` must already have masters attached (`graph.attach_masters(...)`)
     for `master_genre_style_result` to be meaningful."""
     editorial_count = int(catalog["editorial_count"])
+    # `pre_resolved_count` is a Phase 7 (ADR 0065) addition, absent from any
+    # catalog built before this field existed -- `.get(..., 0)` keeps this
+    # function's classification identical on an older catalog, where the
+    # albums list only ever had two segments (editorial, then candidates).
+    pre_resolved_count = int(catalog.get("pre_resolved_count", 0))
+    pre_resolved_end = editorial_count + pre_resolved_count
+
+    def _selection_source(index: int) -> str:
+        if index < editorial_count:
+            return "editorial"
+        if index < pre_resolved_end:
+            return "personal_editorial"
+        return "graph_candidate"
+
     rows: list[dict[str, Any]] = []
     for index, album in enumerate(catalog["albums"]):
         master_id = album.get("master_id")
@@ -93,7 +107,7 @@ def build_album_catalog_audit(
                 "artist": album["artist"],
                 "title": album["title"],
                 "original_year": album["year"],
-                "selection_source": "editorial" if index < editorial_count else "graph_candidate",
+                "selection_source": _selection_source(index),
                 "release_format_policy_result": (
                     "allowed" if album["main_release_id"] in allowed_release_ids else "excluded"
                 ),

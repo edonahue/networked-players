@@ -258,6 +258,44 @@ def test_pre_resolved_deduplicates_against_itself_by_master_id(dataset_root: Pat
     assert "duplicate master_id" in catalog["pre_resolved_missed"][0]["reason"]
 
 
+def test_pre_resolved_missed_never_leaks_a_field_outside_the_seed_contract(
+    dataset_root: Path,
+) -> None:
+    """Real gap found in review: `pre_resolved_missed` is published verbatim
+    inside the committed, public catalog artifact. An out-of-contract field
+    on a REJECTED entry (a stray private note, or worse) must never ride
+    along -- only the documented editorial-seed-v1.json fields plus
+    `reason` are ever serialized here, regardless of what the input dict
+    happens to carry."""
+    entry = _pre_resolved(9001, 9001, 700, "Fictoquai", "Not Allowed")
+    entry["private_note"] = "should never appear in the public catalog"
+    entry["reviewer_email"] = "leak@example.invalid"
+    with CreditGraph.open(dataset_root) as graph:
+        catalog = assemble_album_catalog(
+            graph,
+            [],
+            [],
+            target_count=10,
+            pre_resolved_albums=[entry],
+            allowed_release_ids=frozenset({1, 2, 3}),  # 9001 not included -- rejected
+        )
+    assert catalog["pre_resolved_count"] == 0
+    missed = catalog["pre_resolved_missed"][0]
+    assert "private_note" not in missed
+    assert "reviewer_email" not in missed
+    assert set(missed.keys()) == {
+        "query_artist",
+        "query_title",
+        "master_id",
+        "main_release_id",
+        "artist_id",
+        "artist",
+        "title",
+        "year",
+        "reason",
+    }
+
+
 def test_pre_resolved_respects_allowed_release_ids(dataset_root: Path) -> None:
     pre_resolved = [_pre_resolved(9001, 9001, 700, "Fictoquai", "Not Allowed")]
     with CreditGraph.open(dataset_root) as graph:

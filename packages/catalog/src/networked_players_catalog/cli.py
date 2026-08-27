@@ -3081,20 +3081,23 @@ def main(argv: Sequence[str] | None = None) -> int:
 
         pre_resolved_albums: list[dict[str, Any]] = []
         if args.personal_seed is not None:
+            from networked_players_graph_core.editorial_seed import editorial_seed_failures
+
             personal_seed_payload = json.loads(args.personal_seed.read_text())
-            if personal_seed_payload.get("kind") != "public-editorial-seed":
+            # Full contract validation, not just kind/snapshot_date: the seed
+            # file's own contract (data/contracts/editorial-seed-v1.md)
+            # promises an exact key set and no leaked diagnostic fields, but
+            # nothing enforced that promise at THIS consumption point before
+            # now -- an out-of-contract field could otherwise ride an
+            # accepted OR a rejected pre-resolved entry straight into the
+            # committed public catalog artifact.
+            seed_failures = editorial_seed_failures(personal_seed_payload)
+            if seed_failures:
                 raise ValueError(
-                    f"--personal-seed {args.personal_seed} has kind "
-                    f"{personal_seed_payload.get('kind')!r}, expected "
-                    "'public-editorial-seed' -- malformed or wrong-artifact input refused"
+                    f"--personal-seed {args.personal_seed} failed contract validation: "
+                    f"{seed_failures}"
                 )
             personal_seed_snapshot = str(personal_seed_payload.get("snapshot_date") or "")
-            if not personal_seed_snapshot:
-                raise ValueError(
-                    f"--personal-seed {args.personal_seed} has no valid, non-empty "
-                    "snapshot_date -- unknown snapshot metadata is refused just like a "
-                    "mismatched one."
-                )
             if personal_seed_snapshot != snapshot_date:
                 raise ValueError(
                     f"--personal-seed snapshot_date {personal_seed_snapshot!r} does not "

@@ -205,6 +205,35 @@ def exploration_corpus_version(albums: list[dict[str, Any]], snapshot_date: str 
     return f"{prefix}-{digest}"
 
 
+_PRE_RESOLVED_PUBLISHABLE_FIELDS = (
+    "query_artist",
+    "query_title",
+    "master_id",
+    "main_release_id",
+    "artist_id",
+    "artist",
+    "title",
+    "year",
+)
+
+
+def _pre_resolved_missed_entry(album: dict[str, Any], *, reason: str) -> dict[str, Any]:
+    """Only the documented `editorial-seed-v1.json` fields, plus `reason` --
+    NEVER `{**album}`. `pre_resolved_missed` is published verbatim inside
+    the committed, public catalog artifact. Its own contract
+    (`data/contracts/editorial-seed-v1.md`) already promises the seed file
+    carries only these fields, but `build-public-album-catalog`'s
+    `--personal-seed` check only validated `kind`/`snapshot_date`, not the
+    complete contract -- an out-of-contract field on a REJECTED entry (a
+    stray note, or worse) would otherwise be copied straight into
+    `apps/web/public/data/catalog/albums.v1.json`. Whitelisting here is
+    defense in depth alongside the CLI's own full `editorial_seed_failures`
+    check, not a substitute for it."""
+    return {field: album.get(field) for field in _PRE_RESOLVED_PUBLISHABLE_FIELDS} | {
+        "reason": reason
+    }
+
+
 def _pre_resolved_to_matched_album(graph: CreditGraph, album: dict[str, Any]) -> MatchedAlbum:
     """`data/albums/editorial-seed-v1.json`'s shape -> `MatchedAlbum`,
     without any text search: identity (`artist_id`/`main_release_id`) is
@@ -316,7 +345,9 @@ def assemble_album_catalog(
         main_release_id = int(album["main_release_id"])
         if master_id is not None and int(master_id) in seen_master_ids:
             pre_resolved_missed.append(
-                {**album, "reason": "duplicate master_id already resolved earlier"}
+                _pre_resolved_missed_entry(
+                    album, reason="duplicate master_id already resolved earlier"
+                )
             )
             continue
         reason = release_eligibility_reason(
@@ -327,7 +358,7 @@ def assemble_album_catalog(
             master_exclusions=master_exclusions,
         )
         if reason is not None:
-            pre_resolved_missed.append({**album, "reason": reason})
+            pre_resolved_missed.append(_pre_resolved_missed_entry(album, reason=reason))
             continue
         if master_id is not None:
             seen_master_ids.add(int(master_id))
@@ -390,12 +421,22 @@ def assemble_album_catalog(
         *(m.to_resolved_dict() for m in candidate_albums),
     ]
 
-    return {
-        "version": 1,
-        "catalog_version": _catalog_version(albums, snapshot_date),
-        "snapshot_date": snapshot_date,
-        "generated_by": generated_by,
-        "source_note": (
+    source_note = (
+        "Hybrid catalog: an editorial backbone plus graph-rich additions selected by "
+        "deterministic candidate scoring (ADR 0038). The canonical, single source of "
+        "truth for which albums exist across every real public surface (album browser, "
+        "Connection Guesser, Record Routes) -- every one derives its album set from "
+        "this artifact's own catalog_version, never re-deriving or narrowing it "
+        "independently (see ADR 0043). Combined at build time from "
+        "data/albums/top-albums-v1.json and a rank-album-candidates shortlist. Albums "
+        "are ID-resolved (artist_id/main_release_id), not name queries."
+    )
+    if pre_resolved_kept or pre_resolved_missed:
+        # Only claim this source participated when --personal-seed was
+        # actually given -- the option explicitly supports editorial-plus-
+        # candidates-only builds, and a source note naming a file that
+        # never ran would be misleading provenance on a public artifact.
+        source_note = (
             "Hybrid catalog: an editorial backbone, a personal/editorial anchor lane, "
             "and graph-rich additions selected by deterministic candidate scoring "
             "(ADR 0038, ADR 0065). The canonical, single source of truth for which "
@@ -406,7 +447,14 @@ def assemble_album_catalog(
             "data/albums/top-albums-v1.json, data/albums/editorial-seed-v1.json, and a "
             "rank-album-candidates shortlist. Albums are ID-resolved "
             "(artist_id/main_release_id), not name queries."
-        ),
+        )
+
+    return {
+        "version": 1,
+        "catalog_version": _catalog_version(albums, snapshot_date),
+        "snapshot_date": snapshot_date,
+        "generated_by": generated_by,
+        "source_note": source_note,
         "target_count": target_count,
         "editorial_count": len(matched_editorial),
         "editorial_missed": missed_editorial,
