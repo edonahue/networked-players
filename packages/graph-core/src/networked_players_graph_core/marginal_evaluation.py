@@ -15,6 +15,21 @@ each step, so the edge set "already selected" and the edge set "one more
 candidate would add" are both computed by the exact production logic the
 real catalog build uses, not an approximation of it.
 
+Performance is not incidental here: every one of `credit_edges_sql`'s rules
+(`same_recording`, `co_performers`, `release_scope`) is `GROUP BY release_id`
+internally, and its final `directed` relation is a plain `UNION ALL` of
+those three -- there is no join or aggregate anywhere in the query that
+crosses release boundaries. That means the SET of (artist_a, artist_b) PAIRS
+a release contributes is entirely determined by that release's own credit
+rows, independent of which other releases share the connection's `credits`/
+`releases` views. (Only the *evidence citation* -- which specific
+`release_id` gets attached to a pair that also appears on another release --
+depends on cross-release ordering, via `_evidence_collapse_sql`; this module
+discards that citation, so it never depends on the property that doesn't
+decompose.) `edges_by_release` exploits this to compute every finalist's own
+edge contribution exactly once, up front, rather than re-deriving the whole
+scope from scratch at every greedy step.
+
 Approximation boundary, stated honestly: this measures real edge/contributor
 structure, not the downstream Connection Guesser/Record Routes round-generation
 yield those edges would produce -- that requires running the actual round
@@ -34,40 +49,26 @@ import duckdb
 from .graph import credit_edges_sql, read_parquet_sql
 
 
-def _scoped_connection(
-    dataset_root: Path,
-    release_ids: frozenset[int],
-    *,
-    memory_limit: str,
-    threads: int,
-) -> duckdb.DuckDBPyConnection:
-    """A DuckDB connection whose `credits`/`releases` views are restricted to
-    exactly `release_ids` -- everything `credit_edges_sql` reads, scoped down
-    so a rebuild over a few hundred releases costs nothing like a rebuild
-    over the full working set. `release_formats` is always the same
-    universally-empty relation `CreditGraph.open` falls back to when no
-    format table is present -- this evaluator measures structural edge
-    value, not the format-caveat tier, which is a display concern.
-    """
-    releases_glob = str(Path(dataset_root) / "table=releases" / "*.parquet")
-    credits_glob = str(Path(dataset_root) / "table=credits" / "*.parquet")
-    connection = duckdb.connect(database=":memory:")
-    connection.execute(f"SET memory_limit = '{memory_limit}'")
-    connection.execute(f"SET threads = {int(threads)}")
-    ids_sql = ", ".join(str(int(r)) for r in sorted(release_ids)) if release_ids else "NULL"
-    connection.execute(
-        f"CREATE VIEW releases AS SELECT * FROM {read_parquet_sql(releases_glob)} "
-        f"WHERE release_id IN ({ids_sql})"
+def _view_setup_sql(releases_glob: str, credits_glob: str) -> tuple[str, str]:
+    return (
+        f"CREATE VIEW all_releases AS SELECT * FROM {read_parquet_sql(releases_glob)}",
+        f"CREATE VIEW all_credits AS SELECT * FROM {read_parquet_sql(credits_glob)}",
     )
-    connection.execute(
-        f"CREATE VIEW credits AS SELECT * FROM {read_parquet_sql(credits_glob)} "
-        f"WHERE release_id IN ({ids_sql})"
+
+
+def _scope_views_sql(release_ids_sql: str) -> tuple[str, str, str]:
+    return (
+        f"CREATE OR REPLACE VIEW releases AS SELECT * FROM all_releases "
+        f"WHERE release_id IN ({release_ids_sql})",
+        f"CREATE OR REPLACE VIEW credits AS SELECT * FROM all_credits "
+        f"WHERE release_id IN ({release_ids_sql})",
+        "CREATE OR REPLACE VIEW release_formats AS "
+        "SELECT NULL::BIGINT AS release_id, NULL::VARCHAR[] AS descriptions WHERE FALSE",
     )
-    connection.execute(
-        "CREATE VIEW release_formats AS "
-        "SELECT NULL::BIGINT AS release_id, NULL::VARCHAR[] AS descriptions WHERE FALSE"
-    )
-    return connection
+
+
+def _undirected(rows: list[tuple[int, int, int]]) -> frozenset[tuple[int, int]]:
+    return frozenset((a, b) if a < b else (b, a) for a, b, _release_id in rows)
 
 
 def edges_for_release_scope(
@@ -90,16 +91,63 @@ def edges_for_release_scope(
     """
     if not release_ids:
         return frozenset()
-    connection = _scoped_connection(
-        dataset_root, release_ids, memory_limit=memory_limit, threads=threads
-    )
+    releases_glob = str(Path(dataset_root) / "table=releases" / "*.parquet")
+    credits_glob = str(Path(dataset_root) / "table=credits" / "*.parquet")
+    ids_sql = ", ".join(str(int(r)) for r in sorted(release_ids))
+    connection = duckdb.connect(database=":memory:")
     try:
+        connection.execute(f"SET memory_limit = '{memory_limit}'")
+        connection.execute(f"SET threads = {int(threads)}")
+        for statement in _view_setup_sql(releases_glob, credits_glob):
+            connection.execute(statement)
+        for statement in _scope_views_sql(ids_sql):
+            connection.execute(statement)
         rows = connection.execute(
             credit_edges_sql(max_artists_per_release=max_artists_per_release)
         ).fetchall()
     finally:
         connection.close()
-    return frozenset((a, b) if a < b else (b, a) for a, b, _release_id in rows)
+    return _undirected(rows)
+
+
+def edges_by_release(
+    dataset_root: Path,
+    release_ids: frozenset[int],
+    *,
+    max_artists_per_release: int = 50,
+    memory_limit: str = "1GB",
+    threads: int = 2,
+) -> dict[int, frozenset[tuple[int, int]]]:
+    """Each release's OWN co-credit edge contribution, computed in
+    isolation -- one release at a time, one shared connection reused across
+    all of them (never a fresh `duckdb.connect()` per release, and never a
+    combined multi-release scan that could conflate which release
+    contributed which edge). See the module docstring for why per-release
+    isolation is exactly as correct as a combined scan for PAIR EXISTENCE,
+    while being reusable across an unbounded number of downstream marginal
+    computations without re-scanning the dataset again.
+    """
+    result: dict[int, frozenset[tuple[int, int]]] = {}
+    if not release_ids:
+        return result
+    releases_glob = str(Path(dataset_root) / "table=releases" / "*.parquet")
+    credits_glob = str(Path(dataset_root) / "table=credits" / "*.parquet")
+    connection = duckdb.connect(database=":memory:")
+    try:
+        connection.execute(f"SET memory_limit = '{memory_limit}'")
+        connection.execute(f"SET threads = {int(threads)}")
+        for statement in _view_setup_sql(releases_glob, credits_glob):
+            connection.execute(statement)
+        for release_id in sorted(release_ids):
+            for statement in _scope_views_sql(str(int(release_id))):
+                connection.execute(statement)
+            rows = connection.execute(
+                credit_edges_sql(max_artists_per_release=max_artists_per_release)
+            ).fetchall()
+            result[int(release_id)] = _undirected(rows)
+    finally:
+        connection.close()
+    return result
 
 
 def _nodes(edges: frozenset[tuple[int, int]]) -> frozenset[int]:
@@ -110,6 +158,7 @@ def greedy_marginal_selection(
     dataset_root: Path,
     *,
     baseline_release_ids: frozenset[int],
+    baseline_artist_ids: frozenset[int],
     finalists: list[dict[str, Any]],
     count: int,
     max_artists_per_release: int = 50,
@@ -119,57 +168,73 @@ def greedy_marginal_selection(
     """Deterministic greedy selection of `count` finalists by TRUE marginal
     edge value, given everything already selected earlier in this same run.
 
-    Each `finalists` entry must carry `master_id` and `main_release_id`;
-    every other key is passed through unchanged on the entries this returns.
+    Each `finalists` entry must carry `master_id`, `main_release_id`, and
+    `artist_id`; every other key is passed through unchanged on the entries
+    this returns.
 
-    At each step, for every remaining finalist, this computes the edge set
-    of (current baseline release scope + that finalist's main_release_id)
-    and diffs it against the current baseline's own edge set -- exact
-    `credit_edges_sql` semantics, not an approximation. The finalist with
-    the most NEW edges is picked; ties break by new contributor count, then
-    by the finalist's own `score` field (if present, descending), then by
-    `master_id` ascending -- fully deterministic, so re-running this
+    `baseline_artist_ids` -- the artists already in the catalog and/or
+    already-approved Bucket A additions -- excludes matching finalists
+    UPFRONT, mirroring `assemble_album_catalog`'s own "an editorial artist's
+    candidate never gets added twice" rule (ADR 0038). This bucket also
+    enforces at most one selection per artist among itself: once a finalist
+    is picked, every other finalist sharing its `artist_id` becomes
+    ineligible for the rest of this run. Without both rules, this function
+    could report `selected_count` albums that `assemble_album_catalog` would
+    later silently shrink by dropping duplicates -- an honest evaluator's
+    output must match what the catalog build will actually keep.
+
+    At each step, the finalist with the most NEW edges (relative to
+    everything already in scope) is picked; ties break by new contributor
+    count, then by the finalist's own `score` field (if present, descending),
+    then by `master_id` ascending -- fully deterministic, so re-running this
     function over the same inputs always produces the same selection and
     order, which is what makes an unattended selection reviewable after the
     fact rather than merely reproducible in principle.
 
-    Cost: O(count * remaining_finalists) scoped rebuilds, each over a small
-    release set (the growing baseline plus one candidate) -- tractable for a
-    bounded finalist set (tens, not hundreds) and slot count (tens), because
-    each rebuild is scoped to that release set, never the full corpus.
+    Cost: one scoped query for the baseline, one query per remaining
+    finalist's own release (computed once, up front, via `edges_by_release`)
+    -- O(finalists) total dataset queries, not O(count * finalists); every
+    round after that is pure in-memory set arithmetic.
     """
     if count <= 0:
         return []
 
-    remaining = list(finalists)
-    selected: list[dict[str, Any]] = []
-    current_release_ids = set(baseline_release_ids)
+    remaining = [f for f in finalists if int(f["artist_id"]) not in baseline_artist_ids]
+    if not remaining:
+        return []
+
     current_edges = edges_for_release_scope(
         dataset_root,
-        frozenset(current_release_ids),
+        baseline_release_ids,
         max_artists_per_release=max_artists_per_release,
         memory_limit=memory_limit,
         threads=threads,
     )
     current_nodes = _nodes(current_edges)
 
-    for _ in range(min(count, len(remaining))):
+    finalist_release_ids = frozenset(int(f["main_release_id"]) for f in remaining)
+    finalist_edges = edges_by_release(
+        dataset_root,
+        finalist_release_ids,
+        max_artists_per_release=max_artists_per_release,
+        memory_limit=memory_limit,
+        threads=threads,
+    )
+
+    selected: list[dict[str, Any]] = []
+    selected_artist_ids: set[int] = set()
+
+    while remaining and len(selected) < count:
         best_candidate: dict[str, Any] | None = None
         best_key: tuple[int, int, int, int] | None = None
-        best_state: tuple[set[int], frozenset[tuple[int, int]], frozenset[int]] | None = None
+        best_edges: frozenset[tuple[int, int]] | None = None
 
         for candidate in remaining:
-            candidate_release_ids = current_release_ids | {int(candidate["main_release_id"])}
-            candidate_edges = edges_for_release_scope(
-                dataset_root,
-                frozenset(candidate_release_ids),
-                max_artists_per_release=max_artists_per_release,
-                memory_limit=memory_limit,
-                threads=threads,
-            )
-            candidate_nodes = _nodes(candidate_edges)
+            if int(candidate["artist_id"]) in selected_artist_ids:
+                continue
+            candidate_edges = finalist_edges[int(candidate["main_release_id"])]
             new_edge_count = len(candidate_edges - current_edges)
-            new_node_count = len(candidate_nodes - current_nodes)
+            new_node_count = len(_nodes(candidate_edges) - current_nodes)
             key = (
                 -new_edge_count,
                 -new_node_count,
@@ -179,9 +244,11 @@ def greedy_marginal_selection(
             if best_key is None or key < best_key:
                 best_key = key
                 best_candidate = candidate
-                best_state = (candidate_release_ids, candidate_edges, candidate_nodes)
+                best_edges = candidate_edges
 
-        assert best_candidate is not None and best_key is not None and best_state is not None
+        if best_candidate is None or best_key is None or best_edges is None:
+            break  # every remaining finalist shares an artist already selected
+
         new_edge_count = -best_key[0]
         new_node_count = -best_key[1]
         selected.append(
@@ -191,7 +258,9 @@ def greedy_marginal_selection(
                 "marginal_new_contributors": new_node_count,
             }
         )
+        selected_artist_ids.add(int(best_candidate["artist_id"]))
+        current_edges = current_edges | best_edges
+        current_nodes = current_nodes | _nodes(best_edges)
         remaining.remove(best_candidate)
-        current_release_ids, current_edges, current_nodes = best_state
 
     return selected

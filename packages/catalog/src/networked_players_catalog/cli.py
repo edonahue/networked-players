@@ -7,6 +7,7 @@ import json
 from collections.abc import Callable, Sequence
 from datetime import UTC, date, datetime
 from pathlib import Path
+from typing import Any
 
 from . import __version__
 from .discogs.download import download_file
@@ -2528,24 +2529,52 @@ def main(argv: Sequence[str] | None = None) -> int:
             ),
         )
 
-        baseline_payload = json.loads(args.baseline_catalog.read_text())
+        dataset_manifest_path = args.dataset / "manifest.json"
+        if not dataset_manifest_path.is_file():
+            raise ValueError(
+                f"--dataset manifest is required and must exist: {dataset_manifest_path} not found."
+            )
+        dataset_manifest = json.loads(dataset_manifest_path.read_text())
+        dataset_snapshot = str(
+            dataset_manifest.get("snapshot_date")
+            or (dataset_manifest.get("expansion") or {}).get("source_snapshot_date")
+            or ""
+        )
+
+        def _snapshot_checked_albums(path: Path, *, label: str) -> list[dict[str, Any]]:
+            payload = json.loads(path.read_text())
+            payload_snapshot = str(payload.get("snapshot_date") or "")
+            if not dataset_snapshot or not payload_snapshot or payload_snapshot != dataset_snapshot:
+                raise ValueError(
+                    f"--dataset snapshot_date {dataset_snapshot!r} does not match "
+                    f"{label} snapshot_date {payload_snapshot!r} -- mismatched-snapshot "
+                    "inputs refused (a stale or mismatched source can silently change "
+                    "which albums are evaluated and selected)"
+                )
+            return list(payload["albums"])
+
+        baseline_albums = _snapshot_checked_albums(
+            args.baseline_catalog, label="--baseline-catalog"
+        )
+        if args.additional_baseline is not None:
+            baseline_albums += _snapshot_checked_albums(
+                args.additional_baseline, label="--additional-baseline"
+            )
+
         baseline_release_ids = {
             int(a["main_release_id"])
-            for a in baseline_payload["albums"]
+            for a in baseline_albums
             if a.get("main_release_id") is not None
         }
-        if args.additional_baseline is not None:
-            additional_payload = json.loads(args.additional_baseline.read_text())
-            baseline_release_ids |= {
-                int(a["main_release_id"])
-                for a in additional_payload.get("albums", [])
-                if a.get("main_release_id") is not None
-            }
+        baseline_artist_ids = {
+            int(a["artist_id"]) for a in baseline_albums if a.get("artist_id") is not None
+        }
 
         finalists = json.loads(args.finalists.read_text())
         selected = greedy_marginal_selection(
             args.dataset,
             baseline_release_ids=frozenset(baseline_release_ids),
+            baseline_artist_ids=frozenset(baseline_artist_ids),
             finalists=finalists,
             count=args.count,
             memory_limit=args.memory_limit,
@@ -2553,7 +2582,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
 
         payload = {
+            "snapshot_date": dataset_snapshot,
             "baseline_release_count": len(baseline_release_ids),
+            "baseline_artist_count": len(baseline_artist_ids),
             "finalist_count": len(finalists),
             "requested_count": args.count,
             "selected_count": len(selected),

@@ -19,6 +19,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from networked_players_graph_core.marginal_evaluation import (
+    edges_by_release,
     edges_for_release_scope,
     greedy_marginal_selection,
 )
@@ -52,6 +53,29 @@ def test_edges_for_release_scope_is_undirected_and_order_independent(dataset_roo
     assert a == b == frozenset({(100, 200), (300, 400)})
 
 
+def test_edges_by_release_is_empty_for_no_releases(dataset_root: Path) -> None:
+    assert edges_by_release(dataset_root, frozenset()) == {}
+
+
+def test_edges_by_release_matches_per_release_isolation(dataset_root: Path) -> None:
+    per_release = edges_by_release(dataset_root, frozenset({1, 3, 4}))
+    assert per_release[1] == frozenset({(100, 200)})
+    assert per_release[3] == frozenset({(300, 400)})
+    assert len(per_release[4]) == 6
+
+
+def test_edges_by_release_decomposes_exactly_into_the_combined_scope(dataset_root: Path) -> None:
+    """The correctness property the whole performance design depends on:
+    the union of each release's OWN isolated edge set must equal the edge
+    set of the combined scope, since credit_edges_sql's rules are all
+    GROUP BY release_id with no cross-release join."""
+    release_ids = frozenset({1, 3, 4, 6})
+    per_release = edges_by_release(dataset_root, release_ids)
+    union_of_isolated = frozenset.union(*per_release.values())
+    combined = edges_for_release_scope(dataset_root, release_ids)
+    assert union_of_isolated == combined
+
+
 def test_greedy_selection_picks_the_true_marginal_leader_not_raw_score(
     dataset_root: Path,
 ) -> None:
@@ -60,13 +84,14 @@ def test_greedy_selection_picks_the_true_marginal_leader_not_raw_score(
     against baseline {1}, versus 1 edge each for the other two. Raw score
     would have picked wrong; true marginal edge count picks right."""
     finalists = [
-        {"master_id": 903, "main_release_id": 3, "score": 100},
-        {"master_id": 904, "main_release_id": 4, "score": 1},
-        {"master_id": 906, "main_release_id": 6, "score": 50},
+        {"master_id": 903, "main_release_id": 3, "artist_id": 300, "score": 100},
+        {"master_id": 904, "main_release_id": 4, "artist_id": 100, "score": 1},
+        {"master_id": 906, "main_release_id": 6, "artist_id": 400, "score": 50},
     ]
     selected = greedy_marginal_selection(
         dataset_root,
         baseline_release_ids=frozenset({1}),
+        baseline_artist_ids=frozenset(),
         finalists=finalists,
         count=2,
     )
@@ -85,13 +110,14 @@ def test_greedy_selection_second_pick_breaks_an_edge_tie_by_new_contributor_coun
     while 906 (Dan<->Eve) introduces only 1 (Eve is already present from the
     904 clique). The tie-break must prefer the genuinely broader addition."""
     finalists = [
-        {"master_id": 903, "main_release_id": 3},
-        {"master_id": 904, "main_release_id": 4},
-        {"master_id": 906, "main_release_id": 6},
+        {"master_id": 903, "main_release_id": 3, "artist_id": 300},
+        {"master_id": 904, "main_release_id": 4, "artist_id": 100},
+        {"master_id": 906, "main_release_id": 6, "artist_id": 400},
     ]
     selected = greedy_marginal_selection(
         dataset_root,
         baseline_release_ids=frozenset({1}),
+        baseline_artist_ids=frozenset(),
         finalists=finalists,
         count=3,
     )
@@ -101,16 +127,16 @@ def test_greedy_selection_second_pick_breaks_an_edge_tie_by_new_contributor_coun
 def test_greedy_selection_ties_on_edges_and_nodes_break_by_score_then_master_id(
     dataset_root: Path,
 ) -> None:
-    """903 and 906 both add exactly 1 edge; force them to also tie on new
-    contributor count by excluding release 4 (so Eve/500 never enters the
-    baseline) -- both add exactly 2 new nodes. A higher declared score wins."""
+    """903 and 906 both add exactly 1 edge and, against an empty baseline,
+    exactly 2 new nodes each -- a full tie down to score."""
     finalists = [
-        {"master_id": 906, "main_release_id": 6, "score": 5},
-        {"master_id": 903, "main_release_id": 3, "score": 10},
+        {"master_id": 906, "main_release_id": 6, "artist_id": 400, "score": 5},
+        {"master_id": 903, "main_release_id": 3, "artist_id": 300, "score": 10},
     ]
     selected = greedy_marginal_selection(
         dataset_root,
-        baseline_release_ids=frozenset({1}),
+        baseline_release_ids=frozenset(),
+        baseline_artist_ids=frozenset(),
         finalists=finalists,
         count=1,
     )
@@ -120,18 +146,14 @@ def test_greedy_selection_ties_on_edges_and_nodes_break_by_score_then_master_id(
 
 
 def test_greedy_selection_final_tiebreak_is_master_id_ascending(dataset_root: Path) -> None:
-    """Same score, same marginal value (906 and a hypothetical duplicate-
-    shape candidate) -- lower master_id wins, deterministically."""
     finalists = [
-        {"master_id": 906, "main_release_id": 6, "score": 5},
-        {"master_id": 903, "main_release_id": 3, "score": 5},
+        {"master_id": 906, "main_release_id": 6, "artist_id": 400, "score": 5},
+        {"master_id": 903, "main_release_id": 3, "artist_id": 300, "score": 5},
     ]
-    # Both add 1 edge; 903 adds 2 new nodes (Cara, Dan) and 906 adds 2 new
-    # nodes too (Dan, Eve) against an empty baseline -- a genuine tie all
-    # the way down to master_id.
     selected = greedy_marginal_selection(
         dataset_root,
         baseline_release_ids=frozenset(),
+        baseline_artist_ids=frozenset(),
         finalists=finalists,
         count=1,
     )
@@ -140,16 +162,21 @@ def test_greedy_selection_final_tiebreak_is_master_id_ascending(dataset_root: Pa
 
 def test_greedy_selection_is_deterministic_across_repeated_runs(dataset_root: Path) -> None:
     finalists = [
-        {"master_id": 903, "main_release_id": 3, "score": 10},
-        {"master_id": 904, "main_release_id": 4, "score": 1},
-        {"master_id": 906, "main_release_id": 6, "score": 50},
+        {"master_id": 903, "main_release_id": 3, "artist_id": 300, "score": 10},
+        {"master_id": 904, "main_release_id": 4, "artist_id": 100, "score": 1},
+        {"master_id": 906, "main_release_id": 6, "artist_id": 400, "score": 50},
     ]
     first = greedy_marginal_selection(
-        dataset_root, baseline_release_ids=frozenset({1}), finalists=finalists, count=3
+        dataset_root,
+        baseline_release_ids=frozenset({1}),
+        baseline_artist_ids=frozenset(),
+        finalists=finalists,
+        count=3,
     )
     second = greedy_marginal_selection(
         dataset_root,
         baseline_release_ids=frozenset({1}),
+        baseline_artist_ids=frozenset(),
         finalists=list(reversed(finalists)),
         count=3,
     )
@@ -157,26 +184,80 @@ def test_greedy_selection_is_deterministic_across_repeated_runs(dataset_root: Pa
 
 
 def test_greedy_selection_never_exceeds_the_finalist_count(dataset_root: Path) -> None:
-    finalists = [{"master_id": 903, "main_release_id": 3}]
+    finalists = [{"master_id": 903, "main_release_id": 3, "artist_id": 300}]
     selected = greedy_marginal_selection(
-        dataset_root, baseline_release_ids=frozenset({1}), finalists=finalists, count=5
+        dataset_root,
+        baseline_release_ids=frozenset({1}),
+        baseline_artist_ids=frozenset(),
+        finalists=finalists,
+        count=5,
     )
     assert len(selected) == 1
 
 
 def test_greedy_selection_count_zero_selects_nothing(dataset_root: Path) -> None:
-    finalists = [{"master_id": 903, "main_release_id": 3}]
+    finalists = [{"master_id": 903, "main_release_id": 3, "artist_id": 300}]
     assert (
         greedy_marginal_selection(
-            dataset_root, baseline_release_ids=frozenset({1}), finalists=finalists, count=0
+            dataset_root,
+            baseline_release_ids=frozenset({1}),
+            baseline_artist_ids=frozenset(),
+            finalists=finalists,
+            count=0,
         )
         == []
     )
 
 
 def test_greedy_selection_preserves_extra_candidate_fields(dataset_root: Path) -> None:
-    finalists = [{"master_id": 903, "main_release_id": 3, "artist_name": "Cara"}]
+    finalists = [{"master_id": 903, "main_release_id": 3, "artist_id": 300, "artist_name": "Cara"}]
     selected = greedy_marginal_selection(
-        dataset_root, baseline_release_ids=frozenset({1}), finalists=finalists, count=1
+        dataset_root,
+        baseline_release_ids=frozenset({1}),
+        baseline_artist_ids=frozenset(),
+        finalists=finalists,
+        count=1,
     )
     assert selected[0]["artist_name"] == "Cara"
+
+
+def test_baseline_artist_ids_excludes_a_finalist_upfront_regardless_of_score(
+    dataset_root: Path,
+) -> None:
+    """A finalist whose artist is already in the catalog/Bucket A must never
+    be selected, no matter how high its declared score is -- mirrors
+    assemble_album_catalog's own editorial-artist exclusion (ADR 0038), so
+    this evaluator's output can never promise a slot the real catalog build
+    would refuse to keep."""
+    finalists = [
+        {"master_id": 903, "main_release_id": 3, "artist_id": 300, "score": 100_000},
+        {"master_id": 906, "main_release_id": 6, "artist_id": 400, "score": 1},
+    ]
+    selected = greedy_marginal_selection(
+        dataset_root,
+        baseline_release_ids=frozenset(),
+        baseline_artist_ids=frozenset({300}),
+        finalists=finalists,
+        count=2,
+    )
+    assert [c["master_id"] for c in selected] == [906]
+
+
+def test_at_most_one_selection_per_artist_within_a_single_run(dataset_root: Path) -> None:
+    """Two finalists nominally by the same artist (artist_id=300): only the
+    higher-value one is selected, and the run does NOT pad the remaining
+    slot with the second one -- exactly mirroring assemble_album_catalog's
+    added_candidate_ids dedup for the graph-rich bucket, so a real Bucket B
+    run can never report two albums by the same artist."""
+    finalists = [
+        {"master_id": 903, "main_release_id": 3, "artist_id": 300, "score": 100},
+        {"master_id": 906, "main_release_id": 6, "artist_id": 300, "score": 200},
+    ]
+    selected = greedy_marginal_selection(
+        dataset_root,
+        baseline_release_ids=frozenset(),
+        baseline_artist_ids=frozenset(),
+        finalists=finalists,
+        count=2,
+    )
+    assert [c["master_id"] for c in selected] == [906]
