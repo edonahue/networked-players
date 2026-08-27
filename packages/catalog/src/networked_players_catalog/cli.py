@@ -558,6 +558,73 @@ def _parser() -> argparse.ArgumentParser:
     validate_connection_daily.add_argument("--manifest", type=Path, required=True)
     validate_connection_daily.add_argument("--rounds", type=Path, required=True)
 
+    upgrade_connection_daily_v2 = subparsers.add_parser(
+        "upgrade-connection-daily-manifest-to-v2",
+        help=(
+            "pure, lossless structural upgrade of a schema-v1 Connection Guesser daily "
+            "manifest to schema v2 (multi-generation support, Phase 7 catalog expansion) "
+            "-- zero content change, every existing entry keeps its exact date/round_id/"
+            "round_fingerprint and gains a generation tag"
+        ),
+    )
+    upgrade_connection_daily_v2.add_argument("--manifest", type=Path, required=True)
+    upgrade_connection_daily_v2.add_argument(
+        "--generation-id", required=True, help="e.g. gen-1 -- names the v1 manifest's own pool"
+    )
+    upgrade_connection_daily_v2.add_argument(
+        "--rounds-url",
+        required=True,
+        help=(
+            "where this generation's rounds now live, e.g. "
+            "/data/game/generations/gen-1/rounds.json -- the migration runbook must copy "
+            "the current rounds.v1.json there BYTE-IDENTICALLY before running this"
+        ),
+    )
+    upgrade_connection_daily_v2.add_argument("--output", type=Path, required=True)
+
+    migrate_connection_daily_generation = subparsers.add_parser(
+        "migrate-connection-daily-manifest-generation",
+        help=(
+            "introduce a new Connection Guesser pool generation effective a chosen future "
+            "cutover date -- every entry before the cutover is preserved exactly; only "
+            "never-reached, never-revealed future entries are replaced (Phase 7)"
+        ),
+    )
+    migrate_connection_daily_generation.add_argument("--manifest", type=Path, required=True)
+    migrate_connection_daily_generation.add_argument(
+        "--new-rounds", type=Path, required=True, help="the NEW generation's rounds artifact"
+    )
+    migrate_connection_daily_generation.add_argument("--cutover-date", required=True)
+    migrate_connection_daily_generation.add_argument("--new-generation-id", required=True)
+    migrate_connection_daily_generation.add_argument("--new-rounds-url", required=True)
+    migrate_connection_daily_generation.add_argument("--days", type=int, default=90)
+    migrate_connection_daily_generation.add_argument("--generated-at", required=True)
+    migrate_connection_daily_generation.add_argument(
+        "--existing-rounds",
+        action="append",
+        default=[],
+        metavar="GENERATION_ID=PATH",
+        help="repeat once per EXISTING generation referenced by a kept schedule entry, e.g. "
+        "gen-1=apps/web/public/data/game/generations/gen-1/rounds.json -- every kept "
+        "entry's fingerprint is re-verified against its own named generation before "
+        "anything is written",
+    )
+    migrate_connection_daily_generation.add_argument("--output", type=Path, required=True)
+
+    validate_connection_daily_v2 = subparsers.add_parser(
+        "validate-connection-daily-manifest-v2",
+        help="validate a schema-v2 (multi-generation) Connection Guesser daily manifest",
+    )
+    validate_connection_daily_v2.add_argument("--manifest", type=Path, required=True)
+    validate_connection_daily_v2.add_argument(
+        "--rounds",
+        action="append",
+        default=[],
+        required=True,
+        metavar="GENERATION_ID=PATH",
+        help="repeat once per generation named in the manifest's generations[]",
+    )
+
     connection_daily_diagnostics = subparsers.add_parser(
         "connection-daily-manifest-diagnostics",
         help=(
@@ -2444,6 +2511,97 @@ def main(argv: Sequence[str] | None = None) -> int:
         conn_daily_manifest = json.loads(args.manifest.read_text())
         conn_rounds = json.loads(args.rounds.read_text())
         validate_connection_daily_manifest(conn_daily_manifest, conn_rounds)
+        print(json.dumps({"ok": True}, indent=2))
+        return 0
+
+    if args.command == "upgrade-connection-daily-manifest-to-v2":
+        from networked_players_graph_core.connection_daily_manifest import (
+            upgrade_connection_daily_manifest_to_v2,
+        )
+
+        v1_manifest = json.loads(args.manifest.read_text())
+        v2_manifest = upgrade_connection_daily_manifest_to_v2(
+            v1_manifest, generation_id=args.generation_id, rounds_url=args.rounds_url
+        )
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(json.dumps(v2_manifest, indent=2) + "\n")
+        print(
+            json.dumps(
+                {
+                    "output": str(args.output),
+                    "schema_version": v2_manifest["schema_version"],
+                    "generation_count": len(v2_manifest["generations"]),
+                    "schedule_length": len(v2_manifest["schedule"]),
+                },
+                indent=2,
+            )
+        )
+        return 0
+
+    if args.command == "migrate-connection-daily-manifest-generation":
+        from networked_players_graph_core.connection_daily_manifest import (
+            migrate_connection_daily_manifest_generation,
+            validate_connection_daily_manifest_v2,
+        )
+
+        v2_manifest = json.loads(args.manifest.read_text())
+        new_rounds_artifact = json.loads(args.new_rounds.read_text())
+
+        existing_generation_rounds: dict[str, Any] = {}
+        for pair in args.existing_rounds:
+            if "=" not in pair:
+                raise ValueError(f"--existing-rounds must be GENERATION_ID=PATH, got {pair!r}")
+            generation_id, path_str = pair.split("=", 1)
+            existing_generation_rounds[generation_id] = json.loads(Path(path_str).read_text())
+
+        days_before = len(v2_manifest["schedule"])
+        migrated = migrate_connection_daily_manifest_generation(
+            v2_manifest,
+            new_rounds_artifact,
+            cutover_date=args.cutover_date,
+            new_generation_id=args.new_generation_id,
+            new_rounds_url=args.new_rounds_url,
+            days=args.days,
+            generated_at=args.generated_at,
+            existing_generation_rounds=existing_generation_rounds,
+        )
+        validate_connection_daily_manifest_v2(
+            migrated, {**existing_generation_rounds, args.new_generation_id: new_rounds_artifact}
+        )
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(json.dumps(migrated, indent=2) + "\n")
+        kept_count = sum(
+            1 for e in migrated["schedule"] if e["generation"] != args.new_generation_id
+        )
+        print(
+            json.dumps(
+                {
+                    "output": str(args.output),
+                    "days_before": days_before,
+                    "days_after": len(migrated["schedule"]),
+                    "kept_entries": kept_count,
+                    "new_entries": len(migrated["schedule"]) - kept_count,
+                    "cutover_date": args.cutover_date,
+                    "generations": [g["generation_id"] for g in migrated["generations"]],
+                },
+                indent=2,
+            )
+        )
+        return 0
+
+    if args.command == "validate-connection-daily-manifest-v2":
+        from networked_players_graph_core.connection_daily_manifest import (
+            validate_connection_daily_manifest_v2,
+        )
+
+        v2_manifest = json.loads(args.manifest.read_text())
+        rounds_by_generation: dict[str, Any] = {}
+        for pair in args.rounds:
+            if "=" not in pair:
+                raise ValueError(f"--rounds must be GENERATION_ID=PATH, got {pair!r}")
+            generation_id, path_str = pair.split("=", 1)
+            rounds_by_generation[generation_id] = json.loads(Path(path_str).read_text())
+        validate_connection_daily_manifest_v2(v2_manifest, rounds_by_generation)
         print(json.dumps({"ok": True}, indent=2))
         return 0
 
