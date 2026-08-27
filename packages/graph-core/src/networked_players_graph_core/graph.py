@@ -202,6 +202,40 @@ _NON_COLLABORATIVE_ROLE_TOKENS = frozenset(
         "edited by",
         "dj mix",
         "mashup",
+        # Film/video production credits (added 2026-08-27, Phase 7 preflight).
+        # A music-video director, cinematographer or film editor worked on a
+        # *film*, not on the recording -- they were never in the room for the
+        # session. Measured on the real published graph before adding: these
+        # tokens are what kept 2.94% of contributor-to-contributor edge slots
+        # (3,564 of 121,392, across 432 distinct role strings) edge-eligible,
+        # and the top strings caught are exactly "Film Director" (683),
+        # "Film Producer" (442), "Film Editor" (220), "Camera Operator" (140),
+        # "Creative Director" (136) and "Director Of Photography" (121).
+        #
+        # The every-component rule protects the case that matters: a musician
+        # who also directed the video ("Acoustic Guitar, Producer, Vocals,
+        # Film Director, ...") keeps every one of their edges, because
+        # `acoustic guitar` is not in this set. This can still only
+        # under-filter, never over-filter.
+        #
+        # Deliberately NOT added: "directed by" (a bare `Directed By` is
+        # ambiguous -- "Directed By [Musical Director]" is a real musical role
+        # and the bracket qualifier is stripped before the lookup), and
+        # "music director" (musical direction of a band or orchestra, which is
+        # a genuine musical contribution).
+        "film director",
+        "film producer",
+        "film editor",
+        "cinematographer",
+        "camera operator",
+        "director of photography",
+        "film technician",
+        "video director",
+        "video editor",
+        "lighting director",
+        "creative director",
+        "choreography",
+        "choreographer",
     }
 )
 

@@ -275,6 +275,32 @@ gitignored) — only aggregate counts and method are recorded here, per
   quality claim (the tool's own method note is explicit that an empty
   caveat list is never confirmation of clean provenance, only absence
   of a known red flag).
+- **Two corrections to the paragraph above (2026-08-27, Phase 7
+  preflight).** Both were found by re-deriving these numbers from the same
+  still-present local report, not by re-running the pipeline.
+  1. **The ~448 figure counts albums already in the catalog.**
+     `rank-album-candidates` has no already-published exclusion and
+     `review-album-candidates` does not flag one, so 76 of the 200 candidates
+     (38%) are masters already in
+     `apps/web/public/data/catalog/albums.v1.json` — including 7 of the top 20
+     by value. Restricted to the 124 genuinely-unpublished candidates, a
+     top-20 pilot adds **285** new contributors, not 448 (~36% lower). The
+     33.5%/9%/4% distribution figures are unaffected in kind, but they too are
+     computed over the mixed set.
+  2. **"Zero format-descriptor caveats" is a dataset artifact, not a
+     measurement.** That run used `local/processed/discogs-onehop/` — the
+     **v1** corpus, which has no `table=release_formats`. `graph.py`
+     deliberately substitutes an empty `release_formats` view when no parquet
+     files exist, and `caveat_flags_for_descriptors` returns 0 for an empty
+     descriptor set — so an empty caveat list across all 200 was structurally
+     guaranteed before a single candidate was read. `graph.py`'s own docstring
+     anticipates exactly this ("callers must treat as 'no descriptors known'
+     rather than 'no caveats'"). Cross-checked against the **v3** corpus,
+     which does carry `release_formats`, the same 200 main releases yield
+     **1** `reissue` caveat. The run followed the documented procedure —
+     `docs/OPERATOR_SETUP.md`'s catalog-regen runbook pointed at the v1 path —
+     so the runbook is what was wrong, and it has been corrected rather than
+     this being recorded as operator error.
 - *What this does NOT do*: propose, rank-and-ship, or even name any
   specific candidate publicly. No catalog artifact
   (`data/albums/top-albums-v1.json`, `apps/web/public/data/catalog/

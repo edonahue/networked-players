@@ -667,7 +667,16 @@ the release-format policy locally.
 ### Preconditions
 
 - Clean tree, latest `main` pulled; `make check` green (optional).
-- A completed one-hop dataset at `local/processed/discogs-onehop/snapshot=<date>`.
+- A completed one-hop dataset at `local/processed/discogs-onehop-v3/snapshot=<date>`.
+  **Use the v3 root, not `discogs-onehop/`.** Corrected 2026-08-27: the v1 root has no
+  `table=release_formats`, and `graph.py` deliberately substitutes an empty
+  `release_formats` view when that table is absent rather than failing. Every
+  format-descriptor-derived signal downstream — `evidence_caveats` on candidate reports
+  most visibly — then comes back empty for structural reasons that look exactly like a
+  clean result. The 2026-08-17 readiness run (PR #143) hit this and recorded "zero
+  caveats across 200 candidates" as a finding; see the correction in
+  `docs/NEXT_PATH_BRIEF.md`. A run against v1 is not wrong so much as blind, and nothing
+  in the output says so.
 - Parsed masters at `<masters-root>/snapshot=<date>` (see "Masters parse" in
   `docs/DATA_SIZING.md`).
 - A release-format policy (`release-format-scoring-index.json`) built for the same
@@ -679,7 +688,7 @@ the release-format policy locally.
 
 ```bash
 uv run networked-players-catalog rank-album-candidates \
-  --dataset local/processed/discogs-onehop/snapshot=20260601 \
+  --dataset local/processed/discogs-onehop-v3/snapshot=20260601 \
   --output local/analysis/album-catalog-regen/candidates.json \
   --limit 200 \
   --release-format-policy <path-to-release-format-scoring-index.json> \
@@ -691,19 +700,29 @@ uv run networked-players-catalog rank-album-candidates \
 
 ```bash
 uv run networked-players-catalog build-public-album-catalog \
-  --onehop-root local/processed/discogs-onehop/snapshot=20260601 \
+  --onehop-root local/processed/discogs-onehop-v3/snapshot=20260601 \
   --candidates local/analysis/album-catalog-regen/candidates.json \
-  --target-count 140 \
+  --target-count "$(python3 -c 'import json,sys; print(len(json.load(open(sys.argv[1]))["albums"]))' apps/web/public/data/catalog/albums.v1.json)" \
   --output apps/web/public/data/catalog/albums.v1.json \
   --release-format-policy <path-to-release-format-scoring-index.json> \
   --masters-root <masters-root>/snapshot=20260601 \
   --studio-album-exclusions data/albums/studio-album-master-exclusions-v1.json
 ```
 
+`--target-count` is read from the currently-committed catalog rather than hardcoded, so a
+routine regen reproduces the published size instead of silently resizing it. Pass an
+explicit number **only** when deliberately growing or shrinking the catalog, and say so in
+the PR — that is an editorial decision, not a regen detail. (Corrected 2026-08-27: this
+step previously hardcoded `--target-count 140`, which would have quietly shrunk any
+already-expanded catalog back to 140 on the next routine regen.)
+
 `build-public-album-catalog` requires every policy input and fails closed if one is
 missing or its `snapshot_date` disagrees with the one-hop dataset's — never fall back to
 the EXPLORATORY `build-album-catalog` command for the committed artifact (see its own
-help text).
+help text). Note the currently-committed `albums.v1.json` records
+`"generated_by": "networked-players-catalog build-album-catalog 0.1.0"` — i.e. it predates
+this instruction and was built with the exploratory command. The next regen must use
+`build-public-album-catalog` and the stamped `generated_by` should change accordingly.
 
 ### 3. Validate
 

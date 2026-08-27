@@ -15,6 +15,7 @@ import {
   isRhythmSectionRole,
   rhythmSectionEdgeFilter,
 } from "../src/game/roleTaxonomy";
+import { ROLE_CATEGORY_LABEL } from "../src/data/contributors";
 import {
   buildArtistIndex,
   findPath,
@@ -255,4 +256,40 @@ test("findPath's edgeFilter restricts traversal to qualifying edges", () => {
     behindTheGlassEdgeFilter,
   );
   expect(directHop.ok).toBe(true);
+});
+
+// Drift guard added with Phase 7's preflight, which introduced a new role
+// category (`audiovisual_production`) on the Python side. `ROLE_CATEGORY_LABEL`
+// is what builds the contributor directory's filter chips
+// (`contributorsDirectory.ts::ROLE_CATEGORY_CHIPS`), so a category the Python
+// taxonomy emits but this map doesn't name silently loses its chip -- the
+// contributor still renders (line 204 falls back to the raw value), but nobody
+// can filter for them. These goldens mirror
+// `networked_players_contracts.contributor_index._VALID_ROLE_CATEGORIES`
+// exactly; update both together or this fails.
+test.describe("ROLE_CATEGORY_LABEL parity", () => {
+  test("names exactly the categories the published contract allows", () => {
+    expect(Object.keys(ROLE_CATEGORY_LABEL).sort()).toEqual(
+      [
+        "arrangement",
+        "audiovisual_production",
+        "brass_woodwind",
+        "composition",
+        "engineering",
+        "packaging_business",
+        "percussion_keys",
+        "production",
+        "rework",
+        "strings",
+        "unknown",
+        "vocals",
+      ].sort(),
+    );
+  });
+
+  test("every label is non-empty and distinct", () => {
+    const labels = Object.values(ROLE_CATEGORY_LABEL);
+    expect(labels.every((l) => l.trim().length > 0)).toBe(true);
+    expect(new Set(labels).size).toBe(labels.length);
+  });
 });
