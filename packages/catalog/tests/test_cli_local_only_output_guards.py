@@ -34,6 +34,14 @@ def _write(path: Path, payload: object) -> Path:
         "data/albums/top-albums-v1.json",
         "docs/data/leaked.json",
         "report.json",
+        # Traversal: textually starts with `local/`, resolves into the public
+        # tree. A string test accepts this and `write_text` then follows the
+        # `..` straight out -- exactly what this guard exists to stop.
+        "local/../apps/web/public/data/review.json",
+        "local/nested/../../public/review.json",
+        # `local` must match as a real path component, never a substring.
+        "locally/review.json",
+        "local-notes.json",
     ],
 )
 def test_review_album_candidates_refuses_to_write_outside_local(
@@ -58,6 +66,31 @@ def test_review_album_candidates_refuses_to_write_outside_local(
             ]
         )
     assert not output.exists()
+
+
+@pytest.mark.parametrize(
+    "output_name",
+    [
+        "local/analysis/tiers.json",
+        "local/../local/analysis/tiers.json",
+    ],
+)
+def test_rank_exploration_tier_shares_the_same_resolved_guard(
+    tmp_path: Path, output_name: str
+) -> None:
+    """The sibling command had the same textual check and the same traversal
+    hole; both now go through one resolved helper, so neither can drift."""
+    from networked_players_catalog.cli import _require_local_only_output
+
+    # Accepts a real local/ path, including one that only resolves to it.
+    _require_local_only_output(tmp_path / output_name, command="rank-exploration-tier", why="test")
+
+    with pytest.raises(ValueError, match="refuses to write outside local/"):
+        _require_local_only_output(
+            tmp_path / "local/../apps/web/public/data/tiers.json",
+            command="rank-exploration-tier",
+            why="test",
+        )
 
 
 def test_review_album_candidates_accepts_a_local_path(tmp_path: Path) -> None:

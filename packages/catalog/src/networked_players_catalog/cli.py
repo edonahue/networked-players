@@ -13,6 +13,35 @@ from .discogs.download import download_file
 from .discogs.manifest import DumpKind, SnapshotManifest, build_manifest
 
 
+def _require_local_only_output(output: Path, *, command: str, why: str) -> None:
+    """Refuse an `--output` that does not land inside a real `local/` directory.
+
+    Resolves before deciding. A textual `startswith("local/")` test accepts
+    `local/../apps/web/public/data/whatever.json`, which `write_text` then
+    happily follows straight into the public tree -- the exact opposite of what
+    this guard exists to do. `resolve()` also collapses symlinks, so a symlinked
+    `local/` pointing somewhere else cannot smuggle a private report out either.
+    (`apps/review/review_server.py`'s `/art/*` handler already takes this
+    approach for the same reason.)
+
+    `local/` is matched as a real path component, never as a substring: a
+    sibling directory named `locally/` or a file called `local-notes.json` must
+    not satisfy a rule about the `local/` tree.
+
+    Known and accepted limit: this asks "is any ancestor literally named
+    `local`", not "is this under THIS repository's local/". Anchoring to
+    `Path.cwd()` instead would reject legitimate absolute paths (the real
+    `local/` here is a bind mount, and operators do pass absolute paths), and
+    the case it would additionally catch -- a checkout whose own ancestors are
+    named `local` -- is not an exfiltration vector, because the public tree
+    would then sit under that same ancestor and no path rule could separate
+    them.
+    """
+    resolved = output.resolve()
+    if "local" not in resolved.parts:
+        raise ValueError(f"{command} refuses to write outside local/: {str(output)!r} -- {why}")
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="networked-players-catalog")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -2275,14 +2304,15 @@ def main(argv: Sequence[str] | None = None) -> int:
         # collection-membership-adjacent per docs/PUBLIC_PRIVATE_BOUNDARY.md.
         # Nothing enforced the promise until now, while its sibling
         # `rank-exploration-tier` already did -- same guard, same wording.
-        output_str = str(args.output)
-        if not (output_str.startswith("local/") or "/local/" in output_str):
-            raise ValueError(
-                f"review-album-candidates refuses to write outside local/: {output_str!r} -- "
+        _require_local_only_output(
+            args.output,
+            command="review-album-candidates",
+            why=(
                 "this report is derived from the private collection-seeded one-hop corpus, "
                 "so its per-candidate detail is collection-membership-adjacent and stays "
                 "local-only (docs/PUBLIC_PRIVATE_BOUNDARY.md)"
-            )
+            ),
+        )
 
         candidates = json.loads(args.candidates.read_text())
         pathfinding_graph = json.loads(args.pathfinding_graph.read_text())
@@ -2321,13 +2351,14 @@ def main(argv: Sequence[str] | None = None) -> int:
 
         from .discogs.release_format_policy import load_master_exclusions
 
-        output_str = str(args.output)
-        if not (output_str.startswith("local/") or "/local/" in output_str):
-            raise ValueError(
-                f"rank-exploration-tier refuses to write outside local/: {output_str!r} -- "
+        _require_local_only_output(
+            args.output,
+            command="rank-exploration-tier",
+            why=(
                 "an exploration tier is a measurement-only artifact, never a publication "
                 "candidate on its own (ADR 0049)"
-            )
+            ),
+        )
 
         editorial_albums = json.loads(args.editorial_albums.read_text())["albums"]
         candidates = json.loads(args.candidates.read_text())
