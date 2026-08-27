@@ -1,0 +1,140 @@
+{
+  "albums": [
+    {
+      "artist": "Jamiroquai",
+      "artist_id": 8029,
+      "main_release_id": 25379,
+      "master_id": 69938,
+      "query_artist": "Jamiroquai",
+      "query_title": "Emergency On Planet Earth",
+      "title": "Emergency On Planet Earth",
+      "year": 1993
+    },
+    {
+      "artist": "Jamiroquai",
+      "artist_id": 8029,
+      "main_release_id": 10820794,
+      "master_id": 69946,
+      "query_artist": "Jamiroquai",
+      "query_title": "The Return Of The Space Cowboy",
+      "title": "The Return Of The Space Cowboy",
+      "year": 1994
+    },
+    {
+      "artist": "Jamiroquai",
+      "artist_id": 8029,
+      "main_release_id": 21974,
+      "master_id": 69956,
+      "query_artist": "Jamiroquai",
+      "query_title": "Travelling Without Moving",
+      "title": "Travelling Without Moving",
+      "year": 1996
+    },
+    {
+      "artist": "Jamiroquai",
+      "artist_id": 8029,
+      "main_release_id": 21975,
+      "master_id": 135633,
+      "query_artist": "Jamiroquai",
+      "query_title": "Synkronized",
+      "title": "Synkronized",
+      "year": 1999
+    },
+    {
+      "artist": "Jamiroquai",
+      "artist_id": 8029,
+      "main_release_id": 21976,
+      "master_id": 69925,
+      "query_artist": "Jamiroquai",
+      "query_title": "2001 A Funk Odyssey",
+      "title": "A Funk Odyssey",
+      "year": 2001
+    },
+    {
+      "artist": "Martin Denny",
+      "artist_id": 36860,
+      "main_release_id": 399417,
+      "master_id": 172407,
+      "query_artist": "Martin Denny",
+      "query_title": "Exotica",
+      "title": "Exotica",
+      "year": 1957
+    },
+    {
+      "artist": "Arthur Lyman",
+      "artist_id": 27517,
+      "main_release_id": 374004,
+      "master_id": 110874,
+      "query_artist": "Arthur Lyman",
+      "query_title": "Taboo",
+      "title": "Taboo - The Exotic Sounds Of Arthur Lyman",
+      "year": 1958
+    },
+    {
+      "artist": "The Beatles",
+      "artist_id": 82730,
+      "main_release_id": 2318045,
+      "master_id": 45284,
+      "query_artist": "The Beatles",
+      "query_title": "Revolver",
+      "title": "Revolver",
+      "year": 1966
+    },
+    {
+      "artist": "The Jimi Hendrix Experience",
+      "artist_id": 255672,
+      "main_release_id": 1348423,
+      "master_id": 24511,
+      "query_artist": "The Jimi Hendrix Experience",
+      "query_title": "Axis - Bold As Love",
+      "title": "Axis: Bold As Love",
+      "year": 1967
+    },
+    {
+      "artist": "Prince",
+      "artist_id": 28795,
+      "main_release_id": 123915,
+      "master_id": 52497,
+      "query_artist": "Prince",
+      "query_title": "Sign \"O\" The Time",
+      "title": "Sign \"O\" The Times",
+      "year": 1987
+    },
+    {
+      "artist": "Radiohead",
+      "artist_id": 3840,
+      "main_release_id": 1174296,
+      "master_id": 21520,
+      "query_artist": "Radiohead",
+      "query_title": "In Rainbows",
+      "title": "In Rainbows",
+      "year": 2007
+    },
+    {
+      "artist": "Depeche Mode",
+      "artist_id": 2725,
+      "main_release_id": 46905,
+      "master_id": 18080,
+      "query_artist": "Depeche Mode",
+      "query_title": "Violator",
+      "title": "Violator",
+      "year": 1990
+    },
+    {
+      "artist": "Red Hot Chili Peppers",
+      "artist_id": 92476,
+      "main_release_id": 375491,
+      "master_id": 42522,
+      "query_artist": "Red Hot Chili Peppers",
+      "query_title": "Blood Sugar Sex Magik",
+      "title": "Blood Sugar Sex Magik",
+      "year": 1991
+    }
+  ],
+  "generated_at": "2026-08-27T19:20:17.608131+00:00",
+  "generated_by": "networked-players-catalog resolve-editorial-albums 0.1.0",
+  "kind": "public-editorial-seed",
+  "note": "Phase 7 Bucket A: personal/editorial anchors across three lanes (Jamiroquai core run, Disney jazz / exotica, classic and alternative guitar-centered records), selected by editorial preference and resolved against the real Discogs snapshot. Every album still passes the real studio-album, format, and identity-resolution policy at catalog-build time; two lane members (a Louis Armstrong pick and a Dave Brubeck Quartet pick, both genre-tagged Stage & Screen at the master level) and a third pick (no clean studio master in this snapshot, its named reserve also absent from the snapshot) were dropped rather than force-substituted -- see docs/decisions for the allocation record.",
+  "schema_version": 1,
+  "snapshot_date": "20260601"
+}
