@@ -69,18 +69,36 @@ def build_album_catalog_audit(
     `graph` must already have masters attached (`graph.attach_masters(...)`)
     for `master_genre_style_result` to be meaningful."""
     editorial_count = int(catalog["editorial_count"])
-    # `pre_resolved_count` is a Phase 7 (ADR 0065) addition, absent from any
-    # catalog built before this field existed -- `.get(..., 0)` keeps this
-    # function's classification identical on an older catalog, where the
-    # albums list only ever had two segments (editorial, then candidates).
-    pre_resolved_count = int(catalog.get("pre_resolved_count", 0))
-    pre_resolved_end = editorial_count + pre_resolved_count
+    # `pre_resolved_buckets` (Phase 7 Buckets B/C addition) names each
+    # pre-resolved lane's own label and count, in the exact order
+    # `assemble_album_catalog` appended them -- walking it gives per-lane
+    # provenance (personal_editorial vs. graph_rich vs. coverage_gap)
+    # instead of collapsing every pre-resolved album into one label. A
+    # catalog built before this field existed (or with only `--personal-
+    # seed`, no Buckets B/C) falls back to the single flat `pre_resolved_
+    # count` range labeled "personal_editorial", matching this function's
+    # original (ADR 0065) behavior exactly.
+    pre_resolved_buckets = catalog.get("pre_resolved_buckets")
+    if not pre_resolved_buckets:
+        pre_resolved_count = int(catalog.get("pre_resolved_count", 0))
+        pre_resolved_buckets = (
+            [{"label": "personal_editorial", "count": pre_resolved_count}]
+            if pre_resolved_count
+            else []
+        )
+    bucket_starts: list[tuple[int, int, str]] = []
+    cursor = editorial_count
+    for bucket in pre_resolved_buckets:
+        count = int(bucket["count"])
+        bucket_starts.append((cursor, cursor + count, str(bucket["label"])))
+        cursor += count
 
     def _selection_source(index: int) -> str:
         if index < editorial_count:
             return "editorial"
-        if index < pre_resolved_end:
-            return "personal_editorial"
+        for start, end, label in bucket_starts:
+            if start <= index < end:
+                return label
         return "graph_candidate"
 
     rows: list[dict[str, Any]] = []

@@ -270,6 +270,7 @@ def assemble_album_catalog(
     *,
     target_count: int,
     pre_resolved_albums: list[dict[str, Any]] | None = None,
+    additional_pre_resolved: list[tuple[str, list[dict[str, Any]]]] | None = None,
     private_weight_fn: Callable[[int], float] | None = None,
     allowed_release_ids: frozenset[int] | None = None,
     master_exclusions: frozenset[int] | None = None,
@@ -317,6 +318,21 @@ def assemble_album_catalog(
     too), the one place multiple-albums-per-artist is deliberately NOT
     extended to Bucket B.
 
+    `additional_pre_resolved` (Phase 7 Buckets B/C: `select-graph-rich-
+    candidates`'s exact marginal-value picks and a human-reviewed coverage-
+    gap selection) is a list of `(label, albums)` groups, each processed
+    with the exact same eligibility re-check, cross-bucket master-dedup, and
+    artist exclusion as `pre_resolved_albums` -- one rule, applied uniformly
+    to every pre-resolved lane, never a second copy of it. Unlike Bucket A,
+    these lanes are algorithmic output, not hand-curated, so this function
+    still never chooses which albums go in either group; it only places
+    already-decided picks. Group order matters: it determines both dedup
+    priority (an earlier group's master_id wins a collision) and the
+    returned `pre_resolved_buckets` ordering, which is what lets
+    `catalog_audit.py` report each album's real provenance (personal
+    editorial vs. graph-rich vs. coverage-gap) instead of collapsing every
+    pre-resolved lane into one label.
+
     The returned `albums[]` are ID-resolved (`MatchedAlbum.to_resolved_dict()`
     shape: `artist_id`, `main_release_id`, ...), not `{artist, title}` name
     queries -- editorial, pre-resolved, and candidate entries alike already
@@ -338,31 +354,49 @@ def assemble_album_catalog(
     editorial_artist_ids = {m.artist_id for m in matched_editorial}
     seen_master_ids: set[int] = {m.master_id for m in matched_editorial if m.master_id is not None}
 
+    pre_resolved_groups: list[tuple[str, list[dict[str, Any]]]] = [
+        ("personal_editorial", pre_resolved_albums or [])
+    ]
+    pre_resolved_groups.extend(additional_pre_resolved or [])
+
     pre_resolved_kept: list[MatchedAlbum] = []
     pre_resolved_missed: list[dict[str, Any]] = []
-    for album in pre_resolved_albums or []:
-        master_id = album.get("master_id")
-        main_release_id = int(album["main_release_id"])
-        if master_id is not None and int(master_id) in seen_master_ids:
-            pre_resolved_missed.append(
-                _pre_resolved_missed_entry(
-                    album, reason="duplicate master_id already resolved earlier"
+    pre_resolved_buckets: list[dict[str, Any]] = []
+    for label, albums_in_group in pre_resolved_groups:
+        group_kept_count = 0
+        for album in albums_in_group:
+            master_id = album.get("master_id")
+            main_release_id = int(album["main_release_id"])
+            if master_id is not None and int(master_id) in seen_master_ids:
+                pre_resolved_missed.append(
+                    _pre_resolved_missed_entry(
+                        album, reason="duplicate master_id already resolved earlier"
+                    )
                 )
+                continue
+            reason = release_eligibility_reason(
+                graph,
+                release_id=main_release_id,
+                master_id=int(master_id) if master_id is not None else None,
+                allowed_release_ids=allowed_release_ids,
+                master_exclusions=master_exclusions,
             )
-            continue
-        reason = release_eligibility_reason(
-            graph,
-            release_id=main_release_id,
-            master_id=int(master_id) if master_id is not None else None,
-            allowed_release_ids=allowed_release_ids,
-            master_exclusions=master_exclusions,
-        )
-        if reason is not None:
-            pre_resolved_missed.append(_pre_resolved_missed_entry(album, reason=reason))
-            continue
-        if master_id is not None:
-            seen_master_ids.add(int(master_id))
-        pre_resolved_kept.append(_pre_resolved_to_matched_album(graph, album))
+            if reason is not None:
+                pre_resolved_missed.append(_pre_resolved_missed_entry(album, reason=reason))
+                continue
+            if master_id is not None:
+                seen_master_ids.add(int(master_id))
+            pre_resolved_kept.append(_pre_resolved_to_matched_album(graph, album))
+            group_kept_count += 1
+        if albums_in_group:
+            # Only record a bucket that was actually attempted (a non-empty
+            # input) -- otherwise every catalog would carry a phantom
+            # "personal_editorial: 0" entry even when --personal-seed was
+            # never given at all, which is noise in the audit trail, not
+            # signal (a genuinely-attempted lane that resolved to zero real
+            # picks IS still recorded, since that zero is itself real
+            # information).
+            pre_resolved_buckets.append({"label": label, "count": group_kept_count})
 
     pre_resolved_artist_ids = {m.artist_id for m in pre_resolved_kept}
     excluded_artist_ids = editorial_artist_ids | pre_resolved_artist_ids
@@ -432,19 +466,30 @@ def assemble_album_catalog(
         "are ID-resolved (artist_id/main_release_id), not name queries."
     )
     if pre_resolved_kept or pre_resolved_missed:
-        # Only claim this source participated when --personal-seed was
-        # actually given -- the option explicitly supports editorial-plus-
-        # candidates-only builds, and a source note naming a file that
-        # never ran would be misleading provenance on a public artifact.
+        # Only claim a pre-resolved lane participated when it was actually
+        # given a non-empty input -- every lane is optional, and a source
+        # note naming a lane that never ran would be misleading provenance
+        # on a public artifact. Named generically (by whichever labels the
+        # caller passed), not hardcoded to Bucket A/B/C, since this function
+        # doesn't know which files backed each label -- that specificity is
+        # the CLI layer's job.
+        participating_labels = [
+            label for label, albums_in_group in pre_resolved_groups if albums_in_group
+        ]
+        lane_phrase = (
+            f"{len(participating_labels)} pre-resolved lane(s) ({', '.join(participating_labels)})"
+            if participating_labels
+            else "a pre-resolved lane"
+        )
         source_note = (
-            "Hybrid catalog: an editorial backbone, a personal/editorial anchor lane, "
+            f"Hybrid catalog: an editorial backbone, {lane_phrase}, "
             "and graph-rich additions selected by deterministic candidate scoring "
             "(ADR 0038, ADR 0065). The canonical, single source of truth for which "
             "albums exist across every real public surface (album browser, Connection "
             "Guesser, Record Routes) -- every one derives its album set from this "
             "artifact's own catalog_version, never re-deriving or narrowing it "
             "independently (see ADR 0043). Combined at build time from "
-            "data/albums/top-albums-v1.json, data/albums/editorial-seed-v1.json, and a "
+            "data/albums/top-albums-v1.json, one or more pre-resolved lanes, and a "
             "rank-album-candidates shortlist. Albums are ID-resolved "
             "(artist_id/main_release_id), not name queries."
         )
@@ -460,6 +505,7 @@ def assemble_album_catalog(
         "editorial_missed": missed_editorial,
         "pre_resolved_count": len(pre_resolved_kept),
         "pre_resolved_missed": pre_resolved_missed,
+        "pre_resolved_buckets": pre_resolved_buckets,
         "candidate_count_considered": len(candidates),
         "candidate_count_added": len(candidate_albums),
         "albums": albums,
