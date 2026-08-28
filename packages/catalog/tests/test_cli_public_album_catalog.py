@@ -1186,3 +1186,86 @@ def test_coverage_gap_candidates_missing_candidates_array_refused(tmp_path: Path
     with pytest.raises(ValueError, match="'candidates' array"):
         main(args)
     assert not output_path.exists()
+
+
+def test_graph_rich_selection_missing_artist_field_refused(tmp_path: Path) -> None:
+    """Real Codex finding: a same-snapshot, valid-ID entry that omits both
+    `artist` and `artist_name` must fail closed here, not become the
+    literal string "None" in the committed public catalog."""
+    onehop_root = _write_onehop_dataset(tmp_path / "onehop")
+    masters_root = _write_masters_dataset(tmp_path / "masters")
+    policy_path = _widened_policy(tmp_path / "policy.json")
+    exclusions_path = _write_exclusions(tmp_path / "exclusions.json")
+    graph_rich_path = tmp_path / "graph-rich.json"
+    graph_rich_path.write_text(
+        json.dumps(
+            {
+                "snapshot_date": SNAPSHOT_DATE,
+                "selected": [
+                    {
+                        "master_id": None,
+                        "main_release_id": 9501,
+                        "artist_id": 750,
+                        "sample_title": "Graph Rich Pick",
+                        "year": 2001,
+                    }
+                ],
+            }
+        )
+    )
+    output_path = tmp_path / "albums.v1.json"
+
+    args = _base_args(tmp_path, onehop_root=onehop_root, output=output_path)
+    args += [
+        "--release-format-policy",
+        str(policy_path),
+        "--masters-root",
+        str(masters_root),
+        "--studio-album-exclusions",
+        str(exclusions_path),
+        "--graph-rich-selection",
+        str(graph_rich_path),
+    ]
+    with pytest.raises(ValueError, match="'artist'/'artist_name'"):
+        main(args)
+    assert not output_path.exists()
+
+
+def test_coverage_gap_candidates_missing_title_field_refused(tmp_path: Path) -> None:
+    onehop_root = _write_onehop_dataset(tmp_path / "onehop")
+    masters_root = _write_masters_dataset(tmp_path / "masters")
+    policy_path = _widened_policy(tmp_path / "policy.json")
+    exclusions_path = _write_exclusions(tmp_path / "exclusions.json")
+    coverage_gap_path = tmp_path / "coverage-gap.json"
+    coverage_gap_path.write_text(
+        json.dumps(
+            {
+                "snapshot_date": SNAPSHOT_DATE,
+                "candidates": [
+                    {
+                        "master_id": None,
+                        "main_release_id": 9601,
+                        "artist_id": 760,
+                        "artist_name": "Coverage Gap Artist",
+                        "year": 2002,
+                    }
+                ],
+            }
+        )
+    )
+    output_path = tmp_path / "albums.v1.json"
+
+    args = _base_args(tmp_path, onehop_root=onehop_root, output=output_path)
+    args += [
+        "--release-format-policy",
+        str(policy_path),
+        "--masters-root",
+        str(masters_root),
+        "--studio-album-exclusions",
+        str(exclusions_path),
+        "--coverage-gap-candidates",
+        str(coverage_gap_path),
+    ]
+    with pytest.raises(ValueError, match="'title'/'sample_title'"):
+        main(args)
+    assert not output_path.exists()

@@ -354,23 +354,44 @@ def assemble_album_catalog(
     editorial_artist_ids = {m.artist_id for m in matched_editorial}
     seen_master_ids: set[int] = {m.master_id for m in matched_editorial if m.master_id is not None}
 
-    pre_resolved_groups: list[tuple[str, list[dict[str, Any]]]] = [
-        ("personal_editorial", pre_resolved_albums or [])
-    ]
-    pre_resolved_groups.extend(additional_pre_resolved or [])
-
     pre_resolved_kept: list[MatchedAlbum] = []
     pre_resolved_missed: list[dict[str, Any]] = []
     pre_resolved_buckets: list[dict[str, Any]] = []
-    for label, albums_in_group in pre_resolved_groups:
+
+    # Bucket A (`pre_resolved_albums`) deliberately allows multiple albums
+    # by the same artist (ADR 0065) -- `locked_artist_ids` is seeded from
+    # `editorial_artist_ids` alone, so Bucket A's own loop never checks it.
+    # Every OTHER pre-resolved lane (Bucket B/C, `additional_pre_resolved`)
+    # gets ONE album per artist, same as the generic candidates pool: a
+    # graph-rich or coverage-gap entry whose artist already has an editorial,
+    # personal, or earlier-additional-lane album -- or an earlier entry in
+    # its OWN lane -- is dropped and reported in `pre_resolved_missed`,
+    # never silently spending a second expansion slot on one artist.
+    locked_artist_ids: set[int] = set(editorial_artist_ids)
+
+    def _process_pre_resolved_group(
+        label: str, albums_in_group: list[dict[str, Any]], *, enforce_artist_uniqueness: bool
+    ) -> None:
         group_kept_count = 0
         for album in albums_in_group:
             master_id = album.get("master_id")
             main_release_id = int(album["main_release_id"])
+            artist_id = int(album["artist_id"])
             if master_id is not None and int(master_id) in seen_master_ids:
                 pre_resolved_missed.append(
                     _pre_resolved_missed_entry(
                         album, reason="duplicate master_id already resolved earlier"
+                    )
+                )
+                continue
+            if enforce_artist_uniqueness and artist_id in locked_artist_ids:
+                pre_resolved_missed.append(
+                    _pre_resolved_missed_entry(
+                        album,
+                        reason=(
+                            "artist already covered by the editorial list, a personal "
+                            "seed entry, or an earlier pre-resolved lane"
+                        ),
                     )
                 )
                 continue
@@ -386,6 +407,8 @@ def assemble_album_catalog(
                 continue
             if master_id is not None:
                 seen_master_ids.add(int(master_id))
+            if enforce_artist_uniqueness:
+                locked_artist_ids.add(artist_id)
             pre_resolved_kept.append(_pre_resolved_to_matched_album(graph, album))
             group_kept_count += 1
         if albums_in_group:
@@ -397,6 +420,16 @@ def assemble_album_catalog(
             # picks IS still recorded, since that zero is itself real
             # information).
             pre_resolved_buckets.append({"label": label, "count": group_kept_count})
+
+    _process_pre_resolved_group(
+        "personal_editorial", pre_resolved_albums or [], enforce_artist_uniqueness=False
+    )
+    # Bucket A's own kept artists still lock out every LATER lane -- only
+    # Bucket A is exempt from the one-album-per-artist rule, not everything
+    # that comes after it.
+    locked_artist_ids.update(m.artist_id for m in pre_resolved_kept)
+    for label, albums_in_group in additional_pre_resolved or []:
+        _process_pre_resolved_group(label, albums_in_group, enforce_artist_uniqueness=True)
 
     pre_resolved_artist_ids = {m.artist_id for m in pre_resolved_kept}
     excluded_artist_ids = editorial_artist_ids | pre_resolved_artist_ids
@@ -473,9 +506,7 @@ def assemble_album_catalog(
         # caller passed), not hardcoded to Bucket A/B/C, since this function
         # doesn't know which files backed each label -- that specificity is
         # the CLI layer's job.
-        participating_labels = [
-            label for label, albums_in_group in pre_resolved_groups if albums_in_group
-        ]
+        participating_labels = [bucket["label"] for bucket in pre_resolved_buckets]
         lane_phrase = (
             f"{len(participating_labels)} pre-resolved lane(s) ({', '.join(participating_labels)})"
             if participating_labels

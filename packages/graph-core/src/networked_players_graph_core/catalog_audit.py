@@ -86,6 +86,38 @@ def build_album_catalog_audit(
             if pre_resolved_count
             else []
         )
+    else:
+        # `pre_resolved_buckets` drives POSITIONAL provenance ranges below --
+        # a stale or hand-edited catalog with a bogus count (negative, not
+        # summing to `pre_resolved_count`, or overrunning the actual album
+        # list) would silently misclassify every album after it, and
+        # neither `validate_album_catalog` nor `validate_album_catalog_audit`
+        # checks this metadata. Fail closed here, before it's ever used to
+        # derive a range.
+        declared_total = int(catalog.get("pre_resolved_count", 0))
+        counted_total = 0
+        for bucket in pre_resolved_buckets:
+            count = bucket.get("count")
+            if not isinstance(count, int) or isinstance(count, bool) or count < 0:
+                raise AlbumCatalogAuditError(
+                    f"pre_resolved_buckets entry {bucket!r} has a non-negative-integer "
+                    "'count' -- refusing to derive audit provenance from malformed "
+                    "bucket metadata"
+                )
+            counted_total += count
+        if counted_total != declared_total:
+            raise AlbumCatalogAuditError(
+                f"pre_resolved_buckets counts sum to {counted_total}, but pre_resolved_count "
+                f"is {declared_total} -- refusing to derive audit provenance from "
+                "inconsistent bucket metadata"
+            )
+        if editorial_count + counted_total > len(catalog["albums"]):
+            raise AlbumCatalogAuditError(
+                f"editorial_count ({editorial_count}) + pre_resolved_buckets total "
+                f"({counted_total}) exceeds the catalog's own album count "
+                f"({len(catalog['albums'])}) -- refusing to derive audit provenance from "
+                "bucket metadata that overruns the real album list"
+            )
     bucket_starts: list[tuple[int, int, str]] = []
     cursor = editorial_count
     for bucket in pre_resolved_buckets:

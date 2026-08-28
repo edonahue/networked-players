@@ -193,6 +193,50 @@ def test_audit_falls_back_to_personal_editorial_for_a_catalog_without_pre_resolv
     assert by_id[pre_resolved_id]["selection_source"] == "personal_editorial"
 
 
+def test_audit_rejects_a_negative_bucket_count(dataset_root: Path, masters_root: Path) -> None:
+    """Real Codex finding: a stale or hand-edited `pre_resolved_buckets`
+    entry must be rejected before it's used to derive positional
+    provenance ranges, not trusted silently."""
+    catalog = _catalog(dataset_root, masters_root)
+    catalog["pre_resolved_count"] = -1
+    catalog["pre_resolved_buckets"] = [{"label": "graph_rich", "count": -1}]
+    with CreditGraph.open(dataset_root) as graph:
+        graph.attach_masters(masters_root)
+        with pytest.raises(AlbumCatalogAuditError, match="non-negative-integer"):
+            build_album_catalog_audit(
+                graph, catalog, allowed_release_ids=frozenset(), master_exclusions=frozenset()
+            )
+
+
+def test_audit_rejects_bucket_counts_not_summing_to_pre_resolved_count(
+    dataset_root: Path, masters_root: Path
+) -> None:
+    catalog = _catalog(dataset_root, masters_root)
+    catalog["pre_resolved_count"] = 5
+    catalog["pre_resolved_buckets"] = [{"label": "graph_rich", "count": 1}]
+    with CreditGraph.open(dataset_root) as graph:
+        graph.attach_masters(masters_root)
+        with pytest.raises(AlbumCatalogAuditError, match="counts sum to"):
+            build_album_catalog_audit(
+                graph, catalog, allowed_release_ids=frozenset(), master_exclusions=frozenset()
+            )
+
+
+def test_audit_rejects_bucket_totals_overrunning_the_album_list(
+    dataset_root: Path, masters_root: Path
+) -> None:
+    catalog = _catalog(dataset_root, masters_root)
+    huge_count = len(catalog["albums"]) * 10
+    catalog["pre_resolved_count"] = huge_count
+    catalog["pre_resolved_buckets"] = [{"label": "graph_rich", "count": huge_count}]
+    with CreditGraph.open(dataset_root) as graph:
+        graph.attach_masters(masters_root)
+        with pytest.raises(AlbumCatalogAuditError, match="exceeds the catalog's own album count"):
+            build_album_catalog_audit(
+                graph, catalog, allowed_release_ids=frozenset(), master_exclusions=frozenset()
+            )
+
+
 def test_audit_records_master_genre_style_and_release_format_results(
     dataset_root: Path, masters_root: Path
 ) -> None:

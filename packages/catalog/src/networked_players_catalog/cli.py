@@ -3300,12 +3300,28 @@ def main(argv: Sequence[str] | None = None) -> int:
             for required in ("main_release_id", "artist_id"):
                 if raw.get(required) is None:
                     raise ValueError(f"{source} entry missing required field {required!r}: {raw}")
+            artist = raw.get("artist") or raw.get("artist_name")
+            title = raw.get("title") or raw.get("sample_title")
+            # Required, not merely preferred: `_pre_resolved_to_matched_album`
+            # does `str(album["artist"])` / `str(album["title"])` with no
+            # further check, so a missing display field would otherwise
+            # become the literal string "None" -- a malformed input must
+            # fail closed here, not produce a valid-looking public catalog
+            # entry with a user-visible "None" artist or title.
+            if not artist:
+                raise ValueError(
+                    f"{source} entry missing required field 'artist'/'artist_name': {raw}"
+                )
+            if not title:
+                raise ValueError(
+                    f"{source} entry missing required field 'title'/'sample_title': {raw}"
+                )
             return {
                 "master_id": raw.get("master_id"),
                 "main_release_id": raw["main_release_id"],
                 "artist_id": raw["artist_id"],
-                "artist": raw.get("artist") or raw.get("artist_name"),
-                "title": raw.get("title") or raw.get("sample_title"),
+                "artist": artist,
+                "title": title,
                 "year": raw.get("year"),
             }
 
