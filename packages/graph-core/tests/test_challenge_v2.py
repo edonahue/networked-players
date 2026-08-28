@@ -6,7 +6,9 @@ import pytest
 
 from networked_players_graph_core.challenge import (
     ChallengeValidationError,
+    MatchedAlbum,
     build_challenge_v2,
+    build_challenge_v2_from_matched,
     match_albums,
     validate_challenge,
 )
@@ -160,6 +162,114 @@ def test_build_challenge_v2_concurrent_matches_sequential(dataset_root: Path) ->
 
     assert concurrent_artifact == sequential_artifact
     assert concurrent_report == sequential_report
+
+
+def _matched_album(
+    *,
+    artist_id: int,
+    artist_name: str,
+    title: str,
+    master_id: int | None,
+    main_release_id: int,
+    year: int | None = 2000,
+) -> MatchedAlbum:
+    return MatchedAlbum(
+        artist_query=artist_name,
+        title_query=title,
+        master_id=master_id,
+        main_release_id=main_release_id,
+        title=title,
+        artist_id=artist_id,
+        artist_name=artist_name,
+        year=year,
+    )
+
+
+def test_build_challenge_v2_skips_a_same_artist_pair_instead_of_raising(
+    dataset_root: Path,
+) -> None:
+    """Real bug found while doing the actual Phase 7 catalog expansion:
+    `--already-published-catalog` (PR #155) and Bucket A (ADR 0065) both
+    deliberately allow multiple albums by the same artist in the resolved
+    catalog `build-challenge-from-dump` consumes. Two DIFFERENT albums by
+    the SAME artist_id (e.g. two real Jamiroquai albums) reach
+    `_candidate_album_pairs` as `ordered` entries, and without an explicit
+    same-artist skip, `pair = (id, id)` slipped past the `used_pairs` dedup
+    (never seen before) and reached `find_path`, which raises
+    `GraphError('from_artist_id and to_artist_id must differ')` -- there is
+    no meaningful 'how is this artist connected to themselves' question to
+    ask. This was always possible in principle but never exercised before
+    Phase 7, since every earlier catalog deduped to one album per artist
+    everywhere."""
+    matched = [
+        _matched_album(
+            artist_id=100,
+            artist_name="Alice",
+            title="First Light",
+            master_id=901,
+            main_release_id=1,
+        ),
+        _matched_album(
+            artist_id=100,
+            artist_name="Alice",
+            title="Second Alice Album",
+            master_id=None,
+            main_release_id=90001,
+        ),
+        _matched_album(
+            artist_id=300,
+            artist_name="Cara",
+            title="Third Wave",
+            master_id=903,
+            main_release_id=3,
+        ),
+    ]
+    with CreditGraph.open(dataset_root) as graph:
+        artifact, report = build_challenge_v2_from_matched(
+            graph, matched, [], snapshot_date="20260601", generated_by="test-suite"
+        )
+    validate_challenge(artifact)
+    # Every real, distinct-artist pair is still attempted -- only the
+    # same-artist (Alice, Alice) pair is skipped, not silently dropped
+    # along with a real one.
+    assert report["albums_matched"] == 3
+
+
+def test_build_challenge_v2_concurrent_still_skips_a_same_artist_pair(
+    dataset_root: Path,
+) -> None:
+    """The same same-artist skip must hold for the concurrent path
+    (max_workers > 1), not just the sequential default -- both consume the
+    same `_candidate_album_pairs` output."""
+    matched = [
+        _matched_album(
+            artist_id=100,
+            artist_name="Alice",
+            title="First Light",
+            master_id=901,
+            main_release_id=1,
+        ),
+        _matched_album(
+            artist_id=100,
+            artist_name="Alice",
+            title="Second Alice Album",
+            master_id=None,
+            main_release_id=90001,
+        ),
+        _matched_album(
+            artist_id=300,
+            artist_name="Cara",
+            title="Third Wave",
+            master_id=903,
+            main_release_id=3,
+        ),
+    ]
+    with CreditGraph.open(dataset_root) as graph:
+        artifact, report = build_challenge_v2_from_matched(
+            graph, matched, [], snapshot_date="20260601", generated_by="test-suite", max_workers=4
+        )
+    validate_challenge(artifact)
+    assert report["albums_matched"] == 3
 
 
 def test_build_challenge_v2_releases_have_no_extra_columns(dataset_root: Path) -> None:

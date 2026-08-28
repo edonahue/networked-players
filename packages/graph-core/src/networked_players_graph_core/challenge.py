@@ -207,6 +207,21 @@ def _candidate_album_pairs(
     candidates: list[tuple[MatchedAlbum, MatchedAlbum]] = []
     for i, from_album in enumerate(ordered):
         for to_album in ordered[i + 1 :]:
+            if from_album.artist_id == to_album.artist_id:
+                # Real bug found after Phase 7 introduced multi-album-per-
+                # artist pre-resolved lanes (ADR 0065): `ordered` can now
+                # contain two DIFFERENT albums by the SAME artist (e.g. two
+                # Jamiroquai albums, or a Bucket A pick alongside an
+                # already-published album by the same artist). Without this
+                # skip, `pair = (id, id)` slips past the used_pairs dedup
+                # (it was never seen before) and reaches `find_path`, which
+                # raises `GraphError("from_artist_id and to_artist_id must
+                # differ")` -- there is no meaningful "how is this artist
+                # connected to themselves" question to ask. This was always
+                # possible in principle; every catalog before Phase 7
+                # deduped to one album per artist everywhere, so it was
+                # never actually exercised until now.
+                continue
             pair = (
                 min(from_album.artist_id, to_album.artist_id),
                 max(from_album.artist_id, to_album.artist_id),
