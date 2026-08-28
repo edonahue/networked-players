@@ -883,3 +883,389 @@ def test_personal_seed_full_contract_validation_rejects_a_leaked_field(tmp_path:
     with pytest.raises(ValueError, match="failed contract validation"):
         main(args)
     assert not output_path.exists()
+
+
+# --- Phase 7: --graph-rich-selection / --coverage-gap-candidates (Buckets B/C) ----
+
+
+def _widened_policy(path: Path, *, snapshot_date: str = SNAPSHOT_DATE) -> Path:
+    path.write_text(
+        json.dumps(
+            {
+                "kind": "release-format-scoring-index",
+                "policy_name": "studio-album-v1",
+                "policy_version": 1,
+                "schema_version": 1,
+                "snapshot_date": snapshot_date,
+                "allowed_release_ids": [1, 2, 9501, 9601],
+                "allowed_release_count": 4,
+                "source_policy_sha256": "deadbeef",
+            }
+        )
+    )
+    return path
+
+
+def _write_graph_rich_selection(path: Path, *, snapshot_date: str = SNAPSHOT_DATE) -> Path:
+    path.write_text(
+        json.dumps(
+            {
+                "baseline_artist_count": 2,
+                "baseline_release_count": 2,
+                "finalist_count": 1,
+                "requested_count": 1,
+                "selected_count": 1,
+                "snapshot_date": snapshot_date,
+                "selected": [
+                    {
+                        "master_id": None,
+                        "main_release_id": 9501,
+                        "artist_id": 750,
+                        "artist_name": "Graph Rich Artist",
+                        "sample_title": "Graph Rich Pick",
+                        "year": 2001,
+                        "score": 12345,
+                        "marginal_new_edges": 6,
+                        "marginal_new_contributors": 3,
+                        "variant_count": 4,
+                        "credit_rows": 10,
+                    }
+                ],
+            }
+        )
+    )
+    return path
+
+
+def _write_coverage_gap_candidates(path: Path, *, snapshot_date: str = SNAPSHOT_DATE) -> Path:
+    path.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "kind": "coverage-gap-selection",
+                "snapshot_date": snapshot_date,
+                "measured_against": "test",
+                "candidates": [
+                    {
+                        "master_id": None,
+                        "main_release_id": 9601,
+                        "artist_id": 760,
+                        "artist_name": "Coverage Gap Artist",
+                        "sample_title": "Coverage Gap Pick",
+                        "year": 2002,
+                        "score": 6789,
+                        "gap_dimension": "genres",
+                        "gap_bucket": "Reggae",
+                        "gap_rationale": "test rationale",
+                    }
+                ],
+            }
+        )
+    )
+    return path
+
+
+def test_graph_rich_selection_adds_a_pre_resolved_album_labeled_graph_rich(tmp_path: Path) -> None:
+    onehop_root = _write_onehop_dataset(tmp_path / "onehop")
+    masters_root = _write_masters_dataset(tmp_path / "masters")
+    policy_path = _widened_policy(tmp_path / "policy.json")
+    exclusions_path = _write_exclusions(tmp_path / "exclusions.json")
+    graph_rich_path = _write_graph_rich_selection(tmp_path / "graph-rich.json")
+    output_path = tmp_path / "albums.v1.json"
+
+    args = _base_args(tmp_path, onehop_root=onehop_root, output=output_path)
+    args += [
+        "--release-format-policy",
+        str(policy_path),
+        "--masters-root",
+        str(masters_root),
+        "--studio-album-exclusions",
+        str(exclusions_path),
+        "--graph-rich-selection",
+        str(graph_rich_path),
+        "--target-count",
+        "3",
+    ]
+    assert main(args) == 0
+    catalog = json.loads(output_path.read_text())
+    assert catalog["pre_resolved_count"] == 1
+    assert catalog["pre_resolved_buckets"] == [{"label": "graph_rich", "count": 1}]
+    added = next(a for a in catalog["albums"] if a["artist"] == "Graph Rich Artist")
+    assert added["title"] == "Graph Rich Pick"
+    # Bucket-B-specific fields must never leak into the committed catalog.
+    assert "score" not in added
+    assert "marginal_new_edges" not in added
+
+
+def test_coverage_gap_candidates_adds_a_pre_resolved_album_labeled_coverage_gap(
+    tmp_path: Path,
+) -> None:
+    onehop_root = _write_onehop_dataset(tmp_path / "onehop")
+    masters_root = _write_masters_dataset(tmp_path / "masters")
+    policy_path = _widened_policy(tmp_path / "policy.json")
+    exclusions_path = _write_exclusions(tmp_path / "exclusions.json")
+    coverage_gap_path = _write_coverage_gap_candidates(tmp_path / "coverage-gap.json")
+    output_path = tmp_path / "albums.v1.json"
+
+    args = _base_args(tmp_path, onehop_root=onehop_root, output=output_path)
+    args += [
+        "--release-format-policy",
+        str(policy_path),
+        "--masters-root",
+        str(masters_root),
+        "--studio-album-exclusions",
+        str(exclusions_path),
+        "--coverage-gap-candidates",
+        str(coverage_gap_path),
+        "--target-count",
+        "3",
+    ]
+    assert main(args) == 0
+    catalog = json.loads(output_path.read_text())
+    assert catalog["pre_resolved_count"] == 1
+    assert catalog["pre_resolved_buckets"] == [{"label": "coverage_gap", "count": 1}]
+    added = next(a for a in catalog["albums"] if a["artist"] == "Coverage Gap Artist")
+    assert added["title"] == "Coverage Gap Pick"
+    assert "gap_rationale" not in added
+    assert "gap_dimension" not in added
+
+
+def test_graph_rich_selection_and_coverage_gap_candidates_combine_with_personal_seed(
+    tmp_path: Path,
+) -> None:
+    """All three Phase 7 pre-resolved lanes together, in order, each
+    labeled and counted separately -- the real shape the eventual 179-album
+    catalog build uses."""
+    onehop_root = _write_onehop_dataset(tmp_path / "onehop")
+    masters_root = _write_masters_dataset(tmp_path / "masters")
+    policy_path = tmp_path / "policy.json"
+    policy_path.write_text(
+        json.dumps(
+            {
+                "kind": "release-format-scoring-index",
+                "policy_name": "studio-album-v1",
+                "policy_version": 1,
+                "schema_version": 1,
+                "snapshot_date": SNAPSHOT_DATE,
+                "allowed_release_ids": [1, 2, 3, 9501, 9601],
+                "allowed_release_count": 5,
+                "source_policy_sha256": "deadbeef",
+            }
+        )
+    )
+    exclusions_path = _write_exclusions(tmp_path / "exclusions.json")
+    personal_seed_path = _write_personal_seed(tmp_path / "editorial-seed.json")
+    graph_rich_path = _write_graph_rich_selection(tmp_path / "graph-rich.json")
+    coverage_gap_path = _write_coverage_gap_candidates(tmp_path / "coverage-gap.json")
+    output_path = tmp_path / "albums.v1.json"
+
+    args = _base_args(tmp_path, onehop_root=onehop_root, output=output_path)
+    args += [
+        "--release-format-policy",
+        str(policy_path),
+        "--masters-root",
+        str(masters_root),
+        "--studio-album-exclusions",
+        str(exclusions_path),
+        "--personal-seed",
+        str(personal_seed_path),
+        "--graph-rich-selection",
+        str(graph_rich_path),
+        "--coverage-gap-candidates",
+        str(coverage_gap_path),
+        "--target-count",
+        "5",
+    ]
+    assert main(args) == 0
+    catalog = json.loads(output_path.read_text())
+    assert catalog["pre_resolved_count"] == 3
+    assert catalog["pre_resolved_buckets"] == [
+        {"label": "personal_editorial", "count": 1},
+        {"label": "graph_rich", "count": 1},
+        {"label": "coverage_gap", "count": 1},
+    ]
+
+
+def test_graph_rich_selection_mismatched_snapshot_refused(tmp_path: Path) -> None:
+    onehop_root = _write_onehop_dataset(tmp_path / "onehop")
+    masters_root = _write_masters_dataset(tmp_path / "masters")
+    policy_path = _write_release_format_policy(tmp_path / "policy.json")
+    exclusions_path = _write_exclusions(tmp_path / "exclusions.json")
+    graph_rich_path = _write_graph_rich_selection(
+        tmp_path / "graph-rich.json", snapshot_date="20200101"
+    )
+    output_path = tmp_path / "albums.v1.json"
+
+    args = _base_args(tmp_path, onehop_root=onehop_root, output=output_path)
+    args += [
+        "--release-format-policy",
+        str(policy_path),
+        "--masters-root",
+        str(masters_root),
+        "--studio-album-exclusions",
+        str(exclusions_path),
+        "--graph-rich-selection",
+        str(graph_rich_path),
+    ]
+    with pytest.raises(ValueError, match="mismatched-snapshot"):
+        main(args)
+    assert not output_path.exists()
+
+
+def test_coverage_gap_candidates_mismatched_snapshot_refused(tmp_path: Path) -> None:
+    onehop_root = _write_onehop_dataset(tmp_path / "onehop")
+    masters_root = _write_masters_dataset(tmp_path / "masters")
+    policy_path = _write_release_format_policy(tmp_path / "policy.json")
+    exclusions_path = _write_exclusions(tmp_path / "exclusions.json")
+    coverage_gap_path = _write_coverage_gap_candidates(
+        tmp_path / "coverage-gap.json", snapshot_date="20200101"
+    )
+    output_path = tmp_path / "albums.v1.json"
+
+    args = _base_args(tmp_path, onehop_root=onehop_root, output=output_path)
+    args += [
+        "--release-format-policy",
+        str(policy_path),
+        "--masters-root",
+        str(masters_root),
+        "--studio-album-exclusions",
+        str(exclusions_path),
+        "--coverage-gap-candidates",
+        str(coverage_gap_path),
+    ]
+    with pytest.raises(ValueError, match="mismatched-snapshot"):
+        main(args)
+    assert not output_path.exists()
+
+
+def test_graph_rich_selection_missing_selected_array_refused(tmp_path: Path) -> None:
+    onehop_root = _write_onehop_dataset(tmp_path / "onehop")
+    masters_root = _write_masters_dataset(tmp_path / "masters")
+    policy_path = _write_release_format_policy(tmp_path / "policy.json")
+    exclusions_path = _write_exclusions(tmp_path / "exclusions.json")
+    graph_rich_path = tmp_path / "graph-rich.json"
+    graph_rich_path.write_text(json.dumps({"snapshot_date": SNAPSHOT_DATE}))
+    output_path = tmp_path / "albums.v1.json"
+
+    args = _base_args(tmp_path, onehop_root=onehop_root, output=output_path)
+    args += [
+        "--release-format-policy",
+        str(policy_path),
+        "--masters-root",
+        str(masters_root),
+        "--studio-album-exclusions",
+        str(exclusions_path),
+        "--graph-rich-selection",
+        str(graph_rich_path),
+    ]
+    with pytest.raises(ValueError, match="'selected' array"):
+        main(args)
+    assert not output_path.exists()
+
+
+def test_coverage_gap_candidates_missing_candidates_array_refused(tmp_path: Path) -> None:
+    onehop_root = _write_onehop_dataset(tmp_path / "onehop")
+    masters_root = _write_masters_dataset(tmp_path / "masters")
+    policy_path = _write_release_format_policy(tmp_path / "policy.json")
+    exclusions_path = _write_exclusions(tmp_path / "exclusions.json")
+    coverage_gap_path = tmp_path / "coverage-gap.json"
+    coverage_gap_path.write_text(json.dumps({"snapshot_date": SNAPSHOT_DATE}))
+    output_path = tmp_path / "albums.v1.json"
+
+    args = _base_args(tmp_path, onehop_root=onehop_root, output=output_path)
+    args += [
+        "--release-format-policy",
+        str(policy_path),
+        "--masters-root",
+        str(masters_root),
+        "--studio-album-exclusions",
+        str(exclusions_path),
+        "--coverage-gap-candidates",
+        str(coverage_gap_path),
+    ]
+    with pytest.raises(ValueError, match="'candidates' array"):
+        main(args)
+    assert not output_path.exists()
+
+
+def test_graph_rich_selection_missing_artist_field_refused(tmp_path: Path) -> None:
+    """Real Codex finding: a same-snapshot, valid-ID entry that omits both
+    `artist` and `artist_name` must fail closed here, not become the
+    literal string "None" in the committed public catalog."""
+    onehop_root = _write_onehop_dataset(tmp_path / "onehop")
+    masters_root = _write_masters_dataset(tmp_path / "masters")
+    policy_path = _widened_policy(tmp_path / "policy.json")
+    exclusions_path = _write_exclusions(tmp_path / "exclusions.json")
+    graph_rich_path = tmp_path / "graph-rich.json"
+    graph_rich_path.write_text(
+        json.dumps(
+            {
+                "snapshot_date": SNAPSHOT_DATE,
+                "selected": [
+                    {
+                        "master_id": None,
+                        "main_release_id": 9501,
+                        "artist_id": 750,
+                        "sample_title": "Graph Rich Pick",
+                        "year": 2001,
+                    }
+                ],
+            }
+        )
+    )
+    output_path = tmp_path / "albums.v1.json"
+
+    args = _base_args(tmp_path, onehop_root=onehop_root, output=output_path)
+    args += [
+        "--release-format-policy",
+        str(policy_path),
+        "--masters-root",
+        str(masters_root),
+        "--studio-album-exclusions",
+        str(exclusions_path),
+        "--graph-rich-selection",
+        str(graph_rich_path),
+    ]
+    with pytest.raises(ValueError, match="'artist'/'artist_name'"):
+        main(args)
+    assert not output_path.exists()
+
+
+def test_coverage_gap_candidates_missing_title_field_refused(tmp_path: Path) -> None:
+    onehop_root = _write_onehop_dataset(tmp_path / "onehop")
+    masters_root = _write_masters_dataset(tmp_path / "masters")
+    policy_path = _widened_policy(tmp_path / "policy.json")
+    exclusions_path = _write_exclusions(tmp_path / "exclusions.json")
+    coverage_gap_path = tmp_path / "coverage-gap.json"
+    coverage_gap_path.write_text(
+        json.dumps(
+            {
+                "snapshot_date": SNAPSHOT_DATE,
+                "candidates": [
+                    {
+                        "master_id": None,
+                        "main_release_id": 9601,
+                        "artist_id": 760,
+                        "artist_name": "Coverage Gap Artist",
+                        "year": 2002,
+                    }
+                ],
+            }
+        )
+    )
+    output_path = tmp_path / "albums.v1.json"
+
+    args = _base_args(tmp_path, onehop_root=onehop_root, output=output_path)
+    args += [
+        "--release-format-policy",
+        str(policy_path),
+        "--masters-root",
+        str(masters_root),
+        "--studio-album-exclusions",
+        str(exclusions_path),
+        "--coverage-gap-candidates",
+        str(coverage_gap_path),
+    ]
+    with pytest.raises(ValueError, match="'title'/'sample_title'"):
+        main(args)
+    assert not output_path.exists()

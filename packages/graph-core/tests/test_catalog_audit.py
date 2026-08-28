@@ -107,6 +107,136 @@ def test_audit_marks_pre_resolved_as_personal_editorial_not_graph_candidate(
     assert all(by_id[aid]["selection_source"] == "graph_candidate" for aid in other_ids)
 
 
+def test_audit_distinguishes_graph_rich_and_coverage_gap_from_personal_editorial(
+    dataset_root: Path, masters_root: Path
+) -> None:
+    """Phase 7 Buckets B/C: `pre_resolved_buckets` lets the audit tell a
+    graph-rich pick and a coverage-gap pick apart from a personal/editorial
+    one and from each other, instead of collapsing every pre-resolved album
+    into a single `personal_editorial` label."""
+    editorial = [{"artist": "Alice", "title": "First Light"}]
+    personal = [
+        {
+            "query_artist": "Fictoquai",
+            "query_title": "Personal Pick",
+            "master_id": None,
+            "main_release_id": 3,
+            "artist_id": 700,
+            "artist": "Fictoquai",
+            "title": "Personal Pick",
+            "year": 1999,
+        }
+    ]
+    graph_rich = [
+        {
+            "master_id": None,
+            "main_release_id": 9501,
+            "artist_id": 750,
+            "artist": "Graph Rich Artist",
+            "title": "Graph Rich Pick",
+            "year": 2001,
+        }
+    ]
+    coverage_gap = [
+        {
+            "master_id": None,
+            "main_release_id": 9601,
+            "artist_id": 760,
+            "artist": "Coverage Gap Artist",
+            "title": "Coverage Gap Pick",
+            "year": 2002,
+        }
+    ]
+    with CreditGraph.open(dataset_root) as graph:
+        graph.attach_masters(masters_root)
+        catalog = assemble_album_catalog(
+            graph,
+            editorial,
+            [],
+            target_count=10,
+            pre_resolved_albums=personal,
+            additional_pre_resolved=[("graph_rich", graph_rich), ("coverage_gap", coverage_gap)],
+            snapshot_date=SNAPSHOT_DATE,
+            generated_by="test",
+        )
+        audit = build_album_catalog_audit(
+            graph, catalog, allowed_release_ids=frozenset(), master_exclusions=frozenset()
+        )
+    by_artist = {row["artist"]: row["selection_source"] for row in audit["albums"]}
+    assert by_artist["Alice"] == "editorial"
+    assert by_artist["Fictoquai"] == "personal_editorial"
+    assert by_artist["Graph Rich Artist"] == "graph_rich"
+    assert by_artist["Coverage Gap Artist"] == "coverage_gap"
+
+
+def test_audit_falls_back_to_personal_editorial_for_a_catalog_without_pre_resolved_buckets(
+    dataset_root: Path, masters_root: Path
+) -> None:
+    """A catalog built before `pre_resolved_buckets` existed (real committed
+    catalogs so far, and any fixture predating this change) has only the
+    flat `pre_resolved_count` field. `build_album_catalog_audit` must
+    classify it exactly as it always did -- one contiguous
+    `personal_editorial` range -- not treat the missing field as zero
+    pre-resolved albums."""
+    catalog = _catalog(dataset_root, masters_root)
+    del catalog["pre_resolved_buckets"]  # simulate a pre-existing-field catalog
+    catalog["pre_resolved_count"] = 1
+    # Reorder nothing -- just claim the first candidate-segment album is
+    # actually a pre-resolved one, matching the old flat-count contract.
+    with CreditGraph.open(dataset_root) as graph:
+        graph.attach_masters(masters_root)
+        audit = build_album_catalog_audit(
+            graph, catalog, allowed_release_ids=frozenset(), master_exclusions=frozenset()
+        )
+    by_id = {row["album_id"]: row for row in audit["albums"]}
+    pre_resolved_id = catalog["albums"][catalog["editorial_count"]]["id"]
+    assert by_id[pre_resolved_id]["selection_source"] == "personal_editorial"
+
+
+def test_audit_rejects_a_negative_bucket_count(dataset_root: Path, masters_root: Path) -> None:
+    """Real Codex finding: a stale or hand-edited `pre_resolved_buckets`
+    entry must be rejected before it's used to derive positional
+    provenance ranges, not trusted silently."""
+    catalog = _catalog(dataset_root, masters_root)
+    catalog["pre_resolved_count"] = -1
+    catalog["pre_resolved_buckets"] = [{"label": "graph_rich", "count": -1}]
+    with CreditGraph.open(dataset_root) as graph:
+        graph.attach_masters(masters_root)
+        with pytest.raises(AlbumCatalogAuditError, match="non-negative-integer"):
+            build_album_catalog_audit(
+                graph, catalog, allowed_release_ids=frozenset(), master_exclusions=frozenset()
+            )
+
+
+def test_audit_rejects_bucket_counts_not_summing_to_pre_resolved_count(
+    dataset_root: Path, masters_root: Path
+) -> None:
+    catalog = _catalog(dataset_root, masters_root)
+    catalog["pre_resolved_count"] = 5
+    catalog["pre_resolved_buckets"] = [{"label": "graph_rich", "count": 1}]
+    with CreditGraph.open(dataset_root) as graph:
+        graph.attach_masters(masters_root)
+        with pytest.raises(AlbumCatalogAuditError, match="counts sum to"):
+            build_album_catalog_audit(
+                graph, catalog, allowed_release_ids=frozenset(), master_exclusions=frozenset()
+            )
+
+
+def test_audit_rejects_bucket_totals_overrunning_the_album_list(
+    dataset_root: Path, masters_root: Path
+) -> None:
+    catalog = _catalog(dataset_root, masters_root)
+    huge_count = len(catalog["albums"]) * 10
+    catalog["pre_resolved_count"] = huge_count
+    catalog["pre_resolved_buckets"] = [{"label": "graph_rich", "count": huge_count}]
+    with CreditGraph.open(dataset_root) as graph:
+        graph.attach_masters(masters_root)
+        with pytest.raises(AlbumCatalogAuditError, match="exceeds the catalog's own album count"):
+            build_album_catalog_audit(
+                graph, catalog, allowed_release_ids=frozenset(), master_exclusions=frozenset()
+            )
+
+
 def test_audit_records_master_genre_style_and_release_format_results(
     dataset_root: Path, masters_root: Path
 ) -> None:

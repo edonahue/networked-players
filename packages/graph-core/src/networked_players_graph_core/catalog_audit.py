@@ -69,18 +69,68 @@ def build_album_catalog_audit(
     `graph` must already have masters attached (`graph.attach_masters(...)`)
     for `master_genre_style_result` to be meaningful."""
     editorial_count = int(catalog["editorial_count"])
-    # `pre_resolved_count` is a Phase 7 (ADR 0065) addition, absent from any
-    # catalog built before this field existed -- `.get(..., 0)` keeps this
-    # function's classification identical on an older catalog, where the
-    # albums list only ever had two segments (editorial, then candidates).
-    pre_resolved_count = int(catalog.get("pre_resolved_count", 0))
-    pre_resolved_end = editorial_count + pre_resolved_count
+    # `pre_resolved_buckets` (Phase 7 Buckets B/C addition) names each
+    # pre-resolved lane's own label and count, in the exact order
+    # `assemble_album_catalog` appended them -- walking it gives per-lane
+    # provenance (personal_editorial vs. graph_rich vs. coverage_gap)
+    # instead of collapsing every pre-resolved album into one label. A
+    # catalog built before this field existed (or with only `--personal-
+    # seed`, no Buckets B/C) falls back to the single flat `pre_resolved_
+    # count` range labeled "personal_editorial", matching this function's
+    # original (ADR 0065) behavior exactly.
+    pre_resolved_buckets = catalog.get("pre_resolved_buckets")
+    if not pre_resolved_buckets:
+        pre_resolved_count = int(catalog.get("pre_resolved_count", 0))
+        pre_resolved_buckets = (
+            [{"label": "personal_editorial", "count": pre_resolved_count}]
+            if pre_resolved_count
+            else []
+        )
+    else:
+        # `pre_resolved_buckets` drives POSITIONAL provenance ranges below --
+        # a stale or hand-edited catalog with a bogus count (negative, not
+        # summing to `pre_resolved_count`, or overrunning the actual album
+        # list) would silently misclassify every album after it, and
+        # neither `validate_album_catalog` nor `validate_album_catalog_audit`
+        # checks this metadata. Fail closed here, before it's ever used to
+        # derive a range.
+        declared_total = int(catalog.get("pre_resolved_count", 0))
+        counted_total = 0
+        for bucket in pre_resolved_buckets:
+            count = bucket.get("count")
+            if not isinstance(count, int) or isinstance(count, bool) or count < 0:
+                raise AlbumCatalogAuditError(
+                    f"pre_resolved_buckets entry {bucket!r} has a non-negative-integer "
+                    "'count' -- refusing to derive audit provenance from malformed "
+                    "bucket metadata"
+                )
+            counted_total += count
+        if counted_total != declared_total:
+            raise AlbumCatalogAuditError(
+                f"pre_resolved_buckets counts sum to {counted_total}, but pre_resolved_count "
+                f"is {declared_total} -- refusing to derive audit provenance from "
+                "inconsistent bucket metadata"
+            )
+        if editorial_count + counted_total > len(catalog["albums"]):
+            raise AlbumCatalogAuditError(
+                f"editorial_count ({editorial_count}) + pre_resolved_buckets total "
+                f"({counted_total}) exceeds the catalog's own album count "
+                f"({len(catalog['albums'])}) -- refusing to derive audit provenance from "
+                "bucket metadata that overruns the real album list"
+            )
+    bucket_starts: list[tuple[int, int, str]] = []
+    cursor = editorial_count
+    for bucket in pre_resolved_buckets:
+        count = int(bucket["count"])
+        bucket_starts.append((cursor, cursor + count, str(bucket["label"])))
+        cursor += count
 
     def _selection_source(index: int) -> str:
         if index < editorial_count:
             return "editorial"
-        if index < pre_resolved_end:
-            return "personal_editorial"
+        for start, end, label in bucket_starts:
+            if start <= index < end:
+                return label
         return "graph_candidate"
 
     rows: list[dict[str, Any]] = []

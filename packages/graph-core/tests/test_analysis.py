@@ -382,7 +382,192 @@ def test_no_pre_resolved_albums_is_fully_backward_compatible(dataset_root: Path)
         catalog = assemble_album_catalog(graph, editorial, candidates, target_count=3)
     assert catalog["pre_resolved_count"] == 0
     assert catalog["pre_resolved_missed"] == []
+    assert catalog["pre_resolved_buckets"] == []
     assert len(catalog["albums"]) == 3
+
+
+def test_additional_pre_resolved_labels_each_bucket_separately(dataset_root: Path) -> None:
+    """Phase 7 Buckets B/C: distinct labeled lanes, each counted and
+    reported separately in `pre_resolved_buckets` -- this is what lets
+    catalog_audit.py tell a graph-rich pick apart from a coverage-gap pick
+    instead of collapsing every pre-resolved album into one label."""
+    personal = [_pre_resolved(9001, 9001, 700, "Fictoquai", "Bucket A Pick")]
+    graph_rich = [_pre_resolved(7501, 7501, 750, "Graph Rich Artist", "Bucket B Pick")]
+    coverage_gap = [_pre_resolved(7601, 7601, 760, "Coverage Gap Artist", "Bucket C Pick")]
+    with CreditGraph.open(dataset_root) as graph:
+        catalog = assemble_album_catalog(
+            graph,
+            [],
+            [],
+            target_count=10,
+            pre_resolved_albums=personal,
+            additional_pre_resolved=[("graph_rich", graph_rich), ("coverage_gap", coverage_gap)],
+        )
+    assert catalog["pre_resolved_count"] == 3
+    assert catalog["pre_resolved_buckets"] == [
+        {"label": "personal_editorial", "count": 1},
+        {"label": "graph_rich", "count": 1},
+        {"label": "coverage_gap", "count": 1},
+    ]
+    titles = {a["title"] for a in catalog["albums"]}
+    assert titles == {"Bucket A Pick", "Bucket B Pick", "Bucket C Pick"}
+
+
+def test_additional_pre_resolved_dedups_against_earlier_groups_by_master_id(
+    dataset_root: Path,
+) -> None:
+    """A later group's entry sharing an earlier group's master_id is
+    dropped and reported in `pre_resolved_missed`, never double-included --
+    the same cross-bucket collision guard `pre_resolved_albums` already
+    applies to editorial, extended across every additional lane too."""
+    personal = [_pre_resolved(9001, 9001, 700, "Fictoquai", "First Claim")]
+    graph_rich = [_pre_resolved(9001, 9001, 750, "Someone Else", "Duplicate Master")]
+    with CreditGraph.open(dataset_root) as graph:
+        catalog = assemble_album_catalog(
+            graph,
+            [],
+            [],
+            target_count=10,
+            pre_resolved_albums=personal,
+            additional_pre_resolved=[("graph_rich", graph_rich)],
+        )
+    assert catalog["pre_resolved_count"] == 1
+    assert catalog["pre_resolved_buckets"] == [
+        {"label": "personal_editorial", "count": 1},
+        {"label": "graph_rich", "count": 0},
+    ]
+    assert len(catalog["pre_resolved_missed"]) == 1
+    assert "duplicate master_id" in catalog["pre_resolved_missed"][0]["reason"]
+
+
+def test_additional_pre_resolved_excludes_a_ranked_candidate_by_the_same_artist(
+    dataset_root: Path,
+) -> None:
+    """The same artist-exclusion rule `pre_resolved_albums` applies to
+    candidates must also apply to `additional_pre_resolved` entries -- an
+    artist covered by a graph-rich pick doesn't ALSO need a generic
+    candidate slot."""
+    graph_rich = [_pre_resolved(9001, 9001, 100, "Alice", "Graph Rich Alice Album")]
+    with CreditGraph.open(dataset_root) as graph:
+        candidates = rank_album_candidates(dataset_root)
+        catalog = assemble_album_catalog(
+            graph,
+            [],
+            candidates,
+            target_count=10,
+            additional_pre_resolved=[("graph_rich", graph_rich)],
+        )
+    added_via_candidates = {
+        a["artist"] for a in catalog["albums"] if a["title"] != "Graph Rich Alice Album"
+    }
+    assert "Alice" not in added_via_candidates
+
+
+def test_additional_pre_resolved_alone_is_labeled_without_a_personal_editorial_entry(
+    dataset_root: Path,
+) -> None:
+    """No phantom "personal_editorial: 0" bucket when --personal-seed was
+    never given at all -- only lanes that actually ran appear."""
+    graph_rich = [_pre_resolved(9001, 9001, 750, "Graph Rich Artist", "Only Bucket B Pick")]
+    with CreditGraph.open(dataset_root) as graph:
+        catalog = assemble_album_catalog(
+            graph, [], [], target_count=10, additional_pre_resolved=[("graph_rich", graph_rich)]
+        )
+    assert catalog["pre_resolved_buckets"] == [{"label": "graph_rich", "count": 1}]
+
+
+def test_additional_pre_resolved_rejects_an_artist_already_in_editorial(
+    dataset_root: Path,
+) -> None:
+    """Real Codex finding: unlike Bucket A, every additional lane must
+    enforce one album per artist -- an entry whose artist already has an
+    editorial album must be dropped, not silently added as a second slot
+    for that artist."""
+    editorial = [{"artist": "Alice", "title": "First Light"}]  # resolves to artist_id 100
+    graph_rich = [_pre_resolved(9001, 9001, 100, "Alice", "Second Alice Album")]
+    with CreditGraph.open(dataset_root) as graph:
+        catalog = assemble_album_catalog(
+            graph,
+            editorial,
+            [],
+            target_count=10,
+            additional_pre_resolved=[("graph_rich", graph_rich)],
+        )
+    assert catalog["pre_resolved_count"] == 0
+    assert catalog["pre_resolved_buckets"] == [{"label": "graph_rich", "count": 0}]
+    assert len(catalog["pre_resolved_missed"]) == 1
+    assert "already covered" in catalog["pre_resolved_missed"][0]["reason"]
+
+
+def test_additional_pre_resolved_rejects_an_artist_already_in_personal_editorial(
+    dataset_root: Path,
+) -> None:
+    """A graph-rich entry whose artist already has a Bucket A (personal
+    seed) album is dropped, even though Bucket A itself never enforces this
+    on its own entries."""
+    personal = [_pre_resolved(9001, 9001, 700, "Fictoquai", "Bucket A Pick")]
+    graph_rich = [_pre_resolved(9002, 9002, 700, "Fictoquai", "Duplicate Artist, Different Master")]
+    with CreditGraph.open(dataset_root) as graph:
+        catalog = assemble_album_catalog(
+            graph,
+            [],
+            [],
+            target_count=10,
+            pre_resolved_albums=personal,
+            additional_pre_resolved=[("graph_rich", graph_rich)],
+        )
+    assert catalog["pre_resolved_count"] == 1
+    assert catalog["albums"][0]["title"] == "Bucket A Pick"
+    assert len(catalog["pre_resolved_missed"]) == 1
+    assert "already covered" in catalog["pre_resolved_missed"][0]["reason"]
+
+
+def test_additional_pre_resolved_rejects_an_artist_already_in_an_earlier_lane(
+    dataset_root: Path,
+) -> None:
+    """Cross-lane, not just cross-Bucket-A: a coverage-gap entry whose
+    artist was already used by an earlier graph-rich entry is dropped too."""
+    graph_rich = [_pre_resolved(9001, 9001, 750, "Shared Artist", "Graph Rich Pick")]
+    coverage_gap = [_pre_resolved(9002, 9002, 750, "Shared Artist", "Coverage Gap Pick")]
+    with CreditGraph.open(dataset_root) as graph:
+        catalog = assemble_album_catalog(
+            graph,
+            [],
+            [],
+            target_count=10,
+            additional_pre_resolved=[("graph_rich", graph_rich), ("coverage_gap", coverage_gap)],
+        )
+    assert catalog["pre_resolved_count"] == 1
+    assert catalog["pre_resolved_buckets"] == [
+        {"label": "graph_rich", "count": 1},
+        {"label": "coverage_gap", "count": 0},
+    ]
+    assert len(catalog["pre_resolved_missed"]) == 1
+    assert "already covered" in catalog["pre_resolved_missed"][0]["reason"]
+
+
+def test_additional_pre_resolved_rejects_a_duplicate_artist_within_its_own_lane(
+    dataset_root: Path,
+) -> None:
+    """Two entries in the SAME additional lane sharing an artist -- the
+    second is dropped, matching the one-album-per-artist rule applied
+    within any single non-Bucket-A lane."""
+    coverage_gap = [
+        _pre_resolved(9001, 9001, 750, "Shared Artist", "First Coverage Gap Pick"),
+        _pre_resolved(9002, 9002, 750, "Shared Artist", "Second Coverage Gap Pick"),
+    ]
+    with CreditGraph.open(dataset_root) as graph:
+        catalog = assemble_album_catalog(
+            graph,
+            [],
+            [],
+            target_count=10,
+            additional_pre_resolved=[("coverage_gap", coverage_gap)],
+        )
+    assert catalog["pre_resolved_count"] == 1
+    assert catalog["albums"][0]["title"] == "First Coverage Gap Pick"
+    assert len(catalog["pre_resolved_missed"]) == 1
+    assert "already covered" in catalog["pre_resolved_missed"][0]["reason"]
 
 
 def test_assemble_album_catalog_resolves_candidates_by_id_not_name(tmp_path: Path) -> None:

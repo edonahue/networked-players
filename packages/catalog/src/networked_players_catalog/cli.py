@@ -931,6 +931,27 @@ def _parser() -> argparse.ArgumentParser:
         ),
     )
     build_public_album_catalog.add_argument(
+        "--graph-rich-selection",
+        type=Path,
+        default=None,
+        help=(
+            "select-graph-rich-candidates output -- Phase 7 Bucket B, exact "
+            "marginal-value picks, already resolved. Optional; omit to build without "
+            "a graph-rich lane"
+        ),
+    )
+    build_public_album_catalog.add_argument(
+        "--coverage-gap-candidates",
+        type=Path,
+        default=None,
+        help=(
+            'JSON {"snapshot_date": "YYYYMMDD", "candidates": [...]} -- Phase 7 Bucket '
+            "C, already-resolved coverage-gap picks with gap rationale (same contract "
+            "build-expansion-review-packet's --coverage-gap-candidates takes). "
+            "Optional; omit to build without a coverage-gap lane"
+        ),
+    )
+    build_public_album_catalog.add_argument(
         "--candidates", type=Path, required=True, help="rank-album-candidates output"
     )
     build_public_album_catalog.add_argument("--target-count", type=int, required=True)
@@ -3264,6 +3285,96 @@ def main(argv: Sequence[str] | None = None) -> int:
                 )
             pre_resolved_albums = list(personal_seed_payload.get("albums", []))
 
+        def _normalize_pre_resolved_entry(raw: dict[str, Any], *, source: str) -> dict[str, Any]:
+            # Whitelist to exactly the fields `assemble_album_catalog`'s
+            # pre-resolved path reads -- NEVER `{**raw}`. Bucket B/C's own
+            # output carries scoring/rationale fields (`score`,
+            # `marginal_new_edges`, `gap_dimension`, ...) that must never
+            # ride an accepted entry into the committed public catalog
+            # artifact (the same class of leak PR #152 fixed for Bucket A's
+            # `pre_resolved_missed`, applied here at the point of entry
+            # instead). `artist_name`/`sample_title` (rank-album-candidates'
+            # own field names) are normalized to `artist`/`title` here so
+            # `assemble_album_catalog` sees one uniform pre-resolved shape
+            # regardless of which lane an entry came from.
+            for required in ("main_release_id", "artist_id"):
+                if raw.get(required) is None:
+                    raise ValueError(f"{source} entry missing required field {required!r}: {raw}")
+            artist = raw.get("artist") or raw.get("artist_name")
+            title = raw.get("title") or raw.get("sample_title")
+            # Required, not merely preferred: `_pre_resolved_to_matched_album`
+            # does `str(album["artist"])` / `str(album["title"])` with no
+            # further check, so a missing display field would otherwise
+            # become the literal string "None" -- a malformed input must
+            # fail closed here, not produce a valid-looking public catalog
+            # entry with a user-visible "None" artist or title.
+            if not artist:
+                raise ValueError(
+                    f"{source} entry missing required field 'artist'/'artist_name': {raw}"
+                )
+            if not title:
+                raise ValueError(
+                    f"{source} entry missing required field 'title'/'sample_title': {raw}"
+                )
+            return {
+                "master_id": raw.get("master_id"),
+                "main_release_id": raw["main_release_id"],
+                "artist_id": raw["artist_id"],
+                "artist": artist,
+                "title": title,
+                "year": raw.get("year"),
+            }
+
+        additional_pre_resolved: list[tuple[str, list[dict[str, Any]]]] = []
+        if args.graph_rich_selection is not None:
+            graph_rich_payload = json.loads(args.graph_rich_selection.read_text())
+            graph_rich_snapshot = str(graph_rich_payload.get("snapshot_date") or "")
+            if graph_rich_snapshot != snapshot_date:
+                raise ValueError(
+                    f"--graph-rich-selection snapshot_date {graph_rich_snapshot!r} does not "
+                    f"match --onehop-root snapshot_date {snapshot_date!r} -- "
+                    "mismatched-snapshot inputs refused"
+                )
+            selected = graph_rich_payload.get("selected")
+            if not isinstance(selected, list):
+                raise ValueError(
+                    f"--graph-rich-selection {args.graph_rich_selection} has no 'selected' array"
+                )
+            additional_pre_resolved.append(
+                (
+                    "graph_rich",
+                    [
+                        _normalize_pre_resolved_entry(entry, source="--graph-rich-selection")
+                        for entry in selected
+                    ],
+                )
+            )
+
+        if args.coverage_gap_candidates is not None:
+            coverage_gap_payload = json.loads(args.coverage_gap_candidates.read_text())
+            coverage_gap_snapshot = str(coverage_gap_payload.get("snapshot_date") or "")
+            if coverage_gap_snapshot != snapshot_date:
+                raise ValueError(
+                    f"--coverage-gap-candidates snapshot_date {coverage_gap_snapshot!r} does "
+                    f"not match --onehop-root snapshot_date {snapshot_date!r} -- "
+                    "mismatched-snapshot inputs refused"
+                )
+            gap_candidates = coverage_gap_payload.get("candidates")
+            if not isinstance(gap_candidates, list):
+                raise ValueError(
+                    f"--coverage-gap-candidates {args.coverage_gap_candidates} has no "
+                    "'candidates' array"
+                )
+            additional_pre_resolved.append(
+                (
+                    "coverage_gap",
+                    [
+                        _normalize_pre_resolved_entry(entry, source="--coverage-gap-candidates")
+                        for entry in gap_candidates
+                    ],
+                )
+            )
+
         with CreditGraph.open(
             args.onehop_root,
             memory_limit=args.memory_limit,
@@ -3277,6 +3388,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 candidates,
                 target_count=args.target_count,
                 pre_resolved_albums=pre_resolved_albums,
+                additional_pre_resolved=additional_pre_resolved,
                 allowed_release_ids=frozenset(allowed_release_ids),
                 master_exclusions=master_exclusions,
                 snapshot_date=snapshot_date,
@@ -3297,6 +3409,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                     "editorial_missed": len(catalog["editorial_missed"]),
                     "pre_resolved_count": catalog["pre_resolved_count"],
                     "pre_resolved_missed": len(catalog["pre_resolved_missed"]),
+                    "pre_resolved_buckets": catalog["pre_resolved_buckets"],
                     "candidate_count_added": catalog["candidate_count_added"],
                     "total_albums": len(catalog["albums"]),
                 },
