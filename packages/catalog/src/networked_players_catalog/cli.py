@@ -3343,7 +3343,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 "year": raw.get("year"),
             }
 
-        additional_pre_resolved: list[tuple[str, list[dict[str, Any]]]] = []
+        additional_pre_resolved: list[tuple[str, list[dict[str, Any]], bool]] = []
         if args.already_published_catalog is not None:
             already_published_payload = json.loads(args.already_published_catalog.read_text())
             already_published_albums = already_published_payload.get("albums")
@@ -3359,6 +3359,17 @@ def main(argv: Sequence[str] | None = None) -> int:
             # eligibility re-check and normalization as every other lane, so a
             # since-excluded master or artist collision is still caught, just
             # never for the reason "the snapshot generation moved on."
+            #
+            # enforce_artist_uniqueness=False: real bug found in review -- a
+            # personal-seed (Bucket A) entry deliberately adding a second
+            # album by an artist who already has a DIFFERENT album live today
+            # (e.g. the seed's own "Revolver" alongside the published "Abbey
+            # Road", both The Beatles) would otherwise lock that artist_id
+            # first and cause this preservation lane to reject the
+            # already-published album it exists to protect. This lane's own
+            # entries are therefore never rejected for an artist collision;
+            # they still lock their artist_id for LATER lanes (Bucket B/C),
+            # same as every other lane.
             additional_pre_resolved.append(
                 (
                     "already_published",
@@ -3366,6 +3377,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                         _normalize_pre_resolved_entry(entry, source="--already-published-catalog")
                         for entry in already_published_albums
                     ],
+                    False,
                 )
             )
 
@@ -3390,6 +3402,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                         _normalize_pre_resolved_entry(entry, source="--graph-rich-selection")
                         for entry in selected
                     ],
+                    True,
                 )
             )
 
@@ -3415,6 +3428,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                         _normalize_pre_resolved_entry(entry, source="--coverage-gap-candidates")
                         for entry in gap_candidates
                     ],
+                    True,
                 )
             )
 

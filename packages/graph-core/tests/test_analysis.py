@@ -401,7 +401,10 @@ def test_additional_pre_resolved_labels_each_bucket_separately(dataset_root: Pat
             [],
             target_count=10,
             pre_resolved_albums=personal,
-            additional_pre_resolved=[("graph_rich", graph_rich), ("coverage_gap", coverage_gap)],
+            additional_pre_resolved=[
+                ("graph_rich", graph_rich, True),
+                ("coverage_gap", coverage_gap, True),
+            ],
         )
     assert catalog["pre_resolved_count"] == 3
     assert catalog["pre_resolved_buckets"] == [
@@ -429,7 +432,7 @@ def test_additional_pre_resolved_dedups_against_earlier_groups_by_master_id(
             [],
             target_count=10,
             pre_resolved_albums=personal,
-            additional_pre_resolved=[("graph_rich", graph_rich)],
+            additional_pre_resolved=[("graph_rich", graph_rich, True)],
         )
     assert catalog["pre_resolved_count"] == 1
     assert catalog["pre_resolved_buckets"] == [
@@ -455,7 +458,7 @@ def test_additional_pre_resolved_excludes_a_ranked_candidate_by_the_same_artist(
             [],
             candidates,
             target_count=10,
-            additional_pre_resolved=[("graph_rich", graph_rich)],
+            additional_pre_resolved=[("graph_rich", graph_rich, True)],
         )
     added_via_candidates = {
         a["artist"] for a in catalog["albums"] if a["title"] != "Graph Rich Alice Album"
@@ -471,7 +474,11 @@ def test_additional_pre_resolved_alone_is_labeled_without_a_personal_editorial_e
     graph_rich = [_pre_resolved(9001, 9001, 750, "Graph Rich Artist", "Only Bucket B Pick")]
     with CreditGraph.open(dataset_root) as graph:
         catalog = assemble_album_catalog(
-            graph, [], [], target_count=10, additional_pre_resolved=[("graph_rich", graph_rich)]
+            graph,
+            [],
+            [],
+            target_count=10,
+            additional_pre_resolved=[("graph_rich", graph_rich, True)],
         )
     assert catalog["pre_resolved_buckets"] == [{"label": "graph_rich", "count": 1}]
 
@@ -491,7 +498,7 @@ def test_additional_pre_resolved_rejects_an_artist_already_in_editorial(
             editorial,
             [],
             target_count=10,
-            additional_pre_resolved=[("graph_rich", graph_rich)],
+            additional_pre_resolved=[("graph_rich", graph_rich, True)],
         )
     assert catalog["pre_resolved_count"] == 0
     assert catalog["pre_resolved_buckets"] == [{"label": "graph_rich", "count": 0}]
@@ -514,7 +521,7 @@ def test_additional_pre_resolved_rejects_an_artist_already_in_personal_editorial
             [],
             target_count=10,
             pre_resolved_albums=personal,
-            additional_pre_resolved=[("graph_rich", graph_rich)],
+            additional_pre_resolved=[("graph_rich", graph_rich, True)],
         )
     assert catalog["pre_resolved_count"] == 1
     assert catalog["albums"][0]["title"] == "Bucket A Pick"
@@ -535,7 +542,10 @@ def test_additional_pre_resolved_rejects_an_artist_already_in_an_earlier_lane(
             [],
             [],
             target_count=10,
-            additional_pre_resolved=[("graph_rich", graph_rich), ("coverage_gap", coverage_gap)],
+            additional_pre_resolved=[
+                ("graph_rich", graph_rich, True),
+                ("coverage_gap", coverage_gap, True),
+            ],
         )
     assert catalog["pre_resolved_count"] == 1
     assert catalog["pre_resolved_buckets"] == [
@@ -562,10 +572,64 @@ def test_additional_pre_resolved_rejects_a_duplicate_artist_within_its_own_lane(
             [],
             [],
             target_count=10,
-            additional_pre_resolved=[("coverage_gap", coverage_gap)],
+            additional_pre_resolved=[("coverage_gap", coverage_gap, True)],
         )
     assert catalog["pre_resolved_count"] == 1
     assert catalog["albums"][0]["title"] == "First Coverage Gap Pick"
+    assert len(catalog["pre_resolved_missed"]) == 1
+    assert "already covered" in catalog["pre_resolved_missed"][0]["reason"]
+
+
+def test_a_non_enforcing_lane_never_rejects_its_own_entries_for_an_artist_collision(
+    dataset_root: Path,
+) -> None:
+    """The real bug found in review: personal_editorial (Bucket A)
+    deliberately adding a SECOND album by an artist who already has a
+    DIFFERENT album in an `enforce_artist_uniqueness=False` additional lane
+    (an already-published-catalog preservation lane, in the real CLI) must
+    never cause either entry to be rejected. Real example that surfaced
+    this: the seed's own "Revolver" alongside the published "Abbey Road",
+    both The Beatles."""
+    personal = [_pre_resolved(9001, 9001, 700, "Fictoquai", "Bucket A Pick")]
+    already_published = [_pre_resolved(9002, 9002, 700, "Fictoquai", "Preserved Pick")]
+    with CreditGraph.open(dataset_root) as graph:
+        catalog = assemble_album_catalog(
+            graph,
+            [],
+            [],
+            target_count=10,
+            pre_resolved_albums=personal,
+            additional_pre_resolved=[("already_published", already_published, False)],
+        )
+    assert catalog["pre_resolved_count"] == 2
+    assert catalog["pre_resolved_missed"] == []
+    titles = {a["title"] for a in catalog["albums"]}
+    assert titles == {"Bucket A Pick", "Preserved Pick"}
+
+
+def test_a_non_enforcing_lanes_kept_entries_still_lock_out_a_later_enforcing_lane(
+    dataset_root: Path,
+) -> None:
+    """A non-enforcing lane's own entries are never rejected for an artist
+    collision, but they still lock their artist for a LATER
+    enforce_artist_uniqueness=True lane -- an already-published album must
+    still stop a graph-rich pick from spending a second slot on the same
+    artist."""
+    already_published = [_pre_resolved(9001, 9001, 700, "Fictoquai", "Preserved Pick")]
+    graph_rich = [_pre_resolved(9002, 9002, 700, "Fictoquai", "Would-Be Graph Rich Pick")]
+    with CreditGraph.open(dataset_root) as graph:
+        catalog = assemble_album_catalog(
+            graph,
+            [],
+            [],
+            target_count=10,
+            additional_pre_resolved=[
+                ("already_published", already_published, False),
+                ("graph_rich", graph_rich, True),
+            ],
+        )
+    assert catalog["pre_resolved_count"] == 1
+    assert catalog["albums"][0]["title"] == "Preserved Pick"
     assert len(catalog["pre_resolved_missed"]) == 1
     assert "already covered" in catalog["pre_resolved_missed"][0]["reason"]
 

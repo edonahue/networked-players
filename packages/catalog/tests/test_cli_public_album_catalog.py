@@ -1426,6 +1426,99 @@ def test_already_published_catalog_blocks_a_duplicate_artist_from_another_lane(
     assert catalog["albums"][0]["title"] == "Already Published Album"
 
 
+def test_already_published_catalog_survives_a_personal_seed_entry_for_the_same_artist(
+    tmp_path: Path,
+) -> None:
+    """The exact real bug found in review: a --personal-seed (Bucket A)
+    entry deliberately adding a second album by an artist who already has
+    a DIFFERENT album in --already-published-catalog must never cause the
+    already-published album to be rejected. Modeled directly on the real
+    Phase 7 data: the committed editorial seed's "Revolver" (The Beatles)
+    alongside the live catalog's "Abbey Road" (The Beatles)."""
+    onehop_root = _write_onehop_dataset(tmp_path / "onehop")
+    masters_root = _write_masters_dataset(tmp_path / "masters")
+    policy_path = _widened_policy(tmp_path / "policy.json")
+    exclusions_path = _write_exclusions(tmp_path / "exclusions.json")
+    already_published_path = tmp_path / "prior-catalog.json"
+    already_published_path.write_text(
+        json.dumps(
+            {
+                "albums": [
+                    {
+                        "id": "master-1",
+                        "artist_id": 82730,
+                        "artist": "The Beatles",
+                        "master_id": 1,
+                        "main_release_id": 1,
+                        "title": "Abbey Road",
+                        "year": 1969,
+                    }
+                ]
+            }
+        )
+    )
+    personal_seed_path = tmp_path / "editorial-seed.json"
+    personal_seed_path.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "kind": "public-editorial-seed",
+                "snapshot_date": SNAPSHOT_DATE,
+                "generated_by": "test",
+                "generated_at": "2026-08-27T00:00:00+00:00",
+                "note": "",
+                "albums": [
+                    {
+                        "query_artist": "The Beatles",
+                        "query_title": "Revolver",
+                        "master_id": None,
+                        "main_release_id": 9501,
+                        "artist_id": 82730,
+                        "artist": "The Beatles",
+                        "title": "Revolver",
+                        "year": 1966,
+                    }
+                ],
+            }
+        )
+    )
+    empty_editorial_path = tmp_path / "empty-editorial.json"
+    empty_editorial_path.write_text(json.dumps({"albums": []}))
+    empty_candidates_path = tmp_path / "empty-candidates.json"
+    empty_candidates_path.write_text(json.dumps([]))
+    output_path = tmp_path / "albums.v1.json"
+
+    args = [
+        "build-public-album-catalog",
+        "--onehop-root",
+        str(onehop_root),
+        "--editorial-albums",
+        str(empty_editorial_path),
+        "--already-published-catalog",
+        str(already_published_path),
+        "--personal-seed",
+        str(personal_seed_path),
+        "--candidates",
+        str(empty_candidates_path),
+        "--target-count",
+        "2",
+        "--output",
+        str(output_path),
+        "--release-format-policy",
+        str(policy_path),
+        "--masters-root",
+        str(masters_root),
+        "--studio-album-exclusions",
+        str(exclusions_path),
+    ]
+    assert main(args) == 0
+    catalog = json.loads(output_path.read_text())
+    assert catalog["pre_resolved_count"] == 2
+    assert catalog["pre_resolved_missed"] == []
+    titles = {a["title"] for a in catalog["albums"]}
+    assert titles == {"Abbey Road", "Revolver"}
+
+
 def test_already_published_catalog_omitted_is_backward_compatible(tmp_path: Path) -> None:
     onehop_root = _write_onehop_dataset(tmp_path / "onehop")
     masters_root = _write_masters_dataset(tmp_path / "masters")
