@@ -270,7 +270,7 @@ def assemble_album_catalog(
     *,
     target_count: int,
     pre_resolved_albums: list[dict[str, Any]] | None = None,
-    additional_pre_resolved: list[tuple[str, list[dict[str, Any]]]] | None = None,
+    additional_pre_resolved: list[tuple[str, list[dict[str, Any]], bool]] | None = None,
     private_weight_fn: Callable[[int], float] | None = None,
     allowed_release_ids: frozenset[int] | None = None,
     master_exclusions: frozenset[int] | None = None,
@@ -320,18 +320,32 @@ def assemble_album_catalog(
 
     `additional_pre_resolved` (Phase 7 Buckets B/C: `select-graph-rich-
     candidates`'s exact marginal-value picks and a human-reviewed coverage-
-    gap selection) is a list of `(label, albums)` groups, each processed
-    with the exact same eligibility re-check, cross-bucket master-dedup, and
-    artist exclusion as `pre_resolved_albums` -- one rule, applied uniformly
-    to every pre-resolved lane, never a second copy of it. Unlike Bucket A,
-    these lanes are algorithmic output, not hand-curated, so this function
-    still never chooses which albums go in either group; it only places
-    already-decided picks. Group order matters: it determines both dedup
-    priority (an earlier group's master_id wins a collision) and the
-    returned `pre_resolved_buckets` ordering, which is what lets
+    gap selection -- and an already-published-catalog preservation lane for
+    expanding a live catalog) is a list of `(label, albums,
+    enforce_artist_uniqueness)` groups, each processed with the exact same
+    eligibility re-check and cross-bucket master-dedup as `pre_resolved_albums`
+    -- one rule, applied uniformly to every pre-resolved lane, never a
+    second copy of it. `enforce_artist_uniqueness` is per-group, not global:
+    `False` for a lane that -- like Bucket A -- may legitimately carry
+    multiple albums by one artist (an already-published preservation lane
+    MUST use `False`: real bug found in review -- a `True` here would let an
+    earlier multi-album-per-artist lane's pick, e.g. Bucket A's own "Revolver"
+    for The Beatles, lock out that SAME artist's already-published "Abbey
+    Road" in a later lane, silently dropping a live album the whole
+    preservation mechanism exists to protect). `True` for Bucket B/C, which
+    get one album per artist, same as the generic candidates pool. Every
+    KEPT entry locks its artist_id for every later lane regardless of its
+    OWN group's flag -- only whether a group's OWN entries can be rejected
+    for artist collision is what the flag controls, not whether its results
+    block someone else. Unlike Bucket A, these lanes are algorithmic output
+    (or externally-sourced, for the preservation lane), not hand-curated, so
+    this function still never chooses which albums go in any of them; it
+    only places already-decided picks. Group order matters: it determines
+    both dedup priority (an earlier group's master_id wins a collision) and
+    the returned `pre_resolved_buckets` ordering, which is what lets
     `catalog_audit.py` report each album's real provenance (personal
-    editorial vs. graph-rich vs. coverage-gap) instead of collapsing every
-    pre-resolved lane into one label.
+    editorial vs. graph-rich vs. coverage-gap vs. already-published) instead
+    of collapsing every pre-resolved lane into one label.
 
     The returned `albums[]` are ID-resolved (`MatchedAlbum.to_resolved_dict()`
     shape: `artist_id`, `main_release_id`, ...), not `{artist, title}` name
@@ -407,8 +421,13 @@ def assemble_album_catalog(
                 continue
             if master_id is not None:
                 seen_master_ids.add(int(master_id))
-            if enforce_artist_uniqueness:
-                locked_artist_ids.add(artist_id)
+            # Locked unconditionally, regardless of whether THIS group
+            # enforces uniqueness on itself -- a multi-album-per-artist lane
+            # (Bucket A, an already-published preservation lane) must still
+            # block a LATER one-album-per-artist lane (Bucket B/C) from
+            # spending a slot on an artist it already covers, even though it
+            # never rejects its OWN entries for that reason.
+            locked_artist_ids.add(artist_id)
             pre_resolved_kept.append(_pre_resolved_to_matched_album(graph, album))
             group_kept_count += 1
         if albums_in_group:
@@ -424,12 +443,10 @@ def assemble_album_catalog(
     _process_pre_resolved_group(
         "personal_editorial", pre_resolved_albums or [], enforce_artist_uniqueness=False
     )
-    # Bucket A's own kept artists still lock out every LATER lane -- only
-    # Bucket A is exempt from the one-album-per-artist rule, not everything
-    # that comes after it.
-    locked_artist_ids.update(m.artist_id for m in pre_resolved_kept)
-    for label, albums_in_group in additional_pre_resolved or []:
-        _process_pre_resolved_group(label, albums_in_group, enforce_artist_uniqueness=True)
+    for label, albums_in_group, enforce_artist_uniqueness in additional_pre_resolved or []:
+        _process_pre_resolved_group(
+            label, albums_in_group, enforce_artist_uniqueness=enforce_artist_uniqueness
+        )
 
     pre_resolved_artist_ids = {m.artist_id for m in pre_resolved_kept}
     excluded_artist_ids = editorial_artist_ids | pre_resolved_artist_ids

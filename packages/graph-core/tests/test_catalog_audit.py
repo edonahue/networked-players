@@ -155,7 +155,10 @@ def test_audit_distinguishes_graph_rich_and_coverage_gap_from_personal_editorial
             [],
             target_count=10,
             pre_resolved_albums=personal,
-            additional_pre_resolved=[("graph_rich", graph_rich), ("coverage_gap", coverage_gap)],
+            additional_pre_resolved=[
+                ("graph_rich", graph_rich, True),
+                ("coverage_gap", coverage_gap, True),
+            ],
             snapshot_date=SNAPSHOT_DATE,
             generated_by="test",
         )
