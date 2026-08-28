@@ -921,6 +921,24 @@ def _parser() -> argparse.ArgumentParser:
         "--editorial-albums", type=Path, default=Path("data/albums/top-albums-v1.json")
     )
     build_public_album_catalog.add_argument(
+        "--already-published-catalog",
+        type=Path,
+        default=None,
+        help=(
+            "apps/web/public/data/catalog/albums.v1.json (a PREVIOUS build's output) -- "
+            "when expanding an already-live catalog, its albums[] are preserved verbatim "
+            "as a pre-resolved lane (label 'already_published'), never re-derived from "
+            "--editorial-albums/--candidates against a possibly-different corpus "
+            "generation. Real measured need: re-running match_albums and the "
+            "score-ranked candidate fill against a widened one-hop corpus does not "
+            "reproduce the same result set even from the same inputs (a wider corpus "
+            "changes editorial text-match resolution and shifts which candidates rank "
+            "into the fill) -- omitting this flag risks silently dropping or replacing "
+            "already-published albums on every catalog expansion. Optional; omit only "
+            "for a genuinely first-ever catalog build with nothing yet published"
+        ),
+    )
+    build_public_album_catalog.add_argument(
         "--personal-seed",
         type=Path,
         default=None,
@@ -3326,6 +3344,31 @@ def main(argv: Sequence[str] | None = None) -> int:
             }
 
         additional_pre_resolved: list[tuple[str, list[dict[str, Any]]]] = []
+        if args.already_published_catalog is not None:
+            already_published_payload = json.loads(args.already_published_catalog.read_text())
+            already_published_albums = already_published_payload.get("albums")
+            if not isinstance(already_published_albums, list):
+                raise ValueError(
+                    f"--already-published-catalog {args.already_published_catalog} has no "
+                    "'albums' array"
+                )
+            # Deliberately NO snapshot_date cross-check against --onehop-root: this
+            # lane exists precisely to preserve content resolved from a PAST
+            # snapshot/corpus generation unchanged, not to re-verify it against
+            # the current one. Every entry still passes through the same
+            # eligibility re-check and normalization as every other lane, so a
+            # since-excluded master or artist collision is still caught, just
+            # never for the reason "the snapshot generation moved on."
+            additional_pre_resolved.append(
+                (
+                    "already_published",
+                    [
+                        _normalize_pre_resolved_entry(entry, source="--already-published-catalog")
+                        for entry in already_published_albums
+                    ],
+                )
+            )
+
         if args.graph_rich_selection is not None:
             graph_rich_payload = json.loads(args.graph_rich_selection.read_text())
             graph_rich_snapshot = str(graph_rich_payload.get("snapshot_date") or "")

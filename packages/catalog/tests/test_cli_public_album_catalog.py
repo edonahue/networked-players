@@ -1269,3 +1269,205 @@ def test_coverage_gap_candidates_missing_title_field_refused(tmp_path: Path) -> 
     with pytest.raises(ValueError, match="'title'/'sample_title'"):
         main(args)
     assert not output_path.exists()
+
+
+# --- Phase 7: --already-published-catalog (preserving a prior build's albums) ----
+
+
+def _write_already_published_catalog(path: Path) -> Path:
+    """A prior build's own committed-catalog shape: real per-album fields
+    (id/artist_id/artist/master_id/main_release_id/title/year), no
+    snapshot_date requirement -- this lane preserves content resolved from
+    a PAST snapshot generation, on purpose."""
+    path.write_text(
+        json.dumps(
+            {
+                "version": 1,
+                "catalog_version": "catalog-v1-20200101-priorbuild",
+                "snapshot_date": "20200101",
+                "generated_by": "test",
+                "albums": [
+                    {
+                        "id": "master-901",
+                        "artist_id": 100,
+                        "artist": "Alice",
+                        "master_id": 901,
+                        "main_release_id": 1,
+                        "title": "First Light",
+                        "year": 1995,
+                    }
+                ],
+            }
+        )
+    )
+    return path
+
+
+def test_already_published_catalog_preserves_existing_albums_labeled_already_published(
+    tmp_path: Path,
+) -> None:
+    """Real bug found while doing the actual Phase 7 catalog expansion: a
+    naive rebuild against a widened one-hop corpus does NOT reproduce the
+    same editorial match set or the same score-ranked candidate fill, and
+    silently drops/replaces already-published albums. --already-published-
+    catalog is the fix -- its entries are preserved verbatim, never
+    re-derived."""
+    onehop_root = _write_onehop_dataset(tmp_path / "onehop")
+    masters_root = _write_masters_dataset(tmp_path / "masters")
+    policy_path = _write_release_format_policy(tmp_path / "policy.json")  # allows [1, 2]
+    exclusions_path = _write_exclusions(tmp_path / "exclusions.json")
+    already_published_path = _write_already_published_catalog(tmp_path / "prior-catalog.json")
+    output_path = tmp_path / "albums.v1.json"
+
+    # No --editorial-albums/--candidates contribution needed to prove
+    # preservation -- pass empty editorial and no candidates at all.
+    empty_editorial_path = tmp_path / "empty-editorial.json"
+    empty_editorial_path.write_text(json.dumps({"albums": []}))
+    empty_candidates_path = tmp_path / "empty-candidates.json"
+    empty_candidates_path.write_text(json.dumps([]))
+
+    args = [
+        "build-public-album-catalog",
+        "--onehop-root",
+        str(onehop_root),
+        "--editorial-albums",
+        str(empty_editorial_path),
+        "--already-published-catalog",
+        str(already_published_path),
+        "--candidates",
+        str(empty_candidates_path),
+        "--target-count",
+        "1",
+        "--output",
+        str(output_path),
+        "--release-format-policy",
+        str(policy_path),
+        "--masters-root",
+        str(masters_root),
+        "--studio-album-exclusions",
+        str(exclusions_path),
+    ]
+    assert main(args) == 0
+    catalog = json.loads(output_path.read_text())
+    assert catalog["pre_resolved_count"] == 1
+    assert catalog["pre_resolved_buckets"] == [{"label": "already_published", "count": 1}]
+    assert len(catalog["albums"]) == 1
+    preserved = catalog["albums"][0]
+    assert preserved["artist"] == "Alice"
+    assert preserved["title"] == "First Light"
+    assert preserved["master_id"] == 901
+
+
+def test_already_published_catalog_blocks_a_duplicate_artist_from_another_lane(
+    tmp_path: Path,
+) -> None:
+    """An already-published artist locks out a later lane's pick for that
+    same artist, the same one-album-per-artist rule every additional lane
+    enforces against every earlier one."""
+    onehop_root = _write_onehop_dataset(tmp_path / "onehop")
+    masters_root = _write_masters_dataset(tmp_path / "masters")
+    policy_path = _widened_policy(tmp_path / "policy.json")
+    exclusions_path = _write_exclusions(tmp_path / "exclusions.json")
+    already_published_path = tmp_path / "prior-catalog.json"
+    already_published_path.write_text(
+        json.dumps(
+            {
+                "albums": [
+                    {
+                        "id": "master-1",
+                        "artist_id": 750,
+                        "artist": "Graph Rich Artist",
+                        "master_id": 1,
+                        "main_release_id": 1,
+                        "title": "Already Published Album",
+                        "year": 1990,
+                    }
+                ]
+            }
+        )
+    )
+    graph_rich_path = _write_graph_rich_selection(tmp_path / "graph-rich.json")
+    empty_editorial_path = tmp_path / "empty-editorial.json"
+    empty_editorial_path.write_text(json.dumps({"albums": []}))
+    empty_candidates_path = tmp_path / "empty-candidates.json"
+    empty_candidates_path.write_text(json.dumps([]))
+    output_path = tmp_path / "albums.v1.json"
+
+    args = [
+        "build-public-album-catalog",
+        "--onehop-root",
+        str(onehop_root),
+        "--editorial-albums",
+        str(empty_editorial_path),
+        "--already-published-catalog",
+        str(already_published_path),
+        "--graph-rich-selection",
+        str(graph_rich_path),
+        "--candidates",
+        str(empty_candidates_path),
+        "--target-count",
+        "2",
+        "--output",
+        str(output_path),
+        "--release-format-policy",
+        str(policy_path),
+        "--masters-root",
+        str(masters_root),
+        "--studio-album-exclusions",
+        str(exclusions_path),
+    ]
+    assert main(args) == 0
+    catalog = json.loads(output_path.read_text())
+    assert catalog["pre_resolved_buckets"] == [
+        {"label": "already_published", "count": 1},
+        {"label": "graph_rich", "count": 0},
+    ]
+    assert len(catalog["albums"]) == 1
+    assert catalog["albums"][0]["title"] == "Already Published Album"
+
+
+def test_already_published_catalog_omitted_is_backward_compatible(tmp_path: Path) -> None:
+    onehop_root = _write_onehop_dataset(tmp_path / "onehop")
+    masters_root = _write_masters_dataset(tmp_path / "masters")
+    policy_path = _write_release_format_policy(tmp_path / "policy.json")
+    exclusions_path = _write_exclusions(tmp_path / "exclusions.json")
+    output_path = tmp_path / "albums.v1.json"
+
+    args = _base_args(tmp_path, onehop_root=onehop_root, output=output_path)
+    args += [
+        "--release-format-policy",
+        str(policy_path),
+        "--masters-root",
+        str(masters_root),
+        "--studio-album-exclusions",
+        str(exclusions_path),
+    ]
+    assert main(args) == 0
+    catalog = json.loads(output_path.read_text())
+    assert catalog["pre_resolved_count"] == 0
+    assert catalog["pre_resolved_buckets"] == []
+
+
+def test_already_published_catalog_missing_albums_array_refused(tmp_path: Path) -> None:
+    onehop_root = _write_onehop_dataset(tmp_path / "onehop")
+    masters_root = _write_masters_dataset(tmp_path / "masters")
+    policy_path = _write_release_format_policy(tmp_path / "policy.json")
+    exclusions_path = _write_exclusions(tmp_path / "exclusions.json")
+    already_published_path = tmp_path / "prior-catalog.json"
+    already_published_path.write_text(json.dumps({"not_albums": []}))
+    output_path = tmp_path / "albums.v1.json"
+
+    args = _base_args(tmp_path, onehop_root=onehop_root, output=output_path)
+    args += [
+        "--release-format-policy",
+        str(policy_path),
+        "--masters-root",
+        str(masters_root),
+        "--studio-album-exclusions",
+        str(exclusions_path),
+        "--already-published-catalog",
+        str(already_published_path),
+    ]
+    with pytest.raises(ValueError, match="'albums' array"):
+        main(args)
+    assert not output_path.exists()
