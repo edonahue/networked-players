@@ -1,7 +1,10 @@
-# Local curator
+# Local curator / research workbench
 
-This is a private, local-only review surface for scored cohort artifacts. It is not part
-of `apps/web`, is not included in the Astro build, and has no public route.
+This is a private, local-only review server with two modes (`review_server.py --mode
+cohort|workbench`). Neither is part of `apps/web`, included in the Astro build, or has a
+public route.
+
+## Cohort mode (default) — review scored cohort artifacts
 
 Generate the local editorial packet first:
 
@@ -44,3 +47,30 @@ uv run networked-players-catalog draft-cohort-editorial-review \
   --output-markdown local/analysis/cohorts/<source-id>/editorial-review.md \
   --enrich-images
 ```
+
+## Workbench mode — run `research-compare` comparisons from a browser
+
+Phase 7 PR D's third mode: a form for `compare_albums`/`compare_artists`/`compare_scenes`
+instead of the `research-compare` CLI, writing the exact same run bookkeeping under
+`local/research/<topic>/runs/<run-id>/`. See `packages/research/README.md` for what each
+comparison type covers.
+
+```bash
+make workbench
+```
+
+Then open <http://127.0.0.1:8765/>, pick a comparison type, a `corpus_root` (a
+`research-build-corpus` topic corpus or the full canonical snapshot -- either way it must
+resolve under `local/`), a run topic, and the album/artist/scene ids to compare.
+
+For another device on the trusted LAN:
+
+```bash
+make workbench ARGS="--host 0.0.0.0"
+```
+
+Invariants this mode holds to (plan section 11): loopback by default, no Cloudflare, not in
+the public build, no accounts or analytics, every run written only under `local/research/`.
+`corpus_root` and `topic` are both validated server-side (not just trusted from the form) --
+`corpus_root` must resolve under `local/`, and `topic` must be a single plain name, never a
+path -- since this mode, like cohort mode, can be bound to `0.0.0.0` for LAN access.

@@ -1,6 +1,13 @@
 #!/usr/bin/env python3
 # ruff: noqa: E501
-"""Local-only human review UI for one scored cohort."""
+"""Local-only review UI, two modes sharing one binding/state/traversal-guard
+server: `--mode cohort` (default, unchanged) reviews one scored cohort;
+`--mode workbench` (Phase 7 PR D) runs `packages/research.compare`
+comparisons from a browser instead of the `research-compare` CLI. Per the
+plan's own architecture decision (section 11): a third mode of this
+existing server, not a new app -- this file already solves loopback
+binding, LAN opt-in, and atomic private-state writes; the workbench mode
+adds a comparison form and result view, no new infrastructure."""
 
 from __future__ import annotations
 
@@ -10,7 +17,17 @@ import mimetypes
 from datetime import UTC, datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import urlparse
+from typing import Any
+from urllib.parse import parse_qs, urlparse
+
+from networked_players_research.compare import (
+    CompareAlbumsRequest,
+    CompareArtistsRequest,
+    CompareError,
+    CompareScenesRequest,
+    run_comparison_and_persist,
+)
+from networked_players_research.runs import RESEARCH_ROOT
 
 PAGE = """<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -123,7 +140,108 @@ fetch('/api/state').then(r=>r.json()).then(s=>{state=s;document.querySelector('#
 </script></body></html>"""
 
 
-def load_state(analysis_dir: Path, selection_path: Path, source_id: str) -> dict:
+# --- Workbench mode (Phase 7 PR D) --------------------------------------
+# Same dark/light theme, same minimal-dependency inline-script style as
+# PAGE above -- a real, working comparison runner, not a placeholder. The
+# result view is a compact, per-mode summary plus the full raw JSON in a
+# <details> disclosure; a richer explore/visualize UI is the plan's
+# separate "Explore" bullet, not this mode's job.
+WORKBENCH_PAGE = """<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Networked Players research workbench</title>
+<style>
+:root{color-scheme:dark;--bg:#10100e;--ink:#f3eee3;--surface:#1a1a18;--soft:#272722;--line:#4c4c45;--muted:#b8b3a8;--accent:#78aaa0;--warn:#d98282}:root[data-theme="light"]{color-scheme:light;--bg:#f1ebde;--ink:#202321;--surface:#fff9ee;--soft:#eee7da;--line:#c9c0b1;--muted:#68665f;--accent:#397654;--warn:#a83c3c}
+body{font:16px system-ui,sans-serif;margin:0;background:var(--bg);color:var(--ink)}header{padding:18px 24px;background:var(--surface);border-bottom:1px solid var(--line);display:flex;gap:18px;align-items:center}main{max-width:920px;margin:auto;padding:20px}
+form{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:16px;display:flex;flex-direction:column;gap:10px}label{font-size:.85rem;color:var(--muted)}input,select{color:var(--ink);background:var(--soft);border:1px solid var(--line);border-radius:4px;padding:7px;font:inherit}
+.row{display:flex;gap:12px;flex-wrap:wrap}.row>div{flex:1;min-width:220px}button{padding:9px 16px;border:1px solid var(--line);border-radius:4px;background:var(--soft);color:var(--ink);cursor:pointer;align-self:flex-start}
+.hidden{display:none}.error{color:var(--warn);white-space:pre-wrap}.result{margin-top:20px}.panel{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:14px 16px;margin-bottom:14px}
+table.kv{border-collapse:collapse;width:100%}table.kv td{padding:3px 8px 3px 0;vertical-align:top}table.kv td:first-child{color:var(--muted);white-space:nowrap}
+.runs{font-size:.85rem;color:var(--muted)}.runs a{color:var(--accent)}
+</style><script>(()=>{let t=localStorage.getItem('networked-players-curator-theme');document.documentElement.dataset.theme=t==='light'?'light':'dark'})()</script></head><body>
+<header><strong>Networked Players / research workbench</strong></header>
+<main>
+<form id="form">
+  <div class="row"><div><label for="mode">Compare</label><select id="mode">
+    <option value="albums">Two albums</option><option value="artists">Two artists</option><option value="scenes">Two scenes</option>
+  </select></div>
+  <div><label for="corpus_root">Corpus root</label><input id="corpus_root" placeholder="local/research/&lt;topic&gt;/corpus/snapshot=&lt;date&gt;" required></div>
+  <div><label for="topic">Run topic (bookkeeping slug)</label><input id="topic" placeholder="my-comparison" required></div></div>
+  <div class="row" id="fields-albums"><div><label for="album_a">Album A (release_id)</label><input id="album_a" type="number"></div><div><label for="album_b">Album B (release_id)</label><input id="album_b" type="number"></div></div>
+  <div class="row hidden" id="fields-artists"><div><label for="artist_a">Artist A (artist_id)</label><input id="artist_a" type="number"></div><div><label for="artist_b">Artist B (artist_id)</label><input id="artist_b" type="number"></div></div>
+  <div class="row hidden" id="fields-scenes"><div><label for="scene_a">Scene A (space-separated artist_ids)</label><input id="scene_a" placeholder="100 200 300"></div><div><label for="scene_b">Scene B (space-separated artist_ids)</label><input id="scene_b" placeholder="400 500"></div></div>
+  <button type="submit">Run comparison</button>
+  <p class="error hidden" id="error"></p>
+</form>
+<div class="result hidden" id="result"></div>
+<p class="runs" id="runs"></p>
+</main>
+<script>
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function updateFields(){for(const m of ['albums','artists','scenes'])$('#fields-'+m).classList.toggle('hidden',m!==$('#mode').value)}
+$('#mode').onchange=updateFields;updateFields();
+function kv(pairs){return '<table class="kv">'+pairs.map(([k,v])=>'<tr><td>'+esc(k)+'</td><td>'+v+'</td></tr>').join('')+'</table>'}
+function summarizeAlbums(c){return kv([
+  ['Album A',esc(c.album_a.release_id)+(c.album_a.release&&c.album_a.release.title?' — '+esc(c.album_a.release.title):'')],
+  ['Album B',esc(c.album_b.release_id)+(c.album_b.release&&c.album_b.release.title?' — '+esc(c.album_b.release.title):'')],
+  ['Shared contributors',c.shared_vs_unique.recurring_personnel.length],
+  ['Direct route',c.direct_route.connected?'yes':'no'],
+  ['Indirect route',c.indirect_route?esc(c.indirect_route.case):'n/a (direct)'],
+  ['Network overlap',c.network_overlap.count],
+  ['Scope-tier comparison',esc(c.scope_tier_comparison.case)],
+])}
+function summarizeArtists(c){return kv([
+  ['Artist A',esc(c.artist_a.name||c.artist_a.artist_id)],
+  ['Artist B',esc(c.artist_b.name||c.artist_b.artist_id)],
+  ['Route',esc(c.route.case)],
+  ['Shared collaborators',c.shared_collaborators.count],
+  ['A hub dependence (degree)',c.artist_a.hub_dependence.degree],
+  ['B hub dependence (degree)',c.artist_b.hub_dependence.degree],
+])}
+function summarizeScenes(c){return kv([
+  ['Scene A resolved',c.scene_a.resolved_artist_ids.length+' of '+c.scene_a.member_artist_ids.length],
+  ['Scene B resolved',c.scene_b.resolved_artist_ids.length+' of '+c.scene_b.member_artist_ids.length],
+  ['Overlap members',c.overlap_and_separation.overlap_artist_ids.length],
+  ['Connecting releases',c.connecting_releases.count],
+  ['Shared collaborators',c.shared_collaborators.count],
+  ['Routes between sets',esc(c.routes_between_sets.case)],
+])}
+function renderResult(mode,data){
+  const summary=mode==='albums'?summarizeAlbums(data.comparison):mode==='artists'?summarizeArtists(data.comparison):summarizeScenes(data.comparison);
+  $('#result').innerHTML='<div class="panel"><h2>Run '+esc(data.run_id)+'</h2><p class="runs">'+esc(data.run_root)+'</p>'+summary+'</div>'+
+    '<details class="panel"><summary>Full comparison JSON</summary><pre style="white-space:pre-wrap;word-break:break-all">'+esc(JSON.stringify(data.comparison,null,2))+'</pre></details>';
+  $('#result').classList.remove('hidden');
+}
+function loadRuns(){
+  const topic=$('#topic').value.trim();
+  if(!topic){$('#runs').textContent='';return}
+  fetch('/api/runs?topic='+encodeURIComponent(topic)).then(r=>r.ok?r.json():{runs:[]}).then(d=>{
+    $('#runs').textContent=d.runs.length?('Past runs for "'+topic+'": '+d.runs.map(r=>r.run_id).join(', ')):'';
+  }).catch(()=>{});
+}
+$('#topic').onblur=loadRuns;
+$('#form').onsubmit=async(e)=>{
+  e.preventDefault();
+  $('#error').classList.add('hidden');$('#result').classList.add('hidden');
+  const mode=$('#mode').value;
+  const payload={mode,corpus_root:$('#corpus_root').value.trim(),topic:$('#topic').value.trim()};
+  if(mode==='albums'){payload.album_a=Number($('#album_a').value);payload.album_b=Number($('#album_b').value)}
+  else if(mode==='artists'){payload.artist_a=Number($('#artist_a').value);payload.artist_b=Number($('#artist_b').value)}
+  else{payload.scene_a=$('#scene_a').value.trim().split(/\\s+/).filter(Boolean).map(Number);payload.scene_b=$('#scene_b').value.trim().split(/\\s+/).filter(Boolean).map(Number)}
+  const submitBtn=$('#form button[type=submit]');submitBtn.disabled=true;submitBtn.textContent='Running…';
+  try{
+    const res=await fetch('/api/compare',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});
+    const data=await res.json();
+    if(!res.ok){$('#error').textContent=data.error||'Request failed';$('#error').classList.remove('hidden');return}
+    renderResult(mode,data);
+    loadRuns();
+  }catch(err){$('#error').textContent=String(err);$('#error').classList.remove('hidden')}
+  finally{submitBtn.disabled=false;submitBtn.textContent='Run comparison'}
+};
+</script></body></html>"""
+
+
+def load_state(analysis_dir: Path, selection_path: Path, source_id: str) -> dict[str, Any]:
     packet = json.loads((analysis_dir / "editorial-review.json").read_text())
     selection = (
         json.loads(selection_path.read_text())
@@ -133,7 +251,7 @@ def load_state(analysis_dir: Path, selection_path: Path, source_id: str) -> dict
     return {"source_id": source_id, **packet, "selection": selection}
 
 
-def save_selection(path: Path, payload: dict, reviewed_by: str) -> None:
+def save_selection(path: Path, payload: dict[str, Any], reviewed_by: str) -> None:
     approved = payload.get("approved_pairs", [])
     if not isinstance(approved, list):
         raise ValueError("approved_pairs must be a list")
@@ -151,9 +269,168 @@ def save_selection(path: Path, payload: dict, reviewed_by: str) -> None:
     temporary.replace(path)
 
 
+class WorkbenchRequestError(ValueError):
+    """A malformed or unsafe `/api/compare` request -- reported to the
+    browser as a 400, never a 500; the payload came from the visitor's own
+    form, but this server can also be bound to `--host 0.0.0.0` for trusted-
+    LAN access (same as cohort mode), so it still validates rather than
+    trusting it outright."""
+
+
+def _safe_corpus_root(raw: str, allowed_root: Path) -> Path:
+    """A comparison's `corpus_root` must resolve under `allowed_root`
+    (`local/` in real usage -- every real topic corpus and the canonical
+    processed snapshot already live there, see AGENTS.md's `local/`
+    convention) -- keeps a LAN-bound instance from being used to open an
+    arbitrary path on the host as a "corpus". Mirrors the existing `/art/`
+    route's own real-path-containment check just below. Parameterized
+    (rather than hardcoding `Path("local")`) so tests can point it at an
+    isolated `tmp_path` instead of this repo's own real `local/`."""
+    if not raw or not raw.strip():
+        raise WorkbenchRequestError("corpus_root is required")
+    candidate = Path(raw).resolve()
+    if allowed_root != candidate and allowed_root not in candidate.parents:
+        raise WorkbenchRequestError(f"corpus_root must resolve under {allowed_root}")
+    if not (candidate / "manifest.json").is_file():
+        raise WorkbenchRequestError(f"no manifest.json under {candidate} -- not a real corpus")
+    return candidate
+
+
+def _safe_topic(raw: str) -> str:
+    """`runs.py`'s `topic_root` joins `research_root / topic_slug` with no
+    sanitization of its own -- fine for a CLI flag an operator types
+    themselves, not fine for a value taken from an HTTP POST body on a
+    server that CAN be LAN-bound. Rejects anything that isn't a single
+    plain path segment."""
+    if not raw or not raw.strip():
+        raise WorkbenchRequestError("topic is required")
+    if raw != Path(raw).name or raw in (".", ".."):
+        raise WorkbenchRequestError("topic must be a single plain name, not a path")
+    return raw
+
+
+def _positive_int_list(raw: object, field: str) -> tuple[int, ...]:
+    if not isinstance(raw, list) or not raw or not all(isinstance(v, int) for v in raw):
+        raise WorkbenchRequestError(f"{field} must be a non-empty list of integers")
+    return tuple(raw)
+
+
+def _required_int(payload: dict[str, Any], field: str) -> int:
+    value = payload.get(field)
+    if not isinstance(value, int):
+        raise WorkbenchRequestError(f"{field} is required and must be an integer")
+    return value
+
+
+def build_compare_request(
+    mode: str, payload: dict[str, Any], corpus_root: Path
+) -> CompareAlbumsRequest | CompareArtistsRequest | CompareScenesRequest:
+    if mode == "albums":
+        return CompareAlbumsRequest(
+            corpus_snapshot_root=corpus_root,
+            album_a_release_id=_required_int(payload, "album_a"),
+            album_b_release_id=_required_int(payload, "album_b"),
+        )
+    if mode == "artists":
+        return CompareArtistsRequest(
+            corpus_snapshot_root=corpus_root,
+            artist_a_id=_required_int(payload, "artist_a"),
+            artist_b_id=_required_int(payload, "artist_b"),
+        )
+    if mode == "scenes":
+        return CompareScenesRequest(
+            corpus_snapshot_root=corpus_root,
+            scene_a_artist_ids=_positive_int_list(payload.get("scene_a"), "scene_a"),
+            scene_b_artist_ids=_positive_int_list(payload.get("scene_b"), "scene_b"),
+        )
+    raise WorkbenchRequestError(f"unrecognized mode: {mode!r}")
+
+
+def list_runs(research_root: Path, topic: str) -> list[dict[str, Any]]:
+    """Every run recorded for `topic`, newest first -- reuses the same
+    `manifest.json` `research-analyze`/`research-compare` already write,
+    never a second bookkeeping format."""
+    runs_dir = research_root / topic / "runs"
+    if not runs_dir.is_dir():
+        return []
+    summaries = []
+    for run_dir in runs_dir.iterdir():
+        manifest_path = run_dir / "manifest.json"
+        if manifest_path.is_file():
+            summaries.append(json.loads(manifest_path.read_text()))
+    summaries.sort(key=lambda m: m.get("run_id", ""), reverse=True)
+    return summaries
+
+
+def make_workbench_handler(
+    research_root: Path, *, allowed_corpus_root: Path | None = None
+) -> type[BaseHTTPRequestHandler]:
+    corpus_allowlist_root = allowed_corpus_root or Path("local").resolve()
+
+    class WorkbenchHandler(BaseHTTPRequestHandler):
+        def _respond_json(self, status: int, payload: dict[str, Any]) -> None:
+            body = json.dumps(payload).encode()
+            self.send_response(status)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def do_GET(self) -> None:
+            parsed = urlparse(self.path)
+            if parsed.path == "/":
+                body = WORKBENCH_PAGE.encode()
+                self.send_response(200)
+                self.send_header("Content-Type", "text/html; charset=utf-8")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+                return
+            if parsed.path == "/api/runs":
+                topic = parse_qs(parsed.query).get("topic", [""])[0]
+                try:
+                    topic = _safe_topic(topic)
+                except WorkbenchRequestError as exc:
+                    self._respond_json(400, {"error": str(exc)})
+                    return
+                self._respond_json(200, {"runs": list_runs(research_root, topic)})
+                return
+            self.send_error(404)
+
+        def do_POST(self) -> None:
+            if urlparse(self.path).path != "/api/compare":
+                self.send_error(404)
+                return
+            try:
+                raw_body = self.rfile.read(int(self.headers.get("Content-Length", "0")))
+                payload = json.loads(raw_body)
+                if not isinstance(payload, dict):
+                    raise WorkbenchRequestError("request body must be a JSON object")
+                mode = payload.get("mode")
+                if mode not in ("albums", "artists", "scenes"):
+                    raise WorkbenchRequestError("mode must be one of albums/artists/scenes")
+                corpus_root = _safe_corpus_root(
+                    payload.get("corpus_root", ""), corpus_allowlist_root
+                )
+                topic = _safe_topic(payload.get("topic", ""))
+                compare_request = build_compare_request(mode, payload, corpus_root)
+                result = run_comparison_and_persist(
+                    mode, compare_request, topic=topic, research_root=research_root
+                )
+            except (WorkbenchRequestError, json.JSONDecodeError, CompareError) as exc:
+                self._respond_json(400, {"error": str(exc)})
+                return
+            self._respond_json(200, result)
+
+        def log_message(self, format: str, *args: object) -> None:
+            return
+
+    return WorkbenchHandler
+
+
 def make_handler(
     analysis_dir: Path, selection_path: Path, source_id: str, reviewed_by: str, art_dir: Path | None
-):
+) -> type[BaseHTTPRequestHandler]:
     class Handler(BaseHTTPRequestHandler):
         def do_GET(self) -> None:
             path = urlparse(self.path).path
@@ -202,26 +479,51 @@ def make_handler(
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Serve the local cohort curator UI")
-    parser.add_argument("--source-id", required=True)
+    parser = argparse.ArgumentParser(
+        description="Serve the local cohort curator or research workbench UI"
+    )
+    parser.add_argument(
+        "--mode",
+        choices=("cohort", "workbench"),
+        default="cohort",
+        help="cohort (default, unchanged) reviews one scored cohort; workbench (Phase 7 PR D) "
+        "runs research-compare comparisons from a browser",
+    )
+    parser.add_argument("--source-id", help="required for --mode cohort")
     parser.add_argument("--analysis-dir", type=Path)
     parser.add_argument("--selection", type=Path)
     parser.add_argument("--reviewed-by", default="local-curator")
     parser.add_argument("--art-dir", type=Path, help="optional local album-art directory")
     parser.add_argument(
+        "--research-root",
+        type=Path,
+        default=RESEARCH_ROOT,
+        help="for --mode workbench: where runs are written (default local/research/)",
+    )
+    parser.add_argument(
         "--host", default="127.0.0.1", help="use 0.0.0.0 only for explicit LAN access"
     )
     parser.add_argument("--port", type=int, default=8765)
     args = parser.parse_args()
-    analysis_dir = args.analysis_dir or Path("local/analysis/cohorts") / args.source_id
-    selection = (
-        args.selection or Path("data/private/cohort-review") / f"{args.source_id}-selection.json"
-    )
-    server = ThreadingHTTPServer(
-        (args.host, args.port),
-        make_handler(analysis_dir, selection, args.source_id, args.reviewed_by, args.art_dir),
-    )
-    print(f"Local curator listening on http://{args.host}:{args.port}/")
+
+    if args.mode == "cohort":
+        if not args.source_id:
+            parser.error("--source-id is required for --mode cohort")
+        analysis_dir = args.analysis_dir or Path("local/analysis/cohorts") / args.source_id
+        selection = (
+            args.selection
+            or Path("data/private/cohort-review") / f"{args.source_id}-selection.json"
+        )
+        handler = make_handler(
+            analysis_dir, selection, args.source_id, args.reviewed_by, args.art_dir
+        )
+        label = "Local curator"
+    else:
+        handler = make_workbench_handler(args.research_root)
+        label = "Local research workbench"
+
+    server = ThreadingHTTPServer((args.host, args.port), handler)
+    print(f"{label} listening on http://{args.host}:{args.port}/")
     try:
         server.serve_forever()
     except KeyboardInterrupt:

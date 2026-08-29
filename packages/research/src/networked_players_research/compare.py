@@ -33,7 +33,9 @@ the other nine.
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Protocol
 
@@ -46,10 +48,12 @@ from networked_players_graph_core.role_taxonomy import RoleCategory, classify_ro
 
 from .analyses import _release_year
 from .report import _scan_for_forbidden_phrases
+from .runs import RESEARCH_ROOT, new_run_id, new_run_paths, write_run_manifest
 from .scope_tier import ScopeTierError, measure_scope_tiers
 
 DEFAULT_MAX_HOPS = 4
 DEFAULT_MAX_ROUTE_CANDIDATE_PAIRS = 200
+COMPARE_MODES = ("albums", "artists", "scenes")
 
 
 class _RouteSearchGraph(Protocol):
@@ -555,3 +559,64 @@ def compare_scenes(graph: CreditGraph, request: CompareScenesRequest) -> dict[st
             max_route_candidate_pairs=request.max_route_candidate_pairs,
         ),
     }
+
+
+def corpus_version_string(corpus_root: Path) -> str:
+    """A topic corpus doesn't carry a single version string the way a
+    published artifact does -- the directory name plus its own manifest's
+    snapshot_date is the closest real provenance available."""
+    manifest_path = corpus_root / "manifest.json"
+    manifest = json.loads(manifest_path.read_text()) if manifest_path.is_file() else {}
+    return f"{corpus_root.name}:{manifest.get('snapshot_date', 'unknown')}"
+
+
+def run_comparison_and_persist(
+    mode: str,
+    request: CompareAlbumsRequest | CompareArtistsRequest | CompareScenesRequest,
+    *,
+    topic: str,
+    research_root: Path = RESEARCH_ROOT,
+    run_id: str | None = None,
+) -> dict[str, Any]:
+    """Opens a `CreditGraph` over the request's own corpus root, runs the
+    right `compare_*` function for `mode`, and persists the result as a run
+    under `research_root/<topic>/runs/<run-id>/` -- exactly the same
+    bookkeeping `research-analyze` already uses. Shared by the CLI
+    (`research-compare`) and the workbench server mode so both stay in
+    lockstep rather than maintaining two copies of this dispatch."""
+    if mode not in COMPARE_MODES:
+        raise CompareError(f"unrecognized mode: {mode!r}; must be one of {COMPARE_MODES}")
+
+    started_at = datetime.now(UTC).isoformat()
+    with CreditGraph.open(request.corpus_snapshot_root) as graph:
+        if mode == "albums":
+            if not isinstance(request, CompareAlbumsRequest):
+                raise CompareError("mode 'albums' requires a CompareAlbumsRequest")
+            comparison = compare_albums(graph, request)
+        elif mode == "artists":
+            if not isinstance(request, CompareArtistsRequest):
+                raise CompareError("mode 'artists' requires a CompareArtistsRequest")
+            comparison = compare_artists(graph, request)
+        else:
+            if not isinstance(request, CompareScenesRequest):
+                raise CompareError("mode 'scenes' requires a CompareScenesRequest")
+            comparison = compare_scenes(graph, request)
+
+    resolved_run_id = run_id or new_run_id()
+    run_paths = new_run_paths(topic, resolved_run_id, research_root=research_root)
+    run_paths.ensure_dirs()
+    (run_paths.root / "comparison.json").write_text(
+        json.dumps(comparison, indent=2, sort_keys=True) + "\n"
+    )
+
+    finished_at = datetime.now(UTC).isoformat()
+    write_run_manifest(
+        run_paths,
+        topic=topic,
+        run_id=resolved_run_id,
+        corpus_version=corpus_version_string(request.corpus_snapshot_root),
+        analyses=[f"compare_{mode}"],
+        started_at=started_at,
+        finished_at=finished_at,
+    )
+    return {"run_id": resolved_run_id, "run_root": str(run_paths.root), "comparison": comparison}

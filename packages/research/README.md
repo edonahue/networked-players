@@ -15,3 +15,11 @@ report -- `networked-players-research research-run --config request.json --datas
 Promotion of a research finding into the public product is a deliberate, human-reviewed
 step reusing the existing contract-creation workflow (new validator +
 `PUBLIC_ARTIFACT_GROUPS` entry) -- this package never publishes anything automatically.
+
+## Comparisons (Phase 7 PR D)
+
+`compare.py` compares two albums, two artists, or two scenes (a user-authored, labelled
+artist-id set) over an already-built corpus -- `research-compare --mode
+albums|artists|scenes`, or the same thing from a browser via `apps/review/`'s workbench
+mode (`make workbench`; see `apps/review/README.md`). Both write the same run bookkeeping
+under `local/research/<topic>/runs/<run-id>/` as every other command here.
