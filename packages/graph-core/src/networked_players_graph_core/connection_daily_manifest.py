@@ -822,9 +822,22 @@ def migrate_connection_daily_manifest_generation(
             )
 
     eligible = _eligible_one_hop_rounds(new_rounds_artifact)
+    # Round ids are CONTENT-derived, so a regenerated pool legitimately
+    # contains rounds byte-identical to ones the kept (older-generation)
+    # schedule already uses -- same album pair, same answer set, same id.
+    # Scheduling such a round again under the new generation would put one
+    # id on two dates under two different generations, which
+    # `validate_connection_daily_manifest_v2` rejects (it makes `generation`
+    # an ambiguous lookup key for that id) and which would also repeat a
+    # round a visitor has already played. Mirrors ADR 0041's rule for
+    # `extend_connection_daily_manifest`: draw only from rounds not already
+    # scheduled anywhere in the manifest.
+    kept_round_ids = {entry["round_id"] for entry in kept}
+    eligible = [r for r in eligible if r["id"] not in kept_round_ids]
     if not eligible:
         raise ConnectionDailyManifestError(
-            "no eligible one-hop real-records rounds found in new_rounds_artifact"
+            "no eligible one-hop real-records rounds found in new_rounds_artifact "
+            "that are not already scheduled under a kept generation"
         )
     provenance = new_rounds_artifact.get("provenance", {})
     for field_name in _VERSION_FIELDS:
