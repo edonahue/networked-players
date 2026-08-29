@@ -8,6 +8,7 @@ import type { Contributor, ContributorIndex } from '../data/contributors';
 import challengeData from '../../public/data/challenge.v2.json';
 import contributorIndexData from '../../public/data/contributors/index.v1.json';
 import { connectedCatalogAlbums } from '../data/connectedAlbums';
+import { findBehindTheGlassPath } from '../data/featuredExamples';
 
 const { hero, focus } = site;
 
@@ -35,6 +36,14 @@ const featuredContributor = contributorIndex.contributors.find(
 const contributorById = new Map(contributorIndex.contributors.map((c) => [c.artist_id, c]));
 const featuredNeighbor = featuredContributor
   ? contributorById.get(featuredContributor.interesting_next_step!.artist_id)
+  : undefined;
+
+const behindTheGlassPath = findBehindTheGlassPath(challenge);
+const behindTheGlassFrom = behindTheGlassPath
+  ? albumsById.get(behindTheGlassPath.from_album_id)
+  : undefined;
+const behindTheGlassTo = behindTheGlassPath
+  ? albumsById.get(behindTheGlassPath.to_album_id)
   : undefined;
 ---
 
@@ -145,13 +154,18 @@ const featuredNeighbor = featuredContributor
       {featuredFrom && <AlbumCard album={featuredFrom} />}
       {featuredTo && <AlbumCard album={featuredTo} />}
     </div>
-    <p class="lede" style="margin-top:24px">
-      <strong>An editorial pick:</strong> <em>Ziggy Stardust</em> (David Bowie) and
-      <em>A Night At The Opera</em> (Queen) share a documented producer credit — a real
-      <a href="/play/connect/">Behind the Glass</a> route, one of three role-restricted search
-      modes that look only at a specific kind of credit (producer/engineer, drums/bass, or
-      guitar) instead of any documented one.
-    </p>
+    {
+      behindTheGlassPath && behindTheGlassFrom && behindTheGlassTo && (
+        <p class="lede" style="margin-top:24px">
+          <em>{behindTheGlassFrom.title}</em> ({behindTheGlassFrom.artist}) and{' '}
+          <em>{behindTheGlassTo.title}</em> ({behindTheGlassTo.artist}) connect end to end
+          through documented producer/engineer credits alone — a real{' '}
+          <a href="/play/connect/">Behind the Glass</a> route, not a random pick. It's one of
+          three role-restricted search modes that look only at a specific kind of credit
+          (producer/engineer, drums/bass, or guitar) instead of any documented one.
+        </p>
+      )
+    }
     <p class="lede">
       The full shelf of {albums.length} connected albums lives at <a href="/albums/">/albums/</a>.
     </p>
