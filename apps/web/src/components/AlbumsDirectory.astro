@@ -1,12 +1,17 @@
 ---
-// Album shelf search/sort (PR G). Markup shell only -- all wiring lives in
-// game/albumsDirectory.ts (initAlbumsDirectory()), matching
+// Album shelf search/sort/decade-filter (PR G). Markup shell only -- all
+// wiring lives in game/albumsDirectory.ts (initAlbumsDirectory()), matching
 // ContributorsDirectory.astro's split. Every album renders here
 // server-side (no fetch, no result cap -- this is a browse surface), sorted
 // by title by default so the no-JS baseline is already a sensible order.
+// The decade <select> only ships its "All decades" default option here --
+// the actual decade list depends on which years are really present in the
+// data, so it's populated by the same JS that reads the cards' own
+// data-album-year attributes (no JS means no decade options beyond "All",
+// same no-JS ceiling search/sort already have).
 import AlbumCard from "./AlbumCard.astro";
 import type { AlbumV2 } from "../data/challenge";
-import { ALBUM_SORT_OPTIONS } from "../game/albumsDirectory";
+import { ALBUM_SORT_OPTIONS, ALL_DECADES } from "../game/albumsDirectory";
 
 interface Props {
   albums: AlbumV2[];
@@ -44,6 +49,10 @@ const unconnectedCount = connectedAlbumIds
           <option value={option.value}>{option.label}</option>
         ))
       }
+    </select>
+    <label for="albums-decade">Decade</label>
+    <select id="albums-decade" data-albums-decade>
+      <option value={ALL_DECADES}>All decades</option>
     </select>
   </div>
 

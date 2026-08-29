@@ -2,7 +2,12 @@
 // pure logic, and a real end-to-end run against the committed catalog.
 
 import { expect, test } from "@playwright/test";
-import { searchAlbums, type DirectoryAlbum } from "../src/game/albumsDirectory";
+import {
+  availableDecades,
+  decadeOf,
+  searchAlbums,
+  type DirectoryAlbum,
+} from "../src/game/albumsDirectory";
 
 function fixture(): DirectoryAlbum[] {
   return [
@@ -65,6 +70,42 @@ test("searchAlbums sorts by year, oldest first, with unknown years still last", 
     "Middle Ground", // 2001
     "Another Angle", // null -- last regardless of direction
   ]);
+});
+
+test("decadeOf buckets a year to its decade, and null to the unknown bucket", () => {
+  expect(decadeOf(1985)).toBe("1980s");
+  expect(decadeOf(1990)).toBe("1990s");
+  expect(decadeOf(2001)).toBe("2000s");
+  expect(decadeOf(null)).toBe("unknown");
+});
+
+test("availableDecades lists only decades actually present, newest first, unknown last", () => {
+  expect(availableDecades(fixture())).toEqual([
+    "2000s",
+    "1990s",
+    "1980s",
+    "unknown",
+  ]);
+});
+
+test("availableDecades never lists a decade with zero real matches", () => {
+  const noUnknowns = fixture().filter((a) => a.year !== null);
+  expect(availableDecades(noUnknowns)).toEqual(["2000s", "1990s", "1980s"]);
+});
+
+test("searchAlbums narrows by decade", () => {
+  const result = searchAlbums(fixture(), "", "title", "1980s");
+  expect(result.map((a) => a.title)).toEqual(["Ambient Fields"]);
+});
+
+test("searchAlbums combines a decade filter with a text query", () => {
+  const result = searchAlbums(fixture(), "ray", "title", "1990s");
+  expect(result.map((a) => a.title)).toEqual(["Zebra Songs"]);
+});
+
+test("searchAlbums's unknown-year bucket only matches albums with no year", () => {
+  const result = searchAlbums(fixture(), "", "title", "unknown");
+  expect(result.map((a) => a.title)).toEqual(["Another Angle"]);
 });
 
 test("a real search against the committed catalog finds a real album by title", async ({
@@ -132,4 +173,87 @@ test("the real /albums/ page: sorting by year actually reorders the grid", async
   expect(orderedYears.length).toBeGreaterThan(1);
   const sorted = [...orderedYears].sort((a, b) => a - b);
   expect(orderedYears).toEqual(sorted);
+});
+
+test("the real /albums/ page: the decade filter narrows the grid to that decade only", async ({
+  page,
+}) => {
+  await page.goto("/albums/");
+  const decadeSelect = page.locator("[data-albums-decade]");
+  const options = await decadeSelect.locator("option").allTextContents();
+  expect(options).toContain("All decades");
+  expect(options.length).toBeGreaterThan(1);
+
+  const targetDecade = await decadeSelect
+    .locator("option")
+    .nth(1)
+    .getAttribute("value");
+  await decadeSelect.selectOption(targetDecade!);
+
+  const visibleYears = await page
+    .locator(".album-card:not([hidden])")
+    .evaluateAll((cards) =>
+      cards.map((c) => (c as HTMLElement).dataset.albumYear),
+    );
+  expect(visibleYears.length).toBeGreaterThan(0);
+  if (targetDecade !== "unknown") {
+    const decadeStart = Number.parseInt(targetDecade!, 10);
+    for (const year of visibleYears) {
+      expect(Number(year)).toBeGreaterThanOrEqual(decadeStart);
+      expect(Number(year)).toBeLessThan(decadeStart + 10);
+    }
+  } else {
+    expect(visibleYears.every((year) => !year)).toBe(true);
+  }
+});
+
+test("the real /albums/ page: search/sort/decade state round-trips through the URL", async ({
+  page,
+}) => {
+  await page.goto("/albums/");
+  const targetTitle = await page
+    .locator(".album-card")
+    .first()
+    .getAttribute("data-album-title");
+  const needle = targetTitle!.slice(0, 4);
+
+  await page.locator("[data-albums-search]").fill(needle);
+  await page.locator("[data-albums-sort]").selectOption("year-desc");
+  await expect(page).toHaveURL(
+    new RegExp(`[?&]q=${encodeURIComponent(needle)}(&|$)`),
+  );
+  await expect(page).toHaveURL(/[?&]sort=year-desc(&|$)/);
+
+  // Reloading a bookmarked/shared URL with state in it restores that exact
+  // state -- the actual point of making it URL-addressable, not just that
+  // the URL happens to change.
+  const url = page.url();
+  await page.goto(url);
+  await expect(page.locator("[data-albums-search]")).toHaveValue(needle);
+  await expect(page.locator("[data-albums-sort]")).toHaveValue("year-desc");
+  await expect(
+    page.locator(".album-card:not([hidden])").first(),
+  ).toHaveAttribute("data-album-title", targetTitle!);
+});
+
+test("the real /albums/ page: clearing the search removes q from the URL rather than leaving it empty", async ({
+  page,
+}) => {
+  await page.goto("/albums/");
+  const searchInput = page.locator("[data-albums-search]");
+  await searchInput.fill("something");
+  await expect(page).toHaveURL(/[?&]q=something(&|$)/);
+  await searchInput.fill("");
+  await expect(page).not.toHaveURL(/[?&]q=/);
+});
+
+test("the real /albums/ page: an invalid decade in the URL falls back to All decades rather than breaking", async ({
+  page,
+}) => {
+  await page.goto("/albums/?decade=not-a-real-decade");
+  await expect(page.locator("[data-albums-decade]")).toHaveValue("all");
+  const totalCards = await page.locator(".album-card").count();
+  await expect(page.locator(".album-card:not([hidden])")).toHaveCount(
+    totalCards,
+  );
 });
