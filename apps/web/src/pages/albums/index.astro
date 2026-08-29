@@ -1,15 +1,15 @@
 ---
-import BaseLayout from '../../layouts/BaseLayout.astro';
-import AlbumCard from '../../components/AlbumCard.astro';
-import type { ChallengeV2 } from '../../data/challenge';
-import challengeData from '../../../public/data/challenge.v2.json';
-import { connectedCatalogAlbums } from '../../data/connectedAlbums';
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import AlbumsDirectory from "../../components/AlbumsDirectory.astro";
+import type { ChallengeV2 } from "../../data/challenge";
+import challengeData from "../../../public/data/challenge.v2.json";
+import { connectedCatalogAlbums } from "../../data/connectedAlbums";
 
 const challenge = challengeData as ChallengeV2;
 const albums = connectedCatalogAlbums(challenge);
 
 const description =
-  'Browse the albums in the current challenge set. Open one to find who connects it to another record, documented credit by credit.';
+  "Browse the albums in the current challenge set. Open one to find who connects it to another record, documented credit by credit.";
 ---
 
 <BaseLayout title="Albums" description={description}>
@@ -17,15 +17,18 @@ const description =
     <p class="eyebrow">Browse</p>
     <h1>Albums</h1>
     <p class="lede">
-      Every record here is a door into the credit graph. Open one to find who connects it to
-      another album — a shared session player, producer, or engineer — then step through the
-      evidence that proves it.
+      Every record here is a door into the credit graph. Open one to find who
+      connects it to another album — a shared session player, producer, or
+      engineer — then step through the evidence that proves it.
     </p>
   </section>
 
   <section class="shell" aria-label="Album grid" style="padding-bottom:72px">
-    <div class="album-grid" data-testid="album-grid">
-      {albums.map((album) => <AlbumCard album={album} />)}
-    </div>
+    <AlbumsDirectory albums={albums} />
   </section>
 </BaseLayout>
+
+<script>
+  import { initAlbumsDirectory } from "../../game/albumsDirectory";
+  initAlbumsDirectory();
+</script>

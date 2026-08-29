@@ -709,4 +709,18 @@ test.describe("mobile layout", () => {
     );
     expect(overflow).toBeLessThanOrEqual(0);
   });
+
+  test("the album shelf's search/sort controls don't cause sideways scroll on a phone-sized screen", async ({
+    page,
+  }) => {
+    await page.goto("/albums/");
+    await expect(page.locator("[data-albums-search]")).toBeVisible();
+
+    const overflow = await page.evaluate(
+      () =>
+        document.documentElement.scrollWidth -
+        document.documentElement.clientWidth,
+    );
+    expect(overflow).toBeLessThanOrEqual(0);
+  });
 });
