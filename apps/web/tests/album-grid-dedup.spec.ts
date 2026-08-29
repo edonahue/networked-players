@@ -1,10 +1,14 @@
-// Album-grid dedup (ADR 0058 Slice 8): /albums/, /explore/, and the
-// homepage's featured section all derive their album set from the shared
-// connectedCatalogAlbums() helper instead of five independent copies of
-// the same filter. This asserts the real, committed challenge.v2.json
-// artifact (137 of 140 catalog albums are connected, 3 are not) produces
-// the same connected count everywhere, and that Explore's cards link into
-// /explore/ while Albums' cards link into /albums/.
+// Album-grid dedup (ADR 0058 Slice 8): /explore/, the homepage's featured
+// section, and per-album static paths/sitemap all derive their album set
+// from the shared connectedCatalogAlbums()/connectedAlbumIds() helpers
+// instead of independent copies of the same filter. /albums/ itself no
+// longer uses that filter (ADR 0067) -- it shows the full catalog and
+// marks unconnected albums honestly instead of hiding them, so it
+// INTENTIONALLY diverges from /explore/'s connected-only count below.
+// This file asserts the real, committed challenge.v2.json artifact
+// produces the right count in each of those distinct places, and that
+// Explore's cards link into /explore/ while Albums' cards link into
+// /albums/.
 
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -77,12 +81,36 @@ test("an album excluded from the connected set still has a real /albums/ and /ex
   ).toBeVisible({ timeout: 15000 });
 });
 
-test("/albums/ renders exactly the connected album count", async ({ page }) => {
+test("/albums/ renders the full catalog, marking unconnected albums honestly", async ({
+  page,
+}) => {
+  const connectedIds = new Set(
+    challengeData.paths.flatMap((p) => [p.from_album_id, p.to_album_id]),
+  );
+  const excluded = challengeData.albums.find((a) => !connectedIds.has(a.id));
+  if (!excluded)
+    throw new Error("no excluded album in the real committed catalog");
+  const connectedId = challengeData.paths[0].from_album_id;
+
   await page.goto("/albums/");
-  await expect(page.locator(".album-card")).toHaveCount(connectedAlbumCount);
+  await expect(page.locator(".album-card")).toHaveCount(
+    challengeData.albums.length,
+  );
+
+  const excludedCard = page.locator(
+    `.album-card[href="/albums/${excluded.id}/"]`,
+  );
+  await expect(excludedCard).toHaveAttribute("data-album-connected", "false");
+  await expect(excludedCard.getByText("Not yet connected")).toBeVisible();
+
+  const connectedCard = page.locator(
+    `.album-card[href="/albums/${connectedId}/"]`,
+  );
+  await expect(connectedCard).toHaveAttribute("data-album-connected", "true");
+  await expect(connectedCard.getByText("Not yet connected")).toHaveCount(0);
 });
 
-test("/explore/ renders exactly the same connected album count, linking into /explore/", async ({
+test("/explore/ renders exactly the connected album count, linking into /explore/", async ({
   page,
 }) => {
   await page.goto("/explore/");
@@ -113,9 +141,11 @@ test("an Explore card and an Albums card for the same album link to different se
 // the FULL catalog (getStaticPaths no longer filters to connectedAlbumCount
 // -- a catalog album can be a real, individually reachable pathfinding-graph
 // node, and so a valid Connect/Explore destination, without ever being a
-// challenge.v2 path endpoint). The grids above stay at connectedAlbumCount
-// on purpose (a deliberate, unrelated curation choice); the sitemap lists
-// every real page that exists, which is now the full catalog.
+// challenge.v2 path endpoint). /explore/'s GRID stays at connectedAlbumCount
+// on purpose (ADR 0067: exploring from a disconnected node isn't a
+// meaningful entry into that experience); /albums/'s grid does not (ADR
+// 0067 flipped that for the shelf specifically). The sitemap lists every
+// real page that exists, which is the full catalog either way.
 test("the sitemap lists the same number of /albums/ and /explore/ per-album pages", async ({
   request,
 }) => {

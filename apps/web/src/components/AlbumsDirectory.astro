@@ -10,12 +10,21 @@ import { ALBUM_SORT_OPTIONS } from "../game/albumsDirectory";
 
 interface Props {
   albums: AlbumV2[];
+  /** ADR 0067: when given, albums absent from this set render with an
+   * honest "Not yet connected" tag instead of being silently omitted from
+   * the shelf. Omit entirely (default: every album counts as connected)
+   * for any caller that doesn't have a meaningful connected/unconnected
+   * split. */
+  connectedAlbumIds?: Set<string>;
 }
 
-const { albums } = Astro.props;
+const { albums, connectedAlbumIds } = Astro.props;
 const sortedByTitle = [...albums].sort((a, b) =>
   a.title.localeCompare(b.title),
 );
+const unconnectedCount = connectedAlbumIds
+  ? albums.filter((album) => !connectedAlbumIds.has(album.id)).length
+  : 0;
 ---
 
 <div class="albums-directory" data-testid="albums-directory">
@@ -46,8 +55,22 @@ const sortedByTitle = [...albums].sort((a, b) =>
   >
     {albums.length} album{albums.length === 1 ? "" : "s"}.
   </p>
+  {
+    unconnectedCount > 0 && (
+      <p class="albums-directory__note" data-albums-unconnected-note>
+        {unconnectedCount} not yet connected to the credit graph.
+      </p>
+    )
+  }
 
   <div class="album-grid" data-testid="album-grid">
-    {sortedByTitle.map((album) => <AlbumCard album={album} />)}
+    {
+      sortedByTitle.map((album) => (
+        <AlbumCard
+          album={album}
+          connected={connectedAlbumIds ? connectedAlbumIds.has(album.id) : true}
+        />
+      ))
+    }
   </div>
 </div>

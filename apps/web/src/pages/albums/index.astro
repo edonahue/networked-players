@@ -3,10 +3,15 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
 import AlbumsDirectory from "../../components/AlbumsDirectory.astro";
 import type { ChallengeV2 } from "../../data/challenge";
 import challengeData from "../../../public/data/challenge.v2.json";
-import { connectedCatalogAlbums } from "../../data/connectedAlbums";
+import { connectedAlbumIds } from "../../data/connectedAlbums";
 
 const challenge = challengeData as ChallengeV2;
-const albums = connectedCatalogAlbums(challenge);
+// ADR 0067: the shelf shows the FULL catalog, not just challenge.v2-
+// connected albums -- every catalog album already has a real page
+// (Phase 6 PR 6-07), so hiding the unconnected ones here just makes them
+// unfindable. connectedIds lets the directory mark which is which.
+const albums = challenge.albums;
+const connectedIds = connectedAlbumIds(challenge);
 
 const description =
   "Browse the albums in the current challenge set. Open one to find who connects it to another record, documented credit by credit.";
@@ -24,7 +29,7 @@ const description =
   </section>
 
   <section class="shell" aria-label="Album grid" style="padding-bottom:72px">
-    <AlbumsDirectory albums={albums} />
+    <AlbumsDirectory albums={albums} connectedAlbumIds={connectedIds} />
   </section>
 </BaseLayout>
 
