@@ -1,0 +1,303 @@
+"""Phase 7 PR D: `--mode workbench`, the third mode of apps/review's local
+server. Real end-to-end HTTP tests against a real (small, synthetic)
+corpus, mirroring test_review_server.py's own ThreadingHTTPServer pattern
+for the pre-existing cohort mode -- this mode must not disturb that one at
+all (see the cohort-mode tests there, still passing unchanged)."""
+
+from __future__ import annotations
+
+import importlib.util
+import json
+import threading
+from collections.abc import Iterator
+from pathlib import Path
+from typing import Any
+from urllib.error import HTTPError
+from urllib.request import Request, urlopen
+
+import pyarrow as pa
+import pyarrow.parquet as pq
+import pytest
+
+from networked_players_catalog.discogs.parquet import SCHEMAS
+
+_MODULE_PATH = Path(__file__).resolve().parents[3] / "apps" / "review" / "review_server.py"
+_SPEC = importlib.util.spec_from_file_location("review_server", _MODULE_PATH)
+assert _SPEC and _SPEC.loader
+_MODULE = importlib.util.module_from_spec(_SPEC)
+_SPEC.loader.exec_module(_MODULE)
+make_workbench_handler = _MODULE.make_workbench_handler
+ThreadingHTTPServer = _MODULE.ThreadingHTTPServer
+
+SNAPSHOT_DATE = "20260601"
+SEED_A = 100
+SEED_B = 400
+CAROL = 300
+
+
+def _release(release_id: int, title: str) -> dict[str, Any]:
+    return {
+        "snapshot_date": SNAPSHOT_DATE,
+        "release_id": release_id,
+        "status": "Accepted",
+        "title": title,
+        "country": None,
+        "released": "1995",
+        "master_id": None,
+        "master_is_main_release": None,
+        "data_quality": None,
+        "source_url": f"https://example.invalid/release/{release_id}",
+    }
+
+
+def _credit(
+    release_id: int,
+    *,
+    artist_id: int,
+    name: str,
+    scope: str = "release_artist",
+    track_index: int | None = None,
+) -> dict[str, Any]:
+    return {
+        "snapshot_date": SNAPSHOT_DATE,
+        "release_id": release_id,
+        "track_index": track_index,
+        "track_path": None if track_index is None else str(track_index),
+        "track_position": None if track_index is None else str(track_index + 1),
+        "track_title": None if track_index is None else f"Track {track_index + 1}",
+        "credit_scope": scope,
+        "artist_id": artist_id,
+        "name": name,
+        "anv": None,
+        "join_text": None,
+        "role_text": None,
+        "credited_tracks_text": None,
+        "is_linked": True,
+        "playable_identity": True,
+    }
+
+
+def _performed(release_id: int, *, artist_id: int, name: str) -> list[dict[str, Any]]:
+    return [
+        _credit(release_id, artist_id=artist_id, name=name, scope="release_artist"),
+        _credit(release_id, artist_id=artist_id, name=name, scope="track_artist", track_index=0),
+    ]
+
+
+@pytest.fixture
+def corpus(tmp_path: Path) -> Path:
+    """R1: Seed A (billed) + Carol (release-scope). R2: Seed B (billed) +
+    Carol (release-scope) -- Carol bridges the two albums/artists/scenes."""
+    releases = [_release(1, "Album Alpha"), _release(2, "Album Beta")]
+    credits = [
+        *_performed(1, artist_id=SEED_A, name="Seed A"),
+        _credit(1, artist_id=CAROL, name="Carol", scope="release_credit"),
+        *_performed(2, artist_id=SEED_B, name="Seed B"),
+        _credit(2, artist_id=CAROL, name="Carol", scope="release_credit"),
+    ]
+    root = tmp_path / "corpus_root" / f"snapshot={SNAPSHOT_DATE}"
+    (root / "table=releases").mkdir(parents=True)
+    (root / "table=credits").mkdir(parents=True)
+    (root / "table=tracks").mkdir(parents=True)
+    pq.write_table(
+        pa.Table.from_pylist(releases, schema=SCHEMAS["releases"]),
+        root / "table=releases" / "part-00000.parquet",
+    )
+    pq.write_table(
+        pa.Table.from_pylist(credits, schema=SCHEMAS["credits"]),
+        root / "table=credits" / "part-00000.parquet",
+    )
+    pq.write_table(
+        pa.Table.from_pylist([], schema=SCHEMAS["tracks"]),
+        root / "table=tracks" / "part-00000.parquet",
+    )
+    (root / "manifest.json").write_text(
+        json.dumps({"schema_version": 3, "snapshot_date": SNAPSHOT_DATE})
+    )
+    return root
+
+
+@pytest.fixture
+def server(corpus: Path, tmp_path: Path) -> Iterator[tuple[str, Path]]:
+    research_root = tmp_path / "research"
+    handler = make_workbench_handler(research_root, allowed_corpus_root=tmp_path.resolve())
+    httpd = ThreadingHTTPServer(("127.0.0.1", 0), handler)
+    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+    thread.start()
+    try:
+        yield f"http://127.0.0.1:{httpd.server_port}", research_root
+    finally:
+        httpd.shutdown()
+        thread.join()
+        httpd.server_close()
+
+
+def _post_compare(base: str, payload: dict[str, Any]) -> tuple[int, dict[str, Any]]:
+    request = Request(
+        f"{base}/api/compare",
+        data=json.dumps(payload).encode(),
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    try:
+        with urlopen(request) as response:
+            return response.status, json.loads(response.read())
+    except HTTPError as exc:
+        return exc.code, json.loads(exc.read())
+
+
+def test_workbench_serves_the_form_page(server: tuple[str, Path]) -> None:
+    base, _ = server
+    body = urlopen(f"{base}/").read().decode()
+    assert "research workbench" in body
+    assert 'id="form"' in body
+
+
+def test_workbench_compares_two_albums_end_to_end(server: tuple[str, Path], corpus: Path) -> None:
+    base, research_root = server
+    status, data = _post_compare(
+        base,
+        {
+            "mode": "albums",
+            "corpus_root": str(corpus),
+            "topic": "alpha-vs-beta",
+            "album_a": 1,
+            "album_b": 2,
+        },
+    )
+    assert status == 200
+    shared = {p["artist_id"] for p in data["comparison"]["shared_vs_unique"]["recurring_personnel"]}
+    assert shared == {CAROL}
+    assert (research_root / "alpha-vs-beta" / "runs" / data["run_id"] / "comparison.json").is_file()
+
+
+def test_workbench_compares_two_artists_end_to_end(server: tuple[str, Path], corpus: Path) -> None:
+    base, _ = server
+    status, data = _post_compare(
+        base,
+        {
+            "mode": "artists",
+            "corpus_root": str(corpus),
+            "topic": "seeda-vs-seedb",
+            "artist_a": SEED_A,
+            "artist_b": SEED_B,
+        },
+    )
+    assert status == 200
+    assert data["comparison"]["route"]["case"] == "found"
+
+
+def test_workbench_compares_two_scenes_end_to_end(server: tuple[str, Path], corpus: Path) -> None:
+    base, _ = server
+    status, data = _post_compare(
+        base,
+        {
+            "mode": "scenes",
+            "corpus_root": str(corpus),
+            "topic": "scene-a-vs-scene-b",
+            "scene_a": [SEED_A],
+            "scene_b": [SEED_B],
+        },
+    )
+    assert status == 200
+    assert CAROL in data["comparison"]["shared_collaborators"]["artist_ids"]
+
+
+def test_workbench_rejects_a_real_corpus_outside_the_allowlist(
+    server: tuple[str, Path], tmp_path: Path
+) -> None:
+    # A REAL, validly-shaped corpus (manifest.json and all), just sitting
+    # outside `allowed_corpus_root` -- isolates the containment check from
+    # the separate "no manifest.json" check `/etc` alone would also trip,
+    # which wouldn't actually prove this specific guard fired.
+    outside_root = tmp_path.parent / f"outside-{tmp_path.name}" / f"snapshot={SNAPSHOT_DATE}"
+    (outside_root / "table=releases").mkdir(parents=True)
+    (outside_root / "table=credits").mkdir(parents=True)
+    (outside_root / "table=tracks").mkdir(parents=True)
+    pq.write_table(
+        pa.Table.from_pylist([_release(1, "Outside")], schema=SCHEMAS["releases"]),
+        outside_root / "table=releases" / "part-00000.parquet",
+    )
+    pq.write_table(
+        pa.Table.from_pylist([], schema=SCHEMAS["credits"]),
+        outside_root / "table=credits" / "part-00000.parquet",
+    )
+    pq.write_table(
+        pa.Table.from_pylist([], schema=SCHEMAS["tracks"]),
+        outside_root / "table=tracks" / "part-00000.parquet",
+    )
+    (outside_root / "manifest.json").write_text(
+        json.dumps({"schema_version": 3, "snapshot_date": SNAPSHOT_DATE})
+    )
+
+    base, _ = server
+    status, data = _post_compare(
+        base,
+        {
+            "mode": "albums",
+            "corpus_root": str(outside_root),
+            "topic": "escape-attempt",
+            "album_a": 1,
+            "album_b": 2,
+        },
+    )
+    assert status == 400
+    assert "must resolve under" in data["error"]
+
+
+def test_workbench_rejects_a_topic_that_is_a_path(server: tuple[str, Path], corpus: Path) -> None:
+    base, _ = server
+    status, data = _post_compare(
+        base,
+        {
+            "mode": "albums",
+            "corpus_root": str(corpus),
+            "topic": "../escape",
+            "album_a": 1,
+            "album_b": 2,
+        },
+    )
+    assert status == 400
+    assert "plain name" in data["error"]
+
+
+def test_workbench_rejects_an_unrecognized_mode(server: tuple[str, Path], corpus: Path) -> None:
+    base, _ = server
+    status, data = _post_compare(base, {"mode": "bands", "corpus_root": str(corpus), "topic": "x"})
+    assert status == 400
+    assert "mode" in data["error"]
+
+
+def test_workbench_reports_a_clean_400_for_missing_required_fields(
+    server: tuple[str, Path], corpus: Path
+) -> None:
+    base, _ = server
+    status, data = _post_compare(
+        base, {"mode": "albums", "corpus_root": str(corpus), "topic": "missing-fields"}
+    )
+    assert status == 400
+    assert "album_a" in data["error"]
+
+
+def test_workbench_lists_runs_for_a_topic(server: tuple[str, Path], corpus: Path) -> None:
+    base, _ = server
+    _post_compare(
+        base,
+        {
+            "mode": "albums",
+            "corpus_root": str(corpus),
+            "topic": "listed-topic",
+            "album_a": 1,
+            "album_b": 2,
+        },
+    )
+    with urlopen(f"{base}/api/runs?topic=listed-topic") as response:
+        runs = json.loads(response.read())["runs"]
+    assert len(runs) == 1
+    assert runs[0]["topic"] == "listed-topic"
+
+
+def test_workbench_runs_list_is_empty_for_an_unknown_topic(server: tuple[str, Path]) -> None:
+    base, _ = server
+    with urlopen(f"{base}/api/runs?topic=never-run") as response:
+        assert json.loads(response.read())["runs"] == []

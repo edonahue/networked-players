@@ -18,8 +18,6 @@ from typing import Any
 
 import duckdb
 
-from networked_players_graph_core.graph import CreditGraph
-
 from .analyses import ANALYSIS_REGISTRY
 from .compare import (
     DEFAULT_MAX_HOPS,
@@ -28,9 +26,7 @@ from .compare import (
     CompareArtistsRequest,
     CompareError,
     CompareScenesRequest,
-    compare_albums,
-    compare_artists,
-    compare_scenes,
+    run_comparison_and_persist,
 )
 from .corpus import (
     AmbiguousSeedError,
@@ -545,81 +541,53 @@ def main(argv: list[str] | None = None) -> int:
             return 0
 
         if args.command == "research-compare":
-            started_at = datetime.now(UTC).isoformat()
-
-            corpus_manifest_path = args.corpus_root / "manifest.json"
-            corpus_manifest = (
-                json.loads(corpus_manifest_path.read_text())
-                if corpus_manifest_path.is_file()
-                else {}
-            )
-            # A topic corpus doesn't carry a single version string the way a
-            # published artifact does -- the directory name plus its own
-            # manifest's snapshot_date is the closest real provenance available.
-            corpus_version = (
-                f"{args.corpus_root.name}:{corpus_manifest.get('snapshot_date', 'unknown')}"
-            )
-
+            compare_request: CompareAlbumsRequest | CompareArtistsRequest | CompareScenesRequest
             if args.mode == "albums":
                 if args.album_a is None or args.album_b is None:
                     raise CompareError("--mode albums requires --album-a and --album-b")
-                with CreditGraph.open(args.corpus_root) as credit_graph:
-                    comparison = compare_albums(
-                        credit_graph,
-                        CompareAlbumsRequest(
-                            corpus_snapshot_root=args.corpus_root,
-                            album_a_release_id=args.album_a,
-                            album_b_release_id=args.album_b,
-                            max_hops=args.max_hops,
-                            max_route_candidate_pairs=args.max_route_candidate_pairs,
-                        ),
-                    )
+                compare_request = CompareAlbumsRequest(
+                    corpus_snapshot_root=args.corpus_root,
+                    album_a_release_id=args.album_a,
+                    album_b_release_id=args.album_b,
+                    max_hops=args.max_hops,
+                    max_route_candidate_pairs=args.max_route_candidate_pairs,
+                )
             elif args.mode == "artists":
                 if args.artist_a is None or args.artist_b is None:
                     raise CompareError("--mode artists requires --artist-a and --artist-b")
-                with CreditGraph.open(args.corpus_root) as credit_graph:
-                    comparison = compare_artists(
-                        credit_graph,
-                        CompareArtistsRequest(
-                            corpus_snapshot_root=args.corpus_root,
-                            artist_a_id=args.artist_a,
-                            artist_b_id=args.artist_b,
-                            max_hops=args.max_hops,
-                        ),
-                    )
+                compare_request = CompareArtistsRequest(
+                    corpus_snapshot_root=args.corpus_root,
+                    artist_a_id=args.artist_a,
+                    artist_b_id=args.artist_b,
+                    max_hops=args.max_hops,
+                )
             else:
                 if args.scene_a is None or args.scene_b is None:
                     raise CompareError("--mode scenes requires --scene-a and --scene-b")
-                with CreditGraph.open(args.corpus_root) as credit_graph:
-                    comparison = compare_scenes(
-                        credit_graph,
-                        CompareScenesRequest(
-                            corpus_snapshot_root=args.corpus_root,
-                            scene_a_artist_ids=tuple(args.scene_a),
-                            scene_b_artist_ids=tuple(args.scene_b),
-                            max_hops=args.max_hops,
-                            max_route_candidate_pairs=args.max_route_candidate_pairs,
-                        ),
-                    )
+                compare_request = CompareScenesRequest(
+                    corpus_snapshot_root=args.corpus_root,
+                    scene_a_artist_ids=tuple(args.scene_a),
+                    scene_b_artist_ids=tuple(args.scene_b),
+                    max_hops=args.max_hops,
+                    max_route_candidate_pairs=args.max_route_candidate_pairs,
+                )
 
-            run_id = args.run_id or new_run_id()
-            run_paths = new_run_paths(args.topic, run_id, research_root=args.research_root)
-            run_paths.ensure_dirs()
-            (run_paths.root / "comparison.json").write_text(
-                json.dumps(comparison, indent=2, sort_keys=True) + "\n"
-            )
-
-            finished_at = datetime.now(UTC).isoformat()
-            write_run_manifest(
-                run_paths,
+            compare_result = run_comparison_and_persist(
+                args.mode,
+                compare_request,
                 topic=args.topic,
-                run_id=run_id,
-                corpus_version=corpus_version,
-                analyses=[f"compare_{args.mode}"],
-                started_at=started_at,
-                finished_at=finished_at,
+                research_root=args.research_root,
+                run_id=args.run_id,
             )
-            print(json.dumps({"run_id": run_id, "run_root": str(run_paths.root)}, indent=2))
+            print(
+                json.dumps(
+                    {
+                        "run_id": compare_result["run_id"],
+                        "run_root": compare_result["run_root"],
+                    },
+                    indent=2,
+                )
+            )
             return 0
 
         raise AssertionError(f"unhandled command: {args.command}")

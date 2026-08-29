@@ -20,7 +20,7 @@
 	album-credit-membership-check-distributed \
 	evidence-release-registry-check-distributed \
 	score-cohort-on-worker \
-	platform-build platform-deploy platform-status curator \
+	platform-build platform-deploy platform-status curator workbench \
 	dask-up dask-down
 
 help: ## List available targets
@@ -193,6 +193,9 @@ platform-status: ## Read standing worker advertisements from the private jobs br
 curator: ## Serve a local-only cohort curator; needs SOURCE_ID=; ARGS="--host 0.0.0.0" enables trusted-LAN access
 	@test -n "$(SOURCE_ID)" || (echo "Set SOURCE_ID=<source-id>" >&2; exit 1)
 	uv run python apps/review/review_server.py --source-id "$(SOURCE_ID)" $(ARGS)
+
+workbench: ## Serve the local research workbench (Phase 7 PR D); ARGS="--host 0.0.0.0" enables trusted-LAN access
+	uv run python apps/review/review_server.py --mode workbench $(ARGS)
 
 dask-up: ## Build the image, start Jupyter, and deploy the Dask scheduler/worker Swarm stack (see infra/dask/README.md)
 	./infra/dask/deploy-dask.sh
