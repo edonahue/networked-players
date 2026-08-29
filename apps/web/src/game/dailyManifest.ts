@@ -23,6 +23,11 @@ import type { GameRound, GameRounds } from "./types";
 export const CONNECTION_DAILY_MANIFEST_MODE = "connection_guesser_one_hop";
 export const SUPPORTED_ROUNDS_SCHEMA_VERSION = 1;
 export const SUPPORTED_MANIFEST_SCHEMA_VERSION = 1;
+/** Schema v2 adds `generations[]` and a per-entry `generation` tag so one
+ * manifest can span MULTIPLE pool generations (ADR 0066). v1 remains fully
+ * supported: this build reads either, so the manifest can be upgraded
+ * independently of a deploy and rolled back without stranding visitors. */
+export const SUPPORTED_MANIFEST_SCHEMA_VERSION_V2 = 2;
 
 export interface DailyManifestEntry {
   date: string;
@@ -41,14 +46,55 @@ export interface DailyManifest {
   schedule: DailyManifestEntry[];
 }
 
-export async function fetchDailyManifest(): Promise<DailyManifest> {
+/** One frozen pool generation: the exact artifact triple its dates resolve
+ * against, plus where that generation's rounds live. gen-1's rounds are a
+ * byte-identical frozen copy at its own URL; the newest generation's
+ * `rounds_url` is the live rounds artifact. */
+export interface DailyManifestGeneration {
+  generation_id: string;
+  catalog_version: string;
+  pool_version: string;
+  artifact_version: string;
+  rounds_url: string;
+}
+
+export interface DailyManifestEntryV2 extends DailyManifestEntry {
+  generation: string;
+}
+
+export interface DailyManifestV2 {
+  schema_version: number;
+  mode: string;
+  generated_at: string;
+  start_date: string;
+  generations: DailyManifestGeneration[];
+  schedule: DailyManifestEntryV2[];
+}
+
+/** Either supported shape. Both carry `schedule` and `start_date`, which is
+ * all the archive calendar reads. */
+export type AnyDailyManifest = DailyManifest | DailyManifestV2;
+
+export async function fetchDailyManifest(): Promise<AnyDailyManifest> {
   const response = await fetch("/data/game/daily-manifest.v1.json");
   if (!response.ok) {
     throw new Error(
       `failed to load daily-manifest.v1.json: ${response.status}`,
     );
   }
-  return (await response.json()) as DailyManifest;
+  return (await response.json()) as AnyDailyManifest;
+}
+
+/** Fetch one generation's own rounds artifact. Only used on the schema-v2
+ * path, and only when the already-loaded artifact isn't the one this date's
+ * generation resolves against (an archive date from a retired generation) --
+ * a today-date on the newest generation needs no extra request. */
+export async function fetchRoundsArtifact(url: string): Promise<unknown> {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`failed to load ${url}: ${response.status}`);
+  }
+  return await response.json();
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -92,6 +138,32 @@ export function isDailyManifest(value: unknown): value is DailyManifest {
   return Array.isArray(value.schedule);
 }
 
+/** Same runtime-shape discipline as `isDailyManifest`, for the v2 shape:
+ * `generations[]` replaces the top-level version triple, and every schedule
+ * entry carries the `generation` it resolves against. */
+export function isDailyManifestV2(value: unknown): value is DailyManifestV2 {
+  if (!isRecord(value)) return false;
+  if (value.schema_version !== SUPPORTED_MANIFEST_SCHEMA_VERSION_V2) {
+    return false;
+  }
+  if (typeof value.mode !== "string") return false;
+  if (!Array.isArray(value.generations) || value.generations.length === 0) {
+    return false;
+  }
+  return Array.isArray(value.schedule);
+}
+
+function isGeneration(value: unknown): value is DailyManifestGeneration {
+  return (
+    isRecord(value) &&
+    isNonEmptyString(value.generation_id) &&
+    isNonEmptyString(value.catalog_version) &&
+    isNonEmptyString(value.pool_version) &&
+    isNonEmptyString(value.artifact_version) &&
+    isNonEmptyString(value.rounds_url)
+  );
+}
+
 /** A schedule entry is only usable if every field the resolver reads is a
  * present, non-empty string. A malformed member (null, a primitive, or one
  * missing `round_id`/`round_fingerprint`) is treated as "no entry for this
@@ -103,6 +175,14 @@ function isScheduleEntry(value: unknown): value is DailyManifestEntry {
     isNonEmptyString(value.date) &&
     isNonEmptyString(value.round_id) &&
     isNonEmptyString(value.round_fingerprint)
+  );
+}
+
+function isScheduleEntryV2(value: unknown): value is DailyManifestEntryV2 {
+  return (
+    isRecord(value) &&
+    isScheduleEntry(value) &&
+    isNonEmptyString(value.generation)
   );
 }
 
@@ -122,7 +202,14 @@ export type DailyResolution =
   | { ok: false; reason: "not-scheduled" }
   | { ok: false; reason: "missing-round" }
   | { ok: false; reason: "ineligible-round" }
-  | { ok: false; reason: "fingerprint-mismatch" };
+  | { ok: false; reason: "fingerprint-mismatch" }
+  // v2-only: the entry names a generation absent from `generations[]`, so
+  // there is no artifact triple to verify it against.
+  | { ok: false; reason: "unknown-generation" }
+  // v2-only: that generation's own rounds artifact could not be fetched or
+  // was malformed. Deliberately distinct from `missing-round` (pool loaded,
+  // round absent) so the two are independently testable.
+  | { ok: false; reason: "generation-rounds-unavailable" };
 
 /** Resolve a calendar date to its frozen round. Every check below is a
  * distinct, independently testable failure mode -- the UI may collapse
@@ -156,7 +243,15 @@ export async function resolveDailyRound(
   manifest: unknown,
   roundsArtifact: unknown,
   isoDate: string,
+  fetchRounds: (url: string) => Promise<unknown> = fetchRoundsArtifact,
 ): Promise<DailyResolution> {
+  // Schema v2 (multi-generation, ADR 0066) is handled by its own path: the
+  // artifact triple to verify against lives per-generation rather than at
+  // the top level, and which rounds artifact is even correct depends on
+  // which generation THIS date belongs to.
+  if (isDailyManifestV2(manifest)) {
+    return resolveDailyRoundV2(manifest, roundsArtifact, isoDate, fetchRounds);
+  }
   if (
     !isGameRoundsArtifact(roundsArtifact) ||
     roundsArtifact.schema_version !== SUPPORTED_ROUNDS_SCHEMA_VERSION ||
@@ -188,6 +283,98 @@ export async function resolveDailyRound(
   // the fetched `rounds` array must not throw, it must resolve to a typed
   // integrity failure.
   const round = roundsArtifact.rounds.find(
+    (r) => isRecord(r) && typeof r.id === "string" && r.id === entry.round_id,
+  );
+  if (!round) return { ok: false, reason: "missing-round" };
+  if (!isEligibleRound(round)) return { ok: false, reason: "ineligible-round" };
+
+  const fingerprint = await roundContentFingerprint(round);
+  if (fingerprint !== entry.round_fingerprint) {
+    return { ok: false, reason: "fingerprint-mismatch" };
+  }
+  return { ok: true, round };
+}
+
+/** Schema-v2 resolution (ADR 0066). Same seven integrity checks as v1, but
+ * every version comparison is against THIS DATE'S OWN generation rather
+ * than a single top-level triple:
+ *
+ * - the entry names a `generation`, which must exist in `generations[]`
+ *   (`unknown-generation`);
+ * - that generation's `catalog_version`/`pool_version`/`artifact_version`
+ *   must match the rounds artifact actually used (`version-mismatch`) --
+ *   the v1 single-generation rule, applied per generation;
+ * - the rounds artifact used is the one already loaded when its provenance
+ *   matches this generation (the common case: a current date on the newest
+ *   generation, no extra request), otherwise this generation's frozen
+ *   `rounds_url` is fetched (`generation-rounds-unavailable` if that fails
+ *   or is malformed).
+ *
+ * A date from a retired generation therefore keeps resolving to its exact
+ * original round forever, which is the entire point of the multi-generation
+ * manifest -- an already-played, already-shared date must never break
+ * because the pool was later regenerated. */
+async function resolveDailyRoundV2(
+  manifest: DailyManifestV2,
+  loadedRoundsArtifact: unknown,
+  isoDate: string,
+  fetchRounds: (url: string) => Promise<unknown>,
+): Promise<DailyResolution> {
+  if (manifest.mode !== CONNECTION_DAILY_MANIFEST_MODE) {
+    return { ok: false, reason: "wrong-mode" };
+  }
+
+  const entry = manifest.schedule.find(
+    (e) => isScheduleEntryV2(e) && e.date === isoDate,
+  );
+  if (!entry || !isScheduleEntryV2(entry)) {
+    return { ok: false, reason: "not-scheduled" };
+  }
+
+  const generation = manifest.generations.find(
+    (g) => isGeneration(g) && g.generation_id === entry.generation,
+  );
+  if (!generation || !isGeneration(generation)) {
+    return { ok: false, reason: "unknown-generation" };
+  }
+
+  // Prefer the artifact already in hand when it IS this generation's -- a
+  // today-date on the newest generation must not pay for a second fetch.
+  let artifact: unknown = loadedRoundsArtifact;
+  const alreadyLoadedMatches =
+    isGameRoundsArtifact(artifact) &&
+    artifact.provenance.catalog_version === generation.catalog_version &&
+    artifact.provenance.pool_version === generation.pool_version &&
+    artifact.provenance.artifact_version === generation.artifact_version;
+
+  if (!alreadyLoadedMatches) {
+    try {
+      artifact = await fetchRounds(generation.rounds_url);
+    } catch {
+      return { ok: false, reason: "generation-rounds-unavailable" };
+    }
+  }
+
+  if (
+    !isGameRoundsArtifact(artifact) ||
+    artifact.schema_version !== SUPPORTED_ROUNDS_SCHEMA_VERSION
+  ) {
+    return { ok: false, reason: "generation-rounds-unavailable" };
+  }
+
+  // Verify the triple even on the freshly-fetched path: a generation whose
+  // rounds_url serves the wrong pool must fail closed, not deal a round
+  // from a pool this date was never frozen against.
+  const provenance = artifact.provenance;
+  if (
+    provenance.catalog_version !== generation.catalog_version ||
+    provenance.pool_version !== generation.pool_version ||
+    provenance.artifact_version !== generation.artifact_version
+  ) {
+    return { ok: false, reason: "version-mismatch" };
+  }
+
+  const round = artifact.rounds.find(
     (r) => isRecord(r) && typeof r.id === "string" && r.id === entry.round_id,
   );
   if (!round) return { ok: false, reason: "missing-round" };
