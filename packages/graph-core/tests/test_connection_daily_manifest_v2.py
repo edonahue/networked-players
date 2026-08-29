@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 from copy import deepcopy
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -15,6 +16,7 @@ import pytest
 
 from networked_players_graph_core.connection_daily_manifest import (
     CONNECTION_DAILY_MANIFEST_MODE,
+    CONNECTION_DAILY_MANIFEST_SCHEMA_VERSION_V2,
     ConnectionDailyManifestError,
     build_connection_daily_manifest,
     migrate_connection_daily_manifest_generation,
@@ -31,6 +33,9 @@ from test_connection_daily_manifest import (
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 REAL_DAILY_MANIFEST = REPO_ROOT / "apps/web/public/data/game/daily-manifest.v1.json"
+# Connection of the Day's real, already-published launch date. Immutable by
+# definition -- if this ever changes, real shared links stopped resolving.
+REAL_LAUNCH_DATE = "2026-07-22"
 
 GEN2_PROVENANCE = {
     **PROVENANCE,
@@ -94,33 +99,79 @@ def test_upgrade_to_v2_records_the_v1_provenance_as_generation_one() -> None:
 )
 def test_upgrade_preserves_every_one_of_the_real_committed_manifest_entries() -> None:
     """The historical-immutability proof this whole design exists for, run
-    against the REAL production artifact, not a fixture: every one of the
-    real, currently-published dates -- including the ones already played
-    and shared by real visitors -- survives the v1 -> v2 structural upgrade
-    with byte-identical date/round_id/round_fingerprint, in the same order,
-    gaining only a `generation` tag. `upgrade_connection_daily_manifest_to_v2`
-    is pure structure -- it never reads round content or recomputes a
-    fingerprint -- so this test needs no rounds artifact at all to prove it."""
-    real_v1 = json.loads(REAL_DAILY_MANIFEST.read_text())
-    assert real_v1["schema_version"] == 1
-    real_schedule_before = deepcopy(real_v1["schedule"])
-    assert len(real_schedule_before) == 90  # the real, currently-published runway
+    against the REAL production artifact, not a fixture.
 
-    v2 = upgrade_connection_daily_manifest_to_v2(
-        real_v1, generation_id="gen-1", rounds_url="/data/game/generations/gen-1/rounds.json"
-    )
+    Deliberately schema-AWARE rather than pinned to v1: the real file was
+    v1 until the Phase 7 gen-1 -> gen-2 cutover and is v2 after it, and this
+    check must keep protecting real published history in BOTH worlds rather
+    than start failing the moment the migration it was written to justify
+    actually happened.
 
-    assert len(v2["schedule"]) == len(real_schedule_before)
-    for original, upgraded in zip(real_schedule_before, v2["schedule"], strict=True):
-        assert upgraded["date"] == original["date"]
-        assert upgraded["round_id"] == original["round_id"]
-        assert upgraded["round_fingerprint"] == original["round_fingerprint"]
-        assert upgraded["generation"] == "gen-1"
-    # Spot-check the real, known first and last published dates by name --
-    # if these ever change, something upstream regenerated the real file,
-    # which is exactly the class of accident this test exists to catch.
-    assert v2["schedule"][0]["date"] == "2026-07-22"
-    assert v2["schedule"][-1]["date"] == "2026-10-19"
+    - While the real file is v1: every currently-published date survives the
+      v1 -> v2 structural upgrade byte-identical (date/round_id/
+      round_fingerprint), in order, gaining only a `generation` tag.
+      `upgrade_connection_daily_manifest_to_v2` is pure structure -- it never
+      reads round content or recomputes a fingerprint -- so this needs no
+      rounds artifact to prove it.
+    - Once the real file is v2: the launch date is still the real launch
+      date, the schedule is still gap-free and duplicate-free, every entry
+      names a generation the manifest actually declares, and generations
+      appear in contiguous blocks (a retired generation's dates are never
+      interleaved with a later one's). Those are the properties an
+      already-played, already-shared date depends on.
+    """
+    real = json.loads(REAL_DAILY_MANIFEST.read_text())
+
+    if real["schema_version"] == 1:
+        real_schedule_before = deepcopy(real["schedule"])
+        assert real_schedule_before, "the real manifest must never be empty"
+
+        v2 = upgrade_connection_daily_manifest_to_v2(
+            real, generation_id="gen-1", rounds_url="/data/game/generations/gen-1/rounds.json"
+        )
+
+        assert len(v2["schedule"]) == len(real_schedule_before)
+        for original, upgraded in zip(real_schedule_before, v2["schedule"], strict=True):
+            assert upgraded["date"] == original["date"]
+            assert upgraded["round_id"] == original["round_id"]
+            assert upgraded["round_fingerprint"] == original["round_fingerprint"]
+            assert upgraded["generation"] == "gen-1"
+        assert v2["schedule"][0]["date"] == REAL_LAUNCH_DATE
+        return
+
+    assert real["schema_version"] == CONNECTION_DAILY_MANIFEST_SCHEMA_VERSION_V2
+    schedule = real["schedule"]
+    assert schedule, "the real manifest must never be empty"
+    # The real launch date is immutable -- losing it would mean a visitor's
+    # earliest shared date stopped resolving.
+    assert schedule[0]["date"] == REAL_LAUNCH_DATE
+    assert real["start_date"] == REAL_LAUNCH_DATE
+
+    declared = [g["generation_id"] for g in real["generations"]]
+    assert declared, "a v2 manifest must declare at least one generation"
+    assert len(declared) == len(set(declared)), "duplicate generation_id"
+
+    seen_dates: set[str] = set()
+    seen_round_ids: set[str] = set()
+    previous: date | None = None
+    blocks: list[str] = []
+    for entry in schedule:
+        assert entry["generation"] in declared, entry
+        assert entry["date"] not in seen_dates, f"duplicate date {entry['date']}"
+        seen_dates.add(entry["date"])
+        assert entry["round_id"] not in seen_round_ids, (
+            f"round {entry['round_id']} scheduled more than once across generations"
+        )
+        seen_round_ids.add(entry["round_id"])
+        current = date.fromisoformat(entry["date"])
+        if previous is not None:
+            assert (current - previous).days == 1, f"gap or disorder before {entry['date']}"
+        previous = current
+        if not blocks or blocks[-1] != entry["generation"]:
+            blocks.append(entry["generation"])
+    # Each generation occupies ONE contiguous block: an older generation's
+    # dates are never interleaved with a newer one's.
+    assert len(blocks) == len(set(blocks)), f"generations are interleaved: {blocks}"
 
 
 def test_upgrade_to_v2_rejects_a_non_v1_input() -> None:

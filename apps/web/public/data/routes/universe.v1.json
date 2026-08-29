@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "pool_version": "routes-v1-20260601-056ea65395e3",
+  "pool_version": "routes-v1-20260601-acad02f689bb",
   "provenance": {
     "source": "Discogs monthly data dump (CC0), one-hop working set",
     "license": "Derived from the Discogs monthly CC0 data dumps. See docs/DATA_AND_RIGHTS.md.",
@@ -8,13 +8,13 @@
     "generated_by": "networked-players-catalog build-record-routes 0.1.0",
     "graph_core_version": "0.1.0",
     "note": "Derived from a bounded one-hop working set; the private collection seed used to build that working set is never published. Every round's hops require an explicit, displayable instrument/vocal role on both sides.",
-    "catalog_version": "catalog-v1-20260601-0e7ec70fbb7e",
-    "artifact_version": "routes-artifact-v1-20260601-d0feb3416993"
+    "catalog_version": "catalog-v1-20260601-7fbbb46b28e6",
+    "artifact_version": "routes-artifact-v1-20260601-3af30c65d212"
   },
   "counts": {
-    "one_hop": 90,
+    "one_hop": 143,
     "two_hop": 200,
-    "daily_eligible": 290
+    "daily_eligible": 343
   },
   "albums": [
     {
@@ -36,6 +36,15 @@
       "year": 2002
     },
     {
+      "id": "master-104115",
+      "master_id": 104115,
+      "main_release_id": 5150469,
+      "title": "Stephen Stills",
+      "artist_id": 236968,
+      "artist": "Stephen Stills",
+      "year": 1970
+    },
+    {
       "id": "master-104166",
       "master_id": 104166,
       "main_release_id": 1395530,
@@ -43,6 +52,15 @@
       "artist_id": 266352,
       "artist": "Carole King",
       "year": 1971
+    },
+    {
+      "id": "master-104399",
+      "master_id": 104399,
+      "main_release_id": 3348540,
+      "title": "Introducing The Hardline According To Terence Trent D'Arby",
+      "artist_id": 46764,
+      "artist": "Terence Trent D'Arby",
+      "year": null
     },
     {
       "id": "master-1046042",
@@ -99,6 +117,15 @@
       "year": 1976
     },
     {
+      "id": "master-110874",
+      "master_id": 110874,
+      "main_release_id": 374004,
+      "title": "Taboo - The Exotic Sounds Of Arthur Lyman",
+      "artist_id": 27517,
+      "artist": "Arthur Lyman",
+      "year": 1958
+    },
+    {
       "id": "master-113224",
       "master_id": 113224,
       "main_release_id": 13679780,
@@ -117,6 +144,24 @@
       "year": 1979
     },
     {
+      "id": "master-1164779",
+      "master_id": 1164779,
+      "main_release_id": 10133538,
+      "title": "Damn",
+      "artist_id": 1778977,
+      "artist": "Kendrick Lamar",
+      "year": 2017
+    },
+    {
+      "id": "master-122051",
+      "master_id": 122051,
+      "main_release_id": 647349,
+      "title": "Victory",
+      "artist_id": 169154,
+      "artist": "The Jacksons",
+      "year": 1984
+    },
+    {
       "id": "master-122261",
       "master_id": 122261,
       "main_release_id": 1449440,
@@ -124,6 +169,24 @@
       "artist_id": 10584,
       "artist": "Nina Simone",
       "year": 1967
+    },
+    {
+      "id": "master-12236",
+      "master_id": 12236,
+      "main_release_id": 223754,
+      "title": "The Marshall Mathers LP",
+      "artist_id": 38661,
+      "artist": "Eminem",
+      "year": 2000
+    },
+    {
+      "id": "master-129759",
+      "master_id": 129759,
+      "main_release_id": 865681,
+      "title": "Diamonds & Rust",
+      "artist_id": 261867,
+      "artist": "Joan Baez",
+      "year": 1975
     },
     {
       "id": "master-13280",
@@ -142,6 +205,15 @@
       "artist_id": 19298,
       "artist": "C\u00e9line Dion",
       "year": 1997
+    },
+    {
+      "id": "master-138283",
+      "master_id": 138283,
+      "main_release_id": 443980,
+      "title": "Ricky Martin",
+      "artist_id": 56978,
+      "artist": "Ricky Martin",
+      "year": 1999
     },
     {
       "id": "master-13960",
@@ -189,6 +261,15 @@
       "year": 1966
     },
     {
+      "id": "master-172407",
+      "master_id": 172407,
+      "main_release_id": 399417,
+      "title": "Exotica",
+      "artist_id": 36860,
+      "artist": "Martin Denny",
+      "year": 1957
+    },
+    {
       "id": "master-19493",
       "master_id": 19493,
       "main_release_id": 31381,
@@ -223,6 +304,24 @@
       "artist_id": 254259,
       "artist": "Meat Loaf",
       "year": 1977
+    },
+    {
+      "id": "master-2452996",
+      "master_id": 2452996,
+      "main_release_id": 21588934,
+      "title": "Dawn FM",
+      "artist_id": 2171152,
+      "artist": "The Weeknd",
+      "year": 2022
+    },
+    {
+      "id": "master-25893",
+      "master_id": 25893,
+      "main_release_id": 3465422,
+      "title": "Bad Girls",
+      "artist_id": 6270,
+      "artist": "Donna Summer",
+      "year": 1979
     },
     {
       "id": "master-26037",
@@ -270,6 +369,15 @@
       "year": 1985
     },
     {
+      "id": "master-303567",
+      "master_id": 303567,
+      "main_release_id": 2664589,
+      "title": "21",
+      "artist_id": 819015,
+      "artist": "Adele (3)",
+      "year": 2011
+    },
+    {
       "id": "master-30577",
       "master_id": 30577,
       "main_release_id": 6339359,
@@ -297,6 +405,15 @@
       "year": 1981
     },
     {
+      "id": "master-31337",
+      "master_id": 31337,
+      "main_release_id": 16187739,
+      "title": "Fever",
+      "artist_id": 13608,
+      "artist": "Kylie Minogue",
+      "year": 2001
+    },
+    {
       "id": "master-32208",
       "master_id": 32208,
       "main_release_id": 11786823,
@@ -313,6 +430,15 @@
       "artist_id": 13961,
       "artist": "Sting",
       "year": 1985
+    },
+    {
+      "id": "master-338175",
+      "master_id": 338175,
+      "main_release_id": 3108078,
+      "title": "Born This Way",
+      "artist_id": 1103159,
+      "artist": "Lady Gaga",
+      "year": 2011
     },
     {
       "id": "master-35401",
@@ -342,6 +468,24 @@
       "year": 1974
     },
     {
+      "id": "master-36227",
+      "master_id": 36227,
+      "main_release_id": 1420621,
+      "title": "Really",
+      "artist_id": 290587,
+      "artist": "J.J. Cale",
+      "year": 1972
+    },
+    {
+      "id": "master-36251",
+      "master_id": 36251,
+      "main_release_id": 102481,
+      "title": "Post",
+      "artist_id": 1373,
+      "artist": "Bj\u00f6rk",
+      "year": 1995
+    },
+    {
       "id": "master-37615",
       "master_id": 37615,
       "main_release_id": 1044287,
@@ -349,6 +493,15 @@
       "artist_id": 138556,
       "artist": "Neil Young",
       "year": 1972
+    },
+    {
+      "id": "master-3762",
+      "master_id": 3762,
+      "main_release_id": 2159182,
+      "title": "I'm Your Man",
+      "artist_id": 227848,
+      "artist": "Leonard Cohen",
+      "year": 1988
     },
     {
       "id": "master-3878",
@@ -414,6 +567,15 @@
       "year": 1971
     },
     {
+      "id": "master-49227",
+      "master_id": 49227,
+      "main_release_id": 1305473,
+      "title": "Rickie Lee Jones",
+      "artist_id": 107102,
+      "artist": "Rickie Lee Jones",
+      "year": 1979
+    },
+    {
       "id": "master-49965",
       "master_id": 49965,
       "main_release_id": 5376969,
@@ -432,6 +594,15 @@
       "year": 1985
     },
     {
+      "id": "master-52497",
+      "master_id": 52497,
+      "main_release_id": 123915,
+      "title": "Sign \"O\" The Times",
+      "artist_id": 28795,
+      "artist": "Prince",
+      "year": 1987
+    },
+    {
       "id": "master-52671",
       "master_id": 52671,
       "main_release_id": 6891706,
@@ -439,6 +610,24 @@
       "artist_id": 2266,
       "artist": "George Benson",
       "year": 1980
+    },
+    {
+      "id": "master-52998",
+      "master_id": 52998,
+      "main_release_id": 618687,
+      "title": "Hey Stoopid",
+      "artist_id": 463597,
+      "artist": "Alice Cooper (2)",
+      "year": 1991
+    },
+    {
+      "id": "master-54449",
+      "master_id": 54449,
+      "main_release_id": 704406,
+      "title": "Rei Momo",
+      "artist_id": 3918,
+      "artist": "David Byrne",
+      "year": 1989
     },
     {
       "id": "master-5460",
@@ -648,6 +837,24 @@
       "year": 2014
     },
     {
+      "id": "master-75606",
+      "master_id": 75606,
+      "main_release_id": 737957,
+      "title": "Love Devotion Surrender",
+      "artist_id": 79340,
+      "artist": "Carlos Santana",
+      "year": 1973
+    },
+    {
+      "id": "master-79241",
+      "master_id": 79241,
+      "main_release_id": 874397,
+      "title": "Ringo",
+      "artist_id": 259352,
+      "artist": "Ringo Starr",
+      "year": 1973
+    },
+    {
       "id": "master-79666",
       "master_id": 79666,
       "main_release_id": 1247196,
@@ -756,6 +963,15 @@
       "year": 1972
     },
     {
+      "id": "master-92986",
+      "master_id": 92986,
+      "main_release_id": 10886668,
+      "title": "Rise",
+      "artist_id": 35022,
+      "artist": "Herb Alpert",
+      "year": 1979
+    },
+    {
       "id": "master-9382",
       "master_id": 9382,
       "main_release_id": 1787389,
@@ -763,6 +979,24 @@
       "artist_id": 5951,
       "artist": "Serge Gainsbourg",
       "year": 1971
+    },
+    {
+      "id": "master-96362",
+      "master_id": 96362,
+      "main_release_id": 9811916,
+      "title": "Wave",
+      "artist_id": 27991,
+      "artist": "Antonio Carlos Jobim",
+      "year": 1967
+    },
+    {
+      "id": "master-97173",
+      "master_id": 97173,
+      "main_release_id": 2112799,
+      "title": "She's The Boss",
+      "artist_id": 90541,
+      "artist": "Mick Jagger",
+      "year": 1985
     },
     {
       "id": "master-99919",
