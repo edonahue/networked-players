@@ -437,15 +437,28 @@ def build_challenge_v2_from_matched(
     # Lazy in BOTH modes (see `_iter_path_results`): the `max_paths` break
     # below is what bounds the real cost, so path results must never be
     # precomputed for the whole candidate list ahead of it.
-    for from_album, to_album, path, capped in _iter_path_results(
+    #
+    # The cap is checked AFTER appending, never at the top of the loop: a
+    # top-of-loop guard only runs once the `for` has already pulled the next
+    # item from the iterator, and pulling is what triggers the work -- one
+    # extra bounded BFS in sequential mode (tens of seconds on the real
+    # catalog), or an entire extra batch in concurrent mode when the
+    # satisfying result happened to be the last of its batch. Breaking the
+    # instant the final path lands means the iterator is never advanced past
+    # the point the caller stopped caring about.
+    path_results = _iter_path_results(
         graph,
         candidate_pairs,
         max_hops=max_hops,
         max_workers=max_workers,
         max_frontier_expansion=max_frontier_expansion,
-    ):
-        if len(paths_json) >= max_paths:
-            break
+    )
+    if max_paths <= 0:
+        # Nothing to fill: never advance the iterator at all (a top-of-loop
+        # guard would still have computed one result before noticing).
+        path_results = iter(())
+
+    for from_album, to_album, path, capped in path_results:
         attempted += 1
         capped_count += int(capped)
         if path is None:
@@ -479,6 +492,8 @@ def build_challenge_v2_from_matched(
                 ],
             }
         )
+        if len(paths_json) >= max_paths:
+            break
 
     if not paths_json:
         raise ValueError("no evidence paths found between any matched albums")

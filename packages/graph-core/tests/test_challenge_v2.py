@@ -520,3 +520,72 @@ def test_concurrent_search_stops_early_instead_of_computing_every_candidate_pair
         f"computed {len(calls)} of {total_candidate_pairs} pairs -- the max_paths "
         "early stop was not respected"
     )
+
+
+@pytest.mark.parametrize("max_workers", [1, 2])
+def test_no_path_search_runs_after_the_max_paths_cap_is_reached(
+    dataset_root: Path, monkeypatch: pytest.MonkeyPatch, max_workers: int
+) -> None:
+    """Review finding: a top-of-loop `max_paths` guard only fires AFTER the
+    `for` has already pulled the next item, and pulling is what triggers the
+    work -- one wasted bounded BFS in sequential mode (tens of seconds on the
+    real catalog), or a whole wasted batch in concurrent mode when the
+    satisfying result was the last of its batch.
+
+    Pins the fix: the number of real `_bounded_find_path` calls never exceeds
+    the number of pairs the report says were attempted, in either mode.
+    """
+    import networked_players_graph_core.challenge as challenge_module
+
+    calls: list[tuple[int, int]] = []
+    real_bounded_find_path = challenge_module._bounded_find_path
+
+    def counting_bounded_find_path(graph, from_artist_id, to_artist_id, **kwargs):  # type: ignore[no-untyped-def]
+        calls.append((from_artist_id, to_artist_id))
+        return real_bounded_find_path(graph, from_artist_id, to_artist_id, **kwargs)
+
+    monkeypatch.setattr(challenge_module, "_bounded_find_path", counting_bounded_find_path)
+    monkeypatch.setattr(challenge_module, "_PATH_BATCH_PER_WORKER", 1)
+
+    with CreditGraph.open(dataset_root) as graph:
+        _artifact, report = build_challenge_v2(
+            graph,
+            ALBUMS,
+            snapshot_date="20260601",
+            generated_by="test-suite",
+            max_paths=1,
+            max_workers=max_workers,
+        )
+
+    assert report["paths_found"] == 1
+    if max_workers == 1:
+        # Sequential: exactly the attempted pairs, not one more.
+        assert len(calls) == report["paths_attempted"]
+    else:
+        # Concurrent: bounded by the batch the final path landed in, never
+        # a further batch beyond it.
+        assert len(calls) <= report["paths_attempted"] + max_workers
+
+
+def test_max_paths_zero_runs_no_path_search_at_all(
+    dataset_root: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Degenerate but real edge of the same fix: with nothing to fill, the
+    iterator must never be advanced even once."""
+    import networked_players_graph_core.challenge as challenge_module
+
+    calls: list[tuple[int, int]] = []
+    real_bounded_find_path = challenge_module._bounded_find_path
+
+    def counting_bounded_find_path(graph, from_artist_id, to_artist_id, **kwargs):  # type: ignore[no-untyped-def]
+        calls.append((from_artist_id, to_artist_id))
+        return real_bounded_find_path(graph, from_artist_id, to_artist_id, **kwargs)
+
+    monkeypatch.setattr(challenge_module, "_bounded_find_path", counting_bounded_find_path)
+
+    with CreditGraph.open(dataset_root) as graph:
+        with pytest.raises(ValueError, match="no evidence paths found"):
+            build_challenge_v2(
+                graph, ALBUMS, snapshot_date="20260601", generated_by="test-suite", max_paths=0
+            )
+    assert calls == []
