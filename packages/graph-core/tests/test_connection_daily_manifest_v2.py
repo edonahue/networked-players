@@ -500,3 +500,42 @@ def test_validator_rejects_a_nested_seed_key() -> None:
     v2["generations"][0]["seed"] = "leak"
     with pytest.raises(ConnectionDailyManifestError, match="must not have a 'seed' key"):
         validate_connection_daily_manifest_v2(v2, {"gen-1": _real_pool()})
+
+
+def test_migration_never_reschedules_a_round_id_already_used_by_a_kept_generation() -> None:
+    """Real bug hit on the actual Phase 7 gen-1 -> gen-2 cutover: round ids
+    are CONTENT-derived, so a regenerated pool legitimately contains rounds
+    byte-identical to ones the kept schedule already uses (same album pair,
+    same answer set => same id). Scheduling one again under the new
+    generation puts a single id on two dates under two generations --
+    rejected by validate_connection_daily_manifest_v2, and a repeat of a
+    round visitors already played. The real migration failed with six such
+    collisions before this filter existed.
+    """
+    v2, gen1_pool = _v2_manifest(days=5)
+    kept_round_ids = {e["round_id"] for e in v2["schedule"][:3]}
+    assert kept_round_ids  # fixture sanity
+
+    # gen-2's pool deliberately REUSES gen-1's exact rounds (content-identical
+    # regeneration) plus fresh ones, reproducing the real collision shape.
+    gen2_pool = _real_pool_gen2()
+    gen2_pool["rounds"] = deepcopy(gen1_pool["rounds"]) + gen2_pool["rounds"]
+
+    migrated = migrate_connection_daily_manifest_generation(
+        v2,
+        gen2_pool,
+        cutover_date=v2["schedule"][3]["date"],
+        new_generation_id="gen-2",
+        new_rounds_url="/data/game/rounds.v1.json",
+        days=5,
+        generated_at="2026-07-20T00:00:00+00:00",
+        existing_generation_rounds={"gen-1": gen1_pool},
+    )
+
+    new_entries = [e for e in migrated["schedule"] if e["generation"] == "gen-2"]
+    assert new_entries, "expected the migration to schedule at least one gen-2 date"
+    assert not ({e["round_id"] for e in new_entries} & kept_round_ids), (
+        "a gen-2 date reused a round id already scheduled under gen-1"
+    )
+    # And the whole manifest still validates against both pools.
+    validate_connection_daily_manifest_v2(migrated, {"gen-1": gen1_pool, "gen-2": gen2_pool})
