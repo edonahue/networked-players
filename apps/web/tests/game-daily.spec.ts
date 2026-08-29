@@ -42,12 +42,26 @@ interface DailyManifestEntry {
   date: string;
   round_id: string;
   round_fingerprint: string;
+  /** schema v2 only: which frozen generation this date resolves against. */
+  generation?: string;
+}
+
+interface DailyManifestGeneration {
+  generation_id: string;
+  catalog_version: string;
+  pool_version: string;
+  artifact_version: string;
+  rounds_url: string;
 }
 
 interface DailyManifest {
   mode: string;
   start_date: string;
   schedule: DailyManifestEntry[];
+  /** Present only on schema v2 (ADR 0066), where the schedule spans
+   * multiple frozen pool generations and NO single rounds artifact covers
+   * every date. */
+  generations?: DailyManifestGeneration[];
 }
 
 interface RoundLite {
@@ -62,10 +76,76 @@ async function fetchManifest(page: Page): Promise<DailyManifest> {
   return (await res.json()) as DailyManifest;
 }
 
-async function fetchRounds(page: Page): Promise<RoundLite[]> {
-  const res = await page.request.get("/data/game/rounds.v1.json");
+async function fetchRoundsAt(page: Page, url: string): Promise<RoundLite[]> {
+  const res = await page.request.get(url);
   const { rounds } = (await res.json()) as { rounds: RoundLite[] };
   return rounds;
+}
+
+/** The live (newest-generation) pool. Correct for any CURRENT date; a
+ * retired generation's dates need `roundsForEntry` instead. */
+async function fetchRounds(page: Page): Promise<RoundLite[]> {
+  return fetchRoundsAt(page, "/data/game/rounds.v1.json");
+}
+
+/** Every round the manifest can point at, across ALL generations.
+ *
+ * Under schema v2 no single artifact covers the whole schedule -- an
+ * already-published date resolves against its own generation's frozen pool,
+ * which is the entire point of the multi-generation shape. A test that
+ * checked only `rounds.v1.json` would report every retired-generation date
+ * as a missing round. v1 manifests (no `generations`) fall back to the
+ * single live pool unchanged. */
+async function fetchAllRoundsById(
+  page: Page,
+  manifest: DailyManifest,
+): Promise<Map<string, RoundLite>> {
+  const urls = manifest.generations
+    ? manifest.generations.map((g) => g.rounds_url)
+    : ["/data/game/rounds.v1.json"];
+  const byId = new Map<string, RoundLite>();
+  for (const url of urls) {
+    for (const round of await fetchRoundsAt(page, url)) {
+      byId.set(round.id, round);
+    }
+  }
+  return byId;
+}
+
+/** A date's manifest entry AND the round it resolves to, looked up in that
+ * date's OWN generation pool. Fails loudly if the round is absent there,
+ * rather than silently handing back `undefined` for tests to deref. */
+async function entryAndRound(
+  page: Page,
+  date: string,
+): Promise<{ entry: DailyManifestEntry; round: RoundLite }> {
+  const manifest = await fetchManifest(page);
+  const entry = manifest.schedule.find((e) => e.date === date);
+  if (!entry)
+    throw new Error(`fixture date ${date} is not in the committed manifest`);
+  const rounds = await roundsForEntry(page, manifest, entry);
+  const round = rounds.find((r) => r.id === entry.round_id);
+  if (!round)
+    throw new Error(
+      `round ${entry.round_id} for ${date} is not in generation ${entry.generation ?? "(v1)"}'s pool`,
+    );
+  return { entry, round };
+}
+
+/** The pool THIS date resolves against -- its own generation's under v2. */
+async function roundsForEntry(
+  page: Page,
+  manifest: DailyManifest,
+  entry: DailyManifestEntry & { generation?: string },
+): Promise<RoundLite[]> {
+  if (!manifest.generations) return fetchRounds(page);
+  const generation = manifest.generations.find(
+    (g) => g.generation_id === entry.generation,
+  );
+  return fetchRoundsAt(
+    page,
+    generation?.rounds_url ?? "/data/game/rounds.v1.json",
+  );
 }
 
 async function entryFor(page: Page, date: string): Promise<DailyManifestEntry> {
@@ -96,8 +176,9 @@ test("the manifest is real, one-hop only, and covers the documented range", asyn
   page,
 }) => {
   const manifest = await fetchManifest(page);
-  const rounds = await fetchRounds(page);
-  const byId = new Map(rounds.map((r) => [r.id, r]));
+  // Across ALL generations: under v2 a retired generation's dates live in
+  // their own frozen pool, not in the live rounds artifact.
+  const byId = await fetchAllRoundsById(page, manifest);
   expect(manifest.mode).toBe("connection_guesser_one_hop");
   // start_date is the (migratable) launch date; assert it equals the first
   // scheduled entry rather than a hardcoded date.
@@ -188,9 +269,7 @@ test("a later scheduled date still resolves to its own frozen round (no drift)",
 test("solving the daily records a streak and builds a spoiler-free share string", async ({
   page,
 }) => {
-  const entry = await entryFor(page, PINNED_DATE_A);
-  const rounds = await fetchRounds(page);
-  const round = rounds.find((r) => r.id === entry.round_id)!;
+  const { entry, round } = await entryAndRound(page, PINNED_DATE_A);
 
   await gotoDaily(page, PINNED_DATE_A);
   await expect(page.getByTestId("stage")).toHaveAttribute(
@@ -227,9 +306,7 @@ test("solving the daily records a streak and builds a spoiler-free share string"
 test("the daily refuses a second play and shows the recorded result instead", async ({
   page,
 }) => {
-  const entry = await entryFor(page, PINNED_DATE_A);
-  const rounds = await fetchRounds(page);
-  const round = rounds.find((r) => r.id === entry.round_id)!;
+  const { entry, round } = await entryAndRound(page, PINNED_DATE_A);
 
   await gotoDaily(page, PINNED_DATE_A);
   await page.locator(`.chip[data-chip="${round.answer_set[0].id}"]`).click();
@@ -259,9 +336,10 @@ test("the daily refuses a second play and shows the recorded result instead", as
 });
 
 test("a streak breaks across a missed date", async ({ page }) => {
-  const entryA = await entryFor(page, PINNED_DATE_A);
-  const roundsA = await fetchRounds(page);
-  const roundA = roundsA.find((r) => r.id === entryA.round_id)!;
+  const { entry: entryA, round: roundA } = await entryAndRound(
+    page,
+    PINNED_DATE_A,
+  );
 
   await gotoDaily(page, PINNED_DATE_A);
   await page.locator(`.chip[data-chip="${roundA.answer_set[0].id}"]`).click();
@@ -274,9 +352,10 @@ test("a streak breaks across a missed date", async ({ page }) => {
   // Skip a date (not the immediately following calendar day) -- the streak
   // must reset to 1 on the next solve, not continue from 1.
   const laterDate = "2026-08-10";
-  const laterEntry = await entryFor(page, laterDate);
-  const rounds = await fetchRounds(page);
-  const laterRound = rounds.find((r) => r.id === laterEntry.round_id)!;
+  const { entry: laterEntry, round: laterRound } = await entryAndRound(
+    page,
+    laterDate,
+  );
   await gotoDaily(page, laterDate);
   await page
     .locator(`.chip[data-chip="${laterRound.answer_set[0].id}"]`)
@@ -351,7 +430,7 @@ test("a manifest entry referencing a missing round is an integrity error, not a 
   page,
 }) => {
   const entry = await entryFor(page, PINNED_DATE_A);
-  await page.route("**/data/game/rounds.v1.json", async (route) => {
+  await page.route(ANY_ROUNDS_ARTIFACT, async (route) => {
     const response = await route.fetch();
     const body = await response.json();
     body.rounds = body.rounds.filter(
@@ -373,7 +452,7 @@ test("a round whose content silently changed is an integrity error, not a spoofe
   page,
 }) => {
   const entry = await entryFor(page, PINNED_DATE_A);
-  await page.route("**/data/game/rounds.v1.json", async (route) => {
+  await page.route(ANY_ROUNDS_ARTIFACT, async (route) => {
     const response = await route.fetch();
     const body = await response.json();
     const round = body.rounds.find(
@@ -446,7 +525,7 @@ test("an error state announces to the assertive live region", async ({
 test("a malformed rounds fetch (null members) is an integrity error, not a crash", async ({
   page,
 }) => {
-  await page.route("**/data/game/rounds.v1.json", async (route) => {
+  await page.route(ANY_ROUNDS_ARTIFACT, async (route) => {
     const response = await route.fetch();
     const body = await response.json();
     // Inject a null and a primitive member -- the resolver must not throw
@@ -478,6 +557,69 @@ async function withMutatedManifest(
     mutate(body);
     await route.fulfill({ response, json: body });
   });
+}
+
+/** Point the manifest's first entry at a specific round for `date`.
+ *
+ * Under schema v2 an entry MUST name a generation, and the round it points
+ * at has to live in THAT generation's pool. These tests inject their round
+ * into the live artifact, so the entry targets the newest generation --
+ * otherwise the resolver would go looking in a retired generation's frozen
+ * pool, miss the round, and report "missing round" instead of the
+ * eligibility refusal the test is actually asserting. */
+function pointFirstEntryAt(
+  manifest: DailyManifest,
+  date: string,
+  roundId: string,
+  fingerprint: string,
+): void {
+  const entry: DailyManifestEntry = {
+    date,
+    round_id: roundId,
+    round_fingerprint: fingerprint,
+  };
+  if (manifest.generations) {
+    entry.generation =
+      manifest.generations[manifest.generations.length - 1].generation_id;
+  }
+  manifest.schedule[0] = entry;
+}
+
+/** Route pattern matching EVERY Connection Guesser rounds artifact -- the
+ * live `rounds.v1.json` and each generation's frozen
+ * `generations/<id>/rounds.json` (ADR 0066).
+ *
+ * Intercepting only `rounds.v1.json` silently stopped working once the
+ * pinned dates moved to a retired generation: the corruption these tests
+ * inject never reached the pool the date actually resolves from, so the
+ * page rendered a perfectly good round and the integrity assertion failed.
+ * Matching both means each test still proves what it claims regardless of
+ * which generation its pinned date belongs to. */
+const ANY_ROUNDS_ARTIFACT =
+  /\/data\/game\/(generations\/[^/]+\/)?rounds(\.v1)?\.json$/;
+
+/** Corrupt one artifact-version field wherever it actually lives for the
+ * date under test: at the manifest's top level under v1, or on THAT DATE'S
+ * OWN generation entry under v2 (ADR 0066). Mutating the top level of a v2
+ * manifest would be a no-op the resolver rightly ignores, so the test would
+ * pass while proving nothing. */
+function mutateVersionForDate(
+  manifest: DailyManifest,
+  date: string,
+  field: "catalog_version" | "pool_version" | "artifact_version",
+  value: string,
+): void {
+  if (!manifest.generations) {
+    (manifest as unknown as Record<string, unknown>)[field] = value;
+    return;
+  }
+  const entry = manifest.schedule.find((e) => e.date === date);
+  const generation = manifest.generations.find(
+    (g) => g.generation_id === entry?.generation,
+  );
+  if (!generation)
+    throw new Error(`no generation for ${date} to corrupt ${field} on`);
+  generation[field] = value;
 }
 
 test("a wrong manifest mode is an integrity error, never dealt as a daily round", async ({
@@ -513,8 +655,12 @@ test("a catalog_version mismatch between manifest and rounds is an integrity err
   page,
 }) => {
   await withMutatedManifest(page, (m) => {
-    (m as unknown as Record<string, unknown>).catalog_version =
-      "catalog-v1-20260601-different";
+    mutateVersionForDate(
+      m,
+      PINNED_DATE_A,
+      "catalog_version",
+      "catalog-v1-20260601-different",
+    );
   });
   await gotoDaily(page, PINNED_DATE_A);
   await expect(page.getByTestId("stage")).toHaveAttribute(
@@ -528,8 +674,12 @@ test("a pool_version mismatch between manifest and rounds is an integrity error"
   page,
 }) => {
   await withMutatedManifest(page, (m) => {
-    (m as unknown as Record<string, unknown>).pool_version =
-      "connection-v1-20260601-different";
+    mutateVersionForDate(
+      m,
+      PINNED_DATE_A,
+      "pool_version",
+      "connection-v1-20260601-different",
+    );
   });
   await gotoDaily(page, PINNED_DATE_A);
   await expect(page.getByTestId("stage")).toHaveAttribute(
@@ -543,8 +693,12 @@ test("an artifact_version mismatch between manifest and rounds is an integrity e
   page,
 }) => {
   await withMutatedManifest(page, (m) => {
-    (m as unknown as Record<string, unknown>).artifact_version =
-      "connection-artifact-v1-20260601-different";
+    mutateVersionForDate(
+      m,
+      PINNED_DATE_A,
+      "artifact_version",
+      "connection-artifact-v1-20260601-different",
+    );
   });
   await gotoDaily(page, PINNED_DATE_A);
   await expect(page.getByTestId("stage")).toHaveAttribute(
@@ -568,11 +722,7 @@ test("a manifest entry pointing at a real two-hop round is refused, never dealt 
   const fingerprint = await roundContentFingerprint(twoHopRaw);
 
   await withMutatedManifest(page, (m) => {
-    m.schedule[0] = {
-      date: PINNED_DATE_A,
-      round_id: twoHop.id,
-      round_fingerprint: fingerprint,
-    };
+    pointFirstEntryAt(m, PINNED_DATE_A, twoHop.id, fingerprint);
   });
   await gotoDaily(page, PINNED_DATE_A);
   await expect(page.getByTestId("stage")).toHaveAttribute(
@@ -631,18 +781,14 @@ test("a manifest entry pointing at an injected synthetic round is refused", asyn
   };
   const fingerprint = await roundContentFingerprint(syntheticRound);
 
-  await page.route("**/data/game/rounds.v1.json", async (route) => {
+  await page.route(ANY_ROUNDS_ARTIFACT, async (route) => {
     const response = await route.fetch();
     const body = await response.json();
     body.rounds.push(syntheticRound);
     await route.fulfill({ response, json: body });
   });
   await withMutatedManifest(page, (m) => {
-    m.schedule[0] = {
-      date: PINNED_DATE_A,
-      round_id: syntheticRound.id,
-      round_fingerprint: fingerprint,
-    };
+    pointFirstEntryAt(m, PINNED_DATE_A, syntheticRound.id, fingerprint);
   });
   await gotoDaily(page, PINNED_DATE_A);
   await expect(page.getByTestId("stage")).toHaveAttribute(
