@@ -13,9 +13,18 @@
 //
 // v2 (ADR 0058) adds virtual album-anchor nodes -- one synthetic node per
 // catalog album, connected to that album's real credited contributors.
-// findPath itself needs no changes for this; findAlbumRoute below is a
-// thin wrapper that searches between two albums' virtual nodes and strips
-// the (never user-visible) anchor hops from the result.
+// findAlbumRoute below is a thin wrapper that searches between two albums'
+// virtual nodes and strips the (never user-visible) anchor hops from the
+// result. findPath's BFS refuses to VISIT a virtual node except as the
+// goal itself (see the `graph.node_ids[neighbor] < 0` guard below) -- a
+// virtual node is an endpoint, never a through-route; without that guard a
+// role-filtered findAlbumRoute search could detour through a non-goal
+// album's anchor mid-route (its edges are exempt from role filtering,
+// see anchorAwareFilter below) and both escape the caller's role filter
+// and leak ALBUM_ANCHOR_SENTINEL into a hop stripAlbumAnchors never
+// touches (it only strips the first/last hop). Mirrors the same invariant
+// recommendedRoute.ts's bespoke walkers already enforce
+// ("expansion never continues out of a non-goal virtual album anchor").
 //
 // Nothing here trusts a TypeScript type assertion as runtime proof -- the
 // fetched JSON is untrusted input, validated field-by-field before use,
@@ -414,6 +423,14 @@ export function findPath(
       for (let slot = begin; slot < end; slot++) {
         const neighbor = graph.neighbors[slot];
         if (visited.has(neighbor)) continue;
+        // A virtual album-anchor node (negative id) is an endpoint, never a
+        // through-route -- refuse to visit one as an interior step. Without
+        // this, a role-filtered findAlbumRoute search could detour through
+        // a non-goal album's anchor (anchorAwareFilter exempts its edges
+        // from role filtering) and surface a hop outside the caller's
+        // filter, with the raw sentinel never stripped since
+        // stripAlbumAnchors only removes the first/last hop.
+        if (graph.node_ids[neighbor] < 0 && neighbor !== goal) continue;
         if (
           edgeFilter &&
           !edgeFilter(graph.edge_role_a[slot], graph.edge_role_b[slot])

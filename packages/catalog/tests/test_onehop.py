@@ -175,11 +175,10 @@ def test_additional_seed_reaches_a_release_the_private_seed_cannot(tmp_path: Pat
 def test_release_reached_only_via_editorial_seed_is_schema_identical_to_a_private_one(
     tmp_path: Path,
 ) -> None:
-    """The privacy invariant this design depends on: nothing in the retained
-    releases/credits/tracks tables tags a row by which seed retained it. If
-    it did, a downstream consumer could reconstruct which releases came from
-    the private collection -- exactly what data/contracts/editorial-seed-v1.md
-    promises never happens."""
+    """The retained releases table carries no column that tags a row by which
+    seed retained it. If it did, a downstream consumer could reconstruct
+    which releases came from the private collection -- exactly what
+    data/contracts/editorial-seed-v1.md promises never happens."""
     dataset = _write_source_dataset(tmp_path)
     seed_path = _write_seed(tmp_path, [101])
     editorial_seed_path = _write_editorial_seed(tmp_path, main_release_ids=[104])
@@ -197,17 +196,54 @@ def test_release_reached_only_via_editorial_seed_is_schema_identical_to_a_privat
     column_names = {row[0] for row in columns}
     assert "seed_kind" not in column_names
     assert "seed_source" not in column_names
-    private_row = (
-        duckdb.connect()
-        .execute(f"SELECT * EXCLUDE(release_id) FROM read_parquet('{glob}') WHERE release_id = 101")
-        .description
+
+
+def test_private_seeded_and_editorial_seeded_paths_produce_identical_output(
+    tmp_path: Path,
+) -> None:
+    """The privacy invariant this design depends on (plan doc: "the published
+    catalog must be byte-identical whether an album arrived via the private
+    seed or the editorial seed"). expand_one_hop unions the two seeds'
+    release ids BEFORE frontier/retention run (see its docstring), so every
+    retained table can only ever depend on that union, never on which seed
+    named which id. Proves it directly: the same two releases, once both
+    named in the private seed and once with one of them moved to the
+    editorial seed, must produce byte-identical output files -- only the
+    manifest's own seed-provenance bookkeeping may differ.
+
+    A prior version of this test asserted `cursor.description` equality
+    between two DIFFERENT releases' rows -- `.description` is DBAPI column
+    metadata (name/type), not fetched data, so it passed regardless of
+    what the rows actually contained. This constructs the one scenario the
+    invariant is actually about: the SAME release, reached both ways."""
+    dataset = _write_source_dataset(tmp_path)
+
+    private_dir = tmp_path / "private-only"
+    private_dir.mkdir()
+    private_only_seed = _write_seed(private_dir, [101, 104])
+    manifest_a = expand_one_hop(private_only_seed, dataset, private_dir / "onehop")
+
+    split_dir = tmp_path / "split"
+    split_dir.mkdir()
+    private_split_seed = _write_seed(split_dir, [101])
+    editorial_seed_path = _write_editorial_seed(split_dir, main_release_ids=[104])
+    manifest_b = expand_one_hop(
+        private_split_seed,
+        dataset,
+        split_dir / "onehop",
+        additional_seed_path=editorial_seed_path,
     )
-    editorial_row = (
-        duckdb.connect()
-        .execute(f"SELECT * EXCLUDE(release_id) FROM read_parquet('{glob}') WHERE release_id = 104")
-        .description
-    )
-    assert private_row == editorial_row
+
+    files_a = {entry["path"]: entry["sha256"] for entry in manifest_a["files"]}
+    files_b = {entry["path"]: entry["sha256"] for entry in manifest_b["files"]}
+    assert files_a == files_b
+    assert manifest_a["counts"] == manifest_b["counts"]
+
+    # The invariant is specifically about the retained DATA, not the
+    # bookkeeping -- these are expected to differ by construction.
+    assert manifest_a["expansion"]["seed_release_count"] == 2
+    assert manifest_b["expansion"]["seed_release_count"] == 1
+    assert manifest_b["expansion"]["additional_seed_release_count"] == 1
 
 
 def test_additional_seed_must_carry_the_documented_kind(tmp_path: Path) -> None:

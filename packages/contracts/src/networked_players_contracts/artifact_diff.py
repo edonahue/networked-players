@@ -40,17 +40,35 @@ _VERSION_FIELD_NAMES = frozenset(
 )
 
 
-def _version_field_changes(old: Any, new: Any) -> dict[str, dict[str, Any]]:
+def _version_field_changes(old: Any, new: Any, _prefix: str = "") -> dict[str, dict[str, Any]]:
+    """Recurses into nested dicts (e.g. a `provenance` block) so a version
+    field is caught wherever it lives -- several artifacts (`challenge.v2.json`,
+    `game/rounds.v1.json`, `game/universe.v1.json`) nest every version field
+    under `provenance` rather than at the top level, and a top-level-only
+    lookup silently reported `{}` for all three even though their version
+    fields genuinely changed (still visible in `structural_diff`, just not
+    called out in the one summary this function exists to provide). Does
+    not descend into lists: no artifact in this repo nests a version field
+    inside one, and doing so would mean walking every contributor/album
+    array on every diff."""
     changes: dict[str, dict[str, Any]] = {}
     if not (isinstance(old, dict) and isinstance(new, dict)):
         return changes
-    for key in sorted(_VERSION_FIELD_NAMES):
-        if key not in old and key not in new:
-            continue
+    for key in sorted(set(old) | set(new)):
         old_value = old.get(key)
         new_value = new.get(key)
-        if old_value != new_value:
-            changes[key] = {"old": old_value, "new": new_value}
+        label = f"{_prefix}{key}"
+        if key in _VERSION_FIELD_NAMES and (key in old or key in new):
+            if old_value != new_value:
+                changes[label] = {"old": old_value, "new": new_value}
+        if isinstance(old_value, dict) or isinstance(new_value, dict):
+            changes.update(
+                _version_field_changes(
+                    old_value if isinstance(old_value, dict) else {},
+                    new_value if isinstance(new_value, dict) else {},
+                    f"{label}.",
+                )
+            )
     return changes
 
 
