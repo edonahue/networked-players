@@ -32,15 +32,24 @@ test("a real search renders real endpoint cards for both albums", async ({
   const endpoints = page.locator("[data-connect-hops] .connect-endpoint");
   await expect(endpoints).toHaveCount(2);
 
+  // Assert the endpoint card's SHAPE -- "<person> is credited on <album>'s
+  // own release, as <real role text>." -- rather than one specific
+  // contributor's role. Which contributor bridges a pair depends on which
+  // equally-valid route the ranker picks, and that legitimately changes as
+  // the graph grows (it did on the 140 -> 179 expansion: this pair now
+  // routes via George Duke's "Written-By, Performer" instead). Pinning the
+  // role made a real, correct route look like a regression. The `, as .+\.`
+  // clause still fails loudly on a missing or empty role, which is the
+  // property this test actually exists to protect.
   const first = endpoints.first();
   await expect(first).toContainText(/is credited on/i);
   await expect(first).toContainText("Discovery");
-  await expect(first).toContainText(/design concept, art direction/i);
+  await expect(first).toContainText(/, as .+\./i);
 
   const last = endpoints.last();
   await expect(last).toContainText(/is credited on/i);
   await expect(last).toContainText("The Joshua Tree");
-  await expect(last).toContainText(/composed by/i);
+  await expect(last).toContainText(/, as .+\./i);
 });
 
 test("a real search never leaks the album-anchor sentinel into the DOM", async ({

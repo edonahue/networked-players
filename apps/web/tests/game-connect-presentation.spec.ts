@@ -73,13 +73,22 @@ test("endpoint cards render real cover art from the album-art registry", async (
 test("an album with no art-registry entry renders the polished placeholder, not a broken image", async ({
   page,
 }) => {
+  // The catalog_version must MATCH the real catalog, or the registry is
+  // rejected outright and this stops testing "an empty registry" -- it would
+  // silently become a duplicate of the invalid-registry case while still
+  // passing (both render placeholders). Read it from the real artifact so
+  // the distinction survives every catalog regeneration.
+  const catalogRes = await page.request.get("/data/catalog/albums.v1.json");
+  const { catalog_version: realCatalogVersion } = (await catalogRes.json()) as {
+    catalog_version: string;
+  };
   await page.route("**/data/catalog/album-art.v1.json", (route) =>
     route.fulfill({
       status: 200,
       contentType: "application/json",
       body: JSON.stringify({
         schema_version: 1,
-        catalog_version: "catalog-v1-20260601-0e7ec70fbb7e",
+        catalog_version: realCatalogVersion,
         art_version: "test-empty",
         albums: [],
       }),

@@ -7,7 +7,16 @@
 
 import { expect, test, type Page } from "@playwright/test";
 
-const CATALOG_VERSION = "catalog-v1-20260601-0e7ec70fbb7e";
+/** Read from the real committed catalog rather than hardcoded: a registry
+ * is only accepted when its catalog_version matches the catalog exactly, so
+ * pinning a literal here silently breaks this test on EVERY catalog
+ * regeneration (it did, on the Phase 7 140 -> 179 expansion) while looking
+ * like a product failure. Tests that deliberately want a MISMATCH still
+ * pass their own bogus value explicitly. */
+async function realCatalogVersion(page: Page): Promise<string> {
+  const res = await page.request.get("/data/catalog/albums.v1.json");
+  return ((await res.json()) as { catalog_version: string }).catalog_version;
+}
 
 interface RoundLite {
   id: string;
@@ -35,7 +44,7 @@ async function routeRegistry(
   );
 }
 
-function registryFor(albumIds: string[], catalogVersion = CATALOG_VERSION) {
+function registryFor(albumIds: string[], catalogVersion: string) {
   return {
     schema_version: 1,
     catalog_version: catalogVersion,
@@ -70,7 +79,13 @@ test("a resolvable registry renders real cover art in the sleeves", async ({
   page,
 }) => {
   const round = await firstOneHop(page);
-  await routeRegistry(page, registryFor(round.endpoints.map((e) => e.id)));
+  await routeRegistry(
+    page,
+    registryFor(
+      round.endpoints.map((e) => e.id),
+      await realCatalogVersion(page),
+    ),
+  );
   await serveImages(page);
   await page.goto(`/play/connection/?round=${round.id}&motion=off`);
   await expect(page.getByTestId("stage")).toHaveAttribute(
@@ -137,7 +152,13 @@ test("an upstream image error swaps the cover for the placeholder", async ({
   page,
 }) => {
   const round = await firstOneHop(page);
-  await routeRegistry(page, registryFor(round.endpoints.map((e) => e.id)));
+  await routeRegistry(
+    page,
+    registryFor(
+      round.endpoints.map((e) => e.id),
+      await realCatalogVersion(page),
+    ),
+  );
   // Fail the actual image request so the <img> error listener fires.
   await page.route("https://i.discogs.com/**", (route) =>
     route.fulfill({ status: 404, body: "gone" }),
