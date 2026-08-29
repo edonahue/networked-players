@@ -356,3 +356,200 @@ test("malformed round shape: fingerprinting an odd round does not throw", async 
   );
   expect(resolution).toEqual({ ok: false, reason: "fingerprint-mismatch" });
 });
+
+// --- schema v2: multi-generation resolution (ADR 0066) ----------------------
+//
+// The property these exist for: after a pool regeneration, an
+// already-published date must STILL resolve to its exact original round,
+// while new dates resolve against the new generation -- from one manifest.
+
+const GEN2_PROVENANCE = {
+  ...PROVENANCE,
+  catalog_version: "catalog-v1-20260601-newcat",
+  pool_version: "connection-v1-20260601-newpool",
+  artifact_version: "connection-artifact-v1-20260601-newart",
+};
+
+function gen2RoundsArtifact(rounds: GameRound[]): GameRounds {
+  return { schema_version: 1, provenance: GEN2_PROVENANCE, rounds };
+}
+
+/** gen-1 holds `oldRound` on 2026-08-01; gen-2 holds `newRound` on
+ * 2026-08-02 -- the real cutover shape in miniature. */
+async function manifestV2(oldRound: GameRound, newRound: GameRound) {
+  const { roundContentFingerprint } = await import("../src/game/canonical");
+  return {
+    schema_version: 2,
+    mode: "connection_guesser_one_hop",
+    generated_at: "2026-08-01T00:00:00+00:00",
+    start_date: "2026-08-01",
+    generations: [
+      {
+        generation_id: "gen-1",
+        catalog_version: PROVENANCE.catalog_version,
+        pool_version: PROVENANCE.pool_version,
+        artifact_version: PROVENANCE.artifact_version,
+        rounds_url: "/data/game/generations/gen-1/rounds.json",
+      },
+      {
+        generation_id: "gen-2",
+        catalog_version: GEN2_PROVENANCE.catalog_version,
+        pool_version: GEN2_PROVENANCE.pool_version,
+        artifact_version: GEN2_PROVENANCE.artifact_version,
+        rounds_url: "/data/game/rounds.v1.json",
+      },
+    ],
+    schedule: [
+      {
+        date: "2026-08-01",
+        round_id: oldRound.id,
+        round_fingerprint: await roundContentFingerprint(oldRound),
+        generation: "gen-1",
+      },
+      {
+        date: "2026-08-02",
+        round_id: newRound.id,
+        round_fingerprint: await roundContentFingerprint(newRound),
+        generation: "gen-2",
+      },
+    ],
+  };
+}
+
+test("v2: a current date resolves against the loaded newest-generation pool with no extra fetch", async () => {
+  const oldRound = round();
+  const newRound = round({ id: "conn-00000000ff" });
+  const manifest = await manifestV2(oldRound, newRound);
+  let fetches = 0;
+  const resolution = await resolveDailyRound(
+    manifest,
+    gen2RoundsArtifact([newRound]),
+    "2026-08-02",
+    async (url: string) => {
+      fetches += 1;
+      return { url };
+    },
+  );
+  expect(resolution.ok).toBe(true);
+  if (resolution.ok) expect(resolution.round.id).toBe(newRound.id);
+  expect(fetches).toBe(0);
+});
+
+test("v2: a retired-generation date still resolves to its original round via that generation's frozen rounds", async () => {
+  const oldRound = round();
+  const newRound = round({ id: "conn-00000000ff" });
+  const manifest = await manifestV2(oldRound, newRound);
+  const requested: string[] = [];
+  const resolution = await resolveDailyRound(
+    manifest,
+    // The live pool is gen-2 and does NOT contain gen-1's round.
+    gen2RoundsArtifact([newRound]),
+    "2026-08-01",
+    async (url: string) => {
+      requested.push(url);
+      return roundsArtifact([oldRound]);
+    },
+  );
+  expect(resolution.ok).toBe(true);
+  if (resolution.ok) expect(resolution.round.id).toBe(oldRound.id);
+  expect(requested).toEqual(["/data/game/generations/gen-1/rounds.json"]);
+});
+
+test("v2: unknown-generation when an entry names a generation absent from generations[]", async () => {
+  const oldRound = round();
+  const newRound = round({ id: "conn-00000000ff" });
+  const manifest = await manifestV2(oldRound, newRound);
+  manifest.schedule[0].generation = "gen-nonexistent";
+  const resolution = await resolveDailyRound(
+    manifest,
+    gen2RoundsArtifact([newRound]),
+    "2026-08-01",
+  );
+  expect(resolution).toEqual({ ok: false, reason: "unknown-generation" });
+});
+
+test("v2: generation-rounds-unavailable when the frozen generation pool cannot be fetched", async () => {
+  const oldRound = round();
+  const newRound = round({ id: "conn-00000000ff" });
+  const manifest = await manifestV2(oldRound, newRound);
+  const resolution = await resolveDailyRound(
+    manifest,
+    gen2RoundsArtifact([newRound]),
+    "2026-08-01",
+    async () => {
+      throw new Error("404");
+    },
+  );
+  expect(resolution).toEqual({
+    ok: false,
+    reason: "generation-rounds-unavailable",
+  });
+});
+
+test("v2: version-mismatch when a generation's rounds_url serves the wrong pool", async () => {
+  const oldRound = round();
+  const newRound = round({ id: "conn-00000000ff" });
+  const manifest = await manifestV2(oldRound, newRound);
+  const resolution = await resolveDailyRound(
+    manifest,
+    gen2RoundsArtifact([newRound]),
+    "2026-08-01",
+    // gen-1's URL wrongly serves a gen-2-provenance pool: must fail closed,
+    // never deal a round from a pool this date was not frozen against.
+    async () => gen2RoundsArtifact([oldRound]),
+  );
+  expect(resolution).toEqual({ ok: false, reason: "version-mismatch" });
+});
+
+test("v2: fingerprint-mismatch when a retired generation's round content changed", async () => {
+  const oldRound = round();
+  const newRound = round({ id: "conn-00000000ff" });
+  const manifest = await manifestV2(oldRound, newRound);
+  const tampered = round({
+    answer_set: [{ id: 700, name: "Tampered", role_category: "guitar" }],
+  });
+  const resolution = await resolveDailyRound(
+    manifest,
+    gen2RoundsArtifact([newRound]),
+    "2026-08-01",
+    async () => roundsArtifact([tampered]),
+  );
+  expect(resolution).toEqual({ ok: false, reason: "fingerprint-mismatch" });
+});
+
+test("v2: not-scheduled for a date outside the schedule", async () => {
+  const oldRound = round();
+  const newRound = round({ id: "conn-00000000ff" });
+  const manifest = await manifestV2(oldRound, newRound);
+  const resolution = await resolveDailyRound(
+    manifest,
+    gen2RoundsArtifact([newRound]),
+    "2026-09-09",
+  );
+  expect(resolution).toEqual({ ok: false, reason: "not-scheduled" });
+});
+
+test("v2: wrong-mode is still rejected", async () => {
+  const oldRound = round();
+  const newRound = round({ id: "conn-00000000ff" });
+  const manifest = await manifestV2(oldRound, newRound);
+  manifest.mode = "record_routes";
+  const resolution = await resolveDailyRound(
+    manifest,
+    gen2RoundsArtifact([newRound]),
+    "2026-08-02",
+  );
+  expect(resolution).toEqual({ ok: false, reason: "wrong-mode" });
+});
+
+test("v1 manifests still resolve unchanged after v2 support was added", async () => {
+  const r = round();
+  const manifest = await manifestFor([r]);
+  const resolution = await resolveDailyRound(
+    manifest,
+    roundsArtifact([r]),
+    "2026-08-01",
+  );
+  expect(resolution.ok).toBe(true);
+  if (resolution.ok) expect(resolution.round.id).toBe(r.id);
+});
