@@ -198,6 +198,61 @@ def test_credit_rows_for_artist_returns_empty_list_for_an_unknown_artist(
         assert graph.credit_rows_for_artist(999_999) == []
 
 
+def test_search_releases_matches_a_substring_case_insensitively(dataset_root: Path) -> None:
+    with CreditGraph.open(dataset_root) as graph:
+        results = graph.search_releases("SECOND")
+    assert [r["release_id"] for r in results] == [2]
+    assert results[0]["title"] == "Second Set"
+
+
+def test_search_releases_returns_empty_list_for_no_match(dataset_root: Path) -> None:
+    with CreditGraph.open(dataset_root) as graph:
+        assert graph.search_releases("zzz-no-such-title") == []
+
+
+def test_search_releases_orders_alphabetically_and_bounds_by_limit(
+    dataset_root: Path,
+) -> None:
+    # Matches (alphabetical): Choir Sessions, Large Ensemble, Second Set,
+    # Sixth Sense, Third Wave -- "First Light" and "Compilation Various"
+    # have no "e" and are excluded.
+    with CreditGraph.open(dataset_root) as graph:
+        results = graph.search_releases("e", limit=2)
+    assert [r["title"] for r in results] == ["Choir Sessions", "Large Ensemble"]
+
+
+def test_search_artists_matches_a_substring_case_insensitively(dataset_root: Path) -> None:
+    with CreditGraph.open(dataset_root) as graph:
+        results = graph.search_artists("ALI")
+    assert results == [{"artist_id": 100, "name": "Alice"}]
+
+
+def test_search_artists_returns_distinct_pairs_despite_multiple_credit_rows(
+    dataset_root: Path,
+) -> None:
+    # Alice appears on 3 releases (2 credit rows each via _performed) -- must
+    # collapse to one search result, not six.
+    with CreditGraph.open(dataset_root) as graph:
+        results = graph.search_artists("Alice")
+    assert results == [{"artist_id": 100, "name": "Alice"}]
+
+
+def test_search_artists_excludes_a_hard_placeholder_identity(dataset_root: Path) -> None:
+    with CreditGraph.open(dataset_root) as graph:
+        assert graph.search_artists("Various") == []
+
+
+def test_search_artists_excludes_a_non_playable_evidence_name(dataset_root: Path) -> None:
+    # "Session Choir" is a non-linked, non-playable evidence row on R5.
+    with CreditGraph.open(dataset_root) as graph:
+        assert graph.search_artists("Choir") == []
+
+
+def test_search_artists_returns_empty_list_for_no_match(dataset_root: Path) -> None:
+    with CreditGraph.open(dataset_root) as graph:
+        assert graph.search_artists("zzz-no-such-name") == []
+
+
 def test_artist_name_returns_canonical_name(dataset_root: Path) -> None:
     with CreditGraph.open(dataset_root) as graph:
         assert graph.artist_name(100) == "Alice"

@@ -74,3 +74,14 @@ the public build, no accounts or analytics, every run written only under `local/
 `corpus_root` and `topic` are both validated server-side (not just trusted from the form) --
 `corpus_root` must resolve under `local/`, and `topic` must be a single plain name, never a
 path -- since this mode, like cohort mode, can be bound to `0.0.0.0` for LAN access.
+
+### Explore (Slice 1) — search a corpus and open a result's evidence
+
+Below the compare form, "Explore" searches album titles or artist names in a given
+`corpus_root` (defaults to the compare form's own field) and, on click, shows that
+release's or artist's real credit rows inline. This is Slice 1 of the plan's fuller
+"Explore" bullet -- route filters, scope selection, bounded graph rendering, compare/pin,
+and saved reproducible request files are a larger follow-up, not built yet.
+
+`corpus_root` is validated the same way as the compare form's (`_safe_corpus_root`); a
+release or artist id with no match in the corpus is a clean 400, never a crash.
