@@ -18,7 +18,16 @@ from typing import Any
 
 import duckdb
 
+from networked_players_graph_core.graph import CreditGraph
+
 from .analyses import ANALYSIS_REGISTRY
+from .compare import (
+    DEFAULT_MAX_HOPS,
+    DEFAULT_MAX_ROUTE_CANDIDATE_PAIRS,
+    CompareAlbumsRequest,
+    CompareError,
+    compare_albums,
+)
 from .corpus import (
     AmbiguousSeedError,
     NoSeedMatchError,
@@ -168,6 +177,42 @@ def _parser() -> argparse.ArgumentParser:
     scope_tier.add_argument(
         "--output", type=Path, default=None, help="optional JSON report path (local-only)"
     )
+
+    compare = subparsers.add_parser(
+        "research-compare",
+        help=(
+            "compare two things over an already-built corpus (Phase 7 PR D, Slice 1) -- "
+            "writes a run under local/research/<topic>/runs/<run-id>/, exactly like "
+            "research-analyze"
+        ),
+    )
+    compare.add_argument(
+        "--mode",
+        choices=("albums",),
+        required=True,
+        help="the only mode implemented so far; artists/scenes are follow-up slices",
+    )
+    compare.add_argument(
+        "--corpus-root",
+        type=Path,
+        required=True,
+        help="a snapshot-shaped dataset: the full canonical snapshot, or a "
+        "research-build-corpus topic corpus's snapshot=<date>/ dir",
+    )
+    compare.add_argument("--album-a", type=int, required=True, help="release_id")
+    compare.add_argument("--album-b", type=int, required=True, help="release_id")
+    compare.add_argument(
+        "--topic",
+        required=True,
+        help="run bookkeeping slug -- used directly as local/research/<topic>/, not "
+        "slugified (pass an already-filesystem-safe value)",
+    )
+    compare.add_argument("--max-hops", type=int, default=DEFAULT_MAX_HOPS)
+    compare.add_argument(
+        "--max-route-candidate-pairs", type=int, default=DEFAULT_MAX_ROUTE_CANDIDATE_PAIRS
+    )
+    compare.add_argument("--research-root", type=Path, default=RESEARCH_ROOT)
+    compare.add_argument("--run-id")
 
     return parser
 
@@ -471,6 +516,54 @@ def main(argv: list[str] | None = None) -> int:
             print(json.dumps(report, indent=2, sort_keys=True))
             return 0
 
+        if args.command == "research-compare":
+            started_at = datetime.now(UTC).isoformat()
+
+            corpus_manifest_path = args.corpus_root / "manifest.json"
+            corpus_manifest = (
+                json.loads(corpus_manifest_path.read_text())
+                if corpus_manifest_path.is_file()
+                else {}
+            )
+            # A topic corpus doesn't carry a single version string the way a
+            # published artifact does -- the directory name plus its own
+            # manifest's snapshot_date is the closest real provenance available.
+            corpus_version = (
+                f"{args.corpus_root.name}:{corpus_manifest.get('snapshot_date', 'unknown')}"
+            )
+
+            with CreditGraph.open(args.corpus_root) as credit_graph:
+                comparison = compare_albums(
+                    credit_graph,
+                    CompareAlbumsRequest(
+                        corpus_snapshot_root=args.corpus_root,
+                        album_a_release_id=args.album_a,
+                        album_b_release_id=args.album_b,
+                        max_hops=args.max_hops,
+                        max_route_candidate_pairs=args.max_route_candidate_pairs,
+                    ),
+                )
+
+            run_id = args.run_id or new_run_id()
+            run_paths = new_run_paths(args.topic, run_id, research_root=args.research_root)
+            run_paths.ensure_dirs()
+            (run_paths.root / "comparison.json").write_text(
+                json.dumps(comparison, indent=2, sort_keys=True) + "\n"
+            )
+
+            finished_at = datetime.now(UTC).isoformat()
+            write_run_manifest(
+                run_paths,
+                topic=args.topic,
+                run_id=run_id,
+                corpus_version=corpus_version,
+                analyses=[f"compare_{args.mode}"],
+                started_at=started_at,
+                finished_at=finished_at,
+            )
+            print(json.dumps({"run_id": run_id, "run_root": str(run_paths.root)}, indent=2))
+            return 0
+
         raise AssertionError(f"unhandled command: {args.command}")
     except (
         ResearchRequestError,
@@ -479,6 +572,7 @@ def main(argv: list[str] | None = None) -> int:
         NoSeedMatchError,
         ResearchReportError,
         ScopeTierError,
+        CompareError,
     ) as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 1
