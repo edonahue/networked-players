@@ -1,9 +1,68 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type APIRequestContext } from "@playwright/test";
 import {
   pickBoundedConnectedAlbum,
   pickConnectedAlbumWithArt,
 } from "./helpers/challengeAlbums";
 import { stubCoverArt } from "./helpers/coverArt";
+import {
+  buildAlbumIndex,
+  buildArtistIndex,
+  findAlbumRoute,
+  type PathfindingGraph,
+} from "../src/game/pathfindingGraph";
+import { behindTheGlassEdgeFilter } from "../src/game/roleTaxonomy";
+
+// Shared by the about-page and llms.txt regression tests below: both quote
+// the same real, current catalog/round counts, and both were caught stating
+// stale hardcoded numbers ("140 studio albums, 250 artists...") after the
+// Phase 7 catalog expansion to 179 albums.
+async function realCatalogStats(request: APIRequestContext) {
+  const challenge = await (await request.get("/data/challenge.v2.json")).json();
+  const manifest = await (
+    await request.get("/data/game/daily-manifest.v1.json")
+  ).json();
+  const newestGeneration = manifest.generations.at(-1);
+  const rounds = (await (await request.get(newestGeneration.rounds_url)).json())
+    .rounds as { kind: string }[];
+  return {
+    studioAlbumCount: challenge.albums.length as number,
+    artistCount: challenge.artists.length as number,
+    documentedConnectionCount: challenge.paths.length as number,
+    oneHopRoundCount: rounds.filter((r) => r.kind === "one_hop").length,
+    twoHopRoundCount: rounds.filter((r) => r.kind === "two_hop").length,
+  };
+}
+
+test("homepage's hardcoded Behind the Glass editorial pick still resolves a real producer-only route", async ({
+  request,
+}) => {
+  // index.astro's "An editorial pick" paragraph hardcodes Ziggy Stardust
+  // (master-1561) / A Night At The Opera (master-5863) as a real Behind the
+  // Glass example -- unlike featuredPath just above it in that file (picked
+  // deterministically from challenge.paths[0]), this specific pair is prose,
+  // not derived from the artifact. It happens to still be true after the
+  // Phase 7 catalog expansion (verified directly against the real published
+  // graph.v2.json below), but nothing catches it silently going false on a
+  // future expansion the way about.json's stale counts did -- this test is
+  // that catch. If this ever fails, either the pair no longer has a real
+  // producer-only route (fix the copy) or the album ids no longer exist in
+  // the catalog (same).
+  const graph = (await (
+    await request.get("/data/pathfinding/graph.v2.json")
+  ).json()) as PathfindingGraph;
+  const artistIndex = buildArtistIndex(graph);
+  const albumIndex = buildAlbumIndex(graph);
+  const result = findAlbumRoute(
+    graph,
+    artistIndex,
+    albumIndex,
+    "master-1561",
+    "master-5863",
+    4,
+    behindTheGlassEdgeFilter,
+  );
+  expect(result.ok).toBe(true);
+});
 
 test("home renders hero, nav, and the album grid", async ({ page }) => {
   await page.goto("/");
@@ -19,6 +78,58 @@ test("home renders hero, nav, and the album grid", async ({ page }) => {
 test("about page renders", async ({ page }) => {
   await page.goto("/about/");
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+});
+
+test("about page's stats paragraph quotes the real, current artifact counts", async ({
+  page,
+  request,
+}) => {
+  // Regression test: these numbers were hardcoded at "140 studio albums, 250
+  // artists, 300 documented connections" and left stale across the Phase 7
+  // catalog expansion to 179 albums. about.astro now derives them from the
+  // real artifacts at build time -- this proves the RENDERED page, not just
+  // the derivation logic, actually reflects whatever is currently published.
+  const stats = await realCatalogStats(request);
+
+  await page.goto("/about/");
+  // "N studio albums" appears in both the stats paragraph and the following
+  // game paragraph ("...those N studio albums..."); .first() is the one
+  // that also carries the artist/connection counts.
+  const statsParagraph = page
+    .getByText(`${stats.studioAlbumCount} studio albums`)
+    .first();
+  await expect(statsParagraph).toContainText(`${stats.artistCount} artists`);
+  await expect(statsParagraph).toContainText(
+    `${stats.documentedConnectionCount} documented connections`,
+  );
+  await expect(
+    page.getByText(
+      `${stats.oneHopRoundCount} one-hop and ${stats.twoHopRoundCount} two-hop rounds`,
+    ),
+  ).toBeVisible();
+});
+
+test("llms.txt quotes the real, current catalog counts and never re-states the old synthetic framing", async ({
+  request,
+}) => {
+  // Regression test: public/llms.txt used to describe a much earlier
+  // project state ("no public API or full public catalog," the album
+  // experience "still uses a small, versioned, synthetic static dataset")
+  // that was false the moment the real CC0-dump catalog shipped. It is now
+  // generated (llms.txt.ts) from the same real counts as the about page.
+  const stats = await realCatalogStats(request);
+  const res = await request.get("/llms.txt");
+  expect(res.headers()["content-type"]).toContain("text/plain");
+  const body = await res.text();
+
+  expect(body).toContain(
+    `${stats.studioAlbumCount} studio albums, ${stats.artistCount} artists, ${stats.documentedConnectionCount} documented connections`,
+  );
+  expect(body).toContain(
+    `${stats.oneHopRoundCount} one-hop and ${stats.twoHopRoundCount} two-hop rounds`,
+  );
+  expect(body.toLowerCase()).not.toContain("synthetic");
+  expect(body).not.toContain("no public API");
 });
 
 test("demo renders a path with evidence and switches paths", async ({
