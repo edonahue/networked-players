@@ -34,6 +34,14 @@ corpus split" entry below. Full detail in `docs/PHASE6_REPORT.md`
 now partially addressed — see the note added there — and every other
 entry in this document is untouched by Phase 6 and remains open.
 
+**Phase 7 close (2026-08-29):** not scoped from this document at all —
+Phase 7's own catalog-expansion plan (140 → 179 published albums, PR
+#161) and the private research workbench (PR D) were driven by a
+separate mission brief and expansion-readiness measurement, not by any
+candidate below. Every entry in this document remains exactly as open as
+it was after Phase 6; Phase 7 neither started nor closed any of them.
+Full detail in `docs/PHASE7_REPORT.md` (PRs #143–173).
+
 ## Research quality / data model
 
 **Core-discography vs. exploration-neighborhood corpus split.** Real,
