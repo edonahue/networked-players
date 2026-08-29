@@ -504,6 +504,30 @@ test("recentering the graph closes the drawer", async ({ page }) => {
   await expect(page.locator("[data-explorer-evidence-drawer]")).toBeHidden();
 });
 
+// Regression test for the fix to the flake above: the suppression that
+// stops a recenter's own synthetic mouseover from reopening the drawer
+// must clear on the next REAL mouse movement, not stay latched -- a
+// visitor who recenters and then genuinely hovers a new edge must still
+// see hover-to-preview work, immediately, without needing an intervening
+// click/Enter.
+test("hovering a new edge after recentering still opens the drawer", async ({
+  page,
+}) => {
+  await page.goto("/explore/master-107325/");
+  await waitForGraph(page);
+  await firstEdge(page).click();
+  await expect(page.locator("[data-explorer-evidence-drawer]")).toBeVisible();
+
+  const neighbor = page
+    .locator("[data-explorer-nodes] .explorer-node[data-is-center='false']")
+    .first();
+  await neighbor.click();
+  await expect(page.locator("[data-explorer-evidence-drawer]")).toBeHidden();
+
+  await firstEdge(page).hover();
+  await expect(page.locator("[data-explorer-evidence-drawer]")).toBeVisible();
+});
+
 test("a different edge's evidence replaces the previous edge's content", async ({
   page,
 }) => {
