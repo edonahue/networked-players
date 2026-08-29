@@ -63,6 +63,43 @@ def test_a_list_length_change_is_reported_directly_not_element_by_element() -> N
     ]
 
 
+def test_a_version_field_nested_under_provenance_is_reported_with_its_path() -> None:
+    """`challenge.v2.json` and `game/rounds.v1.json` store every version field
+    under a `provenance` object rather than at the top level. A top-level-only
+    lookup silently reported `{}` here even though the fields genuinely
+    changed -- still visible in `structural_diff`, just missing from the one
+    summary this function exists to provide."""
+    old = {"provenance": {"catalog_version": "catalog-v1-old", "note": "x"}}
+    new = {"provenance": {"catalog_version": "catalog-v1-new", "note": "x"}}
+    report = artifact_diff(old, new)
+    assert report["version_field_changes"] == {
+        "provenance.catalog_version": {"old": "catalog-v1-old", "new": "catalog-v1-new"}
+    }
+
+
+def test_top_level_and_nested_version_fields_are_both_reported_independently() -> None:
+    old = {
+        "catalog_version": "catalog-v1-old",
+        "provenance": {"pool_version": "pool-v1-old"},
+    }
+    new = {
+        "catalog_version": "catalog-v1-new",
+        "provenance": {"pool_version": "pool-v1-new"},
+    }
+    report = artifact_diff(old, new)
+    assert report["version_field_changes"] == {
+        "catalog_version": {"old": "catalog-v1-old", "new": "catalog-v1-new"},
+        "provenance.pool_version": {"old": "pool-v1-old", "new": "pool-v1-new"},
+    }
+
+
+def test_a_version_field_absent_from_both_sides_is_not_reported() -> None:
+    old = {"provenance": {"note": "x"}}
+    new = {"provenance": {"note": "y"}}
+    report = artifact_diff(old, new)
+    assert report["version_field_changes"] == {}
+
+
 def test_registry_and_membership_version_fields_are_reported() -> None:
     """Both shipped after `_VERSION_FIELD_NAMES` was written and were
     missing from it, so a regenerated evidence registry diffed without the

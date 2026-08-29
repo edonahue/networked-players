@@ -380,6 +380,86 @@ test("findAlbumRoute's edgeFilter is never applied to an anchor edge", () => {
   expect(result.endpointB.artistId).toBe(400);
 });
 
+// Album Z's anchor (-3) sits directly between Frank (100, credited on
+// Album A) and Grace (200, credited on Album B) -- the ONLY route between
+// them goes Frank -> Album Z's anchor -> Grace. No direct Frank/Grace edge
+// exists at all, so this graph has no route from Album A to Album B that
+// doesn't pass through a THIRD album's virtual node as an interior step.
+function interiorAnchorDetourGraph(): PathfindingGraph {
+  return {
+    schema_version: 2,
+    catalog_version: "catalog-v1-test",
+    snapshot_date: "20260601",
+    generated_at: "2026-08-29T00:00:00+00:00",
+    source: "test",
+    license: "test",
+    node_ids: [-3, -2, -1, 100, 200],
+    names: [
+      "Album Z (album anchor)",
+      "Album B (album anchor)",
+      "Album A (album anchor)",
+      "Frank",
+      "Grace",
+    ],
+    offsets: [0, 2, 3, 4, 6, 8],
+    neighbors: [3, 4, 4, 3, 2, 0, 1, 0],
+    evidence_release_ids: [41, 42, 52, 51, 51, 41, 52, 42],
+    edge_role_a: [
+      ALBUM_ANCHOR_SENTINEL,
+      ALBUM_ANCHOR_SENTINEL,
+      ALBUM_ANCHOR_SENTINEL,
+      ALBUM_ANCHOR_SENTINEL,
+      "Drums",
+      "Viola",
+      "Bass",
+      "Oboe",
+    ],
+    edge_role_b: [
+      "Viola",
+      "Oboe",
+      "Bass",
+      "Drums",
+      ALBUM_ANCHOR_SENTINEL,
+      ALBUM_ANCHOR_SENTINEL,
+      ALBUM_ANCHOR_SENTINEL,
+      ALBUM_ANCHOR_SENTINEL,
+    ],
+    pathfinding_graph_version: "pathfinding-graph-v2-20260601-test",
+    album_virtual_nodes: [
+      { album_id: "album-z", virtual_artist_id: -3, main_release_id: 30 },
+      { album_id: "album-b", virtual_artist_id: -2, main_release_id: 20 },
+      { album_id: "album-a", virtual_artist_id: -1, main_release_id: 10 },
+    ],
+  };
+}
+
+test("findAlbumRoute never routes through a third album's anchor as an interior waypoint", () => {
+  // Regression test: a virtual album-anchor node is an endpoint, never a
+  // through-route (the same invariant recommendedRoute.ts's bespoke
+  // walkers already enforce via `graph.node_ids[neighbor] < 0`). Before
+  // this was enforced in findPath itself, this exact graph shape let a
+  // record-to-record search detour through Album Z's anchor -- neither
+  // the start nor the goal -- to bridge Frank and Grace, surfacing a
+  // 2-hop "route" whose middle hop was itself an anchor edge (Frank's real
+  // role "Viola" on one side, ALBUM_ANCHOR_SENTINEL on the other), with no
+  // edge filter involved at all. There is no other route between Frank and
+  // Grace in this graph, so a search that correctly refuses to treat Album
+  // Z as a waypoint must report no-path, not a false success built on an
+  // unrelated album's internal routing node.
+  const graph = interiorAnchorDetourGraph();
+  const artistIndex = buildArtistIndex(graph);
+  const albumIndex = buildAlbumIndex(graph);
+  const result = findAlbumRoute(
+    graph,
+    artistIndex,
+    albumIndex,
+    "album-a",
+    "album-b",
+    4,
+  );
+  expect(result).toEqual({ ok: false, reason: "no-path" });
+});
+
 test("stripAlbumAnchors returns null for fewer than 2 hops", () => {
   expect(stripAlbumAnchors([])).toBeNull();
   expect(

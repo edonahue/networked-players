@@ -5,3 +5,14 @@
 public/data/game/rounds.v1.json
 public/data/routes/rounds.v1.json
 tests/fixtures/game-rounds.synthetic.v1.json
+# Same heuristic, newly tripped once the Phase 7 expansion grew these past
+# Prettier's collapse threshold (they were narrow enough to agree before).
+public/data/contributors/index.v1.json
+public/data/evidence/release-registry.v1.json
+public/data/pathfinding/graph.v2.json
+# Frozen per-generation round pools (ADR 0066). These must stay BYTE-IDENTICAL
+# to the pool that generation's already-published dates were frozen against --
+# running `prettier --write` here would rewrite a frozen artifact, so the
+# ignore is a correctness guard, not a convenience. Globbed so future
+# generations are covered without another CI failure to discover it.
+public/data/game/generations/**/rounds.json

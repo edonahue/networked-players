@@ -1,172 +1,152 @@
 {
   "version": 1,
-  "catalog_version": "catalog-v1-20260601-0e7ec70fbb7e",
+  "catalog_version": "catalog-v1-20260601-7fbbb46b28e6",
   "snapshot_date": "20260601",
-  "generated_by": "networked-players-catalog build-album-catalog 0.1.0",
-  "source_note": "Hybrid catalog: an editorial backbone plus graph-rich additions selected by deterministic candidate scoring (ADR 0038). The canonical, single source of truth for which albums exist across every real public surface (album browser, Connection Guesser, Record Routes) -- every one derives its album set from this artifact's own catalog_version, never re-deriving or narrowing it independently (see ADR 0043). Combined at build time from data/albums/top-albums-v1.json and a rank-album-candidates shortlist. Albums are ID-resolved (artist_id/main_release_id), not name queries.",
-  "target_count": 140,
-  "editorial_count": 52,
-  "editorial_missed": [
+  "generated_by": "networked-players-catalog build-public-album-catalog 0.1.0",
+  "source_note": "Hybrid catalog: an editorial backbone, 4 pre-resolved lane(s) (personal_editorial, already_published, graph_rich, coverage_gap), and graph-rich additions selected by deterministic candidate scoring (ADR 0038, ADR 0065). The canonical, single source of truth for which albums exist across every real public surface (album browser, Connection Guesser, Record Routes) -- every one derives its album set from this artifact's own catalog_version, never re-deriving or narrowing it independently (see ADR 0043). Combined at build time from data/albums/top-albums-v1.json, one or more pre-resolved lanes, and a rank-album-candidates shortlist. Albums are ID-resolved (artist_id/main_release_id), not name queries.",
+  "target_count": 179,
+  "editorial_count": 0,
+  "editorial_missed": [],
+  "pre_resolved_count": 179,
+  "pre_resolved_missed": [],
+  "pre_resolved_buckets": [
     {
-      "artist": "Aphex Twin",
-      "title": "Selected Ambient Works 85-92"
+      "label": "personal_editorial",
+      "count": 13
     },
     {
-      "artist": "Aretha Franklin",
-      "title": "I Never Loved a Man the Way I Love You"
+      "label": "already_published",
+      "count": 140
     },
     {
-      "artist": "Bjork",
-      "title": "Homogenic"
+      "label": "graph_rich",
+      "count": 18
     },
     {
-      "artist": "Bob Marley & The Wailers",
-      "title": "Exodus"
-    },
-    {
-      "artist": "Bruce Springsteen",
-      "title": "Born to Run"
-    },
-    {
-      "artist": "Burial",
-      "title": "Untrue"
-    },
-    {
-      "artist": "Can",
-      "title": "Tago Mago"
-    },
-    {
-      "artist": "Captain Beefheart and His Magic Band",
-      "title": "Trout Mask Replica"
-    },
-    {
-      "artist": "Curtis Mayfield",
-      "title": "Super Fly"
-    },
-    {
-      "artist": "Dr. Dre",
-      "title": "The Chronic"
-    },
-    {
-      "artist": "Elliott Smith",
-      "title": "Either/Or"
-    },
-    {
-      "artist": "Erykah Badu",
-      "title": "Baduizm"
-    },
-    {
-      "artist": "Fela Kuti",
-      "title": "Zombie"
-    },
-    {
-      "artist": "Gil Scott-Heron",
-      "title": "Pieces of a Man"
-    },
-    {
-      "artist": "Gnarls Barkley",
-      "title": "St. Elsewhere"
-    },
-    {
-      "artist": "James Brown",
-      "title": "Live at the Apollo"
-    },
-    {
-      "artist": "Jeff Buckley",
-      "title": "Grace"
-    },
-    {
-      "artist": "Jimi Hendrix Experience",
-      "title": "Are You Experienced"
-    },
-    {
-      "artist": "Joy Division",
-      "title": "Unknown Pleasures"
-    },
-    {
-      "artist": "Kendrick Lamar",
-      "title": "To Pimp a Butterfly"
-    },
-    {
-      "artist": "Kraftwerk",
-      "title": "Trans-Europe Express"
-    },
-    {
-      "artist": "Marvin Gaye",
-      "title": "What's Going On"
-    },
-    {
-      "artist": "Massive Attack",
-      "title": "Blue Lines"
-    },
-    {
-      "artist": "Missy Elliott",
-      "title": "Supa Dupa Fly"
-    },
-    {
-      "artist": "My Bloody Valentine",
-      "title": "Loveless"
-    },
-    {
-      "artist": "OutKast",
-      "title": "Stankonia"
-    },
-    {
-      "artist": "Patti Smith",
-      "title": "Horses"
-    },
-    {
-      "artist": "Portishead",
-      "title": "Dummy"
-    },
-    {
-      "artist": "Prince",
-      "title": "Purple Rain"
-    },
-    {
-      "artist": "Public Enemy",
-      "title": "It Takes a Nation of Millions to Hold Us Back"
-    },
-    {
-      "artist": "Radiohead",
-      "title": "OK Computer"
-    },
-    {
-      "artist": "Rage Against the Machine",
-      "title": "Rage Against the Machine"
-    },
-    {
-      "artist": "Sam Cooke",
-      "title": "Night Beat"
-    },
-    {
-      "artist": "Sly and The Family Stone",
-      "title": "There's a Riot Goin' On"
-    },
-    {
-      "artist": "Sonic Youth",
-      "title": "Daydream Nation"
-    },
-    {
-      "artist": "Stevie Wonder",
-      "title": "Songs in the Key of Life"
-    },
-    {
-      "artist": "The Clash",
-      "title": "London Calling"
-    },
-    {
-      "artist": "The Who",
-      "title": "Who's Next"
-    },
-    {
-      "artist": "Thelonious Monk",
-      "title": "Brilliant Corners"
+      "label": "coverage_gap",
+      "count": 8
     }
   ],
-  "candidate_count_considered": 400,
-  "candidate_count_added": 88,
+  "candidate_count_considered": 0,
+  "candidate_count_added": 0,
   "albums": [
+    {
+      "id": "master-69938",
+      "artist_id": 8029,
+      "artist": "Jamiroquai",
+      "master_id": 69938,
+      "main_release_id": 25379,
+      "title": "Emergency On Planet Earth",
+      "year": 1993
+    },
+    {
+      "id": "master-69946",
+      "artist_id": 8029,
+      "artist": "Jamiroquai",
+      "master_id": 69946,
+      "main_release_id": 10820794,
+      "title": "The Return Of The Space Cowboy",
+      "year": 1994
+    },
+    {
+      "id": "master-69956",
+      "artist_id": 8029,
+      "artist": "Jamiroquai",
+      "master_id": 69956,
+      "main_release_id": 21974,
+      "title": "Travelling Without Moving",
+      "year": 1996
+    },
+    {
+      "id": "master-135633",
+      "artist_id": 8029,
+      "artist": "Jamiroquai",
+      "master_id": 135633,
+      "main_release_id": 21975,
+      "title": "Synkronized",
+      "year": 1999
+    },
+    {
+      "id": "master-69925",
+      "artist_id": 8029,
+      "artist": "Jamiroquai",
+      "master_id": 69925,
+      "main_release_id": 21976,
+      "title": "A Funk Odyssey",
+      "year": 2001
+    },
+    {
+      "id": "master-172407",
+      "artist_id": 36860,
+      "artist": "Martin Denny",
+      "master_id": 172407,
+      "main_release_id": 399417,
+      "title": "Exotica",
+      "year": 1957
+    },
+    {
+      "id": "master-110874",
+      "artist_id": 27517,
+      "artist": "Arthur Lyman",
+      "master_id": 110874,
+      "main_release_id": 374004,
+      "title": "Taboo - The Exotic Sounds Of Arthur Lyman",
+      "year": 1958
+    },
+    {
+      "id": "master-45284",
+      "artist_id": 82730,
+      "artist": "The Beatles",
+      "master_id": 45284,
+      "main_release_id": 2318045,
+      "title": "Revolver",
+      "year": 1966
+    },
+    {
+      "id": "master-24511",
+      "artist_id": 255672,
+      "artist": "The Jimi Hendrix Experience",
+      "master_id": 24511,
+      "main_release_id": 1348423,
+      "title": "Axis: Bold As Love",
+      "year": 1967
+    },
+    {
+      "id": "master-52497",
+      "artist_id": 28795,
+      "artist": "Prince",
+      "master_id": 52497,
+      "main_release_id": 123915,
+      "title": "Sign \"O\" The Times",
+      "year": 1987
+    },
+    {
+      "id": "master-21520",
+      "artist_id": 3840,
+      "artist": "Radiohead",
+      "master_id": 21520,
+      "main_release_id": 1174296,
+      "title": "In Rainbows",
+      "year": 2007
+    },
+    {
+      "id": "master-18080",
+      "artist_id": 2725,
+      "artist": "Depeche Mode",
+      "master_id": 18080,
+      "main_release_id": 46905,
+      "title": "Violator",
+      "year": 1990
+    },
+    {
+      "id": "master-42522",
+      "artist_id": 92476,
+      "artist": "Red Hot Chili Peppers",
+      "master_id": 42522,
+      "main_release_id": 375491,
+      "title": "Blood Sugar Sex Magik",
+      "year": 1991
+    },
     {
       "id": "master-45922",
       "artist_id": 3268,
@@ -1426,6 +1406,240 @@
       "main_release_id": 4951944,
       "title": "Apostrophe (')",
       "year": 1974
+    },
+    {
+      "id": "master-122051",
+      "artist_id": 169154,
+      "artist": "The Jacksons",
+      "master_id": 122051,
+      "main_release_id": 647349,
+      "title": "Victory",
+      "year": 1984
+    },
+    {
+      "id": "master-92986",
+      "artist_id": 35022,
+      "artist": "Herb Alpert",
+      "master_id": 92986,
+      "main_release_id": 10886668,
+      "title": "Rise",
+      "year": 1979
+    },
+    {
+      "id": "master-97173",
+      "artist_id": 90541,
+      "artist": "Mick Jagger",
+      "master_id": 97173,
+      "main_release_id": 2112799,
+      "title": "She's The Boss",
+      "year": 1985
+    },
+    {
+      "id": "master-25893",
+      "artist_id": 6270,
+      "artist": "Donna Summer",
+      "master_id": 25893,
+      "main_release_id": 3465422,
+      "title": "Bad Girls",
+      "year": 1979
+    },
+    {
+      "id": "master-129759",
+      "artist_id": 261867,
+      "artist": "Joan Baez",
+      "master_id": 129759,
+      "main_release_id": 865681,
+      "title": "Diamonds & Rust",
+      "year": 1975
+    },
+    {
+      "id": "master-79241",
+      "artist_id": 259352,
+      "artist": "Ringo Starr",
+      "master_id": 79241,
+      "main_release_id": 874397,
+      "title": "Ringo",
+      "year": 1973
+    },
+    {
+      "id": "master-52998",
+      "artist_id": 463597,
+      "artist": "Alice Cooper (2)",
+      "master_id": 52998,
+      "main_release_id": 618687,
+      "title": "Hey Stoopid",
+      "year": 1991
+    },
+    {
+      "id": "master-36227",
+      "artist_id": 290587,
+      "artist": "J.J. Cale",
+      "master_id": 36227,
+      "main_release_id": 1420621,
+      "title": "Really",
+      "year": 1972
+    },
+    {
+      "id": "master-338175",
+      "artist_id": 1103159,
+      "artist": "Lady Gaga",
+      "master_id": 338175,
+      "main_release_id": 3108078,
+      "title": "Born This Way",
+      "year": 2011
+    },
+    {
+      "id": "master-18027",
+      "artist_id": 12208,
+      "artist": "Marilyn Manson",
+      "master_id": 18027,
+      "main_release_id": 219129,
+      "title": "Mechanical Animals",
+      "year": 1998
+    },
+    {
+      "id": "master-49227",
+      "artist_id": 107102,
+      "artist": "Rickie Lee Jones",
+      "master_id": 49227,
+      "main_release_id": 1305473,
+      "title": "Rickie Lee Jones",
+      "year": 1979
+    },
+    {
+      "id": "master-3762",
+      "artist_id": 227848,
+      "artist": "Leonard Cohen",
+      "master_id": 3762,
+      "main_release_id": 2159182,
+      "title": "I'm Your Man",
+      "year": 1988
+    },
+    {
+      "id": "master-96362",
+      "artist_id": 27991,
+      "artist": "Antonio Carlos Jobim",
+      "master_id": 96362,
+      "main_release_id": 9811916,
+      "title": "Wave",
+      "year": 1967
+    },
+    {
+      "id": "master-31337",
+      "artist_id": 13608,
+      "artist": "Kylie Minogue",
+      "master_id": 31337,
+      "main_release_id": 16187739,
+      "title": "Fever",
+      "year": 2001
+    },
+    {
+      "id": "master-104115",
+      "artist_id": 236968,
+      "artist": "Stephen Stills",
+      "master_id": 104115,
+      "main_release_id": 5150469,
+      "title": "Stephen Stills",
+      "year": 1970
+    },
+    {
+      "id": "master-104399",
+      "artist_id": 46764,
+      "artist": "Terence Trent D'Arby",
+      "master_id": 104399,
+      "main_release_id": 3348540,
+      "title": "Introducing The Hardline According To Terence Trent D'Arby",
+      "year": null
+    },
+    {
+      "id": "master-36251",
+      "artist_id": 1373,
+      "artist": "Bj\u00f6rk",
+      "master_id": 36251,
+      "main_release_id": 102481,
+      "title": "Post",
+      "year": 1995
+    },
+    {
+      "id": "master-66782",
+      "artist_id": 124541,
+      "artist": "Bon Jovi",
+      "master_id": 66782,
+      "main_release_id": 2079831,
+      "title": "Bon Jovi",
+      "year": 1984
+    },
+    {
+      "id": "master-2452996",
+      "artist_id": 2171152,
+      "artist": "The Weeknd",
+      "master_id": 2452996,
+      "main_release_id": 21588934,
+      "title": "Dawn FM",
+      "year": 2022
+    },
+    {
+      "id": "master-1164779",
+      "artist_id": 1778977,
+      "artist": "Kendrick Lamar",
+      "master_id": 1164779,
+      "main_release_id": 10133538,
+      "title": "Damn",
+      "year": 2017
+    },
+    {
+      "id": "master-303567",
+      "artist_id": 819015,
+      "artist": "Adele (3)",
+      "master_id": 303567,
+      "main_release_id": 2664589,
+      "title": "21",
+      "year": 2011
+    },
+    {
+      "id": "master-138283",
+      "artist_id": 56978,
+      "artist": "Ricky Martin",
+      "master_id": 138283,
+      "main_release_id": 443980,
+      "title": "Ricky Martin",
+      "year": 1999
+    },
+    {
+      "id": "master-75606",
+      "artist_id": 79340,
+      "artist": "Carlos Santana",
+      "master_id": 75606,
+      "main_release_id": 737957,
+      "title": "Love Devotion Surrender",
+      "year": 1973
+    },
+    {
+      "id": "master-8179",
+      "artist_id": 27937,
+      "artist": "The Specials",
+      "master_id": 8179,
+      "main_release_id": 382556,
+      "title": "Specials",
+      "year": 1979
+    },
+    {
+      "id": "master-79393",
+      "artist_id": 4970,
+      "artist": "Soul II Soul",
+      "master_id": 79393,
+      "main_release_id": 108131,
+      "title": "Club Classics Vol. One",
+      "year": 1989
+    },
+    {
+      "id": "master-54449",
+      "artist_id": 3918,
+      "artist": "David Byrne",
+      "master_id": 54449,
+      "main_release_id": 704406,
+      "title": "Rei Momo",
+      "year": 1989
     }
   ]
 }

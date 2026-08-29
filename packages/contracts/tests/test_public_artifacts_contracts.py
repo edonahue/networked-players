@@ -267,7 +267,9 @@ def _route() -> dict[str, Any]:
     }
 
 
-def _routes_releases_and_artists(routes: list[dict[str, Any]]) -> tuple[list, list]:
+def _routes_releases_and_artists(
+    routes: list[dict[str, Any]],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """Minimal `rounds.releases[]`/`rounds.artists[]` entries covering every
     hop reference in `routes` -- record_routes_failures checks every hop's
     release_id/artist_a_id/artist_b_id resolve against these."""

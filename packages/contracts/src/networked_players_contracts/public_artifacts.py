@@ -32,7 +32,11 @@ from .album_art import album_art_failures
 from .album_credit_membership import album_credit_membership_failures
 from .catalog import public_album_catalog_failures
 from .challenge import challenge_failures
-from .connection_daily_manifest import connection_daily_manifest_failures
+from .connection_daily_manifest import (
+    CONNECTION_DAILY_MANIFEST_SCHEMA_VERSION_V2,
+    connection_daily_manifest_failures,
+    connection_daily_manifest_v2_failures,
+)
 from .connection_rounds import connection_rounds_failures
 from .contributor_index import contributor_index_failures
 from .evidence_release_registry import evidence_release_registry_failures
@@ -63,6 +67,7 @@ def public_artifacts_failures(
     connection_universe: Any,
     connection_rounds: Any,
     daily_manifest: Any,
+    daily_manifest_rounds_by_generation: Any = None,
     routes_universe: Any,
     routes_rounds: Any,
     challenge: Any,
@@ -84,8 +89,8 @@ def public_artifacts_failures(
         "catalog": public_album_catalog_failures(catalog),
         "album_art_registry": album_art_failures(album_art, catalog),
         "connection_guesser": connection_rounds_failures(connection_universe, connection_rounds),
-        "connection_daily_manifest": connection_daily_manifest_failures(
-            daily_manifest, connection_rounds
+        "connection_daily_manifest": _daily_manifest_failures(
+            daily_manifest, connection_rounds, daily_manifest_rounds_by_generation
         ),
         "record_routes": record_routes_failures(routes_universe, routes_rounds),
         "challenge": challenge_failures(challenge, catalog),
@@ -98,3 +103,52 @@ def public_artifacts_failures(
             evidence_release_registry, catalog
         ),
     }
+
+
+def _daily_manifest_failures(
+    daily_manifest: Any,
+    connection_rounds: Any,
+    rounds_by_generation: Any,
+) -> list[str]:
+    """Dispatch on the manifest's own schema version.
+
+    A schema-v2 manifest (ADR 0066) spans multiple frozen pool generations,
+    so it cannot be verified against a single rounds artifact: each entry
+    must be checked against ITS OWN generation's pool. Callers supply
+    `daily_manifest_rounds_by_generation` for that. When a v2 manifest is
+    given without it, the newest generation is assumed to be the live
+    `connection_rounds` -- enough to verify current dates -- and any
+    generation genuinely missing an artifact is reported by the v2 validator
+    itself rather than silently skipped.
+
+    v1 manifests keep the original single-artifact path unchanged, so this
+    stays backward compatible for any caller (and any Pi fleet worker) that
+    has not been updated.
+    """
+    if (
+        isinstance(daily_manifest, dict)
+        and daily_manifest.get("schema_version") == CONNECTION_DAILY_MANIFEST_SCHEMA_VERSION_V2
+    ):
+        supplied = rounds_by_generation
+        if not isinstance(supplied, dict):
+            supplied = _infer_newest_generation_rounds(daily_manifest, connection_rounds)
+        return connection_daily_manifest_v2_failures(daily_manifest, supplied)
+    return connection_daily_manifest_failures(daily_manifest, connection_rounds)
+
+
+def _infer_newest_generation_rounds(daily_manifest: Any, connection_rounds: Any) -> dict[str, Any]:
+    """Best-effort fallback: map only the LAST generation to the live rounds
+    artifact. Deliberately does not guess for older generations -- a wrong
+    guess there would verify an archived date against a pool it was never
+    frozen against, which is exactly the failure the v2 shape exists to make
+    impossible."""
+    generations = daily_manifest.get("generations")
+    if not isinstance(generations, list) or not generations:
+        return {}
+    newest = generations[-1]
+    if not isinstance(newest, dict):
+        return {}
+    generation_id = newest.get("generation_id")
+    if not isinstance(generation_id, str) or not generation_id:
+        return {}
+    return {generation_id: connection_rounds}

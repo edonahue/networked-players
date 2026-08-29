@@ -3825,12 +3825,34 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.command == "validate-public-artifacts":
         from networked_players_contracts import public_artifacts_failures
 
+        daily_manifest_payload = json.loads(args.daily_manifest.read_text())
+        # A schema-v2 manifest (ADR 0066) spans multiple frozen generations;
+        # each entry must be verified against ITS OWN generation's pool, so
+        # resolve every generations[].rounds_url to the real file on disk.
+        # The published URLs are site-absolute ("/data/game/..."), which map
+        # under apps/web/public/. A generation whose file is missing is left
+        # out deliberately -- the v2 validator then reports it as unverifiable
+        # rather than silently checking it against the wrong pool.
+        manifest_rounds_by_generation: dict[str, Any] | None = None
+        if daily_manifest_payload.get("schema_version") == 2:
+            web_public_root = args.daily_manifest.resolve().parents[2]
+            manifest_rounds_by_generation = {}
+            for generation in daily_manifest_payload.get("generations") or []:
+                generation_id = generation.get("generation_id")
+                rounds_url = generation.get("rounds_url") or ""
+                if not generation_id or not rounds_url.startswith("/data/"):
+                    continue
+                candidate = web_public_root / rounds_url.lstrip("/")
+                if candidate.is_file():
+                    manifest_rounds_by_generation[generation_id] = json.loads(candidate.read_text())
+
         report = public_artifacts_failures(
             catalog=json.loads(args.catalog.read_text()),
             album_art=json.loads(args.album_art.read_text()),
             connection_universe=json.loads(args.connection_universe.read_text()),
             connection_rounds=json.loads(args.connection_rounds.read_text()),
-            daily_manifest=json.loads(args.daily_manifest.read_text()),
+            daily_manifest=daily_manifest_payload,
+            daily_manifest_rounds_by_generation=manifest_rounds_by_generation,
             routes_universe=json.loads(args.routes_universe.read_text()),
             routes_rounds=json.loads(args.routes_rounds.read_text()),
             challenge=json.loads(args.challenge.read_text()),
