@@ -10,7 +10,9 @@
 import type { AlbumV2, ChallengeV2 } from "./challenge";
 
 export function connectedAlbumIds(challenge: ChallengeV2): Set<string> {
-  return new Set(challenge.paths.flatMap((p) => [p.from_album_id, p.to_album_id]));
+  return new Set(
+    challenge.paths.flatMap((p) => [p.from_album_id, p.to_album_id]),
+  );
 }
 
 export function connectedCatalogAlbums(challenge: ChallengeV2): AlbumV2[] {
