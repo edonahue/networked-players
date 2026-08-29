@@ -1190,6 +1190,27 @@ class CreditGraph:
             grouped[int(record["release_id"])].append(record)
         return grouped
 
+    def credit_rows_for_artist(self, artist_id: int) -> list[dict[str, Any]]:
+        """Every playable, non-placeholder credit row for one artist across
+        the WHOLE dataset -- one query, not a walk over `neighbors()`'s
+        release ids (which only covers releases with a documented co-credit
+        edge; a solo release with no eligible collaborator would be silently
+        missing from that set). Built for `packages/research.compare`'s
+        artist-level metrics (role mix, era changes, corpus coverage), which
+        need this artist's own complete discography, not just the graph-
+        traversable subset of it. Same no-role-eligibility-filter discipline
+        as `credit_rows_for_releases` -- that is `eligibility.py`'s job.
+        """
+        columns = ", ".join(_CREDIT_COLUMNS)
+        not_placeholder = _not_placeholder_sql()
+        rows = self._connection.execute(
+            f"SELECT {columns} FROM credits "
+            f"WHERE artist_id = ? AND playable_identity AND {not_placeholder} "
+            "ORDER BY ALL",
+            [artist_id],
+        ).fetchall()
+        return [dict(zip(_CREDIT_COLUMNS, row, strict=True)) for row in rows]
+
     def release(self, release_id: int) -> dict[str, Any] | None:
         row = self._connection.execute(
             "SELECT * FROM releases WHERE release_id = ?", [release_id]

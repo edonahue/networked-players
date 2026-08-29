@@ -1,20 +1,25 @@
-"""Album comparison (Phase 7 PR D, Slice 1 -- the private research
-workbench's first comparison type). See docs plan section 11: a local-only
-comparison layer over already-existing primitives, not a new graph engine.
+"""Album and artist comparison (Phase 7 PR D, Slices 1-2 -- the private
+research workbench's first two comparison types). See docs plan section 11:
+a local-only comparison layer over already-existing primitives, not a new
+graph engine.
 
 Every graph traversal here goes through `CreditGraph` (`.find_path`,
-`.neighbors_batch`, `.degrees`, `.credit_rows_for_releases`, `.release`) --
-this module never re-derives BFS or edge SQL itself. Scope-tier comparison
-reuses `scope_tier.measure_scope_tiers` directly. Role-category composition
-reuses `role_taxonomy.classify_role`, the same taxonomy every other
-role-aware feature in the repo uses.
+`.neighbors_batch`, `.degrees`, `.degree`, `.credit_rows_for_releases`,
+`.credit_rows_for_artist`, `.release`, `.releases_for_ids`) -- this module
+never re-derives BFS or edge SQL itself. Scope-tier comparison reuses
+`scope_tier.measure_scope_tiers` directly. Role-category composition reuses
+`role_taxonomy.classify_role`, the same taxonomy every other role-aware
+feature in the repo uses.
 
-Compare-artists, compare-scenes, and the workbench server/UI are explicit
-follow-up slices -- not built here. Caveat-flag comparison is deliberately
-deferred too: the public site's caveat signal lives in the evidence-release-
-registry build path, which a private corpus snapshot doesn't carry the same
-way -- reusing it correctly needs its own investigation, not a guess bolted
-on here.
+Compare-scenes and the workbench server/UI are explicit follow-up slices --
+not built here. Caveat-flag comparison is deliberately deferred too: the
+public site's caveat signal lives in the evidence-release-registry build
+path, which a private corpus snapshot doesn't carry the same way -- reusing
+it correctly needs its own investigation, not a guess bolted on here.
+`compare_artists`'s "distinct documented routes" is also deferred to a
+single shortest route: unlike the TS pathfinding client, `CreditGraph` has
+no `excludeEdgeKeys`-style mechanism to force a second, genuinely distinct
+route, and inventing one here would be new graph logic, not reuse.
 """
 
 from __future__ import annotations
@@ -30,6 +35,7 @@ from networked_players_graph_core.graph import (
 )
 from networked_players_graph_core.role_taxonomy import RoleCategory, classify_role
 
+from .analyses import _release_year
 from .report import _scan_for_forbidden_phrases
 from .scope_tier import ScopeTierError, measure_scope_tiers
 
@@ -337,3 +343,107 @@ def compare_albums(graph: CreditGraph, request: CompareAlbumsRequest) -> dict[st
         ),
     }
     return result
+
+
+@dataclass(frozen=True)
+class CompareArtistsRequest:
+    corpus_snapshot_root: Path
+    artist_a_id: int
+    artist_b_id: int
+    max_hops: int = DEFAULT_MAX_HOPS
+
+
+def _era_counts(
+    credit_rows: list[dict[str, Any]], releases: dict[int, dict[str, Any]]
+) -> dict[str, int]:
+    """Distinct releases per decade (not credit-row counts -- an artist
+    credited on every track of one album must not out-weigh a real distinct
+    release). `_release_year` (analyses.py, already handles a missing/
+    malformed `released` field) decides the year; a release with no
+    resolvable year is counted under "unknown" rather than silently
+    dropped, so the total across buckets always equals the release count."""
+    release_ids = {int(row["release_id"]) for row in credit_rows}
+    counts: dict[str, int] = {}
+    for release_id in release_ids:
+        release = releases.get(release_id)
+        year = _release_year(release["released"]) if release else None
+        bucket = f"{year[:3]}0s" if year else "unknown"
+        counts[bucket] = counts.get(bucket, 0) + 1
+    return counts
+
+
+def _corpus_coverage(corpus_snapshot_root: Path, artist_id: int) -> dict[str, Any]:
+    try:
+        return {"case": "measured", "tiers": measure_scope_tiers(corpus_snapshot_root, artist_id)}
+    except ScopeTierError as exc:
+        return _not_applicable(str(exc))
+
+
+def compare_artists(graph: CreditGraph, request: CompareArtistsRequest) -> dict[str, Any]:
+    """Compares two artists directly (no album/release resolution needed --
+    unlike `compare_albums`, the artist ids are given, not derived). Raises
+    `CompareError` if either artist has no credited presence in the corpus
+    at all; every other outcome (no shared collaborators, no route within
+    bound) is a valid, explicitly-labeled result, never an exception."""
+    credits_a = graph.credit_rows_for_artist(request.artist_a_id)
+    credits_b = graph.credit_rows_for_artist(request.artist_b_id)
+    if not credits_a:
+        raise CompareError(f"artist_id {request.artist_a_id} has no credits in corpus")
+    if not credits_b:
+        raise CompareError(f"artist_id {request.artist_b_id} has no credits in corpus")
+
+    releases_a = graph.releases_for_ids([row["release_id"] for row in credits_a])
+    releases_b = graph.releases_for_ids([row["release_id"] for row in credits_b])
+
+    if request.artist_a_id == request.artist_b_id:
+        raise CompareError("artist_a_id and artist_b_id must differ")
+
+    route: dict[str, Any]
+    try:
+        found = graph.find_path(request.artist_a_id, request.artist_b_id, max_hops=request.max_hops)
+    except FrontierTooLargeError:
+        route = {"case": "search_bounded"}
+    else:
+        if found is None:
+            route = {"case": "no_path_within_bound"}
+        else:
+            route = {
+                "case": "found",
+                "hops": [
+                    {
+                        "release_id": hop.release_id,
+                        "artist_a_id": hop.artist_a_id,
+                        "artist_b_id": hop.artist_b_id,
+                    }
+                    for hop in found.hops
+                ],
+            }
+
+    return {
+        "artist_a": {
+            "artist_id": request.artist_a_id,
+            "name": graph.artist_name(request.artist_a_id),
+            "credit_rows": credits_a,
+            "role_category_counts": _role_category_counts(credits_a),
+            "era_counts": _era_counts(credits_a, releases_a),
+            "hub_dependence": {"degree": graph.degree(request.artist_a_id)},
+            "corpus_coverage": _corpus_coverage(request.corpus_snapshot_root, request.artist_a_id),
+        },
+        "artist_b": {
+            "artist_id": request.artist_b_id,
+            "name": graph.artist_name(request.artist_b_id),
+            "credit_rows": credits_b,
+            "role_category_counts": _role_category_counts(credits_b),
+            "era_counts": _era_counts(credits_b, releases_b),
+            "hub_dependence": {"degree": graph.degree(request.artist_b_id)},
+            "corpus_coverage": _corpus_coverage(request.corpus_snapshot_root, request.artist_b_id),
+        },
+        # Reuses `_network_overlap` with single-artist "rosters" -- shared
+        # collaborators is exactly the intersection of each artist's own
+        # 1-hop neighborhood, with each artist excluded from being counted
+        # as their own collaborator.
+        "shared_collaborators": _network_overlap(
+            graph, [request.artist_a_id], [request.artist_b_id]
+        ),
+        "route": route,
+    }

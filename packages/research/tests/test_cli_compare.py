@@ -12,7 +12,7 @@ import pytest
 
 from networked_players_research.cli import main
 
-from .test_compare import CAROL, _build_corpus
+from .test_compare import CAROL, SEED_A, SEED_B, _build_corpus
 
 
 def test_research_compare_albums_writes_a_run_with_manifest_and_comparison(
@@ -71,7 +71,7 @@ def test_research_compare_rejects_an_unimplemented_mode(tmp_path: Path) -> None:
             [
                 "research-compare",
                 "--mode",
-                "artists",
+                "scenes",  # not yet implemented (Slice 3)
                 "--corpus-root",
                 str(corpus),
                 "--album-a",
@@ -85,6 +85,88 @@ def test_research_compare_rejects_an_unimplemented_mode(tmp_path: Path) -> None:
             ]
         )
     assert exc_info.value.code == 2
+
+
+def test_research_compare_albums_requires_album_a_and_album_b(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    corpus = _build_corpus(tmp_path / "corpus_root")
+
+    exit_code = main(
+        [
+            "research-compare",
+            "--mode",
+            "albums",
+            "--corpus-root",
+            str(corpus),
+            "--topic",
+            "alpha-vs-beta",
+            "--research-root",
+            str(tmp_path / "research"),
+        ]
+    )
+    assert exit_code == 1
+    assert "requires --album-a and --album-b" in capsys.readouterr().err
+
+
+def test_research_compare_artists_writes_a_run_with_manifest_and_comparison(
+    tmp_path: Path,
+) -> None:
+    corpus = _build_corpus(tmp_path / "corpus_root")
+    research_root = tmp_path / "research"
+
+    exit_code = main(
+        [
+            "research-compare",
+            "--mode",
+            "artists",
+            "--corpus-root",
+            str(corpus),
+            "--artist-a",
+            str(SEED_A),
+            "--artist-b",
+            str(SEED_B),
+            "--topic",
+            "seeda-vs-seedb",
+            "--research-root",
+            str(research_root),
+        ]
+    )
+    assert exit_code == 0
+
+    runs = list((research_root / "seeda-vs-seedb" / "runs").iterdir())
+    assert len(runs) == 1
+    run_root = runs[0]
+
+    manifest = json.loads((run_root / "manifest.json").read_text())
+    assert manifest["analyses"] == ["compare_artists"]
+
+    comparison = json.loads((run_root / "comparison.json").read_text())
+    assert comparison["artist_a"]["artist_id"] == SEED_A
+    assert comparison["artist_b"]["artist_id"] == SEED_B
+    assert CAROL in comparison["shared_collaborators"]["artist_ids"]
+
+
+def test_research_compare_artists_requires_artist_a_and_artist_b(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    corpus = _build_corpus(tmp_path / "corpus_root")
+
+    exit_code = main(
+        [
+            "research-compare",
+            "--mode",
+            "artists",
+            "--corpus-root",
+            str(corpus),
+            "--topic",
+            "seeda-vs-seedb",
+            "--research-root",
+            str(tmp_path / "research"),
+        ]
+    )
+    assert exit_code == 1
+    assert "requires --artist-a and --artist-b" in capsys.readouterr().err
 
 
 def test_research_compare_reports_a_clear_error_for_an_unresolvable_release(
