@@ -7,7 +7,16 @@ comparisons from a browser instead of the `research-compare` CLI. Per the
 plan's own architecture decision (section 11): a third mode of this
 existing server, not a new app -- this file already solves loopback
 binding, LAN opt-in, and atomic private-state writes; the workbench mode
-adds a comparison form and result view, no new infrastructure."""
+adds a comparison form and result view, no new infrastructure.
+
+Workbench mode also has a first Explore slice: `/api/search` (album/artist
+name lookup, `CreditGraph.search_releases`/`search_artists`) and
+`/api/evidence` (click through a search result to its release/artist
+credit rows). The plan's fuller "Explore" bullet (route filters, scope
+selection, bounded graph rendering, compare/pin, saved reproducible
+request files) is a larger follow-up, not built here -- this slice is
+search-then-evidence only, matching how compare_albums preceded
+compare_artists/compare_scenes rather than shipping all three at once."""
 
 from __future__ import annotations
 
@@ -20,6 +29,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, urlparse
 
+from networked_players_graph_core.graph import CreditGraph
 from networked_players_research.compare import (
     CompareAlbumsRequest,
     CompareArtistsRequest,
@@ -144,8 +154,11 @@ fetch('/api/state').then(r=>r.json()).then(s=>{state=s;document.querySelector('#
 # Same dark/light theme, same minimal-dependency inline-script style as
 # PAGE above -- a real, working comparison runner, not a placeholder. The
 # result view is a compact, per-mode summary plus the full raw JSON in a
-# <details> disclosure; a richer explore/visualize UI is the plan's
-# separate "Explore" bullet, not this mode's job.
+# <details> disclosure. Below the compare form is Explore Slice 1: a
+# search box (album/artist name -> corpus matches) that opens a result's
+# evidence (release/artist credit rows) inline -- route filters, scope
+# selection, bounded graph rendering, compare/pin, and saved reproducible
+# request files are the plan's fuller "Explore" vision, not built yet.
 WORKBENCH_PAGE = """<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Networked Players research workbench</title>
@@ -174,6 +187,18 @@ table.kv{border-collapse:collapse;width:100%}table.kv td{padding:3px 8px 3px 0;v
 </form>
 <div class="result hidden" id="result"></div>
 <p class="runs" id="runs"></p>
+<section class="panel" id="explore">
+  <h2 style="margin-top:0">Explore</h2>
+  <div class="row">
+    <div><label for="explore_corpus_root">Corpus root (defaults to the compare form's, above)</label><input id="explore_corpus_root" placeholder="local/research/&lt;topic&gt;/corpus/snapshot=&lt;date&gt;"></div>
+    <div><label for="explore_kind">Search</label><select id="explore_kind"><option value="albums">Albums</option><option value="artists">Artists</option></select></div>
+    <div><label for="explore_q">Name contains</label><input id="explore_q" placeholder="e.g. jamiroquai"></div>
+  </div>
+  <button type="button" id="explore_search">Search</button>
+  <p class="error hidden" id="explore_error"></p>
+  <ul id="explore_results" style="list-style:none;padding:0;margin:10px 0 0;display:flex;flex-direction:column;gap:4px"></ul>
+</section>
+<div id="evidence"></div>
 </main>
 <script>
 const $=s=>document.querySelector(s);
@@ -220,6 +245,42 @@ function loadRuns(){
   }).catch(()=>{});
 }
 $('#topic').onblur=loadRuns;
+function evidenceCreditRows(rows){
+  if(!rows.length)return '<p class="runs">No credit rows.</p>';
+  return '<table class="kv">'+rows.map(r=>'<tr><td>'+esc(r.release_id)+'</td><td>'+esc(r.credit_scope)+(r.role_text?' — '+esc(r.role_text):'')+(r.track_title?' ('+esc(r.track_title)+')':'')+'</td></tr>').join('')+'</table>';
+}
+async function loadEvidence(corpus_root,kind,id){
+  $('#evidence').innerHTML='<p class="runs">Loading…</p>';
+  try{
+    const res=await fetch('/api/evidence?corpus_root='+encodeURIComponent(corpus_root)+'&kind='+kind+'&id='+encodeURIComponent(id));
+    const data=await res.json();
+    if(!res.ok){$('#evidence').innerHTML='<p class="error">'+esc(data.error||'Evidence lookup failed')+'</p>';return}
+    const title=kind==='album'?data.release.title:(data.name||('artist_id '+data.artist_id));
+    const subtitle=kind==='album'
+      ?('release_id '+esc(data.release.release_id)+(data.release.released?' — '+esc(data.release.released):''))
+      :('artist_id '+esc(data.artist_id));
+    $('#evidence').innerHTML='<div class="panel"><h3>'+esc(title)+'</h3><p class="runs">'+subtitle+'</p>'+evidenceCreditRows(data.credit_rows)+'</div>';
+  }catch(err){$('#evidence').innerHTML='<p class="error">'+esc(String(err))+'</p>'}
+}
+$('#explore_search').onclick=async()=>{
+  $('#explore_error').classList.add('hidden');$('#explore_results').innerHTML='';$('#evidence').innerHTML='';
+  const corpus_root=$('#explore_corpus_root').value.trim()||$('#corpus_root').value.trim();
+  const kind=$('#explore_kind').value,q=$('#explore_q').value.trim();
+  if(!corpus_root||!q){$('#explore_error').textContent='A corpus root and a search term are both required';$('#explore_error').classList.remove('hidden');return}
+  try{
+    const res=await fetch('/api/search?corpus_root='+encodeURIComponent(corpus_root)+'&kind='+kind+'&q='+encodeURIComponent(q));
+    const data=await res.json();
+    if(!res.ok){$('#explore_error').textContent=data.error||'Search failed';$('#explore_error').classList.remove('hidden');return}
+    if(!data.results.length){$('#explore_results').innerHTML='<li class="runs">No matches</li>';return}
+    const entityKind=kind==='albums'?'album':'artist';
+    $('#explore_results').innerHTML=data.results.map(r=>{
+      const id=kind==='albums'?r.release_id:r.artist_id;
+      const label=kind==='albums'?(r.title+(r.released?' ('+esc(r.released)+')':'')):r.name;
+      return '<li><button type="button" class="explore-result" data-id="'+id+'">'+esc(label)+'</button></li>';
+    }).join('');
+    document.querySelectorAll('.explore-result').forEach(btn=>{btn.onclick=()=>loadEvidence(corpus_root,entityKind,btn.dataset.id)});
+  }catch(err){$('#explore_error').textContent=String(err);$('#explore_error').classList.remove('hidden')}
+};
 $('#form').onsubmit=async(e)=>{
   e.preventDefault();
   $('#error').classList.add('hidden');$('#result').classList.add('hidden');
@@ -362,6 +423,46 @@ def list_runs(research_root: Path, topic: str) -> list[dict[str, Any]]:
     return summaries
 
 
+def _required_query_int(raw: str, field: str) -> int:
+    try:
+        return int(raw)
+    except ValueError:
+        raise WorkbenchRequestError(f"{field} must be an integer") from None
+
+
+def search_corpus(graph: CreditGraph, kind: str, query: str) -> list[dict[str, Any]]:
+    """`/api/search`'s dispatch -- a plain substring lookup, not ranked or
+    fuzzy, over whichever `CreditGraph.search_*` matches `kind`."""
+    if not query or not query.strip():
+        raise WorkbenchRequestError("q is required")
+    if kind == "albums":
+        return graph.search_releases(query)
+    if kind == "artists":
+        return graph.search_artists(query)
+    raise WorkbenchRequestError("kind must be one of albums/artists")
+
+
+def load_evidence(graph: CreditGraph, kind: str, entity_id: int) -> dict[str, Any]:
+    """`/api/evidence`'s dispatch -- the click-through target for a search
+    result: a release's own record plus its credit rows, or an artist's
+    name plus their whole-dataset credit rows (`credit_rows_for_artist`,
+    not a `neighbors()` walk, for the same solo-release reason
+    `compare_artists` needs it)."""
+    if kind == "album":
+        release = graph.release(entity_id)
+        if release is None:
+            raise WorkbenchRequestError(f"release_id {entity_id} not found in corpus")
+        credit_rows = graph.credit_rows_for_releases([entity_id]).get(entity_id, [])
+        return {"kind": "album", "release": release, "credit_rows": credit_rows}
+    if kind == "artist":
+        name = graph.artist_name(entity_id)
+        credit_rows = graph.credit_rows_for_artist(entity_id)
+        if name is None and not credit_rows:
+            raise WorkbenchRequestError(f"artist_id {entity_id} not found in corpus")
+        return {"kind": "artist", "artist_id": entity_id, "name": name, "credit_rows": credit_rows}
+    raise WorkbenchRequestError("kind must be one of album/artist")
+
+
 def make_workbench_handler(
     research_root: Path, *, allowed_corpus_root: Path | None = None
 ) -> type[BaseHTTPRequestHandler]:
@@ -394,6 +495,36 @@ def make_workbench_handler(
                     self._respond_json(400, {"error": str(exc)})
                     return
                 self._respond_json(200, {"runs": list_runs(research_root, topic)})
+                return
+            if parsed.path == "/api/search":
+                query_params = parse_qs(parsed.query)
+                try:
+                    corpus_root = _safe_corpus_root(
+                        query_params.get("corpus_root", [""])[0], corpus_allowlist_root
+                    )
+                    kind = query_params.get("kind", [""])[0]
+                    query = query_params.get("q", [""])[0]
+                    with CreditGraph.open(corpus_root) as graph:
+                        results = search_corpus(graph, kind, query)
+                except WorkbenchRequestError as exc:
+                    self._respond_json(400, {"error": str(exc)})
+                    return
+                self._respond_json(200, {"results": results})
+                return
+            if parsed.path == "/api/evidence":
+                query_params = parse_qs(parsed.query)
+                try:
+                    corpus_root = _safe_corpus_root(
+                        query_params.get("corpus_root", [""])[0], corpus_allowlist_root
+                    )
+                    kind = query_params.get("kind", [""])[0]
+                    entity_id = _required_query_int(query_params.get("id", [""])[0], "id")
+                    with CreditGraph.open(corpus_root) as graph:
+                        evidence = load_evidence(graph, kind, entity_id)
+                except WorkbenchRequestError as exc:
+                    self._respond_json(400, {"error": str(exc)})
+                    return
+                self._respond_json(200, evidence)
                 return
             self.send_error(404)
 

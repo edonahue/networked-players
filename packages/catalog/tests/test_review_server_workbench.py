@@ -146,6 +146,14 @@ def _post_compare(base: str, payload: dict[str, Any]) -> tuple[int, dict[str, An
         return exc.code, json.loads(exc.read())
 
 
+def _get_json(url: str) -> tuple[int, dict[str, Any]]:
+    try:
+        with urlopen(url) as response:
+            return response.status, json.loads(response.read())
+    except HTTPError as exc:
+        return exc.code, json.loads(exc.read())
+
+
 def test_workbench_serves_the_form_page(server: tuple[str, Path]) -> None:
     base, _ = server
     body = urlopen(f"{base}/").read().decode()
@@ -301,3 +309,78 @@ def test_workbench_runs_list_is_empty_for_an_unknown_topic(server: tuple[str, Pa
     base, _ = server
     with urlopen(f"{base}/api/runs?topic=never-run") as response:
         assert json.loads(response.read())["runs"] == []
+
+
+def test_workbench_search_finds_albums_by_title_substring(
+    server: tuple[str, Path], corpus: Path
+) -> None:
+    base, _ = server
+    status, data = _get_json(f"{base}/api/search?corpus_root={corpus}&kind=albums&q=alpha")
+    assert status == 200
+    assert data["results"] == [
+        {"release_id": 1, "title": "Album Alpha", "released": "1995", "master_id": None}
+    ]
+
+
+def test_workbench_search_finds_artists_by_name_substring(
+    server: tuple[str, Path], corpus: Path
+) -> None:
+    base, _ = server
+    status, data = _get_json(f"{base}/api/search?corpus_root={corpus}&kind=artists&q=carol")
+    assert status == 200
+    assert data["results"] == [{"artist_id": CAROL, "name": "Carol"}]
+
+
+def test_workbench_search_requires_a_query(server: tuple[str, Path], corpus: Path) -> None:
+    base, _ = server
+    status, data = _get_json(f"{base}/api/search?corpus_root={corpus}&kind=albums&q=")
+    assert status == 400
+    assert "q is required" in data["error"]
+
+
+def test_workbench_search_rejects_a_corpus_outside_the_allowlist(
+    server: tuple[str, Path], tmp_path: Path
+) -> None:
+    base, _ = server
+    outside = tmp_path.parent / f"outside-search-{tmp_path.name}"
+    status, data = _get_json(f"{base}/api/search?corpus_root={outside}&kind=albums&q=x")
+    assert status == 400
+    assert "must resolve under" in data["error"]
+
+
+def test_workbench_evidence_returns_album_credit_rows(
+    server: tuple[str, Path], corpus: Path
+) -> None:
+    base, _ = server
+    status, data = _get_json(f"{base}/api/evidence?corpus_root={corpus}&kind=album&id=1")
+    assert status == 200
+    assert data["release"]["title"] == "Album Alpha"
+    assert {row["artist_id"] for row in data["credit_rows"]} == {SEED_A, CAROL}
+
+
+def test_workbench_evidence_returns_artist_credit_rows_across_releases(
+    server: tuple[str, Path], corpus: Path
+) -> None:
+    base, _ = server
+    status, data = _get_json(f"{base}/api/evidence?corpus_root={corpus}&kind=artist&id={CAROL}")
+    assert status == 200
+    assert data["name"] == "Carol"
+    assert {row["release_id"] for row in data["credit_rows"]} == {1, 2}
+
+
+def test_workbench_evidence_rejects_an_unknown_album(
+    server: tuple[str, Path], corpus: Path
+) -> None:
+    base, _ = server
+    status, data = _get_json(f"{base}/api/evidence?corpus_root={corpus}&kind=album&id=999")
+    assert status == 400
+    assert "not found" in data["error"]
+
+
+def test_workbench_evidence_rejects_an_unknown_artist(
+    server: tuple[str, Path], corpus: Path
+) -> None:
+    base, _ = server
+    status, data = _get_json(f"{base}/api/evidence?corpus_root={corpus}&kind=artist&id=999999")
+    assert status == 400
+    assert "not found" in data["error"]

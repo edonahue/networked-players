@@ -1274,6 +1274,50 @@ class CreditGraph:
                     bucket.add(str(description))
         return {rid: frozenset(values) for rid, values in descriptors.items()}
 
+    def search_releases(self, query: str, *, limit: int = 20) -> list[dict[str, Any]]:
+        """Release titles containing `query` (case-insensitive substring),
+        ordered alphabetically and bounded by `limit`. A plain substring scan
+        for the research workbench's Explore search, not ranked or fuzzy --
+        built for a human who already knows roughly what they're looking for.
+        Query emptiness/blankness is the caller's job to reject; this treats
+        an empty query as "matches everything" like any other substring.
+        """
+        bounded_limit = max(1, min(limit, 100))
+        like = f"%{query.strip().lower()}%"
+        rows = self._connection.execute(
+            "SELECT DISTINCT release_id, title, released, master_id FROM releases "
+            "WHERE lower(title) LIKE ? ORDER BY title, release_id LIMIT ?",
+            [like, bounded_limit],
+        ).fetchall()
+        return [
+            {
+                "release_id": int(row[0]),
+                "title": row[1],
+                "released": row[2],
+                "master_id": int(row[3]) if row[3] is not None else None,
+            }
+            for row in rows
+        ]
+
+    def search_artists(self, query: str, *, limit: int = 20) -> list[dict[str, Any]]:
+        """Distinct (artist_id, name) pairs containing `query`, restricted to
+        playable, non-placeholder identities -- the same restriction
+        `credit_rows_for_artist` applies, since a search result the Explore
+        UI can't open evidence for isn't useful. Plain substring scan,
+        ordered alphabetically and bounded by `limit`, not ranked or fuzzy.
+        """
+        bounded_limit = max(1, min(limit, 100))
+        like = f"%{query.strip().lower()}%"
+        not_placeholder = _not_placeholder_sql()
+        rows = self._connection.execute(
+            "SELECT DISTINCT artist_id, name FROM credits "
+            f"WHERE lower(name) LIKE ? AND artist_id IS NOT NULL "
+            f"AND playable_identity AND {not_placeholder} "
+            "ORDER BY name, artist_id LIMIT ?",
+            [like, bounded_limit],
+        ).fetchall()
+        return [{"artist_id": int(row[0]), "name": row[1]} for row in rows]
+
     def find_release_by_title_artist(self, title: str, artist_name: str) -> dict[str, Any] | None:
         """The release-artist-scope playable credit matching an exact title + name/ANV.
 
