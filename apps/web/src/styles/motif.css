@@ -501,6 +501,10 @@
   color: var(--warm);
   border-color: color-mix(in srgb, var(--warm) 45%, var(--line));
 }
+.tag--unconnected {
+  color: var(--muted);
+  border-color: var(--line);
+}
 .tag--difficulty,
 .tag--clean,
 .tag--status-reviewed {

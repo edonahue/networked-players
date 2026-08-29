@@ -7,9 +7,15 @@ interface Props {
   /** Where this card links -- defaults to the album detail page; Explore's
    * grid passes "/explore/" to link into the network view instead. */
   hrefBase?: string;
+  /** Whether this album has a documented challenge.v2 path. Defaults to
+   * true so every existing caller (the homepage's featured section,
+   * Explore's grid) is unaffected -- only the full-catalog album shelf
+   * (ADR 0067) passes false for the handful of albums with no documented
+   * connection yet. */
+  connected?: boolean;
 }
 
-const { album, hrefBase = "/albums/" } = Astro.props;
+const { album, hrefBase = "/albums/", connected = true } = Astro.props;
 // Presentation art comes from the album-art registry (ADR 0045), never from
 // frozen artifact fields; fall back to any legacy embedded cover, then to the
 // polished placeholder.
@@ -23,6 +29,7 @@ const cover = coverFor(album.id) ?? album.cover_image;
   data-album-title={album.title}
   data-album-artist={album.artist}
   data-album-year={album.year ?? ""}
+  data-album-connected={connected ? "true" : "false"}
 >
   {
     cover ? (
@@ -46,4 +53,9 @@ const cover = coverFor(album.id) ?? album.cover_image;
     {album.artist}
     {album.year ? ` · ${album.year}` : ""}
   </span>
+  {
+    !connected && (
+      <span class="tag tag--unconnected">Not yet connected</span>
+    )
+  }
 </a>
