@@ -399,6 +399,14 @@ export async function initExplorerStage(): Promise<void> {
     evidenceDismissed = false; // a fresh view is a natural reset point regardless of the old one's state
     hideEvidenceDrawer();
     renderRoleFilter(view);
+    // Set BEFORE the rebuild: the synthetic mouseover this render can
+    // trigger fires as part of/immediately after this same call, and must
+    // never reopen the drawer this line just closed. Cleared at the next
+    // macrotask boundary -- see the flag's own declaration comment below.
+    suppressPassiveTriggersUntilRealMouseMove = true;
+    setTimeout(() => {
+      suppressPassiveTriggersUntilRealMouseMove = false;
+    }, 0);
     renderView(view);
     // Announce the new center -- rebuilding the SVG destroys whatever was
     // previously focused, so without this a screen reader gets no signal
@@ -500,6 +508,35 @@ export async function initExplorerStage(): Promise<void> {
   // entirely, regardless of how many synthetic events Chromium generates
   // or in what order.
   let evidenceDismissed = false;
+
+  // A SECOND, narrower suppression than `evidenceDismissed` above, for a
+  // DIFFERENT synthetic-event scenario: `centerOn()` rebuilds the whole SVG
+  // (`renderView`), and that DOM mutation makes Chromium redeliver a
+  // synthetic `mouseover` for whatever new edge element now sits under the
+  // cursor's last known position -- with no real pointer movement at all.
+  // Unlike the close-button case, recentering must NOT leave hover
+  // permanently suppressed afterward (a visitor who genuinely moves the
+  // mouse over the new graph should see hover-to-preview work immediately),
+  // so `evidenceDismissed` is the wrong tool here: it only clears on the
+  // next explicit click/Enter, which would break real hovering after every
+  // recenter.
+  //
+  // Tried clearing this on the next real `mousemove` first -- reverted: a
+  // genuine hover onto a NEW element fires `mouseover` on it BEFORE any
+  // `mousemove` (confirmed instrumenting real event order in a browser),
+  // the same as the synthetic replay does, so that signal can't tell them
+  // apart. What actually distinguishes them is timing relative to THIS
+  // call: the synthetic replay is a direct, synchronous-ish consequence of
+  // the DOM mutation `renderView` just performed, while any genuinely new
+  // interaction requires a fresh native input event, which cannot arrive
+  // until the current task finishes. A one-shot `setTimeout(0)` clears the
+  // flag at the next macrotask boundary -- after the synthetic replay (part
+  // of this task), before anything a subsequent real interaction dispatches
+  // (necessarily a later task). Root-caused 2026-08-29 from a real,
+  // reproducible CI flake (network-explorer-evidence.spec.ts's "recentering
+  // the graph closes the drawer"); the fix verified against a genuine
+  // hover-after-recenter regression test, not just the original flake.
+  let suppressPassiveTriggersUntilRealMouseMove = false;
 
   // The drawer opens synchronously but its evidence arrives over the network,
   // so "visible" and "showing real evidence" are two different things. These
@@ -631,7 +668,7 @@ export async function initExplorerStage(): Promise<void> {
   // edge already has focus (from Tab or the roving-focus move above),
   // which already gives a screen reader the right announcement on its own.
   edgesLayer.addEventListener("mouseover", (event) => {
-    if (evidenceDismissed) return;
+    if (evidenceDismissed || suppressPassiveTriggersUntilRealMouseMove) return;
     const target = (event.target as Element).closest<SVGGElement>(
       "[data-release-id]",
     );
@@ -657,7 +694,6 @@ export async function initExplorerStage(): Promise<void> {
     if (event.key === "Escape" && !evidenceDrawer!.hidden)
       hideEvidenceDrawer({ restoreFocus: true });
   });
-
   nodesLayer.addEventListener("click", (event) => {
     const target = (event.target as Element).closest<SVGGElement>(
       "[data-artist-id]",
