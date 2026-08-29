@@ -34,6 +34,20 @@
       - discogs
       - discogs-onehop
       - discogs-masters
+    # An allowed base name, optionally followed by a generation suffix
+    # (-v<N>, and either -run<N> or -full). Fully anchored: `match` pins the
+    # start and `\Z` pins the absolute end.
+    #
+    # `\Z`, deliberately NOT `$`: Python's `$` (which Ansible's `match` test
+    # uses underneath) also matches immediately BEFORE a trailing newline,
+    # so `dataset="discogs\n"` would slip past a `$`-anchored pattern and be
+    # interpolated into the cache path. Verified both ways before choosing.
+    # The -run<N>/-full qualifier is nested INSIDE the -v<N> group, not a
+    # sibling of it: as independent optional groups they would also admit
+    # `discogs-full` and `discogs-onehop-run2`, which name no real directory
+    # and were never part of the intended grammar.
+    allowed_dataset_pattern: >-
+      ^(discogs|discogs-onehop|discogs-masters)(-v[0-9]+(-run[0-9]+|-full)?)?\Z
   tasks:
     - name: Require catalog_cache_root (set in group_vars, see inventories/example)
       ansible.builtin.assert:
@@ -41,12 +55,30 @@
           - catalog_cache_root is defined
         fail_msg: "Set catalog_cache_root in group_vars/x86_workers.yml (see inventories/example)."
 
-    - name: Require dataset and confirm it is one of the allowed names
+    - name: Require dataset and confirm it is an allowed name, optionally generation-suffixed
+      # `dataset` is interpolated straight into a filesystem path AND a URL
+      # below ({{ catalog_cache_root }}/{{ dataset }}/snapshot=...), so this
+      # is a path-injection guard, not a typo check. The pattern stays
+      # strictly anchored and admits only [a-z-] plus digits in a fixed
+      # shape -- no slashes, no dots, so no traversal.
+      #
+      # Why a pattern rather than the bare `in allowed_datasets` list: real
+      # corpora are built as GENERATIONS whose identity lives in the
+      # directory name (local/processed/ currently holds discogs-onehop,
+      # discogs-onehop-v3, discogs-onehop-v3-run2, discogs-onehop-v4,
+      # discogs-v3, discogs-v3-full). The old exact-match list could not
+      # name any of them, so a freshly-built corpus could never be
+      # replicated to an x86 worker -- the blocker that kept the Phase 7 v4
+      # corpus stuck on the coordination host. Accepting an allowed BASE
+      # name plus a bounded generation suffix unblocks that without
+      # widening what a `dataset` value may structurally contain.
       ansible.builtin.assert:
         that:
           - dataset is defined
-          - dataset in allowed_datasets
-        fail_msg: "Set -e dataset=<{{ allowed_datasets | join('|') }}>."
+          - dataset is match(allowed_dataset_pattern)
+        fail_msg: >-
+          Set -e dataset=<{{ allowed_datasets | join('|') }}>, optionally with a
+          generation suffix (e.g. discogs-onehop-v4, discogs-v3-full).
 
     - name: Require snapshot as YYYYMMDD
       ansible.builtin.assert:
