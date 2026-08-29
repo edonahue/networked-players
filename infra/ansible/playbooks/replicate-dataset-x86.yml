@@ -42,8 +42,12 @@
     # uses underneath) also matches immediately BEFORE a trailing newline,
     # so `dataset="discogs\n"` would slip past a `$`-anchored pattern and be
     # interpolated into the cache path. Verified both ways before choosing.
+    # The -run<N>/-full qualifier is nested INSIDE the -v<N> group, not a
+    # sibling of it: as independent optional groups they would also admit
+    # `discogs-full` and `discogs-onehop-run2`, which name no real directory
+    # and were never part of the intended grammar.
     allowed_dataset_pattern: >-
-      ^(discogs|discogs-onehop|discogs-masters)(-v[0-9]+)?(-run[0-9]+|-full)?\Z
+      ^(discogs|discogs-onehop|discogs-masters)(-v[0-9]+(-run[0-9]+|-full)?)?\Z
   tasks:
     - name: Require catalog_cache_root (set in group_vars, see inventories/example)
       ansible.builtin.assert:
