@@ -1,7 +1,7 @@
-"""Album and artist comparison (Phase 7 PR D, Slices 1-2 -- the private
-research workbench's first two comparison types). See docs plan section 11:
-a local-only comparison layer over already-existing primitives, not a new
-graph engine.
+"""Album, artist, and scene comparison (Phase 7 PR D, Slices 1-3 -- the
+private research workbench's first three comparison types). See docs plan
+section 11: a local-only comparison layer over already-existing primitives,
+not a new graph engine.
 
 Every graph traversal here goes through `CreditGraph` (`.find_path`,
 `.neighbors_batch`, `.degrees`, `.degree`, `.credit_rows_for_releases`,
@@ -11,15 +11,24 @@ never re-derives BFS or edge SQL itself. Scope-tier comparison reuses
 `role_taxonomy.classify_role`, the same taxonomy every other role-aware
 feature in the repo uses.
 
-Compare-scenes and the workbench server/UI are explicit follow-up slices --
-not built here. Caveat-flag comparison is deliberately deferred too: the
-public site's caveat signal lives in the evidence-release-registry build
-path, which a private corpus snapshot doesn't carry the same way -- reusing
-it correctly needs its own investigation, not a guess bolted on here.
-`compare_artists`'s "distinct documented routes" is also deferred to a
-single shortest route: unlike the TS pathfinding client, `CreditGraph` has
-no `excludeEdgeKeys`-style mechanism to force a second, genuinely distinct
-route, and inventing one here would be new graph logic, not reuse.
+The workbench server/UI is an explicit follow-up slice -- not built here.
+Caveat-flag comparison is deliberately deferred too: the public site's
+caveat signal lives in the evidence-release-registry build path, which a
+private corpus snapshot doesn't carry the same way -- reusing it correctly
+needs its own investigation, not a guess bolted on here. `compare_artists`'s
+"distinct documented routes" is also deferred to a single shortest route:
+unlike the TS pathfinding client, `CreditGraph` has no `excludeEdgeKeys`-
+style mechanism to force a second, genuinely distinct route, and inventing
+one here would be new graph logic, not reuse.
+
+`compare_scenes`'s "scope sensitivity" bullet (from the plan) is also
+deferred: it's unclear how to aggregate per-member `measure_scope_tiers`
+results across a whole scene without it becoming an unreadable wall of
+per-member tables, and that aggregation shape needs a real decision, not a
+guess. A scene member with zero credits in the corpus is reported as
+"unresolved" rather than failing the whole comparison -- a scene is a
+user-authored seed set, and one bad id in a set of ten shouldn't discard
+the other nine.
 """
 
 from __future__ import annotations
@@ -446,4 +455,103 @@ def compare_artists(graph: CreditGraph, request: CompareArtistsRequest) -> dict[
             graph, [request.artist_a_id], [request.artist_b_id]
         ),
         "route": route,
+    }
+
+
+@dataclass(frozen=True)
+class CompareScenesRequest:
+    corpus_snapshot_root: Path
+    scene_a_artist_ids: tuple[int, ...]
+    scene_b_artist_ids: tuple[int, ...]
+    max_hops: int = DEFAULT_MAX_HOPS
+    max_route_candidate_pairs: int = DEFAULT_MAX_ROUTE_CANDIDATE_PAIRS
+
+
+def _resolve_scene(
+    graph: CreditGraph, artist_ids: tuple[int, ...]
+) -> tuple[list[int], list[int], list[dict[str, Any]]]:
+    """Splits a scene's member ids into those with real corpus credits and
+    those without (a user-authored seed set can legitimately name someone
+    absent from this particular corpus), returning the resolved ids, the
+    unresolved ids, and the union of every resolved member's own credit
+    rows."""
+    resolved: list[int] = []
+    unresolved: list[int] = []
+    all_credits: list[dict[str, Any]] = []
+    for artist_id in artist_ids:
+        rows = graph.credit_rows_for_artist(artist_id)
+        if rows:
+            resolved.append(artist_id)
+            all_credits.extend(rows)
+        else:
+            unresolved.append(artist_id)
+    return resolved, unresolved, all_credits
+
+
+def compare_scenes(graph: CreditGraph, request: CompareScenesRequest) -> dict[str, Any]:
+    """Compares two user-authored scenes (explicit, labelled artist-id seed
+    sets -- see the plan doc's definition). Raises `CompareError` only if a
+    scene is empty to begin with, or if EVERY member of a scene is
+    unresolved (nothing at all to compare); a partially-unresolved scene is
+    a valid, reported result, not an error."""
+    if not request.scene_a_artist_ids or not request.scene_b_artist_ids:
+        raise CompareError("scene_a_artist_ids and scene_b_artist_ids must both be non-empty")
+
+    resolved_a, unresolved_a, credits_a = _resolve_scene(graph, request.scene_a_artist_ids)
+    resolved_b, unresolved_b, credits_b = _resolve_scene(graph, request.scene_b_artist_ids)
+    if not resolved_a:
+        raise CompareError("no member of scene_a has any credits in corpus")
+    if not resolved_b:
+        raise CompareError("no member of scene_b has any credits in corpus")
+
+    overlap_ids = sorted(set(resolved_a) & set(resolved_b))
+    unique_to_a = sorted(set(resolved_a) - set(resolved_b))
+    unique_to_b = sorted(set(resolved_b) - set(resolved_a))
+
+    # "Connecting releases": a real, direct release-level intersection --
+    # a scene_a member and a scene_b member (not necessarily the same
+    # person; that's `overlap_ids` above) credited on the SAME documented
+    # release. Distinct from `shared_collaborators` below, which is about
+    # third parties connected to both scenes' 1-hop neighborhoods, not a
+    # direct co-credit.
+    release_ids_a = {int(row["release_id"]) for row in credits_a}
+    release_ids_b = {int(row["release_id"]) for row in credits_b}
+    connecting_release_ids = sorted(release_ids_a & release_ids_b)
+
+    return {
+        "scene_a": {
+            "member_artist_ids": list(request.scene_a_artist_ids),
+            "resolved_artist_ids": resolved_a,
+            "unresolved_artist_ids": unresolved_a,
+            "role_category_counts": _role_category_counts(credits_a),
+        },
+        "scene_b": {
+            "member_artist_ids": list(request.scene_b_artist_ids),
+            "resolved_artist_ids": resolved_b,
+            "unresolved_artist_ids": unresolved_b,
+            "role_category_counts": _role_category_counts(credits_b),
+        },
+        "overlap_and_separation": {
+            "overlap_artist_ids": overlap_ids,
+            "unique_to_scene_a": unique_to_a,
+            "unique_to_scene_b": unique_to_b,
+        },
+        "connecting_releases": {
+            "count": len(connecting_release_ids),
+            "release_ids": connecting_release_ids,
+        },
+        # Reuses `_network_overlap` unchanged -- shared collaborators across
+        # two scenes is the same third-party 1-hop-overlap computation as
+        # for two albums or two artists, just with N-member rosters.
+        "shared_collaborators": _network_overlap(graph, resolved_a, resolved_b),
+        # Reuses `_route_between` unchanged -- bounded routes between two
+        # sets of candidate artists is exactly what it already does for
+        # compare_albums's indirect-route search.
+        "routes_between_sets": _route_between(
+            graph,
+            resolved_a,
+            resolved_b,
+            max_hops=request.max_hops,
+            max_route_candidate_pairs=request.max_route_candidate_pairs,
+        ),
     }

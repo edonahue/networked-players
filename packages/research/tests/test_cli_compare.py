@@ -12,7 +12,7 @@ import pytest
 
 from networked_players_research.cli import main
 
-from .test_compare import CAROL, SEED_A, SEED_B, _build_corpus
+from .test_compare import BOB, CAROL, SEED_A, SEED_B, _build_corpus
 
 
 def test_research_compare_albums_writes_a_run_with_manifest_and_comparison(
@@ -59,7 +59,7 @@ def test_research_compare_albums_writes_a_run_with_manifest_and_comparison(
     assert comparison["album_b"]["release_id"] == 2
 
 
-def test_research_compare_rejects_an_unimplemented_mode(tmp_path: Path) -> None:
+def test_research_compare_rejects_an_unrecognized_mode(tmp_path: Path) -> None:
     # argparse's own `choices=` validation, not compare.py's -- fails before
     # any corpus is even touched, matching every other unrecognized-name
     # error in this repo being a hard, immediate error (request.py's
@@ -71,7 +71,7 @@ def test_research_compare_rejects_an_unimplemented_mode(tmp_path: Path) -> None:
             [
                 "research-compare",
                 "--mode",
-                "scenes",  # not yet implemented (Slice 3)
+                "bands",  # not a real mode -- never will be
                 "--corpus-root",
                 str(corpus),
                 "--album-a",
@@ -192,3 +192,64 @@ def test_research_compare_reports_a_clear_error_for_an_unresolvable_release(
         ]
     )
     assert exit_code == 1
+
+
+def test_research_compare_scenes_writes_a_run_with_manifest_and_comparison(
+    tmp_path: Path,
+) -> None:
+    corpus = _build_corpus(tmp_path / "corpus_root")
+    research_root = tmp_path / "research"
+
+    exit_code = main(
+        [
+            "research-compare",
+            "--mode",
+            "scenes",
+            "--corpus-root",
+            str(corpus),
+            "--scene-a",
+            str(SEED_A),
+            str(BOB),
+            "--scene-b",
+            str(SEED_B),
+            "--topic",
+            "scene-a-vs-scene-b",
+            "--research-root",
+            str(research_root),
+        ]
+    )
+    assert exit_code == 0
+
+    runs = list((research_root / "scene-a-vs-scene-b" / "runs").iterdir())
+    assert len(runs) == 1
+    run_root = runs[0]
+
+    manifest = json.loads((run_root / "manifest.json").read_text())
+    assert manifest["analyses"] == ["compare_scenes"]
+
+    comparison = json.loads((run_root / "comparison.json").read_text())
+    assert comparison["scene_a"]["member_artist_ids"] == [SEED_A, BOB]
+    assert comparison["scene_a"]["resolved_artist_ids"] == [SEED_A, BOB]
+    assert CAROL in comparison["shared_collaborators"]["artist_ids"]
+
+
+def test_research_compare_scenes_requires_scene_a_and_scene_b(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    corpus = _build_corpus(tmp_path / "corpus_root")
+
+    exit_code = main(
+        [
+            "research-compare",
+            "--mode",
+            "scenes",
+            "--corpus-root",
+            str(corpus),
+            "--topic",
+            "scene-a-vs-scene-b",
+            "--research-root",
+            str(tmp_path / "research"),
+        ]
+    )
+    assert exit_code == 1
+    assert "requires --scene-a and --scene-b" in capsys.readouterr().err

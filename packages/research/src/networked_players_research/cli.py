@@ -27,8 +27,10 @@ from .compare import (
     CompareAlbumsRequest,
     CompareArtistsRequest,
     CompareError,
+    CompareScenesRequest,
     compare_albums,
     compare_artists,
+    compare_scenes,
 )
 from .corpus import (
     AmbiguousSeedError,
@@ -190,9 +192,9 @@ def _parser() -> argparse.ArgumentParser:
     )
     compare.add_argument(
         "--mode",
-        choices=("albums", "artists"),
+        choices=("albums", "artists", "scenes"),
         required=True,
-        help="scenes and the workbench server/UI are follow-up slices",
+        help="the workbench server/UI is a follow-up slice",
     )
     compare.add_argument(
         "--corpus-root",
@@ -212,6 +214,20 @@ def _parser() -> argparse.ArgumentParser:
     )
     compare.add_argument(
         "--artist-b", type=int, default=None, help="artist_id -- required for --mode artists"
+    )
+    compare.add_argument(
+        "--scene-a",
+        type=int,
+        nargs="+",
+        default=None,
+        help="space-separated artist_ids -- required for --mode scenes",
+    )
+    compare.add_argument(
+        "--scene-b",
+        type=int,
+        nargs="+",
+        default=None,
+        help="space-separated artist_ids -- required for --mode scenes",
     )
     compare.add_argument(
         "--topic",
@@ -558,7 +574,7 @@ def main(argv: list[str] | None = None) -> int:
                             max_route_candidate_pairs=args.max_route_candidate_pairs,
                         ),
                     )
-            else:
+            elif args.mode == "artists":
                 if args.artist_a is None or args.artist_b is None:
                     raise CompareError("--mode artists requires --artist-a and --artist-b")
                 with CreditGraph.open(args.corpus_root) as credit_graph:
@@ -569,6 +585,20 @@ def main(argv: list[str] | None = None) -> int:
                             artist_a_id=args.artist_a,
                             artist_b_id=args.artist_b,
                             max_hops=args.max_hops,
+                        ),
+                    )
+            else:
+                if args.scene_a is None or args.scene_b is None:
+                    raise CompareError("--mode scenes requires --scene-a and --scene-b")
+                with CreditGraph.open(args.corpus_root) as credit_graph:
+                    comparison = compare_scenes(
+                        credit_graph,
+                        CompareScenesRequest(
+                            corpus_snapshot_root=args.corpus_root,
+                            scene_a_artist_ids=tuple(args.scene_a),
+                            scene_b_artist_ids=tuple(args.scene_b),
+                            max_hops=args.max_hops,
+                            max_route_candidate_pairs=args.max_route_candidate_pairs,
                         ),
                     )
 
