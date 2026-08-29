@@ -1,6 +1,6 @@
 ---
-import type { AlbumV2 } from '../data/challenge';
-import { coverFor } from '../data/albumArt';
+import type { AlbumV2 } from "../data/challenge";
+import { coverFor } from "../data/albumArt";
 
 interface Props {
   album: AlbumV2;
@@ -9,14 +9,21 @@ interface Props {
   hrefBase?: string;
 }
 
-const { album, hrefBase = '/albums/' } = Astro.props;
+const { album, hrefBase = "/albums/" } = Astro.props;
 // Presentation art comes from the album-art registry (ADR 0045), never from
 // frozen artifact fields; fall back to any legacy embedded cover, then to the
 // polished placeholder.
 const cover = coverFor(album.id) ?? album.cover_image;
 ---
 
-<a class="album-card" href={`${hrefBase}${album.id}/`}>
+<a
+  class="album-card"
+  href={`${hrefBase}${album.id}/`}
+  data-album-id={album.id}
+  data-album-title={album.title}
+  data-album-artist={album.artist}
+  data-album-year={album.year ?? ""}
+>
   {
     cover ? (
       <img
@@ -37,6 +44,6 @@ const cover = coverFor(album.id) ?? album.cover_image;
   <span class="album-card__title">{album.title}</span>
   <span class="album-card__meta">
     {album.artist}
-    {album.year ? ` · ${album.year}` : ''}
+    {album.year ? ` · ${album.year}` : ""}
   </span>
 </a>

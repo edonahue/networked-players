@@ -567,6 +567,38 @@ a.contributor-card:focus-visible {
   font-size: 0.92rem;
 }
 
+/* Album shelf search/sort (PR G) */
+.albums-directory__controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+.albums-directory__controls label {
+  display: block;
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+.albums-directory__controls input[type="text"],
+.albums-directory__controls select {
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+}
+.albums-directory__controls input[type="text"] {
+  min-width: 260px;
+}
+.albums-directory__status {
+  margin: 0 0 18px;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
 .play-from-here {
   margin-top: 32px;
   padding-top: 18px;

@@ -1,0 +1,53 @@
+---
+// Album shelf search/sort (PR G). Markup shell only -- all wiring lives in
+// game/albumsDirectory.ts (initAlbumsDirectory()), matching
+// ContributorsDirectory.astro's split. Every album renders here
+// server-side (no fetch, no result cap -- this is a browse surface), sorted
+// by title by default so the no-JS baseline is already a sensible order.
+import AlbumCard from "./AlbumCard.astro";
+import type { AlbumV2 } from "../data/challenge";
+import { ALBUM_SORT_OPTIONS } from "../game/albumsDirectory";
+
+interface Props {
+  albums: AlbumV2[];
+}
+
+const { albums } = Astro.props;
+const sortedByTitle = [...albums].sort((a, b) =>
+  a.title.localeCompare(b.title),
+);
+---
+
+<div class="albums-directory" data-testid="albums-directory">
+  <div class="albums-directory__controls">
+    <label for="albums-search">Search albums</label>
+    <input
+      id="albums-search"
+      type="text"
+      autocomplete="off"
+      placeholder="Search by title or artist…"
+      data-albums-search
+    />
+    <label for="albums-sort">Sort by</label>
+    <select id="albums-sort" data-albums-sort>
+      {
+        ALBUM_SORT_OPTIONS.map((option) => (
+          <option value={option.value}>{option.label}</option>
+        ))
+      }
+    </select>
+  </div>
+
+  <p
+    class="albums-directory__status"
+    data-albums-status
+    role="status"
+    aria-live="polite"
+  >
+    {albums.length} album{albums.length === 1 ? "" : "s"}.
+  </p>
+
+  <div class="album-grid" data-testid="album-grid">
+    {sortedByTitle.map((album) => <AlbumCard album={album} />)}
+  </div>
+</div>
