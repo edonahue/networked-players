@@ -10,7 +10,7 @@ and verify the experience, plus full provenance.
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from typing import Any
@@ -265,48 +265,91 @@ def _bounded_find_path(
         return None, True
 
 
-def _find_paths_concurrently(
+# How many pairs each worker gets per concurrent batch. Bigger batches
+# amortize thread/cursor overhead but waste more work past an early stop;
+# the wasted tail is bounded by `max_workers * _PATH_BATCH_PER_WORKER`.
+_PATH_BATCH_PER_WORKER = 4
+
+
+def _iter_path_results(
     graph: CreditGraph,
     candidate_pairs: list[tuple[MatchedAlbum, MatchedAlbum]],
     *,
     max_hops: int,
     max_workers: int,
     max_frontier_expansion: int | None,
-) -> tuple[dict[tuple[int, int], EvidencePath | None], int]:
-    """Precomputes every candidate pair's `find_path` result up front, spread
-    across `max_workers` cursors -- unlike the sequential path (which can
-    stop calling `find_path` once `max_paths` is satisfied), this always
-    computes every candidate. Output building afterward still stops at
-    `max_paths`, so report/ordering semantics are unchanged from the
-    sequential path. Returns `(paths, capped_count)`."""
-    worker_graphs = [graph.cursor() for _ in range(max_workers)]
-    chunks: list[list[tuple[MatchedAlbum, MatchedAlbum]]] = [[] for _ in range(max_workers)]
-    for index, pair in enumerate(candidate_pairs):
-        chunks[index % max_workers].append(pair)
+) -> Iterator[tuple[MatchedAlbum, MatchedAlbum, EvidencePath | None, bool]]:
+    """Yield `(from_album, to_album, path, capped)` in `candidate_pairs`
+    order, computing lazily so the caller can stop early.
 
-    def _run_chunk(
-        worker_index: int,
-    ) -> list[tuple[int, int, EvidencePath | None, bool]]:
-        worker_graph = worker_graphs[worker_index]
-        results = []
-        for from_album, to_album in chunks[worker_index]:
+    Why this is lazy, and why that matters enormously: the caller stops as
+    soon as it has `max_paths` paths. The previous implementation
+    precomputed EVERY candidate pair up front whenever `max_workers > 1`,
+    which silently discarded that early stop -- measured on the real Phase 7
+    179-album catalog, that is ~14,878 pairs at tens of seconds each
+    (a multi-day job) to fill an artifact that only ever keeps a few hundred
+    paths. Passing `max_workers > 1` therefore made the build dramatically
+    SLOWER than the sequential default, which is the opposite of what a
+    concurrency knob should do.
+
+    `max_workers == 1` is a plain lazy loop. `max_workers > 1` computes in
+    ORDER-PRESERVING BATCHES: each batch is spread across one dedicated
+    `graph.cursor()` per worker (never shared between threads), results are
+    re-sorted back into the original pair order before yielding, and the
+    next batch is only started when the caller asks for it. So the work
+    wasted past an early stop is bounded by a single batch, not the entire
+    remaining candidate list, and the yielded sequence is byte-identical to
+    the sequential path's regardless of `max_workers`.
+    """
+    if max_workers <= 1:
+        for from_album, to_album in candidate_pairs:
             path, capped = _bounded_find_path(
-                worker_graph,
+                graph,
                 from_album.artist_id,
                 to_album.artist_id,
                 max_hops=max_hops,
                 max_frontier_expansion=max_frontier_expansion,
             )
-            results.append((from_album.artist_id, to_album.artist_id, path, capped))
-        return results
+            yield from_album, to_album, path, capped
+        return
+
+    worker_graphs = [graph.cursor() for _ in range(max_workers)]
+    batch_size = max_workers * _PATH_BATCH_PER_WORKER
 
     with ThreadPoolExecutor(max_workers=max_workers) as pool:
-        chunk_results = list(pool.map(_run_chunk, range(max_workers)))
-    paths = {
-        (from_id, to_id): path for chunk in chunk_results for from_id, to_id, path, _capped in chunk
-    }
-    capped_count = sum(1 for chunk in chunk_results for *_rest, capped in chunk if capped)
-    return paths, capped_count
+        for start in range(0, len(candidate_pairs), batch_size):
+            batch = candidate_pairs[start : start + batch_size]
+            # One chunk per worker, so a given cursor is only ever touched by
+            # a single thread at a time (DuckDB cursors are not thread-safe).
+            chunks: list[list[tuple[int, MatchedAlbum, MatchedAlbum]]] = [
+                [] for _ in range(max_workers)
+            ]
+            for offset, (from_album, to_album) in enumerate(batch):
+                chunks[offset % max_workers].append((offset, from_album, to_album))
+
+            def _run_chunk(
+                worker_index: int,
+                chunks: list[list[tuple[int, MatchedAlbum, MatchedAlbum]]] = chunks,
+            ) -> list[tuple[int, MatchedAlbum, MatchedAlbum, EvidencePath | None, bool]]:
+                worker_graph = worker_graphs[worker_index]
+                out = []
+                for offset, from_album, to_album in chunks[worker_index]:
+                    path, capped = _bounded_find_path(
+                        worker_graph,
+                        from_album.artist_id,
+                        to_album.artist_id,
+                        max_hops=max_hops,
+                        max_frontier_expansion=max_frontier_expansion,
+                    )
+                    out.append((offset, from_album, to_album, path, capped))
+                return out
+
+            merged: list[tuple[int, MatchedAlbum, MatchedAlbum, EvidencePath | None, bool]] = []
+            for chunk_out in pool.map(_run_chunk, range(max_workers)):
+                merged.extend(chunk_out)
+            merged.sort(key=lambda row: row[0])
+            for _offset, from_album, to_album, path, capped in merged:
+                yield from_album, to_album, path, capped
 
 
 def build_challenge_v2(
@@ -386,36 +429,25 @@ def build_challenge_v2_from_matched(
     ordered = sorted(matched, key=lambda m: m.album_id)
     candidate_pairs = _candidate_album_pairs(ordered, is_family_excluded=is_family_excluded)
     capped_count = 0
-    precomputed_paths: dict[tuple[int, int], EvidencePath | None] | None = None
-    if max_workers > 1:
-        precomputed_paths, capped_count = _find_paths_concurrently(
-            graph,
-            candidate_pairs,
-            max_hops=max_hops,
-            max_workers=max_workers,
-            max_frontier_expansion=max_frontier_expansion,
-        )
-
     attempted = 0
     paths_json: list[dict[str, Any]] = []
     used_release_ids: set[int] = set()
     used_artist_ids: set[int] = set()
 
-    for from_album, to_album in candidate_pairs:
+    # Lazy in BOTH modes (see `_iter_path_results`): the `max_paths` break
+    # below is what bounds the real cost, so path results must never be
+    # precomputed for the whole candidate list ahead of it.
+    for from_album, to_album, path, capped in _iter_path_results(
+        graph,
+        candidate_pairs,
+        max_hops=max_hops,
+        max_workers=max_workers,
+        max_frontier_expansion=max_frontier_expansion,
+    ):
         if len(paths_json) >= max_paths:
             break
         attempted += 1
-        if precomputed_paths is not None:
-            path = precomputed_paths[(from_album.artist_id, to_album.artist_id)]
-        else:
-            path, capped = _bounded_find_path(
-                graph,
-                from_album.artist_id,
-                to_album.artist_id,
-                max_hops=max_hops,
-                max_frontier_expansion=max_frontier_expansion,
-            )
-            capped_count += int(capped)
+        capped_count += int(capped)
         if path is None:
             continue
 

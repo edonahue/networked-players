@@ -471,3 +471,52 @@ def test_build_challenge_v2_reports_capped_searches_without_crashing(tmp_path: P
     assert report["paths_capped"] >= 1
     assert report["paths_found"] >= 1
     validate_challenge(artifact)
+
+
+def test_concurrent_search_stops_early_instead_of_computing_every_candidate_pair(
+    dataset_root: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The property the concurrent path silently lacked: it must respect the
+    caller's `max_paths` early stop, not precompute every candidate pair.
+
+    Measured on the real Phase 7 179-album catalog, the old
+    precompute-everything behavior meant ~14,878 bounded BFS searches at
+    tens of seconds each (a multi-day job) to fill an artifact that keeps
+    only a few hundred paths -- so passing `max_workers > 1` made the build
+    dramatically slower than the sequential default. This test pins the fix
+    by counting real `_bounded_find_path` calls.
+    """
+    import networked_players_graph_core.challenge as challenge_module
+
+    calls: list[tuple[int, int]] = []
+    real_bounded_find_path = challenge_module._bounded_find_path
+
+    def counting_bounded_find_path(graph, from_artist_id, to_artist_id, **kwargs):  # type: ignore[no-untyped-def]
+        calls.append((from_artist_id, to_artist_id))
+        return real_bounded_find_path(graph, from_artist_id, to_artist_id, **kwargs)
+
+    monkeypatch.setattr(challenge_module, "_bounded_find_path", counting_bounded_find_path)
+    # Smallest possible batch, so the bound is tight and obvious.
+    monkeypatch.setattr(challenge_module, "_PATH_BATCH_PER_WORKER", 1)
+
+    with CreditGraph.open(dataset_root) as graph:
+        matched, _missed = match_albums(graph, ALBUMS)
+        total_candidate_pairs = len(
+            challenge_module._candidate_album_pairs(sorted(matched, key=lambda m: m.album_id))
+        )
+        artifact, _report = build_challenge_v2(
+            graph,
+            ALBUMS,
+            snapshot_date="20260601",
+            generated_by="test-suite",
+            max_paths=1,
+            max_workers=2,
+        )
+
+    validate_challenge(artifact)
+    assert total_candidate_pairs >= 3  # fixture sanity: there IS something to skip
+    # The whole point: strictly fewer searches than the full candidate list.
+    assert len(calls) < total_candidate_pairs, (
+        f"computed {len(calls)} of {total_candidate_pairs} pairs -- the max_paths "
+        "early stop was not respected"
+    )
