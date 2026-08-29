@@ -25,8 +25,10 @@ from .compare import (
     DEFAULT_MAX_HOPS,
     DEFAULT_MAX_ROUTE_CANDIDATE_PAIRS,
     CompareAlbumsRequest,
+    CompareArtistsRequest,
     CompareError,
     compare_albums,
+    compare_artists,
 )
 from .corpus import (
     AmbiguousSeedError,
@@ -181,16 +183,16 @@ def _parser() -> argparse.ArgumentParser:
     compare = subparsers.add_parser(
         "research-compare",
         help=(
-            "compare two things over an already-built corpus (Phase 7 PR D, Slice 1) -- "
+            "compare two things over an already-built corpus (Phase 7 PR D, Slices 1-2) -- "
             "writes a run under local/research/<topic>/runs/<run-id>/, exactly like "
             "research-analyze"
         ),
     )
     compare.add_argument(
         "--mode",
-        choices=("albums",),
+        choices=("albums", "artists"),
         required=True,
-        help="the only mode implemented so far; artists/scenes are follow-up slices",
+        help="scenes and the workbench server/UI are follow-up slices",
     )
     compare.add_argument(
         "--corpus-root",
@@ -199,8 +201,18 @@ def _parser() -> argparse.ArgumentParser:
         help="a snapshot-shaped dataset: the full canonical snapshot, or a "
         "research-build-corpus topic corpus's snapshot=<date>/ dir",
     )
-    compare.add_argument("--album-a", type=int, required=True, help="release_id")
-    compare.add_argument("--album-b", type=int, required=True, help="release_id")
+    compare.add_argument(
+        "--album-a", type=int, default=None, help="release_id -- required for --mode albums"
+    )
+    compare.add_argument(
+        "--album-b", type=int, default=None, help="release_id -- required for --mode albums"
+    )
+    compare.add_argument(
+        "--artist-a", type=int, default=None, help="artist_id -- required for --mode artists"
+    )
+    compare.add_argument(
+        "--artist-b", type=int, default=None, help="artist_id -- required for --mode artists"
+    )
     compare.add_argument(
         "--topic",
         required=True,
@@ -532,17 +544,33 @@ def main(argv: list[str] | None = None) -> int:
                 f"{args.corpus_root.name}:{corpus_manifest.get('snapshot_date', 'unknown')}"
             )
 
-            with CreditGraph.open(args.corpus_root) as credit_graph:
-                comparison = compare_albums(
-                    credit_graph,
-                    CompareAlbumsRequest(
-                        corpus_snapshot_root=args.corpus_root,
-                        album_a_release_id=args.album_a,
-                        album_b_release_id=args.album_b,
-                        max_hops=args.max_hops,
-                        max_route_candidate_pairs=args.max_route_candidate_pairs,
-                    ),
-                )
+            if args.mode == "albums":
+                if args.album_a is None or args.album_b is None:
+                    raise CompareError("--mode albums requires --album-a and --album-b")
+                with CreditGraph.open(args.corpus_root) as credit_graph:
+                    comparison = compare_albums(
+                        credit_graph,
+                        CompareAlbumsRequest(
+                            corpus_snapshot_root=args.corpus_root,
+                            album_a_release_id=args.album_a,
+                            album_b_release_id=args.album_b,
+                            max_hops=args.max_hops,
+                            max_route_candidate_pairs=args.max_route_candidate_pairs,
+                        ),
+                    )
+            else:
+                if args.artist_a is None or args.artist_b is None:
+                    raise CompareError("--mode artists requires --artist-a and --artist-b")
+                with CreditGraph.open(args.corpus_root) as credit_graph:
+                    comparison = compare_artists(
+                        credit_graph,
+                        CompareArtistsRequest(
+                            corpus_snapshot_root=args.corpus_root,
+                            artist_a_id=args.artist_a,
+                            artist_b_id=args.artist_b,
+                            max_hops=args.max_hops,
+                        ),
+                    )
 
             run_id = args.run_id or new_run_id()
             run_paths = new_run_paths(args.topic, run_id, research_root=args.research_root)

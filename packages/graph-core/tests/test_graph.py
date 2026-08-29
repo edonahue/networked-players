@@ -155,6 +155,49 @@ def test_credit_rows_for_releases_excludes_non_playable_rows(dataset_root: Path)
     assert {r["artist_id"] for r in grouped[5]} == {100}
 
 
+def test_credit_rows_for_artist_includes_a_solo_release_with_no_graph_edge(
+    dataset_root: Path,
+) -> None:
+    # R5 has only Alice (plus a non-linked, non-playable evidence row) -- no
+    # OTHER real playable artist, so credit_edges_sql never produces an edge
+    # for it; `neighbors(100)` therefore never surfaces release 5 at all.
+    # credit_rows_for_artist must still include it, since it queries credits
+    # directly rather than walking the traversable edge set.
+    with CreditGraph.open(dataset_root) as graph:
+        neighbors = graph.neighbors(100)
+        rows = graph.credit_rows_for_artist(100)
+
+    release_ids_from_neighbors = {release_id for (release_id,) in neighbors.values()}
+    assert 5 not in release_ids_from_neighbors
+
+    release_ids_from_credits = {r["release_id"] for r in rows}
+    assert release_ids_from_credits == {1, 4, 5}  # every release Alice is on
+
+
+def test_credit_rows_for_artist_excludes_other_artists_credits(dataset_root: Path) -> None:
+    with CreditGraph.open(dataset_root) as graph:
+        rows = graph.credit_rows_for_artist(600)  # Frank, R7 only
+    assert {r["release_id"] for r in rows} == {7}
+    assert {r["artist_id"] for r in rows} == {600}
+
+
+def test_credit_rows_for_artist_excludes_a_hard_placeholder_identity(
+    dataset_root: Path,
+) -> None:
+    # Various(194) has a real credit row on R7, but is a hard-`exclude`
+    # placeholder identity (NON_INDIVIDUAL_ARTIST_IDS) -- must never surface
+    # even when queried by its own artist_id directly.
+    with CreditGraph.open(dataset_root) as graph:
+        assert graph.credit_rows_for_artist(194) == []
+
+
+def test_credit_rows_for_artist_returns_empty_list_for_an_unknown_artist(
+    dataset_root: Path,
+) -> None:
+    with CreditGraph.open(dataset_root) as graph:
+        assert graph.credit_rows_for_artist(999_999) == []
+
+
 def test_artist_name_returns_canonical_name(dataset_root: Path) -> None:
     with CreditGraph.open(dataset_root) as graph:
         assert graph.artist_name(100) == "Alice"
