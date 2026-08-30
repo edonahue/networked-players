@@ -20,7 +20,7 @@ function storage(): StorageLike | null {
 function dayLabel(day: ArchiveDay): string {
   if (day.status === "future") return "Not yet scheduled to play";
   if (day.status === "unplayed") return "Not played";
-  return day.rating ? `Played -- ${day.rating.replace("_", " ")}` : "Played";
+  return day.rating ? `Played — ${day.rating.replace("_", " ")}` : "Played";
 }
 
 function dayGlyph(day: ArchiveDay): string {
@@ -59,7 +59,7 @@ export async function initDailyArchive(): Promise<void> {
 
   const store = load(storage());
   if (statsEl) {
-    statsEl.textContent = `Streak: ${store.streak.current} day${store.streak.current === 1 ? "" : "s"} (best ${store.streak.best}) -- ${store.totals.solved} of ${store.totals.played} solved`;
+    statsEl.textContent = `Streak: ${store.streak.current} day${store.streak.current === 1 ? "" : "s"} (best ${store.streak.best}) — ${store.totals.solved} of ${store.totals.played} solved`;
   }
 
   let manifest;
