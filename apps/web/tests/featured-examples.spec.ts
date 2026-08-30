@@ -1,6 +1,8 @@
 // Homepage "featured example" unit + integration specs: findBehindTheGlassPath
 // pure logic, and a real end-to-end check against the committed catalog.
 
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { expect, test } from "@playwright/test";
 import type {
   Artist,
@@ -10,6 +12,13 @@ import type {
   PathV2,
 } from "../src/data/challenge";
 import { findBehindTheGlassPath } from "../src/data/featuredExamples";
+import { behindTheGlassEdgeFilter } from "../src/game/roleTaxonomy";
+import {
+  buildAlbumIndex,
+  buildArtistIndex,
+  findAlbumRoute,
+  type PathfindingGraph,
+} from "../src/game/pathfindingGraph";
 
 function credit(
   releaseId: number,
@@ -248,11 +257,60 @@ test("a real check against the committed catalog: the homepage's Behind the Glas
   expect(from!.id).not.toBe(to!.id);
 });
 
+test("regression tripwire: findBehindTheGlassPath's real pick is actually findable by Connect Two Records' own search", () => {
+  // findBehindTheGlassPath (this file) qualifies a pair using
+  // challenge.v2.json's bundled credits; Connect Two Records itself
+  // searches a DIFFERENT derived artifact, pathfinding/graph.v2.json, via
+  // findAlbumRoute. Nothing links these two artifacts' generation together
+  // -- a future regeneration could drop the one edge that makes this pair
+  // searchable in Connect while leaving the challenge-side credit data (and
+  // so this featured pick) untouched, and the homepage would then advertise
+  // a "real Behind the Glass route" that Connect itself can't find. This
+  // is a tripwire for that regeneration, not a redesign of the selection
+  // algorithm -- see the codex-review-retroactive-fixes-progress memory for
+  // where this finding came from.
+  const challengePath = fileURLToPath(
+    new URL("../public/data/challenge.v2.json", import.meta.url),
+  );
+  const challenge: ChallengeV2 = JSON.parse(
+    readFileSync(challengePath, "utf8"),
+  );
+  const pick = findBehindTheGlassPath(challenge);
+  if (!pick) {
+    // No qualifying pair in the current committed artifact is a valid,
+    // honest state (see the test above) -- nothing to cross-check.
+    return;
+  }
+
+  const graphPath = fileURLToPath(
+    new URL("../public/data/pathfinding/graph.v2.json", import.meta.url),
+  );
+  const graph: PathfindingGraph = JSON.parse(readFileSync(graphPath, "utf8"));
+  const artistIndex = buildArtistIndex(graph);
+  const albumIndex = buildAlbumIndex(graph);
+
+  const route = findAlbumRoute(
+    graph,
+    artistIndex,
+    albumIndex,
+    pick.from_album_id,
+    pick.to_album_id,
+    4,
+    behindTheGlassEdgeFilter,
+  );
+
+  expect(route.ok).toBe(true);
+});
+
 test("the real homepage: the Behind the Glass example is deterministic, not the old hardcoded copy", async ({
   page,
 }) => {
+  // Only the dead hardcoded sentence's own distinguishing phrase is banned
+  // here, not "Ziggy Stardust" itself -- that album title could legitimately
+  // recur as a real, dynamically-computed pick in a future catalog
+  // regeneration, and banning it would fail a correct result just because
+  // it happens to match old dead prose.
   await page.goto("/");
   const bodyText = await page.locator("body").innerText();
-  expect(bodyText).not.toContain("Ziggy Stardust");
   expect(bodyText).not.toContain("An editorial pick");
 });

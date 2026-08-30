@@ -66,9 +66,22 @@ diverge.
 
 `apps/web/tests/album-grid-dedup.spec.ts` asserts: `/albums/` renders one card per catalog
 album (not just the connected subset); the excluded albums render with
-`data-album-connected="false"` and visible "Not yet connected" text; a connected album
+`data-album-connected="false"` and visible "No documented path yet" text; a connected album
 renders with `data-album-connected="true"` and no such text; `/explore/`'s grid and the
 sitemap are unaffected.
+
+## Addendum (2026-08-30)
+
+The badge and summary line originally shipped as "Not yet connected" / "N not yet connected
+to the credit graph." A retroactive Codex bot review of this PR (caught in a later
+audit -- see the `codex-review-retroactive-fixes-progress` memory) flagged that wording as a
+real overclaim: `connectedAlbumIds` only tests challenge.v2 path-endpoint membership, not
+whether the album has any real graph connections at all. Every one of these albums is a real
+pathfinding-graph node with real credited neighbors, individually reachable and explorable at
+`/explore/<id>/` -- exactly the opposite of "not connected." The copy now reads "No
+documented path yet" / "N without a documented path yet," mirroring the album detail page's
+own established phrasing for the same case (`No documented connection is indexed from
+{title} yet.`). No behavior changed, only the wording.
 
 ## Revisit trigger
 

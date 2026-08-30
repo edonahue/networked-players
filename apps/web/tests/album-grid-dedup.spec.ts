@@ -101,13 +101,15 @@ test("/albums/ renders the full catalog, marking unconnected albums honestly", a
     `.album-card[href="/albums/${excluded.id}/"]`,
   );
   await expect(excludedCard).toHaveAttribute("data-album-connected", "false");
-  await expect(excludedCard.getByText("Not yet connected")).toBeVisible();
+  await expect(excludedCard.getByText("No documented path yet")).toBeVisible();
 
   const connectedCard = page.locator(
     `.album-card[href="/albums/${connectedId}/"]`,
   );
   await expect(connectedCard).toHaveAttribute("data-album-connected", "true");
-  await expect(connectedCard.getByText("Not yet connected")).toHaveCount(0);
+  await expect(connectedCard.getByText("No documented path yet")).toHaveCount(
+    0,
+  );
 });
 
 test("/explore/ renders exactly the connected album count, linking into /explore/", async ({
