@@ -109,3 +109,50 @@ snapshot, or a policy change admitting different candidates) must re-run this
 audit — the deny-list's whole reason for existing is that these categories are
 *not* structurally detectable, so a new candidate silently entering the catalog
 without a human pass could reintroduce exactly this class of leak.
+
+## Addendum: Phase 7 re-audit (2026-08-30, second cleanup pass)
+
+Phase 7's catalog expansion (PR #161, 140 → 179 albums) triggered this document's
+own revisit clause above, but no manual re-check was recorded anywhere at the
+time — the automated companion JSON (`docs/data/studio-album-catalog-inclusion-audit-v1.json`)
+was regenerated and reported zero flags, but that is the same automated check this
+document's own thesis says cannot catch the leak class it exists to guard against
+(zero structured Discogs signal). This addendum is that overdue manual pass, run
+against the real committed audit record.
+
+**Scope**: every one of the 39 albums added since the 140-album baseline, pulled
+directly from the committed audit JSON by `selection_source != "already_published"`:
+13 `personal_editorial` (Bucket A, ADR 0065), 18 `graph_rich` (Bucket B), and 8
+`coverage_gap` (Bucket C) — 13 + 18 + 8 = 39, matching 179 − 140 exactly.
+
+**Method**: identical to the original pass above — every new album's title and
+artist reviewed for the same four categories (live, mixed live/studio,
+various-artists/charity-compilation, soundtrack/score/box-set/remix/anthology/
+b-sides/rarities/bootleg), using cultural/discography knowledge rather than a
+structured signal, exactly as the original manual title-by-title review did.
+
+**Result: zero leaks found** among the 39, consistent with the automated
+companion JSON's own zero flags for these rows. Two titles are worth recording
+explicitly, matching this document's own established practice of calling out a
+title a name-only glance could mistake for a compilation, then confirming it
+genuine:
+
+- *Club Classics Vol. One* (Soul II Soul, 1989 per the committed catalog) —
+  their original studio debut, not a hits compilation despite "Classics" in
+  the title.
+- *Introducing The Hardline According To Terence Trent D'Arby* (Terence Trent
+  D'Arby) — his debut studio album, not a "best of"/retrospective despite
+  "Introducing."
+
+Several self-titled debuts among the 39 (Ricky Martin, The Specials, Rickie Lee
+Jones, Stephen Stills, Bon Jovi) are clean by the same self-titled-debut
+precedent this document's original pass already established for *Elvis Presley*,
+*Ramones*, *Whitney Houston*, and others. No other album among the 39 matched a
+live, mixed live/studio, compilation/anthology/charity-collection,
+soundtrack/score, EP, remix, box-set, or bootleg profile on this pass.
+
+**No catalog or deny-list change resulted** — this pass found nothing to
+exclude. `data/albums/studio-album-master-exclusions-v1.json` is unchanged (still
+its original 6 entries). This addendum satisfies the revisit trigger above for
+Phase 7's specific expansion only; a future catalog expansion still needs its own
+re-audit, per that trigger.
