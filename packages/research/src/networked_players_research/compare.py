@@ -436,6 +436,111 @@ def corpus_coverage(corpus_snapshot_root: Path, artist_id: int) -> dict[str, Any
         return _not_applicable(str(exc))
 
 
+MAX_GRAPH_NEIGHBORS = 24  # mirrors apps/web's networkExplorer.ts MAX_NEIGHBORS
+_MAX_JOINED_ROLE_LEN = 200
+
+
+def _joined_role_text(rows: list[dict[str, Any]], artist_id: int) -> str:
+    """Every distinct non-null `role_text` credited to `artist_id` within
+    one release's rows, joined in first-seen order with the same ", "
+    separator `role_taxonomy.classify_role` splits on -- a smaller,
+    locally-bounded sibling of `pathfinding_graph.py`'s own `_joined_roles`
+    (not imported directly: that module's helpers are private to the public
+    static-artifact build, and this is a live per-request computation over
+    the private corpus, not a shared identical code path)."""
+    seen: dict[str, None] = {}
+    for row in rows:
+        if row.get("artist_id") != artist_id:
+            continue
+        text = row.get("role_text")
+        if isinstance(text, str) and text:
+            seen.setdefault(text, None)
+    joined = ", ".join(seen)
+    return joined[:_MAX_JOINED_ROLE_LEN] if len(joined) > _MAX_JOINED_ROLE_LEN else joined
+
+
+def build_graph_view(
+    graph: CreditGraph,
+    center_artist_id: int,
+    *,
+    max_neighbors: int = MAX_GRAPH_NEIGHBORS,
+    role_categories: frozenset[RoleCategory] | None = None,
+) -> dict[str, Any]:
+    """Bounded one-hop ego-network view of `center_artist_id` -- Phase 7 PR
+    D's private mirror of `apps/web`'s `networkExplorer.ts` `buildView`.
+    Deliberately the SAME single-hop, recenter-to-navigate shape: that
+    component already proved a bounded, keyboard-accessible,
+    non-force-directed graph doesn't need more than one hop per view (a
+    click on a neighbor re-requests this endpoint centered there instead),
+    so a second hop here would be new UX complexity the public version
+    doesn't need either.
+
+    `role_categories`, when given, is a HARD traversal filter -- a
+    candidate neighbor whose edge role doesn't match any active category is
+    excluded before ranking/truncation, never dimmed after the fact -- so a
+    filtered view can never surface an edge that fails the predicate.
+    Mirrors the *shape* of `roleTaxonomy.ts`'s category filtering, but
+    classifies via the real corpus's own `role_text`
+    (`role_taxonomy.classify_role`), not an assumed-identical vocabulary.
+
+    Raises `CompareError` if `center_artist_id` has no credited presence in
+    the corpus at all -- the same convention `compare_artists` uses."""
+    center_name = graph.artist_name(center_artist_id)
+    if center_name is None:
+        raise CompareError(f"artist_id {center_artist_id} has no credited presence in corpus")
+
+    raw_neighbors = graph.neighbors(center_artist_id)
+    if not raw_neighbors:
+        return {
+            "center": {"artist_id": center_artist_id, "name": center_name, "degree": 0},
+            "neighbors": [],
+            "truncated": False,
+        }
+
+    release_ids = sorted({release_id for (release_id,) in raw_neighbors.values()})
+    rows_by_release = graph.credit_rows_for_release_batch(release_ids)
+
+    candidates: list[dict[str, Any]] = []
+    for neighbor_id, (release_id,) in raw_neighbors.items():
+        rows = rows_by_release.get(release_id, [])
+        role_b = _joined_role_text(rows, neighbor_id)
+        if role_categories is not None and not (role_categories & set(classify_role(role_b))):
+            continue
+        candidates.append(
+            {
+                "artist_id": neighbor_id,
+                "release_id": release_id,
+                "role_a": _joined_role_text(rows, center_artist_id),
+                "role_b": role_b,
+            }
+        )
+
+    degrees = graph.degrees([center_artist_id, *(c["artist_id"] for c in candidates)])
+    candidates.sort(key=lambda c: degrees.get(c["artist_id"], 0), reverse=True)
+    shown = candidates[:max_neighbors]
+
+    neighbors = [
+        {
+            "artist_id": c["artist_id"],
+            "name": graph.artist_name(c["artist_id"]) or f"Artist {c['artist_id']}",
+            "degree": degrees.get(c["artist_id"], 0),
+            "release_id": c["release_id"],
+            "role_a": c["role_a"],
+            "role_b": c["role_b"],
+        }
+        for c in shown
+    ]
+    return {
+        "center": {
+            "artist_id": center_artist_id,
+            "name": center_name,
+            "degree": degrees.get(center_artist_id, 0),
+        },
+        "neighbors": neighbors,
+        "truncated": len(candidates) > max_neighbors,
+    }
+
+
 def compare_artists(graph: CreditGraph, request: CompareArtistsRequest) -> dict[str, Any]:
     """Compares two artists directly (no album/release resolution needed --
     unlike `compare_albums`, the artist ids are given, not derived). Raises

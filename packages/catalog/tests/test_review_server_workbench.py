@@ -198,6 +198,10 @@ def test_workbench_serves_the_form_page(server: tuple[str, Path]) -> None:
     body = urlopen(f"{base}/").read().decode()
     assert "research workbench" in body
     assert 'id="form"' in body
+    # PR D's bounded-graph view: the page must ship its own rendering (no
+    # CDN, no build step) rather than only the backend endpoint existing.
+    assert 'id="graph"' in body
+    assert "loadGraph" in body
 
 
 def test_workbench_compares_two_albums_end_to_end(server: tuple[str, Path], corpus: Path) -> None:
@@ -1055,3 +1059,86 @@ def test_workbench_graph_cache_evicts_once_a_pinned_entry_that_exceeded_capacity
 
     assert len(cache._entries) == 2
     cache.close_all()
+
+
+# --- Phase 7 closeout PR D: bounded private Explore graph (/api/graph) ---
+
+
+def test_workbench_graph_returns_a_bounded_one_hop_view_for_a_real_artist(
+    server: tuple[str, Path], corpus: Path
+) -> None:
+    base, _ = server
+    status, data = _get_json(f"{base}/api/graph?corpus_root={corpus}&center_id={SEED_A}")
+    assert status == 200
+    assert data["center"]["artist_id"] == SEED_A
+    neighbor_ids = {n["artist_id"] for n in data["neighbors"]}
+    assert CAROL in neighbor_ids
+    assert data["truncated"] is False
+
+
+def test_workbench_graph_respects_max_neighbors_and_reports_truncated(
+    server: tuple[str, Path], corpus: Path
+) -> None:
+    base, _ = server
+    # Carol has real edges to both Seed A and Seed B in this fixture --
+    # degree 2, the one center with more than one neighbor to truncate.
+    status, data = _get_json(
+        f"{base}/api/graph?corpus_root={corpus}&center_id={CAROL}&max_neighbors=1"
+    )
+    assert status == 200
+    assert len(data["neighbors"]) == 1
+    assert data["truncated"] is True
+
+
+def test_workbench_graph_rejects_an_unknown_center_artist(
+    server: tuple[str, Path], corpus: Path
+) -> None:
+    base, _ = server
+    status, data = _get_json(f"{base}/api/graph?corpus_root={corpus}&center_id=999999")
+    assert status == 400
+    assert "no credited presence" in data["error"]
+
+
+def test_workbench_graph_rejects_an_invalid_role_filter_token(
+    server: tuple[str, Path], corpus: Path
+) -> None:
+    base, _ = server
+    status, data = _get_json(
+        f"{base}/api/graph?corpus_root={corpus}&center_id={SEED_A}&role_filter=not_a_real_category"
+    )
+    assert status == 400
+    assert "not_a_real_category" in data["error"]
+
+
+def test_workbench_graph_rejects_a_corpus_outside_the_allowlist(
+    server: tuple[str, Path], tmp_path: Path
+) -> None:
+    base, _ = server
+    outside = tmp_path.parent / f"outside-graph-{tmp_path.name}"
+    status, data = _get_json(f"{base}/api/graph?corpus_root={outside}&center_id={SEED_A}")
+    assert status == 400
+    assert "must resolve under" in data["error"]
+
+
+def test_workbench_graph_reuses_the_cached_graph_across_requests(
+    server: tuple[str, Path], corpus: Path
+) -> None:
+    # Unlike /api/search and /api/evidence (build_edges=False, never
+    # traverse edges), /api/graph genuinely needs credit_edges -- it must
+    # go through graph_cache.checkout, not its own fresh
+    # CreditGraph.open(corpus_root), or every graph-view request would pay
+    # the ~2.5-minute edge-build cost PR B's cache exists to avoid.
+    calls: list[bool] = []
+    real_open = _MODULE.CreditGraph.open
+
+    def spying_open(*args: Any, **kwargs: Any) -> Any:
+        calls.append(kwargs.get("build_edges", True))
+        return real_open(*args, **kwargs)
+
+    with mock.patch.object(_MODULE.CreditGraph, "open", staticmethod(spying_open)):
+        base, _ = server
+        for _ in range(3):
+            status, _data = _get_json(f"{base}/api/graph?corpus_root={corpus}&center_id={SEED_A}")
+            assert status == 200
+
+    assert calls == [True]
