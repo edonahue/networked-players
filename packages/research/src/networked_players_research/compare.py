@@ -37,6 +37,8 @@ the other nine.
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
+from contextlib import AbstractContextManager
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -639,18 +641,30 @@ def run_comparison_and_persist(
     topic: str,
     research_root: Path = RESEARCH_ROOT,
     run_id: str | None = None,
+    open_graph: Callable[[Path], AbstractContextManager[CreditGraph]] = CreditGraph.open,
 ) -> dict[str, Any]:
     """Opens a `CreditGraph` over the request's own corpus root, runs the
     right `compare_*` function for `mode`, and persists the result as a run
     under `research_root/<topic>/runs/<run-id>/` -- exactly the same
     bookkeeping `research-analyze` already uses. Shared by the CLI
     (`research-compare`) and the workbench server mode so both stay in
-    lockstep rather than maintaining two copies of this dispatch."""
+    lockstep rather than maintaining two copies of this dispatch.
+
+    `open_graph` defaults to `CreditGraph.open` itself -- the CLI's
+    existing one-shot behavior (open, compare, close), completely
+    unchanged. The workbench server passes a cache-backed context manager
+    instead (`WorkbenchGraphCache.checkout` in `apps/review/review_server.
+    py`), so repeated comparisons against the SAME corpus reuse one
+    already-materialized graph (skipping the ~2.5-minute credit_edges
+    rebuild) via `CreditGraph.cursor()` rather than every request paying
+    that cost fresh -- a real, independently-confirmed performance gap
+    (Phase 7 closeout, sibling to PR #178's own uncached scope-tier
+    finding, which the same closeout fixes separately)."""
     if mode not in COMPARE_MODES:
         raise CompareError(f"unrecognized mode: {mode!r}; must be one of {COMPARE_MODES}")
 
     started_at = datetime.now(UTC).isoformat()
-    with CreditGraph.open(request.corpus_snapshot_root) as graph:
+    with open_graph(request.corpus_snapshot_root) as graph:
         if mode == "albums":
             if not isinstance(request, CompareAlbumsRequest):
                 raise CompareError("mode 'albums' requires a CompareAlbumsRequest")

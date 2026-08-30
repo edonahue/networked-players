@@ -28,6 +28,10 @@ from __future__ import annotations
 import argparse
 import json
 import mimetypes
+import threading
+from collections import OrderedDict
+from collections.abc import Iterator
+from contextlib import contextmanager
 from datetime import UTC, datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -41,6 +45,7 @@ from networked_players_research.compare import (
     CompareError,
     CompareScenesRequest,
     corpus_coverage,
+    corpus_version_string,
     run_comparison_and_persist,
 )
 from networked_players_research.runs import RESEARCH_ROOT
@@ -587,15 +592,20 @@ def search_corpus(graph: CreditGraph, kind: str, query: str) -> list[dict[str, A
 
 
 def load_evidence(
-    graph: CreditGraph, kind: str, entity_id: int, corpus_root: Path
+    graph: CreditGraph,
+    kind: str,
+    entity_id: int,
+    corpus_root: Path,
+    scope_tier_cache: ScopeTierCache,
 ) -> dict[str, Any]:
     """`/api/evidence`'s dispatch -- the click-through target for a search
     result: a release's own record plus its credit rows, or an artist's
     name plus their whole-dataset credit rows (`credit_rows_for_artist`,
     not a `neighbors()` walk, for the same solo-release reason
     `compare_artists` needs it) plus their scope-tier coverage (Explore's
-    "scope selection" slice -- reuses `compare.corpus_coverage` unchanged,
-    the exact function `compare_artists` already calls per artist)."""
+    "scope selection" slice -- reuses `compare.corpus_coverage`, routed
+    through `scope_tier_cache` so a corpus-wide tier measurement isn't
+    recomputed from scratch on every click against the same artist)."""
     if kind == "album":
         release = graph.release(entity_id)
         if release is None:
@@ -615,15 +625,203 @@ def load_evidence(
             "artist_id": entity_id,
             "name": name,
             "credit_rows": credit_rows,
-            "scope_tiers": corpus_coverage(corpus_root, entity_id),
+            "scope_tiers": scope_tier_cache.get_or_compute(corpus_root, entity_id),
         }
     raise WorkbenchRequestError("kind must be one of album/artist")
+
+
+class _CachedGraphEntry:
+    """Plain class, not @dataclass: this module is loaded by its own tests
+    via `importlib.util.module_from_spec`/`exec_module` without registering
+    in `sys.modules` first (see test_review_server_workbench.py/
+    test_review_server.py) -- Python 3.12's dataclass machinery looks up
+    `sys.modules[cls.__module__]` while resolving `from __future__ import
+    annotations` string annotations, which raises `AttributeError` under
+    that loading pattern. A plain `__init__` sidesteps it entirely."""
+
+    def __init__(self, identity: str, graph: CreditGraph) -> None:
+        self.identity = identity
+        self.graph = graph
+        self.refcount = 0
+        self.stale = False
+
+
+class WorkbenchGraphCache:
+    """Reuses one materialized `CreditGraph` (including its own ~2.5-minute
+    `credit_edges` build, `CreditGraph.open`'s own docstring) across every
+    `/api/compare` request for the SAME corpus, instead of every request
+    paying that cost fresh -- confirmed still happening on `main` by this
+    Phase 7 closeout's own investigation (`run_comparison_and_persist`
+    called `CreditGraph.open` unconditionally, with no reuse mechanism
+    anywhere in this file).
+
+    Keyed by resolved corpus root; the cached VALUE also carries
+    `corpus_version_string(corpus_root)` (directory name + manifest
+    snapshot_date) so a corpus that gets re-ingested/regenerated at the
+    same root is detected and the stale graph is replaced, never silently
+    reused. Each checkout hands back `graph.cursor()` -- a real,
+    independent DuckDB cursor per `CreditGraph.cursor()`'s own documented
+    concurrency contract -- never the shared owning graph itself, so
+    concurrent requests against the same corpus never share query/interrupt
+    state.
+
+    Refcounted rather than closed-on-evict: a graph replaced by a newer
+    corpus version, or evicted for exceeding `max_entries`, is only
+    actually `close()`d once every in-flight checkout against it has
+    finished -- closing the shared underlying DuckDB connection out from
+    under a still-running cursor would corrupt that cursor's query."""
+
+    def __init__(self, max_entries: int = 4) -> None:
+        self._max_entries = max_entries
+        self._lock = threading.Lock()
+        self._entries: OrderedDict[str, _CachedGraphEntry] = OrderedDict()
+        self._build_locks: dict[str, threading.Lock] = {}
+
+    def _build_lock_for(self, root_key: str) -> threading.Lock:
+        with self._lock:
+            lock = self._build_locks.get(root_key)
+            if lock is None:
+                lock = threading.Lock()
+                self._build_locks[root_key] = lock
+            return lock
+
+    @contextmanager
+    def checkout(self, corpus_root: Path) -> Iterator[CreditGraph]:
+        root_key = str(Path(corpus_root).resolve())
+        # Held only across the check-or-build decision below, never across
+        # the actual checkout -- serializing every request against a
+        # corpus for its whole lifetime would defeat the entire point of
+        # reuse. Per-root, not global, so building corpus A never blocks a
+        # concurrent request already using an already-cached corpus B.
+        build_lock = self._build_lock_for(root_key)
+        with build_lock:
+            identity = corpus_version_string(corpus_root)
+            with self._lock:
+                existing = self._entries.get(root_key)
+            if existing is not None and existing.identity == identity and not existing.stale:
+                entry = existing
+                with self._lock:
+                    self._entries.move_to_end(root_key)
+                    entry.refcount += 1
+            else:
+                # Not cached, or cached under a since-changed corpus
+                # identity. CreditGraph.open() itself raises on a bad
+                # corpus root -- that exception propagates here with
+                # NOTHING written to the cache, so a failed build is never
+                # mistaken for a cached success on a later request.
+                new_graph = CreditGraph.open(corpus_root)
+                entry = _CachedGraphEntry(identity=identity, graph=new_graph)
+                entry.refcount = 1
+                with self._lock:
+                    if existing is not None:
+                        existing.stale = True
+                        if existing.refcount == 0:
+                            existing.graph.close()
+                    self._entries[root_key] = entry
+                    self._entries.move_to_end(root_key)
+                    self._evict_excess_locked()
+        try:
+            cursor = entry.graph.cursor()
+            try:
+                yield cursor
+            finally:
+                cursor.close()
+        finally:
+            with self._lock:
+                entry.refcount -= 1
+                if entry.stale and entry.refcount == 0:
+                    entry.graph.close()
+
+    def _evict_excess_locked(self) -> None:
+        """Caller must already hold `self._lock`. Best-effort: an entry
+        still in use (refcount > 0) is never closed out from under its
+        caller, so a burst of concurrent traffic against more distinct
+        corpora than `max_entries` can transiently exceed the bound rather
+        than corrupt a live cursor -- it settles back down as those
+        requests finish."""
+        while len(self._entries) > self._max_entries:
+            for key, candidate in self._entries.items():
+                if candidate.refcount == 0:
+                    del self._entries[key]
+                    candidate.graph.close()
+                    break
+            else:
+                break
+
+    def close_all(self) -> None:
+        """Server-shutdown hook -- closes every still-cached graph
+        regardless of refcount (only ever called after the server has
+        stopped accepting new requests, so nothing should still be
+        checking one out)."""
+        with self._lock:
+            for entry in self._entries.values():
+                entry.graph.close()
+            self._entries.clear()
+
+
+class ScopeTierCache:
+    """Caches `corpus_coverage`'s (i.e. `measure_scope_tiers`'s) result per
+    `(corpus identity, artist_id)` -- confirmed by this Phase 7 closeout's
+    own investigation to be a real, still-open Codex-review finding from PR
+    #178: `measure_scope_tiers` does a from-scratch, full-corpus
+    edge-materialization-equivalent scan plus a union-find for all three
+    tiers, recomputed on every single artist-evidence click with no caching
+    anywhere in the call chain.
+
+    A per-key lock (not the global lock) guards the actual computation, so
+    two concurrent requests for two DIFFERENT artists never block each
+    other, while two concurrent requests for the SAME (corpus, artist)
+    compute it once. Nothing is written to the cache unless the computation
+    returns normally -- an exception propagates uncached, so a transient
+    failure is never mistaken for a permanent one on the next click. A
+    corpus re-ingested/regenerated at the same root naturally misses the
+    cache (its `corpus_version_string` changed) rather than serving a
+    stale prior corpus's tiers."""
+
+    def __init__(self, max_entries: int = 256) -> None:
+        self._max_entries = max_entries
+        self._lock = threading.Lock()
+        self._entries: OrderedDict[tuple[str, int], dict[str, Any]] = OrderedDict()
+        self._key_locks: dict[tuple[str, int], threading.Lock] = {}
+
+    def _lock_for(self, key: tuple[str, int]) -> threading.Lock:
+        with self._lock:
+            lock = self._key_locks.get(key)
+            if lock is None:
+                lock = threading.Lock()
+                self._key_locks[key] = lock
+            return lock
+
+    def get_or_compute(self, corpus_root: Path, artist_id: int) -> dict[str, Any]:
+        identity = corpus_version_string(corpus_root)
+        key = (identity, artist_id)
+        with self._lock:
+            cached = self._entries.get(key)
+            if cached is not None:
+                self._entries.move_to_end(key)
+                return cached
+        key_lock = self._lock_for(key)
+        with key_lock:
+            with self._lock:
+                cached = self._entries.get(key)
+                if cached is not None:
+                    self._entries.move_to_end(key)
+                    return cached
+            result = corpus_coverage(corpus_root, artist_id)
+            with self._lock:
+                self._entries[key] = result
+                self._entries.move_to_end(key)
+                while len(self._entries) > self._max_entries:
+                    self._entries.popitem(last=False)
+            return result
 
 
 def make_workbench_handler(
     research_root: Path, *, allowed_corpus_root: Path | None = None
 ) -> type[BaseHTTPRequestHandler]:
     corpus_allowlist_root = allowed_corpus_root or Path("local").resolve()
+    graph_cache = WorkbenchGraphCache()
+    scope_tier_cache = ScopeTierCache()
 
     class WorkbenchHandler(BaseHTTPRequestHandler):
         def _respond_json(self, status: int, payload: dict[str, Any]) -> None:
@@ -685,7 +883,9 @@ def make_workbench_handler(
                     # above: evidence lookup (release/artist credit rows,
                     # scope-tier coverage) never traverses credit_edges.
                     with CreditGraph.open(corpus_root, build_edges=False) as graph:
-                        evidence = load_evidence(graph, kind, entity_id, corpus_root)
+                        evidence = load_evidence(
+                            graph, kind, entity_id, corpus_root, scope_tier_cache
+                        )
                 except WorkbenchRequestError as exc:
                     self._respond_json(400, {"error": str(exc)})
                     return
@@ -711,7 +911,11 @@ def make_workbench_handler(
                 topic = _safe_topic(payload.get("topic", ""))
                 compare_request = build_compare_request(mode, payload, corpus_root)
                 result = run_comparison_and_persist(
-                    mode, compare_request, topic=topic, research_root=research_root
+                    mode,
+                    compare_request,
+                    topic=topic,
+                    research_root=research_root,
+                    open_graph=graph_cache.checkout,
                 )
             except (WorkbenchRequestError, json.JSONDecodeError, CompareError) as exc:
                 self._respond_json(400, {"error": str(exc)})
@@ -721,6 +925,11 @@ def make_workbench_handler(
         def log_message(self, format: str, *args: object) -> None:
             return
 
+    # Exposed so `main()`'s server-shutdown path can close every cached
+    # graph explicitly -- `graph_cache` lives in this factory's closure,
+    # shared by every `WorkbenchHandler` instance `ThreadingHTTPServer`
+    # creates (one per connection), not per-instance state.
+    WorkbenchHandler.graph_cache = graph_cache  # type: ignore[attr-defined]
     return WorkbenchHandler
 
 
@@ -851,6 +1060,12 @@ def main() -> int:
         return 0
     finally:
         server.server_close()
+        # Only WorkbenchHandler carries a graph_cache; the cohort handler
+        # doesn't have one. Close every cached graph explicitly rather
+        # than relying on process exit/GC to release DuckDB connections.
+        graph_cache = getattr(handler, "graph_cache", None)
+        if graph_cache is not None:
+            graph_cache.close_all()
     return 0
 
 
