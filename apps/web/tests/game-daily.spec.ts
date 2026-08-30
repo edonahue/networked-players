@@ -269,7 +269,7 @@ test("a later scheduled date still resolves to its own frozen round (no drift)",
 test("solving the daily records a streak and builds a spoiler-free share string", async ({
   page,
 }) => {
-  const { entry, round } = await entryAndRound(page, PINNED_DATE_A);
+  const { round } = await entryAndRound(page, PINNED_DATE_A);
 
   await gotoDaily(page, PINNED_DATE_A);
   await expect(page.getByTestId("stage")).toHaveAttribute(
@@ -306,7 +306,7 @@ test("solving the daily records a streak and builds a spoiler-free share string"
 test("the daily refuses a second play and shows the recorded result instead", async ({
   page,
 }) => {
-  const { entry, round } = await entryAndRound(page, PINNED_DATE_A);
+  const { round } = await entryAndRound(page, PINNED_DATE_A);
 
   await gotoDaily(page, PINNED_DATE_A);
   await page.locator(`.chip[data-chip="${round.answer_set[0].id}"]`).click();
@@ -336,10 +336,7 @@ test("the daily refuses a second play and shows the recorded result instead", as
 });
 
 test("a streak breaks across a missed date", async ({ page }) => {
-  const { entry: entryA, round: roundA } = await entryAndRound(
-    page,
-    PINNED_DATE_A,
-  );
+  const { round: roundA } = await entryAndRound(page, PINNED_DATE_A);
 
   await gotoDaily(page, PINNED_DATE_A);
   await page.locator(`.chip[data-chip="${roundA.answer_set[0].id}"]`).click();
@@ -352,10 +349,7 @@ test("a streak breaks across a missed date", async ({ page }) => {
   // Skip a date (not the immediately following calendar day) -- the streak
   // must reset to 1 on the next solve, not continue from 1.
   const laterDate = "2026-08-10";
-  const { entry: laterEntry, round: laterRound } = await entryAndRound(
-    page,
-    laterDate,
-  );
+  const { round: laterRound } = await entryAndRound(page, laterDate);
   await gotoDaily(page, laterDate);
   await page
     .locator(`.chip[data-chip="${laterRound.answer_set[0].id}"]`)

@@ -150,21 +150,53 @@ test("the real /albums/ page: searching narrows the grid and announces the count
   await expect(page.locator(".album-card:not([hidden])")).toHaveCount(0);
 });
 
-test("the real /albums/ page: sorting by year actually reorders the grid", async ({
+// A real, independently-confirmed Codex-review finding (PR #163, never
+// fixed at the time): `.album-card` sets `display: flex` unconditionally
+// in motif.css, which outranks the UA stylesheet's bare
+// `[hidden] { display: none }` rule -- a filtered-out card kept the
+// `hidden` ATTRIBUTE (which the searching test above already covers) but
+// stayed visually painted. `:not([hidden])` locators only ever check the
+// attribute, never actual visibility, so this needed its own real
+// computed-style assertion to catch.
+test("the real /albums/ page: a filtered-out card is actually visually hidden, not just marked hidden", async ({
   page,
 }) => {
-  // `.first()`/DOM order does not reflect CSS `order` -- reading the
-  // computed order values directly is what proves the sort actually did
-  // something, matching how the wiring itself decides render order.
+  await page.goto("/albums/");
+  const targetTitle = await page
+    .locator(".album-card")
+    .first()
+    .getAttribute("data-album-title");
+  expect(targetTitle).toBeTruthy();
+
+  await page
+    .locator("[data-albums-search]")
+    .fill("zzz-no-real-album-matches-this");
+  await expect(page.locator("[data-albums-status]")).toHaveText(
+    "No albums match your search.",
+  );
+
+  const anyCardVisuallyShown = await page.evaluate(() => {
+    return [...document.querySelectorAll<HTMLElement>(".album-card")].some(
+      (card) => getComputedStyle(card).display !== "none",
+    );
+  });
+  expect(anyCardVisuallyShown).toBe(false);
+});
+
+test("the real /albums/ page: sorting by year actually reorders the grid's real DOM order", async ({
+  page,
+}) => {
+  // Reads document order directly (no more sorting by a CSS `order`
+  // side-channel) -- this is now the real, load-bearing proof that a
+  // filtered/sorted view produces the correct keyboard tab order and
+  // screen-reader reading order, not just the correct on-screen position.
   await page.goto("/albums/");
   await page.locator("[data-albums-sort]").selectOption("year-asc");
 
   const orderedYears = await page.evaluate(() => {
-    const cards = [
+    return [
       ...document.querySelectorAll<HTMLElement>(".album-card:not([hidden])"),
-    ];
-    cards.sort((a, b) => Number(a.style.order) - Number(b.style.order));
-    return cards
+    ]
       .map((c) => c.dataset.albumYear)
       .filter((year): year is string => Boolean(year))
       .map(Number);

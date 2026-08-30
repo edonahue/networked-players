@@ -506,9 +506,10 @@ test("recentering the graph closes the drawer", async ({ page }) => {
 
 // Regression test for the fix to the flake above: the suppression that
 // stops a recenter's own synthetic mouseover from reopening the drawer
-// must clear on the next REAL mouse movement, not stay latched -- a
-// visitor who recenters and then genuinely hovers a new edge must still
-// see hover-to-preview work, immediately, without needing an intervening
+// clears on the next macrotask (a one-shot `setTimeout(0)`), not on the
+// next real mouse movement specifically -- either way, a visitor who
+// recenters and then genuinely hovers a new edge must still see
+// hover-to-preview work, immediately, without needing an intervening
 // click/Enter.
 test("hovering a new edge after recentering still opens the drawer", async ({
   page,
