@@ -149,6 +149,39 @@ def test_shared_and_unique_contributors_both_directions(corpus: Path) -> None:
     assert set(result["shared_vs_unique"]["unique_to_album_b"]) == {SEED_B}
 
 
+def test_album_evidence_retains_a_non_linked_credit_row(tmp_path: Path) -> None:
+    # A real Codex-review-caught bug: credit_rows_for_releases (the plain,
+    # roster-only method) drops non-linked credits (artist_id IS NULL)
+    # entirely -- AGENTS.md requires retaining them as evidence, never
+    # silently dropping them, even though they can never become playable
+    # graph identities. compare_albums must use the `_with_evidence`
+    # sibling for its own credit_rows output.
+    releases = [_release(201, "Album With A Choir"), _release(202, "Plain Album")]
+    credits = [
+        *_performed(201, artist_id=SEED_A, name="Seed A"),
+        _credit(
+            201,
+            artist_id=None,
+            name="Session Choir",
+            scope="release_credit",
+            is_linked=False,
+            playable_identity=False,
+        ),
+        *_performed(202, artist_id=SEED_B, name="Seed B"),
+    ]
+    corpus = write_synthetic_dataset(
+        tmp_path / "snapshot=20260601", release_rows=releases, credit_rows=credits
+    )
+    with CreditGraph.open(corpus) as graph:
+        result = compare_albums(graph, CompareAlbumsRequest(corpus, 201, 202))
+
+    names_in_evidence = {row["name"] for row in result["album_a"]["credit_rows"]}
+    assert names_in_evidence == {"Seed A", "Session Choir"}
+    # The non-linked row must never leak into graph-roster computation --
+    # unique_to_album_a should still be just the real, linked contributor.
+    assert result["shared_vs_unique"]["unique_to_album_a"] == [SEED_A]
+
+
 def test_role_category_composition_matches_classify_role(corpus: Path) -> None:
     with CreditGraph.open(corpus) as graph:
         result = compare_albums(graph, CompareAlbumsRequest(corpus, 1, 2))

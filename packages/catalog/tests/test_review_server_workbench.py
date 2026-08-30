@@ -384,6 +384,57 @@ def test_workbench_evidence_returns_album_credit_rows(
     assert {row["artist_id"] for row in data["credit_rows"]} == {SEED_A, CAROL}
 
 
+def test_workbench_evidence_retains_a_non_linked_credit_row(
+    server: tuple[str, Path], tmp_path: Path
+) -> None:
+    # A real Codex-review-caught bug: the plain, roster-only credit-rows
+    # method drops non-linked credits entirely -- AGENTS.md requires
+    # retaining them as evidence. A second corpus (still under the
+    # server's allowlisted tmp_path) with its own non-linked evidence row.
+    base, _ = server
+    root = tmp_path / "corpus_root_with_non_linked" / f"snapshot={SNAPSHOT_DATE}"
+    (root / "table=releases").mkdir(parents=True)
+    (root / "table=credits").mkdir(parents=True)
+    (root / "table=tracks").mkdir(parents=True)
+    non_linked_credit = {
+        "snapshot_date": SNAPSHOT_DATE,
+        "release_id": 1,
+        "track_index": None,
+        "track_path": None,
+        "track_position": None,
+        "track_title": None,
+        "credit_scope": "release_credit",
+        "artist_id": None,
+        "name": "Session Choir",
+        "anv": None,
+        "join_text": None,
+        "role_text": None,
+        "credited_tracks_text": None,
+        "is_linked": False,
+        "playable_identity": False,
+    }
+    pq.write_table(
+        pa.Table.from_pylist([_release(1, "Album With A Choir")], schema=SCHEMAS["releases"]),
+        root / "table=releases" / "part-00000.parquet",
+    )
+    pq.write_table(
+        pa.Table.from_pylist(
+            [*_performed(1, artist_id=SEED_A, name="Seed A"), non_linked_credit],
+            schema=SCHEMAS["credits"],
+        ),
+        root / "table=credits" / "part-00000.parquet",
+    )
+    pq.write_table(
+        pa.Table.from_pylist([], schema=SCHEMAS["tracks"]),
+        root / "table=tracks" / "part-00000.parquet",
+    )
+    (root / "manifest.json").write_text(json.dumps({"schema_version": 3}))
+
+    status, data = _get_json(f"{base}/api/evidence?corpus_root={root}&kind=album&id=1")
+    assert status == 200
+    assert {row["name"] for row in data["credit_rows"]} == {"Seed A", "Session Choir"}
+
+
 def test_workbench_evidence_returns_artist_credit_rows_across_releases(
     server: tuple[str, Path], corpus: Path
 ) -> None:

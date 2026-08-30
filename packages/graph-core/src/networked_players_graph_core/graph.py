@@ -1190,6 +1190,40 @@ class CreditGraph:
             grouped[int(record["release_id"])].append(record)
         return grouped
 
+    def credit_rows_for_releases_with_evidence(
+        self, release_ids: Sequence[int]
+    ) -> dict[int, list[dict[str, Any]]]:
+        """`credit_rows_for_releases`'s sibling for EVIDENCE DISPLAY, not
+        graph/route computation: also includes non-linked credit rows
+        (`is_linked = false`, e.g. a free-text ensemble credit with no
+        `artist_id`). AGENTS.md requires retaining non-linked names as
+        evidence, never silently dropping them, even though they can
+        never become playable graph identities -- `credit_rows_for_releases`
+        correctly excludes them for anything that computes a graph roster
+        or searches routes, and every such call site must keep using that
+        method, not this one. Placeholder identities (e.g. "Various") stay
+        excluded here too -- only non-linked rows are added back, not every
+        row this dataset's placeholder policy already excludes."""
+        if not release_ids:
+            return {}
+        ids = sorted(set(release_ids))
+        placeholders = ", ".join("?" for _ in ids)
+        columns = ", ".join(_CREDIT_COLUMNS)
+        not_placeholder = _not_placeholder_sql()
+        playable_clause = f"playable_identity AND artist_id IS NOT NULL AND {not_placeholder}"
+        rows = self._connection.execute(
+            f"SELECT {columns} FROM credits "
+            f"WHERE release_id IN ({placeholders}) "
+            f"AND (NOT is_linked OR ({playable_clause})) "
+            "ORDER BY ALL",
+            ids,
+        ).fetchall()
+        grouped: dict[int, list[dict[str, Any]]] = {rid: [] for rid in ids}
+        for row in rows:
+            record = dict(zip(_CREDIT_COLUMNS, row, strict=True))
+            grouped[int(record["release_id"])].append(record)
+        return grouped
+
     def credit_rows_for_artist(self, artist_id: int) -> list[dict[str, Any]]:
         """Every playable, non-placeholder credit row for one artist across
         the WHOLE dataset -- one query, not a walk over `neighbors()`'s

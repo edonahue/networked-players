@@ -17,6 +17,7 @@ from networked_players_research.compare import (
     compare_artists,
 )
 
+from .conftest import _credit, _release, write_synthetic_dataset
 from .test_compare import BOB, CAROL, DAN, SEED_A, SEED_B, SEED_F, _build_corpus
 
 
@@ -74,6 +75,30 @@ def test_role_category_counts_reflect_this_artists_own_credits(corpus: Path) -> 
         result = compare_artists(graph, CompareArtistsRequest(corpus, SEED_A, BOB))
     # Bob is only ever credited "Engineer" in the fixture.
     assert result["artist_b"]["role_category_counts"] == {"engineering": 1}
+
+
+def test_role_category_counts_count_distinct_releases_not_just_distinct_categories(
+    tmp_path: Path,
+) -> None:
+    # A real bug (caught retroactively via a live check against the real
+    # Jamiroquai corpus, where one artist's 5,456 real credit rows produced
+    # role_category_counts capping every category at 1): _role_category_counts
+    # dedups by (artist_id, category), which is correct at album scope but
+    # collapses an artist's WHOLE career to at most 1 per category here.
+    # Two releases, same artist, same role category ("Producer" on both) --
+    # the count must reflect 2 distinct releases, not collapse to 1.
+    releases = [_release(101, "First Solo LP"), _release(102, "Second Solo LP")]
+    credits = [
+        _credit(101, artist_id=SEED_A, name="Seed A", role_text="Producer"),
+        _credit(102, artist_id=SEED_A, name="Seed A", role_text="Producer"),
+        _credit(101, artist_id=BOB, name="Bob", scope="release_credit", role_text="Engineer"),
+    ]
+    corpus = write_synthetic_dataset(
+        tmp_path / "snapshot=20260601", release_rows=releases, credit_rows=credits
+    )
+    with CreditGraph.open(corpus) as graph:
+        result = compare_artists(graph, CompareArtistsRequest(corpus, SEED_A, BOB))
+    assert result["artist_a"]["role_category_counts"] == {"production": 2}
 
 
 def test_unresolvable_artist_raises_compare_error(corpus: Path) -> None:
