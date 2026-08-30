@@ -9,14 +9,19 @@ existing server, not a new app -- this file already solves loopback
 binding, LAN opt-in, and atomic private-state writes; the workbench mode
 adds a comparison form and result view, no new infrastructure.
 
-Workbench mode also has a first Explore slice: `/api/search` (album/artist
-name lookup, `CreditGraph.search_releases`/`search_artists`) and
-`/api/evidence` (click through a search result to its release/artist
-credit rows). The plan's fuller "Explore" bullet (route filters, scope
-selection, bounded graph rendering, compare/pin, saved reproducible
-request files) is a larger follow-up, not built here -- this slice is
-search-then-evidence only, matching how compare_albums preceded
-compare_artists/compare_scenes rather than shipping all three at once."""
+Workbench mode's Explore surface, built up slice by slice rather than all
+at once (same discipline as compare_albums preceding compare_artists/
+compare_scenes): `/api/search` (album/artist name lookup,
+`CreditGraph.search_releases`/`search_artists`); `/api/evidence` (click
+through a search result to its release/artist credit rows, plus -- for an
+artist -- their real scope-tier coverage via `compare.corpus_coverage`,
+the plan's "scope selection" bullet); "-> A"/"-> B" pin buttons that copy
+a search result straight into the compare form ("compare/pin"); and
+past-run "Load" buttons that repopulate the whole compare form from a
+saved `request.json` ("saved reproducible request files"). Bounded graph
+rendering and route filters remain the plan's fuller "Explore" vision,
+not built here -- see the PR D roadmap for why those two need their own
+design pass first."""
 
 from __future__ import annotations
 
@@ -35,6 +40,7 @@ from networked_players_research.compare import (
     CompareArtistsRequest,
     CompareError,
     CompareScenesRequest,
+    corpus_coverage,
     run_comparison_and_persist,
 )
 from networked_players_research.runs import RESEARCH_ROOT
@@ -281,6 +287,21 @@ function evidenceCreditRows(rows){
   if(!rows.length)return '<p class="runs">No credit rows.</p>';
   return '<table class="kv">'+rows.map(r=>'<tr><td>'+esc(r.release_id)+'</td><td>'+esc(r.credit_scope)+(r.role_text?' — '+esc(r.role_text):'')+(r.track_title?' ('+esc(r.track_title)+')':'')+'</td></tr>').join('')+'</table>';
 }
+function scopeTiersPanel(scopeTiers){
+  if(!scopeTiers)return '';
+  if(scopeTiers.case!=='measured'){
+    return '<p class="runs">Scope tiers: not applicable ('+esc(scopeTiers.reason)+')</p>';
+  }
+  const rows=scopeTiers.tiers.tiers.map(t=>
+    '<tr><td>Tier '+esc(t.tier)+'</td><td>'+esc(t.description)+'<br><span class="runs">'
+    +t.release_count+' releases · '+t.distinct_contributor_count+' contributors · '
+    +t.graph_node_count+' nodes/'+t.graph_edge_count+' edges · '+t.component_count
+    +' components (largest '+t.largest_component_size+') · '
+    +(t.role_classified_fraction*100).toFixed(1)+'% role-classified'
+    +(t.star_topology?' · star topology':'')+'</span></td></tr>'
+  ).join('');
+  return '<h4 style="margin:14px 0 4px">Scope-tier coverage</h4><table class="kv">'+rows+'</table>';
+}
 async function loadEvidence(corpus_root,kind,id){
   $('#evidence').innerHTML='<p class="runs">Loading…</p>';
   try{
@@ -291,7 +312,8 @@ async function loadEvidence(corpus_root,kind,id){
     const subtitle=kind==='album'
       ?('release_id '+esc(data.release.release_id)+(data.release.released?' — '+esc(data.release.released):''))
       :('artist_id '+esc(data.artist_id));
-    $('#evidence').innerHTML='<div class="panel"><h3>'+esc(title)+'</h3><p class="runs">'+subtitle+'</p>'+evidenceCreditRows(data.credit_rows)+'</div>';
+    $('#evidence').innerHTML='<div class="panel"><h3>'+esc(title)+'</h3><p class="runs">'+subtitle+'</p>'
+      +evidenceCreditRows(data.credit_rows)+scopeTiersPanel(data.scope_tiers)+'</div>';
   }catch(err){$('#evidence').innerHTML='<p class="error">'+esc(String(err))+'</p>'}
 }
 function pinToCompare(kind,slot,id,corpus_root){
@@ -495,12 +517,16 @@ def search_corpus(graph: CreditGraph, kind: str, query: str) -> list[dict[str, A
     raise WorkbenchRequestError("kind must be one of albums/artists")
 
 
-def load_evidence(graph: CreditGraph, kind: str, entity_id: int) -> dict[str, Any]:
+def load_evidence(
+    graph: CreditGraph, kind: str, entity_id: int, corpus_root: Path
+) -> dict[str, Any]:
     """`/api/evidence`'s dispatch -- the click-through target for a search
     result: a release's own record plus its credit rows, or an artist's
     name plus their whole-dataset credit rows (`credit_rows_for_artist`,
     not a `neighbors()` walk, for the same solo-release reason
-    `compare_artists` needs it)."""
+    `compare_artists` needs it) plus their scope-tier coverage (Explore's
+    "scope selection" slice -- reuses `compare.corpus_coverage` unchanged,
+    the exact function `compare_artists` already calls per artist)."""
     if kind == "album":
         release = graph.release(entity_id)
         if release is None:
@@ -512,7 +538,13 @@ def load_evidence(graph: CreditGraph, kind: str, entity_id: int) -> dict[str, An
         credit_rows = graph.credit_rows_for_artist(entity_id)
         if name is None and not credit_rows:
             raise WorkbenchRequestError(f"artist_id {entity_id} not found in corpus")
-        return {"kind": "artist", "artist_id": entity_id, "name": name, "credit_rows": credit_rows}
+        return {
+            "kind": "artist",
+            "artist_id": entity_id,
+            "name": name,
+            "credit_rows": credit_rows,
+            "scope_tiers": corpus_coverage(corpus_root, entity_id),
+        }
     raise WorkbenchRequestError("kind must be one of album/artist")
 
 
@@ -573,7 +605,7 @@ def make_workbench_handler(
                     kind = query_params.get("kind", [""])[0]
                     entity_id = _required_query_int(query_params.get("id", [""])[0], "id")
                     with CreditGraph.open(corpus_root) as graph:
-                        evidence = load_evidence(graph, kind, entity_id)
+                        evidence = load_evidence(graph, kind, entity_id, corpus_root)
                 except WorkbenchRequestError as exc:
                     self._respond_json(400, {"error": str(exc)})
                     return
