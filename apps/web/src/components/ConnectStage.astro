@@ -83,46 +83,57 @@
     </div>
   </div>
 
-  <fieldset class="connect-mode-toggle-group" data-connect-mode-group>
-    <legend>Route filter</legend>
-    <label class="connect-mode-toggle">
-      <input
-        type="radio"
-        name="connect-mode"
-        value="none"
-        data-connect-mode-option
-        checked
-      />
+  <div
+    class="connect-mode-filter chip-tray"
+    data-connect-mode-group
+    role="radiogroup"
+    aria-label="Route filter"
+  >
+    <button
+      type="button"
+      class="chip"
+      role="radio"
+      aria-checked="true"
+      tabindex="0"
+      data-connect-mode-option
+      data-value="none"
+    >
       Any documented route
-    </label>
-    <label class="connect-mode-toggle">
-      <input
-        type="radio"
-        name="connect-mode"
-        value="behind-the-glass"
-        data-connect-mode-option
-      />
+    </button>
+    <button
+      type="button"
+      class="chip"
+      role="radio"
+      aria-checked="false"
+      tabindex="-1"
+      data-connect-mode-option
+      data-value="behind-the-glass"
+    >
       Behind the Glass — only producer/engineer/mixer credits
-    </label>
-    <label class="connect-mode-toggle">
-      <input
-        type="radio"
-        name="connect-mode"
-        value="rhythm-section"
-        data-connect-mode-option
-      />
+    </button>
+    <button
+      type="button"
+      class="chip"
+      role="radio"
+      aria-checked="false"
+      tabindex="-1"
+      data-connect-mode-option
+      data-value="rhythm-section"
+    >
       Rhythm Section — only drums/bass credits
-    </label>
-    <label class="connect-mode-toggle">
-      <input
-        type="radio"
-        name="connect-mode"
-        value="guitar-paths"
-        data-connect-mode-option
-      />
+    </button>
+    <button
+      type="button"
+      class="chip"
+      role="radio"
+      aria-checked="false"
+      tabindex="-1"
+      data-connect-mode-option
+      data-value="guitar-paths"
+    >
       Guitar Paths — only guitar credits
-    </label>
-  </fieldset>
+    </button>
+  </div>
 
   <div class="connect-actions">
     <button type="button" class="button primary" data-connect-search disabled>

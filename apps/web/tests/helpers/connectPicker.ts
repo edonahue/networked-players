@@ -40,3 +40,20 @@ export async function selectAlbum(
   await picker(page, side).locator("input").fill(query);
   await pickerResults(page, side).first().click();
 }
+
+export type RouteFilterMode =
+  "none" | "behind-the-glass" | "rhythm-section" | "guitar-paths";
+
+/** Picks a route filter chip in Connect's role="radiogroup" tray (Slice 4
+ * of the UI design/copy pass -- previously a native radio input, `.check()`
+ * -able; now a `role="radio"` button, activated the same way a real visitor
+ * would: a click). Previously copy-pasted byte-for-byte into three separate
+ * spec files. */
+export async function selectRouteFilter(
+  page: Page,
+  value: RouteFilterMode,
+): Promise<void> {
+  await page
+    .locator(`[data-connect-mode-option][data-value="${value}"]`)
+    .click();
+}

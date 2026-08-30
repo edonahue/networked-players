@@ -4,14 +4,11 @@
 // length, and the closed-by-default "Why this route?" disclosure.
 
 import { expect, test } from "@playwright/test";
-import { picker, selectAlbum } from "./helpers/connectPicker";
-
-async function selectRouteFilter(
-  page: import("@playwright/test").Page,
-  value: "none" | "behind-the-glass" | "rhythm-section" | "guitar-paths",
-) {
-  await page.locator(`[data-connect-mode-option][value="${value}"]`).check();
-}
+import {
+  picker,
+  selectAlbum,
+  selectRouteFilter,
+} from "./helpers/connectPicker";
 
 test("the empty state is visible before any search and hides once a search starts", async ({
   page,

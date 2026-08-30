@@ -7,7 +7,11 @@
 // same real, directly-connected pair `game-connect.spec.ts` already uses.
 
 import { expect, test } from "@playwright/test";
-import { picker, selectAlbum } from "./helpers/connectPicker";
+import {
+  picker,
+  selectAlbum,
+  selectRouteFilter,
+} from "./helpers/connectPicker";
 
 async function currentParams(page: import("@playwright/test").Page) {
   return new URL(page.url()).searchParams;
@@ -77,8 +81,8 @@ test("an unrecognized mode value falls back to the unfiltered default rather tha
     timeout: 15000,
   });
   await expect(
-    page.locator("[data-connect-mode-option][value='none']"),
-  ).toBeChecked();
+    page.locator("[data-connect-mode-option][data-value='none']"),
+  ).toHaveAttribute("aria-checked", "true");
 });
 
 test("re-running the same pair under a different mode replaces the history entry, not pushes a new one", async ({
@@ -93,9 +97,7 @@ test("re-running the same pair under a different mode replaces the history entry
   });
   const afterFirstSearch = page.url();
 
-  await page
-    .locator("[data-connect-mode-option][value='behind-the-glass']")
-    .check();
+  await selectRouteFilter(page, "behind-the-glass");
   await page.locator("[data-connect-search]").click();
   await expect(page.locator("[data-connect-results]")).toBeVisible({
     timeout: 15000,

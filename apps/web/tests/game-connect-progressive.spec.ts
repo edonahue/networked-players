@@ -7,14 +7,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { expect, test } from "@playwright/test";
-import { selectAlbum } from "./helpers/connectPicker";
-
-async function selectRouteFilter(
-  page: import("@playwright/test").Page,
-  value: "none" | "behind-the-glass" | "rhythm-section" | "guitar-paths",
-) {
-  await page.locator(`[data-connect-mode-option][value="${value}"]`).check();
-}
+import { selectAlbum, selectRouteFilter } from "./helpers/connectPicker";
 
 test("the pathfinding graph is requested as soon as the FIRST album is picked, before a second pick or the search click", async ({
   page,

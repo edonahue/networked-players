@@ -17,6 +17,7 @@
 
 import { fetchAlbumArt, type ResolvedArt } from "./albumArt";
 import { createRng } from "./prng";
+import { wireRadioTray } from "./radioGroup";
 import {
   resolveSelectedRoute,
   validateRoutesPool,
@@ -123,27 +124,6 @@ function bridgeArtistId(route: RecordRoute): number | null {
   return shared ?? null;
 }
 
-/** Roving-tabindex arrow-key navigation for a `role="radio"` chip tray --
- * mirrors flagship.ts's `makeChip`/tray keydown handler exactly, so both
- * game modes share one keyboard model. */
-function wireRadioTray(tray: HTMLElement, chips: HTMLButtonElement[]): void {
-  tray.addEventListener("keydown", (event) => {
-    const keys = ["ArrowRight", "ArrowDown", "ArrowLeft", "ArrowUp"];
-    if (!keys.includes(event.key)) return;
-    event.preventDefault();
-    const enabled = chips.filter((chip) => !chip.disabled);
-    if (enabled.length === 0) return;
-    const current = document.activeElement as HTMLButtonElement | null;
-    const index = Math.max(0, enabled.indexOf(current as HTMLButtonElement));
-    const delta =
-      event.key === "ArrowRight" || event.key === "ArrowDown" ? 1 : -1;
-    const next = enabled[(index + delta + enabled.length) % enabled.length];
-    for (const chip of chips) chip.tabIndex = -1;
-    next.tabIndex = 0;
-    next.focus();
-  });
-}
-
 export async function initRoutes(): Promise<void> {
   let universeRaw: unknown;
   let roundsRaw: unknown;
@@ -233,7 +213,7 @@ export async function initRoutes(): Promise<void> {
   const lengthChips = Array.from(
     lengthTray.querySelectorAll<HTMLButtonElement>("button.chip"),
   );
-  wireRadioTray(lengthTray, lengthChips);
+  wireRadioTray(lengthTray, () => lengthChips);
 
   let lengthGuess: string | null = null;
   let artistGuess: number | null = null;
@@ -375,7 +355,7 @@ export async function initRoutes(): Promise<void> {
       artistTray.append(chip);
       artistChips.push(chip);
     });
-    wireRadioTray(artistTray, artistChips);
+    wireRadioTray(artistTray, () => artistChips);
     artistStep.hidden = false;
     livePolite.textContent =
       "Path length confirmed. Optionally name the connecting artist.";
