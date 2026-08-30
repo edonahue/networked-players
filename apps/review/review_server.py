@@ -39,11 +39,14 @@ from typing import Any
 from urllib.parse import parse_qs, urlparse
 
 from networked_players_graph_core.graph import CreditGraph
+from networked_players_graph_core.role_taxonomy import RoleCategory
 from networked_players_research.compare import (
+    MAX_GRAPH_NEIGHBORS,
     CompareAlbumsRequest,
     CompareArtistsRequest,
     CompareError,
     CompareScenesRequest,
+    build_graph_view,
     corpus_coverage,
     corpus_version_string,
     run_comparison_and_persist,
@@ -188,6 +191,11 @@ table.kv{border-collapse:collapse;width:100%}table.kv td{padding:3px 8px 3px 0;v
 .run-load-btn{padding:1px 8px;font-size:.85rem;align-self:auto;color:var(--accent);border-color:var(--line)}
 .explore-result-row{display:flex;align-items:center;gap:6px}.explore-result-row .explore-result{flex:1;text-align:left}
 .pin-btn{padding:4px 9px;font-size:.78rem;align-self:auto}
+.graph-svg{background:var(--surface);border:1px solid var(--line);border-radius:6px}
+.graph-node{cursor:pointer}.graph-node circle{fill:var(--soft);stroke:var(--line)}.graph-node.center circle{fill:var(--accent);stroke:var(--accent)}
+.graph-node:focus{outline:none}.graph-node:focus circle{stroke:var(--accent);stroke-width:3}
+.graph-node text{fill:var(--ink);font-size:11px}
+.graph-edge{stroke:var(--line);stroke-width:1.5}
 </style><script>(()=>{let t=localStorage.getItem('networked-players-curator-theme');document.documentElement.dataset.theme=t==='light'?'light':'dark'})()</script></head><body>
 <header><strong>Networked Players / research workbench</strong></header>
 <main>
@@ -219,6 +227,7 @@ table.kv{border-collapse:collapse;width:100%}table.kv td{padding:3px 8px 3px 0;v
   <ul id="explore_results" style="list-style:none;padding:0;margin:10px 0 0;display:flex;flex-direction:column;gap:4px"></ul>
 </section>
 <div id="evidence"></div>
+<div id="graph"></div>
 </main>
 <script>
 const $=s=>document.querySelector(s);
@@ -333,6 +342,7 @@ function scopeTiersPanel(scopeTiers){
 }
 async function loadEvidence(corpus_root,kind,id){
   $('#evidence').innerHTML='<p class="runs">Loading…</p>';
+  $('#graph').innerHTML='';
   try{
     const res=await fetch('/api/evidence?corpus_root='+encodeURIComponent(corpus_root)+'&kind='+kind+'&id='+encodeURIComponent(id));
     const data=await res.json();
@@ -341,9 +351,66 @@ async function loadEvidence(corpus_root,kind,id){
     const subtitle=kind==='album'
       ?('release_id '+esc(data.release.release_id)+(data.release.released?' — '+esc(data.release.released):''))
       :('artist_id '+esc(data.artist_id));
-    $('#evidence').innerHTML='<div class="panel"><h3>'+esc(title)+'</h3><p class="runs">'+subtitle+'</p>'
+    // The bounded network view is artist-centered only -- "who else worked
+    // on this specific release" (an album's roster) is a different, flat
+    // shape from an ego-network BFS, and isn't what this view renders.
+    const viewGraphBtn=kind==='artist'?'<button type="button" class="run-load-btn" id="view-graph-btn">View network</button>':'';
+    $('#evidence').innerHTML='<div class="panel"><h3>'+esc(title)+'</h3><p class="runs">'+subtitle+' '+viewGraphBtn+'</p>'
       +evidenceCreditRows(data.credit_rows)+scopeTiersPanel(data.scope_tiers)+'</div>';
+    if(kind==='artist')$('#view-graph-btn').onclick=()=>loadGraph(corpus_root,id,'');
   }catch(err){$('#evidence').innerHTML='<p class="error">'+esc(String(err))+'</p>'}
+}
+const GRAPH_VIEW_SIZE=360,GRAPH_CENTER=GRAPH_VIEW_SIZE/2,GRAPH_RADIUS=140;
+function graphNodePosition(index,total){
+  if(total===0)return{x:GRAPH_CENTER,y:GRAPH_CENTER};
+  const angle=(2*Math.PI*index)/total-Math.PI/2;
+  return{x:GRAPH_CENTER+GRAPH_RADIUS*Math.cos(angle),y:GRAPH_CENTER+GRAPH_RADIUS*Math.sin(angle)};
+}
+function graphNodeGroup(x,y,label,isCenter,artistId){
+  const r=isCenter?14:9;
+  return '<g class="graph-node'+(isCenter?' center':'')+'" tabindex="0" role="button" '
+    +'aria-label="'+esc(label)+(isCenter?'':' -- recenter the graph here')+'" data-artist-id="'+artistId+'" '
+    +'transform="translate('+x+','+y+')"><circle r="'+r+'"></circle>'
+    +'<text x="0" y="'+(r+13)+'" text-anchor="middle">'+esc(label.length>18?label.slice(0,17)+'…':label)+'</text></g>';
+}
+async function loadGraph(corpus_root,centerId,roleFilter){
+  $('#graph').innerHTML='<p class="runs">Loading network…</p>';
+  try{
+    let url='/api/graph?corpus_root='+encodeURIComponent(corpus_root)+'&center_id='+encodeURIComponent(centerId);
+    if(roleFilter)url+='&role_filter='+encodeURIComponent(roleFilter);
+    const res=await fetch(url);
+    const data=await res.json();
+    if(!res.ok){$('#graph').innerHTML='<p class="error">'+esc(data.error||'Graph lookup failed')+'</p>';return}
+    const nodes=[graphNodeGroup(GRAPH_CENTER,GRAPH_CENTER,data.center.name,true,data.center.artist_id)];
+    const edges=[];
+    data.neighbors.forEach((n,i)=>{
+      const pos=graphNodePosition(i,data.neighbors.length);
+      edges.push('<line class="graph-edge" x1="'+GRAPH_CENTER+'" y1="'+GRAPH_CENTER+'" x2="'+pos.x+'" y2="'+pos.y+'"></line>');
+      nodes.push(graphNodeGroup(pos.x,pos.y,n.name,false,n.artist_id));
+    });
+    const svg='<svg class="graph-svg" width="'+GRAPH_VIEW_SIZE+'" height="'+GRAPH_VIEW_SIZE+'" viewBox="0 0 '+GRAPH_VIEW_SIZE+' '+GRAPH_VIEW_SIZE+'" role="img" aria-label="Bounded network around '+esc(data.center.name)+'">'
+      +edges.join('')+nodes.join('')+'</svg>';
+    // The table is a real, always-rendered fallback (not JS-conditional on
+    // the SVG failing) -- the same nodes/edges as plain text.
+    const rows=data.neighbors.map(n=>'<tr><td>'+esc(n.name)+' <span class="runs">artist_id '+n.artist_id+'</span></td>'
+      +'<td>'+esc(data.center.name)+': '+esc(n.role_a||'(no role text)')+'<br>'+esc(n.name)+': '+esc(n.role_b||'(no role text)')+'</td>'
+      +'<td>degree '+n.degree+'</td></tr>').join('');
+    const table=data.neighbors.length
+      ?'<table class="kv"><tr><td><strong>Neighbor</strong></td><td><strong>Roles (via release '+esc(data.neighbors[0]?data.neighbors[0].release_id:'')+')</strong></td><td></td></tr>'+rows+'</table>'
+      :'<p class="runs">No documented neighbors'+(roleFilter?' matching this role filter':'')+'.</p>';
+    const truncatedNote=data.truncated?'<p class="runs">Showing '+data.neighbors.length+' of '+data.center.degree+' real neighbors, ranked by degree.</p>':'';
+    $('#graph').innerHTML='<div class="panel"><h3>Network: '+esc(data.center.name)+'</h3>'
+      +'<div class="row"><div><label for="graph_role_filter">Role filter (comma-separated, e.g. vocals,production)</label>'
+      +'<input id="graph_role_filter" value="'+esc(roleFilter)+'"></div>'
+      +'<button type="button" id="graph_role_filter_apply" style="align-self:flex-end">Apply</button></div>'
+      +truncatedNote+svg+table+'</div>';
+    document.querySelectorAll('#graph .graph-node[data-artist-id]').forEach(g=>{
+      const recenter=()=>{if(Number(g.dataset.artistId)!==data.center.artist_id)loadGraph(corpus_root,g.dataset.artistId,roleFilter)};
+      g.onclick=recenter;
+      g.onkeydown=(e)=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();recenter()}};
+    });
+    $('#graph_role_filter_apply').onclick=()=>loadGraph(corpus_root,centerId,$('#graph_role_filter').value.trim());
+  }catch(err){$('#graph').innerHTML='<p class="error">'+esc(String(err))+'</p>'}
 }
 function pinToCompare(kind,slot,id,corpus_root){
   // Pinning from a DIFFERENT corpus than the form currently holds means
@@ -577,6 +644,28 @@ def _required_query_int(raw: str, field: str) -> int:
         return int(raw)
     except ValueError:
         raise WorkbenchRequestError(f"{field} must be an integer") from None
+
+
+def _parse_role_filter(raw: str) -> frozenset[RoleCategory] | None:
+    """`/api/graph`'s `role_filter` query param: a comma-separated list of
+    `RoleCategory` values (e.g. `vocals,production`), or absent/empty for
+    no filter. An unrecognized token is a client error, not a silent
+    no-op -- a typo'd category should never look identical to "no filter"."""
+    if not raw:
+        return None
+    categories: set[RoleCategory] = set()
+    for token in raw.split(","):
+        token = token.strip()
+        if not token:
+            continue
+        try:
+            categories.add(RoleCategory(token))
+        except ValueError:
+            valid = ", ".join(c.value for c in RoleCategory)
+            raise WorkbenchRequestError(
+                f"role_filter token {token!r} is not a known role category ({valid})"
+            ) from None
+    return frozenset(categories) if categories else None
 
 
 def search_corpus(graph: CreditGraph, kind: str, query: str) -> list[dict[str, Any]]:
@@ -916,6 +1005,41 @@ def make_workbench_handler(
                     self._respond_json(400, {"error": str(exc)})
                     return
                 self._respond_json(200, evidence)
+                return
+            if parsed.path == "/api/graph":
+                query_params = parse_qs(parsed.query)
+                try:
+                    corpus_root = _safe_corpus_root(
+                        query_params.get("corpus_root", [""])[0], corpus_allowlist_root
+                    )
+                    center_id = _required_query_int(
+                        query_params.get("center_id", [""])[0], "center_id"
+                    )
+                    max_neighbors_raw = query_params.get("max_neighbors", [""])[0]
+                    max_neighbors = (
+                        _required_query_int(max_neighbors_raw, "max_neighbors")
+                        if max_neighbors_raw
+                        else MAX_GRAPH_NEIGHBORS
+                    )
+                    if max_neighbors <= 0:
+                        raise WorkbenchRequestError("max_neighbors must be positive")
+                    role_categories = _parse_role_filter(query_params.get("role_filter", [""])[0])
+                    # graph_cache.checkout, not CreditGraph.open(build_edges=
+                    # False): a bounded neighbor view needs credit_edges
+                    # traversal, unlike search/evidence above -- reuses PR
+                    # B's cache instead of paying the ~2.5-minute edge-build
+                    # cost on every graph-view request.
+                    with graph_cache.checkout(corpus_root) as graph:
+                        view = build_graph_view(
+                            graph,
+                            center_id,
+                            max_neighbors=max_neighbors,
+                            role_categories=role_categories,
+                        )
+                except (WorkbenchRequestError, CompareError) as exc:
+                    self._respond_json(400, {"error": str(exc)})
+                    return
+                self._respond_json(200, view)
                 return
             self.send_error(404)
 
