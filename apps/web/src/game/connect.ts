@@ -969,6 +969,16 @@ export async function initConnect(): Promise<void> {
 
     setStatus(null);
     resultsElNonNull.hidden = false;
+    // A real gap: hiding the polite status region right as results appear
+    // gave a screen-reader user no signal anything happened at all --
+    // Guesser's and Routes' own verdict moments both announce AND move
+    // focus (see flagship.ts's verdictHeading.focus()). eyebrowEl's own
+    // text ("Shortest documented route"/"Recommended documented route")
+    // is already set above for both the role-filtered and ranked paths.
+    if (eyebrowEl) {
+      announce(eyebrowEl.textContent ?? "Documented route found.");
+      eyebrowEl.focus();
+    }
     if (roleFilterMode && alternateSection) alternateSection.hidden = true;
     if (routeLengthEl) {
       routeLengthEl.textContent = routeLengthText(primaryRoute.hops.length);

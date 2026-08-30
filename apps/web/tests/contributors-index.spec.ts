@@ -136,19 +136,28 @@ test("a role-category chip filters real results and can be toggled off", async (
   );
 });
 
-test("a search with no real matches shows an empty results grid, not a broken page", async ({
+test("a search with no real matches shows an empty results grid and an honest message", async ({
   page,
 }) => {
   await page.goto("/contributors/");
-  await expect(page.locator("[data-contributors-status]")).toBeHidden({
-    timeout: 15000,
-  });
+  const status = page.locator("[data-contributors-status]");
+  await expect(status).toBeHidden({ timeout: 15000 });
   await page
     .locator("[data-contributors-search]")
     .fill("zzz-no-real-contributor-matches-this-xyz");
   await expect(
     page.locator("[data-contributors-results] .contributor-card"),
   ).toHaveCount(0);
+  // Real gap this test used to miss: the grid went silently blank with no
+  // fallback message at all, unlike the albums directory's own "No albums
+  // match your search." for the same zero-results case.
+  await expect(status).toBeVisible();
+  await expect(status).toHaveText("No contributors match your search.");
+
+  // Clearing the search must restore the hidden status and the "Most
+  // connected" default view, not leave the empty-state message stuck.
+  await page.locator("[data-contributors-search]").fill("");
+  await expect(status).toBeHidden();
 });
 
 test("the contributors directory is reachable from the site footer", async ({

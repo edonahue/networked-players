@@ -169,6 +169,29 @@ test("a real connected pair finds a documented route with evidence", async ({
   ).toBeVisible();
 });
 
+test("a successful search announces the result and moves focus, like Guesser/Routes do", async ({
+  page,
+}) => {
+  // A real gap this test guards against: hiding the polite status region
+  // right as results appeared gave a screen-reader user no signal anything
+  // happened -- flagship.ts's/routes.ts's own verdict moments both
+  // announce AND move focus (verdictHeading.focus()); Connect's equivalent
+  // moment did neither.
+  await page.goto("/play/connect/");
+  await selectAlbum(page, "a", "Discovery");
+  await selectAlbum(page, "b", "Joshua Tree");
+  await page.locator("[data-connect-search]").click();
+
+  const eyebrow = page.locator("[data-connect-eyebrow]");
+  await expect(page.locator("[data-connect-results]")).toBeVisible({
+    timeout: 15000,
+  });
+  await expect(eyebrow).toBeFocused();
+  await expect(page.locator("[data-connect-announce]")).toHaveText(
+    (await eyebrow.textContent())!.trim(),
+  );
+});
+
 // Phase 6 PR 6-07: each endpoint card's album title links to its own
 // /albums/<id>/ page (mirroring PR 6-01's album-page-to-Connect link).
 // Both real catalog ids read from the artifact itself, not hardcoded.

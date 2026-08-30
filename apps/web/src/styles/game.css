@@ -86,7 +86,10 @@ a.mode-card:focus-visible {
 
 .mode-card__title {
   margin: 4px 0 0;
-  font-size: 1.35rem;
+  /* Matches .feature-card h3 (global.css) -- the homepage and the /play/
+     hub render the same 4 modes as sibling card families that should
+     share a title size. */
+  font-size: 1.3rem;
 }
 .mode-card__body {
   margin: 0;
