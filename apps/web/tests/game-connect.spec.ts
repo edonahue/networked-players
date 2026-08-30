@@ -674,22 +674,29 @@ test("the route filter is a keyboard radiogroup with roving focus", async ({
   await expect(chips.first()).toHaveAttribute("tabindex", "0");
   await expect(chips.first()).toHaveAttribute("aria-checked", "true");
 
-  // Arrow keys only ROVE focus -- they never select, matching the
-  // Guesser/Routes convention this tray now shares.
+  // Arrow keys select immediately, like a native radio group (WAI-ARIA
+  // APG's "automatic activation" pattern, the correct one for a
+  // persistent SETTING like this filter -- unlike Guesser's/Routes' own
+  // trays, where arrowing to browse a one-shot quiz answer must NOT
+  // itself submit it). A real Codex-review finding: this tray replaces a
+  // native <input type="radio"> group, whose browser-native arrow-key
+  // behavior already selected immediately -- a keyboard user who arrowed
+  // to a new filter and clicked Search without an extra Enter/Space would
+  // otherwise silently search under the previous filter.
   await chips.first().focus();
   await page.keyboard.press("ArrowRight");
   await expect(chips.nth(1)).toBeFocused();
   await expect(chips.nth(1)).toHaveAttribute("tabindex", "0");
   await expect(chips.first()).toHaveAttribute("tabindex", "-1");
+  await expect(chips.first()).toHaveAttribute("aria-checked", "false");
+  await expect(chips.nth(1)).toHaveAttribute("aria-checked", "true");
+
+  // A real click (or Enter/Space) also selects, same as ever -- re-picking
+  // the already-checked chip via ArrowLeft-then-back is a no-op, matching
+  // a native radio group's own `change` event.
+  await page.keyboard.press("ArrowLeft");
   await expect(chips.first()).toHaveAttribute("aria-checked", "true");
   await expect(chips.nth(1)).toHaveAttribute("aria-checked", "false");
-
-  // Enter/Space activates the focused chip like any button, and the tab
-  // stop follows the newly-checked chip.
-  await page.keyboard.press("Enter");
-  await expect(chips.nth(1)).toHaveAttribute("aria-checked", "true");
-  await expect(chips.first()).toHaveAttribute("aria-checked", "false");
-  await expect(chips.first()).toHaveAttribute("tabindex", "-1");
 });
 
 // Request lifecycle (ADR 0059 Phase 5 PR 4): the same generation-counter

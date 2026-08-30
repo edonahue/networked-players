@@ -1315,18 +1315,45 @@ export async function initConnect(): Promise<void> {
     stage.querySelectorAll<HTMLButtonElement>(CONNECT_MODE_OPTION_SELECTOR),
   );
   if (modeTray) {
+    // Selects `chip` unless it's already the checked one -- shared by a
+    // real click AND arrow-key navigation below. Re-selecting the
+    // already-checked chip is a no-op, matching a native radio group's own
+    // `change` event, which never fires for an interaction that doesn't
+    // actually change the value.
+    const selectModeChip = (chip: HTMLButtonElement): void => {
+      if (chip.dataset.value === getSelectedMode(stage)) return;
+      setSelectedMode(stage, chip.dataset.value ?? "none");
+      searchGeneration++;
+    };
     modeTray.addEventListener("click", (event) => {
       const chip = (event.target as HTMLElement).closest<HTMLButtonElement>(
         CONNECT_MODE_OPTION_SELECTOR,
       );
-      // Re-clicking the already-checked chip is a no-op -- matching a
-      // native radio group's own `change` event, which never fires for a
-      // click that doesn't actually change the value.
-      if (!chip || chip.dataset.value === getSelectedMode(stage)) return;
-      setSelectedMode(stage, chip.dataset.value ?? "none");
-      searchGeneration++;
+      if (chip) selectModeChip(chip);
     });
     wireRadioTray(modeTray, () => modeChips);
+    // A real Codex-review finding: `wireRadioTray` only moves the roving
+    // tab stop on arrow keys, never the selection -- correct for Guesser's/
+    // Routes' own trays (a one-shot quiz pick, where arrowing to browse
+    // options must NOT itself submit an answer), but wrong here. This
+    // filter replaces a native `<input type="radio">` group, whose
+    // long-standing browser-native behavior (WAI-ARIA APG's own
+    // "automatic activation" pattern, the norm for a persistent radiogroup
+    // representing mutually exclusive SETTINGS rather than a quiz choice)
+    // is that arrowing to an option selects it immediately -- a keyboard
+    // user who arrowed to a new filter and clicked Search without an
+    // extra Enter/Space would otherwise silently search under the
+    // PREVIOUS filter. `focusin` (delegated, bubbles unlike `focus`)
+    // fires for both the arrow-key `.focus()` call inside `wireRadioTray`
+    // and a real Tab into the tray -- the latter always lands on the
+    // already-checked chip (the tray's one tab stop), so it's a no-op via
+    // `selectModeChip`'s own already-checked guard.
+    modeTray.addEventListener("focusin", (event) => {
+      const chip = (event.target as HTMLElement).closest<HTMLButtonElement>(
+        CONNECT_MODE_OPTION_SELECTOR,
+      );
+      if (chip) selectModeChip(chip);
+    });
   }
 
   if (copyLinkButton) {
