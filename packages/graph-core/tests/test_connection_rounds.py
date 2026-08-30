@@ -317,6 +317,30 @@ def test_validate_rejects_answer_without_evidence(dataset_root: Path) -> None:
         validate_connection_rounds_artifact(universe, rounds)
 
 
+def test_validate_rejects_a_credit_referencing_an_unknown_release(dataset_root: Path) -> None:
+    # Real Codex-review-audit-style finding: the release-id lookup this check uses was
+    # rebuilt as a fresh set comprehension on every single credit iteration (an
+    # unintentional O(credits x releases) regression versus the sibling
+    # contributor_ids check two lines above, which was already precomputed once) --
+    # this test only proves the check still fires correctly after hoisting it, since
+    # the perf fix itself must not change behavior.
+    with CreditGraph.open(dataset_root, build_edges=False) as graph:
+        rounds_json, _, performer_index = generate_connection_round_pool(
+            graph, ALBUMS, one_hop_target=10, two_hop_target=10
+        )
+    universe, rounds = build_connection_universe_and_rounds(
+        ALBUMS,
+        rounds_json,
+        performer_index,
+        snapshot_date=SNAPSHOT_DATE,
+        generated_by="test",
+        catalog_version="test-catalog-v1",
+    )
+    universe["credits"][0]["release_id"] = "release-does-not-exist"
+    with pytest.raises(ConnectionRoundsValidationError, match="unknown release"):
+        validate_connection_rounds_artifact(universe, rounds)
+
+
 def test_validate_rejects_wrong_pool_label(dataset_root: Path) -> None:
     with CreditGraph.open(dataset_root, build_edges=False) as graph:
         rounds_json, _, performer_index = generate_connection_round_pool(
