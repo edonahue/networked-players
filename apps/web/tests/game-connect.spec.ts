@@ -138,13 +138,34 @@ test("a failed catalog load is announced and recovers on the next keystroke", as
   await expect(page.locator("[data-connect-status]")).toContainText(
     /couldn't load the album list/i,
   );
+  // A genuine data-integrity failure gets the same data-phase="error" +
+  // assertive-alert pairing Guesser's/Routes' own fetch failures already
+  // have -- previously announced identically to an ordinary loading
+  // message, on the one polite region.
+  await expect(page.locator("[data-testid='connect-stage']")).toHaveAttribute(
+    "data-phase",
+    "error",
+  );
+  await expect(page.locator("[data-connect-announce-assertive]")).toContainText(
+    /couldn't load the album list/i,
+  );
 
   // Typing again retries the load, and the recovered catalog is applied to
-  // the text already in the box.
+  // the text already in the box. Recovery clears the error phase too --
+  // both the structural data-phase attribute AND the assertive region's
+  // own text (a real Codex-review finding: clearing data-phase alone left
+  // the previous failure's text sitting in the assertive region).
   await pickerA.locator("input").fill("Discovery");
   await expect(pickerA).toHaveAttribute("data-picker-state", "ready");
   await expect(pickerResults(page, "a").first()).toBeVisible();
   expect(attempts).toBe(2);
+  await expect(page.locator("[data-testid='connect-stage']")).toHaveAttribute(
+    "data-phase",
+    "idle",
+  );
+  await expect(page.locator("[data-connect-announce-assertive]")).toHaveText(
+    "",
+  );
 });
 
 test("a real connected pair finds a documented route with evidence", async ({
@@ -390,6 +411,16 @@ test("a fetch failure for the pathfinding graph degrades gracefully", async ({
     /couldn't fetch/i,
   );
   await expect(page.locator("[data-connect-results]")).toBeHidden();
+  // Same data-phase="error" + assertive-alert pairing as the catalog
+  // failure above -- a genuine graph-integrity failure, not an ordinary
+  // "no connection found" outcome, which stays on the polite region only.
+  await expect(page.locator("[data-testid='connect-stage']")).toHaveAttribute(
+    "data-phase",
+    "error",
+  );
+  await expect(page.locator("[data-connect-announce-assertive]")).toContainText(
+    /couldn't fetch/i,
+  );
 });
 
 test("the rest of the page keeps working after a failed search", async ({
@@ -486,6 +517,13 @@ test("Behind the Glass reports no connection when the real path doesn't qualify"
     /no producer\/engineer-only connection/i,
   );
   await expect(page.locator("[data-connect-results]")).toBeHidden();
+  // A real, ordinary negative game outcome, not a data-integrity failure --
+  // stays on the polite region only, unlike the genuine fetch-failure tests
+  // above.
+  await expect(page.locator("[data-testid='connect-stage']")).toHaveAttribute(
+    "data-phase",
+    "idle",
+  );
 });
 
 // Rhythm Section: restricts the search to drums/bass-only credits.

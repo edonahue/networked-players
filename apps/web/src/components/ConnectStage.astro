@@ -20,7 +20,7 @@
 // match counts to screen readers without stealing focus from the input.
 ---
 
-<div class="connect-stage" data-testid="connect-stage">
+<div class="connect-stage" data-testid="connect-stage" data-phase="idle">
   <div class="connect-picker-row">
     <div class="connect-picker" data-picker="a">
       <label for="connect-input-a">First record</label>
@@ -140,6 +140,12 @@
 
   <div class="connect-status" data-connect-status role="status" aria-live="polite" hidden></div>
   <p class="visually-hidden" role="status" data-connect-announce></p>
+  <p
+    class="visually-hidden"
+    aria-live="assertive"
+    role="alert"
+    data-connect-announce-assertive
+  ></p>
 
   <p class="connect-empty-state" data-connect-empty-state>
     Pick two records above, then search to find a documented connection
