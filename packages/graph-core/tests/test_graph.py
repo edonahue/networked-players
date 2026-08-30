@@ -245,6 +245,57 @@ def test_search_releases_returns_empty_list_for_no_match(dataset_root: Path) -> 
         assert graph.search_releases("zzz-no-such-title") == []
 
 
+def test_search_releases_treats_a_literal_percent_sign_as_a_literal_character(
+    tmp_path: Path,
+) -> None:
+    # A real Codex-review-caught bug: an unescaped query embedded directly
+    # in a LIKE pattern treats a literal "%"/"_" in the search term as a
+    # SQL wildcard, silently broadening the match instead of finding the
+    # literal substring.
+    from conftest import write_synthetic_dataset
+
+    root = write_synthetic_dataset(
+        tmp_path / "snapshot=20260601",
+        release_rows=[
+            _bare_release(20, "100% Pure", master_id=None, master_is_main_release=None),
+            # An unescaped "%" is a wildcard matching zero-or-more of any
+            # character -- searching "100%" would also match this title
+            # (which contains "100" followed by other characters) unless
+            # the "%" is treated literally.
+            _bare_release(21, "100 Ways To Lose", master_id=None, master_is_main_release=None),
+        ],
+        credit_rows=[
+            _bare_credit(20, artist_id=800, name="Someone"),
+            _bare_credit(21, artist_id=801, name="Someone Else"),
+        ],
+    )
+    with CreditGraph.open(root) as graph:
+        results = graph.search_releases("100%")
+    assert [r["title"] for r in results] == ["100% Pure"]
+
+
+def test_search_artists_treats_a_literal_underscore_as_a_literal_character(
+    tmp_path: Path,
+) -> None:
+    from conftest import write_synthetic_dataset
+
+    root = write_synthetic_dataset(
+        tmp_path / "snapshot=20260601",
+        release_rows=[
+            _bare_release(20, "Some Album", master_id=None, master_is_main_release=None),
+        ],
+        credit_rows=[
+            _bare_credit(20, artist_id=800, name="DJ_Underscore"),
+            _bare_credit(20, artist_id=801, name="DJXUnderscore"),
+        ],
+    )
+    with CreditGraph.open(root) as graph:
+        results = graph.search_artists("dj_under")
+    # An unescaped "_" would also match "DJXUnderscore" (any single
+    # character in that position) -- only the literal underscore should.
+    assert [r["name"] for r in results] == ["DJ_Underscore"]
+
+
 def test_search_releases_orders_alphabetically_and_bounds_by_limit(
     dataset_root: Path,
 ) -> None:

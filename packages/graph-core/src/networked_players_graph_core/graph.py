@@ -253,6 +253,16 @@ def _not_placeholder_sql(artist_column: str = "artist_id") -> str:
     return f"{artist_column} NOT IN ({ids})"
 
 
+def _like_pattern(query: str) -> str:
+    """A substring `LIKE` pattern with the query's own `%`/`_` escaped as
+    literal characters (via a `\\` escape, paired with `ESCAPE '\\'` at the
+    call site) -- without this, a literal `%` or `_` in the search term
+    (e.g. a release titled "100%") is interpreted as a SQL wildcard instead
+    of matched literally, silently broadening the search."""
+    escaped = query.strip().lower().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    return f"%{escaped}%"
+
+
 def _non_studio_track_variant_sql(track_title_column: str = "track_title") -> str:
     """SQL predicate for a plainly non-studio track-title variant."""
     return (
@@ -1317,10 +1327,10 @@ class CreditGraph:
         an empty query as "matches everything" like any other substring.
         """
         bounded_limit = max(1, min(limit, 100))
-        like = f"%{query.strip().lower()}%"
+        like = _like_pattern(query)
         rows = self._connection.execute(
             "SELECT DISTINCT release_id, title, released, master_id FROM releases "
-            "WHERE lower(title) LIKE ? ORDER BY title, release_id LIMIT ?",
+            "WHERE lower(title) LIKE ? ESCAPE '\\' ORDER BY title, release_id LIMIT ?",
             [like, bounded_limit],
         ).fetchall()
         return [
@@ -1341,11 +1351,11 @@ class CreditGraph:
         ordered alphabetically and bounded by `limit`, not ranked or fuzzy.
         """
         bounded_limit = max(1, min(limit, 100))
-        like = f"%{query.strip().lower()}%"
+        like = _like_pattern(query)
         not_placeholder = _not_placeholder_sql()
         rows = self._connection.execute(
             "SELECT DISTINCT artist_id, name FROM credits "
-            f"WHERE lower(name) LIKE ? AND artist_id IS NOT NULL "
+            f"WHERE lower(name) LIKE ? ESCAPE '\\' AND artist_id IS NOT NULL "
             f"AND playable_identity AND {not_placeholder} "
             "ORDER BY name, artist_id LIMIT ?",
             [like, bounded_limit],
