@@ -36,7 +36,10 @@ the other nine.
 
 from __future__ import annotations
 
+import hashlib
 import json
+from collections.abc import Callable
+from contextlib import AbstractContextManager
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -609,11 +612,44 @@ def compare_scenes(graph: CreditGraph, request: CompareScenesRequest) -> dict[st
 
 
 def corpus_version_string(corpus_root: Path) -> str:
-    """A topic corpus doesn't carry a single version string the way a
-    published artifact does -- the directory name plus its own manifest's
-    snapshot_date is the closest real provenance available."""
+    """A real, content-derived identity for a corpus snapshot -- built from
+    the manifest's own per-file `sha256` hashes (present under both a
+    canonical full snapshot's manifest, `parquet.py`'s own writer, and a
+    `research-build-corpus` topic corpus's manifest, `corpus.py`'s own
+    writer -- both list `files: [{path, sha256, ...}, ...]`) plus
+    `schema_version`/`parser_version`.
+
+    A first attempt at this used `topic.corpus_version` instead (a real
+    Codex-review finding against the ORIGINAL directory-name+snapshot_date
+    identity: two different topic corpora sharing both would collide). That
+    was still insufficient (a second, real Codex-review finding): a
+    canonical snapshot has no `topic` key at all, and `topic.corpus_version`
+    itself hashes only the corpus's declared *parameters* (topic, hop_tier,
+    seed_artist_ids, source_snapshot_date) -- reparsing a canonical
+    snapshot, or rebuilding a same-seed/same-date topic corpus over
+    corrected input or a bumped parser/schema version, changes the actual
+    Parquet bytes without changing any of those parameters. Hashing the
+    manifest's own per-file content hashes catches exactly that case, for
+    either corpus shape, with no dependence on which optional keys a given
+    manifest happens to carry.
+
+    Falls back to the old directory-name+snapshot_date scheme only for a
+    manifest with no `files` list at all (e.g. hand-built test fixtures, or
+    a manifest shape that predates per-file hashing)."""
     manifest_path = corpus_root / "manifest.json"
     manifest = json.loads(manifest_path.read_text()) if manifest_path.is_file() else {}
+    files = manifest.get("files")
+    if isinstance(files, list) and files:
+        file_digest = hashlib.sha256(
+            json.dumps(
+                sorted((entry.get("path"), entry.get("sha256")) for entry in files),
+                sort_keys=True,
+            ).encode()
+        ).hexdigest()
+        return (
+            f"{manifest.get('schema_version', 'unknown')}:"
+            f"{manifest.get('parser_version', 'unknown')}:{file_digest}"
+        )
     return f"{corpus_root.name}:{manifest.get('snapshot_date', 'unknown')}"
 
 
@@ -639,18 +675,30 @@ def run_comparison_and_persist(
     topic: str,
     research_root: Path = RESEARCH_ROOT,
     run_id: str | None = None,
+    open_graph: Callable[[Path], AbstractContextManager[CreditGraph]] = CreditGraph.open,
 ) -> dict[str, Any]:
     """Opens a `CreditGraph` over the request's own corpus root, runs the
     right `compare_*` function for `mode`, and persists the result as a run
     under `research_root/<topic>/runs/<run-id>/` -- exactly the same
     bookkeeping `research-analyze` already uses. Shared by the CLI
     (`research-compare`) and the workbench server mode so both stay in
-    lockstep rather than maintaining two copies of this dispatch."""
+    lockstep rather than maintaining two copies of this dispatch.
+
+    `open_graph` defaults to `CreditGraph.open` itself -- the CLI's
+    existing one-shot behavior (open, compare, close), completely
+    unchanged. The workbench server passes a cache-backed context manager
+    instead (`WorkbenchGraphCache.checkout` in `apps/review/review_server.
+    py`), so repeated comparisons against the SAME corpus reuse one
+    already-materialized graph (skipping the ~2.5-minute credit_edges
+    rebuild) via `CreditGraph.cursor()` rather than every request paying
+    that cost fresh -- a real, independently-confirmed performance gap
+    (Phase 7 closeout, sibling to PR #178's own uncached scope-tier
+    finding, which the same closeout fixes separately)."""
     if mode not in COMPARE_MODES:
         raise CompareError(f"unrecognized mode: {mode!r}; must be one of {COMPARE_MODES}")
 
     started_at = datetime.now(UTC).isoformat()
-    with CreditGraph.open(request.corpus_snapshot_root) as graph:
+    with open_graph(request.corpus_snapshot_root) as graph:
         if mode == "albums":
             if not isinstance(request, CompareAlbumsRequest):
                 raise CompareError("mode 'albums' requires a CompareAlbumsRequest")
