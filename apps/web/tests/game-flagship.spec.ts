@@ -235,6 +235,27 @@ test("a malformed rounds artifact is a clean error, not an uncaught crash", asyn
   );
 });
 
+test("a single malformed round in an otherwise-valid pool is filtered out, not a crash", async ({
+  page,
+}) => {
+  // Real Codex-review-caught follow-up: isGameRoundsArtifact only checks
+  // that `rounds` is an array, not that each member is well-formed --
+  // `rounds: [null, ...]` used to pass that guard, then throw inside
+  // pickRound evaluating `r.kind` on the null entry. The bad member must be
+  // filtered out (never dereferenced), leaving the real rounds playable.
+  await page.route("**/data/game/rounds.v1.json", async (route) => {
+    const response = await route.fetch();
+    const body = await response.json();
+    body.rounds = [null, ...body.rounds];
+    await route.fulfill({ response, json: body });
+  });
+  await page.goto("/play/connection/?motion=off");
+  await expect(page.getByTestId("stage")).toHaveAttribute(
+    "data-phase",
+    "guessing",
+  );
+});
+
 test("a kind with zero published rounds is a clean error, not a crash", async ({
   page,
 }) => {

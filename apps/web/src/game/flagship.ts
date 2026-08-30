@@ -71,6 +71,45 @@ function poolLabel(round: GameRound): string {
   return round.pool === "real-records" ? "Real records" : "Synthetic universe";
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function isAlbumRefShape(value: unknown): value is AlbumRef {
+  return (
+    isRecord(value) &&
+    typeof value.id === "string" &&
+    typeof value.title === "string"
+  );
+}
+
+/** Structurally safe to dereference by every path pickRound/render take on
+ * a round unconditionally (kind, endpoints, answer_set, distractors,
+ * clues, evidence, provenance_note) -- does not deep-validate every nested
+ * field (that's the Python validators' job), same scope discipline as
+ * routesResolver.ts's own isWellFormedRoute. `isGameRoundsArtifact` only
+ * checks that `rounds` is an array, not that each member is well-formed;
+ * a single malformed member (null, or one missing a field this file reads
+ * unconditionally) would otherwise bypass that guard and still crash
+ * downstream. Filtered out here, never dereferenced -- matching
+ * routesResolver.ts's own malformed-member discipline, not thrown on. */
+function isWellFormedGameRound(value: unknown): value is GameRound {
+  return (
+    isRecord(value) &&
+    typeof value.id === "string" &&
+    (value.kind === "one_hop" || value.kind === "two_hop") &&
+    typeof value.difficulty === "string" &&
+    Array.isArray(value.endpoints) &&
+    value.endpoints.length === 2 &&
+    value.endpoints.every(isAlbumRefShape) &&
+    Array.isArray(value.answer_set) &&
+    Array.isArray(value.distractors) &&
+    Array.isArray(value.clues) &&
+    Array.isArray(value.evidence) &&
+    typeof value.provenance_note === "string"
+  );
+}
+
 /** Real cover art, resolved by canonical album id from the art registry
  * (never embedded in frozen content). Populated once at init; a missing
  * registry leaves it empty and every real sleeve renders the placeholder. */
@@ -147,7 +186,13 @@ async function fetchRounds(): Promise<GameRounds> {
   if (!isGameRoundsArtifact(data)) {
     throw new Error("rounds.v1.json is not a well-formed rounds artifact");
   }
-  return data;
+  // isGameRoundsArtifact stops at "rounds is an array" -- a malformed
+  // member within it (a real Codex-review finding on the guard above) must
+  // not reach pickRound/render either. An all-malformed pool naturally
+  // yields an empty array here, which pickRound's own empty-pool guard
+  // already turns into a clean showStageError -- no separate handling
+  // needed for that case.
+  return { ...data, rounds: data.rounds.filter(isWellFormedGameRound) };
 }
 
 /** Hide every gameplay control so a non-playable stage state (error or
