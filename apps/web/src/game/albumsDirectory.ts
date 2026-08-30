@@ -3,13 +3,28 @@
 // directory, since every album is already server-rendered on this page
 // (179 albums is small enough to browse in full, unlike the
 // 521-contributor index that needs a search-preview cap). Wiring
-// hides/reorders the ALREADY-RENDERED <AlbumCard> elements via `hidden`
-// and CSS `order` rather than re-implementing card markup in JS, so the
-// no-JS baseline (every album, server-sorted by title) stays a real,
-// working fallback. Search/sort/decade state is mirrored into the URL
-// (?q=&sort=&decade=) via `history.replaceState` so a filtered view is
-// bookmarkable/shareable and survives back/forward navigation, without
-// spamming browser history on every keystroke.
+// hides/reorders the ALREADY-RENDERED <AlbumCard> elements rather than
+// re-implementing card markup in JS, so the no-JS baseline (every album,
+// server-sorted by title) stays a real, working fallback. Search/sort/
+// decade state is mirrored into the URL (?q=&sort=&decade=) via
+// `history.replaceState` so a filtered view is bookmarkable/shareable and
+// survives back/forward navigation, without spamming browser history on
+// every keystroke.
+//
+// A real, independently-confirmed Codex-review finding (PR #163, never
+// fixed at the time): a filtered-out card's `hidden` attribute alone did
+// nothing, because `.album-card` sets `display: flex` unconditionally in
+// motif.css -- an author-stylesheet class selector outranks the UA
+// stylesheet's bare `[hidden] { display: none }` rule, so the card stayed
+// visually painted. The inline style is now set explicitly too, the same
+// fix this session's own PR #189 already applied to `.chip-tray`/
+// `.explorer-role-filter` for the identical class of bug. Sorting had a
+// second, related gap: only `card.style.order` was set, which changes
+// visual position but never DOM order -- keyboard tab order and
+// screen-reader reading order silently ignored the selected sort. Fixed
+// by actually moving the visible cards into the grid in the chosen order
+// (`Node.append` on an already-attached node relocates it, per the DOM
+// spec, rather than cloning it).
 
 export interface DirectoryAlbum {
   id: string;
@@ -172,12 +187,14 @@ export function initAlbumsDirectory(): void {
     "[data-albums-decade]",
   );
   const statusEl = root.querySelector<HTMLElement>("[data-albums-status]");
+  const grid = root.querySelector<HTMLElement>("[data-testid='album-grid']");
   const cards = [...root.querySelectorAll<HTMLElement>("[data-album-id]")];
   if (
     !searchInput ||
     !sortSelect ||
     !decadeSelect ||
     !statusEl ||
+    !grid ||
     cards.length === 0
   ) {
     return;
@@ -205,15 +222,32 @@ export function initAlbumsDirectory(): void {
     const decade = decadeSelect.value;
     const results = searchAlbums(albums, searchInput.value, sort, decade);
     const visibleIds = new Set(results.map((album) => album.id));
-    results.forEach((album, index) => {
+    // `.album-card` sets `display: flex` unconditionally in motif.css,
+    // which outranks the bare `[hidden]` UA rule -- the inline style is
+    // set explicitly too, matching this session's own PR #189 fix for the
+    // identical class of bug elsewhere (`.chip-tray`/
+    // `.explorer-role-filter`).
+    for (const album of results) {
       const card = byId.get(album.id);
-      if (!card) return;
+      if (!card) continue;
       card.hidden = false;
-      card.style.order = String(index);
-    });
-    for (const [id, card] of byId) {
-      if (!visibleIds.has(id)) card.hidden = true;
+      card.style.removeProperty("display");
     }
+    for (const [id, card] of byId) {
+      if (!visibleIds.has(id)) {
+        card.hidden = true;
+        card.style.display = "none";
+      }
+    }
+    // Real DOM reordering, not just a visual CSS `order` -- `Node.append`
+    // on an already-attached node MOVES it (per the DOM spec) rather than
+    // cloning it, so this reflects the chosen sort in keyboard tab order
+    // and screen-reader reading order too, not just on-screen position.
+    grid.append(
+      ...results
+        .map((album) => byId.get(album.id))
+        .filter((card) => card !== undefined),
+    );
     statusEl.textContent =
       results.length === 0
         ? "No albums match your search."

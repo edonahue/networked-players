@@ -690,7 +690,7 @@ function wireGraphWorker(worker: Worker): void {
     // parse/validation failure). Every request still waiting on this
     // worker falls back to the main-thread path individually, rather than
     // hanging forever on a promise the crashed worker can never resolve.
-    for (const [id, resolve] of pendingGraphWorkerRequests) {
+    for (const [, resolve] of pendingGraphWorkerRequests) {
       resolve("worker-crashed");
     }
     pendingGraphWorkerRequests.clear();
