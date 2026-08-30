@@ -280,6 +280,13 @@
   font-weight: 700;
   line-height: 1.2;
 }
+/* Light theme flips --accent/--accent-strong to a dark teal, so the
+   default dark label text (#0d171d) drops to ~2.4:1 contrast against it --
+   well under WCAG's 4.5:1 minimum. Same fix as .button.primary's own
+   light-theme override in global.css for the identical problem. */
+:root[data-theme="light"] .spinning-record__label {
+  color: #fff;
+}
 @keyframes record-spin {
   to {
     transform: rotate(360deg);
@@ -446,7 +453,7 @@
 
 .evidence {
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: var(--radius);
   overflow: hidden;
   background: var(--bg-elevated);
 }

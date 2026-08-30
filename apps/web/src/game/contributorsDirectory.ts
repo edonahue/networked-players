@@ -208,10 +208,19 @@ export async function initContributorsDirectory(): Promise<void> {
       filters.length === 0
         ? "Most connected"
         : `Results: ${filters.join(", ")}`;
-    renderResults(
-      resultsEl,
-      searchContributors(contributors, query, activeCategories),
-    );
+    const results = searchContributors(contributors, query, activeCategories);
+    renderResults(resultsEl, results);
+    // Reuses the same status live region the initial loading/error states
+    // use -- Albums' and Connect's own search surfaces both announce a
+    // "no results" message this way; this directory's grid used to just go
+    // silently blank on zero matches.
+    if (results.length === 0) {
+      statusEl.hidden = false;
+      statusEl.textContent = "No contributors match your search.";
+    } else {
+      statusEl.hidden = true;
+      statusEl.textContent = "";
+    }
   };
 
   searchInput.addEventListener("input", render);
