@@ -154,11 +154,15 @@ fetch('/api/state').then(r=>r.json()).then(s=>{state=s;document.querySelector('#
 # Same dark/light theme, same minimal-dependency inline-script style as
 # PAGE above -- a real, working comparison runner, not a placeholder. The
 # result view is a compact, per-mode summary plus the full raw JSON in a
-# <details> disclosure. Below the compare form is Explore Slice 1: a
-# search box (album/artist name -> corpus matches) that opens a result's
-# evidence (release/artist credit rows) inline -- route filters, scope
-# selection, bounded graph rendering, compare/pin, and saved reproducible
-# request files are the plan's fuller "Explore" vision, not built yet.
+# <details> disclosure. Below the compare form is Explore: a search box
+# (album/artist name -> corpus matches) that opens a result's evidence
+# (release/artist credit rows) inline (Slice 1), plus "-> A" / "-> B" pin
+# buttons on each result that copy its id and the search's own corpus_root
+# straight into the compare form's matching mode/fields (Slice 2,
+# "compare/pin" from the plan) -- turning "search, note two ids, retype
+# them into the form" into one click each. Route filters, scope selection,
+# bounded graph rendering, and saved reproducible request files are the
+# plan's fuller "Explore" vision, not built yet.
 WORKBENCH_PAGE = """<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Networked Players research workbench</title>
@@ -170,6 +174,8 @@ form{background:var(--surface);border:1px solid var(--line);border-radius:6px;pa
 .hidden{display:none}.error{color:var(--warn);white-space:pre-wrap}.result{margin-top:20px}.panel{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:14px 16px;margin-bottom:14px}
 table.kv{border-collapse:collapse;width:100%}table.kv td{padding:3px 8px 3px 0;vertical-align:top}table.kv td:first-child{color:var(--muted);white-space:nowrap}
 .runs{font-size:.85rem;color:var(--muted)}.runs a{color:var(--accent)}
+.explore-result-row{display:flex;align-items:center;gap:6px}.explore-result-row .explore-result{flex:1;text-align:left}
+.pin-btn{padding:4px 9px;font-size:.78rem;align-self:auto}
 </style><script>(()=>{let t=localStorage.getItem('networked-players-curator-theme');document.documentElement.dataset.theme=t==='light'?'light':'dark'})()</script></head><body>
 <header><strong>Networked Players / research workbench</strong></header>
 <main>
@@ -262,6 +268,13 @@ async function loadEvidence(corpus_root,kind,id){
     $('#evidence').innerHTML='<div class="panel"><h3>'+esc(title)+'</h3><p class="runs">'+subtitle+'</p>'+evidenceCreditRows(data.credit_rows)+'</div>';
   }catch(err){$('#evidence').innerHTML='<p class="error">'+esc(String(err))+'</p>'}
 }
+function pinToCompare(kind,slot,id,corpus_root){
+  $('#mode').value=kind;updateFields();
+  $('#corpus_root').value=corpus_root;
+  const field=kind==='albums'?(slot==='a'?'#album_a':'#album_b'):(slot==='a'?'#artist_a':'#artist_b');
+  $(field).value=id;
+  $('#form').scrollIntoView({behavior:'smooth',block:'start'});
+}
 $('#explore_search').onclick=async()=>{
   $('#explore_error').classList.add('hidden');$('#explore_results').innerHTML='';$('#evidence').innerHTML='';
   const corpus_root=$('#explore_corpus_root').value.trim()||$('#corpus_root').value.trim();
@@ -276,9 +289,13 @@ $('#explore_search').onclick=async()=>{
     $('#explore_results').innerHTML=data.results.map(r=>{
       const id=kind==='albums'?r.release_id:r.artist_id;
       const label=kind==='albums'?(r.title+(r.released?' ('+esc(r.released)+')':'')):r.name;
-      return '<li><button type="button" class="explore-result" data-id="'+id+'">'+esc(label)+'</button></li>';
+      return '<li class="explore-result-row"><button type="button" class="explore-result" data-id="'+id+'">'+esc(label)+'</button>'
+        +'<button type="button" class="pin-btn" data-slot="a" data-id="'+id+'" title="Use as '+(kind==='albums'?'Album':'Artist')+' A">&rarr; A</button>'
+        +'<button type="button" class="pin-btn" data-slot="b" data-id="'+id+'" title="Use as '+(kind==='albums'?'Album':'Artist')+' B">&rarr; B</button>'
+        +'</li>';
     }).join('');
     document.querySelectorAll('.explore-result').forEach(btn=>{btn.onclick=()=>loadEvidence(corpus_root,entityKind,btn.dataset.id)});
+    document.querySelectorAll('.pin-btn').forEach(btn=>{btn.onclick=()=>pinToCompare(kind,btn.dataset.slot,btn.dataset.id,corpus_root)});
   }catch(err){$('#explore_error').textContent=String(err);$('#explore_error').classList.remove('hidden')}
 };
 $('#form').onsubmit=async(e)=>{
