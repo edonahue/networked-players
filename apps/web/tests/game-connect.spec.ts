@@ -151,7 +151,10 @@ test("a failed catalog load is announced and recovers on the next keystroke", as
   );
 
   // Typing again retries the load, and the recovered catalog is applied to
-  // the text already in the box. Recovery clears the error phase too.
+  // the text already in the box. Recovery clears the error phase too --
+  // both the structural data-phase attribute AND the assertive region's
+  // own text (a real Codex-review finding: clearing data-phase alone left
+  // the previous failure's text sitting in the assertive region).
   await pickerA.locator("input").fill("Discovery");
   await expect(pickerA).toHaveAttribute("data-picker-state", "ready");
   await expect(pickerResults(page, "a").first()).toBeVisible();
@@ -159,6 +162,9 @@ test("a failed catalog load is announced and recovers on the next keystroke", as
   await expect(page.locator("[data-testid='connect-stage']")).toHaveAttribute(
     "data-phase",
     "idle",
+  );
+  await expect(page.locator("[data-connect-announce-assertive]")).toHaveText(
+    "",
   );
 });
 

@@ -545,9 +545,16 @@ export async function initConnect(): Promise<void> {
   /** Clears a previously-set error phase back to normal. Called at the
    * start of every fresh attempt (so a retry doesn't leave a stale
    * `data-phase="error"` sitting through its own new loading state) and
-   * again on that attempt's success. */
+   * again on that attempt's success. A real Codex-review finding: clearing
+   * `data-phase` alone left the assertive region's own text untouched, so
+   * a screen-reader user who recovered from a failure (by retyping, or by
+   * a successful re-search) could still land on the PREVIOUS failure's
+   * text if anything else nudged that region's live-region announcement
+   * behavior -- the visible status already goes silent via `setStatus`,
+   * but nothing was clearing the assertive one to match. */
   const clearErrorPhase = () => {
     stage.dataset.phase = "idle";
+    if (announceAssertiveEl) announceAssertiveEl.textContent = "";
   };
 
   let albumA: PickableAlbum | null = null;
