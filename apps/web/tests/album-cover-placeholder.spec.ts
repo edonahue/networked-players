@@ -49,6 +49,15 @@ async function waitForServer(url: string, timeoutMs: number): Promise<void> {
 }
 
 test.beforeAll(async () => {
+  // This is the only spec in the suite that runs its own full, isolated
+  // `astro build` (1067 pages, ~15s alone) inside a hook instead of reusing
+  // the shared global webServer -- the default 30s per-test timeout
+  // (playwright.config.mjs) has no headroom left for the preview-server
+  // startup and first navigation that follow, once other workers are
+  // competing for CPU/IO during a full-suite run. Root cause of an
+  // intermittent beforeAll-timeout failure seen only under full-suite load,
+  // never in isolation.
+  test.setTimeout(90_000);
   const fixture = generatePlaceholderFixture(webRoot);
   albumId = fixture.albumId;
   albumTitle = fixture.albumTitle;

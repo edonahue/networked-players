@@ -8,6 +8,14 @@ node_modules/
 # test artifacts
 test-results/
 playwright-report/
+# album-cover-placeholder.spec.ts's own isolated build + fixture -- its
+# afterAll only kills the preview server, never deletes this output, so it
+# persists on disk indefinitely. The root .gitignore already covers both
+# paths for git itself; listing them here too keeps `prettier --check .`
+# (run from this directory, so it only reads this .gitignore) from treating
+# leftover generated build output as unformatted source.
+dist-test-artwork/
+tests/fixtures/.generated/
 
 # environment / local
 .env
