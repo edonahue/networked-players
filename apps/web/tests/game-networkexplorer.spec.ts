@@ -441,6 +441,37 @@ test("an unknown artist id shows a graceful message instead of a blank graph", a
   );
 });
 
+// A genuinely unreachable graph is a terminal integrity failure -- this is
+// the ONE early-return in explorerStage.ts before the role filter, SVG
+// edges/nodes, or evidence drawer are ever wired up (nothing playable is
+// ever half-wired), the same shape as Guesser's/Routes' own
+// showStageError. Previously announced identically to the ordinary
+// "Loading the network…" message that preceded it, on the one polite
+// region -- this now gets the same data-phase="error" + assertive-alert
+// pairing GameStage.astro/RoutesStage.astro already use.
+test("an unreachable pathfinding graph shows a terminal error, not a blank graph", async ({
+  page,
+}) => {
+  await page.route("**/data/pathfinding/graph.v2.json", (route) =>
+    route.abort(),
+  );
+  await page.goto("/explore/master-107325/");
+
+  await expect(page.locator("[data-explorer-status]")).toBeVisible();
+  await expect(page.locator("[data-explorer-status]")).toContainText(
+    /couldn't load the network graph/i,
+  );
+  await expect(page.locator("[data-explorer-status-assertive]")).toContainText(
+    /couldn't load the network graph/i,
+  );
+  await expect(page.locator("[data-testid='explorer-stage']")).toHaveAttribute(
+    "data-phase",
+    "error",
+  );
+  await expect(page.locator("[data-explorer-svg]")).toBeHidden();
+  await expect(page.locator("[data-explorer-role-filter]")).toBeHidden();
+});
+
 test.describe("mobile layout", () => {
   test.use({ viewport: { width: 390, height: 844 } });
 

@@ -447,6 +447,9 @@ export async function initConnect(): Promise<void> {
   const announceEl = stage.querySelector<HTMLElement>(
     "[data-connect-announce]",
   );
+  const announceAssertiveEl = stage.querySelector<HTMLElement>(
+    "[data-connect-announce-assertive]",
+  );
   const resultsEl = stage.querySelector<HTMLElement>("[data-connect-results]");
   const hopsEl = stage.querySelector<HTMLElement>("[data-connect-hops]");
   const hopsAlternateEl = stage.querySelector<HTMLElement>(
@@ -509,6 +512,42 @@ export async function initConnect(): Promise<void> {
 
   const announce = (message: string) => {
     if (announceEl) announceEl.textContent = message;
+  };
+
+  /** Genuine data-integrity/fetch failures (a corrupted or unreachable
+   * album catalog or pathfinding graph) get the same assertive-alert
+   * treatment Guesser's/Routes' showStageError already gives their own
+   * fetch/integrity failures -- previously Connect announced these
+   * identically to an ordinary "Loading…" message on the one polite
+   * region, so a screen-reader user got no stronger signal for a real
+   * failure than for normal progress. `data-phase="error"` is a matching
+   * structural signal, mirroring GameStage.astro's/RoutesStage.astro's own
+   * `data-phase` attribute.
+   *
+   * Deliberately NOT paired with hiding/disabling the search button or
+   * pickers the way `hideGameplayControls()` does for Guesser/Routes:
+   * unlike a dealt game round, a failed fetch here is designed to be
+   * retried on the same page -- the catalog picker already retries on the
+   * next keystroke, and every one of these messages below invites
+   * clicking Search again or reloading, never treats the page as
+   * permanently broken. Two already-passing tests
+   * ("a fetch failure for the pathfinding graph degrades gracefully" and
+   * "the rest of the page keeps working after a failed search") already
+   * enforce that this stays a working, interactive page rather than a
+   * locked-out error shell.
+   */
+  const showError = (message: string) => {
+    stage.dataset.phase = "error";
+    setStatus(message);
+    if (announceAssertiveEl) announceAssertiveEl.textContent = message;
+  };
+
+  /** Clears a previously-set error phase back to normal. Called at the
+   * start of every fresh attempt (so a retry doesn't leave a stale
+   * `data-phase="error"` sitting through its own new loading state) and
+   * again on that attempt's success. */
+  const clearErrorPhase = () => {
+    stage.dataset.phase = "idle";
   };
 
   let albumA: PickableAlbum | null = null;
@@ -620,11 +659,12 @@ export async function initConnect(): Promise<void> {
     if (catalogPending) return;
     catalogPending = true;
     setCatalogState("loading");
+    clearErrorPhase();
     try {
       const result = await loadAlbumCatalog();
       if ("error" in result) {
         setCatalogState("unavailable");
-        setStatus(
+        showError(
           result.error === "fetch-failed"
             ? "Couldn't load the album list. Check your connection — keep typing to retry."
             : "The album list looked corrupted. Keep typing to retry, or reload the page.",
@@ -633,6 +673,7 @@ export async function initConnect(): Promise<void> {
       }
       albums = result.albums;
       setCatalogState("ready");
+      clearErrorPhase();
       setStatus(null);
       for (const picker of pickers) picker.refresh();
       // Attempted at most once, on whichever catalog load actually
@@ -761,6 +802,7 @@ export async function initConnect(): Promise<void> {
     const hopsElNonNull = hopsEl!;
 
     resultsElNonNull.hidden = true;
+    clearErrorPhase();
     // Honest staged status (ADR 0059 Phase 5 PR 5b): each message names the
     // real operation actually in flight when it's set, never a fabricated
     // percentage. This first message stays true whether the graph is a
@@ -823,7 +865,7 @@ export async function initConnect(): Promise<void> {
         "invalid-graph":
           "The connection graph failed validation. Try reloading the page.",
       };
-      setStatus(
+      showError(
         messages[preparedResult.error] ?? "Something went wrong. Try again.",
       );
       updateButton();
@@ -967,6 +1009,7 @@ export async function initConnect(): Promise<void> {
     // sees the enhancement too, with no extra bookkeeping.
     const artByAlbumId = new Map<string, ResolvedArt>();
 
+    clearErrorPhase();
     setStatus(null);
     resultsElNonNull.hidden = false;
     // A real gap: hiding the polite status region right as results appear
@@ -1301,6 +1344,7 @@ export async function initConnect(): Promise<void> {
         searchGeneration++;
         resultsElNonNull.hidden = true;
         if (copyLinkButton) copyLinkButton.hidden = true;
+        clearErrorPhase();
         setStatus(null);
         updateButton();
       }

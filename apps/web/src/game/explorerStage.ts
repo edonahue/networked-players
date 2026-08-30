@@ -95,6 +95,9 @@ export async function initExplorerStage(): Promise<void> {
     "[data-explorer-role-filter]",
   );
   const statusEl = stage.querySelector<HTMLElement>("[data-explorer-status]");
+  const statusAssertiveEl = stage.querySelector<HTMLElement>(
+    "[data-explorer-status-assertive]",
+  );
   const truncatedEl = stage.querySelector<HTMLElement>(
     "[data-explorer-truncated]",
   );
@@ -132,6 +135,7 @@ export async function initExplorerStage(): Promise<void> {
     !edgesLayer ||
     !roleFilterEl ||
     !statusEl ||
+    !statusAssertiveEl ||
     !truncatedEl ||
     !evidenceDrawer ||
     !evidenceContent ||
@@ -158,7 +162,33 @@ export async function initExplorerStage(): Promise<void> {
     PATHFINDING_GRAPH_URL,
   );
   if (!("graph" in graphResult)) {
-    setStatus("Couldn't load the network graph. Try reloading the page.");
+    // A genuine, terminal integrity failure -- this function returns
+    // before wiring up the role filter, the SVG's edges/nodes, or the
+    // evidence drawer, exactly like Guesser's/Routes' own showStageError
+    // path (nothing playable is ever half-wired). Previously this was
+    // announced identically to the ordinary "Loading the network…"
+    // message that preceded it, on the one polite region -- added the
+    // same `data-phase="error"` + assertive-alert pairing GameStage.astro/
+    // RoutesStage.astro already use for their own fetch/integrity
+    // failures. The role filter and SVG stay empty regardless (nothing
+    // below this point ever populates them), but hidden explicitly too --
+    // `.explorer-role-filter` sets `display:flex` unconditionally in
+    // game.css, which outranks the bare `[hidden]` UA rule the same way
+    // `.chip-tray` does for Routes, so the inline style is set as well.
+    // The SVG needs its OWN inline style for a different reason, confirmed
+    // by a real fail-then-pass run: the `[hidden] { display: none }` UA
+    // rule that makes the bare attribute normally sufficient does not
+    // reliably apply across the SVG namespace the way it does for HTML
+    // elements -- `svg.setAttribute("hidden", "")` alone left it rendered
+    // and visible despite carrying the attribute.
+    const message = "Couldn't load the network graph. Try reloading the page.";
+    stage.dataset.phase = "error";
+    setStatus(message);
+    statusAssertiveEl.textContent = message;
+    roleFilterEl.hidden = true;
+    roleFilterEl.style.display = "none";
+    svg.setAttribute("hidden", "");
+    svg.style.display = "none";
     return;
   }
   const graph: PathfindingGraph = graphResult.graph;

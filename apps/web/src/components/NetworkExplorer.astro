@@ -16,6 +16,7 @@ const { initialArtistId, initialLabel } = Astro.props;
 <div
   class="explorer-stage"
   data-testid="explorer-stage"
+  data-phase="idle"
   data-initial-artist-id={initialArtistId}
   data-initial-label={initialLabel}
 >
@@ -23,6 +24,12 @@ const { initialArtistId, initialLabel } = Astro.props;
   </div>
 
   <div class="explorer-status" data-explorer-status role="status" aria-live="polite" hidden></div>
+  <div
+    class="visually-hidden"
+    data-explorer-status-assertive
+    aria-live="assertive"
+    role="alert"
+  ></div>
 
   <div class="explorer-info-panel" data-explorer-info-panel hidden>
     <p class="lede explorer-info-panel__summary" data-explorer-info-summary></p>
