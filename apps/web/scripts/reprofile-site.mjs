@@ -87,7 +87,54 @@ async function newPage(context) {
   return page;
 }
 
-async function measureConnectColdStart(context) {
+async function selectAndSearch(page, fromTitle, toTitle) {
+  await page.locator('[data-picker="a"] input').fill(fromTitle);
+  await page
+    .locator('[data-picker="a"] [data-picker-results] [role="option"]')
+    .first()
+    .click();
+  await page.locator('[data-picker="b"] input').fill(toTitle);
+  await page
+    .locator('[data-picker="b"] [data-picker-results] [role="option"]')
+    .first()
+    .click();
+
+  const searchClickedAt = Date.now();
+  await page.locator("[data-connect-search]").click();
+  await page
+    .locator("[data-connect-results]")
+    .waitFor({ state: "visible", timeout: 15_000 });
+  return Date.now() - searchClickedAt;
+}
+
+// A second, real, directly-connected pair distinct from the cold-start
+// pair below -- reusing that same pair for the "warm" search would make it
+// indistinguishable from "the same search, run twice" rather than a
+// genuine warm-cache search. Picked from `challenge.paths` (the same
+// artifact the cold-start pair is verified against elsewhere), skipping
+// any path that happens to share an endpoint with the cold pair.
+function pickWarmPair(challenge, excludeTitles) {
+  const albumsById = new Map(challenge.albums.map((a) => [a.id, a]));
+  for (const path of challenge.paths) {
+    const from = albumsById.get(path.from_album_id);
+    const to = albumsById.get(path.to_album_id);
+    if (!from || !to) continue;
+    if (excludeTitles.has(from.title) || excludeTitles.has(to.title)) {
+      continue;
+    }
+    return { fromTitle: from.title, toTitle: to.title };
+  }
+  return null;
+}
+
+// Cold: navigation -> page load -> picker ready -> first search. Warm: a
+// SECOND, different search on the SAME still-open page/worker/catalog --
+// the method doc promises "Connect cold/warm readiness," but until this
+// fix the script only ever measured one cold search and called the
+// missing second number "warm" by omission. `null` warm timings mean the
+// committed catalog had no second path with distinct endpoints to search
+// (a valid, if unlikely, state -- not a script failure).
+async function measureConnectReadiness(context, challenge, heapSamples) {
   const page = await newPage(context);
   const navStart = Date.now();
   await page.goto(`${BASE_URL}/play/connect/`, { waitUntil: "load" });
@@ -99,30 +146,36 @@ async function measureConnectColdStart(context) {
   // Discovery/The Joshua Tree: a real, directly-connected pair in the
   // committed pathfinding graph (see tests/game-connect.spec.ts's own
   // comment) -- picked from the real artifact, not invented.
-  await page.locator('[data-picker="a"] input').fill("Discovery");
-  await page
-    .locator('[data-picker="a"] [data-picker-results] [role="option"]')
-    .first()
-    .click();
-  await page.locator('[data-picker="b"] input').fill("The Joshua Tree");
-  await page
-    .locator('[data-picker="b"] [data-picker-results] [role="option"]')
-    .first()
-    .click();
-
-  const searchClickedAt = Date.now();
-  await page.locator("[data-connect-search]").click();
-  await page
-    .locator("[data-connect-results]")
-    .waitFor({ state: "visible", timeout: 15_000 });
+  const coldSearchToResultsMs = await selectAndSearch(
+    page,
+    "Discovery",
+    "The Joshua Tree",
+  );
   const resultsVisibleMs = Date.now() - navStart;
-  const searchToResultsMs = Date.now() - searchClickedAt;
+  heapSamples.push(await measureMemory(page));
+
+  const warmPair = pickWarmPair(
+    challenge,
+    new Set(["Discovery", "The Joshua Tree"]),
+  );
+  const warmSearchToResultsMs = warmPair
+    ? await selectAndSearch(page, warmPair.fromTitle, warmPair.toTitle)
+    : null;
+  heapSamples.push(await measureMemory(page));
 
   await page.close();
-  return { pageLoadMs, pickerReadyMs, resultsVisibleMs, searchToResultsMs };
+  return {
+    cold: {
+      pageLoadMs,
+      pickerReadyMs,
+      resultsVisibleMs,
+      searchToResultsMs: coldSearchToResultsMs,
+    },
+    warm: { pair: warmPair, searchToResultsMs: warmSearchToResultsMs },
+  };
 }
 
-async function measureExplorerInit(context, albumId) {
+async function measureExplorerInit(context, albumId, heapSamples) {
   const page = await newPage(context);
   const navStart = Date.now();
   await page.goto(`${BASE_URL}/explore/${albumId}/`, { waitUntil: "load" });
@@ -132,16 +185,18 @@ async function measureExplorerInit(context, albumId) {
     .first()
     .waitFor({ state: "visible", timeout: 15_000 });
   const firstNodeVisibleMs = Date.now() - navStart;
+  heapSamples.push(await measureMemory(page));
   await page.close();
   return { pageLoadMs, firstNodeVisibleMs };
 }
 
-async function measureAlbumShelf(context) {
+async function measureAlbumShelf(context, heapSamples) {
   const page = await newPage(context);
   const navStart = Date.now();
   await page.goto(`${BASE_URL}/albums/`, { waitUntil: "load" });
   const pageLoadMs = Date.now() - navStart;
   const cardCount = await page.locator(".album-card").count();
+  heapSamples.push(await measureMemory(page));
   await page.close();
   return { pageLoadMs, cardCount };
 }
@@ -157,32 +212,75 @@ async function measureMemory(page) {
 
 async function run() {
   const browser = await chromium.launch();
-  const results = { throttled: THROTTLED, payloads: measurePayloads() };
+  const results = {
+    throttled: THROTTLED,
+    payloads: measurePayloads(),
+    // No timing hook exists anywhere in the app (graphWorker.ts posts a
+    // result message with no elapsed-time field) to isolate worker parse
+    // time from page load -- rather than fake a number by subtracting two
+    // already-noisy wall-clock timings, this is left explicitly null. See
+    // docs/SITE_REPROFILE_METHOD.md.
+    workerParseMs: null,
+  };
 
   const sitemapPage = await browser.newPage();
   results.sitemap = await measureSitemap(sitemapPage);
   await sitemapPage.close();
 
-  const contextOptions = THROTTLED ? { ...devices["Pixel 5"] } : {};
+  // `devices["Pixel 5"]` carries its own viewport (393x727 on the
+  // Playwright version this repo pins, per `npx playwright --version` and
+  // a direct `page.viewportSize()` check -- device descriptors have
+  // changed across Playwright releases, so this is measured against the
+  // committed version, not assumed) -- overridden
+  // here to this repo's own established 390x844 mobile-testing viewport
+  // (apps/web/tests/smoke.spec.ts's "mobile layout" describe block), so a
+  // re-profile's mobile numbers are actually comparable to every other
+  // mobile assertion in this codebase, not a third, unrelated size.
+  const contextOptions = THROTTLED
+    ? { ...devices["Pixel 5"], viewport: { width: 390, height: 844 } }
+    : {};
   const context = await browser.newContext(contextOptions);
 
-  results.connect = await measureConnectColdStart(context);
-
-  // A real, connected album id from the committed catalog -- resolved from
-  // the sitemap fetch above's own request rather than hardcoded, so this
-  // survives a future catalog regeneration.
-  const albumsRes = await context.request.get(
+  // Fetched before any timed page so the two page-load-dependent
+  // measurements below (Connect's warm pair, Explorer's start album) can
+  // both resolve real, current catalog data without a second round trip.
+  const challengeRes = await context.request.get(
     `${BASE_URL}/data/challenge.v2.json`,
   );
-  const challenge = await albumsRes.json();
-  const connectedAlbumId = challenge.paths[0].from_album_id;
-  results.explorer = await measureExplorerInit(context, connectedAlbumId);
-  results.albumShelf = await measureAlbumShelf(context);
+  const challenge = await challengeRes.json();
 
-  const memPage = await newPage(context);
-  await memPage.goto(`${BASE_URL}/albums/`, { waitUntil: "load" });
-  results.jsHeapUsedMb = await measureMemory(memPage);
-  await memPage.close();
+  // A single JS-heap snapshot only ever caught whatever happened to be
+  // resident at that one instant -- a real allocation spike during parsing
+  // could already be GC'd by the time it's sampled. Sampling after each
+  // measured page and reporting the max is a real improvement, but still
+  // not a true continuous peak (that needs CDP heap profiling, a bigger
+  // lift not obviously justified yet) -- labeled "observed," not "peak,"
+  // in the output.
+  const heapSamples = [];
+
+  results.connect = await measureConnectReadiness(
+    context,
+    challenge,
+    heapSamples,
+  );
+
+  // A real, connected album id from the committed catalog -- resolved from
+  // the same challenge fetch above rather than hardcoded, so this survives
+  // a future catalog regeneration.
+  const connectedAlbumId = challenge.paths[0].from_album_id;
+  results.explorer = await measureExplorerInit(
+    context,
+    connectedAlbumId,
+    heapSamples,
+  );
+  results.albumShelf = await measureAlbumShelf(context, heapSamples);
+
+  results.jsHeapUsedMb = {
+    samplesMb: heapSamples,
+    maxObservedMb: heapSamples.some((v) => v !== null)
+      ? Math.max(...heapSamples.filter((v) => v !== null))
+      : null,
+  };
 
   await context.close();
   await browser.close();

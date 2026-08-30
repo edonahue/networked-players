@@ -17,7 +17,7 @@ this document is the reproducible method; real results live in
   re-profile can genuinely compare before vs. after for these two.
 - **Connect Two Records cold-readiness, Explorer init, album-shelf render,
   and mobile CPU/memory** were never benchmarked at 140 albums anywhere in
-  this repo. A re-profile run for these establishes a baseline for *future*
+  this repo. A re-profile run for these establishes a baseline for _future_
   re-profiles to diff against — report them as observed now, never implied
   as a before/after, per AGENTS.md's "identify whether a sizing claim is
   observed, sourced, projected, or measured" rule.
@@ -49,28 +49,54 @@ node scripts/reprofile-site.mjs --mobile-throttled  # Pixel 5 + 4x CPU throttle
 - **Sitemap composition**: total URL count, broken down into album /
   explore / contributor / other, fetched from the live `/sitemap.xml` route
   rather than read off disk, so it reflects exactly what a crawler sees.
-- **Connect Two Records cold start**: navigation → page load → the real
-  `data-picker-state="ready"` contract both album pickers publish once the
-  catalog has loaded (`tests/helpers/connectPicker.ts`'s own readiness
-  gate, reused rather than reinvented) → select a real, directly-connected
-  pair (Discovery / The Joshua Tree, the same pair
+- **Connect Two Records cold + warm readiness**: navigation → page load →
+  the real `data-picker-state="ready"` contract both album pickers publish
+  once the catalog has loaded (`tests/helpers/connectPicker.ts`'s own
+  readiness gate, reused rather than reinvented) → select a real,
+  directly-connected pair (Discovery / The Joshua Tree, the same pair
   `tests/game-connect.spec.ts` uses, verified against the real committed
-  graph) → click search → `[data-connect-results]` visible.
+  graph) → click search → `[data-connect-results]` visible: that's the cold
+  number. The same still-open page (catalog, graph, and worker already
+  warm) then runs a **second** search against a different real path pulled
+  from the live `challenge.v2.json` (skipping any path sharing an endpoint
+  with the cold pair) — that search-to-results time is the warm number.
+  `warm.searchToResultsMs` is `null` only if the committed catalog has no
+  second path with distinct endpoints, a valid if unlikely state.
+- **Worker parse time**: **not measured.** `graphWorker.ts` posts its
+  result with no elapsed-time field, so there is no way to isolate parse
+  time from page load without adding a timing hook to the app itself —
+  subtracting two already-noisy wall-clock numbers would produce a number
+  that looks precise but isn't. `workerParseMs` is reported as `null`
+  rather than a guess; adding a real hook is separate app work, not a
+  benchmark-script fix.
 - **Explorer init**: navigation → page load → first `.explorer-node`
   visible, for a real connected album id resolved from the live
   `challenge.v2.json` fetch (not hardcoded).
 - **Album shelf render**: navigation → page load → real `.album-card` count
   on `/albums/` (confirms the full catalog renders, not just a timing
   number).
-- **Mobile CPU/memory**: `--mobile-throttled` emulates a Pixel 5 viewport/UA
-  and applies a 4x CDP `Emulation.setCPUThrottlingRate` to **every page
-  used for a timed measurement** — CDP throttling is per-target, not global
-  to a browser context, so a page created after the throttle was set on a
-  different, now-closed page is silently unthrottled; the script's `newPage()`
-  helper opens a fresh CDP session and sets the rate on each page it hands
-  out specifically to avoid that trap. JS heap usage is read via
-  `Performance.getMetrics` (after `Performance.enable`, which the CDP
-  method requires to return populated metrics) on the album shelf page.
+- **Mobile CPU/memory**: `--mobile-throttled` emulates a Pixel 5 UA/touch/
+  device-scale profile, with its viewport explicitly overridden to this
+  repo's own established 390×844 mobile-testing viewport
+  (`apps/web/tests/smoke.spec.ts`'s "mobile layout" describe block) instead
+  of the device descriptor's own default (393×727 on this repo's pinned
+  Playwright version -- device descriptors vary across Playwright
+  releases, so this is measured against the committed version, not
+  assumed), so a re-profile's mobile
+  numbers are comparable to every other mobile assertion in this codebase.
+  A 4x CDP `Emulation.setCPUThrottlingRate` is applied to **every page used
+  for a timed measurement** — CDP throttling is per-target, not global to a
+  browser context, so a page created after the throttle was set on a
+  different, now-closed page is silently unthrottled; the script's
+  `newPage()` helper opens a fresh CDP session and sets the rate on each
+  page it hands out specifically to avoid that trap. JS heap usage is read
+  via `Performance.getMetrics` (after `Performance.enable`, which the CDP
+  method requires to return populated metrics) after each of the run's
+  timed pages (both Connect searches, Explorer init, album shelf); the
+  output reports every sample plus their max as `maxObservedMb` — an honest
+  "highest point this script happened to sample," not a true continuous
+  peak (which would need CDP heap profiling, a bigger lift not yet
+  justified).
 
 Run each mode 2–3 times; page-load and readiness timings vary run to run by
 normal local scheduling noise, but the throttled run should show a
