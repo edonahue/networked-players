@@ -39,7 +39,11 @@ Phase 7's own catalog-expansion plan (140 → 179 published albums, PR
 #161) and the private research workbench (PR D) were driven by a
 separate mission brief and expansion-readiness measurement, not by any
 candidate below. Every entry in this document remains exactly as open as
-it was after Phase 6; Phase 7 neither started nor closed any of them.
+it was after Phase 6, with one exception: the "Catalog-expansion
+readiness" entry below, which Phase 7 directly used (in a different form
+than that entry itself proposed) and which now carries a dated
+correction of its own — see that entry. Every other entry, and Phase 7
+as a whole, neither started nor closed any candidate below.
 Full detail in `docs/PHASE7_REPORT.md` (PRs #143–173).
 
 ## Research quality / data model
@@ -331,18 +335,23 @@ gitignored) — only aggregate counts and method are recorded here, per
   → `review-album-candidates`, ranked purely by marginal new-contributor
   value) was never run as a promotion pipeline; the real expansion instead
   used three separate, purpose-built lanes: Bucket A (13 personal/editorial
-  anchors, ADR 0065), Bucket B (18 albums, exact marginal-value selection
-  against the wider v4 one-hop working set — resolving §16's "remaining
-  risk to watch" from the Phase 7 plan cleanly, at the full target count),
-  and Bucket C (8 albums, closing measured coverage gaps: 2020s at zero, thin 2010s,
-  Latin/Reggae at one album each). This entry's own "biggest uncertainty"
-  (editorial review cost) was resolved by owner decision to run Buckets
-  B/C fully autonomously, with determinism and a full evidence table as
-  the review mechanism, rather than a human-reviewed pilot — see the
-  Phase 7 plan's §16 "Owner decisions taken." The real, aggregate findings
-  and both 2026-08-27 corrections above remain accurate as a record of
-  what that specific measurement found; they just describe a road not
-  taken, not the one Phase 7 actually used.
+  anchors, ADR 0065), Bucket B (18 of a 19-album target — ADR 0065 raised
+  Bucket B from 16 to 19 slots, exact marginal-value selection against the
+  wider v4 one-hop working set — resolving §16's "remaining risk to watch"
+  from the Phase 7 plan, one album short of that target: the committed
+  catalog audit (`docs/data/studio-album-catalog-inclusion-audit-v1.json`)
+  shows exactly 18 `graph_rich`-sourced albums, verified directly, not 19;
+  the shortfall is real and was not otherwise recorded or reallocated
+  anywhere in this session), and Bucket C (8 albums, closing measured
+  coverage gaps: 2020s at zero, thin 2010s, Latin/Reggae at one album
+  each). This entry's own "biggest uncertainty" (editorial review cost)
+  was resolved by owner decision to run Buckets B/C fully autonomously,
+  with determinism and a full evidence table as the review mechanism,
+  rather than a human-reviewed pilot — see the Phase 7 plan's §16 "Owner
+  decisions taken." The real, aggregate findings and both 2026-08-27
+  corrections above remain accurate as a record of what that specific
+  measurement found; they just describe a road not taken, not the one
+  Phase 7 actually used.
 
 ## Publication/data operations
 

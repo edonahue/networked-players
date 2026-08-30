@@ -158,7 +158,7 @@ open.)*
 - **New coverage this phase** (a partial list; every PR above added its
   own): `packages/graph-core/tests/test_graph.py` (`credit_rows_for_artist`,
   `search_releases`/`search_artists`), `packages/research/tests/
-  test_compare*.py` (54 tests across the three comparison types plus the
+  test_compare*.py` (43 tests across the three comparison types plus the
   shared CLI wiring), `packages/catalog/tests/test_review_server_workbench.py`
   (18 tests, real `ThreadingHTTPServer` black-box HTTP tests, both server-
   side security guards fail-then-pass verified), `apps/web/tests/
