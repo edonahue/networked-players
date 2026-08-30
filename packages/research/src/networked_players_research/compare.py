@@ -520,11 +520,17 @@ def _resolve_scene(
     absent from this particular corpus), returning the resolved ids, the
     unresolved ids, and the union of every resolved member's own credit
     rows."""
+    # One batched query for every member instead of one query per member --
+    # `credit_rows_for_artist` in a loop here was measured elsewhere in this
+    # codebase (`credit_rows_for_release_batch`'s own docstring) at
+    # ~0.5-1s/query against the real corpus, and this path runs live in the
+    # interactive workbench server with no cap on scene size.
+    grouped = graph.credit_rows_for_artists(artist_ids)
     resolved: list[int] = []
     unresolved: list[int] = []
     all_credits: list[dict[str, Any]] = []
     for artist_id in artist_ids:
-        rows = graph.credit_rows_for_artist(artist_id)
+        rows = grouped.get(artist_id, [])
         if rows:
             resolved.append(artist_id)
             all_credits.extend(rows)

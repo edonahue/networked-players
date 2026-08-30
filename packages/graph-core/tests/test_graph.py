@@ -233,6 +233,41 @@ def test_credit_rows_for_artist_returns_empty_list_for_an_unknown_artist(
         assert graph.credit_rows_for_artist(999_999) == []
 
 
+def test_credit_rows_for_artists_matches_credit_rows_for_artist(dataset_root: Path) -> None:
+    with CreditGraph.open(dataset_root) as graph:
+        direct_alice = graph.credit_rows_for_artist(100)
+        direct_frank = graph.credit_rows_for_artist(600)
+        batched = graph.credit_rows_for_artists([100, 600])
+    # One query for both artists, not one per artist -- same WHERE-filter
+    # semantics as the per-artist method.
+    assert batched[100] == direct_alice
+    assert batched[600] == direct_frank
+
+
+def test_credit_rows_for_artists_batches_multiple_artists(dataset_root: Path) -> None:
+    with CreditGraph.open(dataset_root) as graph:
+        grouped = graph.credit_rows_for_artists([100, 600])
+    assert set(grouped) == {100, 600}
+    assert {r["release_id"] for r in grouped[100]} == {1, 4, 5}  # every release Alice is on
+    assert {r["release_id"] for r in grouped[600]} == {7}
+
+
+def test_credit_rows_for_artists_excludes_a_hard_placeholder_identity(
+    dataset_root: Path,
+) -> None:
+    # Various(194) has a real credit row on R7, but is a hard-`exclude`
+    # placeholder identity -- must never surface even when queried directly,
+    # matching credit_rows_for_artist's own exclusion.
+    with CreditGraph.open(dataset_root) as graph:
+        grouped = graph.credit_rows_for_artists([194])
+    assert grouped[194] == []
+
+
+def test_credit_rows_for_artists_empty_input_returns_empty_dict(dataset_root: Path) -> None:
+    with CreditGraph.open(dataset_root) as graph:
+        assert graph.credit_rows_for_artists([]) == {}
+
+
 def test_search_releases_matches_a_substring_case_insensitively(dataset_root: Path) -> None:
     with CreditGraph.open(dataset_root) as graph:
         results = graph.search_releases("SECOND")

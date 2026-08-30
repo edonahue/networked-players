@@ -943,6 +943,7 @@ def validate_connection_rounds_artifact(universe: dict[str, Any], rounds: dict[s
 
     album_ids = {a["id"] for a in universe.get("albums", [])}
     contributor_ids = {c["id"] for c in universe.get("contributors", [])}
+    release_ids = {r["id"] for r in universe.get("releases", [])}
     # Universe-derived, no graph needed: the universe's credits[] is a
     # COMPLETE per-album eligible-performer index (Finding 7, ADR 0043), so
     # "does album X share a direct eligible performer with album Y" is
@@ -1097,7 +1098,7 @@ def validate_connection_rounds_artifact(universe: dict[str, Any], rounds: dict[s
     for credit in universe.get("credits", []):
         if credit.get("contributor_id") not in contributor_ids:
             failures.append(f"credit references unknown contributor {credit.get('contributor_id')}")
-        if credit.get("release_id") not in {r["id"] for r in universe.get("releases", [])}:
+        if credit.get("release_id") not in release_ids:
             failures.append(f"credit references unknown release {credit.get('release_id')}")
 
     if failures:

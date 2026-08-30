@@ -1255,6 +1255,33 @@ class CreditGraph:
         ).fetchall()
         return [dict(zip(_CREDIT_COLUMNS, row, strict=True)) for row in rows]
 
+    def credit_rows_for_artists(self, artist_ids: Sequence[int]) -> dict[int, list[dict[str, Any]]]:
+        """`credit_rows_for_artist`'s batched sibling, mirroring
+        `credit_rows_for_release_batch`'s shape: one query for many artist_ids
+        instead of one query per artist. Built for `packages/research.compare`'s
+        `_resolve_scene`, which previously called `credit_rows_for_artist` once
+        per scene member -- the same per-item-query-against-`credits` anti-
+        pattern `credit_rows_for_release_batch`'s own docstring documents being
+        measured at ~0.5-1s/query on the real corpus, but here reachable live
+        from the interactive workbench server with no cap on scene size."""
+        if not artist_ids:
+            return {}
+        ids = sorted(set(artist_ids))
+        placeholders = ", ".join("?" for _ in ids)
+        columns = ", ".join(_CREDIT_COLUMNS)
+        not_placeholder = _not_placeholder_sql()
+        rows = self._connection.execute(
+            f"SELECT {columns} FROM credits "
+            f"WHERE artist_id IN ({placeholders}) AND playable_identity AND {not_placeholder} "
+            "ORDER BY ALL",
+            ids,
+        ).fetchall()
+        grouped: dict[int, list[dict[str, Any]]] = {aid: [] for aid in ids}
+        for row in rows:
+            record = dict(zip(_CREDIT_COLUMNS, row, strict=True))
+            grouped[int(record["artist_id"])].append(record)
+        return grouped
+
     def release(self, release_id: int) -> dict[str, Any] | None:
         row = self._connection.execute(
             "SELECT * FROM releases WHERE release_id = ?", [release_id]

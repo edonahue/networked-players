@@ -31,11 +31,74 @@ from typing import Any
 
 import duckdb
 
-_EVIDENCE_MATCH_COLUMNS = ("release_id", "artist_id", "credit_scope", "role_text", "name")
-
 
 class VerifyDatasetError(RuntimeError):
     """Raised when the dataset needed to verify an artifact can't be opened."""
+
+
+def _batch_check_linked_endpoints(
+    connection: duckdb.DuckDBPyConnection, endpoint_checks: list[tuple[str, int, int]]
+) -> set[tuple[int, int]]:
+    """Which (release_id, artist_id) pairs among `endpoint_checks` have a
+    real `playable_identity` credit row -- one query for every distinct pair
+    across every hop, not one query per hop. Keep in sync with
+    `_batch_check_evidence_rows` below and with
+    `networked_players_graph_core.verify`'s reference implementation."""
+    distinct_pairs = sorted(
+        {(release_id, artist_id) for _pid, release_id, artist_id in endpoint_checks}
+    )
+    if not distinct_pairs:
+        return set()
+    connection.execute("CREATE TEMP TABLE endpoint_pairs (release_id BIGINT, artist_id BIGINT)")
+    try:
+        connection.executemany("INSERT INTO endpoint_pairs VALUES (?, ?)", distinct_pairs)
+        rows = connection.execute(
+            "SELECT DISTINCT c.release_id, c.artist_id FROM credits c "
+            "JOIN endpoint_pairs p ON c.release_id = p.release_id AND c.artist_id = p.artist_id "
+            "WHERE c.playable_identity"
+        ).fetchall()
+    finally:
+        connection.execute("DROP TABLE endpoint_pairs")
+    return {(row[0], row[1]) for row in rows}
+
+
+def _batch_check_evidence_rows(
+    connection: duckdb.DuckDBPyConnection,
+    evidence_checks: list[tuple[str, int, int, str, Any, str]],
+) -> set[tuple[int, int, str, Any, str]]:
+    """Which (release_id, artist_id, credit_scope, role_text, name) tuples
+    among `evidence_checks` exist verbatim in `credits` -- one query for
+    every distinct tuple across every hop's evidence rows, not one query
+    per row. `role_text` is matched NULL-safely (`IS NOT DISTINCT FROM`,
+    mirroring the original per-row query) since a release_artist-scope row
+    can legitimately carry no role_text; every other column uses plain
+    equality, also mirroring the original."""
+    # Not sorted: role_text can be None mixed with real strings, which
+    # Python's tuple comparison can't order -- only uniqueness matters here,
+    # not a stable iteration order.
+    distinct_tuples = list({t[1:] for t in evidence_checks})
+    if not distinct_tuples:
+        return set()
+    connection.execute(
+        "CREATE TEMP TABLE evidence_tuples "
+        "(release_id BIGINT, artist_id BIGINT, credit_scope VARCHAR, "
+        "role_text VARCHAR, name VARCHAR)"
+    )
+    try:
+        connection.executemany(
+            "INSERT INTO evidence_tuples VALUES (?, ?, ?, ?, ?)", distinct_tuples
+        )
+        rows = connection.execute(
+            "SELECT DISTINCT e.release_id, e.artist_id, e.credit_scope, e.role_text, e.name "
+            "FROM credits c JOIN evidence_tuples e ON "
+            "c.release_id = e.release_id AND c.artist_id = e.artist_id "
+            "AND c.credit_scope = e.credit_scope "
+            "AND c.role_text IS NOT DISTINCT FROM e.role_text "
+            "AND c.name = e.name"
+        ).fetchall()
+    finally:
+        connection.execute("DROP TABLE evidence_tuples")
+    return {(row[0], row[1], row[2], row[3], row[4]) for row in rows}
 
 
 def _dataset_root(snapshot_date: str) -> Path:
@@ -89,23 +152,21 @@ def verify_shard(artifact_path: str, path_ids: list[str]) -> dict[str, Any]:
     hops_verified = 0
     evidence_rows_checked = 0
 
+    # Collect every check this artifact needs up front, across every
+    # selected path/hop, so the two loops below issue one batched query
+    # each instead of one query per hop plus one query per evidence row --
+    # on a published floor of "50+ one-hop, 20+ two-hop" paths, the old
+    # per-item form issued thousands of sequential single-row queries on a
+    # real 1GB-RAM Pi worker.
+    endpoint_checks: list[tuple[str, int, int]] = []  # (path_id, release_id, artist_id)
+    evidence_checks: list[tuple[str, int, int, str, Any, str]] = []
+    # (path_id, release_id, artist_id, credit_scope, role_text, name)
+
     for path in selected_paths:
         for hop in path["hops"]:
             release_id = hop["release_id"]
-            endpoints = (hop["artist_a_id"], hop["artist_b_id"])
-
-            linked_rows = connection.execute(
-                "SELECT DISTINCT artist_id FROM credits "
-                "WHERE release_id = ? AND artist_id IN (?, ?) AND playable_identity",
-                [release_id, *endpoints],
-            ).fetchall()
-            linked_ids = {row[0] for row in linked_rows}
-            for artist_id in endpoints:
-                if artist_id not in linked_ids:
-                    failures.append(
-                        f"path {path['id']}: artist {artist_id} has no playable credit "
-                        f"on release {release_id}"
-                    )
+            for artist_id in (hop["artist_a_id"], hop["artist_b_id"]):
+                endpoint_checks.append((path["id"], release_id, artist_id))
 
             release = releases_by_id.get(release_id)
             if release is None:
@@ -114,20 +175,33 @@ def verify_shard(artifact_path: str, path_ids: list[str]) -> dict[str, Any]:
 
             for evidence_row in release["credits"]:
                 evidence_rows_checked += 1
-                match = connection.execute(
-                    "SELECT count(*) FROM credits "
-                    "WHERE release_id = ? AND artist_id = ? AND credit_scope = ? "
-                    "AND role_text IS NOT DISTINCT FROM ? AND name = ?",
-                    [evidence_row[col] for col in _EVIDENCE_MATCH_COLUMNS],
-                ).fetchone()
-                if match is None or match[0] == 0:
-                    failures.append(
-                        f"path {path['id']}: evidence row for artist "
-                        f"{evidence_row['artist_id']} on release {release_id} not found "
-                        "verbatim in the dataset"
+                evidence_checks.append(
+                    (
+                        path["id"],
+                        release_id,
+                        evidence_row["artist_id"],
+                        evidence_row["credit_scope"],
+                        evidence_row["role_text"],
+                        evidence_row["name"],
                     )
+                )
 
             hops_verified += 1
+
+    linked_pairs = _batch_check_linked_endpoints(connection, endpoint_checks)
+    for path_id, release_id, artist_id in endpoint_checks:
+        if (release_id, artist_id) not in linked_pairs:
+            failures.append(
+                f"path {path_id}: artist {artist_id} has no playable credit on release {release_id}"
+            )
+
+    matched_evidence = _batch_check_evidence_rows(connection, evidence_checks)
+    for path_id, release_id, artist_id, credit_scope, role_text, name in evidence_checks:
+        if (release_id, artist_id, credit_scope, role_text, name) not in matched_evidence:
+            failures.append(
+                f"path {path_id}: evidence row for artist {artist_id} on release "
+                f"{release_id} not found verbatim in the dataset"
+            )
 
     connection.close()
     return {
