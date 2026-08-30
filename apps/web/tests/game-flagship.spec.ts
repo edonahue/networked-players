@@ -214,3 +214,69 @@ test("the hub card for the Connection Guesser is live and links here", async ({
     "credited on both",
   );
 });
+
+test("a malformed rounds artifact is a clean error, not an uncaught crash", async ({
+  page,
+}) => {
+  // Sibling artifact loaders (dailyManifest.ts, routesResolver.ts) never
+  // trust a fetched JSON response's shape -- fetchRounds() must reject a
+  // response missing the fields pickRound/render depend on, surfacing the
+  // existing showStageError path rather than throwing deep inside init.
+  await page.route("**/data/game/rounds.v1.json", (route) =>
+    route.fulfill({ json: { schema_version: 1 } }),
+  );
+  await page.goto("/play/connection/?motion=off");
+  await expect(page.getByTestId("stage")).toHaveAttribute(
+    "data-phase",
+    "error",
+  );
+  await expect(page.getByTestId("question")).toContainText(
+    "Could not load the round pool",
+  );
+});
+
+test("a single malformed round in an otherwise-valid pool is filtered out, not a crash", async ({
+  page,
+}) => {
+  // Real Codex-review-caught follow-up: isGameRoundsArtifact only checks
+  // that `rounds` is an array, not that each member is well-formed --
+  // `rounds: [null, ...]` used to pass that guard, then throw inside
+  // pickRound evaluating `r.kind` on the null entry. The bad member must be
+  // filtered out (never dereferenced), leaving the real rounds playable.
+  await page.route("**/data/game/rounds.v1.json", async (route) => {
+    const response = await route.fetch();
+    const body = await response.json();
+    body.rounds = [null, ...body.rounds];
+    await route.fulfill({ response, json: body });
+  });
+  await page.goto("/play/connection/?motion=off");
+  await expect(page.getByTestId("stage")).toHaveAttribute(
+    "data-phase",
+    "guessing",
+  );
+});
+
+test("a kind with zero published rounds is a clean error, not a crash", async ({
+  page,
+}) => {
+  // pickRound's final fallback indexes by `set.entries.length %
+  // ordered.length` -- an empty pool for the requested kind divides by
+  // zero (NaN), which used to silently produce `undefined` from a
+  // function typed to always return a round.
+  await page.route("**/data/game/rounds.v1.json", async (route) => {
+    const response = await route.fetch();
+    const body = await response.json();
+    body.rounds = body.rounds.filter(
+      (r: { kind: string }) => r.kind !== "two_hop",
+    );
+    await route.fulfill({ response, json: body });
+  });
+  await page.goto("/play/connection/?kind=two_hop&motion=off");
+  await expect(page.getByTestId("stage")).toHaveAttribute(
+    "data-phase",
+    "error",
+  );
+  await expect(page.getByTestId("question")).toContainText(
+    "No rounds are available",
+  );
+});

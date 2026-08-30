@@ -8,7 +8,11 @@
 // after the round resolves.
 
 import { fetchAlbumArt, type ResolvedArt } from "./albumArt";
-import { fetchDailyManifest, resolveDailyRound } from "./dailyManifest";
+import {
+  fetchDailyManifest,
+  isGameRoundsArtifact,
+  resolveDailyRound,
+} from "./dailyManifest";
 import { isDateOverrideAllowed } from "./dateOverride";
 import { createEngine, type Engine } from "./engine";
 import { localIsoDate } from "./localDate";
@@ -67,6 +71,45 @@ function poolLabel(round: GameRound): string {
   return round.pool === "real-records" ? "Real records" : "Synthetic universe";
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function isAlbumRefShape(value: unknown): value is AlbumRef {
+  return (
+    isRecord(value) &&
+    typeof value.id === "string" &&
+    typeof value.title === "string"
+  );
+}
+
+/** Structurally safe to dereference by every path pickRound/render take on
+ * a round unconditionally (kind, endpoints, answer_set, distractors,
+ * clues, evidence, provenance_note) -- does not deep-validate every nested
+ * field (that's the Python validators' job), same scope discipline as
+ * routesResolver.ts's own isWellFormedRoute. `isGameRoundsArtifact` only
+ * checks that `rounds` is an array, not that each member is well-formed;
+ * a single malformed member (null, or one missing a field this file reads
+ * unconditionally) would otherwise bypass that guard and still crash
+ * downstream. Filtered out here, never dereferenced -- matching
+ * routesResolver.ts's own malformed-member discipline, not thrown on. */
+function isWellFormedGameRound(value: unknown): value is GameRound {
+  return (
+    isRecord(value) &&
+    typeof value.id === "string" &&
+    (value.kind === "one_hop" || value.kind === "two_hop") &&
+    typeof value.difficulty === "string" &&
+    Array.isArray(value.endpoints) &&
+    value.endpoints.length === 2 &&
+    value.endpoints.every(isAlbumRefShape) &&
+    Array.isArray(value.answer_set) &&
+    Array.isArray(value.distractors) &&
+    Array.isArray(value.clues) &&
+    Array.isArray(value.evidence) &&
+    typeof value.provenance_note === "string"
+  );
+}
+
 /** Real cover art, resolved by canonical album id from the art registry
  * (never embedded in frozen content). Populated once at init; a missing
  * registry leaves it empty and every real sleeve renders the placeholder. */
@@ -85,17 +128,24 @@ function mysterySleeve(): HTMLElement {
   return span;
 }
 
+/** `null` means no round is available for this mode/kind -- e.g. a `kind`
+ * with zero published rounds. Without this guard, an empty `pool` made the
+ * final fallback (`ordered[set.entries.length % ordered.length]`) index by
+ * `x % 0` (`NaN`), silently returning `undefined` from a function typed to
+ * always return a `GameRound` -- callers would then crash dereferencing
+ * fields on it. Mirrors routesResolver.ts's own `empty-pool` check. */
 function pickRound(
   rounds: GameRound[],
   params: URLSearchParams,
   set: SetState,
-): GameRound {
+): GameRound | null {
   const pinned = params.get("round");
   if (pinned) {
     const match = rounds.find((r) => r.id === pinned);
     if (match) return match;
   }
   const pool = rounds.filter((r) => r.kind === set.kind);
+  if (pool.length === 0) return null;
   const ordered = createRng(`flagship-${set.seed}`).shuffle(pool);
   const inSet = new Set(set.entries.map((e) => e.roundId));
   const seen = new Set(load(storage()).seenRounds);
@@ -126,7 +176,23 @@ async function fetchRounds(): Promise<GameRounds> {
   if (!response.ok) {
     throw new Error(`failed to load rounds.v1.json: ${response.status}`);
   }
-  return (await response.json()) as GameRounds;
+  const data: unknown = await response.json();
+  // Sibling artifact loaders (dailyManifest.ts's own resolution path,
+  // routesResolver.ts's validateRoutesPool) never trust a TS type
+  // assertion as runtime proof of a fetched artifact's shape -- a
+  // truncated file, or an HTML error page served with 200 by a CDN/proxy
+  // failure, must surface as the caller's existing showStageError path,
+  // not an uncaught TypeError deep inside pickRound/render.
+  if (!isGameRoundsArtifact(data)) {
+    throw new Error("rounds.v1.json is not a well-formed rounds artifact");
+  }
+  // isGameRoundsArtifact stops at "rounds is an array" -- a malformed
+  // member within it (a real Codex-review finding on the guard above) must
+  // not reach pickRound/render either. An all-malformed pool naturally
+  // yields an empty array here, which pickRound's own empty-pool guard
+  // already turns into a clean showStageError -- no separate handling
+  // needed for that case.
+  return { ...data, rounds: data.rounds.filter(isWellFormedGameRound) };
 }
 
 /** Hide every gameplay control so a non-playable stage state (error or
@@ -314,7 +380,14 @@ export async function initFlagship(
     }
     round = resolution.round;
   } else {
-    round = pickRound(rounds, params, set);
+    const picked = pickRound(rounds, params, set);
+    if (!picked) {
+      showStageError(
+        "No rounds are available for this mode right now — try refreshing the page.",
+      );
+      return;
+    }
+    round = picked;
   }
   const stage = $("stage");
   const tray = $("chip-tray");
