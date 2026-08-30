@@ -192,6 +192,8 @@ table.kv{border-collapse:collapse;width:100%}table.kv td{padding:3px 8px 3px 0;v
   </select></div>
   <div><label for="corpus_root">Corpus root</label><input id="corpus_root" placeholder="local/research/&lt;topic&gt;/corpus/snapshot=&lt;date&gt;" required></div>
   <div><label for="topic">Run topic (bookkeeping slug)</label><input id="topic" placeholder="my-comparison" required></div></div>
+  <div class="row"><div><label for="max_hops">Max hops (optional, default 4)</label><input id="max_hops" type="number" min="1"></div>
+  <div id="field-max_route_candidate_pairs"><label for="max_route_candidate_pairs">Max route candidate pairs (optional, default 200; albums/scenes only)</label><input id="max_route_candidate_pairs" type="number" min="0"></div></div>
   <div class="row" id="fields-albums"><div><label for="album_a">Album A (release_id)</label><input id="album_a" type="number"></div><div><label for="album_b">Album B (release_id)</label><input id="album_b" type="number"></div></div>
   <div class="row hidden" id="fields-artists"><div><label for="artist_a">Artist A (artist_id)</label><input id="artist_a" type="number"></div><div><label for="artist_b">Artist B (artist_id)</label><input id="artist_b" type="number"></div></div>
   <div class="row hidden" id="fields-scenes"><div><label for="scene_a">Scene A (space-separated artist_ids)</label><input id="scene_a" placeholder="100 200 300"></div><div><label for="scene_b">Scene B (space-separated artist_ids)</label><input id="scene_b" placeholder="400 500"></div></div>
@@ -216,7 +218,15 @@ table.kv{border-collapse:collapse;width:100%}table.kv td{padding:3px 8px 3px 0;v
 <script>
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-function updateFields(){for(const m of ['albums','artists','scenes'])$('#fields-'+m).classList.toggle('hidden',m!==$('#mode').value)}
+const COMPARE_MODES=['albums','artists','scenes'];
+function updateFields(){
+  for(const m of ['albums','artists','scenes'])$('#fields-'+m).classList.toggle('hidden',m!==$('#mode').value);
+  // CompareArtistsRequest has no max_route_candidate_pairs field at all --
+  // it only ever bounds a single direct artist-to-artist path, never
+  // searches candidate pairs -- so the field would be silently ignored if
+  // shown here.
+  $('#field-max_route_candidate_pairs').classList.toggle('hidden',$('#mode').value==='artists');
+}
 $('#mode').onchange=updateFields;updateFields();
 function kv(pairs){return '<table class="kv">'+pairs.map(([k,v])=>'<tr><td>'+esc(k)+'</td><td>'+v+'</td></tr>').join('')+'</table>'}
 function summarizeAlbums(c){return kv([
@@ -253,6 +263,11 @@ function renderResult(mode,data){
 function loadRequestIntoForm(request){
   $('#mode').value=request.mode;updateFields();
   $('#corpus_root').value=request.corpus_snapshot_root;
+  // CompareArtistsRequest's saved request.json has no max_route_candidate_pairs
+  // key at all -- `?? ''` leaves the (hidden, for this mode) field blank
+  // rather than showing a stale value from whatever was loaded before it.
+  $('#max_hops').value=request.max_hops??'';
+  $('#max_route_candidate_pairs').value=request.max_route_candidate_pairs??'';
   if(request.mode==='albums'){
     $('#album_a').value=request.album_a_release_id;
     $('#album_b').value=request.album_b_release_id;
@@ -270,10 +285,14 @@ function loadRuns(){
   if(!topic){$('#runs').innerHTML='';return}
   fetch('/api/runs?topic='+encodeURIComponent(topic)).then(r=>r.ok?r.json():{runs:[]}).then(d=>{
     if(!d.runs.length){$('#runs').innerHTML='';return}
-    // A run with no saved request (recorded before this field existed)
-    // still lists, just as plain text -- there's nothing to load.
+    // A run with no saved request (recorded before this field existed),
+    // or a request from a different command entirely (e.g. a plain
+    // research-run writes its own request.json shape to the same path,
+    // with no "mode" key) -- either way there's nothing this form knows
+    // how to load, so it lists as plain text rather than a button that
+    // would throw trying to populate fields that don't apply.
     $('#runs').innerHTML='Past runs for "'+esc(topic)+'": '+d.runs.map((r,i)=>
-      r.request
+      r.request&&COMPARE_MODES.includes(r.request.mode)
         ? '<button type="button" class="run-load-btn" data-index="'+i+'">'+esc(r.run_id)+'</button>'
         : esc(r.run_id)
     ).join(', ');
@@ -285,7 +304,12 @@ function loadRuns(){
 $('#topic').onblur=loadRuns;
 function evidenceCreditRows(rows){
   if(!rows.length)return '<p class="runs">No credit rows.</p>';
-  return '<table class="kv">'+rows.map(r=>'<tr><td>'+esc(r.release_id)+'</td><td>'+esc(r.credit_scope)+(r.role_text?' — '+esc(r.role_text):'')+(r.track_title?' ('+esc(r.track_title)+')':'')+'</td></tr>').join('')+'</table>';
+  return '<table class="kv">'+rows.map(r=>{
+    const identity=r.artist_id!=null?('artist_id '+esc(r.artist_id)):'non-linked';
+    const who=esc(r.name)+(r.anv?' (billed as '+esc(r.anv)+')':'')+' <span class="runs">'+identity+'</span>';
+    const what=esc(r.release_id)+' — '+esc(r.credit_scope)+(r.role_text?' — '+esc(r.role_text):'')+(r.track_title?' ('+esc(r.track_title)+')':'');
+    return '<tr><td>'+who+'</td><td>'+what+'</td></tr>';
+  }).join('')+'</table>';
 }
 function scopeTiersPanel(scopeTiers){
   if(!scopeTiers)return '';
@@ -317,6 +341,14 @@ async function loadEvidence(corpus_root,kind,id){
   }catch(err){$('#evidence').innerHTML='<p class="error">'+esc(String(err))+'</p>'}
 }
 function pinToCompare(kind,slot,id,corpus_root){
+  // Pinning from a DIFFERENT corpus than the form currently holds means
+  // every already-pinned id (including ones hidden under another mode)
+  // was resolved against that other corpus -- clear them all first, or
+  // submitting would silently mix ids from two different corpora.
+  const previousCorpusRoot=$('#corpus_root').value;
+  if(previousCorpusRoot&&previousCorpusRoot!==corpus_root){
+    ['#album_a','#album_b','#artist_a','#artist_b','#scene_a','#scene_b'].forEach(sel=>{$(sel).value=''});
+  }
   $('#mode').value=kind;updateFields();
   $('#corpus_root').value=corpus_root;
   const field=kind==='albums'?(slot==='a'?'#album_a':'#album_b'):(slot==='a'?'#artist_a':'#artist_b');
@@ -351,6 +383,12 @@ $('#form').onsubmit=async(e)=>{
   $('#error').classList.add('hidden');$('#result').classList.add('hidden');
   const mode=$('#mode').value;
   const payload={mode,corpus_root:$('#corpus_root').value.trim(),topic:$('#topic').value.trim()};
+  const maxHopsRaw=$('#max_hops').value.trim();
+  if(maxHopsRaw)payload.max_hops=Number(maxHopsRaw);
+  if(mode!=='artists'){
+    const maxPairsRaw=$('#max_route_candidate_pairs').value.trim();
+    if(maxPairsRaw)payload.max_route_candidate_pairs=Number(maxPairsRaw);
+  }
   if(mode==='albums'){payload.album_a=Number($('#album_a').value);payload.album_b=Number($('#album_b').value)}
   else if(mode==='artists'){payload.artist_a=Number($('#artist_a').value);payload.artist_b=Number($('#artist_b').value)}
   else{payload.scene_a=$('#scene_a').value.trim().split(/\\s+/).filter(Boolean).map(Number);payload.scene_b=$('#scene_b').value.trim().split(/\\s+/).filter(Boolean).map(Number)}
@@ -448,27 +486,58 @@ def _required_int(payload: dict[str, Any], field: str) -> int:
     return value
 
 
+def _optional_int(payload: dict[str, Any], field: str) -> int | None:
+    value = payload.get(field)
+    if value is None:
+        return None
+    if not isinstance(value, int):
+        raise WorkbenchRequestError(f"{field} must be an integer")
+    return value
+
+
 def build_compare_request(
     mode: str, payload: dict[str, Any], corpus_root: Path
 ) -> CompareAlbumsRequest | CompareArtistsRequest | CompareScenesRequest:
+    """`max_hops`/`max_route_candidate_pairs` are optional overrides of the
+    request dataclasses' own defaults -- only forwarded when the form (or a
+    loaded saved request) actually supplied them, so an ordinary run keeps
+    using `DEFAULT_MAX_HOPS`/`DEFAULT_MAX_ROUTE_CANDIDATE_PAIRS` exactly as
+    the dataclass fields already default. `CompareArtistsRequest` has no
+    `max_route_candidate_pairs` field at all -- it only ever bounds a single
+    direct path -- so that override is never read for `artists`."""
+    max_hops = _optional_int(payload, "max_hops")
+    max_route_candidate_pairs = _optional_int(payload, "max_route_candidate_pairs")
     if mode == "albums":
-        return CompareAlbumsRequest(
-            corpus_snapshot_root=corpus_root,
-            album_a_release_id=_required_int(payload, "album_a"),
-            album_b_release_id=_required_int(payload, "album_b"),
-        )
+        album_kwargs: dict[str, Any] = {
+            "corpus_snapshot_root": corpus_root,
+            "album_a_release_id": _required_int(payload, "album_a"),
+            "album_b_release_id": _required_int(payload, "album_b"),
+        }
+        if max_hops is not None:
+            album_kwargs["max_hops"] = max_hops
+        if max_route_candidate_pairs is not None:
+            album_kwargs["max_route_candidate_pairs"] = max_route_candidate_pairs
+        return CompareAlbumsRequest(**album_kwargs)
     if mode == "artists":
-        return CompareArtistsRequest(
-            corpus_snapshot_root=corpus_root,
-            artist_a_id=_required_int(payload, "artist_a"),
-            artist_b_id=_required_int(payload, "artist_b"),
-        )
+        artist_kwargs: dict[str, Any] = {
+            "corpus_snapshot_root": corpus_root,
+            "artist_a_id": _required_int(payload, "artist_a"),
+            "artist_b_id": _required_int(payload, "artist_b"),
+        }
+        if max_hops is not None:
+            artist_kwargs["max_hops"] = max_hops
+        return CompareArtistsRequest(**artist_kwargs)
     if mode == "scenes":
-        return CompareScenesRequest(
-            corpus_snapshot_root=corpus_root,
-            scene_a_artist_ids=_positive_int_list(payload.get("scene_a"), "scene_a"),
-            scene_b_artist_ids=_positive_int_list(payload.get("scene_b"), "scene_b"),
-        )
+        scene_kwargs: dict[str, Any] = {
+            "corpus_snapshot_root": corpus_root,
+            "scene_a_artist_ids": _positive_int_list(payload.get("scene_a"), "scene_a"),
+            "scene_b_artist_ids": _positive_int_list(payload.get("scene_b"), "scene_b"),
+        }
+        if max_hops is not None:
+            scene_kwargs["max_hops"] = max_hops
+        if max_route_candidate_pairs is not None:
+            scene_kwargs["max_route_candidate_pairs"] = max_route_candidate_pairs
+        return CompareScenesRequest(**scene_kwargs)
     raise WorkbenchRequestError(f"unrecognized mode: {mode!r}")
 
 
@@ -592,7 +661,12 @@ def make_workbench_handler(
                     )
                     kind = query_params.get("kind", [""])[0]
                     query = query_params.get("q", [""])[0]
-                    with CreditGraph.open(corpus_root) as graph:
+                    # build_edges=False: search never traverses credit_edges
+                    # (CreditGraph.open's own docstring: building it is a
+                    # ~2.5 minute step on the real corpus) -- paying that
+                    # cost per search request made every search against a
+                    # real production-scale corpus needlessly slow.
+                    with CreditGraph.open(corpus_root, build_edges=False) as graph:
                         results = search_corpus(graph, kind, query)
                 except WorkbenchRequestError as exc:
                     self._respond_json(400, {"error": str(exc)})
@@ -607,7 +681,10 @@ def make_workbench_handler(
                     )
                     kind = query_params.get("kind", [""])[0]
                     entity_id = _required_query_int(query_params.get("id", [""])[0], "id")
-                    with CreditGraph.open(corpus_root) as graph:
+                    # build_edges=False -- same reasoning as /api/search
+                    # above: evidence lookup (release/artist credit rows,
+                    # scope-tier coverage) never traverses credit_edges.
+                    with CreditGraph.open(corpus_root, build_edges=False) as graph:
                         evidence = load_evidence(graph, kind, entity_id, corpus_root)
                 except WorkbenchRequestError as exc:
                     self._respond_json(400, {"error": str(exc)})

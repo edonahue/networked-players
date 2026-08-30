@@ -12,6 +12,7 @@ import threading
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
+from unittest import mock
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
@@ -211,6 +212,58 @@ def test_workbench_compares_two_scenes_end_to_end(server: tuple[str, Path], corp
     assert CAROL in data["comparison"]["shared_collaborators"]["artist_ids"]
 
 
+def test_workbench_compare_forwards_a_custom_max_hops_override(
+    server: tuple[str, Path], corpus: Path
+) -> None:
+    # A real Codex-review-caught gap: the workbench form had no way to send
+    # a non-default max_hops at all, so a "reproducible" saved request could
+    # never actually reproduce a run that used one. Seed A and Seed B are 2
+    # hops apart (via Carol) -- the default max_hops=4 finds that route (see
+    # test_workbench_compares_two_artists_end_to_end), but max_hops=1 must
+    # not, proving the override reaches CompareArtistsRequest rather than
+    # being silently dropped.
+    base, _ = server
+    status, data = _post_compare(
+        base,
+        {
+            "mode": "artists",
+            "corpus_root": str(corpus),
+            "topic": "seeda-vs-seedb-bounded",
+            "artist_a": SEED_A,
+            "artist_b": SEED_B,
+            "max_hops": 1,
+        },
+    )
+    assert status == 200
+    assert data["comparison"]["route"]["case"] == "no_path_within_bound"
+
+
+def test_workbench_compare_forwards_a_custom_max_route_candidate_pairs_override(
+    server: tuple[str, Path], corpus: Path
+) -> None:
+    # Same real gap as above, for CompareScenesRequest's separate
+    # max_route_candidate_pairs bound: 0 forces `_route_between` to report
+    # "search_bounded" with zero pairs tried before it even looks at the
+    # graph -- proof the override was forwarded, not silently dropped in
+    # favor of DEFAULT_MAX_ROUTE_CANDIDATE_PAIRS.
+    base, _ = server
+    status, data = _post_compare(
+        base,
+        {
+            "mode": "scenes",
+            "corpus_root": str(corpus),
+            "topic": "scene-a-vs-scene-b-bounded",
+            "scene_a": [SEED_A],
+            "scene_b": [SEED_B],
+            "max_route_candidate_pairs": 0,
+        },
+    )
+    assert status == 200
+    routes = data["comparison"]["routes_between_sets"]
+    assert routes["case"] == "search_bounded"
+    assert routes["pairs_tried"] == 0
+
+
 def test_workbench_rejects_a_real_corpus_outside_the_allowlist(
     server: tuple[str, Path], tmp_path: Path
 ) -> None:
@@ -335,6 +388,34 @@ def test_workbench_runs_list_is_empty_for_an_unknown_topic(server: tuple[str, Pa
     base, _ = server
     with urlopen(f"{base}/api/runs?topic=never-run") as response:
         assert json.loads(response.read())["runs"] == []
+
+
+def test_workbench_search_and_evidence_open_the_graph_without_building_edges(
+    server: tuple[str, Path], corpus: Path
+) -> None:
+    # A real Codex-review-caught bug: both endpoints previously opened
+    # CreditGraph with the default build_edges=True, paying the ~2.5-minute
+    # edge-materialization cost (CreditGraph.open's own docstring) on every
+    # search/evidence request even though neither ever traverses edges.
+    # Patching CreditGraph.open to record its own build_edges kwarg is the
+    # only way to observe this from outside -- a correct and an incorrect
+    # response body look identical; only the cost differs.
+    calls: list[bool] = []
+    real_open = _MODULE.CreditGraph.open
+
+    def spying_open(*args: Any, **kwargs: Any) -> Any:
+        calls.append(kwargs.get("build_edges", True))
+        return real_open(*args, **kwargs)
+
+    with mock.patch.object(_MODULE.CreditGraph, "open", staticmethod(spying_open)):
+        base, _ = server
+        status, _ = _get_json(f"{base}/api/search?corpus_root={corpus}&kind=albums&q=alpha")
+        assert status == 200
+        status, _ = _get_json(f"{base}/api/evidence?corpus_root={corpus}&kind=album&id=1")
+        assert status == 200
+
+    assert len(calls) == 2
+    assert calls == [False, False]
 
 
 def test_workbench_search_finds_albums_by_title_substring(
