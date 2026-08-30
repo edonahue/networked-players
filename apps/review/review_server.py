@@ -193,7 +193,7 @@ table.kv{border-collapse:collapse;width:100%}table.kv td{padding:3px 8px 3px 0;v
   <div><label for="corpus_root">Corpus root</label><input id="corpus_root" placeholder="local/research/&lt;topic&gt;/corpus/snapshot=&lt;date&gt;" required></div>
   <div><label for="topic">Run topic (bookkeeping slug)</label><input id="topic" placeholder="my-comparison" required></div></div>
   <div class="row"><div><label for="max_hops">Max hops (optional, default 4)</label><input id="max_hops" type="number" min="1"></div>
-  <div id="field-max_route_candidate_pairs"><label for="max_route_candidate_pairs">Max route candidate pairs (optional, default 200; albums/scenes only)</label><input id="max_route_candidate_pairs" type="number" min="1"></div></div>
+  <div id="field-max_route_candidate_pairs"><label for="max_route_candidate_pairs">Max route candidate pairs (optional, default 200; albums/scenes only)</label><input id="max_route_candidate_pairs" type="number" min="0"></div></div>
   <div class="row" id="fields-albums"><div><label for="album_a">Album A (release_id)</label><input id="album_a" type="number"></div><div><label for="album_b">Album B (release_id)</label><input id="album_b" type="number"></div></div>
   <div class="row hidden" id="fields-artists"><div><label for="artist_a">Artist A (artist_id)</label><input id="artist_a" type="number"></div><div><label for="artist_b">Artist B (artist_id)</label><input id="artist_b" type="number"></div></div>
   <div class="row hidden" id="fields-scenes"><div><label for="scene_a">Scene A (space-separated artist_ids)</label><input id="scene_a" placeholder="100 200 300"></div><div><label for="scene_b">Scene B (space-separated artist_ids)</label><input id="scene_b" placeholder="400 500"></div></div>
