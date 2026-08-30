@@ -260,7 +260,8 @@ specifically.
 - *What not to build yet*: nothing here until the corpus-scope question
   above has a real answer.
 
-**Catalog-expansion readiness (2026-08-17) — measured, not acted on.**
+**Catalog-expansion readiness (2026-08-17) — measured, then acted on via a
+different mechanism (Phase 7, 2026-08-29).**
 Ran the existing `rank-album-candidates` → `review-album-candidates`
 pipeline (`packages/graph-core/.../candidate_review.py`, real, already
 built, never mutates any catalog artifact — structurally guarded by its
@@ -322,6 +323,26 @@ gitignored) — only aggregate counts and method are recorded here, per
 - *What not to build yet*: no catalog expansion. This is readiness
   measurement only; promotion stays the explicit human editorial
   decision `candidate_review.py`'s own `method_note` already states.
+- **Correction (2026-08-30, post-Phase-7 audit):** the entry above and its
+  "not acted on" heading are now stale in one specific way — Phase 7 (PRs
+  #143–161, `docs/PHASE7_REPORT.md`) *did* expand the catalog, 140 → 179
+  albums, but not via a "+20/+40 pilot from this 200-ranked-candidate
+  list." The mechanism this measurement evaluated (`rank-album-candidates`
+  → `review-album-candidates`, ranked purely by marginal new-contributor
+  value) was never run as a promotion pipeline; the real expansion instead
+  used three separate, purpose-built lanes: Bucket A (13 personal/editorial
+  anchors, ADR 0065), Bucket B (18 albums, exact marginal-value selection
+  against the wider v4 one-hop working set — resolving §16's "remaining
+  risk to watch" from the Phase 7 plan cleanly, at the full target count),
+  and Bucket C (8 albums, closing measured coverage gaps: 2020s at zero, thin 2010s,
+  Latin/Reggae at one album each). This entry's own "biggest uncertainty"
+  (editorial review cost) was resolved by owner decision to run Buckets
+  B/C fully autonomously, with determinism and a full evidence table as
+  the review mechanism, rather than a human-reviewed pilot — see the
+  Phase 7 plan's §16 "Owner decisions taken." The real, aggregate findings
+  and both 2026-08-27 corrections above remain accurate as a record of
+  what that specific measurement found; they just describe a road not
+  taken, not the one Phase 7 actually used.
 
 ## Publication/data operations
 
