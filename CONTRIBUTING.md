@@ -13,7 +13,7 @@ Networked Players is currently a personal learning and portfolio project. Though
 
 1. Install the [prerequisites](README.md#develop): `uv`, Python 3.12+, and the `libxml2`/`libxslt` dev headers.
 2. `make setup` (installs dependencies with dev extras).
-3. `make check` before pushing — it runs lint, format check, type check, and tests, mirroring CI.
+3. `make check` before pushing — it runs lint, format check, type check, tests, and the two committed-artifact validation gates (`validate-public-artifacts`, `validate-album-catalog-audit`), mirroring CI's Python-workflow gate exactly. If your change touches `apps/web`, CI also runs a separate gate that `make check` does NOT cover — `npm run format:check`, `npm run check` (Astro type-check + build), and `npm run test:smoke` (Playwright) from `apps/web/`; see `apps/web/AGENTS.md`.
 
 Optionally, `uvx pre-commit install` enables the local hooks in `.pre-commit-config.yaml`.
 

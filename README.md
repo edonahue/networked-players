@@ -4,16 +4,17 @@
 
 The project begins with a private collection-derived seed, expands through adjacent catalog credits, and produces documented paths between artists and releases. The first public experience will be static-first so it remains useful even when the home lab is offline.
 
-> **Status:** live and playable. A real 140-album Discogs catalog with
-> hotlinked cover art backs three playable game modes at
+> **Status:** live and playable. A real 179-album Discogs catalog with
+> hotlinked cover art backs four playable game modes at
 > `networked-players.com/play/`: the flagship Connection Guesser (one-hop
 > and two-hop shared-credit rounds), Connection of the Day (a frozen daily
-> schedule), and Record Routes (a distinct path-guessing mode). Every public
-> artifact has an independent, dependency-free validator deployable to the
-> real small Pi/x86 compute fleet for a second opinion. Still placeholder:
-> `/cohorts/` reviewed sets await a human-reviewed publication gate. No
-> public live API exists; the site is fully static and works with the home
-> lab offline.
+> schedule), Record Routes (a distinct path-guessing mode), and Connect Two
+> Records (search any two catalog albums for a documented route). Every
+> public artifact has an independent, dependency-free validator deployable
+> to the real small Pi/x86 compute fleet for a second opinion. Still
+> placeholder: `/cohorts/` reviewed sets await a human-reviewed publication
+> gate. No public live API exists; the site is fully static and works with
+> the home lab offline.
 
 ## Project identity
 
@@ -101,7 +102,9 @@ real, joined, and running real jobs today:
 
 ```text
 apps/                 apps/web (real, live code); apps/api (future)
-packages/            Catalog, graph, game-rule, and worker packages
+packages/            Catalog ingestion, graph-core, contracts, research, platform (real,
+                     live code); game-rules/ and workers/ are reserved package
+                     names with no code yet -- see their own READMEs
 data/                 Public schemas, contracts, and synthetic fixtures
 docs/                 Product, architecture, rights, sizing, and decisions
 infra/                Ansible and Docker Swarm config for a real, running fleet
