@@ -388,7 +388,12 @@ def _era_counts(
     return counts
 
 
-def _corpus_coverage(corpus_snapshot_root: Path, artist_id: int) -> dict[str, Any]:
+def corpus_coverage(corpus_snapshot_root: Path, artist_id: int) -> dict[str, Any]:
+    """`measure_scope_tiers` for one artist, wrapped in the same
+    "not_applicable" convention every other not-always-possible comparison
+    field here uses -- public (not `_`-prefixed) since the workbench's
+    Explore evidence view calls this directly for scope selection, not
+    just `compare_artists` below."""
     try:
         return {"case": "measured", "tiers": measure_scope_tiers(corpus_snapshot_root, artist_id)}
     except ScopeTierError as exc:
@@ -443,7 +448,7 @@ def compare_artists(graph: CreditGraph, request: CompareArtistsRequest) -> dict[
             "role_category_counts": _role_category_counts(credits_a),
             "era_counts": _era_counts(credits_a, releases_a),
             "hub_dependence": {"degree": graph.degree(request.artist_a_id)},
-            "corpus_coverage": _corpus_coverage(request.corpus_snapshot_root, request.artist_a_id),
+            "corpus_coverage": corpus_coverage(request.corpus_snapshot_root, request.artist_a_id),
         },
         "artist_b": {
             "artist_id": request.artist_b_id,
@@ -452,7 +457,7 @@ def compare_artists(graph: CreditGraph, request: CompareArtistsRequest) -> dict[
             "role_category_counts": _role_category_counts(credits_b),
             "era_counts": _era_counts(credits_b, releases_b),
             "hub_dependence": {"degree": graph.degree(request.artist_b_id)},
-            "corpus_coverage": _corpus_coverage(request.corpus_snapshot_root, request.artist_b_id),
+            "corpus_coverage": corpus_coverage(request.corpus_snapshot_root, request.artist_b_id),
         },
         # Reuses `_network_overlap` with single-artist "rosters" -- shared
         # collaborators is exactly the intersection of each artist's own

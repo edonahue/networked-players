@@ -394,6 +394,37 @@ def test_workbench_evidence_returns_artist_credit_rows_across_releases(
     assert {row["release_id"] for row in data["credit_rows"]} == {1, 2}
 
 
+def test_workbench_evidence_includes_real_scope_tier_coverage_for_an_artist(
+    server: tuple[str, Path], corpus: Path
+) -> None:
+    base, _ = server
+    status, data = _get_json(f"{base}/api/evidence?corpus_root={corpus}&kind=artist&id={CAROL}")
+    assert status == 200
+    scope_tiers = data["scope_tiers"]
+    assert scope_tiers["case"] == "measured"
+    tiers = {t["tier"]: t for t in scope_tiers["tiers"]["tiers"]}
+    assert set(tiers) == {"A", "B", "C"}
+    # Tier A is the whole corpus snapshot, not filtered by artist (see
+    # measure_scope_tiers's own docstring) -- both fixture releases count.
+    assert tiers["A"]["release_count"] == 2
+    # Carol is only ever release_credit-scope in this fixture, never the
+    # sole release_artist -- Tier B (and therefore C) must be empty for
+    # her, not a guess or a crash.
+    assert tiers["B"]["release_count"] == 0
+    assert tiers["C"]["release_count"] == 0
+
+
+def test_workbench_evidence_artist_scope_tiers_differ_from_album_evidence(
+    server: tuple[str, Path], corpus: Path
+) -> None:
+    # scope_tiers is an artist-only field -- album evidence must not carry
+    # it (nothing to guess at for a release).
+    base, _ = server
+    status, data = _get_json(f"{base}/api/evidence?corpus_root={corpus}&kind=album&id=1")
+    assert status == 200
+    assert "scope_tiers" not in data
+
+
 def test_workbench_evidence_rejects_an_unknown_album(
     server: tuple[str, Path], corpus: Path
 ) -> None:
