@@ -1,7 +1,7 @@
 {
   "title": "Networked Players",
   "tagline": "An evidence-first music-credit graph",
-  "description": "Given two artists or releases, Networked Players shows a documented path through credited work — and explains every step. Collaboration, never inferred influence.",
+  "description": "Given two artists or releases, Networked Players shows a documented path through credited work — and explains every step. Documented participation, never inferred influence.",
   "socialImage": "/og.svg",
   "repositoryUrl": "https://github.com/edonahue/networked-players",
   "authorUrl": "https://erichdonahue.com",

@@ -487,7 +487,7 @@ test("cohorts index lists cohorts and links to a detail page", async ({
 }) => {
   await page.goto("/cohorts/");
   await expect(page.getByRole("heading", { level: 1 })).toContainText(
-    "Browse reviewed cohorts",
+    "Browse cohorts",
   );
   await expect(
     page.getByText("Synthetic Example Cohort").first(),
@@ -599,7 +599,7 @@ test("primary nav marks the current section with aria-current", async ({
   await page.goto("/play/connection/");
   await expect(
     page.locator("nav[aria-label='Primary'] a[aria-current='page']"),
-  ).toHaveText("Find a Connection");
+  ).toHaveText("Connection Guesser");
   await page.goto("/contributors/");
   await expect(
     page.locator("nav[aria-label='Primary'] a[aria-current='page']"),

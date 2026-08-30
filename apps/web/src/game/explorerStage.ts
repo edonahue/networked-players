@@ -325,7 +325,7 @@ export async function initExplorerStage(): Promise<void> {
       const isInterestingNextStep =
         !node.isCenter && node.artistId === interestingNextStepArtistId;
       const label = isInterestingNextStep
-        ? `${escapeHtml(node.name)} (credited in a different kind of role -- worth a look)`
+        ? `${escapeHtml(node.name)} (credited in a different kind of role — worth a look)`
         : `${escapeHtml(node.name)}${node.isCenter ? " (center)" : ""}`;
       return (
         `<g class="explorer-node${dimmed ? " explorer-node--dimmed" : ""}${isInterestingNextStep ? " explorer-node--interesting" : ""}" ` +
@@ -452,7 +452,7 @@ export async function initExplorerStage(): Promise<void> {
       : undefined;
     if (nextStep && worthALookNeighbor) {
       infoWorthALookEl!.hidden = false;
-      infoWorthALookEl!.innerHTML = `Worth a look: <a href="/contributors/${nextStep.artist_id}/">${escapeHtml(worthALookNeighbor.name)}</a> -- ${escapeHtml(nextStep.reason)}.`;
+      infoWorthALookEl!.innerHTML = `Worth a look: <a href="/contributors/${nextStep.artist_id}/">${escapeHtml(worthALookNeighbor.name)}</a> — ${escapeHtml(nextStep.reason)}.`;
     } else {
       infoWorthALookEl!.hidden = true;
       infoWorthALookEl!.innerHTML = "";
