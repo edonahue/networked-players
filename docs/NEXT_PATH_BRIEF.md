@@ -44,7 +44,8 @@ readiness" entry below, which Phase 7 directly used (in a different form
 than that entry itself proposed) and which now carries a dated
 correction of its own — see that entry. Every other entry, and Phase 7
 as a whole, neither started nor closed any candidate below.
-Full detail in `docs/PHASE7_REPORT.md` (PRs #143–173).
+Full detail in `docs/PHASE7_REPORT.md` (PRs #143–195, including the
+2026-08-30 closeout recovery pass, PRs #193–195).
 
 ## Research quality / data model
 

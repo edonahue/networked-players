@@ -82,6 +82,25 @@ test("a high-degree center shows the truncation note", async ({ page }) => {
   });
 });
 
+// docs/SITE_REPROFILE_METHOD.md's own documented gap ("worker parse time:
+// not measured") -- this diagnostic global is what closes it, real
+// end-to-end through the actual worker (or its main-thread fallback), not
+// a unit test against graphWorker.ts in isolation.
+test("loading the graph records a real worker-parse-time diagnostic", async ({
+  page,
+}) => {
+  await page.goto("/explore/master-107325/");
+  await expect(
+    page.locator("[data-explorer-nodes] .explorer-node").first(),
+  ).toBeVisible({ timeout: 15000 });
+
+  const parseMs = await page.evaluate(
+    () => (window as { __NP_GRAPH_PARSE_MS__?: number }).__NP_GRAPH_PARSE_MS__,
+  );
+  expect(typeof parseMs).toBe("number");
+  expect(parseMs).toBeGreaterThanOrEqual(0);
+});
+
 test("clicking a neighbor recenters the view", async ({ page }) => {
   await page.goto("/explore/master-107325/");
   const nodes = page.locator("[data-explorer-nodes] .explorer-node");

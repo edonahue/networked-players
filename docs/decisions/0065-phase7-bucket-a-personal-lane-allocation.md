@@ -64,3 +64,41 @@ If a future snapshot re-parse (a new monthly dump) changes Discogs' own genre/st
 - `resolve-editorial-albums`'s own output for the 16-query run: `resolved_count: 13, unresolved_count: 1` (the Brubeck drop; the two earlier drops were never in the query list submitted to the tool, having already been identified by hand before PR #145 existed).
 - `editorial_seed_failures(payload) == []` against the committed `data/albums/editorial-seed-v1.json`.
 - Every resolved album's `artist_id` matches its billed credit on the real snapshot (PR #145's mismatched-identity guard ran on every one of the 13).
+
+## Addendum (2026-08-30)
+
+Bucket B's own risk note above ("this raises, not lowers, the bar... the
+next PR's first action verifies it against the real widened corpus, and if
+it still comes up short, the honest fallback is to shift the shortfall to
+Bucket C") turned out to be exactly the case that materialized: the
+committed catalog audit
+(`docs/data/studio-album-catalog-inclusion-audit-v1.json`) shows **18**
+`graph_rich`-sourced albums against the 19-slot target this ADR set, one
+short — confirmed directly, not a counting error (also independently
+documented in `docs/NEXT_PATH_BRIEF.md`'s own 2026-08-30 post-Phase-7-audit
+correction). Final composition: **13 personal + 18 graph-rich + 8
+coverage-gap = 39** published albums (140 pre-Phase-7 + 39 = 179 total),
+not the 40 this ADR originally allocated for.
+
+No shortfall reallocation happened either, contrary to this ADR's own
+stated fallback plan — the shortfall was simply never revisited during the
+PRs that followed (#152–161), and shipped as 179 without anyone noticing
+the gap between the 40-slot allocation and the 39 actually assembled until
+this closeout's own investigation found it.
+
+**Decision, made during the Phase 7 closeout recovery pass**: accept 179 as
+final. No 19th graph-rich candidate is manufactured or force-added to close
+the gap, and no filler album is added anywhere else to round the total back
+up to 180 or any other number. This is a deliberate closed decision, not an
+open question left for a future phase — the closeout plan's own explicit
+non-goals list ("no further catalog expansion, no filler album, no new
+public artifact generation") applies squarely here, and inventing a 19th
+pick after the fact, purely to match a number this ADR itself only ever
+called "projected, not measured" risk, would be exactly the kind of
+retroactive number-fitting AGENTS.md's sizing-claim discipline exists to
+prevent.
+
+If a future phase genuinely wants Bucket B at its originally-planned 19
+(or any other real, editorially-justified expansion), that is new catalog
+work with its own real candidate evaluation — not a correction to this
+ADR, and not something this closeout performs.
