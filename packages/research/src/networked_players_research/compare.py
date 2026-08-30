@@ -611,11 +611,23 @@ def compare_scenes(graph: CreditGraph, request: CompareScenesRequest) -> dict[st
 
 
 def corpus_version_string(corpus_root: Path) -> str:
-    """A topic corpus doesn't carry a single version string the way a
-    published artifact does -- the directory name plus its own manifest's
-    snapshot_date is the closest real provenance available."""
+    """A `research-build-corpus` manifest already carries a real,
+    content-hashed identity at `manifest["topic"]["corpus_version"]`
+    (`corpus.py`'s own `corpus_version_seed` covers topic, hop_tier,
+    seed_artist_ids, and source_snapshot_date) -- prefer it, since it's
+    sensitive to an `--overwrite` rebuild with different seeds even when the
+    directory name and snapshot_date are unchanged, and distinguishes two
+    different topic corpora that happen to share both (a real Codex-review
+    finding against this function's original directory-name+snapshot_date
+    fallback, which two other corpus roots can coincidentally share). Fall
+    back to that weaker identity only for a manifest that predates the
+    `topic` key (e.g. a plain ingestion snapshot, not a topic-corpus
+    output)."""
     manifest_path = corpus_root / "manifest.json"
     manifest = json.loads(manifest_path.read_text()) if manifest_path.is_file() else {}
+    corpus_version = manifest.get("topic", {}).get("corpus_version")
+    if corpus_version:
+        return str(corpus_version)
     return f"{corpus_root.name}:{manifest.get('snapshot_date', 'unknown')}"
 
 

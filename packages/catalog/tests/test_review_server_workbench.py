@@ -86,20 +86,40 @@ def _performed(release_id: int, *, artist_id: int, name: str) -> list[dict[str, 
     ]
 
 
-def _build_corpus(root: Path, *, snapshot_date: str = SNAPSHOT_DATE) -> Path:
-    """R1: Seed A (billed) + Carol (release-scope). R2: Seed B (billed) +
-    Carol (release-scope) -- Carol bridges the two albums/artists/scenes.
-    Factored out of the `corpus` fixture below so the graph/scope-tier
-    cache tests can build a second, genuinely distinct corpus (a different
-    root) or rewrite the SAME root's manifest with a new snapshot_date (a
-    simulated re-ingestion) without duplicating this whole body."""
-    releases = [_release(1, "Album Alpha"), _release(2, "Album Beta")]
+def _build_corpus(
+    root: Path,
+    *,
+    snapshot_date: str = SNAPSHOT_DATE,
+    topic_corpus_version: str | None = None,
+    include_release_2: bool = True,
+) -> Path:
+    """R1: Seed A (billed) + Carol (release-scope). R2 (unless
+    `include_release_2=False`): Seed B (billed) + Carol (release-scope) --
+    Carol bridges the two albums/artists/scenes. Factored out of the
+    `corpus` fixture below so the graph/scope-tier cache tests can build a
+    second, genuinely distinct corpus (a different root) or rewrite the
+    SAME root's manifest with a new snapshot_date (a simulated
+    re-ingestion) without duplicating this whole body.
+
+    `topic_corpus_version`, when given, is written to
+    `manifest["topic"]["corpus_version"]` -- the real content-hashed
+    identity field a genuine `research-build-corpus` manifest carries
+    (`corpus.py`'s own `corpus_version_seed`). Omitted by default so
+    every pre-existing test here keeps exercising `corpus_version_string`'s
+    directory-name+snapshot_date fallback unchanged; only the tests that
+    specifically target the two-different-corpora identity fix below pass
+    it explicitly."""
+    releases = [_release(1, "Album Alpha")]
     credits = [
         *_performed(1, artist_id=SEED_A, name="Seed A"),
         _credit(1, artist_id=CAROL, name="Carol", scope="release_credit"),
-        *_performed(2, artist_id=SEED_B, name="Seed B"),
-        _credit(2, artist_id=CAROL, name="Carol", scope="release_credit"),
     ]
+    if include_release_2:
+        releases.append(_release(2, "Album Beta"))
+        credits += [
+            *_performed(2, artist_id=SEED_B, name="Seed B"),
+            _credit(2, artist_id=CAROL, name="Carol", scope="release_credit"),
+        ]
     # exist_ok=True: also used to simulate a re-ingestion at an ALREADY
     # existing root (a fresh manifest.json/snapshot_date, same directory).
     (root / "table=releases").mkdir(parents=True, exist_ok=True)
@@ -117,9 +137,10 @@ def _build_corpus(root: Path, *, snapshot_date: str = SNAPSHOT_DATE) -> Path:
         pa.Table.from_pylist([], schema=SCHEMAS["tracks"]),
         root / "table=tracks" / "part-00000.parquet",
     )
-    (root / "manifest.json").write_text(
-        json.dumps({"schema_version": 3, "snapshot_date": snapshot_date})
-    )
+    manifest: dict[str, Any] = {"schema_version": 3, "snapshot_date": snapshot_date}
+    if topic_corpus_version is not None:
+        manifest["topic"] = {"corpus_version": topic_corpus_version}
+    (root / "manifest.json").write_text(json.dumps(manifest))
     return root
 
 
@@ -854,3 +875,129 @@ def test_workbench_scope_tier_cache_never_caches_a_failed_computation(tmp_path: 
         result = cache.get_or_compute(root, CAROL)
     assert result["case"] == "measured"
     assert call_count == 2
+
+
+# --- Codex-review follow-up fixes to PR B (#193) ---
+
+
+def test_workbench_scope_tier_cache_key_distinguishes_corpora_sharing_a_dirname_and_date(
+    tmp_path: Path,
+) -> None:
+    """A real Codex-review finding against `corpus_version_string`'s
+    original identity (directory name + manifest snapshot_date only): two
+    DIFFERENT topic corpora conventionally share both -- every corpus this
+    file builds lives under a `.../snapshot=<date>/` leaf, and two ordinary
+    topic corpora built from the same monthly snapshot share the same
+    `snapshot_date` too. `ScopeTierCache`'s key is `(identity, artist_id)`
+    with no path component at all, so that collision would silently serve
+    one corpus's scope tiers for a DIFFERENT corpus's same artist_id.
+
+    root_x and root_y share the exact directory basename
+    (`snapshot=20260601`) and `snapshot_date`, but are real, differently
+    shaped corpora (root_y omits release 2 entirely) with distinct
+    `topic.corpus_version` identities -- the fixed `corpus_version_string`
+    must key off that, not the directory name, so Carol's Tier A (the
+    whole-snapshot release count, unfiltered by artist) correctly comes
+    back as 2 for root_x and 1 for root_y instead of the first answer
+    leaking into the second lookup."""
+    cache = _MODULE.ScopeTierCache()
+    root_x = tmp_path / "topic-x" / "corpus_root" / f"snapshot={SNAPSHOT_DATE}"
+    _build_corpus(root_x, topic_corpus_version="topic-x-v1")
+    root_y = tmp_path / "topic-y" / "corpus_root" / f"snapshot={SNAPSHOT_DATE}"
+    _build_corpus(root_y, topic_corpus_version="topic-y-v1", include_release_2=False)
+    assert root_x.name == root_y.name  # the exact collision this test guards against
+
+    tiers_x = cache.get_or_compute(root_x, CAROL)
+    tiers_y = cache.get_or_compute(root_y, CAROL)
+
+    tier_a_x = {t["tier"]: t for t in tiers_x["tiers"]["tiers"]}["A"]
+    tier_a_y = {t["tier"]: t for t in tiers_y["tiers"]["tiers"]}["A"]
+    assert tier_a_x["release_count"] == 2
+    assert tier_a_y["release_count"] == 1
+
+
+def test_workbench_compare_graph_cache_invalidates_on_a_same_root_overwrite_with_unchanged_date(
+    server: tuple[str, Path], corpus: Path
+) -> None:
+    """A real Codex-review finding: `research-build-corpus --overwrite` can
+    replace a corpus with different seeds while retaining the same source
+    snapshot -- directory name AND `manifest["snapshot_date"]` both stay
+    unchanged. The original `corpus_version_string` (dir name + snapshot_date
+    only) would then see no identity change at all and keep serving the
+    stale cached graph forever. The manifest's real content-hashed
+    `topic.corpus_version` changes on exactly this kind of overwrite even
+    when snapshot_date doesn't, and must be what actually drives
+    invalidation here."""
+    real_open = _MODULE.CreditGraph.open
+    open_count = 0
+
+    def counting_open(*args: Any, **kwargs: Any) -> Any:
+        nonlocal open_count
+        open_count += 1
+        return real_open(*args, **kwargs)
+
+    def compare_once() -> None:
+        status, _ = _post_compare(
+            base,
+            {
+                "mode": "artists",
+                "corpus_root": str(corpus),
+                "topic": "overwrite-check",
+                "artist_a": SEED_A,
+                "artist_b": SEED_B,
+            },
+        )
+        assert status == 200
+
+    _build_corpus(corpus, topic_corpus_version="v1")
+    with mock.patch.object(_MODULE.CreditGraph, "open", staticmethod(counting_open)):
+        base, _ = server
+        compare_once()
+        assert open_count == 1
+
+        # Reused across a second request against the SAME corpus_version.
+        compare_once()
+        assert open_count == 1
+
+        # Same root, same snapshot_date, DIFFERENT topic.corpus_version --
+        # simulates `--overwrite` with a different seed set.
+        _build_corpus(corpus, topic_corpus_version="v2")
+
+        compare_once()
+        assert open_count == 2
+
+
+def test_workbench_graph_cache_evicts_once_a_pinned_entry_that_exceeded_capacity_becomes_idle(
+    tmp_path: Path,
+) -> None:
+    """A real Codex-review finding: eviction previously only ran on the
+    insert-a-new-corpus path (inside the `else` branch of `checkout`), never
+    when an existing entry's checkout finishes. A burst of concurrent
+    checkouts against more distinct corpora than `max_entries` leaves every
+    entry pinned (refcount > 0) at insert time, so that insert-time
+    eviction has nothing to remove -- and under the old code, NOTHING ever
+    retried eviction afterward, so the cache stayed oversized until some
+    later, unrelated new-corpus build happened to trigger it again.
+
+    Two corpora held open (refcount 1 each) while a third is checked out
+    reproduces exactly that: all three are pinned when the third insert's
+    eviction runs, so it can't evict anything, and the cache transiently
+    holds 3 entries against `max_entries=2`. Every checkout then finishes
+    with no fourth corpus ever built -- the cache must settle back down to
+    2 on its own."""
+    cache = _MODULE.WorkbenchGraphCache(max_entries=2)
+    roots = [
+        _build_corpus(tmp_path / f"corpus-{i}" / f"snapshot={SNAPSHOT_DATE}") for i in range(3)
+    ]
+
+    with cache.checkout(roots[0]), cache.checkout(roots[1]):
+        with cache.checkout(roots[2]):
+            # All three pinned right now -- insert-time eviction had no
+            # idle candidate, so it transiently exceeded max_entries.
+            assert len(cache._entries) == 3
+        # roots[2]'s checkout just ended and nothing else changed yet --
+        # this is the exact moment the old code left permanently oversized.
+        assert len(cache._entries) == 2
+
+    assert len(cache._entries) == 2
+    cache.close_all()

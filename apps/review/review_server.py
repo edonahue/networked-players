@@ -656,10 +656,13 @@ class WorkbenchGraphCache:
     anywhere in this file).
 
     Keyed by resolved corpus root; the cached VALUE also carries
-    `corpus_version_string(corpus_root)` (directory name + manifest
-    snapshot_date) so a corpus that gets re-ingested/regenerated at the
-    same root is detected and the stale graph is replaced, never silently
-    reused. Each checkout hands back `graph.cursor()` -- a real,
+    `corpus_version_string(corpus_root)` (the manifest's content-hashed
+    `topic.corpus_version`, so a `--overwrite` rebuild with different seeds
+    at the same root is detected even when the directory name and
+    snapshot_date are unchanged) so a corpus that gets re-ingested/
+    regenerated at the same root is detected and the stale graph is
+    replaced, never silently reused. Each checkout hands back
+    `graph.cursor()` -- a real,
     independent DuckDB cursor per `CreditGraph.cursor()`'s own documented
     concurrency contract -- never the shared owning graph itself, so
     concurrent requests against the same corpus never share query/interrupt
@@ -731,6 +734,17 @@ class WorkbenchGraphCache:
                 entry.refcount -= 1
                 if entry.stale and entry.refcount == 0:
                     entry.graph.close()
+                elif entry.refcount == 0:
+                    # A real Codex-review finding: eviction previously only
+                    # ran on the insert-a-new-entry path above, so a burst of
+                    # concurrent requests against more distinct corpora than
+                    # `max_entries` left every candidate pinned (refcount > 0)
+                    # at that check, and the cache never shrank back down
+                    # afterward -- only a LATER new-corpus build would ever
+                    # retry eviction. Retrying here, as each checkout goes
+                    # idle, is what actually makes the class's own "settles
+                    # back down as those requests finish" claim true.
+                    self._evict_excess_locked()
 
     def _evict_excess_locked(self) -> None:
         """Caller must already hold `self._lock`. Best-effort: an entry
