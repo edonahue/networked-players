@@ -728,15 +728,34 @@ def make_handler(
     analysis_dir: Path, selection_path: Path, source_id: str, reviewed_by: str, art_dir: Path | None
 ) -> type[BaseHTTPRequestHandler]:
     class Handler(BaseHTTPRequestHandler):
+        def _respond_json(self, status: int, payload: dict[str, Any]) -> None:
+            body = json.dumps(payload).encode()
+            self.send_response(status)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
         def do_GET(self) -> None:
             path = urlparse(self.path).path
             if path == "/":
                 body, kind = PAGE.encode(), "text/html; charset=utf-8"
             elif path == "/api/state":
-                body, kind = (
-                    json.dumps(load_state(analysis_dir, selection_path, source_id)).encode(),
-                    "application/json",
-                )
+                # A missing --source-id directory (operator typo, or the
+                # server started before the cohort-analysis step ran) or a
+                # hand-edited/corrupt selection.json must not surface as an
+                # uncaught traceback and a hard connection failure -- the
+                # workbench mode's endpoints already handle their own
+                # equivalent failures this way (see WorkbenchRequestError).
+                try:
+                    state = load_state(analysis_dir, selection_path, source_id)
+                except FileNotFoundError as exc:
+                    self._respond_json(404, {"error": f"cohort state not found: {exc}"})
+                    return
+                except json.JSONDecodeError as exc:
+                    self._respond_json(400, {"error": f"cohort state is not valid JSON: {exc}"})
+                    return
+                body, kind = json.dumps(state).encode(), "application/json"
             elif path.startswith("/art/") and art_dir:
                 candidate = (art_dir / path.removeprefix("/art/")).resolve()
                 if art_dir.resolve() not in candidate.parents or not candidate.is_file():
@@ -761,9 +780,15 @@ def make_handler(
                 return
             try:
                 payload = json.loads(self.rfile.read(int(self.headers.get("Content-Length", "0"))))
+                # A syntactically-valid but non-object body (null, 42, a bare
+                # list) would otherwise reach save_selection's payload.get(...)
+                # and raise an unhandled AttributeError -- the workbench's
+                # /api/compare guards the same way before touching any field.
+                if not isinstance(payload, dict):
+                    raise ValueError("request body must be a JSON object")
                 save_selection(selection_path, payload, reviewed_by)
             except (ValueError, json.JSONDecodeError) as exc:
-                self.send_error(400, str(exc))
+                self._respond_json(400, {"error": str(exc)})
                 return
             self.send_response(204)
             self.end_headers()

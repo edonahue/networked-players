@@ -8,7 +8,11 @@
 // after the round resolves.
 
 import { fetchAlbumArt, type ResolvedArt } from "./albumArt";
-import { fetchDailyManifest, resolveDailyRound } from "./dailyManifest";
+import {
+  fetchDailyManifest,
+  isGameRoundsArtifact,
+  resolveDailyRound,
+} from "./dailyManifest";
 import { isDateOverrideAllowed } from "./dateOverride";
 import { createEngine, type Engine } from "./engine";
 import { localIsoDate } from "./localDate";
@@ -85,17 +89,24 @@ function mysterySleeve(): HTMLElement {
   return span;
 }
 
+/** `null` means no round is available for this mode/kind -- e.g. a `kind`
+ * with zero published rounds. Without this guard, an empty `pool` made the
+ * final fallback (`ordered[set.entries.length % ordered.length]`) index by
+ * `x % 0` (`NaN`), silently returning `undefined` from a function typed to
+ * always return a `GameRound` -- callers would then crash dereferencing
+ * fields on it. Mirrors routesResolver.ts's own `empty-pool` check. */
 function pickRound(
   rounds: GameRound[],
   params: URLSearchParams,
   set: SetState,
-): GameRound {
+): GameRound | null {
   const pinned = params.get("round");
   if (pinned) {
     const match = rounds.find((r) => r.id === pinned);
     if (match) return match;
   }
   const pool = rounds.filter((r) => r.kind === set.kind);
+  if (pool.length === 0) return null;
   const ordered = createRng(`flagship-${set.seed}`).shuffle(pool);
   const inSet = new Set(set.entries.map((e) => e.roundId));
   const seen = new Set(load(storage()).seenRounds);
@@ -126,7 +137,17 @@ async function fetchRounds(): Promise<GameRounds> {
   if (!response.ok) {
     throw new Error(`failed to load rounds.v1.json: ${response.status}`);
   }
-  return (await response.json()) as GameRounds;
+  const data: unknown = await response.json();
+  // Sibling artifact loaders (dailyManifest.ts's own resolution path,
+  // routesResolver.ts's validateRoutesPool) never trust a TS type
+  // assertion as runtime proof of a fetched artifact's shape -- a
+  // truncated file, or an HTML error page served with 200 by a CDN/proxy
+  // failure, must surface as the caller's existing showStageError path,
+  // not an uncaught TypeError deep inside pickRound/render.
+  if (!isGameRoundsArtifact(data)) {
+    throw new Error("rounds.v1.json is not a well-formed rounds artifact");
+  }
+  return data;
 }
 
 /** Hide every gameplay control so a non-playable stage state (error or
@@ -314,7 +335,14 @@ export async function initFlagship(
     }
     round = resolution.round;
   } else {
-    round = pickRound(rounds, params, set);
+    const picked = pickRound(rounds, params, set);
+    if (!picked) {
+      showStageError(
+        "No rounds are available for this mode right now — try refreshing the page.",
+      );
+      return;
+    }
+    round = picked;
   }
   const stage = $("stage");
   const tray = $("chip-tray");
