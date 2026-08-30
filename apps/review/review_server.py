@@ -656,12 +656,12 @@ class WorkbenchGraphCache:
     anywhere in this file).
 
     Keyed by resolved corpus root; the cached VALUE also carries
-    `corpus_version_string(corpus_root)` (the manifest's content-hashed
-    `topic.corpus_version`, so a `--overwrite` rebuild with different seeds
-    at the same root is detected even when the directory name and
-    snapshot_date are unchanged) so a corpus that gets re-ingested/
-    regenerated at the same root is detected and the stale graph is
-    replaced, never silently reused. Each checkout hands back
+    `corpus_version_string(corpus_root)` (a hash of the manifest's own
+    per-file content hashes, so a rebuild that changes the actual Parquet
+    bytes is detected even when the directory name, snapshot_date, and any
+    declared build parameters are all unchanged) so a corpus that gets
+    re-ingested/regenerated at the same root is detected and the stale
+    graph is replaced, never silently reused. Each checkout hands back
     `graph.cursor()` -- a real,
     independent DuckDB cursor per `CreditGraph.cursor()`'s own documented
     concurrency contract -- never the shared owning graph itself, so
@@ -699,14 +699,26 @@ class WorkbenchGraphCache:
         build_lock = self._build_lock_for(root_key)
         with build_lock:
             identity = corpus_version_string(corpus_root)
+            # A real Codex-review finding: the reuse check and the promote
+            # (move_to_end + refcount increment) used to be two SEPARATE
+            # `self._lock` critical sections. Between them, an unrelated
+            # root's concurrent insert-triggered eviction could see this
+            # entry's refcount still at its pre-increment value, evict and
+            # close it, and then this reuse path would `move_to_end` a
+            # key that's no longer there (KeyError) or hand back a closed
+            # graph. Reading `existing` and promoting it must happen in one
+            # unbroken critical section so eviction can never land in that
+            # window.
             with self._lock:
                 existing = self._entries.get(root_key)
-            if existing is not None and existing.identity == identity and not existing.stale:
-                entry = existing
-                with self._lock:
+                if existing is not None and existing.identity == identity and not existing.stale:
+                    entry = existing
                     self._entries.move_to_end(root_key)
                     entry.refcount += 1
-            else:
+                    reused = True
+                else:
+                    reused = False
+            if not reused:
                 # Not cached, or cached under a since-changed corpus
                 # identity. CreditGraph.open() itself raises on a bad
                 # corpus root -- that exception propagates here with

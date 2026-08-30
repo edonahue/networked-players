@@ -90,7 +90,8 @@ def _build_corpus(
     root: Path,
     *,
     snapshot_date: str = SNAPSHOT_DATE,
-    topic_corpus_version: str | None = None,
+    content_marker: str | None = None,
+    canonical_shape: bool = False,
     include_release_2: bool = True,
 ) -> Path:
     """R1: Seed A (billed) + Carol (release-scope). R2 (unless
@@ -101,14 +102,18 @@ def _build_corpus(
     SAME root's manifest with a new snapshot_date (a simulated
     re-ingestion) without duplicating this whole body.
 
-    `topic_corpus_version`, when given, is written to
-    `manifest["topic"]["corpus_version"]` -- the real content-hashed
-    identity field a genuine `research-build-corpus` manifest carries
-    (`corpus.py`'s own `corpus_version_seed`). Omitted by default so
-    every pre-existing test here keeps exercising `corpus_version_string`'s
-    directory-name+snapshot_date fallback unchanged; only the tests that
-    specifically target the two-different-corpora identity fix below pass
-    it explicitly."""
+    `content_marker`, when given, is written into a synthetic
+    `manifest["files"]` entry's `sha256` field -- standing in for the real
+    per-file content hashes a genuine manifest carries (both
+    `parquet.py`'s canonical-snapshot writer and `corpus.py`'s topic-corpus
+    writer produce `files: [{path, sha256, ...}, ...]`), which is what
+    `corpus_version_string` actually keys off. Omitted by default so every
+    pre-existing test here keeps exercising the directory-name+
+    snapshot_date fallback (no `files` list at all) unchanged; only the
+    tests that specifically target the content-hash identity fix pass it
+    explicitly. `canonical_shape=True` also adds a `parser_version` (no
+    `topic` key) -- a canonical full snapshot's manifest shape, which
+    carries no topic-corpus-specific fields at all."""
     releases = [_release(1, "Album Alpha")]
     credits = [
         *_performed(1, artist_id=SEED_A, name="Seed A"),
@@ -138,8 +143,10 @@ def _build_corpus(
         root / "table=tracks" / "part-00000.parquet",
     )
     manifest: dict[str, Any] = {"schema_version": 3, "snapshot_date": snapshot_date}
-    if topic_corpus_version is not None:
-        manifest["topic"] = {"corpus_version": topic_corpus_version}
+    if canonical_shape:
+        manifest["parser_version"] = "1.0.0"
+    if content_marker is not None:
+        manifest["files"] = [{"path": "table=credits/part-00000.parquet", "sha256": content_marker}]
     (root / "manifest.json").write_text(json.dumps(manifest))
     return root
 
@@ -895,16 +902,16 @@ def test_workbench_scope_tier_cache_key_distinguishes_corpora_sharing_a_dirname_
     root_x and root_y share the exact directory basename
     (`snapshot=20260601`) and `snapshot_date`, but are real, differently
     shaped corpora (root_y omits release 2 entirely) with distinct
-    `topic.corpus_version` identities -- the fixed `corpus_version_string`
-    must key off that, not the directory name, so Carol's Tier A (the
+    manifest file-content hashes -- the fixed `corpus_version_string` must
+    key off that, not the directory name, so Carol's Tier A (the
     whole-snapshot release count, unfiltered by artist) correctly comes
     back as 2 for root_x and 1 for root_y instead of the first answer
     leaking into the second lookup."""
     cache = _MODULE.ScopeTierCache()
     root_x = tmp_path / "topic-x" / "corpus_root" / f"snapshot={SNAPSHOT_DATE}"
-    _build_corpus(root_x, topic_corpus_version="topic-x-v1")
+    _build_corpus(root_x, content_marker="hash-x")
     root_y = tmp_path / "topic-y" / "corpus_root" / f"snapshot={SNAPSHOT_DATE}"
-    _build_corpus(root_y, topic_corpus_version="topic-y-v1", include_release_2=False)
+    _build_corpus(root_y, content_marker="hash-y", include_release_2=False)
     assert root_x.name == root_y.name  # the exact collision this test guards against
 
     tiers_x = cache.get_or_compute(root_x, CAROL)
@@ -919,15 +926,17 @@ def test_workbench_scope_tier_cache_key_distinguishes_corpora_sharing_a_dirname_
 def test_workbench_compare_graph_cache_invalidates_on_a_same_root_overwrite_with_unchanged_date(
     server: tuple[str, Path], corpus: Path
 ) -> None:
-    """A real Codex-review finding: `research-build-corpus --overwrite` can
-    replace a corpus with different seeds while retaining the same source
-    snapshot -- directory name AND `manifest["snapshot_date"]` both stay
-    unchanged. The original `corpus_version_string` (dir name + snapshot_date
-    only) would then see no identity change at all and keep serving the
-    stale cached graph forever. The manifest's real content-hashed
-    `topic.corpus_version` changes on exactly this kind of overwrite even
-    when snapshot_date doesn't, and must be what actually drives
-    invalidation here."""
+    """A real Codex-review finding: a corpus can be rebuilt at the SAME root
+    with the SAME declared parameters (topic, hop_tier, seed_artist_ids,
+    snapshot_date all unchanged) -- e.g. reparsing a canonical snapshot, or
+    rebuilding a same-seed/same-date topic corpus over corrected source
+    input or a bumped parser/schema version -- while the actual Parquet
+    bytes genuinely differ. A first attempt at fixing this keyed off
+    `manifest["topic"]["corpus_version"]`, itself only a hash of those
+    declared parameters, so it was blind to exactly this case (a SECOND
+    real Codex-review finding). `corpus_version_string` must be driven by
+    the manifest's own per-file content hashes instead, which is what this
+    test's `content_marker` change stands in for."""
     real_open = _MODULE.CreditGraph.open
     open_count = 0
 
@@ -949,19 +958,64 @@ def test_workbench_compare_graph_cache_invalidates_on_a_same_root_overwrite_with
         )
         assert status == 200
 
-    _build_corpus(corpus, topic_corpus_version="v1")
+    _build_corpus(corpus, content_marker="hash-v1")
     with mock.patch.object(_MODULE.CreditGraph, "open", staticmethod(counting_open)):
         base, _ = server
         compare_once()
         assert open_count == 1
 
-        # Reused across a second request against the SAME corpus_version.
+        # Reused across a second request against the SAME content hash.
         compare_once()
         assert open_count == 1
 
-        # Same root, same snapshot_date, DIFFERENT topic.corpus_version --
-        # simulates `--overwrite` with a different seed set.
-        _build_corpus(corpus, topic_corpus_version="v2")
+        # Same root, same snapshot_date, DIFFERENT file content hash --
+        # simulates a same-seed rebuild over genuinely different bytes.
+        _build_corpus(corpus, content_marker="hash-v2")
+
+        compare_once()
+        assert open_count == 2
+
+
+def test_workbench_compare_graph_cache_invalidates_for_a_canonical_snapshot_shaped_manifest(
+    server: tuple[str, Path], corpus: Path
+) -> None:
+    """The exact scenario the second Codex-review finding named directly: a
+    canonical full snapshot's manifest (`apps/review/README.md` documents
+    `corpus_root` as either a topic corpus OR the full canonical snapshot)
+    has NO `topic` key at all -- only `files`, `schema_version`, and
+    `parser_version`. `corpus_version_string` must still correctly detect a
+    content change here, not silently fall back to the weaker directory-
+    name+snapshot_date identity just because `topic` is absent."""
+    real_open = _MODULE.CreditGraph.open
+    open_count = 0
+
+    def counting_open(*args: Any, **kwargs: Any) -> Any:
+        nonlocal open_count
+        open_count += 1
+        return real_open(*args, **kwargs)
+
+    def compare_once() -> None:
+        status, _ = _post_compare(
+            base,
+            {
+                "mode": "artists",
+                "corpus_root": str(corpus),
+                "topic": "canonical-check",
+                "artist_a": SEED_A,
+                "artist_b": SEED_B,
+            },
+        )
+        assert status == 200
+
+    _build_corpus(corpus, content_marker="hash-v1", canonical_shape=True)
+    with mock.patch.object(_MODULE.CreditGraph, "open", staticmethod(counting_open)):
+        base, _ = server
+        compare_once()
+        assert open_count == 1
+        compare_once()
+        assert open_count == 1
+
+        _build_corpus(corpus, content_marker="hash-v2", canonical_shape=True)
 
         compare_once()
         assert open_count == 2

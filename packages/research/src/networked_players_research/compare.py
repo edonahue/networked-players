@@ -36,6 +36,7 @@ the other nine.
 
 from __future__ import annotations
 
+import hashlib
 import json
 from collections.abc import Callable
 from contextlib import AbstractContextManager
@@ -611,23 +612,44 @@ def compare_scenes(graph: CreditGraph, request: CompareScenesRequest) -> dict[st
 
 
 def corpus_version_string(corpus_root: Path) -> str:
-    """A `research-build-corpus` manifest already carries a real,
-    content-hashed identity at `manifest["topic"]["corpus_version"]`
-    (`corpus.py`'s own `corpus_version_seed` covers topic, hop_tier,
-    seed_artist_ids, and source_snapshot_date) -- prefer it, since it's
-    sensitive to an `--overwrite` rebuild with different seeds even when the
-    directory name and snapshot_date are unchanged, and distinguishes two
-    different topic corpora that happen to share both (a real Codex-review
-    finding against this function's original directory-name+snapshot_date
-    fallback, which two other corpus roots can coincidentally share). Fall
-    back to that weaker identity only for a manifest that predates the
-    `topic` key (e.g. a plain ingestion snapshot, not a topic-corpus
-    output)."""
+    """A real, content-derived identity for a corpus snapshot -- built from
+    the manifest's own per-file `sha256` hashes (present under both a
+    canonical full snapshot's manifest, `parquet.py`'s own writer, and a
+    `research-build-corpus` topic corpus's manifest, `corpus.py`'s own
+    writer -- both list `files: [{path, sha256, ...}, ...]`) plus
+    `schema_version`/`parser_version`.
+
+    A first attempt at this used `topic.corpus_version` instead (a real
+    Codex-review finding against the ORIGINAL directory-name+snapshot_date
+    identity: two different topic corpora sharing both would collide). That
+    was still insufficient (a second, real Codex-review finding): a
+    canonical snapshot has no `topic` key at all, and `topic.corpus_version`
+    itself hashes only the corpus's declared *parameters* (topic, hop_tier,
+    seed_artist_ids, source_snapshot_date) -- reparsing a canonical
+    snapshot, or rebuilding a same-seed/same-date topic corpus over
+    corrected input or a bumped parser/schema version, changes the actual
+    Parquet bytes without changing any of those parameters. Hashing the
+    manifest's own per-file content hashes catches exactly that case, for
+    either corpus shape, with no dependence on which optional keys a given
+    manifest happens to carry.
+
+    Falls back to the old directory-name+snapshot_date scheme only for a
+    manifest with no `files` list at all (e.g. hand-built test fixtures, or
+    a manifest shape that predates per-file hashing)."""
     manifest_path = corpus_root / "manifest.json"
     manifest = json.loads(manifest_path.read_text()) if manifest_path.is_file() else {}
-    corpus_version = manifest.get("topic", {}).get("corpus_version")
-    if corpus_version:
-        return str(corpus_version)
+    files = manifest.get("files")
+    if isinstance(files, list) and files:
+        file_digest = hashlib.sha256(
+            json.dumps(
+                sorted((entry.get("path"), entry.get("sha256")) for entry in files),
+                sort_keys=True,
+            ).encode()
+        ).hexdigest()
+        return (
+            f"{manifest.get('schema_version', 'unknown')}:"
+            f"{manifest.get('parser_version', 'unknown')}:{file_digest}"
+        )
     return f"{corpus_root.name}:{manifest.get('snapshot_date', 'unknown')}"
 
 
