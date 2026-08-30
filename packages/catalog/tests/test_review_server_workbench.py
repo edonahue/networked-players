@@ -303,6 +303,32 @@ def test_workbench_lists_runs_for_a_topic(server: tuple[str, Path], corpus: Path
         runs = json.loads(response.read())["runs"]
     assert len(runs) == 1
     assert runs[0]["topic"] == "listed-topic"
+    assert runs[0]["request"] == {
+        "mode": "albums",
+        "corpus_snapshot_root": str(corpus),
+        "album_a_release_id": 1,
+        "album_b_release_id": 2,
+        "max_hops": 4,
+        "max_route_candidate_pairs": 200,
+    }
+
+
+def test_workbench_lists_a_pre_existing_run_with_no_request_json_as_none(
+    server: tuple[str, Path],
+) -> None:
+    # A run written before request.json existed (or by any other future
+    # writer that only produces manifest.json) must still list cleanly,
+    # not crash this endpoint.
+    base, research_root = server
+    run_dir = research_root / "legacy-topic" / "runs" / "20260101T000000Z"
+    run_dir.mkdir(parents=True)
+    (run_dir / "manifest.json").write_text(
+        json.dumps({"run_id": "20260101T000000Z", "topic": "legacy-topic"})
+    )
+    with urlopen(f"{base}/api/runs?topic=legacy-topic") as response:
+        runs = json.loads(response.read())["runs"]
+    assert len(runs) == 1
+    assert runs[0]["request"] is None
 
 
 def test_workbench_runs_list_is_empty_for_an_unknown_topic(server: tuple[str, Path]) -> None:
