@@ -32,7 +32,18 @@ export interface GraphWorkerRequest {
 }
 
 export type GraphWorkerResponse =
-  | { id: number; ok: true; graph: unknown; rawText: string }
+  | {
+      id: number;
+      ok: true;
+      graph: unknown;
+      rawText: string;
+      /** Wall-clock ms spent parsing + canonicalizing + hashing (the
+       * `validatePathfindingGraph` integrity check), excluding the network
+       * fetch -- `docs/SITE_REPROFILE_METHOD.md`'s own documented gap: this
+       * is the ~405ms/~535ms cost ADR 0059 Phase 5c moved off the main
+       * thread, previously unobservable from outside the worker at all. */
+      parseMs: number;
+    }
   | {
       id: number;
       ok: false;
@@ -55,9 +66,17 @@ async function handleRequest(request: GraphWorkerRequest): Promise<void> {
 
   if (cachedText) {
     try {
+      const parseStart = performance.now();
       const graph = await validatePathfindingGraph(JSON.parse(cachedText));
+      const parseMs = performance.now() - parseStart;
       if (graph) {
-        workerSelf.postMessage({ id, ok: true, graph, rawText: cachedText });
+        workerSelf.postMessage({
+          id,
+          ok: true,
+          graph,
+          rawText: cachedText,
+          parseMs,
+        });
         return;
       }
     } catch {
@@ -86,6 +105,7 @@ async function handleRequest(request: GraphWorkerRequest): Promise<void> {
     return;
   }
 
+  const parseStart = performance.now();
   let raw: unknown;
   try {
     raw = JSON.parse(text);
@@ -95,9 +115,10 @@ async function handleRequest(request: GraphWorkerRequest): Promise<void> {
   }
 
   const graph = await validatePathfindingGraph(raw);
+  const parseMs = performance.now() - parseStart;
   if (!graph) {
     workerSelf.postMessage({ id, ok: false, error: "invalid-graph" });
     return;
   }
-  workerSelf.postMessage({ id, ok: true, graph, rawText: text });
+  workerSelf.postMessage({ id, ok: true, graph, rawText: text, parseMs });
 }

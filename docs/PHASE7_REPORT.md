@@ -1,13 +1,28 @@
 # Phase 7 report: catalog expansion to 179 albums + the private research workbench
 
-**Status: complete for PRs A–G's originally-scoped work; PR C's curator
-`--mode expansion` tooling and PR D's fuller Explore vision are explicitly
-deferred, not abandoned (see "Remaining, after this phase").** Every PR
-shipped on its own branch, merged once `make check` (and, for `apps/web`
-changes, the full local Playwright suite plus CI) was green — the same
-continuous discipline Phases 3–6 established. This report is the closing
-summary: what shipped, what was measured, what was rejected or deferred,
-and what's left.
+**Status: complete, including a 2026-08-30 closeout recovery pass (PRs
+#193–195) that finished the one deliberately-deferred piece — the bounded
+Explore graph.** PR C's curator `--mode expansion` review UI remains
+deferred deliberately, plus two small pieces of PR D's own follow-on scope
+(scope-tier-driven graph traversal, automated a11y coverage for the new
+graph view) — see "Remaining, after this phase" and "Not exercised,"
+below. Every PR shipped on its
+own branch, merged once `make check` (and, for `apps/web` changes, the full
+local Playwright suite plus CI) was green — the same continuous discipline
+Phases 3–6 established. This report is the closing summary: what shipped,
+what was measured, what was rejected or deferred, and what's left.
+
+**This report was originally written after PR #173** (PRs #143–173) and is
+now rewritten to cover the real final range through PR #195, across three
+merge arcs that happened after that first version: PRs #174–178 (the
+report's own initial write, plus three more Explore slices — pin, saved
+requests, scope selection); PRs #179–187, an unrelated retroactive
+Codex-review-fix audit and cleanup pass, not part of this phase's own
+scope; and this closeout's own recovery pass, PRs #193–195 (workbench
+graph/scope-tier caching, an album-shelf regression fix, and the bounded
+Explore graph). All test counts and catalog figures below are freshly
+verified against `main` at PR #195, not transcribed from the original
+write.
 
 ## What shipped
 
@@ -54,10 +69,17 @@ phase; see "Remaining.")*
 | [#167](https://github.com/edonahue/networked-players/pull/167) | Slice 3: `compare_scenes` (a user-authored, labelled artist-id set). |
 | [#168](https://github.com/edonahue/networked-players/pull/168) | The workbench server mode — a third mode of `apps/review/`'s local server, running comparisons from a browser instead of the CLI. |
 | [#169](https://github.com/edonahue/networked-players/pull/169) | Explore Slice 1: search (album/artist name) + click-through to real credit-row evidence. |
+| [#175](https://github.com/edonahue/networked-players/pull/175) | Explore Slice: "compare/pin" — pin a search result directly into the compare form. |
+| [#177](https://github.com/edonahue/networked-players/pull/177) | Explore Slice: saved, reproducible comparison request files. |
+| [#178](https://github.com/edonahue/networked-players/pull/178) | Explore Slice: scope selection (per-artist scope-tier coverage surfaced in the evidence view). |
+| [#193](https://github.com/edonahue/networked-players/pull/193) | **Closeout recovery pass.** `WorkbenchGraphCache`/`ScopeTierCache` — `/api/compare` and artist-evidence lookups no longer rebuild the full graph or recompute scope tiers on every single request (two real, still-open Codex findings from #178, confirmed by this closeout's own investigation). Went through two rounds of Codex-review fixes after merge (see "What was measured," below). |
+| [#195](https://github.com/edonahue/networked-players/pull/195) | **Closeout recovery pass, PR D's final piece.** The bounded Explore graph + route filters this report's first version deferred — a one-hop ego-network view (`build_graph_view`, mirroring `apps/web`'s `networkExplorer.ts` shape), a new `GET /api/graph` endpoint built on #193's cache, and an inline SVG+table client, no build step, no CDN. |
 
-*(The plan's fuller Explore vision — route filters, scope selection, bounded
-graph rendering, compare/pin, saved reproducible request files — is a
-separate, larger follow-up; see "Remaining.")*
+*(compare/pin, saved-requests, and scope-selection all shipped in #175/
+#177/#178 — three merges after this report's first version described them
+as future work. The bounded-graph piece is what #195 finished. Only the
+curator `--mode expansion` review UI, a genuinely separate feature from
+Explore, remains deferred; see "Remaining.")*
 
 ### PR E/F — Catalog and core graph expansion, game pools, frozen-daily migration
 
@@ -81,10 +103,22 @@ separate, larger follow-up; see "Remaining.")*
 | [#171](https://github.com/edonahue/networked-players/pull/171) | Album shelf decade filter, plus URL-addressable search/sort/decade state. |
 | [#172](https://github.com/edonahue/networked-players/pull/172) | The homepage's last hardcoded example (a fixed "Behind the Glass" album pair) replaced with a deterministically-computed real one, reusing the same predicate Connect Two Records' own mode uses. |
 | [#173](https://github.com/edonahue/networked-players/pull/173) | Site re-profiled at 179 albums — method committed publicly ([ADR 0018](decisions/0018-benchmark-results-local-only.md) discipline), real numbers local-only. |
+| [#174](https://github.com/edonahue/networked-players/pull/174) | This report's first version. |
+| [#194](https://github.com/edonahue/networked-players/pull/194) | **Closeout recovery pass.** Fixed #163's own real, still-open Codex finding: a filtered-out album-shelf card's `hidden` attribute alone did nothing (a class selector in `motif.css` outranks the bare `[hidden]` UA rule), and sorting only ever set CSS `order`, never real DOM order — both silently ignored by keyboard/screen-reader navigation. Bundled with the remaining `astro check` hint cleanup. |
 
-*(A11y/mobile audit beyond what §14 already required, and this report
-itself, close out PR G; see "Remaining" for what PR G explicitly leaves
-open.)*
+*(A11y/mobile audit beyond what §14 already required closes out PR G; see
+"Remaining" for what it explicitly leaves open.)*
+
+### Closeout recovery pass (2026-08-30) — everything above already covers its own PRs
+
+PRs #193–195, described in their own PR B/D table rows above, are this
+phase's real final work: a Phase-7-closeout Plan-Mode investigation found
+the original "Status: complete for PRs A–G" line stale by 14 merged PRs,
+most of which (#179–192) turned out to be **unrelated** to Phase 7 at all —
+a retroactive Codex-review-fix audit and a separate self-directed cleanup
+pass, both real and both merged, neither part of this phase's own mission.
+Only #193/#194/#195 are genuinely Phase-7-closeout work, and are already
+listed under PR B/G/D above rather than duplicated here.
 
 ## What was measured before being built
 
@@ -117,6 +151,30 @@ open.)*
   17.5 MB raw) was checked against the album-count growth ratio (+27.9%)
   before being called "proportional, not a regression" — arithmetic, not
   a vibe.
+- **#193's graph/scope-tier caches**: measured cold-vs-warm directly against
+  a real local topic corpus (`local/research/jamiroquai`) before and after
+  — real numbers stay local per ADR 0018 (see
+  `docs/SITE_REPROFILE_METHOD.md`'s new "Private workbench cache
+  measurement" section for the method); both caches cut repeat-request cost
+  by two to three orders of magnitude at this corpus's scale, with the
+  absolute savings growing, not shrinking, at full-corpus scale where the
+  cold cost is `CreditGraph.open`'s own documented ~2.5 minutes rather than
+  under two seconds.
+- **#193 itself went through two real rounds of post-merge Codex review**,
+  not just CI: the first fix (keying cache identity off a topic corpus's
+  declared build parameters) was itself insufficient, caught by a *second*
+  Codex pass that named the exact case it missed — a canonical full
+  snapshot's manifest has no such field at all, and even a topic corpus's
+  version string doesn't change on a same-seed rebuild over corrected
+  input. The real fix hashes the manifest's own per-file content hashes
+  instead — a fix verified fail-then-pass against the insufficient first
+  attempt, not just against the original bug.
+- **#195's bounded graph**: smoke-tested against the real Jamiroquai
+  corpus, not synthetic fixtures alone, before being trusted — real artist
+  names, real degrees, real multi-component role text (e.g. "Featuring,
+  Written-By [Cosmic Girl]" on a real Dua Lipa collaboration), confirming
+  the role-join logic handles real Discogs data shapes the synthetic test
+  fixture's simpler role strings wouldn't have exercised on their own.
 
 ## Rejected or descoped approaches
 
@@ -150,21 +208,29 @@ open.)*
 
 - **Backend**: `make check` (Ruff lint/format, mypy, pytest, both
   public-artifact-gate validators) — green at every backend-touching PR
-  merge; **1,356 backend tests passing** at this report's close.
+  merge; **1,400 backend tests passing** at this report's close (fresh
+  count against `main` at PR #195, not transcribed from the original
+  1,356 figure). `main` stood at 1,377 immediately before this closeout's
+  own PRs began — the unrelated #174–192 arcs account for most of the
+  growth since the original count; PRs #193–195 alone added 23.
 - **Frontend**: full local Playwright suite (`npx playwright test`, no
-  filter) — **503 passed, 3 pre-existing skips** at this report's close;
-  CI (`npm run format:check`, `astro check`/build, Workers Build) green on
-  every `apps/web`-touching PR.
+  filter) — **513 passed, 3 pre-existing skips** at this report's close
+  (fresh count, up from 503); CI (`npm run format:check`, `astro
+  check`/build, Workers Build) green on every `apps/web`-touching PR.
 - **New coverage this phase** (a partial list; every PR above added its
   own): `packages/graph-core/tests/test_graph.py` (`credit_rows_for_artist`,
   `search_releases`/`search_artists`), `packages/research/tests/
   test_compare*.py` (43 tests across the three comparison types plus the
   shared CLI wiring), `packages/catalog/tests/test_review_server_workbench.py`
-  (18 tests, real `ThreadingHTTPServer` black-box HTTP tests, both server-
-  side security guards fail-then-pass verified), `apps/web/tests/
-  album-grid-dedup.spec.ts`/`albums-directory.spec.ts`/
-  `featured-examples.spec.ts` (full-catalog shelf, decade filter + URL
-  state, deterministic homepage example — 6+14+8 new tests respectively).
+  (43 tests by this report's close, real `ThreadingHTTPServer` black-box
+  HTTP tests, both server-side security guards and the closeout's cache/
+  graph-view logic all fail-then-pass verified), `packages/research/tests/
+  test_graph_view.py` (5 new tests for the bounded graph view, two of them
+  confirmed by mutation testing to actually catch a regression, not just
+  pass vacuously), `apps/web/tests/album-grid-dedup.spec.ts`/
+  `albums-directory.spec.ts`/`featured-examples.spec.ts` (full-catalog
+  shelf, decade filter + URL state, deterministic homepage example —
+  6+14+8 new tests respectively).
 - **Fail-then-pass discipline applied throughout**, including two cases
   where the FIRST attempt at a fix or test was itself wrong and caught by
   this discipline before landing: the explorer-recenter flake's initial
@@ -180,6 +246,68 @@ open.)*
   in a just-edited file look clean locally until CI caught it. Fixed by
   reading the actual warning-list content from every subsequent check
   rather than trusting a piped exit code.
+- **A real external process gap during the closeout, disclosed rather than
+  papered over**: this repo's own standing rule is to check the automated
+  Codex bot's review before merging every PR (the direct cause of the
+  #179–183 retroactive-fix arc above, when 15 earlier PRs skipped it).
+  Partway through PR #193's second review round, the connected account
+  hit its Codex usage limit — confirmed directly (`@codex review` returned
+  a limit message, not a review) rather than assumed from silence. PR
+  #193 itself still received two full review rounds (5 real findings,
+  all fixed and fail-then-pass verified) before the limit hit. PRs #194
+  and #195 merged on CI-green plus this closeout's own review/testing
+  discipline alone, by explicit owner decision once the limit was
+  confirmed real — not a silent downgrade of the process, and worth
+  re-checking with Codex once quota resets.
+
+## The 39-vs-40 catalog outcome — closed decision
+
+ADR 0065 originally allocated 13 personal + 19 graph-rich + 8 coverage-gap
+= 40 new albums. The real, committed outcome is 13 + **18** + 8 = **39**
+(140 → 179, not → 180) — Bucket B landed one short of its own 19-slot
+target, confirmed directly against
+`docs/data/studio-album-catalog-inclusion-audit-v1.json` and independently
+documented in `docs/NEXT_PATH_BRIEF.md`'s 2026-08-30 correction. ADR 0065's
+own 2026-08-30 addendum records this and makes the closeout's decision
+explicit: **179 stands as final.** No 19th graph-rich candidate is
+manufactured after the fact, and no filler album is added anywhere to round
+the total back up — inventing a pick now, purely to match a number that was
+always projected rather than measured, would be exactly the retroactive
+number-fitting this project's own sizing-claim discipline exists to
+prevent. This is not an open item for a future phase; see ADR 0065's
+addendum for the full reasoning.
+
+## The contributor-count anomaly — investigated, root cause unproven
+
+`#173`'s re-profile first surfaced this: the published contributor sitemap
+dropped from 549 to 521 pages (−28) despite 39 more albums, and this
+report's first version left it as an unflagged, uninvestigated finding.
+This closeout looked into it.
+
+**What's confirmed, directly**: a real, untracked local diff
+(`local/tmp/diff-contributor-index.json`, gitignored — not a durable
+artifact, kept only for this investigation) shows 283 contributor ids
+removed and 255 added between the two index builds — large bidirectional
+churn, not simple dedup or a straightforward net removal. Zero name
+collisions exist between the removed and added sets, ruling out "the same
+person got merged under a corrected identity" as the mechanism.
+
+**Leading hypothesis, not proven**: `contributor_index.py`'s own docstring
+states the index is built only from `challenge.v2.json`'s curated paths,
+not the full graph. PR #157 (this phase) fixed concurrent path search to
+actually respect `max_paths` early termination — a real behavior change to
+*which* paths get selected, not just how fast selection runs — and the
+179-album candidate pool is also substantially wider than at 140 albums.
+Either change, or their combination, could plausibly pull in a different
+hop-artist set than before, which would show up as exactly this kind of
+churn. This has **not** been verified by actually re-running the ingestion
+pipeline end-to-end and diffing intermediate path-selection state (real
+operator work per `AGENTS.md`, out of scope for a documentation closeout) —
+it remains a plausible, evidence-consistent hypothesis, not a demonstrated
+root cause. No contributors were restored or added to force the count back
+toward 549; that would treat a symptom without knowing the actual cause,
+and 521 is not itself evidence of an error — a curated-path-driven index
+legitimately changes membership when the curated paths themselves change.
 
 ## Not exercised at Phase 7's close (explicitly out of scope or deferred)
 
@@ -190,14 +318,17 @@ open.)*
   queued, and building UI with no real candidate data to smoke-test
   against would violate this phase's own "measure against real data, not
   synthetic fixtures alone" discipline.
-- **PR D's fuller Explore vision** — route filters, scope selection,
-  bounded graph rendering, compare/pin, provenance-always-visible framing,
-  saved reproducible request files. Slice 1 (search + evidence
-  click-through) shipped; the rest is real, substantial UI/architecture
-  work, not another `compare.py`-sized slice.
-- **The homepage's contributor-page-count anomaly** (#173) — contributor
-  sitemap pages decreased by 28 despite 39 more albums. Flagged as a real,
-  observed finding; not investigated further this phase.
+- **Scope-tier-driven traversal selection in the bounded Explore graph**
+  (#195) — considered during the closeout, explicitly deferred: wiring
+  `measure_scope_tiers`'s output into graph center/traversal choice would
+  need either a second corpus generated per click or new corpus
+  architecture neither exists today, not a same-slice addition.
+- **Frontend automated a11y coverage for the private workbench's new graph
+  view** (#195) — `apps/review` has no Playwright harness at all; the new
+  SVG/table view's keyboard accessibility (tabindex, roles, aria-labels,
+  Enter/Space handling) was reviewed by hand, not covered by an automated
+  test, and the PR says so rather than implying coverage that doesn't
+  exist.
 - **A11y/mobile audit beyond what individual PRs already covered** — each
   `apps/web` PR this phase ran its own mobile-overflow/keyboard/reduced-
   motion checks where relevant (e.g. the album shelf's decade filter), but
@@ -209,13 +340,14 @@ open.)*
 1. **PR C's curator expansion-review UI** — build when a real next
    expansion round is actually queued, so it can be measured against real
    candidate data from day one rather than a synthetic stand-in.
-2. **PR D's fuller Explore vision** — a genuinely separate, larger UI
-   effort; scope it as its own small-slice sequence when picked up, the
-   same way compare_albums preceded compare_artists/compare_scenes rather
-   than shipping all three (or all of Explore) at once.
-3. **The contributor-page-count anomaly** — worth a look at the *next*
-   catalog expansion if the same pattern (page count moving opposite to
-   album count) recurs.
-4. **`docs/NEXT_PATH_BRIEF.md`'s remaining open candidates** — Compute/
+2. **`docs/NEXT_PATH_BRIEF.md`'s remaining open candidates** — Compute/
    platform and Publication/data-operations sections were untouched by
    this phase and remain exactly as they were before it started.
+3. **Re-check Codex's automated PR review once its usage quota resets** —
+   #194 and #195 merged without it (see "Tests run," above); worth a
+   retroactive look if the quota situation resolves.
+4. **The contributor-count anomaly's root cause** — worth actually
+   re-running ingestion and diffing path-selection state if the *next*
+   catalog expansion reproduces the same pattern (page count moving
+   opposite to album count); not worth operator time to chase in isolation
+   for a documentation-only closeout.

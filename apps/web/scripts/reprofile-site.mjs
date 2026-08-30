@@ -185,9 +185,17 @@ async function measureExplorerInit(context, albumId, heapSamples) {
     .first()
     .waitFor({ state: "visible", timeout: 15_000 });
   const firstNodeVisibleMs = Date.now() - navStart;
+  // `window.__NP_GRAPH_PARSE_MS__` (pathfindingGraph.ts) isolates the
+  // worker's own parse+canonicalize+hash cost from page load -- this is
+  // the timing hook docs/SITE_REPROFILE_METHOD.md previously documented as
+  // missing entirely; `null` here means the page loaded but the graph
+  // fetch/parse genuinely never completed (a real failure, not a stub).
+  const workerParseMs = await page.evaluate(
+    () => window.__NP_GRAPH_PARSE_MS__ ?? null,
+  );
   heapSamples.push(await measureMemory(page));
   await page.close();
-  return { pageLoadMs, firstNodeVisibleMs };
+  return { pageLoadMs, firstNodeVisibleMs, workerParseMs };
 }
 
 async function measureAlbumShelf(context, heapSamples) {
@@ -215,12 +223,6 @@ async function run() {
   const results = {
     throttled: THROTTLED,
     payloads: measurePayloads(),
-    // No timing hook exists anywhere in the app (graphWorker.ts posts a
-    // result message with no elapsed-time field) to isolate worker parse
-    // time from page load -- rather than fake a number by subtracting two
-    // already-noisy wall-clock timings, this is left explicitly null. See
-    // docs/SITE_REPROFILE_METHOD.md.
-    workerParseMs: null,
   };
 
   const sitemapPage = await browser.newPage();

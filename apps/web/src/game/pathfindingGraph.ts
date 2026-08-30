@@ -748,6 +748,22 @@ function requestFromWorker(
  * validation, same cache write -- when a Worker can't be constructed at
  * all, or crashes outright. A worker that completes normally and reports a
  * real failure is trusted as final, not retried on the main thread. */
+declare global {
+  interface Window {
+    /** Diagnostic only, not gated like `dateOverride.ts`'s test-only global
+     * -- a wall-clock ms number carries no privacy/security weight. Set
+     * after every graph load (worker or main-thread fallback) so
+     * `docs/SITE_REPROFILE_METHOD.md`'s re-profile script can read it via
+     * `page.evaluate`, closing that doc's own documented "worker parse
+     * time: not measured" gap. */
+    __NP_GRAPH_PARSE_MS__?: number;
+  }
+}
+
+function recordGraphParseMs(parseMs: number): void {
+  if (typeof window !== "undefined") window.__NP_GRAPH_PARSE_MS__ = parseMs;
+}
+
 export async function loadPathfindingGraph(
   storage: StorageLike | null,
   url: string = DEFAULT_GRAPH_URL,
@@ -774,6 +790,7 @@ export async function loadPathfindingGraph(
             // sessionStorage full/unavailable -- searches still work, just refetch each time
           }
         }
+        recordGraphParseMs(response.parseMs);
         return { graph: response.graph as PathfindingGraph };
       }
       return { error: response.error };
@@ -792,8 +809,12 @@ async function loadPathfindingGraphMainThread(
 ): Promise<{ graph: PathfindingGraph } | { error: PathfindingFailureReason }> {
   if (cachedText) {
     try {
+      const parseStart = performance.now();
       const parsed = await validatePathfindingGraph(JSON.parse(cachedText));
-      if (parsed) return { graph: parsed };
+      if (parsed) {
+        recordGraphParseMs(performance.now() - parseStart);
+        return { graph: parsed };
+      }
     } catch {
       // fall through to a fresh fetch
     }
@@ -814,7 +835,9 @@ async function loadPathfindingGraphMainThread(
     return { error: "parse-failed" };
   }
 
+  const parseStart = performance.now();
   const graph = await validatePathfindingGraph(raw);
+  recordGraphParseMs(performance.now() - parseStart);
   if (!graph) return { error: "invalid-graph" };
 
   if (storage) {

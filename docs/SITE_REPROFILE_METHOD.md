@@ -62,13 +62,22 @@ node scripts/reprofile-site.mjs --mobile-throttled  # Pixel 5 + 4x CPU throttle
   with the cold pair) — that search-to-results time is the warm number.
   `warm.searchToResultsMs` is `null` only if the committed catalog has no
   second path with distinct endpoints, a valid if unlikely state.
-- **Worker parse time**: **not measured.** `graphWorker.ts` posts its
-  result with no elapsed-time field, so there is no way to isolate parse
-  time from page load without adding a timing hook to the app itself —
-  subtracting two already-noisy wall-clock numbers would produce a number
-  that looks precise but isn't. `workerParseMs` is reported as `null`
-  rather than a guess; adding a real hook is separate app work, not a
-  benchmark-script fix.
+- **Worker parse time** (Phase 7 closeout PR E): `graphWorker.ts` now
+  measures its own parse+canonicalize+hash cost (the
+  `validatePathfindingGraph` integrity check) with `performance.now()`,
+  wrapped around the exact span the ADR 0059 Phase 5c comment names,
+  excluding fetch/network time, and posts it back as `parseMs`.
+  `pathfindingGraph.ts`'s main-thread fallback path (used when a Worker
+  can't be constructed) measures the identical span. Either path writes
+  the result to a page-scoped diagnostic global,
+  `window.__NP_GRAPH_PARSE_MS__` (`pathfindingGraph.ts`'s own
+  `recordGraphParseMs`) — undocumented/unlisted like a private field, but
+  not gated behind a test-only flag the way `dateOverride.ts`'s override
+  is, since a wall-clock number carries no privacy or security weight.
+  `measureExplorerInit` reads it via `page.evaluate` right after the first
+  node renders and reports it as `explorer.workerParseMs`; `null` there
+  now means the graph load genuinely never completed, not "never
+  measured."
 - **Explorer init**: navigation → page load → first `.explorer-node`
   visible, for a real connected album id resolved from the live
   `challenge.v2.json` fetch (not hardcoded).
@@ -102,3 +111,38 @@ Run each mode 2–3 times; page-load and readiness timings vary run to run by
 normal local scheduling noise, but the throttled run should show a
 consistent, clearly larger multiple across every metric — if it doesn't,
 suspect the per-page throttle wiring, not the site.
+
+## Private workbench cache measurement (Phase 7 closeout PR B)
+
+A different tool from everything above — `apps/review`'s local workbench,
+never public, never deployed — but the same ADR 0018 discipline applies: the
+method is documented here, real numbers stay in a local, gitignored file
+(this repo's convention: `local/tmp/`), never committed or printed in a PR
+description.
+
+**What's measured**: `WorkbenchGraphCache.checkout()` and
+`ScopeTierCache.get_or_compute()` (`apps/review/review_server.py`) — before
+PR B, every `/api/compare` request rebuilt the full `CreditGraph` (including
+`credit_edges` materialization) from scratch, and every artist-evidence
+click recomputed `measure_scope_tiers` from scratch, with no reuse across
+requests at all.
+
+**Method**: exercise both cache classes directly (no HTTP layer, no
+`ThreadingHTTPServer` — that layer adds its own noise this measurement isn't
+about), against a real local topic corpus (not a synthetic fixture — cache
+behavior at real corpus scale is the whole point). `cold` is the first
+checkout/compute against an empty cache; `warm` is a second checkout/compute
+against the *same* corpus root immediately after, still in-process. Record:
+corpus identity (root path, real size), the real artist_id used for the
+scope-tier measurement, and both cold/warm elapsed times, computed as a
+simple wall-clock delta around the call — no need for anything more precise
+than that at this granularity (sub-second to low-single-digit-second spans).
+
+**A real corpus-scale caveat, worth stating explicitly every time this is
+re-run**: a small topic corpus (a few MB) has a cold cost of well under two
+seconds, nowhere near `CreditGraph.open`'s own documented ~2.5-minute figure
+for the FULL one-hop dataset — that full-scale number is what the cache
+exists to avoid paying repeatedly, so a small-topic-corpus measurement
+under-represents the real-world benefit at production scale. State the
+corpus size alongside any measured number, and never imply a small-corpus
+timing generalizes to the full corpus without saying so.
