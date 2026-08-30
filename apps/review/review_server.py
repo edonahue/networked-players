@@ -531,7 +531,10 @@ def load_evidence(
         release = graph.release(entity_id)
         if release is None:
             raise WorkbenchRequestError(f"release_id {entity_id} not found in corpus")
-        credit_rows = graph.credit_rows_for_releases([entity_id]).get(entity_id, [])
+        # `_with_evidence`, not the plain roster-only method: album
+        # evidence should retain non-linked credits (AGENTS.md), not
+        # silently drop them.
+        credit_rows = graph.credit_rows_for_releases_with_evidence([entity_id]).get(entity_id, [])
         return {"kind": "album", "release": release, "credit_rows": credit_rows}
     if kind == "artist":
         name = graph.artist_name(entity_id)

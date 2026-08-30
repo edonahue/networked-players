@@ -96,7 +96,14 @@ def _credited_artist_ids(credit_rows: list[dict[str, Any]]) -> list[int]:
 def _role_category_counts(credit_rows: list[dict[str, Any]]) -> dict[str, int]:
     """Counts DISTINCT (artist_id, category) pairs, not credit rows -- an
     artist credited on every track with the same role must not out-weigh a
-    real distinct performer just because they appear on more rows."""
+    real distinct performer just because they appear on more rows. Correct
+    at ALBUM scope (`credit_rows` is one release's worth of rows) -- for
+    artist/scene scope, where `credit_rows` spans someone's whole
+    discography, see `_role_category_counts_by_release` instead: this
+    function would collapse every category to at most 1 per artist
+    regardless of how many releases actually carry it, which is exactly
+    the bug a real Jamiroquai-corpus check found (5,456 real credit rows
+    for one artist producing `{"vocals": 1, "production": 1, ...}`)."""
     pairs: set[tuple[int, RoleCategory]] = set()
     for row in credit_rows:
         artist_id = row["artist_id"]
@@ -106,6 +113,26 @@ def _role_category_counts(credit_rows: list[dict[str, Any]]) -> dict[str, int]:
             pairs.add((int(artist_id), category))
     counts: dict[str, int] = {}
     for _artist_id, category in pairs:
+        counts[category.value] = counts.get(category.value, 0) + 1
+    return counts
+
+
+def _role_category_counts_by_release(credit_rows: list[dict[str, Any]]) -> dict[str, int]:
+    """`_role_category_counts`'s sibling for artist/scene scope: counts
+    DISTINCT (release_id, artist_id, category) triples instead of
+    (artist_id, category) pairs, so a role category's count reflects how
+    many distinct releases actually carry it, not just whether the
+    artist/scene ever held it once across an entire career."""
+    triples: set[tuple[int, int, RoleCategory]] = set()
+    for row in credit_rows:
+        artist_id = row["artist_id"]
+        if artist_id is None:
+            continue
+        release_id = int(row["release_id"])
+        for category in classify_role(row["role_text"]):
+            triples.add((release_id, int(artist_id), category))
+    counts: dict[str, int] = {}
+    for _release_id, _artist_id, category in triples:
         counts[category.value] = counts.get(category.value, 0) + 1
     return counts
 
@@ -305,7 +332,13 @@ def compare_albums(graph: CreditGraph, request: CompareAlbumsRequest) -> dict[st
     if release_b is None:
         raise CompareError(f"release_id {request.album_b_release_id} not found in corpus")
 
-    credits_by_release = graph.credit_rows_for_releases(
+    # `_with_evidence`, not the plain roster-only method: this album
+    # evidence should retain non-linked credits (AGENTS.md), and every
+    # helper below (`_credited_artist_ids`, `_role_category_counts`,
+    # `_shared_and_unique`, `_primary_artist_id`) already skips
+    # `artist_id is None` rows itself, so the broader row set is safe to
+    # feed into graph-roster computation unchanged.
+    credits_by_release = graph.credit_rows_for_releases_with_evidence(
         [request.album_a_release_id, request.album_b_release_id]
     )
     credits_a = credits_by_release.get(request.album_a_release_id, [])
@@ -445,7 +478,7 @@ def compare_artists(graph: CreditGraph, request: CompareArtistsRequest) -> dict[
             "artist_id": request.artist_a_id,
             "name": graph.artist_name(request.artist_a_id),
             "credit_rows": credits_a,
-            "role_category_counts": _role_category_counts(credits_a),
+            "role_category_counts": _role_category_counts_by_release(credits_a),
             "era_counts": _era_counts(credits_a, releases_a),
             "hub_dependence": {"degree": graph.degree(request.artist_a_id)},
             "corpus_coverage": corpus_coverage(request.corpus_snapshot_root, request.artist_a_id),
@@ -454,7 +487,7 @@ def compare_artists(graph: CreditGraph, request: CompareArtistsRequest) -> dict[
             "artist_id": request.artist_b_id,
             "name": graph.artist_name(request.artist_b_id),
             "credit_rows": credits_b,
-            "role_category_counts": _role_category_counts(credits_b),
+            "role_category_counts": _role_category_counts_by_release(credits_b),
             "era_counts": _era_counts(credits_b, releases_b),
             "hub_dependence": {"degree": graph.degree(request.artist_b_id)},
             "corpus_coverage": corpus_coverage(request.corpus_snapshot_root, request.artist_b_id),
@@ -535,13 +568,13 @@ def compare_scenes(graph: CreditGraph, request: CompareScenesRequest) -> dict[st
             "member_artist_ids": list(request.scene_a_artist_ids),
             "resolved_artist_ids": resolved_a,
             "unresolved_artist_ids": unresolved_a,
-            "role_category_counts": _role_category_counts(credits_a),
+            "role_category_counts": _role_category_counts_by_release(credits_a),
         },
         "scene_b": {
             "member_artist_ids": list(request.scene_b_artist_ids),
             "resolved_artist_ids": resolved_b,
             "unresolved_artist_ids": unresolved_b,
-            "role_category_counts": _role_category_counts(credits_b),
+            "role_category_counts": _role_category_counts_by_release(credits_b),
         },
         "overlap_and_separation": {
             "overlap_artist_ids": overlap_ids,

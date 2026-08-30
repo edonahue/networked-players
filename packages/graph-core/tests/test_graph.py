@@ -155,6 +155,41 @@ def test_credit_rows_for_releases_excludes_non_playable_rows(dataset_root: Path)
     assert {r["artist_id"] for r in grouped[5]} == {100}
 
 
+def test_credit_rows_for_releases_with_evidence_retains_a_non_linked_row(
+    dataset_root: Path,
+) -> None:
+    # The evidence-display sibling of credit_rows_for_releases must NOT
+    # drop R5's non-linked "Session Choir" row -- AGENTS.md requires
+    # retaining non-linked names as evidence, never silently dropping
+    # them, even though they can never become playable graph identities.
+    with CreditGraph.open(dataset_root) as graph:
+        grouped = graph.credit_rows_for_releases_with_evidence([5])
+    names = {r["name"] for r in grouped[5]}
+    assert names == {"Alice", "Session Choir"}
+    choir_row = next(r for r in grouped[5] if r["name"] == "Session Choir")
+    assert choir_row["artist_id"] is None
+    assert choir_row["is_linked"] is False
+
+
+def test_credit_rows_for_releases_with_evidence_still_excludes_a_placeholder_identity(
+    dataset_root: Path,
+) -> None:
+    # Various(194) is linked (has a real artist_id) but is a hard-excluded
+    # placeholder identity -- only non-linked rows get added back by the
+    # evidence variant, not every row the placeholder policy already
+    # excludes.
+    with CreditGraph.open(dataset_root) as graph:
+        grouped = graph.credit_rows_for_releases_with_evidence([7])
+    assert {r["artist_id"] for r in grouped[7]} == {600}
+
+
+def test_credit_rows_for_releases_with_evidence_empty_input_returns_empty_dict(
+    dataset_root: Path,
+) -> None:
+    with CreditGraph.open(dataset_root) as graph:
+        assert graph.credit_rows_for_releases_with_evidence([]) == {}
+
+
 def test_credit_rows_for_artist_includes_a_solo_release_with_no_graph_edge(
     dataset_root: Path,
 ) -> None:
