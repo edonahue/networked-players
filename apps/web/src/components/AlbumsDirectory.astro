@@ -16,10 +16,10 @@ import { ALBUM_SORT_OPTIONS, ALL_DECADES } from "../game/albumsDirectory";
 interface Props {
   albums: AlbumV2[];
   /** ADR 0067: when given, albums absent from this set render with an
-   * honest "Not yet connected" tag instead of being silently omitted from
-   * the shelf. Omit entirely (default: every album counts as connected)
-   * for any caller that doesn't have a meaningful connected/unconnected
-   * split. */
+   * honest "No documented path yet" tag instead of being silently omitted
+   * from the shelf. Omit entirely (default: every album counts as
+   * connected) for any caller that doesn't have a meaningful
+   * connected/unconnected split. */
   connectedAlbumIds?: Set<string>;
 }
 
@@ -66,8 +66,11 @@ const unconnectedCount = connectedAlbumIds
   </p>
   {
     unconnectedCount > 0 && (
+      // "connected to the credit graph" would overclaim -- these albums
+      // are real graph nodes with real neighbors, just not yet an endpoint
+      // of a documented challenge.v2 path (ADR 0067).
       <p class="albums-directory__note" data-albums-unconnected-note>
-        {unconnectedCount} not yet connected to the credit graph.
+        {unconnectedCount} without a documented path yet.
       </p>
     )
   }

@@ -55,7 +55,13 @@ const cover = coverFor(album.id) ?? album.cover_image;
   </span>
   {
     !connected && (
-      <span class="tag tag--unconnected">Not yet connected</span>
+      // "Not yet connected" would overclaim -- these albums are real
+      // pathfinding-graph nodes with real credited neighbors (individually
+      // explorable at /explore/<id>/), just not yet an endpoint of a
+      // documented challenge.v2 path (ADR 0067). "No documented path yet"
+      // mirrors the album detail page's own established phrasing for the
+      // same case.
+      <span class="tag tag--unconnected">No documented path yet</span>
     )
   }
 </a>

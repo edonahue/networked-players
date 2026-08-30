@@ -247,6 +247,46 @@ test("the real /albums/ page: clearing the search removes q from the URL rather 
   await expect(page).not.toHaveURL(/[?&]q=/);
 });
 
+test("the real /albums/ page: back navigation past an earlier same-document entry re-syncs the controls and grid", async ({
+  page,
+}) => {
+  // State only ever reaches the URL via `replaceState`, so this page never
+  // pushes its OWN history entry -- but an earlier same-document entry can
+  // still exist (e.g. the "#main" skip link), and a back step through THAT
+  // fires `popstate` with a URL these controls never wrote themselves.
+  // Without a `popstate` handler, the address bar changes but the search
+  // input and grid silently keep showing the just-filtered state.
+  await page.goto("/albums/");
+  const totalCards = await page.locator(".album-card").count();
+
+  // Simulate the skip-link's same-document jump: a real earlier history
+  // entry with no query state, distinct from the one the search below
+  // will `replaceState` on top of.
+  await page.evaluate(() => {
+    window.history.pushState(null, "", `${location.pathname}#main`);
+  });
+
+  const targetTitle = await page
+    .locator(".album-card")
+    .first()
+    .getAttribute("data-album-title");
+  const needle = targetTitle!.slice(0, 4);
+  await page.locator("[data-albums-search]").fill(needle);
+  await expect(page).toHaveURL(
+    new RegExp(`[?&]q=${encodeURIComponent(needle)}(&|$)`),
+  );
+  await expect(page.locator(".album-card:not([hidden])")).not.toHaveCount(
+    totalCards,
+  );
+
+  await page.goBack();
+  await expect(page).not.toHaveURL(/[?&]q=/);
+  await expect(page.locator("[data-albums-search]")).toHaveValue("");
+  await expect(page.locator(".album-card:not([hidden])")).toHaveCount(
+    totalCards,
+  );
+});
+
 test("the real /albums/ page: an invalid decade in the URL falls back to All decades rather than breaking", async ({
   page,
 }) => {

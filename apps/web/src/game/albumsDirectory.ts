@@ -229,5 +229,21 @@ export function initAlbumsDirectory(): void {
   searchInput.addEventListener("input", render);
   sortSelect.addEventListener("change", render);
   decadeSelect.addEventListener("change", render);
+
+  // State only ever syncs TO the URL via `replaceState` (never a new
+  // history entry) -- but the page can still have an EARLIER
+  // same-document entry (e.g. from the "#main" skip link), and back/
+  // forward through that changes the address bar without firing input/
+  // change on these controls. Without this, the URL and the rendered grid
+  // silently disagree after a back/forward step, matching game/connect.ts's
+  // own `popstate` handler for the same class of bug.
+  window.addEventListener("popstate", () => {
+    const state = readStateFromUrl(validDecades);
+    searchInput.value = state.query;
+    sortSelect.value = state.sort;
+    decadeSelect.value = state.decade;
+    render();
+  });
+
   render();
 }
