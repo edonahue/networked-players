@@ -283,10 +283,7 @@ test("regression tripwire: findBehindTheGlassPath's real pick is actually findab
   }
 
   const graphPath = fileURLToPath(
-    new URL(
-      "../public/data/pathfinding/graph.v2.json",
-      import.meta.url,
-    ),
+    new URL("../public/data/pathfinding/graph.v2.json", import.meta.url),
   );
   const graph: PathfindingGraph = JSON.parse(readFileSync(graphPath, "utf8"));
   const artistIndex = buildArtistIndex(graph);
