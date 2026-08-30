@@ -11,8 +11,11 @@ never re-derives BFS or edge SQL itself. Scope-tier comparison reuses
 `role_taxonomy.classify_role`, the same taxonomy every other role-aware
 feature in the repo uses.
 
-The workbench server/UI is an explicit follow-up slice -- not built here.
-Caveat-flag comparison is deliberately deferred too: the public site's
+The workbench server/UI (`apps/review/review_server.py --mode workbench`)
+and its Explore search/evidence/pin slices are built on top of this module,
+not in it -- `run_comparison_and_persist` below is the shared dispatch both
+the CLI and the server call. Caveat-flag comparison is deliberately
+deferred too: the public site's
 caveat signal lives in the evidence-release-registry build path, which a
 private corpus snapshot doesn't carry the same way -- reusing it correctly
 needs its own investigation, not a guess bolted on here. `compare_artists`'s
@@ -34,7 +37,7 @@ the other nine.
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Protocol
@@ -570,6 +573,21 @@ def corpus_version_string(corpus_root: Path) -> str:
     return f"{corpus_root.name}:{manifest.get('snapshot_date', 'unknown')}"
 
 
+def _serialize_request(
+    request: CompareAlbumsRequest | CompareArtistsRequest | CompareScenesRequest,
+) -> dict[str, Any]:
+    """The exact, directly-reusable input a request dataclass carries --
+    literally what `build_compare_request` (the workbench server) or the
+    CLI's own argument parsing would need to reproduce this run. `Path` is
+    the only field across all three request dataclasses `asdict` can't
+    serialize on its own; every other field (including
+    `CompareScenesRequest`'s `tuple[int, ...]` id lists) is already
+    JSON-native."""
+    data = asdict(request)
+    data["corpus_snapshot_root"] = str(data["corpus_snapshot_root"])
+    return data
+
+
 def run_comparison_and_persist(
     mode: str,
     request: CompareAlbumsRequest | CompareArtistsRequest | CompareScenesRequest,
@@ -607,6 +625,9 @@ def run_comparison_and_persist(
     run_paths.ensure_dirs()
     (run_paths.root / "comparison.json").write_text(
         json.dumps(comparison, indent=2, sort_keys=True) + "\n"
+    )
+    (run_paths.root / "request.json").write_text(
+        json.dumps({"mode": mode, **_serialize_request(request)}, indent=2, sort_keys=True) + "\n"
     )
 
     finished_at = datetime.now(UTC).isoformat()

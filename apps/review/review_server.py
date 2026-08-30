@@ -174,6 +174,7 @@ form{background:var(--surface);border:1px solid var(--line);border-radius:6px;pa
 .hidden{display:none}.error{color:var(--warn);white-space:pre-wrap}.result{margin-top:20px}.panel{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:14px 16px;margin-bottom:14px}
 table.kv{border-collapse:collapse;width:100%}table.kv td{padding:3px 8px 3px 0;vertical-align:top}table.kv td:first-child{color:var(--muted);white-space:nowrap}
 .runs{font-size:.85rem;color:var(--muted)}.runs a{color:var(--accent)}
+.run-load-btn{padding:1px 8px;font-size:.85rem;align-self:auto;color:var(--accent);border-color:var(--line)}
 .explore-result-row{display:flex;align-items:center;gap:6px}.explore-result-row .explore-result{flex:1;text-align:left}
 .pin-btn{padding:4px 9px;font-size:.78rem;align-self:auto}
 </style><script>(()=>{let t=localStorage.getItem('networked-players-curator-theme');document.documentElement.dataset.theme=t==='light'?'light':'dark'})()</script></head><body>
@@ -243,11 +244,36 @@ function renderResult(mode,data){
     '<details class="panel"><summary>Full comparison JSON</summary><pre style="white-space:pre-wrap;word-break:break-all">'+esc(JSON.stringify(data.comparison,null,2))+'</pre></details>';
   $('#result').classList.remove('hidden');
 }
+function loadRequestIntoForm(request){
+  $('#mode').value=request.mode;updateFields();
+  $('#corpus_root').value=request.corpus_snapshot_root;
+  if(request.mode==='albums'){
+    $('#album_a').value=request.album_a_release_id;
+    $('#album_b').value=request.album_b_release_id;
+  }else if(request.mode==='artists'){
+    $('#artist_a').value=request.artist_a_id;
+    $('#artist_b').value=request.artist_b_id;
+  }else{
+    $('#scene_a').value=request.scene_a_artist_ids.join(' ');
+    $('#scene_b').value=request.scene_b_artist_ids.join(' ');
+  }
+  $('#form').scrollIntoView({behavior:'smooth',block:'start'});
+}
 function loadRuns(){
   const topic=$('#topic').value.trim();
-  if(!topic){$('#runs').textContent='';return}
+  if(!topic){$('#runs').innerHTML='';return}
   fetch('/api/runs?topic='+encodeURIComponent(topic)).then(r=>r.ok?r.json():{runs:[]}).then(d=>{
-    $('#runs').textContent=d.runs.length?('Past runs for "'+topic+'": '+d.runs.map(r=>r.run_id).join(', ')):'';
+    if(!d.runs.length){$('#runs').innerHTML='';return}
+    // A run with no saved request (recorded before this field existed)
+    // still lists, just as plain text -- there's nothing to load.
+    $('#runs').innerHTML='Past runs for "'+esc(topic)+'": '+d.runs.map((r,i)=>
+      r.request
+        ? '<button type="button" class="run-load-btn" data-index="'+i+'">'+esc(r.run_id)+'</button>'
+        : esc(r.run_id)
+    ).join(', ');
+    document.querySelectorAll('.run-load-btn').forEach(btn=>{
+      btn.onclick=()=>loadRequestIntoForm(d.runs[Number(btn.dataset.index)].request);
+    });
   }).catch(()=>{});
 }
 $('#topic').onblur=loadRuns;
@@ -427,15 +453,25 @@ def build_compare_request(
 def list_runs(research_root: Path, topic: str) -> list[dict[str, Any]]:
     """Every run recorded for `topic`, newest first -- reuses the same
     `manifest.json` `research-analyze`/`research-compare` already write,
-    never a second bookkeeping format."""
+    never a second bookkeeping format. Each summary also carries `request`
+    -- the exact, directly-reusable input `run_comparison_and_persist`
+    wrote alongside `comparison.json` (`None` for a run recorded before
+    that field existed, so an older run still lists cleanly rather than
+    crashing this endpoint)."""
     runs_dir = research_root / topic / "runs"
     if not runs_dir.is_dir():
         return []
     summaries = []
     for run_dir in runs_dir.iterdir():
         manifest_path = run_dir / "manifest.json"
-        if manifest_path.is_file():
-            summaries.append(json.loads(manifest_path.read_text()))
+        if not manifest_path.is_file():
+            continue
+        summary = json.loads(manifest_path.read_text())
+        request_path = run_dir / "request.json"
+        summary["request"] = (
+            json.loads(request_path.read_text()) if request_path.is_file() else None
+        )
+        summaries.append(summary)
     summaries.sort(key=lambda m: m.get("run_id", ""), reverse=True)
     return summaries
 

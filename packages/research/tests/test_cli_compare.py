@@ -58,6 +58,18 @@ def test_research_compare_albums_writes_a_run_with_manifest_and_comparison(
     assert comparison["album_a"]["release_id"] == 1
     assert comparison["album_b"]["release_id"] == 2
 
+    request_path = run_root / "request.json"
+    assert request_path.is_file()
+    request = json.loads(request_path.read_text())
+    assert request == {
+        "mode": "albums",
+        "corpus_snapshot_root": str(corpus),
+        "album_a_release_id": 1,
+        "album_b_release_id": 2,
+        "max_hops": 4,
+        "max_route_candidate_pairs": 200,
+    }
+
 
 def test_research_compare_rejects_an_unrecognized_mode(tmp_path: Path) -> None:
     # argparse's own `choices=` validation, not compare.py's -- fails before
@@ -146,6 +158,15 @@ def test_research_compare_artists_writes_a_run_with_manifest_and_comparison(
     assert comparison["artist_b"]["artist_id"] == SEED_B
     assert CAROL in comparison["shared_collaborators"]["artist_ids"]
 
+    request = json.loads((run_root / "request.json").read_text())
+    assert request == {
+        "mode": "artists",
+        "corpus_snapshot_root": str(corpus),
+        "artist_a_id": SEED_A,
+        "artist_b_id": SEED_B,
+        "max_hops": 4,
+    }
+
 
 def test_research_compare_artists_requires_artist_a_and_artist_b(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
@@ -231,6 +252,18 @@ def test_research_compare_scenes_writes_a_run_with_manifest_and_comparison(
     assert comparison["scene_a"]["member_artist_ids"] == [SEED_A, BOB]
     assert comparison["scene_a"]["resolved_artist_ids"] == [SEED_A, BOB]
     assert CAROL in comparison["shared_collaborators"]["artist_ids"]
+
+    request = json.loads((run_root / "request.json").read_text())
+    assert request == {
+        "mode": "scenes",
+        "corpus_snapshot_root": str(corpus),
+        # tuple[int, ...] fields round-trip through JSON as plain lists --
+        # JSON has no tuple type.
+        "scene_a_artist_ids": [SEED_A, BOB],
+        "scene_b_artist_ids": [SEED_B],
+        "max_hops": 4,
+        "max_route_candidate_pairs": 200,
+    }
 
 
 def test_research_compare_scenes_requires_scene_a_and_scene_b(
