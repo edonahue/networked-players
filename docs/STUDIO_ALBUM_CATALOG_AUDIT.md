@@ -132,10 +132,10 @@ b-sides/rarities/bootleg), using cultural/discography knowledge rather than a
 structured signal, exactly as the original manual title-by-title review did.
 
 **Result: zero leaks found** among the 39, consistent with the automated
-companion JSON's own zero flags for these rows. Two titles are worth recording
-explicitly, matching this document's own established practice of calling out a
-title a name-only glance could mistake for a compilation, then confirming it
-genuine:
+companion JSON's own zero flags for these rows. Three titles are worth
+recording explicitly, matching this document's own established practice of
+calling out a title that could be misjudged on name/discography alone, then
+confirming its real disposition:
 
 - *Club Classics Vol. One* (Soul II Soul, 1989 per the committed catalog) —
   their original studio debut, not a hits compilation despite "Classics" in
@@ -143,13 +143,20 @@ genuine:
 - *Introducing The Hardline According To Terence Trent D'Arby* (Terence Trent
   D'Arby) — his debut studio album, not a "best of"/retrospective despite
   "Introducing."
+- *Ricky Martin* (Ricky Martin, 1999) — a genuine, distinct studio album, but
+  **not** his career debut: it is his fifth studio album and first
+  English-language one, following four earlier Spanish-language albums
+  (including a different, earlier self-titled *Ricky Martin*, 1991). Clean as
+  a studio album on its own merits; the self-titled-debut precedent below does
+  not apply to it.
 
-Several self-titled debuts among the 39 (Ricky Martin, The Specials, Rickie Lee
-Jones, Stephen Stills, Bon Jovi) are clean by the same self-titled-debut
-precedent this document's original pass already established for *Elvis Presley*,
-*Ramones*, *Whitney Houston*, and others. No other album among the 39 matched a
-live, mixed live/studio, compilation/anthology/charity-collection,
-soundtrack/score, EP, remix, box-set, or bootleg profile on this pass.
+The remaining self-titled albums among the 39 (The Specials, Rickie Lee
+Jones, Stephen Stills, Bon Jovi) genuinely are each artist's debut and are
+clean by the same self-titled-debut precedent this document's original pass
+already established for *Elvis Presley*, *Ramones*, *Whitney Houston*, and
+others. No other album among the 39 matched a live, mixed live/studio,
+compilation/anthology/charity-collection, soundtrack/score, EP, remix,
+box-set, or bootleg profile on this pass.
 
 **No catalog or deny-list change resulted** — this pass found nothing to
 exclude. `data/albums/studio-album-master-exclusions-v1.json` is unchanged (still
