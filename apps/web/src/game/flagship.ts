@@ -17,6 +17,7 @@ import { isDateOverrideAllowed } from "./dateOverride";
 import { createEngine, type Engine } from "./engine";
 import { localIsoDate } from "./localDate";
 import { createRng } from "./prng";
+import { wireRadioTray } from "./radioGroup";
 import { ratingGlyph, summarizeSet } from "./scoring";
 import {
   load,
@@ -865,21 +866,7 @@ export async function initFlagship(
     engine.choose(trayStep === "middle" ? value : Number(value));
   });
 
-  tray.addEventListener("keydown", (event) => {
-    const keys = ["ArrowRight", "ArrowDown", "ArrowLeft", "ArrowUp"];
-    if (!keys.includes(event.key)) return;
-    event.preventDefault();
-    const enabled = chips.filter((chip) => !chip.disabled);
-    if (enabled.length === 0) return;
-    const current = document.activeElement as HTMLButtonElement | null;
-    const index = Math.max(0, enabled.indexOf(current as HTMLButtonElement));
-    const delta =
-      event.key === "ArrowRight" || event.key === "ArrowDown" ? 1 : -1;
-    const next = enabled[(index + delta + enabled.length) % enabled.length];
-    for (const chip of chips) chip.tabIndex = -1;
-    next.tabIndex = 0;
-    next.focus();
-  });
+  wireRadioTray(tray, () => chips);
 
   clueButton.addEventListener("click", () => {
     const rung = engine.useClue();

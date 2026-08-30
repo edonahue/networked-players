@@ -43,6 +43,7 @@ import {
   type EvidenceRelease,
 } from "./connectEvidence";
 import { escapeHtml, sessionStorageOrNull } from "./domUtils";
+import { wireRadioTray } from "./radioGroup";
 import {
   findAlbumRoute,
   loadPreparedGraph,
@@ -379,6 +380,40 @@ type PrimaryRoute = {
  * this route" disclosure which only exists for a genuinely ranked result. */
 function routeLengthText(hopCount: number): string {
   return `${hopCount} hop${hopCount === 1 ? "" : "s"} documented`;
+}
+
+const CONNECT_MODE_OPTION_SELECTOR = "[data-connect-mode-option]";
+
+/** Reads the currently-checked route-filter chip's value -- "none" (the
+ * unfiltered default) if somehow none is checked. Buttons carry the value
+ * on `data-value`, not a native `.value`. */
+function getSelectedMode(root: ParentNode): string {
+  return (
+    root.querySelector<HTMLButtonElement>(
+      `${CONNECT_MODE_OPTION_SELECTOR}[aria-checked="true"]`,
+    )?.dataset.value ?? "none"
+  );
+}
+
+/** Sets exactly one route-filter chip checked, and moves the WAI-ARIA
+ * radiogroup's single tab stop to match -- standard authoring practice for
+ * a `role="radiogroup"`, and distinct from the OTHER two `role="radio"`
+ * trays in this codebase (Guesser's/Routes' own): those never need to
+ * reflect a selection after the fact, because choosing an answer there
+ * ends the interaction (the tray is disabled immediately after). Connect's
+ * filter is a freely re-selectable, persistent setting, so both a real
+ * click AND a programmatic restore (from a shared URL) need to leave the
+ * tray in a genuinely correct, keyboard-navigable state. A no-op for a
+ * `value` naming no real chip -- defensive; every real caller here passes
+ * a value this tray actually has. */
+function setSelectedMode(root: ParentNode, value: string): void {
+  for (const chip of root.querySelectorAll<HTMLButtonElement>(
+    CONNECT_MODE_OPTION_SELECTOR,
+  )) {
+    const checked = chip.dataset.value === value;
+    chip.setAttribute("aria-checked", String(checked));
+    chip.tabIndex = checked ? 0 : -1;
+  }
 }
 
 // Album art is presentation-only (ADR 0044/0045) and fetched at most once
@@ -827,10 +862,7 @@ export async function initConnect(): Promise<void> {
     // republish a route the just-failed re-search had already disproven.
     clearLastSearch();
 
-    const selectedModeValue =
-      stageEl.querySelector<HTMLInputElement>(
-        "[data-connect-mode-option]:checked",
-      )?.value ?? "none";
+    const selectedModeValue = getSelectedMode(stageEl);
     const roleFilterMode = ROLE_FILTER_MODES[selectedModeValue];
 
     // Prepared (loaded + indexed) once per page load and reused across
@@ -1276,12 +1308,25 @@ export async function initConnect(): Promise<void> {
   // pending never used to advance the generation either, so a request
   // captured under the OLD filter could still land and render/URL-sync
   // for a mode the visitor had since changed away from.
-  for (const modeInput of stage.querySelectorAll<HTMLInputElement>(
-    "[data-connect-mode-option]",
-  )) {
-    modeInput.addEventListener("change", () => {
+  const modeTray = stage.querySelector<HTMLElement>(
+    "[data-connect-mode-group]",
+  );
+  const modeChips = Array.from(
+    stage.querySelectorAll<HTMLButtonElement>(CONNECT_MODE_OPTION_SELECTOR),
+  );
+  if (modeTray) {
+    modeTray.addEventListener("click", (event) => {
+      const chip = (event.target as HTMLElement).closest<HTMLButtonElement>(
+        CONNECT_MODE_OPTION_SELECTOR,
+      );
+      // Re-clicking the already-checked chip is a no-op -- matching a
+      // native radio group's own `change` event, which never fires for a
+      // click that doesn't actually change the value.
+      if (!chip || chip.dataset.value === getSelectedMode(stage)) return;
+      setSelectedMode(stage, chip.dataset.value ?? "none");
       searchGeneration++;
     });
+    wireRadioTray(modeTray, () => modeChips);
   }
 
   if (copyLinkButton) {
@@ -1375,10 +1420,7 @@ export async function initConnect(): Promise<void> {
     albumB = albumToUrl;
     pickerA?.setSelection(albumA);
     pickerB?.setSelection(albumB);
-    const modeInput = Array.from(
-      stageEl.querySelectorAll<HTMLInputElement>("[data-connect-mode-option]"),
-    ).find((el) => el.value === parsed.mode);
-    if (modeInput) modeInput.checked = true;
+    setSelectedMode(stageEl, parsed.mode);
     updateButton();
     void runSearch(albumFromUrl, albumToUrl, { skipUrlSync: true });
   }

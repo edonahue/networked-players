@@ -749,28 +749,16 @@ a.contributor-card:focus-visible {
   color: var(--muted);
   font-size: 0.95rem;
 }
-.connect-mode-toggle-group {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 12px 14px;
-  margin: 0;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-}
-.connect-mode-toggle-group legend {
-  padding: 0 6px;
-  font-size: 0.78rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-.connect-mode-toggle {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 0.9rem;
-  color: var(--muted);
+/* Route filter: a real role="radiogroup" chip tray (Slice 4 of the UI
+   design/copy pass), unified with Guesser's/Routes' own chip-tray pattern
+   instead of a bespoke bordered box of native radios. Reuses .chip-tray/
+   .chip directly; this scoped override is the only Connect-specific rule
+   needed, matching .contributors-directory__chips's/.explorer-role-filter's
+   own scoped [aria-checked="true"]/[aria-pressed="true"] pattern for their
+   own chip trays. */
+.connect-mode-filter .chip[aria-checked="true"] {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 16%, var(--surface));
 }
 .connect-empty-state {
   color: var(--muted);

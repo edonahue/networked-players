@@ -5,7 +5,11 @@
 // Tree pair `game-connect.spec.ts`/`game-connect-endpoints.spec.ts` use.
 
 import { expect, test } from "@playwright/test";
-import { picker, selectAlbum } from "./helpers/connectPicker";
+import {
+  picker,
+  selectAlbum,
+  selectRouteFilter,
+} from "./helpers/connectPicker";
 
 test("swap is disabled until both records are picked", async ({ page }) => {
   await page.goto("/play/connect/");
@@ -137,9 +141,7 @@ test("swap preserves the active role filter across the reversed redisplay", asyn
   await page.goto("/play/connect/");
   await selectAlbum(page, "a", "Ziggy Stardust");
   await selectAlbum(page, "b", "A Night At The Opera");
-  await page
-    .locator("[data-connect-mode-option][value='behind-the-glass']")
-    .check();
+  await selectRouteFilter(page, "behind-the-glass");
   await page.locator("[data-connect-search]").click();
   await expect(page.locator("[data-connect-results]")).toBeVisible({
     timeout: 15000,
@@ -147,8 +149,8 @@ test("swap preserves the active role filter across the reversed redisplay", asyn
 
   await page.locator("[data-connect-swap]").click();
   await expect(
-    page.locator("[data-connect-mode-option][value='behind-the-glass']"),
-  ).toBeChecked();
+    page.locator("[data-connect-mode-option][data-value='behind-the-glass']"),
+  ).toHaveAttribute("aria-checked", "true");
   const params = new URL(page.url()).searchParams;
   expect(params.get("mode")).toBe("behind-the-glass");
 });

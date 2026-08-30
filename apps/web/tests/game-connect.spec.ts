@@ -9,14 +9,12 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { expect, test } from "@playwright/test";
-import { picker, pickerResults, selectAlbum } from "./helpers/connectPicker";
-
-async function selectRouteFilter(
-  page: import("@playwright/test").Page,
-  value: "none" | "behind-the-glass" | "rhythm-section" | "guitar-paths",
-) {
-  await page.locator(`[data-connect-mode-option][value="${value}"]`).check();
-}
+import {
+  picker,
+  pickerResults,
+  selectAlbum,
+  selectRouteFilter,
+} from "./helpers/connectPicker";
 
 /** Flushes the page's task queue past every pending promise continuation
  * spawned by a network response that just resolved -- NOT an arbitrary
@@ -652,11 +650,46 @@ test("only one route filter can be selected at a time", async ({ page }) => {
   await selectRouteFilter(page, "behind-the-glass");
   await selectRouteFilter(page, "guitar-paths");
   await expect(
-    page.locator('[data-connect-mode-option][value="behind-the-glass"]'),
-  ).not.toBeChecked();
+    page.locator('[data-connect-mode-option][data-value="behind-the-glass"]'),
+  ).toHaveAttribute("aria-checked", "false");
   await expect(
-    page.locator('[data-connect-mode-option][value="guitar-paths"]'),
-  ).toBeChecked();
+    page.locator('[data-connect-mode-option][data-value="guitar-paths"]'),
+  ).toHaveAttribute("aria-checked", "true");
+});
+
+// Slice 4 of the UI design/copy pass: the route filter is now a real
+// role="radiogroup" chip tray, unified with Guesser's/Routes' own
+// role="radio" pattern instead of a bespoke box of native radios -- same
+// keyboard model as flagship.ts's "the chip tray is a keyboard radiogroup
+// with roving focus" test.
+test("the route filter is a keyboard radiogroup with roving focus", async ({
+  page,
+}) => {
+  await page.goto("/play/connect/");
+
+  const tray = page.locator("[data-connect-mode-group]");
+  await expect(tray).toHaveAttribute("role", "radiogroup");
+  const chips = tray.locator(".chip");
+  await expect(chips).toHaveCount(4);
+  await expect(chips.first()).toHaveAttribute("tabindex", "0");
+  await expect(chips.first()).toHaveAttribute("aria-checked", "true");
+
+  // Arrow keys only ROVE focus -- they never select, matching the
+  // Guesser/Routes convention this tray now shares.
+  await chips.first().focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(chips.nth(1)).toBeFocused();
+  await expect(chips.nth(1)).toHaveAttribute("tabindex", "0");
+  await expect(chips.first()).toHaveAttribute("tabindex", "-1");
+  await expect(chips.first()).toHaveAttribute("aria-checked", "true");
+  await expect(chips.nth(1)).toHaveAttribute("aria-checked", "false");
+
+  // Enter/Space activates the focused chip like any button, and the tab
+  // stop follows the newly-checked chip.
+  await page.keyboard.press("Enter");
+  await expect(chips.nth(1)).toHaveAttribute("aria-checked", "true");
+  await expect(chips.first()).toHaveAttribute("aria-checked", "false");
+  await expect(chips.first()).toHaveAttribute("tabindex", "-1");
 });
 
 // Request lifecycle (ADR 0059 Phase 5 PR 4): the same generation-counter
