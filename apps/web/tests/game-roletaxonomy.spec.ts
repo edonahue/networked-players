@@ -9,6 +9,8 @@ import { expect, test } from "@playwright/test";
 import {
   behindTheGlassEdgeFilter,
   guitarPathsEdgeFilter,
+  isBackgroundEngineeringRole,
+  isBackgroundOnlyRoleProfile,
   isEngineeringOrProductionRole,
   isGuitarRole,
   isPerformerRole,
@@ -68,6 +70,84 @@ test.describe("isEngineeringOrProductionRole", () => {
     expect(isEngineeringOrProductionRole("Programmed By")).toBe(true);
     expect(isEngineeringOrProductionRole("Drum Programming")).toBe(true);
     expect(isEngineeringOrProductionRole("Conductor")).toBe(false);
+  });
+});
+
+// Pinned parity cases against Python's role_taxonomy.py
+// (is_background_engineering_role). Reproduce with:
+//   uv run python3 -c "
+//   from networked_players_graph_core.role_taxonomy import is_background_engineering_role
+//   print(is_background_engineering_role('Mastered By'))              # True
+//   print(is_background_engineering_role('Producer, Mastered By'))    # False
+//   print(is_background_engineering_role('Engineer'))                 # False
+//   "
+test.describe("isBackgroundEngineeringRole", () => {
+  test("recognizes the three background-engineering tokens, including bracketed qualifiers", () => {
+    for (const role of [
+      "Mastered By",
+      "Mastered By [Vinyl]",
+      "Recorded By",
+      "Mixed By",
+    ]) {
+      expect(isBackgroundEngineeringRole(role)).toBe(true);
+    }
+  });
+
+  test("excludes the generic Engineer/Producer tokens and Programmed By/Drum Programming", () => {
+    for (const role of [
+      "Engineer",
+      "Producer",
+      "Co-Producer",
+      "Programmed By",
+      "Drum Programming",
+    ]) {
+      expect(isBackgroundEngineeringRole(role)).toBe(false);
+    }
+  });
+
+  test("a mixed credit with real creative involvement is not background-only", () => {
+    expect(isBackgroundEngineeringRole("Producer, Mastered By")).toBe(false);
+  });
+
+  test("every component being background-engineering still qualifies", () => {
+    expect(isBackgroundEngineeringRole("Mastered By, Mixed By")).toBe(true);
+  });
+
+  test("is fail-closed for empty text", () => {
+    expect(isBackgroundEngineeringRole("")).toBe(false);
+  });
+});
+
+test.describe("isBackgroundOnlyRoleProfile", () => {
+  test("true when the most frequent (first) role_text_examples entry is background-engineering", () => {
+    expect(isBackgroundOnlyRoleProfile(["Mastered By"])).toBe(true);
+    expect(isBackgroundOnlyRoleProfile(["Mastered By", "Mixed By"])).toBe(true);
+  });
+
+  test("false when the most frequent entry is a real substantive role, even if a background credit also appears", () => {
+    expect(isBackgroundOnlyRoleProfile(["Producer", "Mastered By"])).toBe(
+      false,
+    );
+    expect(isBackgroundOnlyRoleProfile(["Producer"])).toBe(false);
+  });
+
+  // Real gap this test guards: a mastering engineer's real profile
+  // routinely mixes "Mastered By" variants with a related-but-distinct
+  // token like "Lacquer Cut By" -- an ALL-must-match rule would miss this
+  // real case entirely, since the most frequent credit is still the
+  // background one.
+  test("true when the most frequent entry is background-engineering even alongside an unrelated non-background credit later in the list", () => {
+    expect(
+      isBackgroundOnlyRoleProfile([
+        "Mastered By",
+        "Lacquer Cut By",
+        "Mastered By [Vinyl]",
+      ]),
+    ).toBe(true);
+  });
+
+  test("false for an empty list -- nothing to judge as background-only", () => {
+    expect(isBackgroundOnlyRoleProfile([])).toBe(false);
   });
 });
 

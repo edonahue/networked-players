@@ -150,6 +150,19 @@ const PERFORMER_TOKENS = new Set([
   "harmonica",
 ]);
 
+// A secondary signal, never a reclassification: these three still count as
+// PRODUCTION_AND_ENGINEERING_TOKENS above (Behind the Glass is unaffected).
+// Mirrors role_taxonomy.py's `_BACKGROUND_ENGINEERING_TOKENS` exactly --
+// the narrow "pure post-production technical" subset the owner asked to
+// de-prioritize on core/default pages (2026-08-31), keep in lockstep with
+// that Python source by inspection, same convention this file's header
+// already documents.
+const BACKGROUND_ENGINEERING_TOKENS = new Set([
+  "mastered by",
+  "recorded by",
+  "mixed by",
+]);
+
 function normalizeComponent(component: string): string {
   return component
     .replace(/\[.*\]/g, "")
@@ -162,6 +175,13 @@ function matchesAnyComponent(roleText: string, tokens: Set<string>): boolean {
   return roleText
     .split(",")
     .some((component) => tokens.has(normalizeComponent(component)));
+}
+
+function matchesEveryComponent(roleText: string, tokens: Set<string>): boolean {
+  if (!roleText) return false;
+  return roleText
+    .split(",")
+    .every((component) => tokens.has(normalizeComponent(component)));
 }
 
 /** True when at least one comma-separated component of `roleText`
@@ -192,6 +212,48 @@ export function isGuitarRole(roleText: string): boolean {
  * Mirrors eligibility.py's `is_performer_role`. */
 export function isPerformerRole(roleText: string): boolean {
   return matchesAnyComponent(roleText, PERFORMER_TOKENS);
+}
+
+/** True when EVERY comma-separated component of `roleText` is a
+ * background-engineering token (Mastered By / Recorded By / Mixed By) --
+ * mirrors role_taxonomy.py's `is_background_engineering_role` exactly. A
+ * secondary display/ranking signal, never a change to edge eligibility or
+ * to `isEngineeringOrProductionRole`'s own Behind-the-Glass gate.
+ * `None`/empty is always false, and a mixed credit (e.g. "Producer,
+ * Mastered By") is also false -- real creative involvement is present
+ * too, so it's never treated as background-only. */
+export function isBackgroundEngineeringRole(roleText: string): boolean {
+  return matchesEveryComponent(roleText, BACKGROUND_ENGINEERING_TOKENS);
+}
+
+/** True when a contributor's own MOST FREQUENT credit (`role_text_examples`
+ * [0] -- contributors.ts's `Contributor` field is "ranked by frequency,
+ * evidence not a summary") is a background-engineering credit. Used to
+ * de-emphasize (never hide) a contributor's non-direct album/neighbor
+ * connections on the contributor and album detail pages -- reuses the
+ * page's own existing "Primarily credited for" signal rather than
+ * attempting a fragile per-connection role lookup the available data
+ * doesn't cleanly support.
+ *
+ * Deliberately keys off the single most frequent credit, not "every credit
+ * matches": measured against real data, a real mastering engineer's
+ * profile routinely mixes "Mastered By" variants with a related-but-
+ * distinct token like "Lacquer Cut By" (packaging/business, not
+ * background-engineering by this module's narrow token set) -- an
+ * ALL-must-match bar would silently exclude exactly the profile this
+ * signal exists to catch. An empty array (a contributor with no evidence
+ * at all, e.g. a band credited only via release/track-artist billing with
+ * no formal role of their own) is always false -- there is nothing to
+ * judge as background-only, which is the honest answer for that case too:
+ * a shared credit reached through such an artist's OWN billing is not a
+ * claim about their own work. */
+export function isBackgroundOnlyRoleProfile(
+  roleTextExamples: string[],
+): boolean {
+  return (
+    roleTextExamples.length > 0 &&
+    isBackgroundEngineeringRole(roleTextExamples[0])
+  );
 }
 
 /** Edge filter for `findPath`: both endpoints' credited roles on the

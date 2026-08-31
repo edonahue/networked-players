@@ -224,3 +224,56 @@ test("isDimmed does not dim a neighbor matching the active filter", () => {
   };
   expect(isDimmed(node, new Set(["vocals"]))).toBe(false);
 });
+
+// 2026-08-31 addition: a second, independent dimming reason -- the real
+// Jamiroquai/Pink-Floyd shape that motivated this whole change is a
+// contributor whose ENGINEERING role_categories chip would pass any role
+// filter that includes it, but whose specific edge to this center is
+// still just a mastering/mixing credit.
+test("isDimmed dims a neighbor reached only via a background-engineering-only edge, even with no filter active", () => {
+  const node = {
+    artistId: 200,
+    name: "Bob",
+    roleCategories: ["engineering"],
+    isCenter: false,
+  };
+  const edge = {
+    neighborArtistId: 200,
+    releaseId: 1,
+    roleCenter: "Primary Artist",
+    roleNeighbor: "Mastered By",
+  };
+  expect(isDimmed(node, new Set(), edge)).toBe(true);
+});
+
+test("isDimmed does not dim a neighbor whose edge carries a real substantive role", () => {
+  const node = {
+    artistId: 200,
+    name: "Bob",
+    roleCategories: ["production"],
+    isCenter: false,
+  };
+  const edge = {
+    neighborArtistId: 200,
+    releaseId: 1,
+    roleCenter: "Vocals",
+    roleNeighbor: "Producer",
+  };
+  expect(isDimmed(node, new Set(), edge)).toBe(false);
+});
+
+test("isDimmed still exempts the center even with a background-only edge somehow passed", () => {
+  const center = {
+    artistId: 100,
+    name: "Alice",
+    roleCategories: [],
+    isCenter: true,
+  };
+  const edge = {
+    neighborArtistId: 100,
+    releaseId: 1,
+    roleCenter: "Mastered By",
+    roleNeighbor: "Mastered By",
+  };
+  expect(isDimmed(center, new Set(), edge)).toBe(false);
+});

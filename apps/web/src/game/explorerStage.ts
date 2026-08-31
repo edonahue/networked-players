@@ -296,6 +296,9 @@ export async function initExplorerStage(): Promise<void> {
     const nodeNameById = new Map<number, string>(
       [view.center, ...view.neighbors].map((n) => [n.artistId, n.name]),
     );
+    const edgeByNeighborId = new Map(
+      view.edges.map((edge) => [edge.neighborArtistId, edge]),
+    );
 
     // ADR 0060: highlight the center's own interesting_next_step neighbor,
     // when currently rendered -- a small, additive marker, never hiding or
@@ -357,7 +360,11 @@ export async function initExplorerStage(): Promise<void> {
     // instead of every node being its own independent tab stop.
     const renderNode = (node: ExplorerNode) => {
       const pos = nodePositions.get(node.artistId)!;
-      const dimmed = isDimmed(node, activeCategories);
+      const dimmed = isDimmed(
+        node,
+        activeCategories,
+        edgeByNeighborId.get(node.artistId),
+      );
       const r = node.isCenter ? CENTER_NODE_RADIUS : NODE_RADIUS;
       const isInterestingNextStep =
         !node.isCenter && node.artistId === interestingNextStepArtistId;

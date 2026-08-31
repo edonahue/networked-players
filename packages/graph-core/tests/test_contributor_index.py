@@ -313,20 +313,82 @@ def test_interesting_next_step_picks_a_role_disjoint_neighbor() -> None:
     alice = next(c for c in index["contributors"] if c["artist_id"] == 100)
     assert alice["interesting_next_step"] is None
 
-    # Bob (strings + production) has two neighbors: Alice (strings, shares a
-    # category) and Carol (engineering only, fully disjoint) -- Carol wins.
+    # Bob (Producer) and Carol (Mastered By) are role-disjoint (production
+    # vs engineering), but their ONLY shared hop is background-engineering-
+    # only on Carol's side (2026-08-31 addendum) -- Carol is excluded from
+    # Bob's candidates, and the exclusion is symmetric (Bob is excluded
+    # from Carol's too), so BOTH get no interesting_next_step here. See
+    # test_interesting_next_step_excludes_a_background_only_pair below for
+    # the direct assertion of this exclusion, and
+    # test_interesting_next_step_still_picks_a_non_background_disjoint_neighbor
+    # for the happy path with a genuinely substantive disjoint neighbor.
     bob = next(c for c in index["contributors"] if c["artist_id"] == 200)
-    assert bob["interesting_next_step"] == {
-        "artist_id": 300,
-        "reason": "credited in a different kind of role than this contributor",
-    }
-
-    # Carol (engineering only) has one neighbor, Bob (strings + production)
-    # -- fully disjoint from Carol's own roles, so Bob is her pick too
-    # (symmetric, but not required to be -- each side evaluates its own
-    # role_categories against the other's).
+    assert bob["interesting_next_step"] is None
     carol = next(c for c in index["contributors"] if c["artist_id"] == 300)
-    assert carol["interesting_next_step"] == {
+    assert carol["interesting_next_step"] is None
+
+
+def test_interesting_next_step_excludes_a_background_only_pair() -> None:
+    """Direct regression guard for the ADR 0060 addendum: a role-disjoint
+    neighbor whose ENTIRE shared connection is background-engineering
+    credits (Mastered By/Recorded By/Mixed By) must never win the "worth a
+    look" slot, even though the role categories are technically disjoint."""
+    index = _build()
+    bob = next(c for c in index["contributors"] if c["artist_id"] == 200)
+    carol = next(c for c in index["contributors"] if c["artist_id"] == 300)
+    assert bob["interesting_next_step"] is None
+    assert carol["interesting_next_step"] is None
+
+
+def test_interesting_next_step_still_picks_a_non_background_disjoint_neighbor() -> None:
+    """The exclusion is narrow: a role-disjoint neighbor whose shared hop
+    carries a REAL substantive role (not background-engineering-only) on
+    at least one side still qualifies normally."""
+    catalog = {
+        "catalog_version": _CATALOG_VERSION,
+        "snapshot_date": _SNAPSHOT,
+        "albums": [
+            {"id": "master-1", "title": "First Light", "artist_id": 100, "year": 1995},
+            {"id": "master-2", "title": "Second Wave", "artist_id": 200, "year": 2001},
+        ],
+    }
+    challenge = {
+        "schema_version": 2,
+        "provenance": {"catalog_version": _CATALOG_VERSION},
+        "artists": [
+            {"artist_id": 100, "name": "Alice"},
+            {"artist_id": 200, "name": "Bob"},
+        ],
+        "paths": [
+            {
+                "id": "path-1",
+                "from_album_id": "master-1",
+                "to_album_id": "master-2",
+                "hops": [{"release_id": 501, "artist_a_id": 100, "artist_b_id": 200}],
+            }
+        ],
+        "releases": [
+            _challenge_release(501, [_credit(100, "Guitar"), _credit(200, "Engineer")]),
+        ],
+    }
+    index = build_contributor_index(
+        challenge=challenge,
+        routes_universe=_routes_universe(),
+        routes_rounds={
+            "provenance": {"catalog_version": _CATALOG_VERSION},
+            "artists": [],
+            "rounds": [],
+            "releases": [],
+        },
+        catalog=catalog,
+        evidence_release_registry={"release_ids": [], "years": []},
+        generated_at="2026-08-03T00:00:00+00:00",
+    )
+    alice = next(c for c in index["contributors"] if c["artist_id"] == 100)
+    # "Engineer" is disjoint from "Guitar" (strings) but is NOT
+    # background-engineering-only (only Mastered By/Recorded By/Mixed By
+    # are), so this pair is never excluded.
+    assert alice["interesting_next_step"] == {
         "artist_id": 200,
         "reason": "credited in a different kind of role than this contributor",
     }
@@ -339,10 +401,23 @@ def test_interesting_next_step_never_ranks_by_connection_count_alone() -> None:
     Here Carol (engineering, connection_count 1) is Bob's ONLY disjoint-role
     candidate even though Alice (connection_count 1 too, but same-category)
     would otherwise tie -- role disjointness gates the candidate set before
-    connection_count ever breaks a tie."""
-    index = _build()
+    connection_count ever breaks a tie. Uses "Engineer" rather than the
+    shared fixture's "Mastered By" for Carol's credit so this pair isn't
+    excluded by the 2026-08-31 background-only addendum -- that exclusion
+    has its own dedicated tests above."""
+    routes_rounds = _routes_rounds()
+    routes_rounds["rounds"][0]["hops"][0]["role_b"] = "Engineer"
+    index = build_contributor_index(
+        challenge=_challenge(),
+        routes_universe=_routes_universe(),
+        routes_rounds=routes_rounds,
+        catalog=_catalog(),
+        evidence_release_registry=_evidence_release_registry(),
+        generated_at="2026-08-03T00:00:00+00:00",
+    )
     bob = next(c for c in index["contributors"] if c["artist_id"] == 200)
     assert bob["interesting_next_step"]["artist_id"] != 100
+    assert bob["interesting_next_step"]["artist_id"] == 300
 
 
 def test_interesting_next_step_tie_breaks_toward_the_lower_connection_count() -> None:

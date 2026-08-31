@@ -2,7 +2,7 @@
   "schema_version": 1,
   "catalog_version": "catalog-v1-20260601-7fbbb46b28e6",
   "contributor_index_version": "contributor-index-v1-20260601-cfece80e74b4",
-  "generated_at": "2026-08-31T09:37:43Z",
+  "generated_at": "2026-08-31T10:50:13Z",
   "source": "Derived from apps/web/public/data/challenge.v2.json, apps/web/public/data/routes/{universe,rounds}.v1.json, and apps/web/public/data/evidence/release-registry.v1.json (decade_activity only) -- no fresh full-corpus graph query. See docs/DATA_AND_RIGHTS.md.",
   "license": "Derived from the Discogs monthly CC0 data dumps via the three published artifacts above. See docs/DATA_AND_RIGHTS.md.",
   "contributors": [
@@ -589,7 +589,7 @@
         }
       ],
       "interesting_next_step": {
-        "artist_id": 28972,
+        "artist_id": 2714,
         "reason": "credited in a different kind of role than this contributor"
       }
     },
@@ -1898,10 +1898,7 @@
         300468
       ],
       "evidence": [],
-      "interesting_next_step": {
-        "artist_id": 154230,
-        "reason": "credited in a different kind of role than this contributor"
-      }
+      "interesting_next_step": null
     },
     {
       "artist_id": 8211,
@@ -2753,10 +2750,7 @@
           "role_text": "Acoustic Guitar, Bass"
         }
       ],
-      "interesting_next_step": {
-        "artist_id": 366299,
-        "reason": "credited in a different kind of role than this contributor"
-      }
+      "interesting_next_step": null
     },
     {
       "artist_id": 11012,
@@ -3052,7 +3046,7 @@
         }
       ],
       "interesting_next_step": {
-        "artist_id": 19814,
+        "artist_id": 56621,
         "reason": "credited in a different kind of role than this contributor"
       }
     },
@@ -4429,10 +4423,7 @@
           "role_text": "Producer [Produced By]"
         }
       ],
-      "interesting_next_step": {
-        "artist_id": 92830,
-        "reason": "credited in a different kind of role than this contributor"
-      }
+      "interesting_next_step": null
     },
     {
       "artist_id": 18956,
@@ -5148,7 +5139,7 @@
         }
       ],
       "interesting_next_step": {
-        "artist_id": 366299,
+        "artist_id": 300113,
         "reason": "credited in a different kind of role than this contributor"
       }
     },
@@ -5677,7 +5668,7 @@
       ],
       "evidence": [],
       "interesting_next_step": {
-        "artist_id": 135969,
+        "artist_id": 236968,
         "reason": "credited in a different kind of role than this contributor"
       }
     },
@@ -5824,10 +5815,7 @@
           "role_text": "Featuring"
         }
       ],
-      "interesting_next_step": {
-        "artist_id": 103999,
-        "reason": "credited in a different kind of role than this contributor"
-      }
+      "interesting_next_step": null
     },
     {
       "artist_id": 28972,
@@ -5857,10 +5845,7 @@
           "role_text": "Artwork"
         }
       ],
-      "interesting_next_step": {
-        "artist_id": 2729,
-        "reason": "credited in a different kind of role than this contributor"
-      }
+      "interesting_next_step": null
     },
     {
       "artist_id": 29807,
@@ -6421,7 +6406,7 @@
       ],
       "evidence": [],
       "interesting_next_step": {
-        "artist_id": 127854,
+        "artist_id": 135969,
         "reason": "credited in a different kind of role than this contributor"
       }
     },
@@ -9123,10 +9108,7 @@
           "role_text": "Producer"
         }
       ],
-      "interesting_next_step": {
-        "artist_id": 337195,
-        "reason": "credited in a different kind of role than this contributor"
-      }
+      "interesting_next_step": null
     },
     {
       "artist_id": 50513,
@@ -10766,10 +10748,7 @@
           "role_text": "Mixed By"
         }
       ],
-      "interesting_next_step": {
-        "artist_id": 861083,
-        "reason": "credited in a different kind of role than this contributor"
-      }
+      "interesting_next_step": null
     },
     {
       "artist_id": 68693,
@@ -11039,10 +11018,7 @@
           "role_text": "Producer"
         }
       ],
-      "interesting_next_step": {
-        "artist_id": 11415,
-        "reason": "credited in a different kind of role than this contributor"
-      }
+      "interesting_next_step": null
     },
     {
       "artist_id": 70829,
@@ -12291,7 +12267,7 @@
         }
       ],
       "interesting_next_step": {
-        "artist_id": 18839,
+        "artist_id": 48424,
         "reason": "credited in a different kind of role than this contributor"
       }
     },
@@ -13088,10 +13064,7 @@
           "role_text": "Mixed By"
         }
       ],
-      "interesting_next_step": {
-        "artist_id": 28970,
-        "reason": "credited in a different kind of role than this contributor"
-      }
+      "interesting_next_step": null
     },
     {
       "artist_id": 106474,
@@ -14159,10 +14132,7 @@
           "role_text": "Engineer [Mix]"
         }
       ],
-      "interesting_next_step": {
-        "artist_id": 3237636,
-        "reason": "credited in a different kind of role than this contributor"
-      }
+      "interesting_next_step": null
     },
     {
       "artist_id": 124497,
@@ -14405,7 +14375,7 @@
         }
       ],
       "interesting_next_step": {
-        "artist_id": 30724,
+        "artist_id": 60480,
         "reason": "credited in a different kind of role than this contributor"
       }
     },
@@ -14676,7 +14646,7 @@
         }
       ],
       "interesting_next_step": {
-        "artist_id": 15261,
+        "artist_id": 30724,
         "reason": "credited in a different kind of role than this contributor"
       }
     },
@@ -15099,10 +15069,7 @@
           "role_text": "Producer [Produced By, For Excellency Productions]"
         }
       ],
-      "interesting_next_step": {
-        "artist_id": 251633,
-        "reason": "credited in a different kind of role than this contributor"
-      }
+      "interesting_next_step": null
     },
     {
       "artist_id": 145072,
@@ -15429,7 +15396,7 @@
         }
       ],
       "interesting_next_step": {
-        "artist_id": 367595,
+        "artist_id": 4204725,
         "reason": "credited in a different kind of role than this contributor"
       }
     },
@@ -15584,10 +15551,7 @@
           "role_text": "Mixed By"
         }
       ],
-      "interesting_next_step": {
-        "artist_id": 8029,
-        "reason": "credited in a different kind of role than this contributor"
-      }
+      "interesting_next_step": null
     },
     {
       "artist_id": 157075,
@@ -15953,10 +15917,7 @@
           "role_text": "Written-By"
         }
       ],
-      "interesting_next_step": {
-        "artist_id": 251633,
-        "reason": "credited in a different kind of role than this contributor"
-      }
+      "interesting_next_step": null
     },
     {
       "artist_id": 168907,
@@ -16667,10 +16628,7 @@
           "role_text": "Backing Vocals"
         }
       ],
-      "interesting_next_step": {
-        "artist_id": 11415,
-        "reason": "credited in a different kind of role than this contributor"
-      }
+      "interesting_next_step": null
     },
     {
       "artist_id": 200762,
@@ -16955,10 +16913,7 @@
           "role_text": "Mastered By"
         }
       ],
-      "interesting_next_step": {
-        "artist_id": 861083,
-        "reason": "credited in a different kind of role than this contributor"
-      }
+      "interesting_next_step": null
     },
     {
       "artist_id": 215920,
@@ -17699,10 +17654,7 @@
         367595
       ],
       "evidence": [],
-      "interesting_next_step": {
-        "artist_id": 367595,
-        "reason": "credited in a different kind of role than this contributor"
-      }
+      "interesting_next_step": null
     },
     {
       "artist_id": 236968,
@@ -18480,7 +18432,7 @@
         }
       ],
       "interesting_next_step": {
-        "artist_id": 20991,
+        "artist_id": 92476,
         "reason": "credited in a different kind of role than this contributor"
       }
     },
@@ -18707,10 +18659,7 @@
         5368368
       ],
       "evidence": [],
-      "interesting_next_step": {
-        "artist_id": 399108,
-        "reason": "credited in a different kind of role than this contributor"
-      }
+      "interesting_next_step": null
     },
     {
       "artist_id": 252118,
@@ -22386,10 +22335,7 @@
           "role_text": "Mastered By [Vinyl]"
         }
       ],
-      "interesting_next_step": {
-        "artist_id": 8029,
-        "reason": "credited in a different kind of role than this contributor"
-      }
+      "interesting_next_step": null
     },
     {
       "artist_id": 302529,
@@ -22922,10 +22868,7 @@
           "role_text": "Mastered By"
         }
       ],
-      "interesting_next_step": {
-        "artist_id": 169154,
-        "reason": "credited in a different kind of role than this contributor"
-      }
+      "interesting_next_step": null
     },
     {
       "artist_id": 328530,
@@ -23072,10 +23015,7 @@
           "role_text": "Recorded By [Audio Recording]"
         }
       ],
-      "interesting_next_step": {
-        "artist_id": 50263,
-        "reason": "credited in a different kind of role than this contributor"
-      }
+      "interesting_next_step": null
     },
     {
       "artist_id": 340100,
@@ -23256,10 +23196,7 @@
           "role_text": "Mastered By"
         }
       ],
-      "interesting_next_step": {
-        "artist_id": 22854,
-        "reason": "credited in a different kind of role than this contributor"
-      }
+      "interesting_next_step": null
     },
     {
       "artist_id": 367595,
@@ -23298,10 +23235,7 @@
           "role_text": "Mixed By [Reissue]"
         }
       ],
-      "interesting_next_step": {
-        "artist_id": 232157,
-        "reason": "credited in a different kind of role than this contributor"
-      }
+      "interesting_next_step": null
     },
     {
       "artist_id": 370051,
@@ -24463,10 +24397,7 @@
           "role_text": "Mastered By [Mastering], Lacquer Cut By [Lacquer Cutting]"
         }
       ],
-      "interesting_next_step": {
-        "artist_id": 3851,
-        "reason": "credited in a different kind of role than this contributor"
-      }
+      "interesting_next_step": null
     },
     {
       "artist_id": 520613,
@@ -24835,10 +24766,7 @@
           "role_text": "Music By"
         }
       ],
-      "interesting_next_step": {
-        "artist_id": 67636,
-        "reason": "credited in a different kind of role than this contributor"
-      }
+      "interesting_next_step": null
     },
     {
       "artist_id": 938844,
@@ -24931,10 +24859,7 @@
           "role_text": "Engineer"
         }
       ],
-      "interesting_next_step": {
-        "artist_id": 98825,
-        "reason": "credited in a different kind of role than this contributor"
-      }
+      "interesting_next_step": null
     },
     {
       "artist_id": 1103159,
@@ -25086,10 +25011,7 @@
           "role_text": "Acoustic Guitar"
         }
       ],
-      "interesting_next_step": {
-        "artist_id": 300468,
-        "reason": "credited in a different kind of role than this contributor"
-      }
+      "interesting_next_step": null
     },
     {
       "artist_id": 1561067,
@@ -25710,10 +25632,7 @@
           "role_text": "Producer"
         }
       ],
-      "interesting_next_step": {
-        "artist_id": 213186,
-        "reason": "credited in a different kind of role than this contributor"
-      }
+      "interesting_next_step": null
     },
     {
       "artist_id": 3272791,

@@ -8,6 +8,7 @@
 
 import type { PathfindingGraph } from "./pathfindingGraph";
 import type { Contributor } from "../data/contributors";
+import { isBackgroundEngineeringRole } from "./roleTaxonomy";
 
 export const MAX_NEIGHBORS = 24;
 
@@ -138,15 +139,35 @@ export function buildView(
 }
 
 /** A node is dimmed (not removed -- evidence stays visible even
- * de-emphasized) when a role filter is active and the node matches none of
- * the active categories. The center is never dimmed. */
+ * de-emphasized) for either of two reasons, the center exempt from both:
+ * a role filter is active and the node matches none of the active
+ * categories, or (2026-08-31 addition, independent of any filter) the
+ * edge connecting this neighbor to the current center is
+ * background-engineering-only (Mastered By/Recorded By/Mixed By on either
+ * side, `roleTaxonomy.ts`'s `isBackgroundEngineeringRole`) -- a real
+ * documented credit, just visually de-emphasized the same way an
+ * unfiltered role already is. `edge` is the neighbor's own edge to the
+ * center; omitted (or the center's own call, which has none) skips that
+ * second check. */
 export function isDimmed(
   node: ExplorerNode,
   activeCategories: ReadonlySet<string>,
+  edge?: ExplorerEdge,
 ): boolean {
   if (node.isCenter) return false;
-  if (activeCategories.size === 0) return false;
-  return !node.roleCategories.some((category) =>
-    activeCategories.has(category),
-  );
+  if (activeCategories.size > 0) {
+    if (
+      !node.roleCategories.some((category) => activeCategories.has(category))
+    ) {
+      return true;
+    }
+  }
+  if (
+    edge &&
+    (isBackgroundEngineeringRole(edge.roleCenter) ||
+      isBackgroundEngineeringRole(edge.roleNeighbor))
+  ) {
+    return true;
+  }
+  return false;
 }

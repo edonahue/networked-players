@@ -17,6 +17,7 @@ from networked_players_graph_core.role_taxonomy import (
     classify_role,
     classify_role_sql,
     corpus_coverage_report,
+    is_background_engineering_role,
     primary_role_category,
 )
 
@@ -97,6 +98,30 @@ def test_studio_roles_classify_distinctly_from_performer_roles() -> None:
         RoleCategory.PRODUCTION,
         RoleCategory.ENGINEERING,
     )
+
+
+def test_is_background_engineering_role() -> None:
+    """A secondary signal, never a reclassification -- Mastered By/Recorded
+    By/Mixed By still classify as RoleCategory.ENGINEERING via classify_role
+    (asserted above); this is the narrower "background, de-prioritize on
+    core pages" predicate the owner asked for (2026-08-31), deliberately
+    excluding the generic "Engineer" token and Programmed By/Drum
+    Programming (electronic sequencing, a different concern)."""
+    assert is_background_engineering_role("Mastered By") is True
+    assert is_background_engineering_role("Mastered By [Vinyl]") is True
+    assert is_background_engineering_role("Recorded By") is True
+    assert is_background_engineering_role("Mixed By") is True
+    assert is_background_engineering_role("Engineer") is False
+    assert is_background_engineering_role("Producer") is False
+    assert is_background_engineering_role("Programmed By") is False
+    assert is_background_engineering_role("Drum Programming") is False
+    # A mixed credit (e.g. someone billed as both producer and mastering
+    # engineer on the same release) is not background-only -- real
+    # creative involvement is present too.
+    assert is_background_engineering_role("Producer, Mastered By") is False
+    assert is_background_engineering_role("Mastered By, Mixed By") is True
+    assert is_background_engineering_role(None) is False
+    assert is_background_engineering_role("") is False
 
 
 def test_real_2026_08_04_coverage_additions_classify_correctly() -> None:

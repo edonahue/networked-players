@@ -161,6 +161,24 @@ _ENGINEERING_TOKENS = frozenset(
         "drum programming",
     }
 )
+# A secondary signal, never a reclassification: these three stay
+# RoleCategory.ENGINEERING like every other token above. This is the
+# specific, narrow subset of "pure post-production technical" work the
+# owner asked to de-prioritize on core/default pages (2026-08-31): a
+# mastering, recording, or mixing credit is real, but -- unlike Producer or
+# a generic Engineer credit, which imply broader creative/session
+# involvement -- it's also the credit type most likely to be an engineer's
+# later, unrelated reissue/remaster work with no real period overlap with
+# the other credited artist. Deliberately does NOT include "engineer"
+# (too broad/ambiguous a token to single out), "programmed by", or
+# "drum programming" (electronic-sequencing work, a different concern).
+_BACKGROUND_ENGINEERING_TOKENS = frozenset(
+    {
+        "mastered by",
+        "recorded by",
+        "mixed by",
+    }
+)
 _ARRANGEMENT_TOKENS = frozenset(
     {
         "arranged by",
@@ -329,6 +347,23 @@ def primary_role_category(role_text: str | None) -> RoleCategory:
         if category is not RoleCategory.UNKNOWN:
             return category
     return RoleCategory.UNKNOWN
+
+
+def is_background_engineering_role(role_text: str | None) -> bool:
+    """True when EVERY comma-separated component of `role_text` is a
+    background-engineering token (Mastered By / Recorded By / Mixed By) --
+    a secondary display/ranking signal, never a change to `classify_role`'s
+    own ENGINEERING classification or to `graph.py`'s edge eligibility.
+    `None`/empty and any role text with a non-background component are both
+    `False` -- fail-closed, the same default `is_performer_role` uses, so a
+    genuinely mixed credit (e.g. "Producer, Mastered By") is never treated
+    as background-only just because part of it is."""
+    if not role_text:
+        return False
+    return all(
+        re.sub(r"\[.*\]", "", component).strip().lower() in _BACKGROUND_ENGINEERING_TOKENS
+        for component in role_text.split(",")
+    )
 
 
 def classify_role_sql(role_column: str) -> str:

@@ -289,6 +289,34 @@ test.describe("selectRecommendedRoute: ranking axes", () => {
     expect(result.recommended.facts.performerHopCount).toBe(1);
   });
 
+  // 2026-08-31 extension: once caveat, degree, AND performer-hop-count all
+  // tie (both bridges are entirely non-performer, exactly the real
+  // Jamiroquai/Pink-Floyd shape that motivated this axis), prefer the
+  // bridge that isn't purely a mastering/recording/mixing credit.
+  test("once caveat, degree, and performer-hop-count all tie, prefers the bridge that isn't background-engineering-only", () => {
+    const graph = twoBridgeGraph({
+      bridgeOneRoles: ["Mastered By", "Mastered By"], // background-only, non-performer
+      bridgeTwoRoles: ["Executive-Producer", "Executive-Producer"], // non-performer, not background
+    });
+    const { artistIndex, albumIndex } = indices(graph);
+    const evidence = evidenceIndex([release(900, null), release(901, null)]);
+
+    const result = selectRecommendedRoute(
+      graph,
+      artistIndex,
+      albumIndex,
+      "album-a",
+      "album-b",
+      evidence,
+      4,
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.recommended.endpointA.artistId).toBe(200); // Q, the non-background bridge
+    expect(result.recommended.facts.backgroundHopCount).toBe(0);
+    expect(result.recommended.facts.performerHopCount).toBe(0);
+  });
+
   test("with no caveat vocabulary available, ranking degrades to degree+role only", () => {
     const graph = twoBridgeGraph({ padHubDegree: 20 });
     const { artistIndex, albumIndex } = indices(graph);
@@ -699,6 +727,7 @@ test.describe("computeRouteFacts / explainRoute", () => {
       worstCaveatSeverity: 0,
       maxInteriorDegree: 5,
       performerHopCount: 1,
+      backgroundHopCount: 0,
       ...overrides,
     };
   }
@@ -743,6 +772,50 @@ test.describe("computeRouteFacts / explainRoute", () => {
     expect(result.hopCount).toBe(1);
     expect(result.worstCaveatSeverity).toBe(2); // compilation tier
     expect(result.performerHopCount).toBe(1); // Vocals qualifies even though the other side doesn't
+    expect(result.backgroundHopCount).toBe(0); // neither role is background-engineering-only
+  });
+
+  test("computeRouteFacts counts a hop as background-only when either side is Mastered By/Recorded By/Mixed By", () => {
+    const graph = twoBridgeGraph({});
+    const { artistIndex } = indices(graph);
+    const evidence = evidenceIndex([]);
+    const result = computeRouteFacts(
+      graph,
+      artistIndex,
+      [
+        {
+          release_id: 900,
+          artist_a_id: 100,
+          artist_b_id: 300,
+          role_a: "Primary Artist",
+          role_b: "Mastered By [Vinyl]",
+        },
+      ],
+      evidence,
+    );
+    expect(result.backgroundHopCount).toBe(1);
+    // Mirrors performerHopCount's own either-side convention: a hop still
+    // counts toward backgroundHopCount when the OTHER side is a real
+    // performer credit. This is deliberately not double jeopardy in
+    // practice -- such a hop already counts toward performerHopCount too,
+    // so it's already favored on the primary (non-performer) ranking axis;
+    // backgroundHopCount only breaks ties among routes already equal there.
+    const mixedResult = computeRouteFacts(
+      graph,
+      artistIndex,
+      [
+        {
+          release_id: 900,
+          artist_a_id: 100,
+          artist_b_id: 300,
+          role_a: "Guitar",
+          role_b: "Mastered By",
+        },
+      ],
+      evidence,
+    );
+    expect(mixedResult.backgroundHopCount).toBe(1);
+    expect(mixedResult.performerHopCount).toBe(1);
   });
 });
 

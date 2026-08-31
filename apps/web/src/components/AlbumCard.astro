@@ -17,9 +17,19 @@ interface Props {
    * context ("2 documented hops away"). Always traceable to a real field on
    * the caller's own data, never invented copy. */
   note?: string;
+  /** De-emphasize this card without removing it (2026-08-31, same
+   * `--muted`/`isDimmed()` convention used elsewhere) -- the connection is
+   * real, just visually secondary. */
+  muted?: boolean;
 }
 
-const { album, hrefBase = "/albums/", connected = true, note } = Astro.props;
+const {
+  album,
+  hrefBase = "/albums/",
+  connected = true,
+  note,
+  muted = false,
+} = Astro.props;
 // Presentation art comes from the album-art registry (ADR 0045), never from
 // frozen artifact fields; fall back to any legacy embedded cover, then to the
 // polished placeholder.
@@ -27,7 +37,7 @@ const cover = coverFor(album.id) ?? album.cover_image;
 ---
 
 <a
-  class="album-card"
+  class={`album-card${muted ? " album-card--muted" : ""}`}
   href={`${hrefBase}${album.id}/`}
   data-album-id={album.id}
   data-album-title={album.title}

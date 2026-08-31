@@ -43,7 +43,7 @@ import {
   type PathfindingGraph,
   type PathHop,
 } from "./pathfindingGraph";
-import { isPerformerRole } from "./roleTaxonomy";
+import { isBackgroundEngineeringRole, isPerformerRole } from "./roleTaxonomy";
 
 /** Caveat severity tiers, worst first -- mirrors graph-core's
  * `EVIDENCE_CAVEAT_TIERS` (`packages/graph-core/.../graph.py`) exactly, so
@@ -92,6 +92,15 @@ export interface RouteFacts {
    * nodes. Lower is less hub-dependent. */
   maxInteriorDegree: number;
   performerHopCount: number;
+  /** Count of hops where at least one side's credited role is
+   * background-engineering-only (Mastered By/Recorded By/Mixed By,
+   * `roleTaxonomy.ts`'s `isBackgroundEngineeringRole`) -- the same
+   * either-side convention `performerHopCount` already uses. A secondary
+   * ranking signal within the unfiltered engine only (ADR 0059's own
+   * scope, extended 2026-08-31): these credits are real and stay fully
+   * findable everywhere else (Behind the Glass, Explore, full evidence),
+   * they just rank last among otherwise-equal candidates here. */
+  backgroundHopCount: number;
 }
 
 export interface RankedRoute {
@@ -312,6 +321,7 @@ export function computeRouteFacts(
   // mistake at query time instead of build time.
   let anyReleaseMissing = false;
   let performerHopCount = 0;
+  let backgroundHopCount = 0;
   const interiorNodeIndices = new Set<number>();
 
   for (const hop of hops) {
@@ -328,6 +338,12 @@ export function computeRouteFacts(
     }
     if (isPerformerRole(hop.role_a) || isPerformerRole(hop.role_b)) {
       performerHopCount++;
+    }
+    if (
+      isBackgroundEngineeringRole(hop.role_a) ||
+      isBackgroundEngineeringRole(hop.role_b)
+    ) {
+      backgroundHopCount++;
     }
     const aIndex = artistIndex.get(hop.artist_a_id);
     const bIndex = artistIndex.get(hop.artist_b_id);
@@ -356,13 +372,15 @@ export function computeRouteFacts(
     worstCaveatSeverity,
     maxInteriorDegree,
     performerHopCount,
+    backgroundHopCount,
   };
 }
 
 /** Ascending = better. Deterministic total order: caveat severity, then
- * hub dependence, then role substance, then a canonical string tiebreak
- * over the route's own edge keys -- stable regardless of CSR enumeration
- * order, so two runs over the same graph always agree. */
+ * hub dependence, then role substance, then background-technical-only
+ * hops (2026-08-31 extension), then a canonical string tiebreak over the
+ * route's own edge keys -- stable regardless of CSR enumeration order, so
+ * two runs over the same graph always agree. */
 function compareRanked(a: RankedRoute, b: RankedRoute): number {
   const aCaveat = a.facts.worstCaveatSeverity ?? 0;
   const bCaveat = b.facts.worstCaveatSeverity ?? 0;
@@ -373,6 +391,9 @@ function compareRanked(a: RankedRoute, b: RankedRoute): number {
   const aNonPerformer = a.facts.hopCount - a.facts.performerHopCount;
   const bNonPerformer = b.facts.hopCount - b.facts.performerHopCount;
   if (aNonPerformer !== bNonPerformer) return aNonPerformer - bNonPerformer;
+  if (a.facts.backgroundHopCount !== b.facts.backgroundHopCount) {
+    return a.facts.backgroundHopCount - b.facts.backgroundHopCount;
+  }
   const aKey = [...a.usedEdgeKeys].sort().join("|");
   const bKey = [...b.usedEdgeKeys].sort().join("|");
   return aKey < bKey ? -1 : aKey > bKey ? 1 : 0;
@@ -491,6 +512,7 @@ export function selectRecommendedRoute(
           worstCaveatSeverity: null,
           maxInteriorDegree: 0,
           performerHopCount: 0,
+          backgroundHopCount: 0,
         },
       },
       usedPlusOneHop: false,

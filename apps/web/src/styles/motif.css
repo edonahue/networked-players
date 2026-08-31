@@ -21,6 +21,27 @@
 .album-card:focus-visible {
   background: var(--surface);
 }
+/* De-emphasized, never removed -- same convention as Explore's
+   .explorer-node--dimmed: the connection is real and stays fully visible
+   and clickable, just visually secondary (2026-08-31, background-
+   engineering-only connections). Scoped to the cover and title only --
+   NOT the whole card: .album-card__meta already renders in var(--muted),
+   a deliberately lower-contrast color, and a real automated a11y scan
+   caught that a blanket card-level opacity compounds with that already-
+   reduced contrast to fail WCAG AA (measured 3.59:1, needs 4.5:1). */
+.album-card--muted .album-card__cover,
+.album-card--muted .album-card__placeholder,
+.album-card--muted .album-card__title {
+  opacity: 0.6;
+}
+.album-card--muted:hover .album-card__cover,
+.album-card--muted:hover .album-card__placeholder,
+.album-card--muted:hover .album-card__title,
+.album-card--muted:focus-visible .album-card__cover,
+.album-card--muted:focus-visible .album-card__placeholder,
+.album-card--muted:focus-visible .album-card__title {
+  opacity: 1;
+}
 .album-card__cover,
 .album-card__placeholder {
   width: 100%;

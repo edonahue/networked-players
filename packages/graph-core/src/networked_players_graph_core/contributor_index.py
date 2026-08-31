@@ -33,7 +33,7 @@ from typing import Any
 
 from networked_players_contracts.canonical import content_hash
 
-from .role_taxonomy import RoleCategory, classify_role
+from .role_taxonomy import RoleCategory, classify_role, is_background_engineering_role
 
 _MAX_ROLE_TEXT_EXAMPLES = 5
 _MAX_EVIDENCE_ENTRIES = 10
@@ -167,7 +167,10 @@ def _compute_album_distances(
     return album_distance_by_artist
 
 
-def _annotate_interesting_next_step(contributors: list[dict[str, Any]]) -> None:
+def _annotate_interesting_next_step(
+    contributors: list[dict[str, Any]],
+    background_only_pairs: set[frozenset[int]],
+) -> None:
     """ADR 0060: a deterministic, source-derived `interesting_next_step` per
     contributor -- among their own (already capped, already computed)
     `neighboring_contributor_ids`, the one whose `role_categories` are
@@ -185,6 +188,15 @@ def _annotate_interesting_next_step(contributors: list[dict[str, Any]]) -> None:
     never the other way around. `artist_id` is the final, fully
     deterministic tie-break.
 
+    `background_only_pairs` (2026-08-31 addition) excludes a neighbor whose
+    ENTIRE shared connection to this contributor is background-engineering
+    credits (Mastered By/Recorded By/Mixed By on every hop that connects
+    them -- `is_background_engineering_role`). This nudge is meant to
+    surface a genuinely different, substantive collaborator; a tie that
+    exists only because an engineer mastered or mixed both people's
+    unrelated records shouldn't win the slot, even though the two role
+    categories are technically disjoint.
+
     `None` when no neighbor qualifies (measured: happens for about 31% of
     real contributors with 2+ neighbors) -- never a fabricated pick just to
     fill the field."""
@@ -192,12 +204,15 @@ def _annotate_interesting_next_step(contributors: list[dict[str, Any]]) -> None:
     connection_count_by_id = {c["artist_id"]: c["connection_count"] for c in contributors}
 
     for contributor in contributors:
-        own_roles = role_categories_by_id[contributor["artist_id"]]
+        own_id = contributor["artist_id"]
+        own_roles = role_categories_by_id[own_id]
         candidates = []
         for neighbor_id in contributor["neighboring_contributor_ids"]:
             neighbor_roles = role_categories_by_id.get(neighbor_id)
             if neighbor_roles is None:
                 continue  # a neighbor absent from this index (never rendered) can't be suggested
+            if frozenset((own_id, neighbor_id)) in background_only_pairs:
+                continue
             if own_roles.isdisjoint(neighbor_roles):
                 candidates.append(neighbor_id)
 
@@ -267,6 +282,12 @@ def build_contributor_index(
     albums_by_artist = _compute_album_distances(challenge, routes_rounds)
     evidence_by_artist: dict[int, set[tuple[Any, str]]] = defaultdict(set)
     neighbor_counts: dict[int, Counter[int]] = defaultdict(Counter)
+    # ADR 0060 addendum (2026-08-31): True only while every hop seen so far
+    # between this pair is background-engineering-only on at least one
+    # side -- AND-reduced across hops, so a pair that ALSO shares one real
+    # substantive-role hop (on a different release) is never flagged, even
+    # if another hop between them is pure mastering/mixing/recording work.
+    background_only_by_pair: dict[frozenset[int], bool] = {}
 
     challenge_role_lookup = _credit_role_lookup(challenge.get("releases", []))
 
@@ -280,6 +301,7 @@ def build_contributor_index(
         neighbor_counts[artist_a][artist_b] += 1
         neighbor_counts[artist_b][artist_a] += 1
 
+        side_is_background: list[bool] = []
         for artist_id, role, other_id in (
             (artist_a, role_a, artist_b),
             (artist_b, role_b, artist_a),
@@ -290,9 +312,19 @@ def build_contributor_index(
                 if role is not None
                 else challenge_role_lookup.get((release_id, artist_id), [])
             )
+            side_is_background.append(
+                bool(role_candidates)
+                and all(is_background_engineering_role(r) for r in role_candidates)
+            )
             for role_text in role_candidates:
                 role_texts[artist_id][role_text] += 1
                 evidence_by_artist[artist_id].add((release_id, role_text))
+
+        hop_is_background_only = any(side_is_background)
+        pair_key = frozenset((artist_a, artist_b))
+        background_only_by_pair[pair_key] = (
+            background_only_by_pair.get(pair_key, True) and hop_is_background_only
+        )
 
     for path in challenge.get("paths", []):
         for hop in path.get("hops", []):
@@ -378,7 +410,10 @@ def build_contributor_index(
         )
 
     contributors.sort(key=lambda c: c["artist_id"])
-    _annotate_interesting_next_step(contributors)
+    background_only_pairs = {
+        pair for pair, is_background in background_only_by_pair.items() if is_background
+    }
+    _annotate_interesting_next_step(contributors, background_only_pairs)
     index_version = contributor_index_version(contributors, snapshot_date)
 
     return {

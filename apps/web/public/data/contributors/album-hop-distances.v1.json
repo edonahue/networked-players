@@ -2,7 +2,7 @@
   "schema_version": 1,
   "catalog_version": "catalog-v1-20260601-7fbbb46b28e6",
   "album_hop_distances_version": "album-hop-distances-v1-20260601-d69666696eb6",
-  "generated_at": "2026-08-31T09:37:43Z",
+  "generated_at": "2026-08-31T10:50:13Z",
   "source": "Derived from apps/web/public/data/challenge.v2.json and apps/web/public/data/routes/rounds.v1.json -- companion artifact to contributor-index-v1 (ADR 0048 addendum), never a fresh full-corpus query.",
   "license": "Derived from the Discogs monthly CC0 data dumps via the two published artifacts above. See docs/DATA_AND_RIGHTS.md.",
   "entries": [
