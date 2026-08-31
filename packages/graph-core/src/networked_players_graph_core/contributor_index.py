@@ -33,7 +33,12 @@ from typing import Any
 
 from networked_players_contracts.canonical import content_hash
 
-from .role_taxonomy import RoleCategory, classify_role, is_background_engineering_role
+from .role_taxonomy import (
+    RoleCategory,
+    classify_role,
+    is_background_engineering_role,
+    is_background_only_role_profile,
+)
 
 _MAX_ROLE_TEXT_EXAMPLES = 5
 _MAX_EVIDENCE_ENTRIES = 10
@@ -60,6 +65,14 @@ def contributor_index_version(contributors: list[dict[str, Any]], snapshot_date:
     )
     digest = content_hash(identity, length=12)
     return f"contributor-index-v1-{snapshot_date}-{digest}"
+
+
+def background_only_profiles_version(artist_ids: list[int], snapshot_date: str) -> str:
+    """Same discipline as `contributor_index_version`/`album_hop_distances_version`:
+    an order-insensitive content hash of a lookup artifact, not a
+    fingerprinted content pool."""
+    digest = content_hash(sorted(artist_ids), length=12)
+    return f"background-only-profiles-v1-{snapshot_date}-{digest}"
 
 
 def album_hop_distances_version(entries: list[dict[str, Any]], snapshot_date: str) -> str:
@@ -165,6 +178,41 @@ def _compute_album_distances(
             )
 
     return album_distance_by_artist
+
+
+def _compute_role_text_counters(
+    challenge: dict[str, Any], routes_rounds: dict[str, Any]
+) -> dict[int, Counter[str]]:
+    """artist_id -> Counter of every verbatim role_text observed across every
+    hop in `challenge.v2.json`'s paths and `routes/rounds.v1.json`'s rounds --
+    the full, uncapped vocabulary `build_contributor_index`'s own `role_texts`
+    accumulates inline via `record_hop`, extracted into a standalone helper
+    (same reason `_compute_album_distances` is standalone rather than living
+    only inside `build_contributor_index`) so `build_background_only_profiles`
+    can compute the same real per-artist role vocabulary independently,
+    without re-deriving it differently or drifting from the published
+    index's own classification."""
+    role_texts: dict[int, Counter[str]] = defaultdict(Counter)
+    challenge_role_lookup = _credit_role_lookup(challenge.get("releases", []))
+
+    def _record(artist_id: int, release_id: Any, role: str | None) -> None:
+        role_candidates = (
+            [role] if role is not None else challenge_role_lookup.get((release_id, artist_id), [])
+        )
+        for role_text in role_candidates:
+            role_texts[artist_id][role_text] += 1
+
+    for path in challenge.get("paths", []):
+        for hop in path.get("hops", []):
+            _record(int(hop["artist_a_id"]), hop.get("release_id"), None)
+            _record(int(hop["artist_b_id"]), hop.get("release_id"), None)
+
+    for round_ in routes_rounds.get("rounds", []):
+        for hop in round_.get("hops", []):
+            _record(int(hop["artist_a_id"]), hop.get("release_id"), hop.get("role_a"))
+            _record(int(hop["artist_b_id"]), hop.get("release_id"), hop.get("role_b"))
+
+    return role_texts
 
 
 def _annotate_interesting_next_step(
@@ -503,4 +551,79 @@ def build_album_hop_distances(
             "artifacts above. See docs/DATA_AND_RIGHTS.md."
         ),
         "entries": entries,
+    }
+
+
+def build_background_only_profiles(
+    *,
+    challenge: dict[str, Any],
+    routes_rounds: dict[str, Any],
+    catalog: dict[str, Any],
+    generated_at: str,
+) -> dict[str, Any]:
+    """A companion artifact to `contributor-index-v1`, deliberately NOT a
+    field on it -- same reasoning as `build_album_hop_distances` (ADR 0048
+    addendum) and the same review finding that motivated it: adding a new
+    required key to an exact-key-set v1 contract is a real breaking change.
+
+    Flags a contributor's ENTIRE observed role vocabulary (never the
+    published, frequency-capped `role_text_examples` sample) as
+    background-engineering-only via `is_background_only_role_profile`,
+    using the same uncapped `role_texts` accumulation
+    `build_contributor_index` itself builds from `record_hop`, computed
+    independently here via `_compute_role_text_counters` from the same two
+    source artifacts. `apps/web/src/game/roleTaxonomy.ts`'s
+    `isBackgroundOnlyRoleProfile` inferred this from the capped sample
+    instead; a contributor with 5+ frequent background credits and one
+    rarer substantive one could be misclassified that way (a real review
+    finding), which is exactly the gap publishing this explicit,
+    uncapped-derived artifact closes.
+
+    Same inclusion rule as `build_contributor_index`/`build_album_hop_distances`:
+    only contributors both nameable and associated with at least one album.
+    Raises `ValueError` on a `catalog_version` mismatch."""
+    catalog_version = catalog["catalog_version"]
+    snapshot_date = catalog["snapshot_date"]
+
+    for label, artifact in (("challenge", challenge), ("routes_rounds", routes_rounds)):
+        artifact_catalog_version = artifact.get("provenance", {}).get("catalog_version")
+        if artifact_catalog_version != catalog_version:
+            raise ValueError(
+                f"{label}'s catalog_version {artifact_catalog_version!r} does not match "
+                f"the catalog's catalog_version {catalog_version!r}"
+            )
+
+    names: dict[int, str] = {}
+    for artist in challenge.get("artists", []):
+        names[int(artist["artist_id"])] = str(artist["name"])
+    for artist in routes_rounds.get("artists", []):
+        names.setdefault(int(artist["artist_id"]), str(artist["name"]))
+
+    albums_by_artist = _compute_album_distances(challenge, routes_rounds)
+    role_texts_by_artist = _compute_role_text_counters(challenge, routes_rounds)
+    all_artist_ids = sorted(set(albums_by_artist) & set(names))
+
+    artist_ids = [
+        artist_id
+        for artist_id in all_artist_ids
+        if is_background_only_role_profile(role_texts_by_artist.get(artist_id, Counter()))
+    ]
+
+    version = background_only_profiles_version(artist_ids, snapshot_date)
+
+    return {
+        "schema_version": 1,
+        "catalog_version": catalog_version,
+        "background_only_profiles_version": version,
+        "generated_at": generated_at,
+        "source": (
+            "Derived from apps/web/public/data/challenge.v2.json and "
+            "apps/web/public/data/routes/rounds.v1.json -- companion artifact to "
+            "contributor-index-v1 (ADR 0048/0060 addendum), never a fresh full-corpus query."
+        ),
+        "license": (
+            "Derived from the Discogs monthly CC0 data dumps via the two published "
+            "artifacts above. See docs/DATA_AND_RIGHTS.md."
+        ),
+        "artist_ids": artist_ids,
     }

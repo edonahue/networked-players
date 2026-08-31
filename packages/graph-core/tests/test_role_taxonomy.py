@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import itertools
+from collections import Counter
 
 import duckdb
 
@@ -18,6 +19,7 @@ from networked_players_graph_core.role_taxonomy import (
     classify_role_sql,
     corpus_coverage_report,
     is_background_engineering_role,
+    is_background_only_role_profile,
     primary_role_category,
 )
 
@@ -142,6 +144,73 @@ def test_is_background_engineering_role_bracket_qualifier_containing_a_comma() -
         )
         is True
     )
+
+
+def test_is_background_only_role_profile() -> None:
+    """The full-vocabulary companion to `is_background_engineering_role` --
+    published as background-only-profiles-v1 (ADR 0048/0060 addendum),
+    computed from a contributor's whole `role_texts` Counter, never the
+    published, frequency-capped `role_text_examples` sample."""
+    assert is_background_only_role_profile(Counter({"Mastered By": 3})) is True
+    assert is_background_only_role_profile(Counter({"Mastered By": 2, "Mixed By": 1})) is True
+    # A mastering engineer's real profile routinely mixes "Mastered By"
+    # variants with a related-but-distinct packaging/business token like
+    # "Lacquer Cut By" -- still background-only overall.
+    assert (
+        is_background_only_role_profile(
+            Counter({"Mastered By": 5, "Lacquer Cut By": 2, "Mastered By [Vinyl]": 1})
+        )
+        is True
+    )
+    # A real substantive credit anywhere in the vocabulary disqualifies the
+    # whole profile, regardless of how rare it is relative to the
+    # background credits.
+    assert is_background_only_role_profile(Counter({"Mastered By": 50, "Producer": 1})) is False
+    assert is_background_only_role_profile(Counter({"Producer": 3})) is False
+    # No engineering credit at all -- nothing to background.
+    assert is_background_only_role_profile(Counter()) is False
+    assert is_background_only_role_profile(Counter({"Lacquer Cut By": 3})) is False
+
+
+def test_is_background_only_role_profile_real_committed_data_regressions() -> None:
+    """Real committed contributors whose profiles previously broke a
+    cruder version of this check -- see role_taxonomy.py's own history and
+    the TS-side isBackgroundOnlyRoleProfile this superseded."""
+    # Julio Iglesias (artist 67331): most frequent credit is "Mixed By",
+    # but real Vocals credits exist too -- never background-only.
+    assert is_background_only_role_profile(Counter({"Mixed By": 4, "Vocals": 3})) is False
+    # Mike Fraser (artist 92830): role_categories collapses to
+    # {"engineering"} for his whole profile, but "Recorded By, Engineer"
+    # and "Engineer" are each real, non-background engineering work.
+    assert (
+        is_background_only_role_profile(
+            Counter({"Mixed By": 5, "Recorded By, Engineer": 3, "Engineer": 2})
+        )
+        is False
+    )
+
+
+def test_is_background_only_role_profile_sees_beyond_the_five_entry_display_cap() -> None:
+    """Real gap caught in review (round 4): `role_text_examples` is capped
+    to the five most frequent role strings. A contributor with 5+ frequent
+    background-engineering credits and one rarer substantive credit could
+    be misjudged background-only if inferred from that capped sample alone
+    -- this function takes the full Counter instead, so a low-frequency
+    "Producer" credit is never invisible just because five OTHER credits
+    outrank it in frequency."""
+    role_texts = Counter(
+        {
+            "Mastered By": 40,
+            "Mastered By [Vinyl]": 30,
+            "Mastered By [Cut]": 20,
+            "Recorded By": 10,
+            "Mixed By": 5,
+            # A 6th, much rarer, genuinely substantive credit -- would be
+            # truncated from a top-5-by-frequency display sample.
+            "Producer": 1,
+        }
+    )
+    assert is_background_only_role_profile(role_texts) is False
 
 
 def test_real_2026_08_04_coverage_additions_classify_correctly() -> None:

@@ -180,10 +180,10 @@ test("a contributor page has no automated accessibility violations", async ({
 // (Stuart Hawkes, #300468) rather than picked generically from the index,
 // since finding "a contributor whose page actually renders a muted card"
 // requires replicating the muting predicate itself in test code -- verify
-// this id still has muted connections if this test ever needs updating
-// (packages/graph-core's real committed contributor-index/
-// album-hop-distances artifacts, or apps/web/src/game/roleTaxonomy.ts's
-// isBackgroundOnlyRoleProfile against contributor 300468's real profile).
+// this id is still listed in the real committed
+// background-only-profiles.v1.json artifact if this test ever needs
+// updating (packages/graph-core's `is_background_only_role_profile`
+// against contributor 300468's real, full role vocabulary).
 test("a contributor page with muted cards has no automated accessibility violations in light theme", async ({
   page,
 }) => {

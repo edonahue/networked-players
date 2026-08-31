@@ -385,6 +385,40 @@ def is_background_engineering_role(role_text: str | None) -> bool:
     )
 
 
+def is_background_only_role_profile(role_texts: Counter[str]) -> bool:
+    """True when EVERY distinct role_text a contributor has ever been
+    credited with -- the full observed vocabulary, never `role_text_examples`'
+    frequency-capped top-`_MAX_ROLE_TEXT_EXAMPLES` display sample -- is either
+    background-engineering or non-substantive (PACKAGING_BUSINESS, UNKNOWN,
+    or ENGINEERING when the specific credit is itself background-only).
+
+    Deliberately takes the full `Counter[str]` a builder already has on hand
+    (`contributor_index.py`'s `role_texts[artist_id]`), not the published,
+    capped `role_text_examples` sample: a contributor with 5+ distinct
+    background-engineering credits and one rarer substantive credit (e.g. a
+    single "Producer" hop) would have that credit silently truncated from
+    the display sample, causing a false-positive "background-only" verdict
+    if inferred from the sample alone -- a real gap caught in review, the
+    same class of issue `_ROLE_COMPONENT_SPLIT` above already fixed once for
+    a different reason. False for a profile with no engineering credit at
+    all (nothing to background) or any credit classifying into a substantive
+    category (vocals, production, composition, ...)."""
+    saw_engineering = False
+    for role_text in role_texts:
+        categories = classify_role(role_text)
+        if RoleCategory.ENGINEERING in categories:
+            saw_engineering = True
+            if not is_background_engineering_role(role_text):
+                return False
+        if any(
+            category
+            not in (RoleCategory.ENGINEERING, RoleCategory.PACKAGING_BUSINESS, RoleCategory.UNKNOWN)
+            for category in categories
+        ):
+            return False
+    return saw_engineering
+
+
 def classify_role_sql(role_column: str) -> str:
     """SQL: an array of distinct category strings present in `role_column`,
     mirroring `classify_role`. Empty/NULL -> `['unknown']`. DuckDB mirror of

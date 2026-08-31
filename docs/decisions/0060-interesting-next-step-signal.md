@@ -139,6 +139,42 @@ contributor *and* one of this contributor's own `neighboring_contributor_ids`,
 `reason` must be non-empty. `make check`'s `validate-public-artifacts`
 passes against the real regenerated artifact.
 
+## Addendum (2026-08-31): excluding a background-engineering-only tie
+
+The owner asked to de-emphasize connections whose only documented evidence
+is a background-engineering credit (Mastered By/Recorded By/Mixed By) --
+see this repo's site-copy/background-connections work. Applied literally
+to this field, the original Decision's role-disjointness gate has a real
+gap: two contributors can have entirely disjoint `role_categories` (so
+they pass step 1 above) purely because the ONLY hop connecting them is a
+shared mastering/mixing/recording credit -- role-disjoint is a true
+structural fact about their `role_categories`, but it does not mean the
+underlying connection itself is substantive. Surfacing that pair as
+"worth a look" would point a reader at exactly the kind of thin,
+likely-coincidental tie this repo's background-connections work exists to
+de-prioritize elsewhere (route ranking, Explore dimming, contributor/album
+page ordering).
+
+**Amended selection**: step 1's candidate filter gains a second condition,
+evaluated alongside role-disjointness, not after it. A neighbor is
+excluded when EVERY hop connecting this contributor to that neighbor (across
+every path/round where they co-occur) is background-engineering-only on at
+least one side -- tracked in `contributor_index.py`'s `record_hop` via a
+per-pair `background_only_by_pair: dict[frozenset[int], bool]`, AND-reduced
+across every hop seen between that pair (so a pair that ALSO shares even
+one real substantive-role hop, on a different release, is never excluded --
+only a pair whose ENTIRE shared evidence is background-only is). This
+changes what `null` can mean: **`null` no longer implies "no role-disjoint
+neighbor exists"** -- it can now also mean "a role-disjoint neighbor exists,
+but every connection to them is background-engineering-only, so none of
+them qualifies as a genuinely interesting next step." Both are still the
+same honest answer this field has always given: nothing here is worth a
+special callout, never a fabricated pick to fill the slot.
+
+The real committed artifact was regenerated
+(`contributor-index-v1-20260601-<hash tracked in the addendum PR>`) under
+this amended rule.
+
 ## Revisit trigger
 
 If a future measurement shows the role-disjoint condition degrading (e.g. a

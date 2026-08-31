@@ -206,3 +206,50 @@ review: a non-string `album_id` from malformed JSON must be reported as a
 clean contract failure, never crash the validator via an unguarded
 set/dict operation, and a repeated `(artist_id, album_id)` pair must be
 rejected even when the sort check alone would pass).
+
+## Addendum: a second companion artifact, `background-only-profiles-v1`
+
+The owner's original background-Mastered-By-connections request (see ADR
+0060's own addendum) added `apps/web/src/game/roleTaxonomy.ts`'s
+`isBackgroundOnlyRoleProfile` to de-emphasize a contributor's non-direct
+connections on the contributor and album detail pages when that
+contributor's profile is background-engineering-only. That function
+inferred the answer from `contributor-index-v1`'s own published
+`role_text_examples` — capped, per `_MAX_ROLE_TEXT_EXAMPLES`, to the five
+most frequent role strings per contributor — plus `role_categories`.
+Review (round 4 on the PR that introduced this addendum) found the gap
+inferring from a capped sample always risks: a contributor with several
+frequent background-engineering credits and one rarer substantive credit
+(e.g. a single low-frequency "Producer" hop) could have that credit
+truncated from the published sample entirely, causing a false-positive
+"background-only" verdict that de-emphasized a genuinely substantive
+connection.
+
+The fix follows the same architecture as `album-hop-distances-v1` above,
+for the same two reasons (an exact-key-set contract on
+`contributor-index-v1` that a new required key would break, and this
+signal needing data — the full, uncapped role-text vocabulary — that
+artifact never published in the first place). `apps/web/public/data/
+contributors/background-only-profiles.v1.json`
+(`data/contracts/background-only-profiles-v1.md`, built by
+`build_background_only_profiles` in the same `contributor_index.py`
+module, validated by `networked_players_contracts.
+background_only_profiles::background_only_profiles_failures`) lists the
+`artist_id`s whose ENTIRE observed role vocabulary — computed from
+`_compute_role_text_counters`, a standalone helper mirroring
+`_compute_album_distances`'s existing extraction — is
+background-engineering or non-substantive
+(`role_taxonomy.py`'s `is_background_only_role_profile`). The client-side
+`isBackgroundOnlyRoleProfile` inference function was removed entirely
+(`apps/web/src/pages/contributors/[id].astro` and
+`apps/web/src/pages/albums/[album].astro` now check membership in this
+artifact's `artist_ids` set directly) rather than kept as a fallback --
+the authoritative, uncapped-derived answer supersedes it completely, and
+this repo's convention is to delete an approach once its replacement is
+correct rather than carry both.
+
+See `data/contracts/background-only-profiles-v1.md`,
+`packages/graph-core/tests/test_role_taxonomy.py`'s
+`is_background_only_role_profile` coverage (including a regression pinned
+to the exact capped-sample gap review found), and
+`packages/contracts/tests/test_background_only_profiles_contracts.py`.

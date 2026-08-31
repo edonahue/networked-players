@@ -1184,6 +1184,63 @@ def _parser() -> argparse.ArgumentParser:
     validate_album_hop_distances.add_argument("--catalog", type=Path, required=True)
     validate_album_hop_distances.add_argument("--contributor-index", type=Path, required=True)
 
+    build_background_only_profiles = subparsers.add_parser(
+        "build-background-only-profiles",
+        help=(
+            "build the public background-only-profiles artifact "
+            "(apps/web/public/data/contributors/background-only-profiles.v1.json) -- a "
+            "companion to contributor-index-v1 (ADR 0048/0060 addendum) listing every "
+            "contributor whose ENTIRE observed role vocabulary is background-engineering "
+            "(Mastered By/Recorded By/Mixed By) or non-substantive, computed from the "
+            "full, uncapped role-text data rather than the published, frequency-capped "
+            "role_text_examples sample -- entirely from two already-published artifacts "
+            "(challenge.v2.json + routes/rounds.v1.json). A separate artifact rather than "
+            "a new contributor-index-v1 field, since that index's contract is validated "
+            "as an exact key set -- widening it in place would be a real breaking change "
+            "hiding behind an unchanged schema_version"
+        ),
+    )
+    build_background_only_profiles.add_argument(
+        "--challenge", type=Path, required=True, help="apps/web/public/data/challenge.v2.json"
+    )
+    build_background_only_profiles.add_argument(
+        "--routes-rounds",
+        type=Path,
+        required=True,
+        help="apps/web/public/data/routes/rounds.v1.json",
+    )
+    build_background_only_profiles.add_argument(
+        "--catalog", type=Path, required=True, help="apps/web/public/data/catalog/albums.v1.json"
+    )
+    build_background_only_profiles.add_argument(
+        "--contributor-index",
+        type=Path,
+        required=True,
+        help="apps/web/public/data/contributors/index.v1.json -- the already-published "
+        "companion artifact, read (never rebuilt) to cross-validate that every artist_id "
+        "is a real published contributor",
+    )
+    build_background_only_profiles.add_argument("--output", type=Path, required=True)
+    build_background_only_profiles.add_argument(
+        "--generated-at",
+        required=True,
+        help="explicit ISO datetime for this build (never the wall clock), e.g. "
+        "2026-08-31T00:00:00+00:00",
+    )
+
+    validate_background_only_profiles = subparsers.add_parser(
+        "validate-background-only-profiles",
+        help=(
+            "validate a background-only-profiles artifact against the canonical catalog "
+            "and contributor index it claims to belong to (catalog_version agreement, "
+            "artist-id membership, sorted no-duplicate artist_ids, "
+            "background_only_profiles_version recomputation)"
+        ),
+    )
+    validate_background_only_profiles.add_argument("--artifact", type=Path, required=True)
+    validate_background_only_profiles.add_argument("--catalog", type=Path, required=True)
+    validate_background_only_profiles.add_argument("--contributor-index", type=Path, required=True)
+
     build_pathfinding_graph = subparsers.add_parser(
         "build-pathfinding-graph",
         help=(
@@ -1373,6 +1430,11 @@ def _parser() -> argparse.ArgumentParser:
         "--album-hop-distances",
         type=Path,
         default=Path("apps/web/public/data/contributors/album-hop-distances.v1.json"),
+    )
+    validate_public_artifacts.add_argument(
+        "--background-only-profiles",
+        type=Path,
+        default=Path("apps/web/public/data/contributors/background-only-profiles.v1.json"),
     )
     validate_public_artifacts.add_argument(
         "--pathfinding-graph-v2",
@@ -3733,6 +3795,61 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(json.dumps({"ok": True, "entries": len(artifact["entries"])}, indent=2))
         return 0
 
+    if args.command == "build-background-only-profiles":
+        from networked_players_contracts.background_only_profiles import (
+            background_only_profiles_failures,
+        )
+        from networked_players_graph_core.contributor_index import (
+            build_background_only_profiles,
+        )
+
+        catalog = json.loads(args.catalog.read_text())
+        challenge = json.loads(args.challenge.read_text())
+        routes_rounds = json.loads(args.routes_rounds.read_text())
+        contributor_index = json.loads(args.contributor_index.read_text())
+        artifact = build_background_only_profiles(
+            challenge=challenge,
+            routes_rounds=routes_rounds,
+            catalog=catalog,
+            generated_at=args.generated_at,
+        )
+        failures = background_only_profiles_failures(artifact, catalog, contributor_index)
+        if failures:
+            raise ValueError(
+                "refusing to write an invalid background-only-profiles artifact: "
+                + "; ".join(failures)
+            )
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(json.dumps(artifact, indent=2) + "\n")
+        print(
+            json.dumps(
+                {
+                    "output": str(args.output),
+                    "catalog_version": artifact["catalog_version"],
+                    "background_only_profiles_version": artifact[
+                        "background_only_profiles_version"
+                    ],
+                    "artist_ids": len(artifact["artist_ids"]),
+                },
+                indent=2,
+            )
+        )
+        return 0
+
+    if args.command == "validate-background-only-profiles":
+        from networked_players_contracts.background_only_profiles import (
+            background_only_profiles_failures,
+        )
+
+        artifact = json.loads(args.artifact.read_text())
+        catalog = json.loads(args.catalog.read_text())
+        contributor_index = json.loads(args.contributor_index.read_text())
+        failures = background_only_profiles_failures(artifact, catalog, contributor_index)
+        if failures:
+            raise ValueError("; ".join(failures))
+        print(json.dumps({"ok": True, "artist_ids": len(artifact["artist_ids"])}, indent=2))
+        return 0
+
     if args.command == "build-pathfinding-graph":
         from networked_players_contracts.pathfinding_graph import pathfinding_graph_failures
         from networked_players_graph_core.graph import CreditGraph, EvidenceReleasePreference
@@ -3964,6 +4081,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             challenge=json.loads(args.challenge.read_text()),
             contributor_index=json.loads(args.contributor_index.read_text()),
             album_hop_distances=json.loads(args.album_hop_distances.read_text()),
+            background_only_profiles=json.loads(args.background_only_profiles.read_text()),
             pathfinding_graph_v2=json.loads(args.pathfinding_graph_v2.read_text()),
             album_credit_membership=json.loads(args.album_credit_membership.read_text()),
             evidence_release_registry=json.loads(args.evidence_release_registry.read_text()),

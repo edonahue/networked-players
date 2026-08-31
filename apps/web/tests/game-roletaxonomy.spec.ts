@@ -10,7 +10,6 @@ import {
   behindTheGlassEdgeFilter,
   guitarPathsEdgeFilter,
   isBackgroundEngineeringRole,
-  isBackgroundOnlyRoleProfile,
   isEngineeringOrProductionRole,
   isGuitarRole,
   isPerformerRole,
@@ -139,91 +138,17 @@ test.describe("isBackgroundEngineeringRole", () => {
   });
 });
 
-test.describe("isBackgroundOnlyRoleProfile", () => {
-  test("true when the most frequent entry is background-engineering and role_categories has no substantive category", () => {
-    expect(isBackgroundOnlyRoleProfile(["Mastered By"], ["engineering"])).toBe(
-      true,
-    );
-    expect(
-      isBackgroundOnlyRoleProfile(["Mastered By", "Mixed By"], ["engineering"]),
-    ).toBe(true);
-  });
-
-  test("false when the most frequent entry is a real substantive role, even if a background credit also appears", () => {
-    expect(
-      isBackgroundOnlyRoleProfile(
-        ["Producer", "Mastered By"],
-        ["production", "engineering"],
-      ),
-    ).toBe(false);
-    expect(isBackgroundOnlyRoleProfile(["Producer"], ["production"])).toBe(
-      false,
-    );
-  });
-
-  // Real gap this test guards: a mastering engineer's real profile
-  // routinely mixes "Mastered By" variants with a related-but-distinct
-  // token like "Lacquer Cut By" (packaging_business) -- an ALL-must-match
-  // rule on role_text_examples would miss this real case entirely, since
-  // the most frequent credit is still the background one and
-  // packaging_business is deliberately non-substantive here too.
-  test("true when the most frequent entry is background-engineering even alongside a non-background packaging/business credit", () => {
-    expect(
-      isBackgroundOnlyRoleProfile(
-        ["Mastered By", "Lacquer Cut By", "Mastered By [Vinyl]"],
-        ["engineering", "packaging_business"],
-      ),
-    ).toBe(true);
-  });
-
-  // Real gap caught in review against committed data (Julio Iglesias,
-  // artist 67331): role_text_examples[0] alone is not enough -- a
-  // contributor whose single most frequent credit happens to be
-  // background-engineering can still carry a real substantive connection
-  // (here, real Vocals credits) elsewhere in their profile. Muting on
-  // role_text_examples[0] alone would incorrectly de-emphasize those
-  // genuine vocal connections too.
-  test("false when the most frequent entry is background-engineering but role_categories also carries a substantive category", () => {
-    expect(
-      isBackgroundOnlyRoleProfile(
-        ["Mixed By", "Vocals"],
-        ["engineering", "vocals"],
-      ),
-    ).toBe(false);
-  });
-
-  test("false for an empty role_text_examples list -- nothing to judge as background-only", () => {
-    expect(isBackgroundOnlyRoleProfile([], ["engineering"])).toBe(false);
-  });
-
-  // Real gap caught in review against committed data (Mike Fraser, artist
-  // 92830): role_categories alone is not enough either. ENGINEERING is one
-  // coarse category covering both the three narrow background tokens and
-  // generic "Engineer"/"Recorded By, Engineer" -- his whole profile
-  // collapses to role_categories ["engineering"] even though two of his
-  // three most frequent credits ("Recorded By, Engineer" and "Engineer")
-  // are real engineering/production work isBackgroundEngineeringRole
-  // correctly treats as substantive, not purely background. Muting on
-  // role_text_examples[0] + role_categories alone would still incorrectly
-  // de-emphasize every one of his connections.
-  test("false when role_categories collapses to engineering-only but another role_text_examples entry is a non-background engineering credit", () => {
-    expect(
-      isBackgroundOnlyRoleProfile(
-        ["Mixed By", "Recorded By, Engineer", "Engineer"],
-        ["engineering"],
-      ),
-    ).toBe(false);
-  });
-
-  test("true when every engineering-flavored role_text_examples entry is itself purely background", () => {
-    expect(
-      isBackgroundOnlyRoleProfile(
-        ["Mixed By", "Mastered By", "Recorded By"],
-        ["engineering"],
-      ),
-    ).toBe(true);
-  });
-});
+// isBackgroundOnlyRoleProfile (the client-side inference from
+// contributor-index-v1's capped role_text_examples/role_categories sample)
+// was removed 2026-08-31: a real review finding showed that sample-based
+// inference could miss a rarer, lower-frequency substantive credit
+// truncated beyond the 5-entry cap. The same signal is now computed
+// server-side from each contributor's full, uncapped role vocabulary and
+// published as background-only-profiles.v1.json -- see
+// packages/graph-core/tests/test_role_taxonomy.py's
+// TestIsBackgroundOnlyRoleProfile for the equivalent (and more complete)
+// coverage, including the real committed-data regressions (Julio Iglesias
+// artist 67331, Mike Fraser artist 92830) this suite used to carry.
 
 test.describe("behindTheGlassEdgeFilter", () => {
   test("requires both endpoints to qualify", () => {

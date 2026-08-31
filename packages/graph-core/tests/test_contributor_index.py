@@ -4,6 +4,7 @@ from typing import Any
 
 from networked_players_graph_core.contributor_index import (
     build_album_hop_distances,
+    build_background_only_profiles,
     build_contributor_index,
 )
 from networked_players_graph_core.role_taxonomy import RoleCategory
@@ -271,6 +272,94 @@ def test_build_album_hop_distances_mismatched_catalog_version_raises() -> None:
             routes_rounds=routes_rounds,
             catalog=catalog,
             generated_at="2026-08-03T00:00:00+00:00",
+        )
+
+
+def _background_only_profiles_build() -> dict[str, Any]:
+    return build_background_only_profiles(
+        challenge=_challenge(),
+        routes_rounds=_routes_rounds(),
+        catalog=_catalog(),
+        generated_at="2026-08-31T00:00:00+00:00",
+    )
+
+
+def test_build_background_only_profiles_top_level_shape() -> None:
+    result = _background_only_profiles_build()
+    assert result["schema_version"] == 1
+    assert result["catalog_version"] == _CATALOG_VERSION
+    assert result["background_only_profiles_version"].startswith(
+        f"background-only-profiles-v1-{_SNAPSHOT}-"
+    )
+    assert result["generated_at"] == "2026-08-31T00:00:00+00:00"
+
+
+def test_background_only_profiles_flags_only_the_pure_mastering_credit() -> None:
+    """Using the main fixture: Alice (100) is credited only "Guitar" (no
+    engineering at all -- nothing to background), Bob (200) is credited
+    "Bass" and "Producer" (real substantive work), Carol (300) is credited
+    ONLY "Mastered By" -- background-only."""
+    result = _background_only_profiles_build()
+    assert result["artist_ids"] == [300]
+
+
+def test_background_only_profiles_artist_ids_sorted_with_no_duplicates() -> None:
+    catalog = {
+        "catalog_version": _CATALOG_VERSION,
+        "snapshot_date": _SNAPSHOT,
+        "albums": [
+            {"id": "master-a", "title": "A", "artist_id": 1, "year": 1990},
+            {"id": "master-b", "title": "B", "artist_id": 2, "year": 1991},
+        ],
+    }
+    challenge = {
+        "schema_version": 2,
+        "provenance": {"catalog_version": _CATALOG_VERSION},
+        "artists": [{"artist_id": 1, "name": "One"}, {"artist_id": 2, "name": "Two"}],
+        "paths": [
+            {
+                "id": "path-1",
+                "from_album_id": "master-a",
+                "to_album_id": "master-b",
+                "hops": [{"release_id": 1, "artist_a_id": 2, "artist_b_id": 1}],
+            }
+        ],
+        "releases": [
+            _challenge_release(1, [_credit(2, "Mastered By"), _credit(1, "Recorded By")]),
+        ],
+    }
+    routes_rounds = {
+        "provenance": {"catalog_version": _CATALOG_VERSION},
+        "artists": [],
+        "rounds": [],
+    }
+    result = build_background_only_profiles(
+        challenge=challenge,
+        routes_rounds=routes_rounds,
+        catalog=catalog,
+        generated_at="2026-08-31T00:00:00+00:00",
+    )
+    assert result["artist_ids"] == [1, 2]
+
+
+def test_build_background_only_profiles_deterministic_across_repeated_builds() -> None:
+    def _run() -> dict[str, Any]:
+        return _background_only_profiles_build()
+
+    assert _run() == _run()
+
+
+def test_build_background_only_profiles_mismatched_catalog_version_raises() -> None:
+    import pytest
+
+    challenge = _challenge()
+    challenge["provenance"]["catalog_version"] = "catalog-v1-wrong"
+    with pytest.raises(ValueError, match="catalog_version"):
+        build_background_only_profiles(
+            challenge=challenge,
+            routes_rounds=_routes_rounds(),
+            catalog=_catalog(),
+            generated_at="2026-08-31T00:00:00+00:00",
         )
 
 

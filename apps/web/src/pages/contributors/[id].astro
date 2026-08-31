@@ -5,20 +5,23 @@ import EvidencePanel from '../../components/EvidencePanel.astro';
 import { buildHopViews } from '../../data/evidence';
 import { ROLE_CATEGORY_LABEL, type Contributor, type ContributorIndex } from '../../data/contributors';
 import { albumHopDistancesByArtist, type AlbumHopDistances } from '../../data/albumHopDistances';
-import { isBackgroundOnlyRoleProfile } from '../../game/roleTaxonomy';
+import { backgroundOnlyArtistIdSet, type BackgroundOnlyProfiles } from '../../data/backgroundOnlyProfiles';
 import { coverFor } from '../../data/albumArt';
 import type { AlbumV2, ChallengeV2 } from '../../data/challenge';
 import type { RoutesRounds } from '../../game/routesTypes';
 import contributorIndexData from '../../../public/data/contributors/index.v1.json';
 import albumHopDistancesData from '../../../public/data/contributors/album-hop-distances.v1.json';
+import backgroundOnlyProfilesData from '../../../public/data/contributors/background-only-profiles.v1.json';
 import challengeData from '../../../public/data/challenge.v2.json';
 import routesRoundsData from '../../../public/data/routes/rounds.v1.json';
 
 const contributorIndex = contributorIndexData as ContributorIndex;
 const albumHopDistances = albumHopDistancesData as AlbumHopDistances;
+const backgroundOnlyProfiles = backgroundOnlyProfilesData as BackgroundOnlyProfiles;
 const challenge = challengeData as ChallengeV2;
 const routesRounds = routesRoundsData as RoutesRounds;
 const hopDistancesByArtist = albumHopDistancesByArtist(albumHopDistances);
+const backgroundOnlyArtistIds = backgroundOnlyArtistIdSet(backgroundOnlyProfiles);
 
 export function getStaticPaths() {
   const index = contributorIndexData as ContributorIndex;
@@ -38,21 +41,21 @@ const albumById = new Map(challenge.albums.map((a) => [a.id, a]));
 const albums = contributor.albums
   .map((id) => albumById.get(id))
   .filter((a): a is AlbumV2 => Boolean(a));
-// True when this contributor's MOST FREQUENT credit (role_text_examples,
-// "Primarily credited for" above) is Mastered By/Recorded By/Mixed By AND
-// their full role_categories carries no substantive (non-background)
-// category -- de-emphasizes their non-direct (hop_distance > 0) album
-// connections below without hiding them, the same visual language
-// Explore's isDimmed() already uses. hop_distance 0 entries are always
-// this contributor's own record, never muted. The role_categories check
-// matters: a contributor whose most frequent credit is background-
-// engineering can still carry a real, substantive connection elsewhere
-// (e.g. a singer who also mixed a handful of releases) -- see
-// isBackgroundOnlyRoleProfile's own doc comment for the real committed
-// data (Julio Iglesias, artist 67331) that caught this in review.
-const isBackgroundOnlyContributor = isBackgroundOnlyRoleProfile(
-  contributor.role_text_examples,
-  contributor.role_categories,
+// True when this contributor's ENTIRE observed role vocabulary (the full,
+// uncapped role-text data background-only-profiles.v1.json is built from
+// -- never contributor-index-v1's own frequency-capped role_text_examples
+// sample) is Mastered By/Recorded By/Mixed By or non-substantive --
+// de-emphasizes their non-direct (hop_distance > 0) album connections
+// below without hiding them, the same visual language Explore's
+// isDimmed() already uses. hop_distance 0 entries are always this
+// contributor's own record, never muted. An earlier version of this check
+// inferred the same signal from role_text_examples/role_categories
+// client-side; that sample is capped to 5 entries, so a contributor with
+// several frequent background credits and one rarer substantive one could
+// be misjudged background-only (a real review finding) -- publishing the
+// authoritative, uncapped-derived artifact closes that gap for good.
+const isBackgroundOnlyContributor = backgroundOnlyArtistIds.has(
+  contributor.artist_id,
 );
 // The companion album-hop-distances artifact (ADR 0048 addendum) carries
 // the same album-id set as `albums` above, enriched with hop_distance and
@@ -290,7 +293,7 @@ const description = `Documented credits and connections for ${contributor.name} 
           <div class="contributor-grid">
             {neighbors.map((neighbor) => (
               <a
-                class={`contributor-card${isBackgroundOnlyRoleProfile(neighbor.role_text_examples, neighbor.role_categories) ? " contributor-card--muted" : ""}`}
+                class={`contributor-card${backgroundOnlyArtistIds.has(neighbor.artist_id) ? " contributor-card--muted" : ""}`}
                 href={`/contributors/${neighbor.artist_id}/`}
               >
                 <span class="contributor-card__name">
