@@ -171,6 +171,29 @@ test("a contributor page has no automated accessibility violations", async ({
   await expectNoViolations(page);
 });
 
+// A real review finding: the default dark-theme scan above can pass while
+// a muted card (2026-08-31, background-engineering-only connections)
+// still fails WCAG AA contrast after a visitor switches to light theme --
+// --ink/--ink-strong composited over --surface at a given opacity has a
+// different real contrast ratio per theme, and the automated suite only
+// ever renders the default theme. Hardcoded to a known real contributor
+// (Stuart Hawkes, #300468) rather than picked generically from the index,
+// since finding "a contributor whose page actually renders a muted card"
+// requires replicating the muting predicate itself in test code -- verify
+// this id is still listed in the real committed
+// background-only-profiles.v1.json artifact if this test ever needs
+// updating (packages/graph-core's `is_background_only_role_profile`
+// against contributor 300468's real, full role vocabulary).
+test("a contributor page with muted cards has no automated accessibility violations in light theme", async ({
+  page,
+}) => {
+  await page.goto("/contributors/300468/");
+  await expect(page.locator(".album-card--muted").first()).toBeVisible();
+  await page.locator("[data-theme-toggle]").click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+  await expectNoViolations(page);
+});
+
 test("albums grid has no automated accessibility violations", async ({
   page,
 }) => {

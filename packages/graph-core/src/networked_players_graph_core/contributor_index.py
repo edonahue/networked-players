@@ -33,7 +33,11 @@ from typing import Any
 
 from networked_players_contracts.canonical import content_hash
 
-from .role_taxonomy import RoleCategory, classify_role
+from .role_taxonomy import (
+    RoleCategory,
+    classify_role,
+    is_background_only_role_profile,
+)
 
 _MAX_ROLE_TEXT_EXAMPLES = 5
 _MAX_EVIDENCE_ENTRIES = 10
@@ -60,6 +64,14 @@ def contributor_index_version(contributors: list[dict[str, Any]], snapshot_date:
     )
     digest = content_hash(identity, length=12)
     return f"contributor-index-v1-{snapshot_date}-{digest}"
+
+
+def background_only_profiles_version(artist_ids: list[int], snapshot_date: str) -> str:
+    """Same discipline as `contributor_index_version`/`album_hop_distances_version`:
+    an order-insensitive content hash of a lookup artifact, not a
+    fingerprinted content pool."""
+    digest = content_hash(sorted(artist_ids), length=12)
+    return f"background-only-profiles-v1-{snapshot_date}-{digest}"
 
 
 def album_hop_distances_version(entries: list[dict[str, Any]], snapshot_date: str) -> str:
@@ -167,7 +179,45 @@ def _compute_album_distances(
     return album_distance_by_artist
 
 
-def _annotate_interesting_next_step(contributors: list[dict[str, Any]]) -> None:
+def _compute_role_text_counters(
+    challenge: dict[str, Any], routes_rounds: dict[str, Any]
+) -> dict[int, Counter[str]]:
+    """artist_id -> Counter of every verbatim role_text observed across every
+    hop in `challenge.v2.json`'s paths and `routes/rounds.v1.json`'s rounds --
+    the full, uncapped vocabulary `build_contributor_index`'s own `role_texts`
+    accumulates inline via `record_hop`, extracted into a standalone helper
+    (same reason `_compute_album_distances` is standalone rather than living
+    only inside `build_contributor_index`) so `build_background_only_profiles`
+    can compute the same real per-artist role vocabulary independently,
+    without re-deriving it differently or drifting from the published
+    index's own classification."""
+    role_texts: dict[int, Counter[str]] = defaultdict(Counter)
+    challenge_role_lookup = _credit_role_lookup(challenge.get("releases", []))
+
+    def _record(artist_id: int, release_id: Any, role: str | None) -> None:
+        role_candidates = (
+            [role] if role is not None else challenge_role_lookup.get((release_id, artist_id), [])
+        )
+        for role_text in role_candidates:
+            role_texts[artist_id][role_text] += 1
+
+    for path in challenge.get("paths", []):
+        for hop in path.get("hops", []):
+            _record(int(hop["artist_a_id"]), hop.get("release_id"), None)
+            _record(int(hop["artist_b_id"]), hop.get("release_id"), None)
+
+    for round_ in routes_rounds.get("rounds", []):
+        for hop in round_.get("hops", []):
+            _record(int(hop["artist_a_id"]), hop.get("release_id"), hop.get("role_a"))
+            _record(int(hop["artist_b_id"]), hop.get("release_id"), hop.get("role_b"))
+
+    return role_texts
+
+
+def _annotate_interesting_next_step(
+    contributors: list[dict[str, Any]],
+    background_only_pairs: set[frozenset[int]],
+) -> None:
     """ADR 0060: a deterministic, source-derived `interesting_next_step` per
     contributor -- among their own (already capped, already computed)
     `neighboring_contributor_ids`, the one whose `role_categories` are
@@ -185,6 +235,22 @@ def _annotate_interesting_next_step(contributors: list[dict[str, Any]]) -> None:
     never the other way around. `artist_id` is the final, fully
     deterministic tie-break.
 
+    `background_only_pairs` (2026-08-31 addition) excludes a neighbor whose
+    ENTIRE shared connection to this contributor is background-only on
+    every hop that connects them -- each hop side evaluated with
+    `is_background_only_role_profile`'s own background-or-non-substantive
+    semantics (a real, committed credit can carry a non-substantive
+    packaging/business row like "Lacquer Cut By" alongside a background
+    one like "Mastered By" without that pair losing its background-only
+    status, matching how the same two credits classify the contributor's
+    OWN profile in background-only-profiles.v1.json -- a real
+    inconsistency an earlier, stricter per-role check caught in review).
+    This nudge is meant to surface a genuinely different, substantive
+    collaborator; a tie that exists only because an engineer mastered or
+    mixed both people's unrelated records shouldn't win the slot, even
+    though the two role
+    categories are technically disjoint.
+
     `None` when no neighbor qualifies (measured: happens for about 31% of
     real contributors with 2+ neighbors) -- never a fabricated pick just to
     fill the field."""
@@ -192,12 +258,15 @@ def _annotate_interesting_next_step(contributors: list[dict[str, Any]]) -> None:
     connection_count_by_id = {c["artist_id"]: c["connection_count"] for c in contributors}
 
     for contributor in contributors:
-        own_roles = role_categories_by_id[contributor["artist_id"]]
+        own_id = contributor["artist_id"]
+        own_roles = role_categories_by_id[own_id]
         candidates = []
         for neighbor_id in contributor["neighboring_contributor_ids"]:
             neighbor_roles = role_categories_by_id.get(neighbor_id)
             if neighbor_roles is None:
                 continue  # a neighbor absent from this index (never rendered) can't be suggested
+            if frozenset((own_id, neighbor_id)) in background_only_pairs:
+                continue
             if own_roles.isdisjoint(neighbor_roles):
                 candidates.append(neighbor_id)
 
@@ -267,6 +336,17 @@ def build_contributor_index(
     albums_by_artist = _compute_album_distances(challenge, routes_rounds)
     evidence_by_artist: dict[int, set[tuple[Any, str]]] = defaultdict(set)
     neighbor_counts: dict[int, Counter[int]] = defaultdict(Counter)
+    # ADR 0060 addendum (2026-08-31): True only while every hop seen so far
+    # between this pair is background-only (background-engineering or
+    # non-substantive, `is_background_only_role_profile`'s own semantics --
+    # a real committed credit's OTHER row on the same release, e.g. a
+    # packaging/business "Lacquer Cut By" alongside "Mastered By", must
+    # not disqualify the side just because it isn't ITSELF a background
+    # token; a round-8 review finding against real data) on at least one
+    # side -- AND-reduced across hops, so a pair that ALSO shares one real
+    # substantive-role hop (on a different release) is never flagged, even
+    # if another hop between them is pure mastering/mixing/recording work.
+    background_only_by_pair: dict[frozenset[int], bool] = {}
 
     challenge_role_lookup = _credit_role_lookup(challenge.get("releases", []))
 
@@ -280,6 +360,7 @@ def build_contributor_index(
         neighbor_counts[artist_a][artist_b] += 1
         neighbor_counts[artist_b][artist_a] += 1
 
+        side_is_background: list[bool] = []
         for artist_id, role, other_id in (
             (artist_a, role_a, artist_b),
             (artist_b, role_b, artist_a),
@@ -290,9 +371,18 @@ def build_contributor_index(
                 if role is not None
                 else challenge_role_lookup.get((release_id, artist_id), [])
             )
+            side_is_background.append(
+                bool(role_candidates) and is_background_only_role_profile(Counter(role_candidates))
+            )
             for role_text in role_candidates:
                 role_texts[artist_id][role_text] += 1
                 evidence_by_artist[artist_id].add((release_id, role_text))
+
+        hop_is_background_only = any(side_is_background)
+        pair_key = frozenset((artist_a, artist_b))
+        background_only_by_pair[pair_key] = (
+            background_only_by_pair.get(pair_key, True) and hop_is_background_only
+        )
 
     for path in challenge.get("paths", []):
         for hop in path.get("hops", []):
@@ -378,7 +468,10 @@ def build_contributor_index(
         )
 
     contributors.sort(key=lambda c: c["artist_id"])
-    _annotate_interesting_next_step(contributors)
+    background_only_pairs = {
+        pair for pair, is_background in background_only_by_pair.items() if is_background
+    }
+    _annotate_interesting_next_step(contributors, background_only_pairs)
     index_version = contributor_index_version(contributors, snapshot_date)
 
     return {
@@ -468,4 +561,79 @@ def build_album_hop_distances(
             "artifacts above. See docs/DATA_AND_RIGHTS.md."
         ),
         "entries": entries,
+    }
+
+
+def build_background_only_profiles(
+    *,
+    challenge: dict[str, Any],
+    routes_rounds: dict[str, Any],
+    catalog: dict[str, Any],
+    generated_at: str,
+) -> dict[str, Any]:
+    """A companion artifact to `contributor-index-v1`, deliberately NOT a
+    field on it -- same reasoning as `build_album_hop_distances` (ADR 0048
+    addendum) and the same review finding that motivated it: adding a new
+    required key to an exact-key-set v1 contract is a real breaking change.
+
+    Flags a contributor's ENTIRE observed role vocabulary (never the
+    published, frequency-capped `role_text_examples` sample) as
+    background-engineering-only via `is_background_only_role_profile`,
+    using the same uncapped `role_texts` accumulation
+    `build_contributor_index` itself builds from `record_hop`, computed
+    independently here via `_compute_role_text_counters` from the same two
+    source artifacts. `apps/web/src/game/roleTaxonomy.ts`'s
+    `isBackgroundOnlyRoleProfile` inferred this from the capped sample
+    instead; a contributor with 5+ frequent background credits and one
+    rarer substantive one could be misclassified that way (a real review
+    finding), which is exactly the gap publishing this explicit,
+    uncapped-derived artifact closes.
+
+    Same inclusion rule as `build_contributor_index`/`build_album_hop_distances`:
+    only contributors both nameable and associated with at least one album.
+    Raises `ValueError` on a `catalog_version` mismatch."""
+    catalog_version = catalog["catalog_version"]
+    snapshot_date = catalog["snapshot_date"]
+
+    for label, artifact in (("challenge", challenge), ("routes_rounds", routes_rounds)):
+        artifact_catalog_version = artifact.get("provenance", {}).get("catalog_version")
+        if artifact_catalog_version != catalog_version:
+            raise ValueError(
+                f"{label}'s catalog_version {artifact_catalog_version!r} does not match "
+                f"the catalog's catalog_version {catalog_version!r}"
+            )
+
+    names: dict[int, str] = {}
+    for artist in challenge.get("artists", []):
+        names[int(artist["artist_id"])] = str(artist["name"])
+    for artist in routes_rounds.get("artists", []):
+        names.setdefault(int(artist["artist_id"]), str(artist["name"]))
+
+    albums_by_artist = _compute_album_distances(challenge, routes_rounds)
+    role_texts_by_artist = _compute_role_text_counters(challenge, routes_rounds)
+    all_artist_ids = sorted(set(albums_by_artist) & set(names))
+
+    artist_ids = [
+        artist_id
+        for artist_id in all_artist_ids
+        if is_background_only_role_profile(role_texts_by_artist.get(artist_id, Counter()))
+    ]
+
+    version = background_only_profiles_version(artist_ids, snapshot_date)
+
+    return {
+        "schema_version": 1,
+        "catalog_version": catalog_version,
+        "background_only_profiles_version": version,
+        "generated_at": generated_at,
+        "source": (
+            "Derived from apps/web/public/data/challenge.v2.json and "
+            "apps/web/public/data/routes/rounds.v1.json -- companion artifact to "
+            "contributor-index-v1 (ADR 0048/0060 addendum), never a fresh full-corpus query."
+        ),
+        "license": (
+            "Derived from the Discogs monthly CC0 data dumps via the two published "
+            "artifacts above. See docs/DATA_AND_RIGHTS.md."
+        ),
+        "artist_ids": artist_ids,
     }

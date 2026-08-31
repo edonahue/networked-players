@@ -5,19 +5,23 @@ import EvidencePanel from '../../components/EvidencePanel.astro';
 import { buildHopViews } from '../../data/evidence';
 import { ROLE_CATEGORY_LABEL, type Contributor, type ContributorIndex } from '../../data/contributors';
 import { albumHopDistancesByArtist, type AlbumHopDistances } from '../../data/albumHopDistances';
+import { backgroundOnlyArtistIdSet, type BackgroundOnlyProfiles } from '../../data/backgroundOnlyProfiles';
 import { coverFor } from '../../data/albumArt';
 import type { AlbumV2, ChallengeV2 } from '../../data/challenge';
 import type { RoutesRounds } from '../../game/routesTypes';
 import contributorIndexData from '../../../public/data/contributors/index.v1.json';
 import albumHopDistancesData from '../../../public/data/contributors/album-hop-distances.v1.json';
+import backgroundOnlyProfilesData from '../../../public/data/contributors/background-only-profiles.v1.json';
 import challengeData from '../../../public/data/challenge.v2.json';
 import routesRoundsData from '../../../public/data/routes/rounds.v1.json';
 
 const contributorIndex = contributorIndexData as ContributorIndex;
 const albumHopDistances = albumHopDistancesData as AlbumHopDistances;
+const backgroundOnlyProfiles = backgroundOnlyProfilesData as BackgroundOnlyProfiles;
 const challenge = challengeData as ChallengeV2;
 const routesRounds = routesRoundsData as RoutesRounds;
 const hopDistancesByArtist = albumHopDistancesByArtist(albumHopDistances);
+const backgroundOnlyArtistIds = backgroundOnlyArtistIdSet(backgroundOnlyProfiles);
 
 export function getStaticPaths() {
   const index = contributorIndexData as ContributorIndex;
@@ -37,6 +41,22 @@ const albumById = new Map(challenge.albums.map((a) => [a.id, a]));
 const albums = contributor.albums
   .map((id) => albumById.get(id))
   .filter((a): a is AlbumV2 => Boolean(a));
+// True when this contributor's ENTIRE observed role vocabulary (the full,
+// uncapped role-text data background-only-profiles.v1.json is built from
+// -- never contributor-index-v1's own frequency-capped role_text_examples
+// sample) is Mastered By/Recorded By/Mixed By or non-substantive --
+// de-emphasizes their non-direct (hop_distance > 0) album connections
+// below without hiding them, the same visual language Explore's
+// isDimmed() already uses. hop_distance 0 entries are always this
+// contributor's own record, never muted. An earlier version of this check
+// inferred the same signal from role_text_examples/role_categories
+// client-side; that sample is capped to 5 entries, so a contributor with
+// several frequent background credits and one rarer substantive one could
+// be misjudged background-only (a real review finding) -- publishing the
+// authoritative, uncapped-derived artifact closes that gap for good.
+const isBackgroundOnlyContributor = backgroundOnlyArtistIds.has(
+  contributor.artist_id,
+);
 // The companion album-hop-distances artifact (ADR 0048 addendum) carries
 // the same album-id set as `albums` above, enriched with hop_distance and
 // already sorted by (hop_distance, album_id) within this artist's own
@@ -45,9 +65,25 @@ const albums = contributor.albums
 const albumEntries = (hopDistancesByArtist.get(contributor.artist_id) ?? [])
   .map((entry) => {
     const album = albumById.get(entry.album_id);
-    return album ? { album, hopDistance: entry.hop_distance } : null;
+    return album
+      ? {
+          album,
+          hopDistance: entry.hop_distance,
+          muted: entry.hop_distance > 0 && isBackgroundOnlyContributor,
+        }
+      : null;
   })
-  .filter((e): e is { album: AlbumV2; hopDistance: number } => Boolean(e));
+  .filter(
+    (e): e is { album: AlbumV2; hopDistance: number; muted: boolean } =>
+      Boolean(e),
+  )
+  // Muted entries sort after their non-muted same-hop_distance peers --
+  // the artifact's own (hop_distance, album_id) order is otherwise
+  // preserved (a stable sort only reorders ties on the new muted key).
+  .sort((a, b) => {
+    if (a.hopDistance !== b.hopDistance) return a.hopDistance - b.hopDistance;
+    return Number(a.muted) - Number(b.muted);
+  });
 
 const contributorById = new Map(
   contributorIndex.contributors.map((c) => [c.artist_id, c]),
@@ -219,7 +255,7 @@ const description = `Documented credits and connections for ${contributor.name} 
           </p>
           <div class="album-grid">
             {
-              albumEntries.map(({ album, hopDistance }) => (
+              albumEntries.map(({ album, hopDistance, muted }) => (
                 <AlbumCard
                   album={album}
                   note={
@@ -227,6 +263,7 @@ const description = `Documented credits and connections for ${contributor.name} 
                       ? `${hopDistance} documented hop${hopDistance === 1 ? "" : "s"} away`
                       : undefined
                   }
+                  muted={muted}
                 />
               ))
             }
@@ -255,7 +292,10 @@ const description = `Documented credits and connections for ${contributor.name} 
           }
           <div class="contributor-grid">
             {neighbors.map((neighbor) => (
-              <a class="contributor-card" href={`/contributors/${neighbor.artist_id}/`}>
+              <a
+                class={`contributor-card${backgroundOnlyArtistIds.has(neighbor.artist_id) ? " contributor-card--muted" : ""}`}
+                href={`/contributors/${neighbor.artist_id}/`}
+              >
                 <span class="contributor-card__name">
                   {neighbor.name}
                   {interestingNeighbor && neighbor.artist_id === interestingNeighbor.artist_id && (

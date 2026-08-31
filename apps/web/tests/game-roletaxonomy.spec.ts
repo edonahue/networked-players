@@ -9,6 +9,7 @@ import { expect, test } from "@playwright/test";
 import {
   behindTheGlassEdgeFilter,
   guitarPathsEdgeFilter,
+  isBackgroundEngineeringRole,
   isEngineeringOrProductionRole,
   isGuitarRole,
   isPerformerRole,
@@ -70,6 +71,120 @@ test.describe("isEngineeringOrProductionRole", () => {
     expect(isEngineeringOrProductionRole("Conductor")).toBe(false);
   });
 });
+
+// Pinned parity cases against Python's role_taxonomy.py
+// (is_background_engineering_role). Reproduce with:
+//   uv run python3 -c "
+//   from networked_players_graph_core.role_taxonomy import is_background_engineering_role
+//   print(is_background_engineering_role('Mastered By'))              # True
+//   print(is_background_engineering_role('Producer, Mastered By'))    # False
+//   print(is_background_engineering_role('Engineer'))                 # False
+//   "
+test.describe("isBackgroundEngineeringRole", () => {
+  test("recognizes the three background-engineering tokens, including bracketed qualifiers", () => {
+    for (const role of [
+      "Mastered By",
+      "Mastered By [Vinyl]",
+      "Recorded By",
+      "Mixed By",
+    ]) {
+      expect(isBackgroundEngineeringRole(role)).toBe(true);
+    }
+  });
+
+  test("excludes the generic Engineer/Producer tokens and Programmed By/Drum Programming", () => {
+    for (const role of [
+      "Engineer",
+      "Producer",
+      "Co-Producer",
+      "Programmed By",
+      "Drum Programming",
+    ]) {
+      expect(isBackgroundEngineeringRole(role)).toBe(false);
+    }
+  });
+
+  test("a mixed credit with real creative involvement is not background-only", () => {
+    expect(isBackgroundEngineeringRole("Producer, Mastered By")).toBe(false);
+  });
+
+  test("every component being background-engineering still qualifies", () => {
+    expect(isBackgroundEngineeringRole("Mastered By, Mixed By")).toBe(true);
+  });
+
+  test("is fail-closed for empty text", () => {
+    expect(isBackgroundEngineeringRole("")).toBe(false);
+  });
+
+  // Real gap caught in review: a real, committed credit -- "Recorded By
+  // [Le Mobile, Los Angeles]" -- has a comma INSIDE its bracket qualifier.
+  // A naive roleText.split(",") before bracket-stripping breaks this into
+  // "Recorded By [Le Mobile" and " Los Angeles]", neither of which has a
+  // balanced bracket to strip, so neither normalizes to a known token and
+  // the credit silently failed to classify as background-engineering.
+  test("handles a bracket qualifier that itself contains a comma", () => {
+    expect(
+      isBackgroundEngineeringRole("Recorded By [Le Mobile, Los Angeles]"),
+    ).toBe(true);
+    // Two independently-bracketed components must still split correctly.
+    expect(isBackgroundEngineeringRole("Guitar [Lead], Bass [Fretless]")).toBe(
+      false,
+    );
+    expect(
+      isBackgroundEngineeringRole(
+        "Recorded By [Le Mobile, Los Angeles], Mixed By [Abbey Road, London]",
+      ),
+    ).toBe(true);
+  });
+
+  // Real gap caught in review (round 9), reproduced against the exact
+  // cited real committed credit -- release 35780023, artist 520370
+  // (Stephen Marsh): "Mastered By [Mastering], Lacquer Cut By [Lacquer
+  // Cutting]". "Lacquer Cut By" is a non-substantive packaging/business
+  // companion to the background "Mastered By [Mastering]" component, not
+  // a genuinely substantive one like "Producer"/"Engineer" -- it must not
+  // negate the background verdict, even though it isn't itself one of the
+  // three narrow background tokens.
+  test("allows a non-substantive packaging/business companion component", () => {
+    expect(
+      isBackgroundEngineeringRole(
+        "Mastered By [Mastering], Lacquer Cut By [Lacquer Cutting]",
+      ),
+    ).toBe(true);
+    // A genuinely substantive companion still disqualifies the whole
+    // credit -- not a blanket "any background component wins" rule.
+    expect(isBackgroundEngineeringRole("Mastered By, Engineer")).toBe(false);
+    expect(isBackgroundEngineeringRole("Producer, Lacquer Cut By")).toBe(false);
+    // Packaging-only, no background component at all -- nothing to
+    // background.
+    expect(isBackgroundEngineeringRole("Lacquer Cut By")).toBe(false);
+  });
+
+  // Real gap caught in review (round 10): the round-9 fix only checked
+  // PERFORMER_TOKENS/PRODUCTION_AND_ENGINEERING_TOKENS to decide whether a
+  // non-background companion was "substantive" -- this file deliberately
+  // doesn't track composition/arrangement/rework/audiovisual as their own
+  // token sets, so a real substantive companion in one of THOSE categories
+  // (e.g. "Written-By", composition -- real songwriting work) fell through
+  // as "non-substantive" and wrongly qualified, unlike Python's fuller
+  // taxonomy which correctly rejects it via _classify_component.
+  test("rejects a substantive companion outside the tracked performer/production token sets", () => {
+    expect(isBackgroundEngineeringRole("Mixed By, Written-By")).toBe(false);
+    expect(isBackgroundEngineeringRole("Mastered By, Arranged By")).toBe(false);
+  });
+});
+
+// isBackgroundOnlyRoleProfile (the client-side inference from
+// contributor-index-v1's capped role_text_examples/role_categories sample)
+// was removed 2026-08-31: a real review finding showed that sample-based
+// inference could miss a rarer, lower-frequency substantive credit
+// truncated beyond the 5-entry cap. The same signal is now computed
+// server-side from each contributor's full, uncapped role vocabulary and
+// published as background-only-profiles.v1.json -- see
+// packages/graph-core/tests/test_role_taxonomy.py's
+// TestIsBackgroundOnlyRoleProfile for the equivalent (and more complete)
+// coverage, including the real committed-data regressions (Julio Iglesias
+// artist 67331, Mike Fraser artist 92830) this suite used to carry.
 
 test.describe("behindTheGlassEdgeFilter", () => {
   test("requires both endpoints to qualify", () => {
