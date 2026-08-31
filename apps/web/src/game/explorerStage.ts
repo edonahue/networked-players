@@ -21,7 +21,11 @@ import {
   renderEvidenceHop,
   type EvidenceRelease,
 } from "./connectEvidence";
-import { escapeHtml, sessionStorageOrNull } from "./domUtils";
+import {
+  escapeHtml,
+  fetchFailureMessage,
+  sessionStorageOrNull,
+} from "./domUtils";
 import type { Contributor, ContributorIndex } from "../data/contributors";
 import { ROLE_CATEGORY_LABEL } from "../data/contributors";
 
@@ -181,7 +185,7 @@ export async function initExplorerStage(): Promise<void> {
     // reliably apply across the SVG namespace the way it does for HTML
     // elements -- `svg.setAttribute("hidden", "")` alone left it rendered
     // and visible despite carrying the attribute.
-    const message = "Couldn't load the network graph. Try reloading the page.";
+    const message = fetchFailureMessage("the network graph");
     stage.dataset.phase = "error";
     setStatus(message);
     statusAssertiveEl.textContent = message;
@@ -276,6 +280,9 @@ export async function initExplorerStage(): Promise<void> {
 
   function renderView(view: ExplorerView) {
     truncatedEl!.hidden = !view.truncated;
+    if (view.truncated) {
+      truncatedEl!.textContent = `Showing ${view.neighbors.length} of ${view.totalNeighborCount} documented connections.`;
+    }
 
     const nodePositions = new Map<number, { x: number; y: number }>();
     nodePositions.set(view.center.artistId, { x: CENTER, y: CENTER });

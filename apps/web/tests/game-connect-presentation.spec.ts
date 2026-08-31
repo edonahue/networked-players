@@ -117,10 +117,10 @@ test("route length is always shown, for a ranked search, a role-filtered search,
     timeout: 15000,
   });
   await expect(page.locator("[data-connect-route-length]")).toHaveText(
-    /^\d+ hops? documented$/,
+    /^(one|two|three|four) hops? documented$/i,
   );
   await expect(page.locator("[data-connect-route-length-alt]")).toHaveText(
-    /^\d+ hops? documented$/,
+    /^(one|two|three|four) hops? documented$/i,
   );
 
   await selectAlbum(page, "a", "Ziggy Stardust");
@@ -131,7 +131,7 @@ test("route length is always shown, for a ranked search, a role-filtered search,
     timeout: 15000,
   });
   await expect(page.locator("[data-connect-route-length]")).toHaveText(
-    /^\d+ hops? documented$/,
+    /^(one|two|three|four) hops? documented$/i,
   );
 });
 

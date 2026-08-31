@@ -14,6 +14,7 @@ import {
   resolveDailyRound,
 } from "./dailyManifest";
 import { isDateOverrideAllowed } from "./dateOverride";
+import { fetchFailureMessage } from "./domUtils";
 import { createEngine, type Engine } from "./engine";
 import { localIsoDate } from "./localDate";
 import { createRng } from "./prng";
@@ -273,9 +274,7 @@ export async function initFlagship(
   try {
     roundsArtifact = await fetchRounds();
   } catch {
-    showStageError(
-      "Could not load the round pool right now — try refreshing the page.",
-    );
+    showStageError(fetchFailureMessage("the round pool"));
     return;
   }
   const rounds = roundsArtifact.rounds;
@@ -332,9 +331,7 @@ export async function initFlagship(
     try {
       manifest = await fetchDailyManifest();
     } catch {
-      showStageError(
-        "Could not load today's schedule right now — try refreshing the page.",
-      );
+      showStageError(fetchFailureMessage("today's schedule"));
       return;
     }
     const resolution = await resolveDailyRound(
@@ -789,6 +786,7 @@ export async function initFlagship(
       try {
         await navigator.clipboard.writeText(share);
         copy.textContent = "Copied";
+        announce("Share text copied to clipboard.");
       } catch {
         announce("Copy failed — select the share text above instead.");
       }

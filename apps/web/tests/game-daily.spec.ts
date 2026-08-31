@@ -303,6 +303,32 @@ test("solving the daily records a streak and builds a spoiler-free share string"
   expect(stored.streak.current).toBe(1);
 });
 
+// A real accessibility gap this session's copy pass fixed: Connect's own
+// copy-link button announces success to screen readers in addition to the
+// visible "Copied" label change, but this button only ever announced its
+// *failure* path -- a screen-reader user got spoken confirmation in one
+// mode and silence in the other for the identical interaction.
+test("copying the daily share text announces success to screen readers", async ({
+  page,
+  context,
+}) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await gotoDaily(page, PINNED_DATE_A);
+  const { round } = await entryAndRound(page, PINNED_DATE_A);
+  await page.locator(`.chip[data-chip="${round.answer_set[0].id}"]`).click();
+  await expect(page.getByTestId("stage")).toHaveAttribute(
+    "data-phase",
+    "revealed",
+  );
+
+  const copyButton = page.getByTestId("share-copy");
+  await copyButton.click();
+  await expect(copyButton).toHaveText("Copied");
+  await expect(page.locator('[data-testid="live-region"]')).toContainText(
+    /copied/i,
+  );
+});
+
 test("the daily refuses a second play and shows the recorded result instead", async ({
   page,
 }) => {
