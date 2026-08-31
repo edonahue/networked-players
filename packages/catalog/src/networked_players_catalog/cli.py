@@ -1129,6 +1129,61 @@ def _parser() -> argparse.ArgumentParser:
     validate_contributor_index.add_argument("--index", type=Path, required=True)
     validate_contributor_index.add_argument("--catalog", type=Path, required=True)
 
+    build_album_hop_distances = subparsers.add_parser(
+        "build-album-hop-distances",
+        help=(
+            "build the public album-hop-distances artifact "
+            "(apps/web/public/data/contributors/album-hop-distances.v1.json) -- a "
+            "companion to contributor-index-v1 (ADR 0048 addendum) carrying each "
+            "contributor's minimum documented-credit hop distance to every endpoint "
+            "album they help connect, entirely from two already-published artifacts "
+            "(challenge.v2.json + routes/rounds.v1.json). A separate artifact rather "
+            "than a new contributor-index-v1 field, since that index's contract is "
+            "validated as an exact key set -- widening it in place would be a real "
+            "breaking change hiding behind an unchanged schema_version"
+        ),
+    )
+    build_album_hop_distances.add_argument(
+        "--challenge", type=Path, required=True, help="apps/web/public/data/challenge.v2.json"
+    )
+    build_album_hop_distances.add_argument(
+        "--routes-rounds",
+        type=Path,
+        required=True,
+        help="apps/web/public/data/routes/rounds.v1.json",
+    )
+    build_album_hop_distances.add_argument(
+        "--catalog", type=Path, required=True, help="apps/web/public/data/catalog/albums.v1.json"
+    )
+    build_album_hop_distances.add_argument(
+        "--contributor-index",
+        type=Path,
+        required=True,
+        help="apps/web/public/data/contributors/index.v1.json -- the already-published "
+        "companion artifact, read (never rebuilt) to cross-validate that every entry's "
+        "artist_id is a real published contributor",
+    )
+    build_album_hop_distances.add_argument("--output", type=Path, required=True)
+    build_album_hop_distances.add_argument(
+        "--generated-at",
+        required=True,
+        help="explicit ISO datetime for this build (never the wall clock), e.g. "
+        "2026-08-03T00:00:00+00:00",
+    )
+
+    validate_album_hop_distances = subparsers.add_parser(
+        "validate-album-hop-distances",
+        help=(
+            "validate an album-hop-distances artifact against the canonical catalog "
+            "and contributor index it claims to belong to (catalog_version agreement, "
+            "album-id/artist-id membership, no duplicate (artist_id, album_id) pairs, "
+            "album_hop_distances_version recomputation)"
+        ),
+    )
+    validate_album_hop_distances.add_argument("--artifact", type=Path, required=True)
+    validate_album_hop_distances.add_argument("--catalog", type=Path, required=True)
+    validate_album_hop_distances.add_argument("--contributor-index", type=Path, required=True)
+
     build_pathfinding_graph = subparsers.add_parser(
         "build-pathfinding-graph",
         help=(
@@ -1313,6 +1368,11 @@ def _parser() -> argparse.ArgumentParser:
         "--contributor-index",
         type=Path,
         default=Path("apps/web/public/data/contributors/index.v1.json"),
+    )
+    validate_public_artifacts.add_argument(
+        "--album-hop-distances",
+        type=Path,
+        default=Path("apps/web/public/data/contributors/album-hop-distances.v1.json"),
     )
     validate_public_artifacts.add_argument(
         "--pathfinding-graph-v2",
@@ -3627,6 +3687,52 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(json.dumps({"ok": True, "contributors": len(index["contributors"])}, indent=2))
         return 0
 
+    if args.command == "build-album-hop-distances":
+        from networked_players_contracts.album_hop_distances import album_hop_distances_failures
+        from networked_players_graph_core.contributor_index import build_album_hop_distances
+
+        catalog = json.loads(args.catalog.read_text())
+        challenge = json.loads(args.challenge.read_text())
+        routes_rounds = json.loads(args.routes_rounds.read_text())
+        contributor_index = json.loads(args.contributor_index.read_text())
+        artifact = build_album_hop_distances(
+            challenge=challenge,
+            routes_rounds=routes_rounds,
+            catalog=catalog,
+            generated_at=args.generated_at,
+        )
+        failures = album_hop_distances_failures(artifact, catalog, contributor_index)
+        if failures:
+            raise ValueError(
+                "refusing to write an invalid album-hop-distances artifact: " + "; ".join(failures)
+            )
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(json.dumps(artifact, indent=2) + "\n")
+        print(
+            json.dumps(
+                {
+                    "output": str(args.output),
+                    "catalog_version": artifact["catalog_version"],
+                    "album_hop_distances_version": artifact["album_hop_distances_version"],
+                    "entries": len(artifact["entries"]),
+                },
+                indent=2,
+            )
+        )
+        return 0
+
+    if args.command == "validate-album-hop-distances":
+        from networked_players_contracts.album_hop_distances import album_hop_distances_failures
+
+        artifact = json.loads(args.artifact.read_text())
+        catalog = json.loads(args.catalog.read_text())
+        contributor_index = json.loads(args.contributor_index.read_text())
+        failures = album_hop_distances_failures(artifact, catalog, contributor_index)
+        if failures:
+            raise ValueError("; ".join(failures))
+        print(json.dumps({"ok": True, "entries": len(artifact["entries"])}, indent=2))
+        return 0
+
     if args.command == "build-pathfinding-graph":
         from networked_players_contracts.pathfinding_graph import pathfinding_graph_failures
         from networked_players_graph_core.graph import CreditGraph, EvidenceReleasePreference
@@ -3857,6 +3963,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             routes_rounds=json.loads(args.routes_rounds.read_text()),
             challenge=json.loads(args.challenge.read_text()),
             contributor_index=json.loads(args.contributor_index.read_text()),
+            album_hop_distances=json.loads(args.album_hop_distances.read_text()),
             pathfinding_graph_v2=json.loads(args.pathfinding_graph_v2.read_text()),
             album_credit_membership=json.loads(args.album_credit_membership.read_text()),
             evidence_release_registry=json.loads(args.evidence_release_registry.read_text()),

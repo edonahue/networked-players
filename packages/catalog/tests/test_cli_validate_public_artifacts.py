@@ -13,6 +13,7 @@ from typing import Any
 from networked_players_catalog.cli import main
 from networked_players_contracts.album_art import album_art_version
 from networked_players_contracts.album_credit_membership import album_credit_membership_version
+from networked_players_contracts.album_hop_distances import album_hop_distances_version
 from networked_players_contracts.canonical import content_hash, stable_id_digest
 from networked_players_contracts.catalog import _catalog_version
 from networked_players_contracts.connection_rounds import round_content_fingerprint
@@ -355,7 +356,6 @@ def _contributor_index(catalog: dict[str, Any]) -> dict[str, Any]:
             "role_categories": ["strings"],
             "role_text_examples": ["Guitar"],
             "albums": ["master-1"],
-            "album_hop_distances": [{"album_id": "master-1", "hop_distance": 0}],
             "decade_activity": [1990],
             "connection_count": 0,
             "neighboring_contributor_ids": [],
@@ -371,6 +371,19 @@ def _contributor_index(catalog: dict[str, Any]) -> dict[str, Any]:
         "source": "Derived from challenge.v2.json and routes artifacts.",
         "license": "See docs/DATA_AND_RIGHTS.md.",
         "contributors": contributors,
+    }
+
+
+def _album_hop_distances(catalog: dict[str, Any]) -> dict[str, Any]:
+    entries = [{"artist_id": 100, "album_id": "master-1", "hop_distance": 0}]
+    return {
+        "schema_version": 1,
+        "catalog_version": catalog["catalog_version"],
+        "album_hop_distances_version": album_hop_distances_version(entries, _SNAPSHOT),
+        "generated_at": "2026-08-03T00:00:00+00:00",
+        "source": "Derived from challenge.v2.json and routes/rounds.v1.json.",
+        "license": "See docs/DATA_AND_RIGHTS.md.",
+        "entries": entries,
     }
 
 
@@ -478,6 +491,9 @@ def _write_all(tmp_path: Path) -> dict[str, Path]:
         "contributor_index": _write(
             tmp_path / "contributor-index.v1.json", _contributor_index(catalog)
         ),
+        "album_hop_distances": _write(
+            tmp_path / "album-hop-distances.v1.json", _album_hop_distances(catalog)
+        ),
         "pathfinding_graph_v2": _write(
             tmp_path / "pathfinding-graph.v2.json", _pathfinding_graph_v2(catalog)
         ),
@@ -511,6 +527,8 @@ def _args(paths: dict[str, Path]) -> list[str]:
         str(paths["challenge"]),
         "--contributor-index",
         str(paths["contributor_index"]),
+        "--album-hop-distances",
+        str(paths["album_hop_distances"]),
         "--pathfinding-graph-v2",
         str(paths["pathfinding_graph_v2"]),
         "--album-credit-membership",
@@ -534,6 +552,7 @@ def test_clean_set_exits_zero(tmp_path: Path, capsys) -> None:
         "record_routes": [],
         "challenge": [],
         "contributor_index": [],
+        "album_hop_distances": [],
         "pathfinding_graph_v2": [],
         "album_credit_membership": [],
         "evidence_release_registry": [],
@@ -570,6 +589,9 @@ def test_default_paths_point_at_the_real_repo_layout(tmp_path: Path, capsys, mon
         "apps/web/public/data/routes/rounds.v1.json": routes_rounds,
         "apps/web/public/data/challenge.v2.json": _challenge(catalog),
         "apps/web/public/data/contributors/index.v1.json": _contributor_index(catalog),
+        "apps/web/public/data/contributors/album-hop-distances.v1.json": (
+            _album_hop_distances(catalog)
+        ),
         "apps/web/public/data/pathfinding/graph.v2.json": _pathfinding_graph_v2(catalog),
         "apps/web/public/data/albums/credit-membership.v1.json": _album_credit_membership(catalog),
         "apps/web/public/data/evidence/release-registry.v1.json": _evidence_release_registry(

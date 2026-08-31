@@ -100,7 +100,6 @@ function contributor(
     role_categories: ["engineering"],
     role_text_examples: [],
     albums: [],
-    album_hop_distances: [],
     decade_activity: [],
     connection_count: 1,
     neighboring_contributor_ids: [],

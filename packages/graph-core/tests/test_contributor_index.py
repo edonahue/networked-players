@@ -2,7 +2,10 @@ from __future__ import annotations
 
 from typing import Any
 
-from networked_players_graph_core.contributor_index import build_contributor_index
+from networked_players_graph_core.contributor_index import (
+    build_album_hop_distances,
+    build_contributor_index,
+)
 from networked_players_graph_core.role_taxonomy import RoleCategory
 
 _SNAPSHOT = "20260601"
@@ -150,28 +153,10 @@ def test_albums_are_the_endpoints_of_every_path_or_round_the_contributor_appears
     assert bob["albums"] == ["master-1", "master-2", "master-3"]
 
 
-def test_album_hop_distances_is_the_same_album_set_as_albums_enriched_with_distance() -> None:
-    # Bob is artist_b of path-1's only hop (master-1 -> master-2), so he is
-    # directly adjacent (hop_distance 0) to master-2, one hop from master-1.
-    # He is also artist_a of the routes round's only hop (master-2 ->
-    # master-3), directly adjacent to master-2 again (min stays 0) and one
-    # hop from master-3. The multi-hop case is covered by
-    # test_hop_distance_reflects_position_in_a_multi_hop_path below.
-    index = _build()
-    bob = next(c for c in index["contributors"] if c["artist_id"] == 200)
-    assert bob["album_hop_distances"] == [
-        {"album_id": "master-2", "hop_distance": 0},
-        {"album_id": "master-1", "hop_distance": 1},
-        {"album_id": "master-3", "hop_distance": 1},
-    ]
-    assert {e["album_id"] for e in bob["album_hop_distances"]} == set(bob["albums"])
-
-
-def test_hop_distance_reflects_position_in_a_multi_hop_path() -> None:
-    """A regression guard for the real bug this addendum fixed: a contributor
-    two hops from an endpoint used to be attributed to that endpoint
-    identically to one directly adjacent to it. Mirrors the real Jamiroquai/
-    Pink-Floyd shape (artist -- bridge engineer -- artist), scaled down."""
+def _hop_distance_fixture() -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
+    """Mirrors the real Jamiroquai/Pink-Floyd shape (artist -- bridge
+    engineer -- artist), scaled down: a 2-hop path where the middle artist
+    is genuinely 1 hop from BOTH endpoints, never 0."""
     catalog = {
         "catalog_version": _CATALOG_VERSION,
         "snapshot_date": _SNAPSHOT,
@@ -201,42 +186,92 @@ def test_hop_distance_reflects_position_in_a_multi_hop_path() -> None:
         ],
         "releases": [],
     }
-    index = build_contributor_index(
+    routes_rounds = {
+        "provenance": {"catalog_version": _CATALOG_VERSION},
+        "artists": [],
+        "rounds": [],
+        "releases": [],
+    }
+    return catalog, challenge, routes_rounds
+
+
+def test_build_album_hop_distances_top_level_shape() -> None:
+    catalog, challenge, routes_rounds = _hop_distance_fixture()
+    result = build_album_hop_distances(
         challenge=challenge,
-        routes_universe=_routes_universe(),
-        routes_rounds={
-            "provenance": {"catalog_version": _CATALOG_VERSION},
-            "artists": [],
-            "rounds": [],
-            "releases": [],
-        },
+        routes_rounds=routes_rounds,
         catalog=catalog,
-        evidence_release_registry={"release_ids": [], "years": []},
         generated_at="2026-08-03T00:00:00+00:00",
     )
-    by_id = {c["artist_id"]: c for c in index["contributors"]}
+    assert result["schema_version"] == 1
+    assert result["catalog_version"] == _CATALOG_VERSION
+    assert result["album_hop_distances_version"].startswith(f"album-hop-distances-v1-{_SNAPSHOT}-")
+    assert result["generated_at"] == "2026-08-03T00:00:00+00:00"
+
+
+def test_hop_distance_reflects_position_in_a_multi_hop_path() -> None:
+    """A regression guard for the real bug this addendum fixed: a contributor
+    two hops from an endpoint used to be attributed to that endpoint
+    identically to one directly adjacent to it."""
+    catalog, challenge, routes_rounds = _hop_distance_fixture()
+    result = build_album_hop_distances(
+        challenge=challenge,
+        routes_rounds=routes_rounds,
+        catalog=catalog,
+        generated_at="2026-08-03T00:00:00+00:00",
+    )
+    by_artist: dict[int, list[dict[str, Any]]] = {}
+    for entry in result["entries"]:
+        by_artist.setdefault(entry["artist_id"], []).append(
+            {"album_id": entry["album_id"], "hop_distance": entry["hop_distance"]}
+        )
 
     # The endpoint-adjacent artist is 0 hops from their own endpoint, 2 hops
     # from the far one.
-    assert by_id[1]["album_hop_distances"] == [
+    assert by_artist[1] == [
         {"album_id": "master-endpoint-a", "hop_distance": 0},
         {"album_id": "master-endpoint-b", "hop_distance": 2},
     ]
-    assert by_id[3]["album_hop_distances"] == [
+    assert by_artist[3] == [
         {"album_id": "master-endpoint-b", "hop_distance": 0},
         {"album_id": "master-endpoint-a", "hop_distance": 2},
     ]
     # The middle bridge artist is 1 hop from BOTH endpoints -- never 0, even
-    # though `albums` (the plain id list) treats every hop participant as
-    # equally present, which is exactly why album_hop_distances exists.
-    assert by_id[2]["album_hop_distances"] == [
+    # though contributor_index's own `albums[]` (the plain id list) treats
+    # every hop participant as equally present. This is exactly why
+    # album_hop_distances exists as a companion artifact.
+    assert by_artist[2] == [
         {"album_id": "master-endpoint-a", "hop_distance": 1},
         {"album_id": "master-endpoint-b", "hop_distance": 1},
     ]
-    # `albums` itself is unaffected -- still the plain, unenriched id list.
-    assert by_id[1]["albums"] == ["master-endpoint-a", "master-endpoint-b"]
-    assert by_id[2]["albums"] == ["master-endpoint-a", "master-endpoint-b"]
-    assert by_id[3]["albums"] == ["master-endpoint-a", "master-endpoint-b"]
+
+
+def test_build_album_hop_distances_deterministic_across_repeated_builds() -> None:
+    catalog, challenge, routes_rounds = _hop_distance_fixture()
+
+    def _run() -> dict[str, Any]:
+        return build_album_hop_distances(
+            challenge=challenge,
+            routes_rounds=routes_rounds,
+            catalog=catalog,
+            generated_at="2026-08-03T00:00:00+00:00",
+        )
+
+    assert _run() == _run()
+
+
+def test_build_album_hop_distances_mismatched_catalog_version_raises() -> None:
+    import pytest
+
+    catalog, challenge, routes_rounds = _hop_distance_fixture()
+    challenge["provenance"]["catalog_version"] = "catalog-v1-wrong"
+    with pytest.raises(ValueError, match="catalog_version"):
+        build_album_hop_distances(
+            challenge=challenge,
+            routes_rounds=routes_rounds,
+            catalog=catalog,
+            generated_at="2026-08-03T00:00:00+00:00",
+        )
 
 
 def test_decade_activity_derived_from_the_contributors_own_evidence_release_years() -> None:
