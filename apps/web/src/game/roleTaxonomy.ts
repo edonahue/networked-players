@@ -163,6 +163,35 @@ const BACKGROUND_ENGINEERING_TOKENS = new Set([
   "mixed by",
 ]);
 
+// Mirrors role_taxonomy.py's `_PACKAGING_BUSINESS_TOKENS` exactly -- the
+// ONE non-substantive companion category this file needs a dedicated set
+// for (a real committed credit combines "Mastered By" with "Lacquer Cut
+// By" on the same string). Kept in step with that Python source by
+// inspection, same convention this file's header already documents.
+const PACKAGING_BUSINESS_TOKENS = new Set([
+  "design",
+  "design concept",
+  "art direction",
+  "artwork",
+  "artwork by",
+  "layout",
+  "illustration",
+  "photography by",
+  "photography",
+  "liner notes",
+  "sleeve notes",
+  "a&r",
+  "management",
+  "translation",
+  "lacquer cut by",
+  "executive-producer",
+  "executive producer",
+  "coordinator",
+  "supervised by",
+  "authoring",
+  "other",
+]);
+
 function normalizeComponent(component: string): string {
   return component
     .replace(/\[.*\]/g, "")
@@ -193,18 +222,31 @@ function matchesAnyComponent(roleText: string, tokens: Set<string>): boolean {
 const ROLE_COMPONENT_SPLIT = /,\s*(?![^[]*\])/;
 
 /** True when at least one bracket-aware component of `roleText` is in
- * `backgroundTokens`, and every OTHER component is non-substantive -- not
- * classified as PRODUCTION/ENGINEERING (minus the background set itself)
- * or a PERFORMER token. This file deliberately isn't a full RoleCategory
- * port (see the file header), so "non-substantive" here means "doesn't
- * match any substantive category this file already tracks" rather than a
- * dedicated PACKAGING_BUSINESS/UNKNOWN classification -- the same
- * practical effect role_taxonomy.py's `_classify_component` achieves via
- * its fuller taxonomy, since a real packaging/business token (e.g.
- * "Lacquer Cut By") and a genuinely unrecognized one both fall through to
- * "non-substantive" here exactly as they do there. A genuinely
- * substantive companion (Producer, Engineer, any performer role) still
- * disqualifies the whole credit. */
+ * `backgroundTokens`, and every OTHER component is a known
+ * PACKAGING_BUSINESS_TOKENS companion. Fail-CLOSED on anything else --
+ * the same default every other predicate in this file uses (see e.g.
+ * `isPerformerRole`'s own doc comment) -- so a genuinely substantive
+ * companion (Producer, Engineer, any performer role, or a real category
+ * this file doesn't track its own token set for at all, e.g. composition/
+ * arrangement/rework/audiovisual work like "Written-By"/"Arranged By")
+ * still disqualifies the whole credit.
+ *
+ * Deliberately does NOT mirror role_taxonomy.py's `_classify_component`-
+ * based check exactly: that Python predicate also allows a genuinely
+ * UNKNOWN component (no evidence either way, an explicit first-class
+ * category there) alongside PACKAGING_BUSINESS. An earlier version of
+ * this function replicated that by allowing anything not positively
+ * recognized as PERFORMER/PRODUCTION-ENGINEERING -- which incorrectly
+ * let ANY untracked substantive category (composition, arrangement, ...)
+ * through as "non-substantive" too, since this file was never a full
+ * RoleCategory port (see file header) and has no token sets for those
+ * categories (a real gap caught in review: "Mixed By, Written-By" wrongly
+ * qualified). Requiring an explicit PACKAGING_BUSINESS_TOKENS match
+ * instead is fail-closed by construction and needs no more token sets:
+ * an untracked category correctly disqualifies by falling through to the
+ * default, matching Python's real behavior for every category except the
+ * rare genuinely-unrecognized-to-both-systems token, where this is
+ * intentionally the stricter (safer, less-dimming) side to differ on. */
 function matchesBackgroundOrNonSubstantive(
   roleText: string,
   backgroundTokens: Set<string>,
@@ -217,10 +259,7 @@ function matchesBackgroundOrNonSubstantive(
       sawBackground = true;
       continue;
     }
-    if (
-      PERFORMER_TOKENS.has(normalized) ||
-      PRODUCTION_AND_ENGINEERING_TOKENS.has(normalized)
-    ) {
+    if (!PACKAGING_BUSINESS_TOKENS.has(normalized)) {
       return false;
     }
   }

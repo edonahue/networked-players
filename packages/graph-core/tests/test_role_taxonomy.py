@@ -167,6 +167,14 @@ def test_is_background_engineering_role_allows_a_non_substantive_companion() -> 
     # A packaging-only credit with no background component at all still
     # doesn't qualify -- nothing to background.
     assert is_background_engineering_role("Lacquer Cut By") is False
+    # A substantive companion OUTSIDE production/engineering (composition,
+    # arrangement) still disqualifies too -- already correctly handled
+    # here via `_classify_component`'s fuller taxonomy (pinned as a
+    # parity case: the TS port's round-9 fix initially missed this exact
+    # gap, since that file tracks only PERFORMER/PRODUCTION_AND_ENGINEERING
+    # token sets, not composition/arrangement -- round-10 finding).
+    assert is_background_engineering_role("Mixed By, Written-By") is False
+    assert is_background_engineering_role("Mastered By, Arranged By") is False
 
 
 def test_is_background_only_role_profile() -> None:

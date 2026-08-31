@@ -159,6 +159,19 @@ test.describe("isBackgroundEngineeringRole", () => {
     // background.
     expect(isBackgroundEngineeringRole("Lacquer Cut By")).toBe(false);
   });
+
+  // Real gap caught in review (round 10): the round-9 fix only checked
+  // PERFORMER_TOKENS/PRODUCTION_AND_ENGINEERING_TOKENS to decide whether a
+  // non-background companion was "substantive" -- this file deliberately
+  // doesn't track composition/arrangement/rework/audiovisual as their own
+  // token sets, so a real substantive companion in one of THOSE categories
+  // (e.g. "Written-By", composition -- real songwriting work) fell through
+  // as "non-substantive" and wrongly qualified, unlike Python's fuller
+  // taxonomy which correctly rejects it via _classify_component.
+  test("rejects a substantive companion outside the tracked performer/production token sets", () => {
+    expect(isBackgroundEngineeringRole("Mixed By, Written-By")).toBe(false);
+    expect(isBackgroundEngineeringRole("Mastered By, Arranged By")).toBe(false);
+  });
 });
 
 // isBackgroundOnlyRoleProfile (the client-side inference from
