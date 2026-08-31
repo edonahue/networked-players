@@ -837,7 +837,7 @@ export async function initFlagship(
     heading.textContent = "The liner notes";
     const stampLine = document.createElement("p");
     stampLine.className = "stamp";
-    stampLine.textContent = `${poolLabel(round)} · a credit documents participation on a recording`;
+    stampLine.textContent = poolLabel(round);
     const table = document.createElement("table");
     const thead = document.createElement("thead");
     thead.innerHTML =

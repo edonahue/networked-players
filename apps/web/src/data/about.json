@@ -13,7 +13,7 @@
     {
       "heading": "Evidence, not influence",
       "paragraphs": [
-        "A shared credit proves documented participation. It does not prove that one artist influenced another, that they are friends, or that any artistic lineage exists. Networked Players deliberately refuses to make those inferences. Collaboration is a fact in the record; influence is a story we don't tell."
+        "A shared credit proves participation — that two artists are credited on the same release. It doesn't prove they influenced each other, that they were friends, or that any artistic lineage exists between them. This site only shows what the credits themselves say, nothing it has to guess at."
       ]
     },
     {
@@ -41,7 +41,7 @@
     {
       "heading": "What's next",
       "paragraphs": [
-        "Replacing the connections demo's API-sourced dataset with one derived from the CC0 monthly dumps (with full provenance and no collection membership) remains on the list. A future live-search mode is additive and must fail gracefully — the static-first core always works on its own."
+        "The connections demo still runs on its original API-sourced dataset; replacing it with one derived from the CC0 monthly dumps, with full provenance and no collection membership, hasn't happened yet. A future live-search mode would only ever add to the site — the static-first core keeps working on its own either way."
       ]
     }
   ]

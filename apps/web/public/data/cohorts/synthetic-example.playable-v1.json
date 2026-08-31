@@ -5,7 +5,7 @@
   "source_url": "https://example.invalid/synthetic-cohort",
   "generated_from_scorer_version": 2,
   "reviewed_at": "2026-07-05T12:00:00+00:00",
-  "review_note": "Synthetic fixture for the web shell -- not a real reviewed cohort.",
+  "review_note": "Synthetic fixture, not a real reviewed cohort.",
   "albums": [
     {
       "id": "release-9001",

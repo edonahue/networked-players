@@ -925,7 +925,7 @@ export async function initConnect(): Promise<void> {
     const failureMessages: Record<string, string> = {
       "unknown-album":
         "One of these records isn't in the documented connection graph yet.",
-      inconclusive: "The search was inconclusive within the current bounds.",
+      inconclusive: "The search couldn't reach a conclusion for these records.",
     };
 
     // Role-filtered searches keep today's plain first-found BFS
@@ -1174,7 +1174,7 @@ export async function initConnect(): Promise<void> {
       if (!alternate.ok) {
         if (routeLengthAltEl) routeLengthAltEl.textContent = "";
         explainEl.textContent =
-          "No distinct alternate route was found within the same hop budget.";
+          "No distinct alternate route was found within 4 hops.";
         hopsAlternateEl.innerHTML = "";
       } else {
         if (routeLengthAltEl) {
