@@ -667,7 +667,7 @@ export function explainRoute(
   if (facts.worstCaveatSeverity !== null) {
     lines.push(
       facts.worstCaveatSeverity > 0
-        ? `at least one hop is evidenced by ${SEVERITY_LABELS[facts.worstCaveatSeverity] ?? "a caveated release"}`
+        ? `at least one hop's evidence comes from ${SEVERITY_LABELS[facts.worstCaveatSeverity] ?? "a caveated release"}`
         : "no hop's evidence carries a published caveat",
     );
   }
@@ -679,12 +679,12 @@ export function explainRoute(
   );
 
   lines.push(
-    `most-connected contributor on this route has ${facts.maxInteriorDegree} documented connection${facts.maxInteriorDegree === 1 ? "" : "s"}`,
+    `the best-connected name on this route has ${facts.maxInteriorDegree} documented connection${facts.maxInteriorDegree === 1 ? "" : "s"}`,
   );
 
   if (usedPlusOneHop) {
     lines.push(
-      "one hop longer than the shortest documented route, because every shortest-hop option was evidenced only by " +
+      "one hop longer than the shortest route, because every shortest-hop option was evidenced only by " +
         (SEVERITY_LABELS[3] ?? "a caveated release"),
     );
   }

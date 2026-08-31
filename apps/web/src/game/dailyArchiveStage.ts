@@ -60,7 +60,7 @@ export async function initDailyArchive(): Promise<void> {
 
   const store = load(storage());
   if (statsEl) {
-    statsEl.textContent = `Streak: ${store.streak.current} day${store.streak.current === 1 ? "" : "s"} (best ${store.streak.best}) — ${store.totals.solved} of ${store.totals.played} solved`;
+    statsEl.textContent = `Streak: ${store.streak.current} day${store.streak.current === 1 ? "" : "s"} · best ${store.streak.best} — ${store.totals.solved} of ${store.totals.played} solved`;
   }
 
   let manifest;
