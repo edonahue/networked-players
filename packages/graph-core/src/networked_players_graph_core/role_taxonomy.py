@@ -420,31 +420,33 @@ def is_background_only_role_profile(role_texts: Counter[str]) -> bool:
     all (nothing to background) or any credit classifying into a substantive
     category (vocals, production, composition, ...).
 
-    Establishes engineering status via the bracket-aware
-    `is_background_engineering_role` FIRST, before ever consulting
-    `classify_role`: a real, committed credit -- "Recorded By [Le Mobile,
-    Los Angeles]" -- has a comma inside its bracket qualifier, which
-    `classify_role`'s plain `role_text.split(",")` mis-splits into two
-    unbalanced-bracket fragments that both classify as UNKNOWN, never
-    RoleCategory.ENGINEERING. Consulting `classify_role` first would make a
-    contributor whose only engineering evidence is such a credit invisible
-    to this predicate entirely (a real gap caught in review)."""
+    Classifies every role_text bracket-aware, PER COMPONENT, the same way
+    `is_background_engineering_role` does -- never by handing a whole
+    role_text to `classify_role`, which splits on a bare comma before
+    bracket-stripping. A real, committed credit -- "Engineer [Multi-channel
+    Master Eq, Balance, Preparation]" (round 11) -- has TWO commas inside
+    its bracket qualifier; `classify_role`'s naive split mis-splits it into
+    unbalanced-bracket fragments that both classify as UNKNOWN, silently
+    hiding the real, substantive ENGINEERING credit and letting a
+    contributor whose only other credit is background be wrongly judged
+    background-only. An earlier version of this function called
+    `is_background_engineering_role(role_text)` first and fell back to
+    whole-string `classify_role(role_text)` only when that returned False
+    -- exactly the path this bracket-comma credit took, since it isn't
+    purely background either. A single bracket-aware per-component loop
+    avoids ever reintroducing that class of gap by construction."""
     saw_engineering = False
     for role_text in role_texts:
-        if is_background_engineering_role(role_text):
-            saw_engineering = True
-            continue
-        categories = classify_role(role_text)
-        if RoleCategory.ENGINEERING in categories:
-            # Engineering work that is NOT purely background (e.g. generic
-            # "Engineer") -- substantive, disqualifies the whole profile.
-            return False
-        if any(
-            category
-            not in (RoleCategory.ENGINEERING, RoleCategory.PACKAGING_BUSINESS, RoleCategory.UNKNOWN)
-            for category in categories
-        ):
-            return False
+        for component in _ROLE_COMPONENT_SPLIT.split(role_text):
+            normalized = re.sub(r"\[.*\]", "", component).strip().lower()
+            if normalized in _BACKGROUND_ENGINEERING_TOKENS:
+                saw_engineering = True
+                continue
+            if _classify_component(component) not in (
+                RoleCategory.PACKAGING_BUSINESS,
+                RoleCategory.UNKNOWN,
+            ):
+                return False
     return saw_engineering
 
 

@@ -265,6 +265,33 @@ def test_is_background_only_role_profile_recognizes_a_bracket_qualified_credit()
     )
 
 
+def test_is_background_only_role_profile_recognizes_a_bracket_qualified_substantive() -> None:
+    """Real gap caught in review (round 11), reproduced against the exact
+    cited real committed credit -- release 822191, artist 263514 (Peter
+    Mew): "Engineer [Multi-channel Master Eq, Balance, Preparation]". This
+    is genuinely substantive generic-engineering work (not background-only),
+    but its bracket qualifier contains TWO commas -- the fallback branch's
+    `classify_role(role_text)` call used the same naive, non-bracket-aware
+    split `is_background_engineering_role` was fixed for in round 5, so it
+    mis-split this into unbalanced-bracket fragments that both classified
+    as UNKNOWN, silently hiding the real ENGINEERING credit and letting a
+    contributor whose ONLY other credit is "Mastered By" be wrongly judged
+    background-only. Fixed by using the same bracket-aware, per-component
+    classification throughout, rather than falling back to the whole-string,
+    naive-split `classify_role`."""
+    assert (
+        is_background_only_role_profile(
+            Counter(
+                {
+                    "Engineer [Multi-channel Master Eq, Balance, Preparation]": 1,
+                    "Mastered By": 1,
+                }
+            )
+        )
+        is False
+    )
+
+
 def test_is_background_only_role_profile_sees_beyond_the_five_entry_display_cap() -> None:
     """Real gap caught in review (round 4): `role_text_examples` is capped
     to the five most frequent role strings. A contributor with 5+ frequent
