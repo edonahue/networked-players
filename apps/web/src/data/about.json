@@ -6,7 +6,7 @@
     {
       "heading": "The idea",
       "paragraphs": [
-        "Every release credits the people who played, produced, engineered, arranged, or sang on it. Networked Players treats those credits as a graph: two artists are connected when they're credited on the same release or track, and a path between two artists is a chain of those connections.",
+        "Release credits document who played, produced, engineered, arranged, or sang on a record. Networked Players treats those credits as a graph: two artists are connected when they're credited on the same release or track, and a path between two artists is a chain of those connections.",
         "The point is the evidence. Every hop in a path keeps its proof attached — the release, the role text, the credit scope — so you can see exactly why two artists are linked."
       ]
     },
