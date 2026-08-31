@@ -28,7 +28,13 @@ export interface Contributor {
   role_text_examples: string[];
   /** Canonical catalog album ids whose documented path/route this
    * contributor's credits help establish -- not a claim these are "their"
-   * albums (see the contract doc's frontend-copy rule). */
+   * albums (see the contract doc's frontend-copy rule). See
+   * `data/albumHopDistances.ts` for the companion artifact carrying each
+   * entry's hop_distance (ADR 0048 addendum) -- deliberately a separate
+   * artifact, not a field here: this index is runtime-fetched by
+   * already-loaded client JS, and its contract is validated as an exact
+   * key set, so neither an element-type change nor a new required key is
+   * safe to make in place. */
   albums: string[];
   decade_activity: number[];
   connection_count: number;

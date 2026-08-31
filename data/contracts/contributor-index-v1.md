@@ -64,4 +64,7 @@ If a future exploration-graph tier (Slice D) or Connect Two Records (Slice F)
 needs contributor data beyond what `challenge.v2.json`/`routes/*.json` cover,
 extend the two source artifacts first, or add a clearly-named `v2` index with
 its own version namespace — never silently widen `contributor-index-v1` to
-depend on the private one-hop corpus.
+depend on the private one-hop corpus. This is the same discipline that
+produced `data/contracts/album-hop-distances-v1.md` (ADR 0048 addendum): a
+new field's data belongs in a new companion artifact, never grafted onto
+this exact-key-set contract in place.

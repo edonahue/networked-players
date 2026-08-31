@@ -11,6 +11,7 @@ from typing import Any
 from networked_players_contracts import public_artifacts_failures
 from networked_players_contracts.album_art import album_art_version
 from networked_players_contracts.album_credit_membership import album_credit_membership_version
+from networked_players_contracts.album_hop_distances import album_hop_distances_version
 from networked_players_contracts.canonical import content_hash, stable_id_digest
 from networked_players_contracts.catalog import _catalog_version
 from networked_players_contracts.connection_rounds import round_content_fingerprint
@@ -427,6 +428,28 @@ def _contributor_index() -> dict[str, Any]:
     }
 
 
+# --- album-hop-distances (ADR 0048 addendum) ----------------------------------
+
+
+def _album_hop_distances() -> dict[str, Any]:
+    catalog_version = _catalog()["catalog_version"]
+    entries = [
+        {"artist_id": 100, "album_id": "master-1", "hop_distance": 0},
+        {"artist_id": 100, "album_id": "master-2", "hop_distance": 1},
+        {"artist_id": 200, "album_id": "master-2", "hop_distance": 0},
+        {"artist_id": 200, "album_id": "master-1", "hop_distance": 1},
+    ]
+    return {
+        "schema_version": 1,
+        "catalog_version": catalog_version,
+        "album_hop_distances_version": album_hop_distances_version(entries, _SNAPSHOT),
+        "generated_at": "2026-08-03T00:00:00+00:00",
+        "source": "Derived from challenge.v2.json and routes/rounds.v1.json.",
+        "license": "See docs/DATA_AND_RIGHTS.md.",
+        "entries": entries,
+    }
+
+
 # --- pathfinding graph -------------------------------------------------------
 
 
@@ -568,6 +591,7 @@ def _clean_artifacts() -> dict[str, Any]:
         "routes_rounds": routes_rounds,
         "challenge": _challenge(),
         "contributor_index": _contributor_index(),
+        "album_hop_distances": _album_hop_distances(),
         "pathfinding_graph_v2": _pathfinding_graph_v2(),
         "album_credit_membership": _album_credit_membership(),
         "evidence_release_registry": _evidence_release_registry(),
@@ -584,6 +608,7 @@ def test_clean_publication_set_has_no_failures() -> None:
         "record_routes": [],
         "challenge": [],
         "contributor_index": [],
+        "album_hop_distances": [],
         "pathfinding_graph_v2": [],
         "album_credit_membership": [],
         "evidence_release_registry": [],
@@ -600,6 +625,7 @@ def test_every_group_key_always_present() -> None:
         "record_routes",
         "challenge",
         "contributor_index",
+        "album_hop_distances",
         "pathfinding_graph_v2",
         "album_credit_membership",
         "evidence_release_registry",
@@ -674,6 +700,19 @@ def test_contributor_index_defect_is_caught_independently() -> None:
     assert report["catalog"] == []
     assert report["challenge"] == []
     assert report["record_routes"] == []
+
+
+def test_album_hop_distances_defect_is_caught_independently() -> None:
+    artifacts = _clean_artifacts()
+    broken = deepcopy(artifacts["album_hop_distances"])
+    broken["entries"][0]["hop_distance"] = -1
+    artifacts["album_hop_distances"] = broken
+
+    report = public_artifacts_failures(**artifacts)
+    assert report["album_hop_distances"] != []
+    assert report["catalog"] == []
+    assert report["challenge"] == []
+    assert report["contributor_index"] == []
 
 
 def test_pathfinding_graph_v2_defect_is_caught_independently() -> None:

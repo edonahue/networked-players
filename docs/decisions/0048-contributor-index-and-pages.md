@@ -134,3 +134,75 @@ See `data/contracts/contributor-index-v1.md` (updated) and
 `packages/graph-core/tests/test_contributor_index.py`'s
 `test_decade_activity_derived_from_the_contributors_own_evidence_release_years`
 (a real year-mismatch fixture asserting the fix).
+
+## Addendum: a new companion artifact, `album-hop-distances-v1`
+
+Real production data surfaced the gap this addendum closes: Jamiroquai's
+contributor page listed Pink Floyd's *The Dark Side Of The Moon* as a
+"documented connection," even though Jamiroquai's own nearest credit is two
+hops away (a mastering credit shared with an engineer who separately
+mastered an unrelated later Pink Floyd release). This ADR's own Consequences
+section already defended the underlying design — `albums` correctly means
+"endpoint albums this contributor's credits help establish a path to," not
+"albums this contributor appears on" — but the page gave a reader no way to
+tell a direct credit from a distant one, so a two-hop chain read as a direct
+tie to an artist's best-known record.
+
+The fix keeps the multi-hop attribution (still correct, still valuable) and
+makes the distance visible, without touching `contributor-index-v1`'s
+existing contract at all. Two review rounds on the PR that introduced this
+addendum converged on that constraint from two different directions:
+
+1. **`albums[]` must keep its plain string-id shape.** This artifact is
+   runtime-`fetch()`'d, not just build-time imported: `explorerStage.ts`,
+   `connect.ts`, and `contributorsDirectory.ts` all fetch this exact
+   unhashed `/data/contributors/index.v1.json` URL from already-loaded
+   client JS, so an open browser tab from before a deploy could fetch a
+   freshly-published index after it. Changing `albums`'s element type from
+   a string to an object would silently break that already-loaded old JS.
+2. **No new required key on `contributors[]` either**, even an additive
+   one. `contributor_index_failures` validates every contributor's key set
+   as an *exact* match against a fixed set — the same discipline every
+   artifact contract in this package uses. A new required key would reject
+   every already-published v1 file under old validator code, and would
+   itself be rejected by any external consumer pinned to the documented v1
+   key list: a real breaking change hiding behind an unchanged
+   `schema_version`, independent of the client-compatibility question above.
+
+Both findings point at the same resolution: hop-distance data belongs in a
+**separate, independently versioned artifact**, the same pattern ADR 0058's
+evidence-release-registry already established alongside
+`contributor-index-v1`. `apps/web/public/data/contributors/
+album-hop-distances.v1.json` (`data/contracts/album-hop-distances-v1.md`,
+built by `build_album_hop_distances` in the same
+`contributor_index.py` module, validated by
+`networked_players_contracts.album_hop_distances::album_hop_distances_failures`)
+carries `{artist_id, album_id, hop_distance}` triples, sorted by
+`(artist_id, hop_distance, album_id)`, cross-validated against both the
+canonical catalog and the companion contributor index's own published
+`artist_id`s. `contributor-index-v1` itself — schema, key set, version hash —
+is completely unchanged by this addendum.
+
+`hop_distance` is the minimum number of documented credit-hops from an
+artist's nearest occurrence in any path/round to that endpoint album. `0`
+means the artist is directly adjacent to that album's representative artist
+(the common case); any value greater than zero — including `1` — means a
+real but more distant documented chain, not a direct credit on that album's
+own release (a second review finding: an earlier draft only flagged
+`hop_distance > 1`, leaving `1`-hop connections rendered identically to
+direct ones).
+
+`apps/web/src/pages/contributors/[id].astro` joins the two artifacts by
+`artist_id` and renders a short "N documented hop(s) away" note for any
+entry with `hop_distance > 0`; the section heading no longer implies every
+listed album is a direct credit.
+
+See `data/contracts/album-hop-distances-v1.md`,
+`packages/graph-core/tests/test_contributor_index.py`'s hop-distance
+fixtures, `packages/graph-core/tests/test_cli_album_hop_distances.py`, and
+`packages/contracts/tests/test_album_hop_distances_contracts.py` (including
+regression tests for two validator robustness gaps caught in the same
+review: a non-string `album_id` from malformed JSON must be reported as a
+clean contract failure, never crash the validator via an unguarded
+set/dict operation, and a repeated `(artist_id, album_id)` pair must be
+rejected even when the sort check alone would pass).

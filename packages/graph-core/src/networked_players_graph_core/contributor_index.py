@@ -62,6 +62,24 @@ def contributor_index_version(contributors: list[dict[str, Any]], snapshot_date:
     return f"contributor-index-v1-{snapshot_date}-{digest}"
 
 
+def album_hop_distances_version(entries: list[dict[str, Any]], snapshot_date: str) -> str:
+    """Same discipline as `contributor_index_version`: an order-insensitive
+    content hash of a lookup artifact, not a fingerprinted content pool."""
+    identity = sorted(
+        (
+            {
+                "artist_id": e["artist_id"],
+                "album_id": e["album_id"],
+                "hop_distance": e["hop_distance"],
+            }
+            for e in entries
+        ),
+        key=lambda e: (e["artist_id"], e["album_id"]),
+    )
+    digest = content_hash(identity, length=12)
+    return f"album-hop-distances-v1-{snapshot_date}-{digest}"
+
+
 def _credit_role_lookup(releases: list[dict[str, Any]]) -> dict[tuple[Any, int], list[str]]:
     """(release_id, artist_id) -> verbatim role_text values from linked
     credits on that release, in `challenge.v2.json`'s `releases[]` shape."""
@@ -81,6 +99,72 @@ def _credit_role_lookup(releases: list[dict[str, Any]]) -> dict[tuple[Any, int],
 
 def _decade(year: int) -> int:
     return (year // 10) * 10
+
+
+def _compute_album_distances(
+    challenge: dict[str, Any], routes_rounds: dict[str, Any]
+) -> dict[int, dict[str, int]]:
+    """artist_id -> {album_id -> minimum hop_distance}, walking every path/
+    round's hops in order. By construction each path/round is an ordered
+    chain from the from_album's representative artist (hop 0's artist_a) to
+    the to_album's representative artist (the last hop's artist_b), so a
+    participant's position in that chain gives its real distance to each
+    endpoint. Shared by `build_contributor_index` (which only needs the
+    plain album-id set, for `albums[]`) and `build_album_hop_distances`
+    (which needs the full distances) -- ADR 0048 addendum: a companion
+    artifact, not a field grafted onto `contributor-index-v1`, because that
+    exact-key-set contract is validated as an all-or-nothing whole (see the
+    addendum for why a new required key on an unversioned "v1" artifact is a
+    real breaking change, not just a client-compatibility question)."""
+    album_distance_by_artist: dict[int, dict[str, int]] = defaultdict(dict)
+
+    def _record(artist_id: int, album_id: str, distance: int) -> None:
+        existing = album_distance_by_artist[artist_id].get(album_id)
+        if existing is None or distance < existing:
+            album_distance_by_artist[artist_id][album_id] = distance
+
+    def _walk(
+        from_album_id: str,
+        to_album_id: str,
+        artist_a: int,
+        artist_b: int,
+        hop_index: int,
+        hop_count: int,
+    ) -> None:
+        distance_from_from = hop_index
+        distance_from_to = hop_count - 1 - hop_index
+        _record(artist_a, from_album_id, distance_from_from)
+        _record(artist_a, to_album_id, distance_from_to + 1)
+        _record(artist_b, from_album_id, distance_from_from + 1)
+        _record(artist_b, to_album_id, distance_from_to)
+
+    for path in challenge.get("paths", []):
+        hops = path.get("hops", [])
+        hop_count = len(hops)
+        for hop_index, hop in enumerate(hops):
+            _walk(
+                str(path["from_album_id"]),
+                str(path["to_album_id"]),
+                int(hop["artist_a_id"]),
+                int(hop["artist_b_id"]),
+                hop_index,
+                hop_count,
+            )
+
+    for round_ in routes_rounds.get("rounds", []):
+        hops = round_.get("hops", [])
+        hop_count = len(hops)
+        for hop_index, hop in enumerate(hops):
+            _walk(
+                str(round_["from_album_id"]),
+                str(round_["to_album_id"]),
+                int(hop["artist_a_id"]),
+                int(hop["artist_b_id"]),
+                hop_index,
+                hop_count,
+            )
+
+    return album_distance_by_artist
 
 
 def _annotate_interesting_next_step(contributors: list[dict[str, Any]]) -> None:
@@ -180,24 +264,19 @@ def build_contributor_index(
         names.setdefault(int(artist["artist_id"]), str(artist["name"]))
 
     role_texts: dict[int, Counter[str]] = defaultdict(Counter)
-    albums_by_artist: dict[int, set[str]] = defaultdict(set)
+    albums_by_artist = _compute_album_distances(challenge, routes_rounds)
     evidence_by_artist: dict[int, set[tuple[Any, str]]] = defaultdict(set)
     neighbor_counts: dict[int, Counter[int]] = defaultdict(Counter)
 
     challenge_role_lookup = _credit_role_lookup(challenge.get("releases", []))
 
     def record_hop(
-        from_album_id: str,
-        to_album_id: str,
         artist_a: int,
         artist_b: int,
         release_id: Any,
         role_a: str | None,
         role_b: str | None,
     ) -> None:
-        for artist_id in (artist_a, artist_b):
-            albums_by_artist[artist_id].add(from_album_id)
-            albums_by_artist[artist_id].add(to_album_id)
         neighbor_counts[artist_a][artist_b] += 1
         neighbor_counts[artist_b][artist_a] += 1
 
@@ -218,8 +297,6 @@ def build_contributor_index(
     for path in challenge.get("paths", []):
         for hop in path.get("hops", []):
             record_hop(
-                str(path["from_album_id"]),
-                str(path["to_album_id"]),
                 int(hop["artist_a_id"]),
                 int(hop["artist_b_id"]),
                 hop.get("release_id"),
@@ -230,8 +307,6 @@ def build_contributor_index(
     for round_ in routes_rounds.get("rounds", []):
         for hop in round_.get("hops", []):
             record_hop(
-                str(round_["from_album_id"]),
-                str(round_["to_album_id"]),
                 int(hop["artist_a_id"]),
                 int(hop["artist_b_id"]),
                 hop.get("release_id"),
@@ -322,4 +397,75 @@ def build_contributor_index(
             "artifacts above. See docs/DATA_AND_RIGHTS.md."
         ),
         "contributors": contributors,
+    }
+
+
+def build_album_hop_distances(
+    *,
+    challenge: dict[str, Any],
+    routes_rounds: dict[str, Any],
+    catalog: dict[str, Any],
+    generated_at: str,
+) -> dict[str, Any]:
+    """ADR 0048 addendum: a companion artifact to `contributor-index-v1`,
+    deliberately NOT a field on it. `contributor-index-v1`'s contract is
+    validated as an exact key set; adding a new required key would reject
+    every already-published v1 file under old validator code and would be
+    rejected itself by any external consumer that pinned the documented v1
+    key list -- a real breaking change hiding behind an unchanged
+    `schema_version`. This is instead a wholly separate, independently
+    versioned artifact (same pattern as ADR 0058's evidence-release-registry
+    alongside `contributor-index-v1`), so neither file's existing contract
+    ever changes shape.
+
+    Same inclusion rule as `build_contributor_index`: only contributors both
+    nameable and associated with at least one album. Raises `ValueError` on
+    a `catalog_version` mismatch, the same rule every other artifact here
+    enforces."""
+    catalog_version = catalog["catalog_version"]
+    snapshot_date = catalog["snapshot_date"]
+
+    for label, artifact in (("challenge", challenge), ("routes_rounds", routes_rounds)):
+        artifact_catalog_version = artifact.get("provenance", {}).get("catalog_version")
+        if artifact_catalog_version != catalog_version:
+            raise ValueError(
+                f"{label}'s catalog_version {artifact_catalog_version!r} does not match "
+                f"the catalog's catalog_version {catalog_version!r}"
+            )
+
+    names: dict[int, str] = {}
+    for artist in challenge.get("artists", []):
+        names[int(artist["artist_id"])] = str(artist["name"])
+    for artist in routes_rounds.get("artists", []):
+        names.setdefault(int(artist["artist_id"]), str(artist["name"]))
+
+    album_distance_by_artist = _compute_album_distances(challenge, routes_rounds)
+    all_artist_ids = sorted(set(album_distance_by_artist) & set(names))
+
+    entries: list[dict[str, Any]] = [
+        {"artist_id": artist_id, "album_id": album_id, "hop_distance": distance}
+        for artist_id in all_artist_ids
+        for album_id, distance in sorted(
+            album_distance_by_artist[artist_id].items(),
+            key=lambda item: (item[1], item[0]),
+        )
+    ]
+
+    version = album_hop_distances_version(entries, snapshot_date)
+
+    return {
+        "schema_version": 1,
+        "catalog_version": catalog_version,
+        "album_hop_distances_version": version,
+        "generated_at": generated_at,
+        "source": (
+            "Derived from apps/web/public/data/challenge.v2.json and "
+            "apps/web/public/data/routes/rounds.v1.json -- companion artifact to "
+            "contributor-index-v1 (ADR 0048 addendum), never a fresh full-corpus query."
+        ),
+        "license": (
+            "Derived from the Discogs monthly CC0 data dumps via the two published "
+            "artifacts above. See docs/DATA_AND_RIGHTS.md."
+        ),
+        "entries": entries,
     }

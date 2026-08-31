@@ -13,9 +13,13 @@ interface Props {
    * (ADR 0067) passes false for the handful of albums with no documented
    * connection yet. */
   connected?: boolean;
+  /** A short, honest annotation rendered as a tag -- e.g. hop-distance
+   * context ("2 documented hops away"). Always traceable to a real field on
+   * the caller's own data, never invented copy. */
+  note?: string;
 }
 
-const { album, hrefBase = "/albums/", connected = true } = Astro.props;
+const { album, hrefBase = "/albums/", connected = true, note } = Astro.props;
 // Presentation art comes from the album-art registry (ADR 0045), never from
 // frozen artifact fields; fall back to any legacy embedded cover, then to the
 // polished placeholder.
@@ -64,4 +68,5 @@ const cover = coverFor(album.id) ?? album.cover_image;
       <span class="tag tag--unconnected">No documented path yet</span>
     )
   }
+  {note && <span class="tag tag--unconnected">{note}</span>}
 </a>

@@ -4,16 +4,20 @@ import AlbumCard from '../../components/AlbumCard.astro';
 import EvidencePanel from '../../components/EvidencePanel.astro';
 import { buildHopViews } from '../../data/evidence';
 import { ROLE_CATEGORY_LABEL, type Contributor, type ContributorIndex } from '../../data/contributors';
+import { albumHopDistancesByArtist, type AlbumHopDistances } from '../../data/albumHopDistances';
 import { coverFor } from '../../data/albumArt';
 import type { AlbumV2, ChallengeV2 } from '../../data/challenge';
 import type { RoutesRounds } from '../../game/routesTypes';
 import contributorIndexData from '../../../public/data/contributors/index.v1.json';
+import albumHopDistancesData from '../../../public/data/contributors/album-hop-distances.v1.json';
 import challengeData from '../../../public/data/challenge.v2.json';
 import routesRoundsData from '../../../public/data/routes/rounds.v1.json';
 
 const contributorIndex = contributorIndexData as ContributorIndex;
+const albumHopDistances = albumHopDistancesData as AlbumHopDistances;
 const challenge = challengeData as ChallengeV2;
 const routesRounds = routesRoundsData as RoutesRounds;
+const hopDistancesByArtist = albumHopDistancesByArtist(albumHopDistances);
 
 export function getStaticPaths() {
   const index = contributorIndexData as ContributorIndex;
@@ -33,6 +37,17 @@ const albumById = new Map(challenge.albums.map((a) => [a.id, a]));
 const albums = contributor.albums
   .map((id) => albumById.get(id))
   .filter((a): a is AlbumV2 => Boolean(a));
+// The companion album-hop-distances artifact (ADR 0048 addendum) carries
+// the same album-id set as `albums` above, enriched with hop_distance and
+// already sorted by (hop_distance, album_id) within this artist's own
+// entries -- no extra sort needed here, same convention
+// neighboring_contributor_ids uses.
+const albumEntries = (hopDistancesByArtist.get(contributor.artist_id) ?? [])
+  .map((entry) => {
+    const album = albumById.get(entry.album_id);
+    return album ? { album, hopDistance: entry.hop_distance } : null;
+  })
+  .filter((e): e is { album: AlbumV2; hopDistance: number } => Boolean(e));
 
 const contributorById = new Map(
   contributorIndex.contributors.map((c) => [c.artist_id, c]),
@@ -197,13 +212,24 @@ const description = `Documented credits and connections for ${contributor.name} 
     }
 
     {
-      albums.length > 0 && (
+      albumEntries.length > 0 && (
         <section aria-label="Connected albums" style="margin-top:28px">
           <p class="eyebrow" style="margin-bottom:10px">
-            Albums whose documented connection involves this contributor
+            Albums connected through this contributor's documented credits
           </p>
           <div class="album-grid">
-            {albums.map((album) => <AlbumCard album={album} />)}
+            {
+              albumEntries.map(({ album, hopDistance }) => (
+                <AlbumCard
+                  album={album}
+                  note={
+                    hopDistance > 0
+                      ? `${hopDistance} documented hop${hopDistance === 1 ? "" : "s"} away`
+                      : undefined
+                  }
+                />
+              ))
+            }
           </div>
         </section>
       )

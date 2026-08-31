@@ -35,12 +35,16 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 # `_artifact_validators()`/`_DEFAULT_ARTIFACTS` -- deliberately an explicit
 # table, not a naming-convention guess, since the two sides don't share one
 # spelling convention (e.g. "connection_guesser" here is "connection-rounds"
-# there). "challenge" is the one real public artifact group with NO
-# per-artifact Pi check by design (docs/OPERATOR_SETUP.md's reference
-# table: validated only via `validate-public-artifacts`/`make check`,
-# since it's a one-shot static artifact with no independent `artifact_
-# version` to re-verify in isolation) -- deliberately absent from this map,
-# not a gap this test should flag.
+# there). "challenge" and "album_hop_distances" are the real public artifact
+# groups with NO per-artifact Pi check by design (docs/OPERATOR_SETUP.md's
+# reference table: validated only via `validate-public-artifacts`/
+# `make check`) -- "challenge" since it's a one-shot static artifact with no
+# independent `artifact_version` to re-verify in isolation, and
+# "album_hop_distances" (ADR 0048 addendum) since it's a small, cheap,
+# purely-derived companion to `contributor_index` with no independent
+# operational need yet for a distributed re-check separate from that
+# artifact's own -- deliberately absent from this map, not a gap this test
+# should flag.
 _VALIDATOR_NAME_BY_ARTIFACT_GROUP = {
     "catalog": "catalog",
     "album_art_registry": "album-art",
@@ -52,7 +56,7 @@ _VALIDATOR_NAME_BY_ARTIFACT_GROUP = {
     "album_credit_membership": "album-credit-membership",
     "evidence_release_registry": "evidence-release-registry",
 }
-_ARTIFACT_GROUPS_WITHOUT_A_PI_CHECK = frozenset({"challenge"})
+_ARTIFACT_GROUPS_WITHOUT_A_PI_CHECK = frozenset({"challenge", "album_hop_distances"})
 
 
 def test_every_public_artifact_group_is_accounted_for() -> None:
