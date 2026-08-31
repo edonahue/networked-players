@@ -146,6 +146,29 @@ def test_is_background_engineering_role_bracket_qualifier_containing_a_comma() -
     )
 
 
+def test_is_background_engineering_role_allows_a_non_substantive_companion() -> None:
+    """Real gap caught in review (round 9), reproduced against the exact
+    cited real committed credit -- release 35780023, artist 520370 (Stephen
+    Marsh): "Mastered By [Mastering], Lacquer Cut By [Lacquer Cutting]".
+    "Lacquer Cut By" is a real, non-substantive packaging/business
+    companion to the background "Mastered By [Mastering]" component, not a
+    genuinely substantive one like "Producer" or "Engineer" -- it must not
+    negate the background verdict for the whole credit, even though it
+    isn't ITSELF one of the three narrow background tokens."""
+    assert (
+        is_background_engineering_role("Mastered By [Mastering], Lacquer Cut By [Lacquer Cutting]")
+        is True
+    )
+    # A genuinely substantive companion (Producer/Engineer) still
+    # disqualifies the whole credit -- this isn't a blanket "any
+    # background component wins" rule.
+    assert is_background_engineering_role("Mastered By, Engineer") is False
+    assert is_background_engineering_role("Producer, Lacquer Cut By") is False
+    # A packaging-only credit with no background component at all still
+    # doesn't qualify -- nothing to background.
+    assert is_background_engineering_role("Lacquer Cut By") is False
+
+
 def test_is_background_only_role_profile() -> None:
     """The full-vocabulary companion to `is_background_engineering_role` --
     published as background-only-profiles-v1 (ADR 0048/0060 addendum),
@@ -187,6 +210,21 @@ def test_is_background_only_role_profile_real_committed_data_regressions() -> No
             Counter({"Mixed By": 5, "Recorded By, Engineer": 3, "Engineer": 2})
         )
         is False
+    )
+    # Stephen Marsh (artist 520370, round-9 finding): one credit combines a
+    # background component with a non-substantive packaging/business
+    # companion ("Lacquer Cut By") on the same release; his only other
+    # observed role is plain "Mastered By" -- still background-only.
+    assert (
+        is_background_only_role_profile(
+            Counter(
+                {
+                    "Mastered By [Mastering], Lacquer Cut By [Lacquer Cutting]": 2,
+                    "Mastered By": 1,
+                }
+            )
+        )
+        is True
     )
 
 

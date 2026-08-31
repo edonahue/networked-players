@@ -136,6 +136,29 @@ test.describe("isBackgroundEngineeringRole", () => {
       ),
     ).toBe(true);
   });
+
+  // Real gap caught in review (round 9), reproduced against the exact
+  // cited real committed credit -- release 35780023, artist 520370
+  // (Stephen Marsh): "Mastered By [Mastering], Lacquer Cut By [Lacquer
+  // Cutting]". "Lacquer Cut By" is a non-substantive packaging/business
+  // companion to the background "Mastered By [Mastering]" component, not
+  // a genuinely substantive one like "Producer"/"Engineer" -- it must not
+  // negate the background verdict, even though it isn't itself one of the
+  // three narrow background tokens.
+  test("allows a non-substantive packaging/business companion component", () => {
+    expect(
+      isBackgroundEngineeringRole(
+        "Mastered By [Mastering], Lacquer Cut By [Lacquer Cutting]",
+      ),
+    ).toBe(true);
+    // A genuinely substantive companion still disqualifies the whole
+    // credit -- not a blanket "any background component wins" rule.
+    expect(isBackgroundEngineeringRole("Mastered By, Engineer")).toBe(false);
+    expect(isBackgroundEngineeringRole("Producer, Lacquer Cut By")).toBe(false);
+    // Packaging-only, no background component at all -- nothing to
+    // background.
+    expect(isBackgroundEngineeringRole("Lacquer Cut By")).toBe(false);
+  });
 });
 
 // isBackgroundOnlyRoleProfile (the client-side inference from

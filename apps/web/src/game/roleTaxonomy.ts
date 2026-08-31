@@ -192,14 +192,39 @@ function matchesAnyComponent(roleText: string, tokens: Set<string>): boolean {
 // background-engineering-specific change.
 const ROLE_COMPONENT_SPLIT = /,\s*(?![^[]*\])/;
 
-function matchesEveryComponentBracketAware(
+/** True when at least one bracket-aware component of `roleText` is in
+ * `backgroundTokens`, and every OTHER component is non-substantive -- not
+ * classified as PRODUCTION/ENGINEERING (minus the background set itself)
+ * or a PERFORMER token. This file deliberately isn't a full RoleCategory
+ * port (see the file header), so "non-substantive" here means "doesn't
+ * match any substantive category this file already tracks" rather than a
+ * dedicated PACKAGING_BUSINESS/UNKNOWN classification -- the same
+ * practical effect role_taxonomy.py's `_classify_component` achieves via
+ * its fuller taxonomy, since a real packaging/business token (e.g.
+ * "Lacquer Cut By") and a genuinely unrecognized one both fall through to
+ * "non-substantive" here exactly as they do there. A genuinely
+ * substantive companion (Producer, Engineer, any performer role) still
+ * disqualifies the whole credit. */
+function matchesBackgroundOrNonSubstantive(
   roleText: string,
-  tokens: Set<string>,
+  backgroundTokens: Set<string>,
 ): boolean {
   if (!roleText) return false;
-  return roleText
-    .split(ROLE_COMPONENT_SPLIT)
-    .every((component) => tokens.has(normalizeComponent(component)));
+  let sawBackground = false;
+  for (const component of roleText.split(ROLE_COMPONENT_SPLIT)) {
+    const normalized = normalizeComponent(component);
+    if (backgroundTokens.has(normalized)) {
+      sawBackground = true;
+      continue;
+    }
+    if (
+      PERFORMER_TOKENS.has(normalized) ||
+      PRODUCTION_AND_ENGINEERING_TOKENS.has(normalized)
+    ) {
+      return false;
+    }
+  }
+  return sawBackground;
 }
 
 /** True when at least one comma-separated component of `roleText`
@@ -232,16 +257,20 @@ export function isPerformerRole(roleText: string): boolean {
   return matchesAnyComponent(roleText, PERFORMER_TOKENS);
 }
 
-/** True when EVERY comma-separated component of `roleText` is a
- * background-engineering token (Mastered By / Recorded By / Mixed By) --
- * mirrors role_taxonomy.py's `is_background_engineering_role` exactly. A
- * secondary display/ranking signal, never a change to edge eligibility or
- * to `isEngineeringOrProductionRole`'s own Behind-the-Glass gate.
- * `None`/empty is always false, and a mixed credit (e.g. "Producer,
- * Mastered By") is also false -- real creative involvement is present
- * too, so it's never treated as background-only. */
+/** True when at least one comma-separated component of `roleText` is a
+ * background-engineering token (Mastered By / Recorded By / Mixed By) and
+ * every OTHER component is non-substantive -- mirrors role_taxonomy.py's
+ * `is_background_engineering_role` exactly, including its round-9 fix: a
+ * real, non-substantive companion credit like "Lacquer Cut By" alongside
+ * "Mastered By" on the same credit string does not negate the background
+ * verdict, even though it isn't itself one of the three narrow background
+ * tokens. A secondary display/ranking signal, never a change to edge
+ * eligibility or to `isEngineeringOrProductionRole`'s own Behind-the-Glass
+ * gate. `None`/empty is always false, and a genuinely mixed credit (e.g.
+ * "Producer, Mastered By") is also false -- real creative involvement is
+ * present too, so it's never treated as background-only. */
 export function isBackgroundEngineeringRole(roleText: string): boolean {
-  return matchesEveryComponentBracketAware(
+  return matchesBackgroundOrNonSubstantive(
     roleText,
     BACKGROUND_ENGINEERING_TOKENS,
   );

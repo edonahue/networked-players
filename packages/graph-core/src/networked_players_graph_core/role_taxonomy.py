@@ -369,20 +369,36 @@ _ROLE_COMPONENT_SPLIT = re.compile(r",\s*(?![^\[]*\])")
 
 
 def is_background_engineering_role(role_text: str | None) -> bool:
-    """True when EVERY comma-separated component of `role_text` is a
-    background-engineering token (Mastered By / Recorded By / Mixed By) --
-    a secondary display/ranking signal, never a change to `classify_role`'s
-    own ENGINEERING classification or to `graph.py`'s edge eligibility.
-    `None`/empty and any role text with a non-background component are both
-    `False` -- fail-closed, the same default `is_performer_role` uses, so a
-    genuinely mixed credit (e.g. "Producer, Mastered By") is never treated
-    as background-only just because part of it is."""
+    """True when at least one comma-separated component of `role_text` is a
+    background-engineering token (Mastered By / Recorded By / Mixed By) and
+    every OTHER component is non-substantive (PACKAGING_BUSINESS/UNKNOWN via
+    `_classify_component` -- a real, non-substantive companion credit like
+    "Lacquer Cut By" alongside "Mastered By" on the same credit string must
+    not negate the background verdict, even though "Lacquer Cut By" isn't
+    ITSELF one of the three narrow background tokens; a round-9 review
+    finding against real committed data, release 35780023 artist 520370:
+    "Mastered By [Mastering], Lacquer Cut By [Lacquer Cutting]"). A
+    genuinely substantive companion (Producer, Engineer, a performer role,
+    ...) still disqualifies the whole credit -- this is not a blanket "any
+    background component wins" rule, matching the existing pinned "Producer,
+    Mastered By" -> False case. A secondary display/ranking signal, never a
+    change to `classify_role`'s own ENGINEERING classification or to
+    `graph.py`'s edge eligibility. `None`/empty and a role text with no
+    background component at all (nothing to background) are both `False` --
+    fail-closed, the same default `is_performer_role` uses."""
     if not role_text:
         return False
-    return all(
-        re.sub(r"\[.*\]", "", component).strip().lower() in _BACKGROUND_ENGINEERING_TOKENS
-        for component in _ROLE_COMPONENT_SPLIT.split(role_text)
-    )
+    saw_background = False
+    for component in _ROLE_COMPONENT_SPLIT.split(role_text):
+        if re.sub(r"\[.*\]", "", component).strip().lower() in _BACKGROUND_ENGINEERING_TOKENS:
+            saw_background = True
+            continue
+        if _classify_component(component) not in (
+            RoleCategory.PACKAGING_BUSINESS,
+            RoleCategory.UNKNOWN,
+        ):
+            return False
+    return saw_background
 
 
 def is_background_only_role_profile(role_texts: Counter[str]) -> bool:
