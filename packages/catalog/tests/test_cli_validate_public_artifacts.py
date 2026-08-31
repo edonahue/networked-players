@@ -354,7 +354,7 @@ def _contributor_index(catalog: dict[str, Any]) -> dict[str, Any]:
             "name": "Alice",
             "role_categories": ["strings"],
             "role_text_examples": ["Guitar"],
-            "albums": ["master-1"],
+            "albums": [{"album_id": "master-1", "hop_distance": 0}],
             "decade_activity": [1990],
             "connection_count": 0,
             "neighboring_contributor_ids": [],

@@ -653,7 +653,7 @@ test("the homepage features a real contributor, deterministically picked from th
     contributors: Array<{
       artist_id: number;
       name: string;
-      albums: string[];
+      albums: { album_id: string; hop_distance: number }[];
       interesting_next_step: { artist_id: number } | null;
     }>;
   };

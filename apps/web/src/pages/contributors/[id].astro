@@ -30,9 +30,15 @@ interface Props {
 const { contributor } = Astro.props;
 
 const albumById = new Map(challenge.albums.map((a) => [a.id, a]));
-const albums = contributor.albums
-  .map((id) => albumById.get(id))
-  .filter((a): a is AlbumV2 => Boolean(a));
+// Already sorted by (hop_distance, album_id) in the published index -- no
+// extra sort needed here, same convention neighboring_contributor_ids uses.
+const albumEntries = contributor.albums
+  .map((entry) => {
+    const album = albumById.get(entry.album_id);
+    return album ? { album, hopDistance: entry.hop_distance } : null;
+  })
+  .filter((e): e is { album: AlbumV2; hopDistance: number } => Boolean(e));
+const albums = albumEntries.map((e) => e.album);
 
 const contributorById = new Map(
   contributorIndex.contributors.map((c) => [c.artist_id, c]),
@@ -197,13 +203,24 @@ const description = `Documented credits and connections for ${contributor.name} 
     }
 
     {
-      albums.length > 0 && (
+      albumEntries.length > 0 && (
         <section aria-label="Connected albums" style="margin-top:28px">
           <p class="eyebrow" style="margin-bottom:10px">
-            Albums whose documented connection involves this contributor
+            Albums connected through this contributor's documented credits
           </p>
           <div class="album-grid">
-            {albums.map((album) => <AlbumCard album={album} />)}
+            {
+              albumEntries.map(({ album, hopDistance }) => (
+                <AlbumCard
+                  album={album}
+                  note={
+                    hopDistance > 1
+                      ? `${hopDistance} documented hops away`
+                      : undefined
+                  }
+                />
+              ))
+            }
           </div>
         </section>
       )

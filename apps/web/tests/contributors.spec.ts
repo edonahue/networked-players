@@ -10,7 +10,7 @@ interface ContributorLite {
   artist_id: number;
   name: string;
   role_categories: string[];
-  albums: string[];
+  albums: { album_id: string; hop_distance: number }[];
   connection_count: number;
   neighboring_contributor_ids: number[];
   interesting_next_step: { artist_id: number; reason: string } | null;
@@ -100,14 +100,15 @@ test("a contributor page links into the Network Explorer centered on themselves"
   const contributor = await firstContributor(request);
   await page.goto(`/contributors/${contributor.artist_id}/`);
 
+  const centerAlbumId = contributor.albums[0].album_id;
   const exploreLink = page.locator(
-    `a[href='/explore/${contributor.albums[0]}/?center=${contributor.artist_id}']`,
+    `a[href='/explore/${centerAlbumId}/?center=${contributor.artist_id}']`,
   );
   await expect(exploreLink).toBeVisible();
 
   await exploreLink.click();
   await page.waitForURL(
-    `**/explore/${contributor.albums[0]}/?center=${contributor.artist_id}`,
+    `**/explore/${centerAlbumId}/?center=${contributor.artist_id}`,
   );
   await expect(
     page.locator("[data-explorer-nodes] .explorer-node[data-is-center='true']"),
@@ -196,22 +197,22 @@ test("a contributor page offers to connect two of their own records", async ({
     albums: { id: string; title: string }[];
   };
   const albumById = new Map(albums.map((a) => [a.id, a]));
-  const albumA = albumById.get(contributor.albums[0]);
-  const albumB = albumById.get(contributor.albums[1]);
+  const idA = contributor.albums[0].album_id;
+  const idB = contributor.albums[1].album_id;
+  const albumA = albumById.get(idA);
+  const albumB = albumById.get(idB);
   if (!albumA || !albumB)
     throw new Error("connected album missing from challenge.v2.json");
 
   await page.goto(`/contributors/${contributor.artist_id}/`);
   const connectLink = page.locator(
-    `a[href='/play/connect/?a=${contributor.albums[0]}&b=${contributor.albums[1]}']`,
+    `a[href='/play/connect/?a=${idA}&b=${idB}']`,
   );
   await expect(connectLink).toBeVisible();
 
   await connectLink.click();
   await expect(page).toHaveURL(
-    new RegExp(
-      `/play/connect/\\?a=${contributor.albums[0]}&b=${contributor.albums[1]}$`,
-    ),
+    new RegExp(`/play/connect/\\?a=${idA}&b=${idB}$`),
   );
   await expect(page.locator("[data-connect-results]")).toBeVisible({
     timeout: 15000,

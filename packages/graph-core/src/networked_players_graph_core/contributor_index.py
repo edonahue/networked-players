@@ -180,11 +180,24 @@ def build_contributor_index(
         names.setdefault(int(artist["artist_id"]), str(artist["name"]))
 
     role_texts: dict[int, Counter[str]] = defaultdict(Counter)
-    albums_by_artist: dict[int, set[str]] = defaultdict(set)
+    # Minimum hop_distance from each artist's nearest occurrence in a path/
+    # round to each endpoint album -- NOT a set of "albums this artist is
+    # credited on". A middle-of-path bridge artist (e.g. a mastering
+    # engineer two hops from either endpoint) previously got attributed to
+    # BOTH endpoint albums identically to the artists directly adjacent to
+    # them, with no way for a reader to tell a direct credit from a distant
+    # one. hop_distance makes that honest without dropping the (deliberately
+    # kept, ADR 0048) multi-hop attribution itself.
+    album_distance_by_artist: dict[int, dict[str, int]] = defaultdict(dict)
     evidence_by_artist: dict[int, set[tuple[Any, str]]] = defaultdict(set)
     neighbor_counts: dict[int, Counter[int]] = defaultdict(Counter)
 
     challenge_role_lookup = _credit_role_lookup(challenge.get("releases", []))
+
+    def _record_album_distance(artist_id: int, album_id: str, distance: int) -> None:
+        existing = album_distance_by_artist[artist_id].get(album_id)
+        if existing is None or distance < existing:
+            album_distance_by_artist[artist_id][album_id] = distance
 
     def record_hop(
         from_album_id: str,
@@ -194,10 +207,21 @@ def build_contributor_index(
         release_id: Any,
         role_a: str | None,
         role_b: str | None,
+        hop_index: int,
+        hop_count: int,
     ) -> None:
-        for artist_id in (artist_a, artist_b):
-            albums_by_artist[artist_id].add(from_album_id)
-            albums_by_artist[artist_id].add(to_album_id)
+        # By construction each path/round is an ordered chain from the
+        # from_album's representative artist (hop 0's artist_a) to the
+        # to_album's representative artist (the last hop's artist_b), so a
+        # participant's position in that chain gives its real hop_distance
+        # to each endpoint -- not just "0, because they appear somewhere in
+        # this path" as the old set-based attribution effectively assumed.
+        distance_from_from = hop_index
+        distance_from_to = hop_count - 1 - hop_index
+        _record_album_distance(artist_a, from_album_id, distance_from_from)
+        _record_album_distance(artist_a, to_album_id, distance_from_to + 1)
+        _record_album_distance(artist_b, from_album_id, distance_from_from + 1)
+        _record_album_distance(artist_b, to_album_id, distance_from_to)
         neighbor_counts[artist_a][artist_b] += 1
         neighbor_counts[artist_b][artist_a] += 1
 
@@ -216,7 +240,9 @@ def build_contributor_index(
                 evidence_by_artist[artist_id].add((release_id, role_text))
 
     for path in challenge.get("paths", []):
-        for hop in path.get("hops", []):
+        hops = path.get("hops", [])
+        hop_count = len(hops)
+        for hop_index, hop in enumerate(hops):
             record_hop(
                 str(path["from_album_id"]),
                 str(path["to_album_id"]),
@@ -225,10 +251,14 @@ def build_contributor_index(
                 hop.get("release_id"),
                 role_a=None,
                 role_b=None,
+                hop_index=hop_index,
+                hop_count=hop_count,
             )
 
     for round_ in routes_rounds.get("rounds", []):
-        for hop in round_.get("hops", []):
+        hops = round_.get("hops", [])
+        hop_count = len(hops)
+        for hop_index, hop in enumerate(hops):
             record_hop(
                 str(round_["from_album_id"]),
                 str(round_["to_album_id"]),
@@ -237,12 +267,14 @@ def build_contributor_index(
                 hop.get("release_id"),
                 role_a=hop.get("role_a"),
                 role_b=hop.get("role_b"),
+                hop_index=hop_index,
+                hop_count=hop_count,
             )
 
     # Only artists both nameable and associated with at least one album --
     # an artist_id appearing in a hop but absent from every artists[] list
     # would otherwise be unrenderable; skip rather than publish a nameless page.
-    all_artist_ids = sorted(set(albums_by_artist) & set(names))
+    all_artist_ids = sorted(set(album_distance_by_artist) & set(names))
 
     contributors: list[dict[str, Any]] = []
     for artist_id in all_artist_ids:
@@ -262,7 +294,13 @@ def build_contributor_index(
             ]
         ]
 
-        albums = sorted(albums_by_artist[artist_id])
+        albums = sorted(
+            (
+                {"album_id": album_id, "hop_distance": distance}
+                for album_id, distance in album_distance_by_artist[artist_id].items()
+            ),
+            key=lambda entry: (entry["hop_distance"], entry["album_id"]),
+        )
         evidence_release_ids = {
             release_id for release_id, _role_text in evidence_by_artist.get(artist_id, set())
         }

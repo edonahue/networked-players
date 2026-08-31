@@ -38,7 +38,7 @@ The public contributor index
 | `name` | string | Canonical PAN name — never an ANV (ADR 0043 Finding 1's lesson). |
 | `role_categories` | array of string | Distinct `role_taxonomy.RoleCategory` values observed across this contributor's credited role text, sorted and deduped. Never empty; `["unknown"]` when nothing classifies. |
 | `role_text_examples` | array of string | Up to 5 distinct verbatim role-text strings actually observed, ranked by frequency — evidence, not a summary. |
-| `albums` | array of string | Canonical catalog album ids (must exist in the catalog) whose documented path or route this contributor's credits help establish — **not** a claim that this is "their" album; frontend copy must say "co-credited on a documented release connecting these albums," never "worked on"/"appears on this album." Sorted, non-empty. |
+| `albums` | array of object | `{album_id, hop_distance}` pairs. `album_id` is a canonical catalog album id (must exist in the catalog) whose documented path or route this contributor's credits help establish — **not** a claim that this is "their" album; frontend copy must say "co-credited on a documented release connecting these albums," never "worked on"/"appears on this album." `hop_distance` is the minimum number of documented credit-hops from this contributor's nearest occurrence in any path/round to that endpoint album (`0` when the contributor is directly adjacent to it) — frontend copy must surface this for `hop_distance > 1` rather than presenting every entry as equally direct (see the ADR 0048 addendum). Sorted by `(hop_distance, album_id)`, non-empty. |
 | `decade_activity` | array of int | Decades (e.g. `1990`) derived from the real release year of this contributor's own evidence releases (via the evidence-release registry, keyed by `evidence[].release_id`), sorted — not the `year` of a connected catalog album, which may differ from the evidence release's own year. |
 | `connection_count` | int | This contributor's degree within the published `challenge.v2.json` + `routes/rounds.v1.json` graph only. |
 | `neighboring_contributor_ids` | array of int | Other contributors directly adjacent via a shared hop, ranked by shared-hop count then id, capped at 20. Every id must itself be a contributor in this same index. |
@@ -49,14 +49,16 @@ The public contributor index
 
 `contributor_index_failures(index, catalog)` checks: exact top-level key set,
 `schema_version == 1`, `catalog_version` agreement with the canonical catalog,
-`contributor_index_version` recomputation, every `albums[]` entry resolving
-against the catalog, every `role_categories` value being a real
-`RoleCategory`, every `neighboring_contributor_ids` entry resolving to another
-contributor in the same index, `interesting_next_step` being either `null` or
-a real neighbor of this same contributor with a non-empty `reason`, no
-duplicate `artist_id`, and a scan for forbidden substrings/inference-implying
-phrases ("worked with", "collaborated with", "influenced" — the same list
-`catalog.py` already enforces).
+`contributor_index_version` recomputation, every `albums[].album_id` entry
+resolving against the catalog and every `albums[].hop_distance` being a
+non-negative integer with the array sorted by `(hop_distance, album_id)`,
+every `role_categories` value being a real `RoleCategory`, every
+`neighboring_contributor_ids` entry resolving to another contributor in the
+same index, `interesting_next_step` being either `null` or a real neighbor of
+this same contributor with a non-empty `reason`, no duplicate `artist_id`, and
+a scan for forbidden substrings/inference-implying phrases ("worked with",
+"collaborated with", "influenced" — the same list `catalog.py` already
+enforces).
 
 ## Revisit trigger
 

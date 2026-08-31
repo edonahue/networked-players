@@ -162,7 +162,10 @@ test("a contributor page has no automated accessibility violations", async ({
 }) => {
   const res = await request.get("/data/contributors/index.v1.json");
   const { contributors } = (await res.json()) as {
-    contributors: { artist_id: number; albums: string[] }[];
+    contributors: {
+      artist_id: number;
+      albums: { album_id: string; hop_distance: number }[];
+    }[];
   };
   const withAlbum = contributors.find((c) => c.albums.length > 0);
   if (!withAlbum) throw new Error("no contributor with an album in the index");

@@ -145,9 +145,87 @@ def test_role_text_from_routes_hop_fields_is_attached() -> None:
 
 
 def test_albums_are_the_endpoints_of_every_path_or_round_the_contributor_appears_in() -> None:
+    # Bob is artist_b of path-1's only hop (master-1 -> master-2), so he is
+    # directly adjacent (hop_distance 0) to master-2, one hop from master-1.
+    # He is also artist_a of the routes round's only hop (master-2 ->
+    # master-3), directly adjacent to master-2 again (min stays 0) and one
+    # hop from master-3. The multi-hop case is covered by
+    # test_hop_distance_reflects_position_in_a_multi_hop_path below.
     index = _build()
     bob = next(c for c in index["contributors"] if c["artist_id"] == 200)
-    assert bob["albums"] == ["master-1", "master-2", "master-3"]
+    assert bob["albums"] == [
+        {"album_id": "master-2", "hop_distance": 0},
+        {"album_id": "master-1", "hop_distance": 1},
+        {"album_id": "master-3", "hop_distance": 1},
+    ]
+
+
+def test_hop_distance_reflects_position_in_a_multi_hop_path() -> None:
+    """A regression guard for the real bug this addendum fixed: a contributor
+    two hops from an endpoint used to be attributed to that endpoint
+    identically to one directly adjacent to it. Mirrors the real Jamiroquai/
+    Pink-Floyd shape (artist -- bridge engineer -- artist), scaled down."""
+    catalog = {
+        "catalog_version": _CATALOG_VERSION,
+        "snapshot_date": _SNAPSHOT,
+        "albums": [
+            {"id": "master-endpoint-a", "title": "A", "artist_id": 1, "year": 1995},
+            {"id": "master-endpoint-b", "title": "B", "artist_id": 3, "year": 1996},
+        ],
+    }
+    challenge = {
+        "schema_version": 2,
+        "provenance": {"catalog_version": _CATALOG_VERSION},
+        "artists": [
+            {"artist_id": 1, "name": "Endpoint Artist"},
+            {"artist_id": 2, "name": "Bridge Engineer"},
+            {"artist_id": 3, "name": "Other Endpoint Artist"},
+        ],
+        "paths": [
+            {
+                "id": "path-1",
+                "from_album_id": "master-endpoint-a",
+                "to_album_id": "master-endpoint-b",
+                "hops": [
+                    {"release_id": 1, "artist_a_id": 1, "artist_b_id": 2},
+                    {"release_id": 2, "artist_a_id": 2, "artist_b_id": 3},
+                ],
+            }
+        ],
+        "releases": [],
+    }
+    index = build_contributor_index(
+        challenge=challenge,
+        routes_universe=_routes_universe(),
+        routes_rounds={
+            "provenance": {"catalog_version": _CATALOG_VERSION},
+            "artists": [],
+            "rounds": [],
+            "releases": [],
+        },
+        catalog=catalog,
+        evidence_release_registry={"release_ids": [], "years": []},
+        generated_at="2026-08-03T00:00:00+00:00",
+    )
+    by_id = {c["artist_id"]: c for c in index["contributors"]}
+
+    # The endpoint-adjacent artist is 0 hops from their own endpoint, 2 hops
+    # from the far one.
+    assert by_id[1]["albums"] == [
+        {"album_id": "master-endpoint-a", "hop_distance": 0},
+        {"album_id": "master-endpoint-b", "hop_distance": 2},
+    ]
+    assert by_id[3]["albums"] == [
+        {"album_id": "master-endpoint-b", "hop_distance": 0},
+        {"album_id": "master-endpoint-a", "hop_distance": 2},
+    ]
+    # The middle bridge artist is 1 hop from BOTH endpoints -- never 0,
+    # even though the old set-based attribution treated every hop
+    # participant as equally direct.
+    assert by_id[2]["albums"] == [
+        {"album_id": "master-endpoint-a", "hop_distance": 1},
+        {"album_id": "master-endpoint-b", "hop_distance": 1},
+    ]
 
 
 def test_decade_activity_derived_from_the_contributors_own_evidence_release_years() -> None:

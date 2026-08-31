@@ -76,6 +76,7 @@ _CONTRIBUTOR_KEYS = frozenset(
     }
 )
 _EVIDENCE_KEYS = frozenset({"release_id", "role_text"})
+_ALBUM_ENTRY_KEYS = frozenset({"album_id", "hop_distance"})
 _INTERESTING_NEXT_STEP_KEYS = frozenset({"artist_id", "reason"})
 
 
@@ -198,13 +199,34 @@ def contributor_index_failures(index: Any, catalog: Any) -> list[str]:
         if not isinstance(albums, list) or not albums:
             failures.append(f"contributors[{i}] albums must be a non-empty array")
         else:
-            for album_id in albums:
+            sort_keys: list[tuple[int, str]] = []
+            for entry in albums:
+                if not isinstance(entry, dict) or set(entry.keys()) != _ALBUM_ENTRY_KEYS:
+                    failures.append(
+                        f"contributors[{i}] albums entry must have keys {_ALBUM_ENTRY_KEYS}"
+                    )
+                    continue
+                album_id = entry.get("album_id")
                 if album_id not in catalog_album_ids:
                     failures.append(
                         f"contributors[{i}] album {album_id!r} is not in the canonical catalog"
                     )
-            if albums != sorted(albums):
-                failures.append(f"contributors[{i}] albums must be sorted")
+                hop_distance = entry.get("hop_distance")
+                if (
+                    not isinstance(hop_distance, int)
+                    or isinstance(hop_distance, bool)
+                    or hop_distance < 0
+                ):
+                    failures.append(
+                        f"contributors[{i}] albums entry hop_distance must be a "
+                        f"non-negative integer"
+                    )
+                else:
+                    sort_keys.append((hop_distance, str(album_id)))
+            if len(sort_keys) == len(albums) and sort_keys != sorted(sort_keys):
+                failures.append(
+                    f"contributors[{i}] albums must be sorted by hop_distance then album_id"
+                )
 
         decades = contributor.get("decade_activity")
         if not isinstance(decades, list):

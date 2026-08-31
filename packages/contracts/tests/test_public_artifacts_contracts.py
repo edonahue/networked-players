@@ -396,7 +396,10 @@ def _contributor_index() -> dict[str, Any]:
             "name": "Alice",
             "role_categories": ["strings"],
             "role_text_examples": ["Guitar"],
-            "albums": ["master-1", "master-2"],
+            "albums": [
+                {"album_id": "master-1", "hop_distance": 0},
+                {"album_id": "master-2", "hop_distance": 0},
+            ],
             "decade_activity": [1990],
             "connection_count": 1,
             "neighboring_contributor_ids": [200],
@@ -408,7 +411,10 @@ def _contributor_index() -> dict[str, Any]:
             "name": "Bob",
             "role_categories": ["strings"],
             "role_text_examples": ["Bass"],
-            "albums": ["master-1", "master-2"],
+            "albums": [
+                {"album_id": "master-1", "hop_distance": 0},
+                {"album_id": "master-2", "hop_distance": 0},
+            ],
             "decade_activity": [1990],
             "connection_count": 1,
             "neighboring_contributor_ids": [100],
