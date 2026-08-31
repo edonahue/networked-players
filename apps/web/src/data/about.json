@@ -28,7 +28,7 @@
       "heading": "Data and rights",
       "paragraphs": [
         "Publishable catalog facts derive from CC0 Discogs monthly data dumps, always carried with provenance: snapshot date, source URL, parser and schema versions, and the original role text.",
-        "Private collection membership is never published, and raw API responses stay on the coordination host. The demo dataset here is a small, curated subset of Discogs releases, independent of any private collection. Cover art is hotlinked directly from Discogs' own CDN, never downloaded or rehosted; marketplace and pricing data remain out of scope entirely."
+        "Private collection membership is never published, and raw API responses stay on the coordination host. The demo dataset here is fetched from the private seed's release list but curated down to a small subset — deliberately too small a fraction to reconstruct real collection membership. Cover art is hotlinked directly from Discogs' own CDN, never downloaded or rehosted; marketplace and pricing data remain out of scope entirely."
       ]
     },
     {
