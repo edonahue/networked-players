@@ -742,6 +742,24 @@ test.describe("computeRouteFacts / explainRoute", () => {
     expect(lines.some((l) => l.toLowerCase().includes("caveat"))).toBe(false);
   });
 
+  test("explains backgroundHopCount, the newest ranking axis, not just older facts", () => {
+    // Real review finding: RouteFacts's own doc comment says explainRoute
+    // must explain the SAME facts compareRanked ranks by, so a route
+    // could win a tie specifically because of backgroundHopCount while
+    // the rendered text stayed silent about it.
+    const allBackground = explainRoute(
+      facts({ hopCount: 2, performerHopCount: 0, backgroundHopCount: 2 }),
+      false,
+    );
+    expect(
+      allBackground.some((l) => l.toLowerCase().includes("mastering")),
+    ).toBe(true);
+    const noBackground = explainRoute(facts({ backgroundHopCount: 0 }), false);
+    expect(
+      noBackground.some((l) => l.toLowerCase().includes("mastering")),
+    ).toBe(true);
+  });
+
   test("names the +1-hop exception only when it was actually used", () => {
     const withoutPlusOne = explainRoute(facts({}), false);
     const withPlusOne = explainRoute(facts({}), true);
