@@ -760,6 +760,23 @@ test.describe("computeRouteFacts / explainRoute", () => {
     ).toBe(true);
   });
 
+  // Real gap caught in review (round 12): backgroundHopCount uses the
+  // same either-side convention performerHopCount does (RouteFacts's own
+  // doc comment), so a single hop with a real performer on one side and a
+  // background-engineering credit on the other (e.g. real committed
+  // Guitar / Mastered By) increments BOTH counters. The round-6 wording
+  // said such a hop was "connected only by a mastering/mixing/recording
+  // credit" -- factually wrong and self-contradicting right next to the
+  // performer line above it, which correctly says a real performer
+  // bridges that same hop.
+  test("never claims a hop is connected ONLY by background work when it also bridges a performer", () => {
+    const lines = explainRoute(
+      facts({ hopCount: 1, performerHopCount: 1, backgroundHopCount: 1 }),
+      false,
+    );
+    expect(lines.some((l) => /\bonly\b/i.test(l))).toBe(false);
+  });
+
   test("names the +1-hop exception only when it was actually used", () => {
     const withoutPlusOne = explainRoute(facts({}), false);
     const withPlusOne = explainRoute(facts({}), true);

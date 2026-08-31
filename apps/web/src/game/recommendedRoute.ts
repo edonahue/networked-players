@@ -702,8 +702,8 @@ export function explainRoute(
 
   lines.push(
     facts.backgroundHopCount === 0
-      ? "no hop is connected only by a mastering/mixing/recording credit"
-      : `${facts.backgroundHopCount} of ${facts.hopCount} hop${facts.hopCount === 1 ? "" : "s"} connected only by a mastering/mixing/recording credit`,
+      ? "no hop includes a mastering/mixing/recording credit"
+      : `${facts.backgroundHopCount} of ${facts.hopCount} hop${facts.hopCount === 1 ? "" : "s"} include a mastering/mixing/recording credit`,
   );
 
   lines.push(
