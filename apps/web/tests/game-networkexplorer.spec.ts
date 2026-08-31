@@ -75,11 +75,19 @@ test("the explorer centers on the album's artist and shows a bounded neighborhoo
   await expect(center).toHaveCount(1);
 });
 
-test("a high-degree center shows the truncation note", async ({ page }) => {
+// A real gap this session's copy pass fixed: the truncation note used to
+// say only "Showing the most-connected neighbors only" with no numbers,
+// even though networkExplorer.ts's own doc comment always promised
+// "showing 24 of 61" phrasing -- that promised copy was never actually
+// written. Asserting the real numbers here (not just visibility) is what
+// proves the fix, not just the note's existence.
+test("a high-degree center shows the truncation note with real numbers", async ({
+  page,
+}) => {
   await page.goto("/explore/master-107325/");
-  await expect(page.locator("[data-explorer-truncated]")).toBeVisible({
-    timeout: 15000,
-  });
+  const note = page.locator("[data-explorer-truncated]");
+  await expect(note).toBeVisible({ timeout: 15000 });
+  await expect(note).toHaveText(/^Showing 24 of \d+ documented connections\.$/);
 });
 
 // docs/SITE_REPROFILE_METHOD.md's own documented gap ("worker parse time:
@@ -478,10 +486,10 @@ test("an unreachable pathfinding graph shows a terminal error, not a blank graph
 
   await expect(page.locator("[data-explorer-status]")).toBeVisible();
   await expect(page.locator("[data-explorer-status]")).toContainText(
-    /couldn't load the network graph/i,
+    /could not load the network graph/i,
   );
   await expect(page.locator("[data-explorer-status-assertive]")).toContainText(
-    /couldn't load the network graph/i,
+    /could not load the network graph/i,
   );
   await expect(page.locator("[data-testid='explorer-stage']")).toHaveAttribute(
     "data-phase",

@@ -16,6 +16,7 @@
 // name the resolver failed to verify.
 
 import { fetchAlbumArt, type ResolvedArt } from "./albumArt";
+import { fetchFailureMessage } from "./domUtils";
 import { createRng } from "./prng";
 import { wireRadioTray } from "./radioGroup";
 import {
@@ -51,9 +52,9 @@ type RouteFailureReason = Extract<RouteValidation, { ok: false }>["reason"];
 function poolIntegrityMessage(reason: PoolFailureReason): string {
   switch (reason) {
     case "malformed-pool":
-      return "Could not load the route pool right now — try refreshing the page.";
+      return fetchFailureMessage("the route pool");
     case "wrong-mode":
-      return "The fetched route pool isn't the Record Routes contract — try refreshing the page.";
+      return "The fetched route pool doesn't match this page — try refreshing the page.";
     case "version-mismatch":
       return "The route pool's two files don't agree with each other — try refreshing the page.";
     case "empty-pool":
@@ -133,9 +134,7 @@ export async function initRoutes(): Promise<void> {
       fetchJson("/data/routes/rounds.v1.json"),
     ]);
   } catch {
-    showRoutesError(
-      "Could not load the route pool right now — try refreshing the page.",
-    );
+    showRoutesError(fetchFailureMessage("the route pool"));
     return;
   }
 

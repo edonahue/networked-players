@@ -375,11 +375,20 @@ type PrimaryRoute = {
   usedEdgeKeys: Set<string>;
 };
 
-/** "1 hop documented" / "3 hops documented" -- always rendered, for every
- * outcome (ranked, degraded, role-filtered, alternate), unlike the "why
- * this route" disclosure which only exists for a genuinely ranked result. */
+const HOP_COUNT_WORDS = ["one", "two", "three", "four"];
+
+/** "One hop documented" / "Three hops documented" -- always rendered, for
+ * every outcome (ranked, degraded, role-filtered, alternate), unlike the
+ * "why this route" disclosure which only exists for a genuinely ranked
+ * result. Spelled out, not numerals, matching Record Routes' own chip
+ * labels ("One hop" / "Two hops") for the identical concept -- every
+ * search here is bounded to at most 4 hops, so the word list stays short;
+ * an out-of-range count (shouldn't happen) falls back to the numeral
+ * rather than guessing at a word. */
 function routeLengthText(hopCount: number): string {
-  return `${hopCount} hop${hopCount === 1 ? "" : "s"} documented`;
+  const word = HOP_COUNT_WORDS[hopCount - 1] ?? String(hopCount);
+  const capitalized = word.charAt(0).toUpperCase() + word.slice(1);
+  return `${capitalized} hop${hopCount === 1 ? "" : "s"} documented`;
 }
 
 const CONNECT_MODE_OPTION_SELECTOR = "[data-connect-mode-option]";

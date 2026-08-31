@@ -5,8 +5,9 @@
 
 import { buildArchiveDays, type ArchiveDay } from "./dailyArchive";
 import { fetchDailyManifest } from "./dailyManifest";
+import { fetchFailureMessage } from "./domUtils";
 import { localIsoDate } from "./localDate";
-import { ratingGlyph } from "./scoring";
+import { ratingGlyph, ratingLabel } from "./scoring";
 import { load, type StorageLike } from "./store";
 
 function storage(): StorageLike | null {
@@ -20,7 +21,7 @@ function storage(): StorageLike | null {
 function dayLabel(day: ArchiveDay): string {
   if (day.status === "future") return "Not yet scheduled to play";
   if (day.status === "unplayed") return "Not played";
-  return day.rating ? `Played — ${day.rating.replace("_", " ")}` : "Played";
+  return day.rating ? `Played — ${ratingLabel(day.rating)}` : "Played";
 }
 
 function dayGlyph(day: ArchiveDay): string {
@@ -67,8 +68,7 @@ export async function initDailyArchive(): Promise<void> {
     manifest = await fetchDailyManifest();
   } catch {
     statusEl.hidden = false;
-    statusEl.textContent =
-      "Couldn't load the daily schedule right now. Try refreshing the page.";
+    statusEl.textContent = fetchFailureMessage("the daily schedule");
     return;
   }
 

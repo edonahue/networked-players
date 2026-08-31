@@ -48,3 +48,19 @@ export function ratingGlyph(rating: Rating): string {
       return "○";
   }
 }
+
+/** Short display label for a `Rating` (e.g. the daily archive's "Played —
+ * clean solve") -- the single source of truth for turning the enum into
+ * words, so no caller falls back to swapping an underscore for a space
+ * and rendering the raw internal value ("with_clues" -> "with clues" by
+ * accident of spelling, not by design). */
+export function ratingLabel(rating: Rating): string {
+  switch (rating) {
+    case "clean":
+      return "clean solve";
+    case "with_clues":
+      return "with clues";
+    case "revealed":
+      return "revealed";
+  }
+}

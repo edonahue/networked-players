@@ -92,9 +92,10 @@ test("a real search finds a real contributor by name in the committed index", as
   page,
 }) => {
   await page.goto("/contributors/");
-  await expect(page.locator("[data-contributors-status]")).toBeHidden({
-    timeout: 15000,
-  });
+  await expect(page.locator("[data-contributors-status]")).toHaveText(
+    /^Showing \d+ of \d+ contributors\.$/,
+    { timeout: 15000 },
+  );
   await expect(page.locator("[data-contributors-heading]")).toHaveText(
     "Most connected",
   );
@@ -109,15 +110,21 @@ test("a real search finds a real contributor by name in the committed index", as
   const results = page.locator("[data-contributors-results] .contributor-card");
   await expect(results.first()).toBeVisible();
   await expect(results.first()).toContainText("Eno");
+  // The count must update with the filter, not stay stuck at the
+  // unfiltered total.
+  await expect(page.locator("[data-contributors-status]")).toHaveText(
+    /^Showing \d+ of \d+ contributors\.$/,
+  );
 });
 
 test("a role-category chip filters real results and can be toggled off", async ({
   page,
 }) => {
   await page.goto("/contributors/");
-  await expect(page.locator("[data-contributors-status]")).toBeHidden({
-    timeout: 15000,
-  });
+  await expect(page.locator("[data-contributors-status]")).toHaveText(
+    /^Showing \d+ of \d+ contributors\.$/,
+    { timeout: 15000 },
+  );
 
   const chip = page.locator('[data-contributors-category="vocals"]');
   await chip.click();
@@ -141,7 +148,9 @@ test("a search with no real matches shows an empty results grid and an honest me
 }) => {
   await page.goto("/contributors/");
   const status = page.locator("[data-contributors-status]");
-  await expect(status).toBeHidden({ timeout: 15000 });
+  await expect(status).toHaveText(/^Showing \d+ of \d+ contributors\.$/, {
+    timeout: 15000,
+  });
   await page
     .locator("[data-contributors-search]")
     .fill("zzz-no-real-contributor-matches-this-xyz");
@@ -154,10 +163,10 @@ test("a search with no real matches shows an empty results grid and an honest me
   await expect(status).toBeVisible();
   await expect(status).toHaveText("No contributors match your search.");
 
-  // Clearing the search must restore the hidden status and the "Most
-  // connected" default view, not leave the empty-state message stuck.
+  // Clearing the search must restore the visible unfiltered count, not
+  // leave the empty-state message stuck.
   await page.locator("[data-contributors-search]").fill("");
-  await expect(status).toBeHidden();
+  await expect(status).toHaveText(/^Showing \d+ of \d+ contributors\.$/);
 });
 
 test("the contributors directory is reachable from the site footer", async ({

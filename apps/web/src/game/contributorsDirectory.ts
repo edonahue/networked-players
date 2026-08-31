@@ -6,7 +6,11 @@
 // here -- that needs the private one-hop corpus, not the published index.
 
 import { ROLE_CATEGORY_LABEL, type Contributor } from "../data/contributors";
-import { escapeHtml, sessionStorageOrNull } from "./domUtils";
+import {
+  escapeHtml,
+  fetchFailureMessage,
+  sessionStorageOrNull,
+} from "./domUtils";
 import type { StorageLike } from "./store";
 
 export interface DirectoryContributor {
@@ -189,13 +193,11 @@ export async function initContributorsDirectory(): Promise<void> {
   if ("error" in result) {
     statusEl.textContent =
       result.error === "fetch-failed"
-        ? "Couldn't load the contributors directory. Try reloading the page."
+        ? fetchFailureMessage("the contributors directory")
         : "The contributors directory looked corrupted. Try reloading the page.";
     return;
   }
   const contributors = result.contributors;
-  statusEl.hidden = true;
-  statusEl.textContent = "";
 
   const render = () => {
     const query = searchInput.value;
@@ -211,16 +213,16 @@ export async function initContributorsDirectory(): Promise<void> {
     const results = searchContributors(contributors, query, activeCategories);
     renderResults(resultsEl, results);
     // Reuses the same status live region the initial loading/error states
-    // use -- Albums' and Connect's own search surfaces both announce a
-    // "no results" message this way; this directory's grid used to just go
-    // silently blank on zero matches.
-    if (results.length === 0) {
-      statusEl.hidden = false;
-      statusEl.textContent = "No contributors match your search.";
-    } else {
-      statusEl.hidden = true;
-      statusEl.textContent = "";
-    }
+    // use -- Albums' own directory always states a count, on both the
+    // zero-results and the real-results path (a real, previously-missing
+    // consistency gap: this directory used to go silent on every
+    // successful search, the only one of the site's three directories
+    // that never told a screen-reader user how many results came back).
+    statusEl.hidden = false;
+    statusEl.textContent =
+      results.length === 0
+        ? "No contributors match your search."
+        : `Showing ${results.length} of ${contributors.length} contributors.`;
   };
 
   searchInput.addEventListener("input", render);

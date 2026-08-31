@@ -32,6 +32,12 @@ export interface ExplorerView {
   /** True when this center has more real neighbors than `MAX_NEIGHBORS` --
    * shown so the UI can say "showing 24 of 61", never imply completeness. */
   truncated: boolean;
+  /** The real total neighbor count before truncation -- always
+   * `neighbors.length` when `truncated` is false, always the count "showing
+   * 24 of 61" needs when it's true. Exposed unconditionally rather than
+   * only when truncated, so a caller never has to special-case which field
+   * holds the real total. */
+  totalNeighborCount: number;
 }
 
 function roleCategoriesFor(
@@ -127,6 +133,7 @@ export function buildView(
     neighbors,
     edges,
     truncated: candidates.length > maxNeighbors,
+    totalNeighborCount: candidates.length,
   };
 }
 
