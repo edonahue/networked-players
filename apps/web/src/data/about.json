@@ -6,7 +6,7 @@
     {
       "heading": "The idea",
       "paragraphs": [
-        "Recorded music is a dense web of collaboration. The people who play, produce, engineer, arrange, and sing on a release leave a documented trail of credits. Networked Players treats those credits as a graph: two artists are connected when they are credited on the same release or track, and a path between two artists is a chain of those documented connections.",
+        "Every release credits the people who played, produced, engineered, arranged, or sang on it. Networked Players treats those credits as a graph: two artists are connected when they're credited on the same release or track, and a path between two artists is a chain of those connections.",
         "The point is the evidence. Every hop in a path keeps its proof attached — the release, the role text, the credit scope — so you can see exactly why two artists are linked."
       ]
     },
@@ -19,23 +19,23 @@
     {
       "heading": "Where the project actually is",
       "paragraphs": [
-        "The album grid and evidence-viewer experience run on real, Discogs monthly-dump-derived data (snapshot 20260601) — {{studioAlbumCount}} studio albums, {{artistCount}} artists, {{documentedConnectionCount}} documented connections, drawn from a bounded working set seeded by a private collection that is never itself published. Album years are the master's original release year, not a reissue edition date, and the catalog fails closed against live albums, soundtracks, compilations, and other non-studio releases.",
-        "The flagship Connection Guesser game (below) now runs on the same real catalog: {{oneHopRoundCount}} one-hop and {{twoHopRoundCount}} two-hop rounds derived from those {{studioAlbumCount}} studio albums and their documented credits — the synthetic universe survives only as an isolated test fixture, never played. Connection of the Day serves one frozen real round per local calendar day from a committed schedule. Record Routes is a third, distinct mode on the same catalog: guess how many documented-credit hops connect two records, and, for two-hop routes, who bridges them.",
-        "The connections demo on this site runs separately, on real Discogs data for a small, curated subset of releases and artist connections — fetched via the Discogs API ahead of the full CC0 dump pipeline (see the project's ADR 0012)."
+        "The album grid and evidence viewer run on Discogs monthly-dump data (snapshot 20260601): {{studioAlbumCount}} studio albums, {{artistCount}} artists, {{documentedConnectionCount}} documented connections, drawn from a bounded working set seeded by a private collection that's never itself published. Album years are the master's original release year, and the catalog excludes live albums, soundtracks, compilations, and other non-studio releases by default.",
+        "The flagship Connection Guesser game (below) runs on the same catalog: {{oneHopRoundCount}} one-hop and {{twoHopRoundCount}} two-hop rounds derived from those {{studioAlbumCount}} studio albums and their credits. (An earlier synthetic round set still exists as a test fixture, but nobody plays it.) Connection of the Day serves one frozen round per local calendar day from a committed schedule. Record Routes is a third mode on the same catalog: guess how many credited hops connect two records, and, for two-hop routes, who bridges them.",
+        "The connections demo on this site runs separately, on a small, curated subset of Discogs releases and artist connections — fetched via the Discogs API ahead of the full CC0 dump pipeline (see the project's ADR 0012)."
       ]
     },
     {
       "heading": "Data and rights",
       "paragraphs": [
         "Publishable catalog facts derive from CC0 Discogs monthly data dumps, always carried with provenance: snapshot date, source URL, parser and schema versions, and the original role text.",
-        "Private collection membership is never published, and raw API responses stay on the coordination host. The demo dataset here is a small, curated subset of real Discogs releases — not a reconstruction of any private collection. Cover art is hotlinked directly from Discogs' own CDN, never downloaded or rehosted; marketplace and pricing data remain out of scope entirely."
+        "Private collection membership is never published, and raw API responses stay on the coordination host. The demo dataset here is a small, curated subset of Discogs releases, independent of any private collection. Cover art is hotlinked directly from Discogs' own CDN, never downloaded or rehosted; marketplace and pricing data remain out of scope entirely."
       ]
     },
     {
       "heading": "What's shipped since Phase 1",
       "paragraphs": [
         "A first-class role taxonomy for credits (producer, engineer, performer, and more, alongside the original role text), a searchable contributors directory that makes the people behind these records as navigable as the albums themselves, and a real record-to-record search — Connect Two Records — over every credited contributor on any two catalog albums, not just their primary artists. Explore adds an open-ended, bounded network view of one album's documented credit neighborhood, and three role-restricted search modes (Behind the Glass, Rhythm Section, Guitar Paths) narrow a search to a specific kind of credit.",
-        "Every one of those surfaces now links directly into the others: an album page opens straight into Connect (pre-filled) or Explore (centered on the album's own artist); a contributor page opens Explore centered on that person specifically; Explore's current center links back to its own contributor page when one exists; and every documented evidence hop, in both Connect and Explore, links each credited name to their own contributor page. The site is one connected graph to move through, not a set of separate pages you start over on."
+        "Every one of those surfaces now links directly into the others: an album page opens straight into Connect (pre-filled) or Explore (centered on the album's own artist); a contributor page opens Explore centered on that person specifically; Explore's current center links back to its own contributor page when one exists; and every documented evidence hop, in both Connect and Explore, links each credited name to their own contributor page. The site stays one connected graph to move through, page to page."
       ]
     },
     {

@@ -310,7 +310,7 @@ test("an album page surfaces nearby records via shared contributors", async ({
   ).toBeVisible();
   // Honest framing, not a similarity claim.
   await expect(nearbySection).toContainText(
-    "Documented through shared contributors",
+    "Connected through shared contributors",
   );
   await expect(nearbySection.locator(".album-card").first()).toBeVisible();
 });
