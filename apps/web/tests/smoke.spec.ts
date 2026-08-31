@@ -532,9 +532,10 @@ test("cohort detail page shows the synthetic notice and reveals a pair", async (
   ).toBeVisible();
   await expect(page.locator(`#${controls}`)).toBeVisible();
   // Plan §12.7: cohort hops render through the shared evidence panel — the
-  // contract ships no per-credit rows, so the quality-flags line stands in.
+  // playable-cohort contract ships no per-credit rows, so the quality-flags
+  // line stands in.
   await expect(page.locator(`#${controls} .hop`).first()).toContainText(
-    "playable-cohort contract",
+    "reviewed as a whole",
   );
 
   await firstReveal.click();

@@ -310,8 +310,7 @@ export async function initRoutes(): Promise<void> {
 
     buildEvidence();
     provenanceNote.textContent =
-      "Real records: derived from the Discogs monthly data dump (CC0). A shared credit " +
-      "documents participation on a recording, nothing more.";
+      "Real records: derived from the Discogs monthly data dump (CC0).";
     provenanceNote.hidden = false;
     nextButton.hidden = false;
     stage.setAttribute("data-phase", "revealed");

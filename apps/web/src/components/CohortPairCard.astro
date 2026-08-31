@@ -48,7 +48,7 @@ const hopViews: PanelHop[] = pair.hops.map((hop, index) => ({
   coverUri: null,
   rows: [],
   nonLinked: [],
-  flagsLine: `Quality: ${flagLabels(hop.quality_flags)}. Per the playable-cohort contract, no per-credit rows ship here — the reviewed connection itself is the claim.`,
+  flagsLine: `Quality: ${flagLabels(hop.quality_flags)}. This connection is reviewed as a whole — individual credit rows aren't shown here.`,
 }));
 ---
 

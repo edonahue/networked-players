@@ -4,7 +4,7 @@
     {
       "cohort_id": "synthetic-example",
       "title": "Synthetic Example Cohort",
-      "description": "A made-up fixture proving the web shell works -- not a real reviewed cohort.",
+      "description": "A made-up example, not a real reviewed cohort.",
       "artifact_path": "/data/cohorts/synthetic-example.playable-v1.json",
       "status": "synthetic"
     }

@@ -1,7 +1,7 @@
 {
   "title": "Networked Players",
   "tagline": "An evidence-first music-credit graph",
-  "description": "Given two artists or releases, Networked Players shows a documented path through credited work — and explains every step. Documented participation, never inferred influence.",
+  "description": "Given two artists or releases, Networked Players finds a documented path through credited work and shows the evidence for every step.",
   "socialImage": "/og.svg",
   "repositoryUrl": "https://github.com/edonahue/networked-players",
   "authorUrl": "https://erichdonahue.com",
@@ -27,7 +27,7 @@
         "kicker": "Evidence, not influence",
         "tone": "teal",
         "title": "Documented credits only",
-        "body": "A shared credit proves documented participation — playing, producing, engineering, singing. It is never read as artistic influence, friendship, or lineage."
+        "body": "A shared credit means two people worked on the same release — nothing about how they got along."
       },
       {
         "kicker": "Provenance",
