@@ -156,7 +156,7 @@ test('"Why this route?" is a real disclosure, closed by default, that reveals th
   await expect(why).toHaveJSProperty("open", true);
   await expect(explanation).toBeVisible();
   await expect(explanation).toContainText(
-    "every hop's evidence is clean — no caveats",
+    "no hop's evidence carries a published caveat",
   );
 });
 

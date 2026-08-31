@@ -668,7 +668,7 @@ export function explainRoute(
     lines.push(
       facts.worstCaveatSeverity > 0
         ? `one hop's evidence comes from ${SEVERITY_LABELS[facts.worstCaveatSeverity] ?? "a caveated release"}`
-        : "every hop's evidence is clean — no caveats",
+        : "no hop's evidence carries a published caveat",
     );
   }
 
