@@ -124,6 +124,26 @@ def test_is_background_engineering_role() -> None:
     assert is_background_engineering_role("") is False
 
 
+def test_is_background_engineering_role_bracket_qualifier_containing_a_comma() -> None:
+    """Real gap caught in review: a real, committed credit -- "Recorded By
+    [Le Mobile, Los Angeles]" -- has a comma INSIDE its bracket qualifier.
+    A naive `role_text.split(",")` before bracket-stripping breaks this
+    into "Recorded By [Le Mobile" and " Los Angeles]", neither of which has
+    a balanced bracket to strip, so neither normalizes to a known token and
+    the credit silently failed to classify as background-engineering (a
+    false negative that let it escape Explorer dimming, route ranking, and
+    contributor-pair filtering)."""
+    assert is_background_engineering_role("Recorded By [Le Mobile, Los Angeles]") is True
+    # Two independently-bracketed components must still split correctly.
+    assert is_background_engineering_role("Guitar [Lead], Bass [Fretless]") is False
+    assert (
+        is_background_engineering_role(
+            "Recorded By [Le Mobile, Los Angeles], Mixed By [Abbey Road, London]"
+        )
+        is True
+    )
+
+
 def test_real_2026_08_04_coverage_additions_classify_correctly() -> None:
     """Tokens added from the real `classify-roles` run against the
     Jamiroquai topic corpus (Phase 3 Slice G follow-up) -- see

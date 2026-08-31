@@ -46,7 +46,11 @@
   --paper-deep: #d8c5a7;
   --ink: #292722;
   --ink-strong: #171611;
-  --muted: #6f665a;
+  --muted: #635b51; /* darkened from #6f665a (4.47:1 against --surface-soft,
+    just under WCAG AA -- a real automated a11y scan caught it on
+    .evidence caption, the first light-theme scan this repo has run) to
+    5.29:1 against the same, same discipline --warm's own comment above
+    already documents */
   --line: rgba(41, 39, 34, 0.18);
   --accent: #3f756e;
   --accent-strong: #285c55;

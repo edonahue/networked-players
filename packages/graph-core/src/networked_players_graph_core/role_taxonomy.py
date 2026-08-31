@@ -349,6 +349,25 @@ def primary_role_category(role_text: str | None) -> RoleCategory:
     return RoleCategory.UNKNOWN
 
 
+#: Splits on a comma only when it's NOT inside a `[...]` qualifier -- a
+#: plain `role_text.split(",")` (the convention `_classify_component`'s
+#: caller `classify_role` uses elsewhere in this module) breaks on a real,
+#: committed credit like "Recorded By [Le Mobile, Los Angeles]", whose
+#: qualifier itself contains a comma: naively splitting first yields
+#: "Recorded By [Le Mobile" and " Los Angeles]", neither of which has a
+#: balanced bracket for the later `re.sub(r"\[.*\]", "", ...)` strip to
+#: remove, so neither normalizes to a known token and the credit silently
+#: fails to classify as background-engineering (a real false negative
+#: caught in review, since this predicate -- unlike `classify_role` -- is
+#: new code with no other established convention to match). Deliberately
+#: scoped to this function only, not the shared `_classify_component`
+#: path `classify_role` and every other caller of it still use, to avoid
+#: widening this fix into `classify_role`'s much broader, already-
+#: published blast radius (every contributor's `role_categories`) as part
+#: of a background-engineering-specific change.
+_ROLE_COMPONENT_SPLIT = re.compile(r",\s*(?![^\[]*\])")
+
+
 def is_background_engineering_role(role_text: str | None) -> bool:
     """True when EVERY comma-separated component of `role_text` is a
     background-engineering token (Mastered By / Recorded By / Mixed By) --
@@ -362,7 +381,7 @@ def is_background_engineering_role(role_text: str | None) -> bool:
         return False
     return all(
         re.sub(r"\[.*\]", "", component).strip().lower() in _BACKGROUND_ENGINEERING_TOKENS
-        for component in role_text.split(",")
+        for component in _ROLE_COMPONENT_SPLIT.split(role_text)
     )
 
 

@@ -540,10 +540,12 @@ a.contributor-card:focus-visible {
    own credited work is entirely background-engineering). Scoped to
    __name only -- NOT __id, which already renders in var(--muted); a real
    automated a11y scan caught that a blanket card-level opacity compounds
-   with that already-reduced contrast to fail WCAG AA (see
-   .album-card--muted's own comment for the measured numbers). */
+   with that already-reduced contrast to fail WCAG AA, and a second
+   review round caught that 0.6 on __name alone still fails WCAG AA in
+   the light theme specifically (~4.02:1, needs 4.5:1) -- see
+   .album-card--muted's own comment for the measured numbers behind 0.7. */
 .contributor-card--muted .contributor-card__name {
-  opacity: 0.6;
+  opacity: 0.7;
 }
 a.contributor-card--muted:hover .contributor-card__name,
 a.contributor-card--muted:focus-visible .contributor-card__name {

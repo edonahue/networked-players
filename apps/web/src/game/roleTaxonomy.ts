@@ -177,10 +177,28 @@ function matchesAnyComponent(roleText: string, tokens: Set<string>): boolean {
     .some((component) => tokens.has(normalizeComponent(component)));
 }
 
-function matchesEveryComponent(roleText: string, tokens: Set<string>): boolean {
+// Splits on a comma only when it's NOT inside a `[...]` qualifier -- a
+// plain `roleText.split(",")` (what matchesAnyComponent above uses,
+// matching role_taxonomy.py's own classify_role convention)
+// breaks on a real, committed credit like "Recorded By [Le Mobile, Los
+// Angeles]", whose qualifier itself contains a comma: naively splitting
+// first yields "Recorded By [Le Mobile" and " Los Angeles]", neither of
+// which has a balanced bracket for normalizeComponent's strip to remove,
+// so neither normalizes to a known token (a real false negative caught in
+// review). Deliberately scoped to isBackgroundEngineeringRole only, not
+// the matchesAnyComponent path every other predicate in this file still
+// uses, mirroring role_taxonomy.py's own choice not to widen this fix
+// into classify_role's much broader blast radius as part of a
+// background-engineering-specific change.
+const ROLE_COMPONENT_SPLIT = /,\s*(?![^[]*\])/;
+
+function matchesEveryComponentBracketAware(
+  roleText: string,
+  tokens: Set<string>,
+): boolean {
   if (!roleText) return false;
   return roleText
-    .split(",")
+    .split(ROLE_COMPONENT_SPLIT)
     .every((component) => tokens.has(normalizeComponent(component)));
 }
 
@@ -223,7 +241,10 @@ export function isPerformerRole(roleText: string): boolean {
  * Mastered By") is also false -- real creative involvement is present
  * too, so it's never treated as background-only. */
 export function isBackgroundEngineeringRole(roleText: string): boolean {
-  return matchesEveryComponent(roleText, BACKGROUND_ENGINEERING_TOKENS);
+  return matchesEveryComponentBracketAware(
+    roleText,
+    BACKGROUND_ENGINEERING_TOKENS,
+  );
 }
 
 /** `role_categories` values that never, by themselves, indicate a

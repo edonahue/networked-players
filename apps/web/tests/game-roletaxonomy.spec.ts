@@ -116,6 +116,27 @@ test.describe("isBackgroundEngineeringRole", () => {
   test("is fail-closed for empty text", () => {
     expect(isBackgroundEngineeringRole("")).toBe(false);
   });
+
+  // Real gap caught in review: a real, committed credit -- "Recorded By
+  // [Le Mobile, Los Angeles]" -- has a comma INSIDE its bracket qualifier.
+  // A naive roleText.split(",") before bracket-stripping breaks this into
+  // "Recorded By [Le Mobile" and " Los Angeles]", neither of which has a
+  // balanced bracket to strip, so neither normalizes to a known token and
+  // the credit silently failed to classify as background-engineering.
+  test("handles a bracket qualifier that itself contains a comma", () => {
+    expect(
+      isBackgroundEngineeringRole("Recorded By [Le Mobile, Los Angeles]"),
+    ).toBe(true);
+    // Two independently-bracketed components must still split correctly.
+    expect(isBackgroundEngineeringRole("Guitar [Lead], Bass [Fretless]")).toBe(
+      false,
+    );
+    expect(
+      isBackgroundEngineeringRole(
+        "Recorded By [Le Mobile, Los Angeles], Mixed By [Abbey Road, London]",
+      ),
+    ).toBe(true);
+  });
 });
 
 test.describe("isBackgroundOnlyRoleProfile", () => {
