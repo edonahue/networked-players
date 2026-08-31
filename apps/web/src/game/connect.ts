@@ -1174,7 +1174,7 @@ export async function initConnect(): Promise<void> {
       if (!alternate.ok) {
         if (routeLengthAltEl) routeLengthAltEl.textContent = "";
         explainEl.textContent =
-          "No distinct alternate route was found at the same length.";
+          "No distinct alternate route was found within 4 hops.";
         hopsAlternateEl.innerHTML = "";
       } else {
         if (routeLengthAltEl) {
