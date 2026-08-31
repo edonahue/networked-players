@@ -245,7 +245,7 @@ const description = [
                     contributors.map((artist) =>
                       contributorIdsWithPages.has(artist.artist_id) ? (
                         <a
-                          class={`contributor-card${isBackgroundOnlyRoleProfile(contributorById.get(artist.artist_id)?.role_text_examples ?? []) ? " contributor-card--muted" : ""}`}
+                          class={`contributor-card${isBackgroundOnlyRoleProfile(contributorById.get(artist.artist_id)?.role_text_examples ?? [], contributorById.get(artist.artist_id)?.role_categories ?? []) ? " contributor-card--muted" : ""}`}
                           href={`/contributors/${artist.artist_id}/`}
                         >
                           <span class="contributor-card__name">{artist.name}</span>

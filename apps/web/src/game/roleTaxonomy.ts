@@ -226,33 +226,61 @@ export function isBackgroundEngineeringRole(roleText: string): boolean {
   return matchesEveryComponent(roleText, BACKGROUND_ENGINEERING_TOKENS);
 }
 
+/** `role_categories` values that never, by themselves, indicate a
+ * substantive (non-background) credit exists somewhere in a contributor's
+ * profile -- ENGINEERING (what background-engineering credits themselves
+ * classify as) and PACKAGING_BUSINESS (a real mastering engineer's profile
+ * routinely also carries a related-but-distinct token like "Lacquer Cut
+ * By", which classifies here, not as ENGINEERING) plus UNKNOWN (no
+ * evidence either way). Any OTHER category present -- vocals, strings,
+ * production, arrangement, etc. -- means this contributor has done real,
+ * substantive work somewhere, so their profile must never be judged
+ * background-only, even if their single most frequent credit happens to
+ * be a background-engineering one. */
+const NON_SUBSTANTIVE_ROLE_CATEGORIES = new Set([
+  "engineering",
+  "packaging_business",
+  "unknown",
+]);
+
 /** True when a contributor's own MOST FREQUENT credit (`role_text_examples`
  * [0] -- contributors.ts's `Contributor` field is "ranked by frequency,
- * evidence not a summary") is a background-engineering credit. Used to
- * de-emphasize (never hide) a contributor's non-direct album/neighbor
- * connections on the contributor and album detail pages -- reuses the
- * page's own existing "Primarily credited for" signal rather than
- * attempting a fragile per-connection role lookup the available data
+ * evidence not a summary") is a background-engineering credit, AND their
+ * full `role_categories` set contains no substantive (non-background)
+ * category. Used to de-emphasize (never hide) a contributor's non-direct
+ * album/neighbor connections on the contributor and album detail pages --
+ * reuses the page's own existing "Primarily credited for" signal rather
+ * than attempting a fragile per-connection role lookup the available data
  * doesn't cleanly support.
  *
- * Deliberately keys off the single most frequent credit, not "every credit
- * matches": measured against real data, a real mastering engineer's
- * profile routinely mixes "Mastered By" variants with a related-but-
- * distinct token like "Lacquer Cut By" (packaging/business, not
- * background-engineering by this module's narrow token set) -- an
- * ALL-must-match bar would silently exclude exactly the profile this
- * signal exists to catch. An empty array (a contributor with no evidence
- * at all, e.g. a band credited only via release/track-artist billing with
- * no formal role of their own) is always false -- there is nothing to
- * judge as background-only, which is the honest answer for that case too:
- * a shared credit reached through such an artist's OWN billing is not a
+ * Both conditions are load-bearing, caught in review against real
+ * committed data: `role_text_examples[0]` alone is not enough, because a
+ * real contributor (e.g. a singer who also mixed a handful of releases)
+ * can have a background-engineering credit as their single most frequent
+ * one while still carrying genuine substantive connections elsewhere --
+ * the `role_categories` check keeps those contributors' real vocal/
+ * production/etc. connections from being muted. Conversely "every credit
+ * matches" (an earlier draft) is too strict the other way: a real
+ * mastering engineer's profile routinely mixes "Mastered By" variants with
+ * "Lacquer Cut By" (packaging/business), which would fail an ALL-must-
+ * match bar despite being genuinely background-only -- the
+ * `role_categories` allowlist handles that case correctly instead. An
+ * empty `role_text_examples` array (a contributor with no evidence at
+ * all, e.g. a band credited only via release/track-artist billing with no
+ * formal role of their own) is always false -- there is nothing to judge
+ * as background-only, which is the honest answer for that case too: a
+ * shared credit reached through such an artist's OWN billing is not a
  * claim about their own work. */
 export function isBackgroundOnlyRoleProfile(
   roleTextExamples: string[],
+  roleCategories: string[],
 ): boolean {
   return (
     roleTextExamples.length > 0 &&
-    isBackgroundEngineeringRole(roleTextExamples[0])
+    isBackgroundEngineeringRole(roleTextExamples[0]) &&
+    roleCategories.every((category) =>
+      NON_SUBSTANTIVE_ROLE_CATEGORIES.has(category),
+    )
   );
 }
 

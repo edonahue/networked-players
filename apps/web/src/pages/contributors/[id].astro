@@ -39,13 +39,20 @@ const albums = contributor.albums
   .map((id) => albumById.get(id))
   .filter((a): a is AlbumV2 => Boolean(a));
 // True when this contributor's MOST FREQUENT credit (role_text_examples,
-// "Primarily credited for" above) is Mastered By/Recorded By/Mixed By --
-// de-emphasizes their non-direct (hop_distance > 0) album connections
-// below without hiding them, the same visual language Explore's
-// isDimmed() already uses. hop_distance 0 entries are always this
-// contributor's own record, never muted.
+// "Primarily credited for" above) is Mastered By/Recorded By/Mixed By AND
+// their full role_categories carries no substantive (non-background)
+// category -- de-emphasizes their non-direct (hop_distance > 0) album
+// connections below without hiding them, the same visual language
+// Explore's isDimmed() already uses. hop_distance 0 entries are always
+// this contributor's own record, never muted. The role_categories check
+// matters: a contributor whose most frequent credit is background-
+// engineering can still carry a real, substantive connection elsewhere
+// (e.g. a singer who also mixed a handful of releases) -- see
+// isBackgroundOnlyRoleProfile's own doc comment for the real committed
+// data (Julio Iglesias, artist 67331) that caught this in review.
 const isBackgroundOnlyContributor = isBackgroundOnlyRoleProfile(
   contributor.role_text_examples,
+  contributor.role_categories,
 );
 // The companion album-hop-distances artifact (ADR 0048 addendum) carries
 // the same album-id set as `albums` above, enriched with hop_distance and
@@ -283,7 +290,7 @@ const description = `Documented credits and connections for ${contributor.name} 
           <div class="contributor-grid">
             {neighbors.map((neighbor) => (
               <a
-                class={`contributor-card${isBackgroundOnlyRoleProfile(neighbor.role_text_examples) ? " contributor-card--muted" : ""}`}
+                class={`contributor-card${isBackgroundOnlyRoleProfile(neighbor.role_text_examples, neighbor.role_categories) ? " contributor-card--muted" : ""}`}
                 href={`/contributors/${neighbor.artist_id}/`}
               >
                 <span class="contributor-card__name">

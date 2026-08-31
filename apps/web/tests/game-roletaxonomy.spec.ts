@@ -119,35 +119,60 @@ test.describe("isBackgroundEngineeringRole", () => {
 });
 
 test.describe("isBackgroundOnlyRoleProfile", () => {
-  test("true when the most frequent (first) role_text_examples entry is background-engineering", () => {
-    expect(isBackgroundOnlyRoleProfile(["Mastered By"])).toBe(true);
-    expect(isBackgroundOnlyRoleProfile(["Mastered By", "Mixed By"])).toBe(true);
+  test("true when the most frequent entry is background-engineering and role_categories has no substantive category", () => {
+    expect(isBackgroundOnlyRoleProfile(["Mastered By"], ["engineering"])).toBe(
+      true,
+    );
+    expect(
+      isBackgroundOnlyRoleProfile(["Mastered By", "Mixed By"], ["engineering"]),
+    ).toBe(true);
   });
 
   test("false when the most frequent entry is a real substantive role, even if a background credit also appears", () => {
-    expect(isBackgroundOnlyRoleProfile(["Producer", "Mastered By"])).toBe(
+    expect(
+      isBackgroundOnlyRoleProfile(
+        ["Producer", "Mastered By"],
+        ["production", "engineering"],
+      ),
+    ).toBe(false);
+    expect(isBackgroundOnlyRoleProfile(["Producer"], ["production"])).toBe(
       false,
     );
-    expect(isBackgroundOnlyRoleProfile(["Producer"])).toBe(false);
   });
 
   // Real gap this test guards: a mastering engineer's real profile
   // routinely mixes "Mastered By" variants with a related-but-distinct
-  // token like "Lacquer Cut By" -- an ALL-must-match rule would miss this
-  // real case entirely, since the most frequent credit is still the
-  // background one.
-  test("true when the most frequent entry is background-engineering even alongside an unrelated non-background credit later in the list", () => {
+  // token like "Lacquer Cut By" (packaging_business) -- an ALL-must-match
+  // rule on role_text_examples would miss this real case entirely, since
+  // the most frequent credit is still the background one and
+  // packaging_business is deliberately non-substantive here too.
+  test("true when the most frequent entry is background-engineering even alongside a non-background packaging/business credit", () => {
     expect(
-      isBackgroundOnlyRoleProfile([
-        "Mastered By",
-        "Lacquer Cut By",
-        "Mastered By [Vinyl]",
-      ]),
+      isBackgroundOnlyRoleProfile(
+        ["Mastered By", "Lacquer Cut By", "Mastered By [Vinyl]"],
+        ["engineering", "packaging_business"],
+      ),
     ).toBe(true);
   });
 
-  test("false for an empty list -- nothing to judge as background-only", () => {
-    expect(isBackgroundOnlyRoleProfile([])).toBe(false);
+  // Real gap caught in review against committed data (Julio Iglesias,
+  // artist 67331): role_text_examples[0] alone is not enough -- a
+  // contributor whose single most frequent credit happens to be
+  // background-engineering can still carry a real substantive connection
+  // (here, real Vocals credits) elsewhere in their profile. Muting on
+  // role_text_examples[0] alone would incorrectly de-emphasize those
+  // genuine vocal connections too.
+  test("false when the most frequent entry is background-engineering but role_categories also carries a substantive category", () => {
+    expect(
+      isBackgroundOnlyRoleProfile(
+        ["Mixed By", "Vocals"],
+        ["engineering", "vocals"],
+      ),
+    ).toBe(false);
+  });
+
+  test("false for an empty role_text_examples list -- nothing to judge as background-only", () => {
+    expect(isBackgroundOnlyRoleProfile([], ["engineering"])).toBe(false);
   });
 });
 
