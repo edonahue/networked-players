@@ -10,7 +10,8 @@ interface ContributorLite {
   artist_id: number;
   name: string;
   role_categories: string[];
-  albums: { album_id: string; hop_distance: number }[];
+  albums: string[];
+  album_hop_distances: { album_id: string; hop_distance: number }[];
   connection_count: number;
   neighboring_contributor_ids: number[];
   interesting_next_step: { artist_id: number; reason: string } | null;
@@ -71,6 +72,55 @@ test("a contributor page renders name, role chips, albums, and evidence", async 
   await expect(page.locator(".evidence-card").first()).toBeVisible();
 });
 
+// Regression guard for a real review finding: an earlier draft only
+// flagged hop_distance > 1, leaving 1-hop connections (a real, if close,
+// chain -- not a direct credit on that album's own release) rendered
+// identically to a direct hop_distance-0 credit. Every non-zero distance,
+// including 1, must carry a visible note.
+test("a contributor page labels a non-direct album connection with its real hop distance", async ({
+  page,
+  request,
+}) => {
+  const res = await request.get("/data/contributors/index.v1.json");
+  const { contributors } = (await res.json()) as {
+    contributors: ContributorLite[];
+  };
+  // Specifically hop_distance === 1, not just "> 0": that exact boundary is
+  // what the reverted-threshold bug missed (a note only appeared for
+  // hop_distance > 1), so a test that accepted any positive distance would
+  // not have caught it.
+  const withIndirectAlbum = contributors.find((c) =>
+    c.album_hop_distances.some((e) => e.hop_distance === 1),
+  );
+  if (!withIndirectAlbum) {
+    throw new Error(
+      "no contributor with a hop_distance === 1 album in the real index",
+    );
+  }
+  const indirect = withIndirectAlbum.album_hop_distances.find(
+    (e) => e.hop_distance === 1,
+  )!;
+
+  await page.goto(`/contributors/${withIndirectAlbum.artist_id}/`);
+  const card = page.locator(
+    `.album-card[data-album-id='${indirect.album_id}']`,
+  );
+  await expect(card).toBeVisible();
+  await expect(card).toContainText(
+    `${indirect.hop_distance} documented hop${indirect.hop_distance === 1 ? "" : "s"} away`,
+  );
+
+  const direct = withIndirectAlbum.album_hop_distances.find(
+    (e) => e.hop_distance === 0,
+  );
+  if (direct) {
+    const directCard = page.locator(
+      `.album-card[data-album-id='${direct.album_id}']`,
+    );
+    await expect(directCard).not.toContainText("documented hop");
+  }
+});
+
 test("an album page links to a contributor page that resolves", async ({
   page,
   request,
@@ -100,7 +150,7 @@ test("a contributor page links into the Network Explorer centered on themselves"
   const contributor = await firstContributor(request);
   await page.goto(`/contributors/${contributor.artist_id}/`);
 
-  const centerAlbumId = contributor.albums[0].album_id;
+  const centerAlbumId = contributor.albums[0];
   const exploreLink = page.locator(
     `a[href='/explore/${centerAlbumId}/?center=${contributor.artist_id}']`,
   );
@@ -197,8 +247,8 @@ test("a contributor page offers to connect two of their own records", async ({
     albums: { id: string; title: string }[];
   };
   const albumById = new Map(albums.map((a) => [a.id, a]));
-  const idA = contributor.albums[0].album_id;
-  const idB = contributor.albums[1].album_id;
+  const idA = contributor.albums[0];
+  const idB = contributor.albums[1];
   const albumA = albumById.get(idA);
   const albumB = albumById.get(idB);
   if (!albumA || !albumB)

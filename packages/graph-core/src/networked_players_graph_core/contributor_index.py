@@ -52,6 +52,7 @@ def contributor_index_version(contributors: list[dict[str, Any]], snapshot_date:
                 "name": c["name"],
                 "role_categories": c["role_categories"],
                 "albums": c["albums"],
+                "album_hop_distances": c["album_hop_distances"],
                 "evidence": c["evidence"],
             }
             for c in contributors
@@ -294,7 +295,17 @@ def build_contributor_index(
             ]
         ]
 
-        albums = sorted(
+        # `albums` keeps its original shape (a plain sorted id list) --
+        # unchanged content, since album_distance_by_artist's keys are the
+        # exact same set the old set-based albums_by_artist tracked. This
+        # matters for real backward compatibility, not just internal
+        # tidiness: explorerStage.ts, connect.ts, and contributorsDirectory.ts
+        # all runtime-fetch this exact unhashed URL, so an old, already-
+        # loaded browser tab's JS could fetch a freshly-deployed index after
+        # this PR ships. hop_distance ships as an additive new field instead
+        # of changing albums[]'s element type.
+        albums = sorted(album_distance_by_artist[artist_id])
+        album_hop_distances = sorted(
             (
                 {"album_id": album_id, "hop_distance": distance}
                 for album_id, distance in album_distance_by_artist[artist_id].items()
@@ -333,6 +344,7 @@ def build_contributor_index(
                 "role_categories": sorted(c.value for c in role_categories),
                 "role_text_examples": role_text_examples,
                 "albums": albums,
+                "album_hop_distances": album_hop_distances,
                 "decade_activity": decades,
                 "connection_count": len(neighbors),
                 "neighboring_contributor_ids": neighboring_contributor_ids,

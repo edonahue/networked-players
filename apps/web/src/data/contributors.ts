@@ -24,8 +24,11 @@ export interface InterestingNextStep {
 /** ADR 0048 addendum: `hop_distance` is the minimum number of documented
  * credit-hops from this contributor's nearest occurrence in any path/round
  * to this endpoint album -- `0` means directly adjacent, not "0 because they
- * appear somewhere in the path". Frontend copy must surface this for
- * `hop_distance > 1` rather than presenting every entry as equally direct. */
+ * appear somewhere in the path". Frontend copy must surface this whenever
+ * `hop_distance !== 0` rather than presenting every entry as equally direct
+ * (hop_distance 1 is a real, if close, chain -- not the endpoint's own
+ * credit). Additive alongside `albums` -- see that field's own comment for
+ * why the plain id-list shape is kept rather than replaced. */
 export interface ContributorAlbumEntry {
   album_id: string;
   hop_distance: number;
@@ -36,11 +39,18 @@ export interface Contributor {
   name: string;
   role_categories: string[];
   role_text_examples: string[];
-  /** Canonical catalog album ids (with hop_distance) whose documented
-   * path/route this contributor's credits help establish -- not a claim
-   * these are "their" albums (see the contract doc's frontend-copy rule).
-   * Sorted by (hop_distance, album_id). */
-  albums: ContributorAlbumEntry[];
+  /** Canonical catalog album ids whose documented path/route this
+   * contributor's credits help establish -- not a claim these are "their"
+   * albums (see the contract doc's frontend-copy rule). Kept as a plain
+   * string list (not enriched with hop_distance) for real backward
+   * compatibility: explorerStage.ts/connect.ts/contributorsDirectory.ts
+   * runtime-fetch this exact unhashed URL, so an already-loaded browser tab
+   * could hit a freshly-deployed index. See `album_hop_distances` for the
+   * richer, additive shape. */
+  albums: string[];
+  /** Same album-id set as `albums`, enriched with hop_distance -- see that
+   * interface's own doc comment. Sorted by (hop_distance, album_id). */
+  album_hop_distances: ContributorAlbumEntry[];
   decade_activity: number[];
   connection_count: number;
   neighboring_contributor_ids: number[];

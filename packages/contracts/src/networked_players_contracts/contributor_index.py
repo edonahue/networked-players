@@ -68,6 +68,7 @@ _CONTRIBUTOR_KEYS = frozenset(
         "role_categories",
         "role_text_examples",
         "albums",
+        "album_hop_distances",
         "decade_activity",
         "connection_count",
         "neighboring_contributor_ids",
@@ -92,6 +93,7 @@ def contributor_index_version(contributors: list[dict[str, Any]], snapshot_date:
                 "name": c.get("name"),
                 "role_categories": c.get("role_categories"),
                 "albums": c.get("albums"),
+                "album_hop_distances": c.get("album_hop_distances"),
                 "evidence": c.get("evidence"),
             }
             for c in contributors
@@ -199,14 +201,34 @@ def contributor_index_failures(index: Any, catalog: Any) -> list[str]:
         if not isinstance(albums, list) or not albums:
             failures.append(f"contributors[{i}] albums must be a non-empty array")
         else:
+            for album_id in albums:
+                if album_id not in catalog_album_ids:
+                    failures.append(
+                        f"contributors[{i}] album {album_id!r} is not in the canonical catalog"
+                    )
+            if albums != sorted(albums):
+                failures.append(f"contributors[{i}] albums must be sorted")
+
+        # ADR 0048 addendum: additive alongside `albums` (never replacing its
+        # plain string-id shape -- explorerStage.ts/connect.ts/
+        # contributorsDirectory.ts runtime-fetch this exact unhashed URL, so
+        # changing albums[]'s element type would be a real breaking change
+        # for an already-loaded browser tab).
+        album_hop_distances = contributor.get("album_hop_distances")
+        if not isinstance(album_hop_distances, list) or not album_hop_distances:
+            failures.append(f"contributors[{i}] album_hop_distances must be a non-empty array")
+        else:
             sort_keys: list[tuple[int, str]] = []
-            for entry in albums:
+            entry_album_ids: set[Any] = set()
+            for entry in album_hop_distances:
                 if not isinstance(entry, dict) or set(entry.keys()) != _ALBUM_ENTRY_KEYS:
                     failures.append(
-                        f"contributors[{i}] albums entry must have keys {_ALBUM_ENTRY_KEYS}"
+                        f"contributors[{i}] album_hop_distances entry must have keys "
+                        f"{_ALBUM_ENTRY_KEYS}"
                     )
                     continue
                 album_id = entry.get("album_id")
+                entry_album_ids.add(album_id)
                 if album_id not in catalog_album_ids:
                     failures.append(
                         f"contributors[{i}] album {album_id!r} is not in the canonical catalog"
@@ -218,14 +240,19 @@ def contributor_index_failures(index: Any, catalog: Any) -> list[str]:
                     or hop_distance < 0
                 ):
                     failures.append(
-                        f"contributors[{i}] albums entry hop_distance must be a "
+                        f"contributors[{i}] album_hop_distances entry hop_distance must be a "
                         f"non-negative integer"
                     )
                 else:
                     sort_keys.append((hop_distance, str(album_id)))
-            if len(sort_keys) == len(albums) and sort_keys != sorted(sort_keys):
+            if len(sort_keys) == len(album_hop_distances) and sort_keys != sorted(sort_keys):
                 failures.append(
-                    f"contributors[{i}] albums must be sorted by hop_distance then album_id"
+                    f"contributors[{i}] album_hop_distances must be sorted by hop_distance "
+                    f"then album_id"
+                )
+            if isinstance(albums, list) and entry_album_ids and entry_album_ids != set(albums):
+                failures.append(
+                    f"contributors[{i}] album_hop_distances album ids must match albums exactly"
                 )
 
         decades = contributor.get("decade_activity")

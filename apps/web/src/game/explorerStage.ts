@@ -497,7 +497,7 @@ export async function initExplorerStage(): Promise<void> {
 
     infoEmptyEl!.hidden = view.neighbors.length > 0;
 
-    const centerAlbumId = centerContributor?.albums[0]?.album_id;
+    const centerAlbumId = centerContributor?.albums[0];
     infoLinksEl!.innerHTML = centerAlbumId
       ? `<a href="/albums/${centerAlbumId}/">View ${escapeHtml(view.center.name)}'s record →</a>` +
         ` · <a href="/play/connect/?a=${centerAlbumId}">Continue in Connect Two Records →</a>`

@@ -48,7 +48,8 @@ def _contributors() -> list[dict[str, Any]]:
             "name": "Alice",
             "role_categories": ["strings"],
             "role_text_examples": ["Guitar"],
-            "albums": [
+            "albums": ["master-1", "master-2"],
+            "album_hop_distances": [
                 {"album_id": "master-1", "hop_distance": 0},
                 {"album_id": "master-2", "hop_distance": 0},
             ],
@@ -63,7 +64,8 @@ def _contributors() -> list[dict[str, Any]]:
             "name": "Bob",
             "role_categories": ["strings"],
             "role_text_examples": ["Bass"],
-            "albums": [
+            "albums": ["master-1", "master-2"],
+            "album_hop_distances": [
                 {"album_id": "master-1", "hop_distance": 0},
                 {"album_id": "master-2", "hop_distance": 0},
             ],
@@ -122,33 +124,51 @@ def test_unknown_role_category_is_rejected() -> None:
 
 def test_album_not_in_catalog_is_rejected() -> None:
     index = deepcopy(_index())
-    index["contributors"][0]["albums"] = [{"album_id": "master-999", "hop_distance": 0}]
+    index["contributors"][0]["albums"] = ["master-999"]
+    failures = contributor_index_failures(index, _catalog())
+    assert any("not in the canonical catalog" in f for f in failures)
+
+
+def test_album_hop_distances_entry_album_not_in_catalog_is_rejected() -> None:
+    index = deepcopy(_index())
+    index["contributors"][0]["album_hop_distances"] = [
+        {"album_id": "master-999", "hop_distance": 0}
+    ]
     failures = contributor_index_failures(index, _catalog())
     assert any("not in the canonical catalog" in f for f in failures)
 
 
 def test_negative_hop_distance_is_rejected() -> None:
     index = deepcopy(_index())
-    index["contributors"][0]["albums"] = [{"album_id": "master-1", "hop_distance": -1}]
+    index["contributors"][0]["album_hop_distances"] = [{"album_id": "master-1", "hop_distance": -1}]
     failures = contributor_index_failures(index, _catalog())
     assert any("hop_distance must be a non-negative integer" in f for f in failures)
 
 
-def test_albums_entry_missing_hop_distance_is_rejected() -> None:
+def test_album_hop_distances_entry_missing_hop_distance_is_rejected() -> None:
     index = deepcopy(_index())
-    index["contributors"][0]["albums"] = [{"album_id": "master-1"}]
+    index["contributors"][0]["album_hop_distances"] = [{"album_id": "master-1"}]
     failures = contributor_index_failures(index, _catalog())
-    assert any("albums entry must have keys" in f for f in failures)
+    assert any("album_hop_distances entry must have keys" in f for f in failures)
 
 
-def test_albums_out_of_order_is_rejected() -> None:
+def test_album_hop_distances_out_of_order_is_rejected() -> None:
     index = deepcopy(_index())
-    index["contributors"][0]["albums"] = [
+    index["contributors"][0]["album_hop_distances"] = [
         {"album_id": "master-2", "hop_distance": 0},
         {"album_id": "master-1", "hop_distance": 0},
     ]
     failures = contributor_index_failures(index, _catalog())
     assert any("must be sorted by hop_distance then album_id" in f for f in failures)
+
+
+def test_album_hop_distances_id_set_mismatched_with_albums_is_rejected() -> None:
+    index = deepcopy(_index())
+    index["contributors"][0]["album_hop_distances"] = [
+        {"album_id": "master-1", "hop_distance": 0},
+    ]
+    failures = contributor_index_failures(index, _catalog())
+    assert any("album_hop_distances album ids must match albums exactly" in f for f in failures)
 
 
 def test_neighbor_id_not_in_this_index_is_rejected() -> None:

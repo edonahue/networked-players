@@ -145,6 +145,12 @@ def test_role_text_from_routes_hop_fields_is_attached() -> None:
 
 
 def test_albums_are_the_endpoints_of_every_path_or_round_the_contributor_appears_in() -> None:
+    index = _build()
+    bob = next(c for c in index["contributors"] if c["artist_id"] == 200)
+    assert bob["albums"] == ["master-1", "master-2", "master-3"]
+
+
+def test_album_hop_distances_is_the_same_album_set_as_albums_enriched_with_distance() -> None:
     # Bob is artist_b of path-1's only hop (master-1 -> master-2), so he is
     # directly adjacent (hop_distance 0) to master-2, one hop from master-1.
     # He is also artist_a of the routes round's only hop (master-2 ->
@@ -153,11 +159,12 @@ def test_albums_are_the_endpoints_of_every_path_or_round_the_contributor_appears
     # test_hop_distance_reflects_position_in_a_multi_hop_path below.
     index = _build()
     bob = next(c for c in index["contributors"] if c["artist_id"] == 200)
-    assert bob["albums"] == [
+    assert bob["album_hop_distances"] == [
         {"album_id": "master-2", "hop_distance": 0},
         {"album_id": "master-1", "hop_distance": 1},
         {"album_id": "master-3", "hop_distance": 1},
     ]
+    assert {e["album_id"] for e in bob["album_hop_distances"]} == set(bob["albums"])
 
 
 def test_hop_distance_reflects_position_in_a_multi_hop_path() -> None:
@@ -211,21 +218,25 @@ def test_hop_distance_reflects_position_in_a_multi_hop_path() -> None:
 
     # The endpoint-adjacent artist is 0 hops from their own endpoint, 2 hops
     # from the far one.
-    assert by_id[1]["albums"] == [
+    assert by_id[1]["album_hop_distances"] == [
         {"album_id": "master-endpoint-a", "hop_distance": 0},
         {"album_id": "master-endpoint-b", "hop_distance": 2},
     ]
-    assert by_id[3]["albums"] == [
+    assert by_id[3]["album_hop_distances"] == [
         {"album_id": "master-endpoint-b", "hop_distance": 0},
         {"album_id": "master-endpoint-a", "hop_distance": 2},
     ]
-    # The middle bridge artist is 1 hop from BOTH endpoints -- never 0,
-    # even though the old set-based attribution treated every hop
-    # participant as equally direct.
-    assert by_id[2]["albums"] == [
+    # The middle bridge artist is 1 hop from BOTH endpoints -- never 0, even
+    # though `albums` (the plain id list) treats every hop participant as
+    # equally present, which is exactly why album_hop_distances exists.
+    assert by_id[2]["album_hop_distances"] == [
         {"album_id": "master-endpoint-a", "hop_distance": 1},
         {"album_id": "master-endpoint-b", "hop_distance": 1},
     ]
+    # `albums` itself is unaffected -- still the plain, unenriched id list.
+    assert by_id[1]["albums"] == ["master-endpoint-a", "master-endpoint-b"]
+    assert by_id[2]["albums"] == ["master-endpoint-a", "master-endpoint-b"]
+    assert by_id[3]["albums"] == ["master-endpoint-a", "master-endpoint-b"]
 
 
 def test_decade_activity_derived_from_the_contributors_own_evidence_release_years() -> None:

@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "catalog_version": "catalog-v1-20260601-7fbbb46b28e6",
-  "contributor_index_version": "contributor-index-v1-20260601-422c35fa8336",
-  "generated_at": "2026-08-31T08:16:12Z",
+  "contributor_index_version": "contributor-index-v1-20260601-f14b5d3dd8ea",
+  "generated_at": "2026-08-31T08:51:00Z",
   "source": "Derived from apps/web/public/data/challenge.v2.json, apps/web/public/data/routes/{universe,rounds}.v1.json, and apps/web/public/data/evidence/release-registry.v1.json (decade_activity only) -- no fresh full-corpus graph query. See docs/DATA_AND_RIGHTS.md.",
   "license": "Derived from the Discogs monthly CC0 data dumps via the three published artifacts above. See docs/DATA_AND_RIGHTS.md.",
   "contributors": [
@@ -18,6 +18,10 @@
         "Synthesizer [Splinter Mini Moog]"
       ],
       "albums": [
+        "master-1561",
+        "master-54449"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-1561",
           "hop_distance": 1
@@ -59,6 +63,13 @@
         "Sounds"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-113224",
+        "master-26647",
+        "master-59538"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-26647",
           "hop_distance": 0
@@ -130,6 +141,18 @@
         "Performer"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-104399",
+        "master-30926",
+        "master-36251",
+        "master-44278",
+        "master-45922",
+        "master-69859",
+        "master-82337",
+        "master-90844"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-36251",
           "hop_distance": 0
@@ -246,6 +269,10 @@
         "Sounds"
       ],
       "albums": [
+        "master-10362",
+        "master-90844"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-90844",
           "hop_distance": 1
@@ -298,6 +325,20 @@
         "Vocals, Guitar"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-122261",
+        "master-19493",
+        "master-35759",
+        "master-40048",
+        "master-52671",
+        "master-52998",
+        "master-54449",
+        "master-5460",
+        "master-59538",
+        "master-87446"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-52671",
           "hop_distance": 0
@@ -429,6 +470,10 @@
         "Vocoder, Synth, Drum Machine"
       ],
       "albums": [
+        "master-10362",
+        "master-54449"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-54449",
           "hop_distance": 1
@@ -489,6 +534,15 @@
         "Producer, Bass"
       ],
       "albums": [
+        "master-10362",
+        "master-1164779",
+        "master-28680",
+        "master-35706",
+        "master-64290",
+        "master-75606",
+        "master-89665"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10362",
           "hop_distance": 1
@@ -582,6 +636,10 @@
         "Design Concept [Concept]"
       ],
       "albums": [
+        "master-10363",
+        "master-18080"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-18080",
           "hop_distance": 1
@@ -622,6 +680,12 @@
         "Producer"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-31755",
+        "master-35706"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-35706",
           "hop_distance": 1
@@ -672,6 +736,11 @@
       ],
       "role_text_examples": [],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-18080"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-18080",
           "hop_distance": 0
@@ -709,6 +778,10 @@
         "Remix"
       ],
       "albums": [
+        "master-10363",
+        "master-31755"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-31755",
           "hop_distance": 1
@@ -766,6 +839,10 @@
         "Beats, Programmed By, Computer [Kyma], Mixed By"
       ],
       "albums": [
+        "master-10363",
+        "master-27460"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-27460",
           "hop_distance": 1
@@ -837,6 +914,10 @@
         "Vocals"
       ],
       "albums": [
+        "master-10362",
+        "master-12236"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-12236",
           "hop_distance": 1
@@ -883,6 +964,16 @@
         "Featuring"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-1164779",
+        "master-151766",
+        "master-16158",
+        "master-30577",
+        "master-45922",
+        "master-57279"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-45922",
           "hop_distance": 0
@@ -981,6 +1072,11 @@
         "Written-By"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-21520"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-21520",
           "hop_distance": 0
@@ -1026,6 +1122,10 @@
         "Composed By, Orchestrated By, Producer"
       ],
       "albums": [
+        "master-10363",
+        "master-34081"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-34081",
           "hop_distance": 1
@@ -1065,6 +1165,12 @@
         "Remix"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-18027",
+        "master-3719"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-3719",
           "hop_distance": 0
@@ -1124,6 +1230,27 @@
         "Electric Piano [Fender Rhodes]"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-104115",
+        "master-104166",
+        "master-113224",
+        "master-1164779",
+        "master-19493",
+        "master-25893",
+        "master-30926",
+        "master-32208",
+        "master-47744",
+        "master-52671",
+        "master-5460",
+        "master-55658",
+        "master-66510",
+        "master-75606",
+        "master-81575",
+        "master-87446",
+        "master-96362"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-19493",
           "hop_distance": 0
@@ -1294,6 +1421,10 @@
         "Concept By"
       ],
       "albums": [
+        "master-10363",
+        "master-20135"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-20135",
           "hop_distance": 1
@@ -1379,6 +1510,16 @@
         "Art Direction"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-1046042",
+        "master-108242",
+        "master-1561",
+        "master-303567",
+        "master-52671",
+        "master-54449"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-54449",
           "hop_distance": 0
@@ -1488,6 +1629,10 @@
         "Executive-Producer"
       ],
       "albums": [
+        "master-10362",
+        "master-8357"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-8357",
           "hop_distance": 0
@@ -1533,6 +1678,10 @@
         "Backing Vocals"
       ],
       "albums": [
+        "master-30712",
+        "master-30926"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-30712",
           "hop_distance": 1
@@ -1571,6 +1720,10 @@
       ],
       "role_text_examples": [],
       "albums": [
+        "master-10362",
+        "master-79393"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-79393",
           "hop_distance": 0
@@ -1607,6 +1760,11 @@
         "Vocals, Timbales, Cabasa"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-24511"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-24511",
           "hop_distance": 1
@@ -1679,6 +1837,10 @@
         "Guitar [Bottleneck], Piano [Tack]"
       ],
       "albums": [
+        "master-10362",
+        "master-66510"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-66510",
           "hop_distance": 1
@@ -1759,6 +1921,14 @@
         "Lyrics By"
       ],
       "albums": [
+        "master-10362",
+        "master-19493",
+        "master-66510",
+        "master-87446",
+        "master-90844",
+        "master-99919"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-66510",
           "hop_distance": 0
@@ -1842,6 +2012,10 @@
         "Performer [Elements From \"Deliverance\"]"
       ],
       "albums": [
+        "master-10362",
+        "master-8357"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-8357",
           "hop_distance": 1
@@ -1887,6 +2061,14 @@
         "Adapted By"
       ],
       "albums": [
+        "master-10362",
+        "master-1561",
+        "master-28680",
+        "master-30577",
+        "master-55576",
+        "master-9382"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-9382",
           "hop_distance": 0
@@ -1984,6 +2166,10 @@
         "Producer, Engineer, Recorded By"
       ],
       "albums": [
+        "master-10362",
+        "master-3211"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10362",
           "hop_distance": 2
@@ -2029,6 +2215,14 @@
         "Choir [All-Star Choir]"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-19493",
+        "master-25893",
+        "master-59538",
+        "master-65826"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-25893",
           "hop_distance": 0
@@ -2128,6 +2322,13 @@
         "Featuring"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-1164779",
+        "master-12236",
+        "master-75606"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-1164779",
           "hop_distance": 1
@@ -2213,6 +2414,10 @@
       ],
       "role_text_examples": [],
       "albums": [
+        "master-10362",
+        "master-64290"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-64290",
           "hop_distance": 0
@@ -2245,6 +2450,10 @@
         "Electric Guitar"
       ],
       "albums": [
+        "master-26725",
+        "master-52998"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-26725",
           "hop_distance": 1
@@ -2285,6 +2494,11 @@
         "Sounds"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-39248"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-39248",
           "hop_distance": 0
@@ -2325,6 +2539,11 @@
       ],
       "role_text_examples": [],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-135633"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-135633",
           "hop_distance": 0
@@ -2363,6 +2582,10 @@
         "Drums, Percussion"
       ],
       "albums": [
+        "master-10363",
+        "master-15841"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-15841",
           "hop_distance": 1
@@ -2411,6 +2634,10 @@
         "Vocals"
       ],
       "albums": [
+        "master-5460",
+        "master-96362"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-5460",
           "hop_distance": 1
@@ -2455,6 +2682,10 @@
         "Keyboards"
       ],
       "albums": [
+        "master-10362",
+        "master-403952"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-403952",
           "hop_distance": 1
@@ -2501,6 +2732,15 @@
         "Producer, Written-By"
       ],
       "albums": [
+        "master-10362",
+        "master-106274",
+        "master-108242",
+        "master-113224",
+        "master-30926",
+        "master-67836",
+        "master-99919"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-67836",
           "hop_distance": 0
@@ -2574,6 +2814,11 @@
       ],
       "role_text_examples": [],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-15841"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-15841",
           "hop_distance": 0
@@ -2612,6 +2857,11 @@
         "Vocals [Additional], Guitar"
       ],
       "albums": [
+        "master-10362",
+        "master-1561",
+        "master-18080"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10362",
           "hop_distance": 1
@@ -2666,6 +2916,10 @@
         "Vocals, Guitar, Bass"
       ],
       "albums": [
+        "master-31337",
+        "master-89665"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-31337",
           "hop_distance": 1
@@ -2707,6 +2961,10 @@
         "Featuring, Vocals"
       ],
       "albums": [
+        "master-60721",
+        "master-82337"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-60721",
           "hop_distance": 1
@@ -2749,6 +3007,10 @@
         "Tenor Saxophone, Flute, Composed By, Alto Flute"
       ],
       "albums": [
+        "master-52671",
+        "master-59538"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-52671",
           "hop_distance": 1
@@ -2800,6 +3062,20 @@
         "Lead Vocals"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-1046042",
+        "master-1561",
+        "master-3762",
+        "master-44278",
+        "master-54449",
+        "master-57940",
+        "master-72879",
+        "master-91767",
+        "master-9382",
+        "master-97173"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-1561",
           "hop_distance": 0
@@ -2936,6 +3212,13 @@
         "Vocals, Guitar, Piano"
       ],
       "albums": [
+        "master-10362",
+        "master-104399",
+        "master-24511",
+        "master-58313",
+        "master-8179"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10362",
           "hop_distance": 1
@@ -3028,6 +3311,10 @@
         "Acoustic Guitar"
       ],
       "albums": [
+        "master-105802",
+        "master-72235"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-105802",
           "hop_distance": 1
@@ -3069,6 +3356,10 @@
         "Backing Vocals [Extra-Singing Clones]"
       ],
       "albums": [
+        "master-10362",
+        "master-15841"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-15841",
           "hop_distance": 1
@@ -3117,6 +3408,11 @@
         "Tenor Saxophone, Soloist"
       ],
       "albums": [
+        "master-10362",
+        "master-32208",
+        "master-35793"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-32208",
           "hop_distance": 1
@@ -3182,6 +3478,15 @@
         "Written-By"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-106396",
+        "master-122261",
+        "master-35759",
+        "master-52671",
+        "master-96362"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-122261",
           "hop_distance": 0
@@ -3262,6 +3567,11 @@
         "Written-By"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-20135"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-20135",
           "hop_distance": 0
@@ -3321,6 +3631,15 @@
         "Producer [Produced By]"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-13280",
+        "master-2452996",
+        "master-31337",
+        "master-36227",
+        "master-51607"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-13280",
           "hop_distance": 0
@@ -3414,6 +3733,14 @@
         "Vocals"
       ],
       "albums": [
+        "master-10362",
+        "master-13960",
+        "master-35401",
+        "master-44278",
+        "master-66631",
+        "master-68399"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-68399",
           "hop_distance": 0
@@ -3482,6 +3809,12 @@
         "Lead Vocals"
       ],
       "albums": [
+        "master-10362",
+        "master-37615",
+        "master-79241",
+        "master-8179"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-37615",
           "hop_distance": 1
@@ -3555,6 +3888,20 @@
         "Vocals, Backing Vocals"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-122261",
+        "master-28680",
+        "master-32708",
+        "master-35759",
+        "master-45720",
+        "master-47744",
+        "master-52497",
+        "master-52671",
+        "master-553",
+        "master-8883"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-35759",
           "hop_distance": 0
@@ -3667,6 +4014,11 @@
         "Written-By"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-25303"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-25303",
           "hop_distance": 0
@@ -3712,6 +4064,16 @@
         "Mixed By, Engineer"
       ],
       "albums": [
+        "master-10363",
+        "master-105802",
+        "master-138283",
+        "master-23069",
+        "master-26037",
+        "master-406634",
+        "master-43063",
+        "master-58313"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-105802",
           "hop_distance": 1
@@ -3819,6 +4181,10 @@
         "Guitar [Tenor], Vocals"
       ],
       "albums": [
+        "master-10363",
+        "master-52497"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-52497",
           "hop_distance": 1
@@ -3899,6 +4265,10 @@
         "Written-By"
       ],
       "albums": [
+        "master-10362",
+        "master-57970"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-57970",
           "hop_distance": 1
@@ -3953,6 +4323,10 @@
         "Keyboards, Programmed By"
       ],
       "albums": [
+        "master-27460",
+        "master-31337"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-27460",
           "hop_distance": 1
@@ -4005,6 +4379,17 @@
         "Guitar"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-1561",
+        "master-17217",
+        "master-36251",
+        "master-44278",
+        "master-57940",
+        "master-68399",
+        "master-69859"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-44278",
           "hop_distance": 0
@@ -4110,6 +4495,11 @@
       ],
       "role_text_examples": [],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-18027"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-18027",
           "hop_distance": 0
@@ -4145,6 +4535,10 @@
         "Vocals"
       ],
       "albums": [
+        "master-10363",
+        "master-21520"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-21520",
           "hop_distance": 1
@@ -4188,6 +4582,16 @@
         "Lead Vocals"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-106396",
+        "master-113224",
+        "master-19493",
+        "master-26647",
+        "master-338175",
+        "master-67836"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-113224",
           "hop_distance": 0
@@ -4278,6 +4682,17 @@
         "Written-By, Vocals, Backing Vocals"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-105802",
+        "master-13280",
+        "master-27460",
+        "master-303567",
+        "master-31337",
+        "master-403952",
+        "master-89665"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-31337",
           "hop_distance": 0
@@ -4384,6 +4799,10 @@
         "Featuring"
       ],
       "albums": [
+        "master-10362",
+        "master-20148"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-20148",
           "hop_distance": 1
@@ -4429,6 +4848,16 @@
         "Keyboards, Backing Vocals"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-106396",
+        "master-113224",
+        "master-122261",
+        "master-30577",
+        "master-30926",
+        "master-8883"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-106396",
           "hop_distance": 0
@@ -4533,6 +4962,15 @@
         "Voice [Breath, Blood And Voice]"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-151766",
+        "master-51607",
+        "master-55576",
+        "master-79666",
+        "master-9382"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-55576",
           "hop_distance": 0
@@ -4620,6 +5058,26 @@
         "Backing Vocals"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-105802",
+        "master-20387",
+        "master-26725",
+        "master-30926",
+        "master-32708",
+        "master-338175",
+        "master-35759",
+        "master-36227",
+        "master-5460",
+        "master-553",
+        "master-68209",
+        "master-69859",
+        "master-74227",
+        "master-87446",
+        "master-92517",
+        "master-96362"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-32708",
           "hop_distance": 0
@@ -4775,6 +5233,10 @@
         "Percussion"
       ],
       "albums": [
+        "master-5460",
+        "master-91767"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-5460",
           "hop_distance": 1
@@ -4819,6 +5281,10 @@
         "Keyboards [All]"
       ],
       "albums": [
+        "master-49227",
+        "master-60721"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-49227",
           "hop_distance": 1
@@ -4859,6 +5325,10 @@
         "Performer"
       ],
       "albums": [
+        "master-10363",
+        "master-51607"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-51607",
           "hop_distance": 1
@@ -4899,6 +5369,13 @@
         "Vocals, Performer"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-27460",
+        "master-30577",
+        "master-31337"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-27460",
           "hop_distance": 0
@@ -4968,6 +5445,14 @@
         "Written-By, Vocals, Backing Vocals"
       ],
       "albums": [
+        "master-10362",
+        "master-106396",
+        "master-13960",
+        "master-35759",
+        "master-8883",
+        "master-89665"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-8883",
           "hop_distance": 0
@@ -5040,6 +5525,10 @@
         "Backing Vocals"
       ],
       "albums": [
+        "master-13280",
+        "master-31337"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-13280",
           "hop_distance": 1
@@ -5087,6 +5576,19 @@
         "Composed By"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-106396",
+        "master-19493",
+        "master-2452996",
+        "master-30712",
+        "master-30926",
+        "master-32708",
+        "master-5460",
+        "master-67836",
+        "master-87446"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-30926",
           "hop_distance": 0
@@ -5197,6 +5699,11 @@
         "Performer [Super Fly], Written-By [Super Fly]"
       ],
       "albums": [
+        "master-10363",
+        "master-25303",
+        "master-57970"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-25303",
           "hop_distance": 1
@@ -5270,6 +5777,27 @@
         "Guitar [Uncredited]"
       ],
       "albums": [
+        "master-10362",
+        "master-104115",
+        "master-30577",
+        "master-32708",
+        "master-35793",
+        "master-36227",
+        "master-36251",
+        "master-37615",
+        "master-3878",
+        "master-40048",
+        "master-44278",
+        "master-45720",
+        "master-49965",
+        "master-553",
+        "master-69859",
+        "master-72879",
+        "master-79241",
+        "master-87446",
+        "master-92517"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-69859",
           "hop_distance": 0
@@ -5431,6 +5959,13 @@
         "Lead Vocals"
       ],
       "albums": [
+        "master-10362",
+        "master-553",
+        "master-60680",
+        "master-69156",
+        "master-99919"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-69156",
           "hop_distance": 0
@@ -5487,6 +6022,11 @@
         "Baritone Saxophone"
       ],
       "albums": [
+        "master-10362",
+        "master-104399",
+        "master-91767"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-104399",
           "hop_distance": 1
@@ -5545,6 +6085,10 @@
         "Producer [Produced By]"
       ],
       "albums": [
+        "master-10362",
+        "master-6495"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-6495",
           "hop_distance": 0
@@ -5600,6 +6144,24 @@
         "Producer, Arranged By, Composed By, Lead Vocals, Performer [Musician], Written-By"
       ],
       "albums": [
+        "master-10362",
+        "master-19493",
+        "master-2452996",
+        "master-30926",
+        "master-32708",
+        "master-338175",
+        "master-40048",
+        "master-51607",
+        "master-52497",
+        "master-52671",
+        "master-60680",
+        "master-66510",
+        "master-68209",
+        "master-69859",
+        "master-87446",
+        "master-91767"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-87446",
           "hop_distance": 0
@@ -5756,6 +6318,14 @@
         "Piano"
       ],
       "albums": [
+        "master-10362",
+        "master-106274",
+        "master-133278",
+        "master-5460",
+        "master-66631",
+        "master-68399"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-66631",
           "hop_distance": 0
@@ -5838,6 +6408,16 @@
         "Backing Vocals"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-104166",
+        "master-106274",
+        "master-133278",
+        "master-57940",
+        "master-66631",
+        "master-99919"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-133278",
           "hop_distance": 0
@@ -5914,6 +6494,10 @@
         "Drums"
       ],
       "albums": [
+        "master-106274",
+        "master-133278"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-106274",
           "hop_distance": 1
@@ -5957,6 +6541,11 @@
         "Producer"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-43063"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-43063",
           "hop_distance": 0
@@ -6004,6 +6593,15 @@
         "Written-By"
       ],
       "albums": [
+        "master-10363",
+        "master-133278",
+        "master-135633",
+        "master-26647",
+        "master-30926",
+        "master-35759",
+        "master-36251"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10363",
           "hop_distance": 1
@@ -6096,6 +6694,11 @@
         "Written-By, Producer, Programmed By, Keyboards"
       ],
       "albums": [
+        "master-10363",
+        "master-20148",
+        "master-2452996"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-20148",
           "hop_distance": 1
@@ -6174,6 +6777,10 @@
         "Piano"
       ],
       "albums": [
+        "master-1561",
+        "master-3762"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-1561",
           "hop_distance": 1
@@ -6215,6 +6822,11 @@
       ],
       "role_text_examples": [],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-30303"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-30303",
           "hop_distance": 0
@@ -6251,6 +6863,10 @@
         "Organ"
       ],
       "albums": [
+        "master-41155",
+        "master-79666"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-41155",
           "hop_distance": 1
@@ -6296,6 +6912,10 @@
         "Bass, Other [Groitaz Beauty]"
       ],
       "albums": [
+        "master-66510",
+        "master-99919"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-66510",
           "hop_distance": 1
@@ -6336,6 +6956,10 @@
         "Backing Vocals"
       ],
       "albums": [
+        "master-69156",
+        "master-99919"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-69156",
           "hop_distance": 1
@@ -6376,6 +7000,14 @@
         "Backing Vocals"
       ],
       "albums": [
+        "master-10362",
+        "master-25303",
+        "master-30577",
+        "master-31337",
+        "master-43063",
+        "master-91767"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10362",
           "hop_distance": 1
@@ -6456,6 +7088,11 @@
         "Producer [Produced By]"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-25688"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-25688",
           "hop_distance": 0
@@ -6504,6 +7141,10 @@
         "Baritone Saxophone"
       ],
       "albums": [
+        "master-10362",
+        "master-106274"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-106274",
           "hop_distance": 1
@@ -6560,6 +7201,20 @@
         "Artwork [Inside Gatefold]"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-1046042",
+        "master-19493",
+        "master-30926",
+        "master-32208",
+        "master-32708",
+        "master-52671",
+        "master-5460",
+        "master-66631",
+        "master-91767",
+        "master-96362"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-5460",
           "hop_distance": 0
@@ -6688,6 +7343,17 @@
         "Vocals"
       ],
       "albums": [
+        "master-10362",
+        "master-104399",
+        "master-1561",
+        "master-35793",
+        "master-5460",
+        "master-553",
+        "master-72879",
+        "master-87446",
+        "master-91767"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-91767",
           "hop_distance": 0
@@ -6782,6 +7448,10 @@
         "Trombone"
       ],
       "albums": [
+        "master-20387",
+        "master-32708"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-20387",
           "hop_distance": 1
@@ -6826,6 +7496,10 @@
         "Vocals [Additional]"
       ],
       "albums": [
+        "master-1046042",
+        "master-5460"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-1046042",
           "hop_distance": 1
@@ -6869,6 +7543,12 @@
         "Guest [Cameo]"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-110874",
+        "master-172407"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-110874",
           "hop_distance": 0
@@ -6927,6 +7607,15 @@
         "Producer"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-107325",
+        "master-55658",
+        "master-57029",
+        "master-60721",
+        "master-97173"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-107325",
           "hop_distance": 0
@@ -7011,6 +7700,10 @@
         "Written-By"
       ],
       "albums": [
+        "master-10362",
+        "master-8179"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-8179",
           "hop_distance": 0
@@ -7056,6 +7749,16 @@
         "Piano"
       ],
       "albums": [
+        "master-10362",
+        "master-122261",
+        "master-19493",
+        "master-32708",
+        "master-40048",
+        "master-51607",
+        "master-5460",
+        "master-96362"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-96362",
           "hop_distance": 0
@@ -7151,6 +7854,10 @@
       ],
       "role_text_examples": [],
       "albums": [
+        "master-10363",
+        "master-104115"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-104115",
           "hop_distance": 1
@@ -7182,6 +7889,10 @@
         "Backing Vocals"
       ],
       "albums": [
+        "master-403952",
+        "master-80514"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-403952",
           "hop_distance": 1
@@ -7232,6 +7943,15 @@
         "Mixed By"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-12236",
+        "master-28680",
+        "master-35759",
+        "master-52497",
+        "master-87446"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-52497",
           "hop_distance": 0
@@ -7327,6 +8047,10 @@
         "Featuring"
       ],
       "albums": [
+        "master-10363",
+        "master-18027"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-18027",
           "hop_distance": 1
@@ -7363,6 +8087,11 @@
         "Artwork"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-31755"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-31755",
           "hop_distance": 0
@@ -7410,6 +8139,12 @@
         "Horns, Vocals"
       ],
       "albums": [
+        "master-10362",
+        "master-16158",
+        "master-52671",
+        "master-54449"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-16158",
           "hop_distance": 1
@@ -7483,6 +8218,10 @@
         "Vocals"
       ],
       "albums": [
+        "master-10362",
+        "master-122051"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-122051",
           "hop_distance": 1
@@ -7534,6 +8273,11 @@
         "Performer [Nappy Dugout]"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-16158"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-16158",
           "hop_distance": 0
@@ -7577,6 +8321,10 @@
         "Tenor Saxophone"
       ],
       "albums": [
+        "master-19493",
+        "master-81575"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-19493",
           "hop_distance": 1
@@ -7617,6 +8365,10 @@
       ],
       "role_text_examples": [],
       "albums": [
+        "master-10363",
+        "master-3762"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-3762",
           "hop_distance": 1
@@ -7649,6 +8401,16 @@
         "Backing Vocals"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-16545",
+        "master-3878",
+        "master-41155",
+        "master-57940",
+        "master-72879",
+        "master-89665"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-16545",
           "hop_distance": 0
@@ -7728,6 +8490,10 @@
         "Drums"
       ],
       "albums": [
+        "master-26037",
+        "master-60721"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-26037",
           "hop_distance": 1
@@ -7768,6 +8534,10 @@
         "Bass Guitar"
       ],
       "albums": [
+        "master-55576",
+        "master-9382"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-55576",
           "hop_distance": 1
@@ -7817,6 +8587,17 @@
         "Backing Vocals, Lead Vocals"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-13280",
+        "master-138283",
+        "master-51607",
+        "master-55576",
+        "master-79666",
+        "master-87446",
+        "master-96362"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-51607",
           "hop_distance": 0
@@ -7923,6 +8704,18 @@
         "Producer"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-106274",
+        "master-133278",
+        "master-338175",
+        "master-57029",
+        "master-59538",
+        "master-66631",
+        "master-67836",
+        "master-68209"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-106274",
           "hop_distance": 0
@@ -8042,6 +8835,10 @@
         "Flute, Lead Vocals"
       ],
       "albums": [
+        "master-51607",
+        "master-96362"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-51607",
           "hop_distance": 1
@@ -8080,6 +8877,11 @@
       ],
       "role_text_examples": [],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-31598"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-31598",
           "hop_distance": 0
@@ -8119,6 +8921,15 @@
         "Engineer"
       ],
       "albums": [
+        "master-10362",
+        "master-13280",
+        "master-24047",
+        "master-32708",
+        "master-68399",
+        "master-69859",
+        "master-92517"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10362",
           "hop_distance": 1
@@ -8206,6 +9017,17 @@
         "Vocals [Duet With]"
       ],
       "albums": [
+        "master-10362",
+        "master-1046042",
+        "master-40048",
+        "master-41155",
+        "master-51607",
+        "master-55576",
+        "master-74227",
+        "master-79666",
+        "master-92986"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-79666",
           "hop_distance": 0
@@ -8298,6 +9120,10 @@
         "Synthesizer, Organ, Lead Vocals"
       ],
       "albums": [
+        "master-19493",
+        "master-66510"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-19493",
           "hop_distance": 1
@@ -8339,6 +9165,10 @@
         "Drums, Percussion"
       ],
       "albums": [
+        "master-104399",
+        "master-36251"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-104399",
           "hop_distance": 1
@@ -8377,6 +9207,11 @@
       ],
       "role_text_examples": [],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-4300"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-4300",
           "hop_distance": 0
@@ -8415,6 +9250,10 @@
         "Engineer [Sonically Captured And Psycho-acoustically Assaulted By]"
       ],
       "albums": [
+        "master-10363",
+        "master-104399"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-104399",
           "hop_distance": 1
@@ -8459,6 +9298,10 @@
         "Written-By"
       ],
       "albums": [
+        "master-10362",
+        "master-25303"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-25303",
           "hop_distance": 1
@@ -8509,6 +9352,14 @@
         "Producer"
       ],
       "albums": [
+        "master-10362",
+        "master-104399",
+        "master-172407",
+        "master-30712",
+        "master-79666",
+        "master-92986"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-92986",
           "hop_distance": 0
@@ -8593,6 +9444,10 @@
         "Vocals"
       ],
       "albums": [
+        "master-10362",
+        "master-65826"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-65826",
           "hop_distance": 1
@@ -8635,6 +9490,10 @@
         "Drums"
       ],
       "albums": [
+        "master-20148",
+        "master-90844"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-20148",
           "hop_distance": 1
@@ -8676,6 +9535,10 @@
         "Drums, Percussion"
       ],
       "albums": [
+        "master-35759",
+        "master-52671"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-35759",
           "hop_distance": 1
@@ -8727,6 +9590,25 @@
         "Backing Vocals [Background Vocals]"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-113522",
+        "master-303567",
+        "master-40048",
+        "master-52671",
+        "master-56036",
+        "master-57029",
+        "master-60680",
+        "master-68209",
+        "master-69859",
+        "master-74227",
+        "master-79241",
+        "master-79666",
+        "master-87446",
+        "master-96362",
+        "master-99919"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-40048",
           "hop_distance": 0
@@ -8877,6 +9759,10 @@
         "Keyboards"
       ],
       "albums": [
+        "master-66510",
+        "master-90844"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-66510",
           "hop_distance": 1
@@ -8921,6 +9807,10 @@
         "Producer, Written-By"
       ],
       "albums": [
+        "master-10363",
+        "master-26647"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-26647",
           "hop_distance": 1
@@ -8966,6 +9856,21 @@
         "Backing Vocals [Background Vocals]"
       ],
       "albums": [
+        "master-10362",
+        "master-104166",
+        "master-133278",
+        "master-26037",
+        "master-40048",
+        "master-66510",
+        "master-67836",
+        "master-68209",
+        "master-69156",
+        "master-79241",
+        "master-82337",
+        "master-92517",
+        "master-99919"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-99919",
           "hop_distance": 0
@@ -9091,6 +9996,13 @@
         "Piano, Celesta [Celeste]"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-110874",
+        "master-172407",
+        "master-92986"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-172407",
           "hop_distance": 0
@@ -9158,6 +10070,10 @@
         "Saxophone [Sax]"
       ],
       "albums": [
+        "master-72879",
+        "master-82337"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-72879",
           "hop_distance": 1
@@ -9197,6 +10113,10 @@
         "Guitar"
       ],
       "albums": [
+        "master-151766",
+        "master-97173"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-151766",
           "hop_distance": 1
@@ -9233,6 +10153,10 @@
         "Piano"
       ],
       "albums": [
+        "master-19493",
+        "master-25893"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-19493",
           "hop_distance": 1
@@ -9277,6 +10201,10 @@
         "Guitar"
       ],
       "albums": [
+        "master-104166",
+        "master-19493"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-104166",
           "hop_distance": 1
@@ -9320,6 +10248,10 @@
         "Vocals"
       ],
       "albums": [
+        "master-10362",
+        "master-57279"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-57279",
           "hop_distance": 1
@@ -9363,6 +10295,10 @@
         "Guest, Vocals"
       ],
       "albums": [
+        "master-113522",
+        "master-74227"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-113522",
           "hop_distance": 1
@@ -9410,6 +10346,12 @@
         "Performer [D12 Are:]"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-12236",
+        "master-52497"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-12236",
           "hop_distance": 0
@@ -9478,6 +10420,10 @@
         "Backing Vocals"
       ],
       "albums": [
+        "master-67836",
+        "master-99919"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-67836",
           "hop_distance": 1
@@ -9525,6 +10471,10 @@
         "Featuring"
       ],
       "albums": [
+        "master-10363",
+        "master-3719"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-3719",
           "hop_distance": 1
@@ -9587,6 +10537,10 @@
         "Vocals"
       ],
       "albums": [
+        "master-10363",
+        "master-5863"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-5863",
           "hop_distance": 1
@@ -9646,6 +10600,11 @@
         "Producer [Production]"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-35276"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-35276",
           "hop_distance": 0
@@ -9693,6 +10652,11 @@
         "Written-By"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-38175"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-38175",
           "hop_distance": 0
@@ -9743,6 +10707,11 @@
         "Art Direction"
       ],
       "albums": [
+        "master-10363",
+        "master-45720",
+        "master-52998"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-45720",
           "hop_distance": 1
@@ -9824,6 +10793,10 @@
         "Sounds"
       ],
       "albums": [
+        "master-10362",
+        "master-37401"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-37401",
           "hop_distance": 1
@@ -9878,6 +10851,10 @@
         "Backing Vocals [Background Vocals]"
       ],
       "albums": [
+        "master-55576",
+        "master-79666"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-55576",
           "hop_distance": 1
@@ -9918,6 +10895,10 @@
         "Backing Vocals"
       ],
       "albums": [
+        "master-20387",
+        "master-3878"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-20387",
           "hop_distance": 1
@@ -9961,6 +10942,10 @@
         "Handclaps"
       ],
       "albums": [
+        "master-10362",
+        "master-129759"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-129759",
           "hop_distance": 1
@@ -10018,6 +11003,17 @@
         "Harp, Piano"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-106274",
+        "master-25893",
+        "master-26647",
+        "master-32208",
+        "master-52671",
+        "master-59538",
+        "master-75606"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-59538",
           "hop_distance": 0
@@ -10127,6 +11123,11 @@
       ],
       "role_text_examples": [],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-57279"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-57279",
           "hop_distance": 0
@@ -10163,6 +11164,10 @@
         "Backing Vocals [Background Vocals]"
       ],
       "albums": [
+        "master-108242",
+        "master-67836"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-108242",
           "hop_distance": 1
@@ -10202,6 +11207,10 @@
         "Piano"
       ],
       "albums": [
+        "master-10362",
+        "master-113224"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-113224",
           "hop_distance": 1
@@ -10249,6 +11258,10 @@
         "Trumpet, Organ"
       ],
       "albums": [
+        "master-10363",
+        "master-5460"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-5460",
           "hop_distance": 1
@@ -10303,6 +11316,16 @@
         "Guitar [Additional Guitar By]"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-113522",
+        "master-151766",
+        "master-303567",
+        "master-55576",
+        "master-74227",
+        "master-97173"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-151766",
           "hop_distance": 0
@@ -10400,6 +11423,181 @@
         "Design [Sleeve Designed By]"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-104115",
+        "master-104166",
+        "master-104399",
+        "master-1046042",
+        "master-105802",
+        "master-106274",
+        "master-106396",
+        "master-107325",
+        "master-108242",
+        "master-110874",
+        "master-113224",
+        "master-113522",
+        "master-1164779",
+        "master-122051",
+        "master-122261",
+        "master-12236",
+        "master-129759",
+        "master-13280",
+        "master-133278",
+        "master-135633",
+        "master-13814",
+        "master-138283",
+        "master-13960",
+        "master-151766",
+        "master-1561",
+        "master-15841",
+        "master-16158",
+        "master-16545",
+        "master-16921",
+        "master-17217",
+        "master-172407",
+        "master-17249",
+        "master-18027",
+        "master-18080",
+        "master-18442",
+        "master-19493",
+        "master-20135",
+        "master-20137",
+        "master-20148",
+        "master-20387",
+        "master-21520",
+        "master-23069",
+        "master-23684",
+        "master-24047",
+        "master-24511",
+        "master-2452996",
+        "master-25303",
+        "master-25688",
+        "master-25893",
+        "master-26037",
+        "master-26436",
+        "master-26647",
+        "master-26725",
+        "master-27460",
+        "master-27765",
+        "master-28680",
+        "master-302",
+        "master-30303",
+        "master-303567",
+        "master-30577",
+        "master-30712",
+        "master-30926",
+        "master-31337",
+        "master-31598",
+        "master-31755",
+        "master-3211",
+        "master-32208",
+        "master-32708",
+        "master-338175",
+        "master-34081",
+        "master-35006",
+        "master-35276",
+        "master-35401",
+        "master-35706",
+        "master-35759",
+        "master-35793",
+        "master-36227",
+        "master-36251",
+        "master-37145",
+        "master-3719",
+        "master-37401",
+        "master-37615",
+        "master-3762",
+        "master-38175",
+        "master-38712",
+        "master-38722",
+        "master-3878",
+        "master-39248",
+        "master-39341",
+        "master-40048",
+        "master-403952",
+        "master-406634",
+        "master-41155",
+        "master-41722",
+        "master-42522",
+        "master-4300",
+        "master-43063",
+        "master-4424",
+        "master-44278",
+        "master-45432",
+        "master-45720",
+        "master-45922",
+        "master-47744",
+        "master-47868",
+        "master-48605",
+        "master-49058",
+        "master-49227",
+        "master-49965",
+        "master-51607",
+        "master-52497",
+        "master-52671",
+        "master-52998",
+        "master-54449",
+        "master-5460",
+        "master-55281",
+        "master-553",
+        "master-55576",
+        "master-55658",
+        "master-56036",
+        "master-57029",
+        "master-57279",
+        "master-57940",
+        "master-57970",
+        "master-58313",
+        "master-5863",
+        "master-59501",
+        "master-59538",
+        "master-60680",
+        "master-60721",
+        "master-64290",
+        "master-6495",
+        "master-65826",
+        "master-66510",
+        "master-66631",
+        "master-66782",
+        "master-67405",
+        "master-67836",
+        "master-68209",
+        "master-68399",
+        "master-68469",
+        "master-69156",
+        "master-69859",
+        "master-70584",
+        "master-72235",
+        "master-72879",
+        "master-73013",
+        "master-74227",
+        "master-750386",
+        "master-75606",
+        "master-76678",
+        "master-79241",
+        "master-79393",
+        "master-79666",
+        "master-80514",
+        "master-81172",
+        "master-81575",
+        "master-8179",
+        "master-82337",
+        "master-8357",
+        "master-87446",
+        "master-8883",
+        "master-89665",
+        "master-90844",
+        "master-91767",
+        "master-92517",
+        "master-92896",
+        "master-92986",
+        "master-9382",
+        "master-96362",
+        "master-97173",
+        "master-99919"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10362",
           "hop_distance": 0
@@ -11180,6 +12378,10 @@
         "Percussion"
       ],
       "albums": [
+        "master-30926",
+        "master-67836"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-30926",
           "hop_distance": 1
@@ -11229,6 +12431,19 @@
         "Vocals"
       ],
       "albums": [
+        "master-10362",
+        "master-1561",
+        "master-16545",
+        "master-30712",
+        "master-35793",
+        "master-56036",
+        "master-69859",
+        "master-72879",
+        "master-79241",
+        "master-82337",
+        "master-91767"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-72879",
           "hop_distance": 0
@@ -11346,6 +12561,15 @@
         "Keyboards, Percussion, Backing Vocals"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-104399",
+        "master-36251",
+        "master-41155",
+        "master-91767",
+        "master-92986"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-104399",
           "hop_distance": 0
@@ -11444,6 +12668,10 @@
         "Keyboards"
       ],
       "albums": [
+        "master-104115",
+        "master-56036"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-104115",
           "hop_distance": 1
@@ -11485,6 +12713,11 @@
         "Design Concept [Sleeve Concept]"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-38722"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-38722",
           "hop_distance": 0
@@ -11531,6 +12764,11 @@
       ],
       "role_text_examples": [],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-49058"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-49058",
           "hop_distance": 0
@@ -11566,6 +12804,11 @@
         "Art Direction"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-37145"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-37145",
           "hop_distance": 0
@@ -11615,6 +12858,18 @@
         "Vocals, Guitar, Music By, Lyrics By"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-104166",
+        "master-113522",
+        "master-151766",
+        "master-25893",
+        "master-40048",
+        "master-74227",
+        "master-75606",
+        "master-81575"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-113522",
           "hop_distance": 0
@@ -11733,6 +12988,10 @@
         "Soloist, Guitar"
       ],
       "albums": [
+        "master-87446",
+        "master-91767"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-87446",
           "hop_distance": 1
@@ -11784,6 +13043,12 @@
         "Performer [Children Of The Earth Flames]"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-20135",
+        "master-57940"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-20135",
           "hop_distance": 1
@@ -11870,6 +13135,11 @@
         "Producer"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-35006"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-35006",
           "hop_distance": 0
@@ -11917,6 +13187,10 @@
         "Vocals"
       ],
       "albums": [
+        "master-10362",
+        "master-151766"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-151766",
           "hop_distance": 1
@@ -11959,6 +13233,10 @@
         "Producer"
       ],
       "albums": [
+        "master-10363",
+        "master-26436"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-26436",
           "hop_distance": 1
@@ -12003,6 +13281,10 @@
         "Performer [With]"
       ],
       "albums": [
+        "master-10363",
+        "master-110874"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10363",
           "hop_distance": 1
@@ -12050,6 +13332,12 @@
         "Featuring, Written-By"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-20148",
+        "master-90844"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-20148",
           "hop_distance": 0
@@ -12110,6 +13398,14 @@
         "Vocals"
       ],
       "albums": [
+        "master-10362",
+        "master-13960",
+        "master-16545",
+        "master-31337",
+        "master-8883",
+        "master-89665"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-89665",
           "hop_distance": 0
@@ -12173,6 +13469,10 @@
         "Bass Guitar"
       ],
       "albums": [
+        "master-30577",
+        "master-9382"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-30577",
           "hop_distance": 1
@@ -12217,6 +13517,19 @@
         "Vocals, Executive-Producer, Art Direction"
       ],
       "albums": [
+        "master-10362",
+        "master-113522",
+        "master-13960",
+        "master-151766",
+        "master-32708",
+        "master-35793",
+        "master-3878",
+        "master-40048",
+        "master-68209",
+        "master-74227",
+        "master-79666"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-74227",
           "hop_distance": 0
@@ -12313,6 +13626,14 @@
         "Backing Vocals"
       ],
       "albums": [
+        "master-10362",
+        "master-16545",
+        "master-35759",
+        "master-57970",
+        "master-79393",
+        "master-89665"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10362",
           "hop_distance": 1
@@ -12395,6 +13716,11 @@
         "Arranged By"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-58313"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-58313",
           "hop_distance": 0
@@ -12445,6 +13771,11 @@
         "Producer [Doors Songs Recorded Prior To 1971; \u201cThe Wasp\u201d & \u201cRiders On The Storm\u201d]"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-45432"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-45432",
           "hop_distance": 0
@@ -12489,6 +13820,14 @@
         "Backing Vocals"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-104115",
+        "master-138283",
+        "master-30577",
+        "master-51607"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-138283",
           "hop_distance": 0
@@ -12562,6 +13901,26 @@
         "Harpsichord"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-106396",
+        "master-138283",
+        "master-2452996",
+        "master-27460",
+        "master-28680",
+        "master-30577",
+        "master-37615",
+        "master-3762",
+        "master-3878",
+        "master-49227",
+        "master-56036",
+        "master-57940",
+        "master-68209",
+        "master-69859",
+        "master-79241",
+        "master-9382"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-30577",
           "hop_distance": 0
@@ -12725,6 +14084,10 @@
         "Voice [Additional]"
       ],
       "albums": [
+        "master-10362",
+        "master-20137"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-20137",
           "hop_distance": 1
@@ -12784,6 +14147,11 @@
         "Mixed By"
       ],
       "albums": [
+        "master-10362",
+        "master-16158",
+        "master-52497"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10362",
           "hop_distance": 1
@@ -12854,6 +14222,12 @@
         "Artwork [Design, Notes]"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-35793",
+        "master-47868"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-47868",
           "hop_distance": 0
@@ -12911,6 +14285,16 @@
         "Vocals"
       ],
       "albums": [
+        "master-10362",
+        "master-104115",
+        "master-45720",
+        "master-553",
+        "master-75606",
+        "master-81575",
+        "master-82337",
+        "master-92896"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-92896",
           "hop_distance": 0
@@ -13007,6 +14391,17 @@
         "Backing Vocals"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-104399",
+        "master-16545",
+        "master-41155",
+        "master-52998",
+        "master-57940",
+        "master-79666",
+        "master-80514"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-41155",
           "hop_distance": 0
@@ -13117,6 +14512,21 @@
         "Guitar, Vocals, Piano, Written-By"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-16545",
+        "master-20387",
+        "master-28680",
+        "master-30577",
+        "master-37615",
+        "master-3878",
+        "master-56036",
+        "master-69859",
+        "master-72235",
+        "master-74227",
+        "master-75606"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-3878",
           "hop_distance": 0
@@ -13238,6 +14648,10 @@
       ],
       "role_text_examples": [],
       "albums": [
+        "master-10362",
+        "master-92896"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-92896",
           "hop_distance": 1
@@ -13269,6 +14683,10 @@
         "Piano"
       ],
       "albums": [
+        "master-5460",
+        "master-66631"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-5460",
           "hop_distance": 1
@@ -13307,6 +14725,11 @@
       ],
       "role_text_examples": [],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-26436"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-26436",
           "hop_distance": 0
@@ -13350,6 +14773,16 @@
         "Arranged By"
       ],
       "albums": [
+        "master-10362",
+        "master-108242",
+        "master-113522",
+        "master-3762",
+        "master-38722",
+        "master-66782",
+        "master-67836",
+        "master-99919"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10362",
           "hop_distance": 1
@@ -13458,6 +14891,10 @@
         "Vocals"
       ],
       "albums": [
+        "master-10362",
+        "master-59538"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10362",
           "hop_distance": 1
@@ -13503,6 +14940,10 @@
         "Vocals"
       ],
       "albums": [
+        "master-151766",
+        "master-55576"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-151766",
           "hop_distance": 1
@@ -13549,6 +14990,10 @@
         "Written-By, Vocals"
       ],
       "albums": [
+        "master-10363",
+        "master-15841"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10363",
           "hop_distance": 2
@@ -13607,6 +15052,15 @@
         "Keyboards"
       ],
       "albums": [
+        "master-10362",
+        "master-36251",
+        "master-60721",
+        "master-72879",
+        "master-82337",
+        "master-92896",
+        "master-99919"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-82337",
           "hop_distance": 0
@@ -13694,6 +15148,10 @@
         "Drums"
       ],
       "albums": [
+        "master-104399",
+        "master-92986"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-104399",
           "hop_distance": 1
@@ -13737,6 +15195,11 @@
         "Performer"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-57970"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-57970",
           "hop_distance": 0
@@ -13778,6 +15241,10 @@
         "Piano, Clavinet"
       ],
       "albums": [
+        "master-10362",
+        "master-20137"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10362",
           "hop_distance": 1
@@ -13821,6 +15288,15 @@
         "Featuring"
       ],
       "albums": [
+        "master-10362",
+        "master-20148",
+        "master-20387",
+        "master-36251",
+        "master-66510",
+        "master-90844",
+        "master-97173"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-90844",
           "hop_distance": 0
@@ -13894,6 +15370,11 @@
       ],
       "role_text_examples": [],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-4424"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-4424",
           "hop_distance": 0
@@ -13931,6 +15412,12 @@
         "Vocals"
       ],
       "albums": [
+        "master-10362",
+        "master-403952",
+        "master-41155",
+        "master-80514"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-80514",
           "hop_distance": 0
@@ -13982,6 +15469,10 @@
         "Mixed By"
       ],
       "albums": [
+        "master-10362",
+        "master-3211"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-3211",
           "hop_distance": 1
@@ -14032,6 +15523,15 @@
         "Producer"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-30712",
+        "master-30926",
+        "master-72879",
+        "master-75606",
+        "master-92986"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-30712",
           "hop_distance": 0
@@ -14117,6 +15617,10 @@
         "Tenor Saxophone, Contractor [Horn]"
       ],
       "albums": [
+        "master-129759",
+        "master-338175"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-129759",
           "hop_distance": 1
@@ -14161,6 +15665,10 @@
         "Backing Vocals [Background Vocals]"
       ],
       "albums": [
+        "master-82337",
+        "master-92896"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-82337",
           "hop_distance": 1
@@ -14208,6 +15716,18 @@
         "Drums"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-35759",
+        "master-35793",
+        "master-45720",
+        "master-47744",
+        "master-65826",
+        "master-69859",
+        "master-75606",
+        "master-92896"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-45720",
           "hop_distance": 0
@@ -14318,6 +15838,11 @@
         "Music By"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-406634"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-406634",
           "hop_distance": 0
@@ -14371,6 +15896,13 @@
         "Producer"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-17217",
+        "master-44278",
+        "master-57029"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-17217",
           "hop_distance": 0
@@ -14430,6 +15962,10 @@
         "Vocals"
       ],
       "albums": [
+        "master-66510",
+        "master-87446"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-66510",
           "hop_distance": 1
@@ -14472,6 +16008,19 @@
         "Vocals"
       ],
       "albums": [
+        "master-10362",
+        "master-104115",
+        "master-113522",
+        "master-19493",
+        "master-30712",
+        "master-3878",
+        "master-45720",
+        "master-59538",
+        "master-60721",
+        "master-75606",
+        "master-92896"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-75606",
           "hop_distance": 0
@@ -14581,6 +16130,10 @@
         "Backing Vocals [Background Voice]"
       ],
       "albums": [
+        "master-10363",
+        "master-55576"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-55576",
           "hop_distance": 1
@@ -14622,6 +16175,10 @@
         "Piano [Acoustic], Electric Piano"
       ],
       "albums": [
+        "master-106396",
+        "master-30926"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-106396",
           "hop_distance": 1
@@ -14661,6 +16218,10 @@
         "Backing Vocals"
       ],
       "albums": [
+        "master-133278",
+        "master-99919"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-133278",
           "hop_distance": 1
@@ -14702,6 +16263,11 @@
         "Producer [Original]"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-5863"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-5863",
           "hop_distance": 0
@@ -14757,6 +16323,16 @@
         "Percussion [Sticks]"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-13960",
+        "master-68399",
+        "master-74227",
+        "master-81172",
+        "master-8883",
+        "master-89665"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-13960",
           "hop_distance": 0
@@ -14855,6 +16431,11 @@
       ],
       "role_text_examples": [],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-24047"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-24047",
           "hop_distance": 0
@@ -14888,6 +16469,11 @@
       ],
       "role_text_examples": [],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-20137"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-20137",
           "hop_distance": 0
@@ -14933,6 +16519,13 @@
         "Arranged By"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-122051",
+        "master-24511",
+        "master-26725"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10363",
           "hop_distance": 1
@@ -15024,6 +16617,11 @@
         "Engineer"
       ],
       "albums": [
+        "master-10362",
+        "master-21520",
+        "master-72879"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10362",
           "hop_distance": 1
@@ -15077,6 +16675,10 @@
         "Guitar"
       ],
       "albums": [
+        "master-13280",
+        "master-51607"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-13280",
           "hop_distance": 1
@@ -15124,6 +16726,13 @@
         "Recorded By"
       ],
       "albums": [
+        "master-10362",
+        "master-129759",
+        "master-23684",
+        "master-30303",
+        "master-35006"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10362",
           "hop_distance": 1
@@ -15216,6 +16825,19 @@
         "Producer [Assisted by]"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-28680",
+        "master-30577",
+        "master-35759",
+        "master-3878",
+        "master-49227",
+        "master-52497",
+        "master-553",
+        "master-9382",
+        "master-97173"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-28680",
           "hop_distance": 0
@@ -15334,6 +16956,10 @@
         "Producer, Engineer"
       ],
       "albums": [
+        "master-10363",
+        "master-133278"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-133278",
           "hop_distance": 1
@@ -15379,6 +17005,10 @@
         "Vocals [Additional]"
       ],
       "albums": [
+        "master-1046042",
+        "master-79666"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-1046042",
           "hop_distance": 1
@@ -15427,6 +17057,23 @@
         "Backing Vocals"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-104166",
+        "master-122051",
+        "master-129759",
+        "master-19493",
+        "master-26037",
+        "master-35759",
+        "master-37615",
+        "master-45720",
+        "master-47744",
+        "master-553",
+        "master-55658",
+        "master-81172",
+        "master-81575"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-47744",
           "hop_distance": 0
@@ -15573,6 +17220,16 @@
         "Musician [Additional Musicians], Percussion, Autoharp, Harmonica"
       ],
       "albums": [
+        "master-10362",
+        "master-107325",
+        "master-151766",
+        "master-1561",
+        "master-28680",
+        "master-338175",
+        "master-90844",
+        "master-97173"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-97173",
           "hop_distance": 0
@@ -15669,6 +17326,10 @@
         "Electric Piano [Fender Rhodes]"
       ],
       "albums": [
+        "master-45720",
+        "master-92896"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-45720",
           "hop_distance": 1
@@ -15713,6 +17374,11 @@
         "Music By, Lyrics By"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-42522"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-42522",
           "hop_distance": 0
@@ -15775,6 +17441,18 @@
         "Lead Guitar, Vocals"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-32208",
+        "master-35793",
+        "master-45720",
+        "master-60680",
+        "master-69859",
+        "master-72879",
+        "master-74227",
+        "master-91767"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-35793",
           "hop_distance": 0
@@ -15893,6 +17571,12 @@
         "Engineer"
       ],
       "albums": [
+        "master-10362",
+        "master-37145",
+        "master-41155",
+        "master-6495"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10362",
           "hop_distance": 1
@@ -15966,6 +17650,18 @@
         "Drums"
       ],
       "albums": [
+        "master-10362",
+        "master-49965",
+        "master-553",
+        "master-56036",
+        "master-57940",
+        "master-60680",
+        "master-67405",
+        "master-79241",
+        "master-81172",
+        "master-8357"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10362",
           "hop_distance": 1
@@ -16084,6 +17780,18 @@
         "Tenor Saxophone, Bells"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-19493",
+        "master-32208",
+        "master-35793",
+        "master-3762",
+        "master-5460",
+        "master-59538",
+        "master-60680",
+        "master-79241"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-32208",
           "hop_distance": 0
@@ -16191,6 +17899,10 @@
         "Guest [Prelude]"
       ],
       "albums": [
+        "master-10363",
+        "master-41722"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-41722",
           "hop_distance": 1
@@ -16251,6 +17963,10 @@
         "Engineer [Additional Engineer]"
       ],
       "albums": [
+        "master-10363",
+        "master-24047"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10363",
           "hop_distance": 1
@@ -16303,6 +18019,13 @@
         "Guest [Guest Artists Include:]"
       ],
       "albums": [
+        "master-10362",
+        "master-17217",
+        "master-2452996",
+        "master-30577",
+        "master-37615"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10362",
           "hop_distance": 1
@@ -16396,6 +18119,20 @@
         "Congas"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-32708",
+        "master-35759",
+        "master-47744",
+        "master-553",
+        "master-56036",
+        "master-57029",
+        "master-69156",
+        "master-69859",
+        "master-91767",
+        "master-92896"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-553",
           "hop_distance": 0
@@ -16513,6 +18250,10 @@
         "Celesta"
       ],
       "albums": [
+        "master-10362",
+        "master-1046042"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-1046042",
           "hop_distance": 1
@@ -16591,6 +18332,138 @@
         "Producer, Recorded By"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-104115",
+        "master-104166",
+        "master-104399",
+        "master-1046042",
+        "master-105802",
+        "master-106274",
+        "master-106396",
+        "master-107325",
+        "master-108242",
+        "master-110874",
+        "master-113224",
+        "master-113522",
+        "master-1164779",
+        "master-122051",
+        "master-122261",
+        "master-12236",
+        "master-129759",
+        "master-13280",
+        "master-133278",
+        "master-135633",
+        "master-13814",
+        "master-138283",
+        "master-13960",
+        "master-151766",
+        "master-1561",
+        "master-15841",
+        "master-16158",
+        "master-16545",
+        "master-16921",
+        "master-17217",
+        "master-172407",
+        "master-17249",
+        "master-18027",
+        "master-18080",
+        "master-18442",
+        "master-19493",
+        "master-20135",
+        "master-20137",
+        "master-20148",
+        "master-20387",
+        "master-21520",
+        "master-23069",
+        "master-23684",
+        "master-24047",
+        "master-24511",
+        "master-2452996",
+        "master-25303",
+        "master-25688",
+        "master-25893",
+        "master-26037",
+        "master-26436",
+        "master-26647",
+        "master-26725",
+        "master-27460",
+        "master-27765",
+        "master-28680",
+        "master-302",
+        "master-30303",
+        "master-303567",
+        "master-30577",
+        "master-30712",
+        "master-30926",
+        "master-31337",
+        "master-31598",
+        "master-31755",
+        "master-3211",
+        "master-32208",
+        "master-32708",
+        "master-338175",
+        "master-34081",
+        "master-35006",
+        "master-35276",
+        "master-35401",
+        "master-35706",
+        "master-35759",
+        "master-35793",
+        "master-36227",
+        "master-36251",
+        "master-37145",
+        "master-3719",
+        "master-37401",
+        "master-37615",
+        "master-3762",
+        "master-38175",
+        "master-38712",
+        "master-38722",
+        "master-3878",
+        "master-39248",
+        "master-39341",
+        "master-40048",
+        "master-403952",
+        "master-406634",
+        "master-41155",
+        "master-41722",
+        "master-42522",
+        "master-4300",
+        "master-43063",
+        "master-4424",
+        "master-44278",
+        "master-45432",
+        "master-45720",
+        "master-45922",
+        "master-47744",
+        "master-47868",
+        "master-48605",
+        "master-49058",
+        "master-49227",
+        "master-49965",
+        "master-51607",
+        "master-52497",
+        "master-52671",
+        "master-52998",
+        "master-54449",
+        "master-5460",
+        "master-55281",
+        "master-553",
+        "master-55576",
+        "master-55658",
+        "master-56036",
+        "master-57029",
+        "master-57279",
+        "master-57940",
+        "master-57970",
+        "master-58313",
+        "master-5863",
+        "master-59501",
+        "master-59538",
+        "master-60680"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10363",
           "hop_distance": 0
@@ -17196,6 +19069,13 @@
       ],
       "role_text_examples": [],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-23684",
+        "master-39248",
+        "master-57029"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-23684",
           "hop_distance": 0
@@ -17243,6 +19123,12 @@
         "Recorded By"
       ],
       "albums": [
+        "master-10363",
+        "master-18027",
+        "master-20148",
+        "master-2452996"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10363",
           "hop_distance": 1
@@ -17311,6 +19197,17 @@
         "Percussion"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-107325",
+        "master-129759",
+        "master-19493",
+        "master-47744",
+        "master-49227",
+        "master-55658",
+        "master-72235"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-55658",
           "hop_distance": 0
@@ -17429,6 +19326,13 @@
         "Arranged By [Orchestra]"
       ],
       "albums": [
+        "master-10362",
+        "master-3878",
+        "master-41722",
+        "master-5863",
+        "master-82337"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10362",
           "hop_distance": 1
@@ -17510,6 +19414,10 @@
         "Bass Guitar [6 String Fender]"
       ],
       "albums": [
+        "master-44278",
+        "master-69859"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-44278",
           "hop_distance": 1
@@ -17555,6 +19463,12 @@
         "Lead Vocals"
       ],
       "albums": [
+        "master-10363",
+        "master-16545",
+        "master-3762",
+        "master-49227"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10363",
           "hop_distance": 1
@@ -17635,6 +19549,16 @@
         "Arranged By [Vocal Arrangements]"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-28680",
+        "master-30577",
+        "master-49227",
+        "master-55658",
+        "master-60721",
+        "master-65826"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-49227",
           "hop_distance": 0
@@ -17741,6 +19665,10 @@
         "Keyboards, Synthesizer, Timpani"
       ],
       "albums": [
+        "master-106396",
+        "master-8883"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-106396",
           "hop_distance": 1
@@ -17779,6 +19707,10 @@
       ],
       "role_text_examples": [],
       "albums": [
+        "master-10362",
+        "master-76678"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-76678",
           "hop_distance": 0
@@ -17811,6 +19743,11 @@
         "Producer"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-17249"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-17249",
           "hop_distance": 0
@@ -17859,6 +19796,10 @@
         "Organ, Vocals"
       ],
       "albums": [
+        "master-10362",
+        "master-49058"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-49058",
           "hop_distance": 1
@@ -17910,6 +19851,20 @@
         "Lyrics By"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-105802",
+        "master-26037",
+        "master-403952",
+        "master-49058",
+        "master-49965",
+        "master-57029",
+        "master-60680",
+        "master-65826",
+        "master-69859",
+        "master-81575"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-49965",
           "hop_distance": 0
@@ -18033,6 +19988,10 @@
         "Backing Vocals"
       ],
       "albums": [
+        "master-8883",
+        "master-89665"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-8883",
           "hop_distance": 1
@@ -18074,6 +20033,10 @@
         "Guitar [Guitars]"
       ],
       "albums": [
+        "master-10362",
+        "master-133278"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10362",
           "hop_distance": 1
@@ -18118,6 +20081,10 @@
         "Bass Guitar, Percussion"
       ],
       "albums": [
+        "master-36251",
+        "master-69859"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-36251",
           "hop_distance": 1
@@ -18157,6 +20124,10 @@
         "Trumpet"
       ],
       "albums": [
+        "master-28680",
+        "master-97173"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-28680",
           "hop_distance": 1
@@ -18200,6 +20171,10 @@
         "Bass"
       ],
       "albums": [
+        "master-10362",
+        "master-10363"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10362",
           "hop_distance": 1
@@ -18244,6 +20219,11 @@
         "Producer [Original Recordings Produced By]"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-48605"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-48605",
           "hop_distance": 0
@@ -18296,6 +20276,16 @@
         "Music By, Lyrics By"
       ],
       "albums": [
+        "master-10362",
+        "master-108242",
+        "master-25893",
+        "master-37615",
+        "master-45720",
+        "master-49227",
+        "master-65826",
+        "master-81172"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-65826",
           "hop_distance": 0
@@ -18392,6 +20382,10 @@
         "Vocals, Electric Piano [Wurlitzer]"
       ],
       "albums": [
+        "master-90844",
+        "master-97173"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-90844",
           "hop_distance": 1
@@ -18439,6 +20433,14 @@
         "Performer [Additional Players], Chorus [Chorus Voices]"
       ],
       "albums": [
+        "master-10362",
+        "master-105802",
+        "master-37615",
+        "master-3878",
+        "master-55658",
+        "master-72235"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-72235",
           "hop_distance": 0
@@ -18518,6 +20520,10 @@
         "Vocals [Additional]"
       ],
       "albums": [
+        "master-403952",
+        "master-52998"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-403952",
           "hop_distance": 1
@@ -18559,6 +20565,13 @@
         "Engineer [Mix]"
       ],
       "albums": [
+        "master-10363",
+        "master-1046042",
+        "master-303567",
+        "master-338175",
+        "master-403952"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-1046042",
           "hop_distance": 1
@@ -18633,6 +20646,15 @@
         "Vocals"
       ],
       "albums": [
+        "master-10362",
+        "master-107325",
+        "master-26037",
+        "master-49227",
+        "master-60721",
+        "master-75606",
+        "master-82337"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-60721",
           "hop_distance": 0
@@ -18700,6 +20722,10 @@
       ],
       "role_text_examples": [],
       "albums": [
+        "master-10362",
+        "master-66782"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-66782",
           "hop_distance": 0
@@ -18730,6 +20756,11 @@
         "Performer"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-13814"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-13814",
           "hop_distance": 0
@@ -18782,6 +20813,14 @@
         "Technician [Final Continuity And Flow]"
       ],
       "albums": [
+        "master-10362",
+        "master-18027",
+        "master-3719",
+        "master-44278",
+        "master-52998",
+        "master-60721"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10362",
           "hop_distance": 1
@@ -18878,6 +20917,12 @@
         "Recorded By [Vocals]"
       ],
       "albums": [
+        "master-10362",
+        "master-105802",
+        "master-26436",
+        "master-31598"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10362",
           "hop_distance": 1
@@ -18941,6 +20986,10 @@
         "Synth [Additional Programming]"
       ],
       "albums": [
+        "master-10362",
+        "master-38712"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-38712",
           "hop_distance": 1
@@ -18984,6 +21033,10 @@
         "Vocals [Ad Lib]"
       ],
       "albums": [
+        "master-553",
+        "master-92896"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-553",
           "hop_distance": 1
@@ -19024,6 +21077,11 @@
         "Sounds"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-39341"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-39341",
           "hop_distance": 0
@@ -19071,6 +21129,10 @@
         "Tenor Saxophone"
       ],
       "albums": [
+        "master-26725",
+        "master-68209"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-26725",
           "hop_distance": 1
@@ -19113,6 +21175,10 @@
         "Guitar"
       ],
       "albums": [
+        "master-122261",
+        "master-52671"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-122261",
           "hop_distance": 1
@@ -19159,6 +21225,22 @@
         "Mixed By [Audio Mix, San Diego 1992]"
       ],
       "albums": [
+        "master-10363",
+        "master-104115",
+        "master-107325",
+        "master-1164779",
+        "master-151766",
+        "master-16158",
+        "master-30577",
+        "master-31598",
+        "master-3878",
+        "master-41155",
+        "master-44278",
+        "master-45922",
+        "master-51607",
+        "master-57279"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10363",
           "hop_distance": 1
@@ -19288,6 +21370,10 @@
         "Guitar, Piano"
       ],
       "albums": [
+        "master-30712",
+        "master-75606"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-30712",
           "hop_distance": 1
@@ -19334,6 +21420,17 @@
         "Songwriter [Music & Lyrics], Keyboards, Synthesizer [Moogs]"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-106274",
+        "master-107325",
+        "master-17217",
+        "master-40048",
+        "master-49965",
+        "master-553",
+        "master-57029"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-57029",
           "hop_distance": 0
@@ -19440,6 +21537,21 @@
         "Guitar, Harmonica, Piano, Producer, Vibraphone, Vocals"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-104115",
+        "master-105802",
+        "master-30577",
+        "master-37615",
+        "master-3878",
+        "master-47744",
+        "master-65826",
+        "master-69859",
+        "master-72235",
+        "master-79241",
+        "master-81575"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-37615",
           "hop_distance": 0
@@ -19564,6 +21676,10 @@
         "Backing Vocals [BGV]"
       ],
       "albums": [
+        "master-23069",
+        "master-79241"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-23069",
           "hop_distance": 1
@@ -19606,6 +21722,10 @@
         "Producer"
       ],
       "albums": [
+        "master-10362",
+        "master-105802"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-105802",
           "hop_distance": 1
@@ -19648,6 +21768,10 @@
         "Featuring"
       ],
       "albums": [
+        "master-10363",
+        "master-37401"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-37401",
           "hop_distance": 1
@@ -19686,6 +21810,10 @@
         "Percussion"
       ],
       "albums": [
+        "master-113224",
+        "master-67836"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-113224",
           "hop_distance": 1
@@ -19728,6 +21856,10 @@
         "Electric Guitar"
       ],
       "albums": [
+        "master-49227",
+        "master-55658"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-49227",
           "hop_distance": 1
@@ -19770,6 +21902,11 @@
         "Producer [Produced By, For Excellency Productions]"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-302"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-302",
           "hop_distance": 0
@@ -19828,6 +21965,19 @@
         "Backing Vocals"
       ],
       "albums": [
+        "master-10362",
+        "master-104115",
+        "master-105802",
+        "master-13960",
+        "master-26037",
+        "master-26725",
+        "master-47744",
+        "master-56036",
+        "master-65826",
+        "master-79241",
+        "master-81172"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-81172",
           "hop_distance": 0
@@ -19948,6 +22098,10 @@
         "Chorus"
       ],
       "albums": [
+        "master-1561",
+        "master-9382"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-1561",
           "hop_distance": 1
@@ -19995,6 +22149,20 @@
         "Arranged By, Written-By, Keyboards"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-133278",
+        "master-1561",
+        "master-16545",
+        "master-23069",
+        "master-30577",
+        "master-338175",
+        "master-41155",
+        "master-44278",
+        "master-52998",
+        "master-57940"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-57940",
           "hop_distance": 0
@@ -20129,6 +22297,26 @@
         "Vocals, Acoustic Guitar"
       ],
       "albums": [
+        "master-10363",
+        "master-104399",
+        "master-105802",
+        "master-138283",
+        "master-15841",
+        "master-172407",
+        "master-23069",
+        "master-26037",
+        "master-26436",
+        "master-27765",
+        "master-28680",
+        "master-39341",
+        "master-406634",
+        "master-43063",
+        "master-4424",
+        "master-553",
+        "master-55576",
+        "master-58313"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10363",
           "hop_distance": 1
@@ -20286,6 +22474,20 @@
         "Lead Vocals"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-129759",
+        "master-32208",
+        "master-35793",
+        "master-40048",
+        "master-49965",
+        "master-56036",
+        "master-60680",
+        "master-69156",
+        "master-79241",
+        "master-87446"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-60680",
           "hop_distance": 0
@@ -20408,6 +22610,11 @@
       ],
       "role_text_examples": [],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-41722"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-41722",
           "hop_distance": 0
@@ -20443,6 +22650,10 @@
         "Mixed By"
       ],
       "albums": [
+        "master-10363",
+        "master-135633"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-135633",
           "hop_distance": 1
@@ -20491,6 +22702,10 @@
         "Producer, Engineer, Programmed By [Fairlight Programming]"
       ],
       "albums": [
+        "master-10362",
+        "master-4424"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10362",
           "hop_distance": 1
@@ -20542,6 +22757,10 @@
         "Instruments [All], Backing Vocals"
       ],
       "albums": [
+        "master-31337",
+        "master-403952"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-31337",
           "hop_distance": 1
@@ -20580,6 +22799,11 @@
       ],
       "role_text_examples": [],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-16921"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-16921",
           "hop_distance": 0
@@ -20623,6 +22847,18 @@
         "Vocals"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-105802",
+        "master-23069",
+        "master-31337",
+        "master-32708",
+        "master-37615",
+        "master-49965",
+        "master-72235",
+        "master-81172"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-105802",
           "hop_distance": 0
@@ -20731,6 +22967,10 @@
         "Vocals"
       ],
       "albums": [
+        "master-553",
+        "master-69156"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-553",
           "hop_distance": 1
@@ -20779,6 +23019,10 @@
         "Producer"
       ],
       "albums": [
+        "master-10362",
+        "master-303567"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10362",
           "hop_distance": 1
@@ -20837,6 +23081,10 @@
         "Vocals, Piano"
       ],
       "albums": [
+        "master-30577",
+        "master-49227"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-30577",
           "hop_distance": 1
@@ -20883,6 +23131,10 @@
         "Guitar [Paul Reed Smith, Gibson], Electronics [Kmd, Chandler], Other [Shiloh Music]"
       ],
       "albums": [
+        "master-10363",
+        "master-17249"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-17249",
           "hop_distance": 1
@@ -20930,6 +23182,12 @@
         "Backing Vocals"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-35401",
+        "master-68399"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-35401",
           "hop_distance": 0
@@ -20977,6 +23235,14 @@
         "Backing Vocals"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-122051",
+        "master-26037",
+        "master-47744",
+        "master-56036"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-122051",
           "hop_distance": 0
@@ -21034,6 +23300,10 @@
         "Guitar"
       ],
       "albums": [
+        "master-66631",
+        "master-68399"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-66631",
           "hop_distance": 1
@@ -21078,6 +23348,10 @@
         "Guest"
       ],
       "albums": [
+        "master-10362",
+        "master-48605"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-48605",
           "hop_distance": 1
@@ -21124,6 +23398,10 @@
         "Recorded By"
       ],
       "albums": [
+        "master-10362",
+        "master-30712"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10362",
           "hop_distance": 1
@@ -21173,6 +23451,10 @@
         "Backing Vocals [Background Vocals]"
       ],
       "albums": [
+        "master-10362",
+        "master-49227"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10362",
           "hop_distance": 1
@@ -21218,6 +23500,10 @@
         "Drums, Synthesizer, Vocals"
       ],
       "albums": [
+        "master-37615",
+        "master-65826"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-37615",
           "hop_distance": 1
@@ -21258,6 +23544,10 @@
         "Performer, Bass"
       ],
       "albums": [
+        "master-26725",
+        "master-750386"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-26725",
           "hop_distance": 1
@@ -21307,6 +23597,10 @@
         "Recorded By"
       ],
       "albums": [
+        "master-10362",
+        "master-59538"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-59538",
           "hop_distance": 1
@@ -21372,6 +23666,10 @@
         "Engineer [Recording]"
       ],
       "albums": [
+        "master-10362",
+        "master-96362"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-96362",
           "hop_distance": 1
@@ -21416,6 +23714,10 @@
         "Saxophone"
       ],
       "albums": [
+        "master-49965",
+        "master-57029"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-49965",
           "hop_distance": 1
@@ -21462,6 +23764,10 @@
         "Piano, Organ, Keyboards, Vibraphone [Vibes], Bells, Chimes, Glockenspiel, Percussion, Lead Vocals, Backing Vocals, Arranged By [Vocals], Effects [Sound], Other [Emulator]"
       ],
       "albums": [
+        "master-113522",
+        "master-40048"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-113522",
           "hop_distance": 1
@@ -21501,6 +23807,10 @@
         "Drums"
       ],
       "albums": [
+        "master-25893",
+        "master-59538"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-25893",
           "hop_distance": 1
@@ -21545,6 +23855,10 @@
         "Piano"
       ],
       "albums": [
+        "master-122051",
+        "master-26037"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-122051",
           "hop_distance": 1
@@ -21588,6 +23902,10 @@
         "Drums"
       ],
       "albums": [
+        "master-47744",
+        "master-81172"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-47744",
           "hop_distance": 1
@@ -21631,6 +23949,10 @@
         "Producer [Original Recordings]"
       ],
       "albums": [
+        "master-10362",
+        "master-68469"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-68469",
           "hop_distance": 0
@@ -21673,6 +23995,20 @@
         "Producer"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-122051",
+        "master-129759",
+        "master-26037",
+        "master-3762",
+        "master-47744",
+        "master-49965",
+        "master-60721",
+        "master-81172",
+        "master-81575",
+        "master-99919"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-26037",
           "hop_distance": 0
@@ -21794,6 +24130,16 @@
         "Drums"
       ],
       "albums": [
+        "master-10362",
+        "master-104166",
+        "master-106274",
+        "master-106396",
+        "master-122261",
+        "master-52671",
+        "master-68209",
+        "master-73013"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10362",
           "hop_distance": 1
@@ -21893,6 +24239,10 @@
         "Violin [Overdubbing]"
       ],
       "albums": [
+        "master-122261",
+        "master-96362"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-122261",
           "hop_distance": 1
@@ -21935,6 +24285,10 @@
         "Bass"
       ],
       "albums": [
+        "master-113522",
+        "master-151766"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-113522",
           "hop_distance": 1
@@ -21976,6 +24330,10 @@
         "Organ [Hammond]"
       ],
       "albums": [
+        "master-553",
+        "master-57029"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-553",
           "hop_distance": 1
@@ -22017,6 +24375,10 @@
         "Drums, Backing Vocals"
       ],
       "albums": [
+        "master-30712",
+        "master-72879"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-30712",
           "hop_distance": 1
@@ -22057,6 +24419,10 @@
         "Drums"
       ],
       "albums": [
+        "master-151766",
+        "master-74227"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-151766",
           "hop_distance": 1
@@ -22099,6 +24465,10 @@
         "Mastered By"
       ],
       "albums": [
+        "master-10363",
+        "master-3211"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-3211",
           "hop_distance": 1
@@ -22142,6 +24512,10 @@
         "Bass"
       ],
       "albums": [
+        "master-35759",
+        "master-8883"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-35759",
           "hop_distance": 1
@@ -22187,6 +24561,10 @@
         "Producer"
       ],
       "albums": [
+        "master-10363",
+        "master-4424"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-4424",
           "hop_distance": 1
@@ -22235,6 +24613,11 @@
         "Producer [Album Producer]"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-37401"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-37401",
           "hop_distance": 0
@@ -22286,6 +24669,10 @@
         "Rhythm Guitar"
       ],
       "albums": [
+        "master-44278",
+        "master-68399"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-44278",
           "hop_distance": 1
@@ -22328,6 +24715,10 @@
         "Backing Vocals"
       ],
       "albums": [
+        "master-26037",
+        "master-3762"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-26037",
           "hop_distance": 1
@@ -22376,6 +24767,19 @@
         "Lead Vocals, Acoustic Guitar, Harmonica, Percussion"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-104115",
+        "master-26725",
+        "master-32708",
+        "master-52998",
+        "master-56036",
+        "master-67405",
+        "master-68209",
+        "master-750386",
+        "master-81172"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-26725",
           "hop_distance": 0
@@ -22497,6 +24901,10 @@
         "Saxophone"
       ],
       "albums": [
+        "master-113224",
+        "master-338175"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-113224",
           "hop_distance": 1
@@ -22540,6 +24948,10 @@
         "Backing Vocals"
       ],
       "albums": [
+        "master-138283",
+        "master-51607"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-138283",
           "hop_distance": 1
@@ -22583,6 +24995,10 @@
         "Composed By"
       ],
       "albums": [
+        "master-10363",
+        "master-59538"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-59538",
           "hop_distance": 1
@@ -22631,6 +25047,10 @@
         "Recorded By, Edited By"
       ],
       "albums": [
+        "master-10363",
+        "master-110874"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-110874",
           "hop_distance": 1
@@ -22687,6 +25107,16 @@
         "Arranged By, Programmed By, Guitar"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-1561",
+        "master-26037",
+        "master-30577",
+        "master-32208",
+        "master-3762",
+        "master-81575"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-3762",
           "hop_distance": 0
@@ -22802,6 +25232,14 @@
         "Mixed By [5.1 Tracks], Producer [5.1 Tracks]"
       ],
       "albums": [
+        "master-10362",
+        "master-18442",
+        "master-302",
+        "master-406634",
+        "master-54449",
+        "master-68469"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10362",
           "hop_distance": 1
@@ -22895,6 +25333,10 @@
         "Musician [Production Numbers], Drums"
       ],
       "albums": [
+        "master-107325",
+        "master-55658"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-107325",
           "hop_distance": 1
@@ -22936,6 +25378,11 @@
       ],
       "role_text_examples": [],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-35706"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-35706",
           "hop_distance": 0
@@ -22972,6 +25419,10 @@
         "Piano"
       ],
       "albums": [
+        "master-107325",
+        "master-97173"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-107325",
           "hop_distance": 1
@@ -23013,6 +25464,11 @@
       ],
       "role_text_examples": [],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-27765"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-27765",
           "hop_distance": 0
@@ -23055,6 +25511,21 @@
         "Bass"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-104115",
+        "master-138283",
+        "master-19493",
+        "master-20387",
+        "master-26725",
+        "master-37615",
+        "master-56036",
+        "master-69859",
+        "master-75606",
+        "master-81172",
+        "master-92896"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-104115",
           "hop_distance": 0
@@ -23193,6 +25664,12 @@
         "Mixed By [Henson Recording]"
       ],
       "albums": [
+        "master-10363",
+        "master-106396",
+        "master-37401",
+        "master-40048"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10363",
           "hop_distance": 1
@@ -23286,6 +25763,25 @@
         "Written-By"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-104115",
+        "master-122051",
+        "master-129759",
+        "master-23069",
+        "master-26725",
+        "master-30577",
+        "master-3878",
+        "master-40048",
+        "master-553",
+        "master-56036",
+        "master-60680",
+        "master-68209",
+        "master-72879",
+        "master-79241",
+        "master-81172"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-56036",
           "hop_distance": 0
@@ -23442,6 +25938,11 @@
         "Composed By"
       ],
       "albums": [
+        "master-10362",
+        "master-9382",
+        "master-96362"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10362",
           "hop_distance": 1
@@ -23507,6 +26008,11 @@
         "Producer [Original], Mixed By"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-18442"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-18442",
           "hop_distance": 0
@@ -23563,6 +26069,10 @@
         "Electric Guitar, Lap Steel Guitar"
       ],
       "albums": [
+        "master-10363",
+        "master-59538"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10363",
           "hop_distance": 1
@@ -23633,6 +26143,10 @@
         "Vocals"
       ],
       "albums": [
+        "master-45720",
+        "master-75606"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-45720",
           "hop_distance": 1
@@ -23676,6 +26190,20 @@
         "Drums"
       ],
       "albums": [
+        "master-10362",
+        "master-104166",
+        "master-113522",
+        "master-19493",
+        "master-26037",
+        "master-37615",
+        "master-3762",
+        "master-47744",
+        "master-49965",
+        "master-68209",
+        "master-81575",
+        "master-92896"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-81575",
           "hop_distance": 0
@@ -23788,6 +26316,10 @@
         "Producer"
       ],
       "albums": [
+        "master-10363",
+        "master-20137"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10363",
           "hop_distance": 1
@@ -23833,6 +26365,12 @@
         "Producer, Guitar, Piano"
       ],
       "albums": [
+        "master-10362",
+        "master-26725",
+        "master-36227",
+        "master-67405"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-67405",
           "hop_distance": 0
@@ -23884,6 +26422,11 @@
         "Vocals"
       ],
       "albums": [
+        "master-10362",
+        "master-104115",
+        "master-32208"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10362",
           "hop_distance": 1
@@ -23946,6 +26489,15 @@
         "Engineer, Mixed By"
       ],
       "albums": [
+        "master-10363",
+        "master-12236",
+        "master-17249",
+        "master-302",
+        "master-30303",
+        "master-32708",
+        "master-42522"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10363",
           "hop_distance": 1
@@ -24044,6 +26596,11 @@
         "Performer"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-34081"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-34081",
           "hop_distance": 0
@@ -24088,6 +26645,10 @@
         "Vocals, Lead Guitar"
       ],
       "albums": [
+        "master-55658",
+        "master-72235"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-55658",
           "hop_distance": 1
@@ -24128,6 +26689,10 @@
         "Tenor Saxophone"
       ],
       "albums": [
+        "master-10362",
+        "master-66631"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10362",
           "hop_distance": 1
@@ -24175,6 +26740,10 @@
         "Programmed By, Strings"
       ],
       "albums": [
+        "master-10362",
+        "master-303567"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-303567",
           "hop_distance": 1
@@ -24234,6 +26803,10 @@
         "Written-By"
       ],
       "albums": [
+        "master-10362",
+        "master-72235"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-72235",
           "hop_distance": 1
@@ -24279,6 +26852,11 @@
       ],
       "role_text_examples": [],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-55281"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-55281",
           "hop_distance": 0
@@ -24314,6 +26892,10 @@
         "Drums"
       ],
       "albums": [
+        "master-13960",
+        "master-68399"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-13960",
           "hop_distance": 1
@@ -24356,6 +26938,10 @@
         "Percussion"
       ],
       "albums": [
+        "master-52671",
+        "master-52998"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-52671",
           "hop_distance": 1
@@ -24400,6 +26986,10 @@
         "Guitar"
       ],
       "albums": [
+        "master-17217",
+        "master-57029"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-17217",
           "hop_distance": 1
@@ -24443,6 +27033,10 @@
         "Synthesizer"
       ],
       "albums": [
+        "master-3762",
+        "master-81575"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-3762",
           "hop_distance": 1
@@ -24486,6 +27080,10 @@
         "Saxophone, Soloist [Sax Solo]"
       ],
       "albums": [
+        "master-35793",
+        "master-45720"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-35793",
           "hop_distance": 1
@@ -24529,6 +27127,10 @@
         "Keyboards"
       ],
       "albums": [
+        "master-41155",
+        "master-80514"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-41155",
           "hop_distance": 1
@@ -24571,6 +27173,10 @@
         "Drums"
       ],
       "albums": [
+        "master-129759",
+        "master-56036"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-129759",
           "hop_distance": 1
@@ -24614,6 +27220,10 @@
         "Vocals, Clarinet, Keyboards, Synthesizer"
       ],
       "albums": [
+        "master-35793",
+        "master-74227"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-35793",
           "hop_distance": 1
@@ -24654,6 +27264,10 @@
         "Guitar"
       ],
       "albums": [
+        "master-338175",
+        "master-57940"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-338175",
           "hop_distance": 1
@@ -24696,6 +27310,10 @@
         "Harp"
       ],
       "albums": [
+        "master-36251",
+        "master-82337"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-36251",
           "hop_distance": 1
@@ -24741,6 +27359,10 @@
         "Musician [Production Numbers], Keyboards"
       ],
       "albums": [
+        "master-107325",
+        "master-57029"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-107325",
           "hop_distance": 1
@@ -24780,6 +27402,10 @@
         "Bass"
       ],
       "albums": [
+        "master-36227",
+        "master-67405"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-36227",
           "hop_distance": 1
@@ -24819,6 +27445,10 @@
         "Guitar"
       ],
       "albums": [
+        "master-45720",
+        "master-65826"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-45720",
           "hop_distance": 1
@@ -24863,6 +27493,10 @@
         "Guitar"
       ],
       "albums": [
+        "master-138283",
+        "master-30577"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-138283",
           "hop_distance": 1
@@ -24907,6 +27541,10 @@
         "Double Bass [Upright Bass]"
       ],
       "albums": [
+        "master-32208",
+        "master-79241"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-32208",
           "hop_distance": 1
@@ -24950,6 +27588,10 @@
         "Guitar"
       ],
       "albums": [
+        "master-79666",
+        "master-92986"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-79666",
           "hop_distance": 1
@@ -25000,6 +27642,15 @@
         "Producer [Produced By]"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-105802",
+        "master-23069",
+        "master-56036",
+        "master-57940",
+        "master-79241"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-23069",
           "hop_distance": 0
@@ -25089,6 +27740,10 @@
         "Piano"
       ],
       "albums": [
+        "master-105802",
+        "master-23069"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-105802",
           "hop_distance": 1
@@ -25133,6 +27788,10 @@
         "Baritone Saxophone"
       ],
       "albums": [
+        "master-108242",
+        "master-54449"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-108242",
           "hop_distance": 1
@@ -25178,6 +27837,10 @@
         "Piano, Organ, Organ [Ondioline], Vocals, Twelve-String Guitar, Electric Guitar"
       ],
       "albums": [
+        "master-104115",
+        "master-81172"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-104115",
           "hop_distance": 1
@@ -25219,6 +27882,10 @@
         "Piano"
       ],
       "albums": [
+        "master-122261",
+        "master-35759"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-122261",
           "hop_distance": 1
@@ -25258,6 +27925,10 @@
         "Steel Guitar"
       ],
       "albums": [
+        "master-108242",
+        "master-750386"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-108242",
           "hop_distance": 1
@@ -25297,6 +27968,10 @@
         "Trumpet"
       ],
       "albums": [
+        "master-107325",
+        "master-60721"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-107325",
           "hop_distance": 1
@@ -25341,6 +28016,10 @@
         "Bass [Additional]"
       ],
       "albums": [
+        "master-129759",
+        "master-750386"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-129759",
           "hop_distance": 1
@@ -25381,6 +28060,10 @@
         "Keyboards"
       ],
       "albums": [
+        "master-106396",
+        "master-113224"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-106396",
           "hop_distance": 1
@@ -25423,6 +28106,10 @@
         "Drums"
       ],
       "albums": [
+        "master-106274",
+        "master-59538"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-106274",
           "hop_distance": 1
@@ -25461,6 +28148,11 @@
       ],
       "role_text_examples": [],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-24511"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-24511",
           "hop_distance": 0
@@ -25497,6 +28189,11 @@
         "Producer"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-59501"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-59501",
           "hop_distance": 0
@@ -25544,6 +28241,10 @@
         "Bass"
       ],
       "albums": [
+        "master-52998",
+        "master-68209"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-52998",
           "hop_distance": 1
@@ -25586,6 +28287,10 @@
         "Drums"
       ],
       "albums": [
+        "master-16545",
+        "master-3878"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-16545",
           "hop_distance": 1
@@ -25629,6 +28334,10 @@
         "Technician [Spherical Sound By]"
       ],
       "albums": [
+        "master-10362",
+        "master-35401"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10362",
           "hop_distance": 1
@@ -25675,6 +28384,19 @@
         "Vocals [The Other Voices]"
       ],
       "albums": [
+        "master-10362",
+        "master-110874",
+        "master-16921",
+        "master-172407",
+        "master-20135",
+        "master-30926",
+        "master-45432",
+        "master-66510",
+        "master-69156",
+        "master-70584",
+        "master-74227"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10362",
           "hop_distance": 1
@@ -25791,6 +28513,10 @@
         "Backing Vocals"
       ],
       "albums": [
+        "master-10362",
+        "master-72235"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10362",
           "hop_distance": 1
@@ -25833,6 +28559,10 @@
         "Drums"
       ],
       "albums": [
+        "master-28680",
+        "master-49227"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-28680",
           "hop_distance": 1
@@ -25874,6 +28604,10 @@
         "Guitar"
       ],
       "albums": [
+        "master-13960",
+        "master-74227"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-13960",
           "hop_distance": 1
@@ -25924,6 +28658,23 @@
         "Drums, Percussion, Written-By, Vocals"
       ],
       "albums": [
+        "master-10362",
+        "master-23069",
+        "master-30577",
+        "master-32208",
+        "master-37615",
+        "master-40048",
+        "master-56036",
+        "master-60680",
+        "master-68209",
+        "master-69859",
+        "master-72879",
+        "master-79241",
+        "master-81172",
+        "master-92517",
+        "master-99919"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-79241",
           "hop_distance": 0
@@ -26066,6 +28817,11 @@
         "Engineer [Additional]"
       ],
       "albums": [
+        "master-10362",
+        "master-138283",
+        "master-92986"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10362",
           "hop_distance": 1
@@ -26119,6 +28875,10 @@
         "Percussion"
       ],
       "albums": [
+        "master-3878",
+        "master-72235"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-3878",
           "hop_distance": 1
@@ -26162,6 +28922,11 @@
         "Congas"
       ],
       "albums": [
+        "master-10362",
+        "master-1046042",
+        "master-13960"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10362",
           "hop_distance": 1
@@ -26219,6 +28984,10 @@
         "Tenor Saxophone [Tenor Sax]"
       ],
       "albums": [
+        "master-30712",
+        "master-92986"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-30712",
           "hop_distance": 1
@@ -26264,6 +29033,13 @@
         "Recorded By"
       ],
       "albums": [
+        "master-10363",
+        "master-108242",
+        "master-129759",
+        "master-3719",
+        "master-56036"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10363",
           "hop_distance": 1
@@ -26339,6 +29115,10 @@
         "Arranged By"
       ],
       "albums": [
+        "master-10362",
+        "master-70584"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-70584",
           "hop_distance": 0
@@ -26377,6 +29157,10 @@
         "Vocals [Ornithologist]"
       ],
       "albums": [
+        "master-65826",
+        "master-81172"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-65826",
           "hop_distance": 1
@@ -26424,6 +29208,18 @@
         "Acoustic Guitar"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-129759",
+        "master-26037",
+        "master-338175",
+        "master-47744",
+        "master-55658",
+        "master-56036",
+        "master-60680",
+        "master-750386"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-129759",
           "hop_distance": 0
@@ -26543,6 +29339,11 @@
         "Vocals"
       ],
       "albums": [
+        "master-10363",
+        "master-16545",
+        "master-72879"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-16545",
           "hop_distance": 1
@@ -26601,6 +29402,10 @@
         "Drums [Bass Drums]"
       ],
       "albums": [
+        "master-36251",
+        "master-90844"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-36251",
           "hop_distance": 1
@@ -26649,6 +29454,25 @@
         "Backing Vocals"
       ],
       "albums": [
+        "master-10362",
+        "master-104166",
+        "master-106274",
+        "master-26725",
+        "master-30577",
+        "master-32708",
+        "master-40048",
+        "master-52998",
+        "master-56036",
+        "master-68209",
+        "master-74227",
+        "master-750386",
+        "master-79241",
+        "master-81575",
+        "master-87446",
+        "master-92517",
+        "master-99919"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-68209",
           "hop_distance": 0
@@ -26803,6 +29627,11 @@
         "Remastered By [Digital Remastering]"
       ],
       "albums": [
+        "master-10362",
+        "master-17249",
+        "master-19493"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10362",
           "hop_distance": 1
@@ -26859,6 +29688,14 @@
         "Piano [Acoustic Piano]"
       ],
       "albums": [
+        "master-10362",
+        "master-23069",
+        "master-25893",
+        "master-26037",
+        "master-36227",
+        "master-45720"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10362",
           "hop_distance": 1
@@ -26940,6 +29777,10 @@
         "Backing Vocals"
       ],
       "albums": [
+        "master-106274",
+        "master-66631"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-106274",
           "hop_distance": 1
@@ -26986,6 +29827,20 @@
         "Composed By"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-104166",
+        "master-113522",
+        "master-133278",
+        "master-19493",
+        "master-36227",
+        "master-47744",
+        "master-68209",
+        "master-81575",
+        "master-92517",
+        "master-99919"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-104166",
           "hop_distance": 0
@@ -27106,6 +29961,10 @@
         "Guitar"
       ],
       "albums": [
+        "master-106274",
+        "master-67836"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-106274",
           "hop_distance": 1
@@ -27151,6 +30010,10 @@
         "Composed By"
       ],
       "albums": [
+        "master-10362",
+        "master-55658"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10362",
           "hop_distance": 1
@@ -27199,6 +30062,10 @@
         "Vocals"
       ],
       "albums": [
+        "master-36251",
+        "master-44278"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-36251",
           "hop_distance": 1
@@ -27250,6 +30117,16 @@
         "Guitar"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-108242",
+        "master-403952",
+        "master-54449",
+        "master-65826",
+        "master-67836",
+        "master-750386"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-108242",
           "hop_distance": 0
@@ -27352,6 +30229,10 @@
         "Percussion"
       ],
       "albums": [
+        "master-108242",
+        "master-403952"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-108242",
           "hop_distance": 1
@@ -27395,6 +30276,10 @@
         "Trumpet"
       ],
       "albums": [
+        "master-106274",
+        "master-338175"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-106274",
           "hop_distance": 1
@@ -27437,6 +30322,10 @@
         "Bass"
       ],
       "albums": [
+        "master-26647",
+        "master-59538"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-26647",
           "hop_distance": 1
@@ -27480,6 +30369,10 @@
         "Guitar"
       ],
       "albums": [
+        "master-122051",
+        "master-47744"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-122051",
           "hop_distance": 1
@@ -27522,6 +30415,10 @@
         "Backing Vocals [Background Vocals]"
       ],
       "albums": [
+        "master-51607",
+        "master-55576"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-51607",
           "hop_distance": 1
@@ -27562,6 +30459,10 @@
         "Drums"
       ],
       "albums": [
+        "master-104166",
+        "master-36227"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-104166",
           "hop_distance": 1
@@ -27603,6 +30504,10 @@
         "Vibraphone [Vibes], Marimba [Marimbas], Percussion"
       ],
       "albums": [
+        "master-172407",
+        "master-92986"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-172407",
           "hop_distance": 1
@@ -27647,6 +30552,10 @@
         "Guitar [Chorus Guitars]"
       ],
       "albums": [
+        "master-105802",
+        "master-49965"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-105802",
           "hop_distance": 1
@@ -27690,6 +30599,11 @@
         "Flute"
       ],
       "albums": [
+        "master-10363",
+        "master-17217",
+        "master-31337"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10363",
           "hop_distance": 1
@@ -27748,6 +30662,10 @@
         "Written-By, Backing Vocals"
       ],
       "albums": [
+        "master-23069",
+        "master-56036"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-23069",
           "hop_distance": 1
@@ -27789,6 +30707,10 @@
         "Bass"
       ],
       "albums": [
+        "master-10362",
+        "master-80514"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10362",
           "hop_distance": 1
@@ -27835,6 +30757,10 @@
         "Vocals [Sung by]"
       ],
       "albums": [
+        "master-10362",
+        "master-48605"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10362",
           "hop_distance": 1
@@ -27882,6 +30808,10 @@
         "Percussion"
       ],
       "albums": [
+        "master-129759",
+        "master-60680"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-129759",
           "hop_distance": 1
@@ -27922,6 +30852,10 @@
         "Guitar"
       ],
       "albums": [
+        "master-40048",
+        "master-96362"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-40048",
           "hop_distance": 1
@@ -27962,6 +30896,10 @@
         "Harp"
       ],
       "albums": [
+        "master-122051",
+        "master-56036"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-122051",
           "hop_distance": 1
@@ -28007,6 +30945,10 @@
         "Lead Vocals"
       ],
       "albums": [
+        "master-113522",
+        "master-75606"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-113522",
           "hop_distance": 1
@@ -28049,6 +30991,10 @@
         "Guitar, Lead Vocals [Lead Vocal]"
       ],
       "albums": [
+        "master-35793",
+        "master-60680"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-35793",
           "hop_distance": 1
@@ -28093,6 +31039,10 @@
         "Producer, Engineer, Programmed By, Organ, Glockenspiel, Synthesizer, Percussion, Backing Vocals"
       ],
       "albums": [
+        "master-303567",
+        "master-54449"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-303567",
           "hop_distance": 1
@@ -28133,6 +31083,11 @@
         "Producer, Mixed By"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-38712"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-38712",
           "hop_distance": 0
@@ -28177,6 +31132,11 @@
         "Vocals"
       ],
       "albums": [
+        "master-10362",
+        "master-122051",
+        "master-51607"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10362",
           "hop_distance": 1
@@ -28230,6 +31190,21 @@
         "Remix"
       ],
       "albums": [
+        "master-10362",
+        "master-13814",
+        "master-151766",
+        "master-26647",
+        "master-27460",
+        "master-35276",
+        "master-39248",
+        "master-39341",
+        "master-55576",
+        "master-57029",
+        "master-87446",
+        "master-8883",
+        "master-90844"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10362",
           "hop_distance": 1
@@ -28333,6 +31308,16 @@
         "Arranged By"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-104166",
+        "master-13280",
+        "master-32708",
+        "master-36227",
+        "master-67405",
+        "master-69859"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-36227",
           "hop_distance": 0
@@ -28435,6 +31420,10 @@
         "Soloist, Tenor Saxophone"
       ],
       "albums": [
+        "master-35401",
+        "master-68399"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-35401",
           "hop_distance": 1
@@ -28479,6 +31468,10 @@
         "Drums"
       ],
       "albums": [
+        "master-303567",
+        "master-40048"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-303567",
           "hop_distance": 1
@@ -28520,6 +31513,10 @@
         "Piano, Electric Piano [Fender Rhodes]"
       ],
       "albums": [
+        "master-133278",
+        "master-66631"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-133278",
           "hop_distance": 1
@@ -28563,6 +31560,10 @@
         "Pedal Steel Guitar"
       ],
       "albums": [
+        "master-10363",
+        "master-52497"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10363",
           "hop_distance": 1
@@ -28608,6 +31609,12 @@
         "Recorded By [Director Of Record Plant Remote Recording]"
       ],
       "albums": [
+        "master-10362",
+        "master-25688",
+        "master-27765",
+        "master-79666"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10362",
           "hop_distance": 1
@@ -28677,6 +31684,11 @@
         "Recorded By [With]"
       ],
       "albums": [
+        "master-10362",
+        "master-5460",
+        "master-59501"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10362",
           "hop_distance": 1
@@ -28734,6 +31746,15 @@
         "Mastered By [Vinyl]"
       ],
       "albums": [
+        "master-10362",
+        "master-135633",
+        "master-20148",
+        "master-3211",
+        "master-36251",
+        "master-45922",
+        "master-750386"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10362",
           "hop_distance": 1
@@ -28818,6 +31839,11 @@
         "Arranged By"
       ],
       "albums": [
+        "master-10362",
+        "master-110874",
+        "master-172407"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-172407",
           "hop_distance": 1
@@ -28866,6 +31892,10 @@
         "Drums, Programmed By [Loop Programming], Percussion"
       ],
       "albums": [
+        "master-1046042",
+        "master-1561"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-1046042",
           "hop_distance": 1
@@ -28906,6 +31936,10 @@
         "Violin"
       ],
       "albums": [
+        "master-32208",
+        "master-60680"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-32208",
           "hop_distance": 1
@@ -28950,6 +31984,11 @@
         "Percussion"
       ],
       "albums": [
+        "master-10362",
+        "master-38712",
+        "master-92896"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10362",
           "hop_distance": 1
@@ -29006,6 +32045,10 @@
         "Percussion, Drums"
       ],
       "albums": [
+        "master-26725",
+        "master-67405"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-26725",
           "hop_distance": 1
@@ -29046,6 +32089,10 @@
         "Drums"
       ],
       "albums": [
+        "master-13280",
+        "master-36227"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-13280",
           "hop_distance": 1
@@ -29086,6 +32133,10 @@
         "Drums"
       ],
       "albums": [
+        "master-113224",
+        "master-26647"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-113224",
           "hop_distance": 1
@@ -29129,6 +32180,10 @@
         "Organ [Vox]"
       ],
       "albums": [
+        "master-13960",
+        "master-89665"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-13960",
           "hop_distance": 1
@@ -29172,6 +32227,10 @@
         "Vocals [Chorus Vocals]"
       ],
       "albums": [
+        "master-12236",
+        "master-52497"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-12236",
           "hop_distance": 1
@@ -29213,6 +32272,15 @@
         "Sounds"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-104115",
+        "master-20387",
+        "master-32708",
+        "master-3878",
+        "master-90844"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-20387",
           "hop_distance": 0
@@ -29288,6 +32356,10 @@
         "Vocals, Backing Vocals"
       ],
       "albums": [
+        "master-23069",
+        "master-57940"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-23069",
           "hop_distance": 1
@@ -29331,6 +32403,10 @@
         "Violin, Concertmaster"
       ],
       "albums": [
+        "master-104399",
+        "master-41155"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-104399",
           "hop_distance": 1
@@ -29376,6 +32452,10 @@
         "Synthesizer [Prophet]"
       ],
       "albums": [
+        "master-28680",
+        "master-9382"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-28680",
           "hop_distance": 1
@@ -29416,6 +32496,10 @@
         "Mastered By"
       ],
       "albums": [
+        "master-10363",
+        "master-122051"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-122051",
           "hop_distance": 1
@@ -29460,6 +32544,10 @@
         "Percussion"
       ],
       "albums": [
+        "master-17217",
+        "master-44278"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-17217",
           "hop_distance": 1
@@ -29503,6 +32591,10 @@
         "Engineer"
       ],
       "albums": [
+        "master-10362",
+        "master-107325"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10362",
           "hop_distance": 1
@@ -29546,6 +32638,10 @@
         "Drums [Additional]"
       ],
       "albums": [
+        "master-25893",
+        "master-65826"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-25893",
           "hop_distance": 1
@@ -29590,6 +32686,10 @@
         "Recorded By [Audio Recording]"
       ],
       "albums": [
+        "master-10363",
+        "master-35006"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10363",
           "hop_distance": 1
@@ -29633,6 +32733,10 @@
         "Backing Vocals"
       ],
       "albums": [
+        "master-133278",
+        "master-57940"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-133278",
           "hop_distance": 1
@@ -29676,6 +32780,10 @@
         "Cello"
       ],
       "albums": [
+        "master-32208",
+        "master-3762"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-32208",
           "hop_distance": 1
@@ -29719,6 +32827,10 @@
         "Trumpet, Flugelhorn"
       ],
       "albums": [
+        "master-104115",
+        "master-138283"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-104115",
           "hop_distance": 1
@@ -29763,6 +32875,10 @@
         "Keyboards, Sampler [Samples], Backing Vocals"
       ],
       "albums": [
+        "master-1164779",
+        "master-19493"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-1164779",
           "hop_distance": 1
@@ -29798,6 +32914,11 @@
         "Mastered By"
       ],
       "albums": [
+        "master-10363",
+        "master-13280",
+        "master-25688"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10363",
           "hop_distance": 1
@@ -29852,6 +32973,10 @@
         "Mixed By [Reissue]"
       ],
       "albums": [
+        "master-10363",
+        "master-27765"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-27765",
           "hop_distance": 1
@@ -29900,6 +33025,12 @@
         "Remastered By"
       ],
       "albums": [
+        "master-10363",
+        "master-13814",
+        "master-1561",
+        "master-31755"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10363",
           "hop_distance": 1
@@ -29967,6 +33098,11 @@
         "Engineer [Assistant]"
       ],
       "albums": [
+        "master-10363",
+        "master-113522",
+        "master-25893"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10363",
           "hop_distance": 1
@@ -30015,6 +33151,10 @@
         "Engineer [Foh Sound], Mixed By [Audio Mix]"
       ],
       "albums": [
+        "master-10362",
+        "master-38175"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10362",
           "hop_distance": 1
@@ -30059,6 +33199,10 @@
         "Recorded By [Assistant], Mixed By [Assistant]"
       ],
       "albums": [
+        "master-10362",
+        "master-15841"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10362",
           "hop_distance": 1
@@ -30101,6 +33245,10 @@
         "Steel Guitar"
       ],
       "albums": [
+        "master-68209",
+        "master-750386"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-68209",
           "hop_distance": 1
@@ -30141,6 +33289,10 @@
         "Trombone"
       ],
       "albums": [
+        "master-104115",
+        "master-20387"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-104115",
           "hop_distance": 1
@@ -30186,6 +33338,10 @@
         "Keyboards [Strings]"
       ],
       "albums": [
+        "master-13280",
+        "master-2452996"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-13280",
           "hop_distance": 1
@@ -30229,6 +33385,15 @@
         "Reissue Producer [Project Assistance]"
       ],
       "albums": [
+        "master-10363",
+        "master-18442",
+        "master-25303",
+        "master-38175",
+        "master-45432",
+        "master-47744",
+        "master-57970"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10363",
           "hop_distance": 1
@@ -30317,6 +33482,10 @@
         "Written-By, Producer, Engineer, Piano, Synthesizer"
       ],
       "albums": [
+        "master-303567",
+        "master-31337"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-303567",
           "hop_distance": 1
@@ -30361,6 +33530,23 @@
         "Lacquer Cut By [Runout Etch]"
       ],
       "albums": [
+        "master-10363",
+        "master-113224",
+        "master-23684",
+        "master-35401",
+        "master-35706",
+        "master-35793",
+        "master-36227",
+        "master-38722",
+        "master-39248",
+        "master-4300",
+        "master-47868",
+        "master-52671",
+        "master-55281",
+        "master-57029",
+        "master-57940"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10363",
           "hop_distance": 1
@@ -30503,6 +33689,12 @@
         "Technician [Authored For SACD By]"
       ],
       "albums": [
+        "master-10362",
+        "master-113224",
+        "master-34081",
+        "master-76678"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10362",
           "hop_distance": 1
@@ -30568,6 +33760,10 @@
         "Percussion"
       ],
       "albums": [
+        "master-105802",
+        "master-81172"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-105802",
           "hop_distance": 1
@@ -30611,6 +33807,11 @@
         "Performer [With]"
       ],
       "albums": [
+        "master-10363",
+        "master-13960",
+        "master-27460"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10363",
           "hop_distance": 1
@@ -30668,6 +33869,12 @@
         "Reissue Producer"
       ],
       "albums": [
+        "master-10363",
+        "master-122261",
+        "master-32208",
+        "master-60680"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10363",
           "hop_distance": 1
@@ -30734,6 +33941,10 @@
         "Trombone"
       ],
       "albums": [
+        "master-13960",
+        "master-8883"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-13960",
           "hop_distance": 1
@@ -30774,6 +33985,10 @@
       ],
       "role_text_examples": [],
       "albums": [
+        "master-10362",
+        "master-73013"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-73013",
           "hop_distance": 0
@@ -30805,6 +34020,11 @@
         "Project Manager [Project Assistance]"
       ],
       "albums": [
+        "master-10363",
+        "master-48605",
+        "master-54449"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10363",
           "hop_distance": 1
@@ -30868,6 +34088,17 @@
         "Featuring"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-26725",
+        "master-403952",
+        "master-41155",
+        "master-52671",
+        "master-52998",
+        "master-57940",
+        "master-68209"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-52998",
           "hop_distance": 0
@@ -30975,6 +34206,13 @@
         "Reissue Producer [Reissue Supervision]"
       ],
       "albums": [
+        "master-10363",
+        "master-104166",
+        "master-35276",
+        "master-38712",
+        "master-49058"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10363",
           "hop_distance": 1
@@ -31049,6 +34287,10 @@
         "Vocals, Acoustic Guitar, Electric Guitar, Congas"
       ],
       "albums": [
+        "master-75606",
+        "master-92896"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-75606",
           "hop_distance": 1
@@ -31091,6 +34333,10 @@
         "Engineer [Assistant]"
       ],
       "albums": [
+        "master-10363",
+        "master-16921"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10363",
           "hop_distance": 1
@@ -31138,6 +34384,10 @@
         "Technician [Assistant @ Can-Am Recorders]"
       ],
       "albums": [
+        "master-10362",
+        "master-42522"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10362",
           "hop_distance": 1
@@ -31183,6 +34433,10 @@
         "Recorded By [Assistant]"
       ],
       "albums": [
+        "master-10363",
+        "master-20135"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10363",
           "hop_distance": 1
@@ -31229,6 +34483,10 @@
         "Graphics [20th Anniversary Cover]"
       ],
       "albums": [
+        "master-10362",
+        "master-31755"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10362",
           "hop_distance": 1
@@ -31274,6 +34532,11 @@
         "Mastered By [Mastering], Lacquer Cut By [Lacquer Cutting]"
       ],
       "albums": [
+        "master-10363",
+        "master-19493",
+        "master-34081"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10363",
           "hop_distance": 1
@@ -31328,6 +34591,11 @@
         "Research [Research & Annotation]"
       ],
       "albums": [
+        "master-10363",
+        "master-45720",
+        "master-52998"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10363",
           "hop_distance": 1
@@ -31373,6 +34641,10 @@
         "Recorded By"
       ],
       "albums": [
+        "master-10363",
+        "master-106274"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10363",
           "hop_distance": 1
@@ -31415,6 +34687,10 @@
         "Producer [Production]"
       ],
       "albums": [
+        "master-10362",
+        "master-338175"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10362",
           "hop_distance": 1
@@ -31456,6 +34732,10 @@
         "Project Manager [Project Assistance]"
       ],
       "albums": [
+        "master-10363",
+        "master-59501"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10363",
           "hop_distance": 1
@@ -31499,6 +34779,10 @@
         "Vocals"
       ],
       "albums": [
+        "master-37615",
+        "master-72235"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-37615",
           "hop_distance": 1
@@ -31540,6 +34824,10 @@
         "Drums, Percussion"
       ],
       "albums": [
+        "master-151766",
+        "master-303567"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-151766",
           "hop_distance": 1
@@ -31581,6 +34869,10 @@
         "Reissue Producer [Reissue Supervision]"
       ],
       "albums": [
+        "master-10363",
+        "master-55658"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10363",
           "hop_distance": 1
@@ -31632,6 +34924,15 @@
         "Cowbell"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-151766",
+        "master-303567",
+        "master-31337",
+        "master-40048",
+        "master-54449"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-303567",
           "hop_distance": 0
@@ -31732,6 +35033,11 @@
         "Music By"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-3211"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-3211",
           "hop_distance": 0
@@ -31778,6 +35084,16 @@
         "Composed By"
       ],
       "albums": [
+        "master-10362",
+        "master-104166",
+        "master-32708",
+        "master-68209",
+        "master-69859",
+        "master-79241",
+        "master-92517",
+        "master-99919"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-92517",
           "hop_distance": 0
@@ -31857,6 +35173,10 @@
         "Recorded By [Willie Nelson Vocals]"
       ],
       "albums": [
+        "master-10363",
+        "master-41722"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10363",
           "hop_distance": 1
@@ -31908,6 +35228,18 @@
         "Backing Vocals"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-106274",
+        "master-113224",
+        "master-129759",
+        "master-32708",
+        "master-338175",
+        "master-57940",
+        "master-87446",
+        "master-97173"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-338175",
           "hop_distance": 0
@@ -32020,6 +35352,14 @@
         "Vocals"
       ],
       "albums": [
+        "master-10362",
+        "master-108242",
+        "master-129759",
+        "master-26725",
+        "master-68209",
+        "master-750386"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-750386",
           "hop_distance": 0
@@ -32105,6 +35445,10 @@
         "Vocals [Additional]"
       ],
       "albums": [
+        "master-1046042",
+        "master-54449"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-1046042",
           "hop_distance": 1
@@ -32145,6 +35489,10 @@
         "Lighting Director, Author [Video and Screen Films]"
       ],
       "albums": [
+        "master-10362",
+        "master-26725"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10362",
           "hop_distance": 1
@@ -32190,6 +35538,12 @@
         "Vocals, Featuring"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-1164779",
+        "master-19493"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-1164779",
           "hop_distance": 0
@@ -32246,6 +35600,10 @@
         "Design [Sleeve Design, Assisted By]"
       ],
       "albums": [
+        "master-10362",
+        "master-47868"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10362",
           "hop_distance": 1
@@ -32287,6 +35645,10 @@
         "Booking [US]"
       ],
       "albums": [
+        "master-10363",
+        "master-21520"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10363",
           "hop_distance": 1
@@ -32330,6 +35692,10 @@
         "Booking [Europe]"
       ],
       "albums": [
+        "master-10363",
+        "master-18080"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10363",
           "hop_distance": 1
@@ -32373,6 +35739,10 @@
         "Graphic Design"
       ],
       "albums": [
+        "master-10363",
+        "master-5460"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10363",
           "hop_distance": 1
@@ -32425,6 +35795,15 @@
         "Film Director, Executive-Producer, Producer, Creative Director"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-1046042",
+        "master-1561",
+        "master-54449",
+        "master-5460",
+        "master-79666"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-1046042",
           "hop_distance": 0
@@ -32511,6 +35890,15 @@
         "Programmed By [Programmer]"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-13280",
+        "master-2452996",
+        "master-30577",
+        "master-30926",
+        "master-87446"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-2452996",
           "hop_distance": 0
@@ -32610,6 +35998,15 @@
         "Backing Vocals"
       ],
       "albums": [
+        "master-10362",
+        "master-10363",
+        "master-108242",
+        "master-31337",
+        "master-403952",
+        "master-52998",
+        "master-80514"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-403952",
           "hop_distance": 0
@@ -32711,6 +36108,11 @@
         "Booking [Agent]"
       ],
       "albums": [
+        "master-10363",
+        "master-30712",
+        "master-37145"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10363",
           "hop_distance": 1
@@ -32761,6 +36163,13 @@
       ],
       "role_text_examples": [],
       "albums": [
+        "master-10362",
+        "master-12236",
+        "master-20387",
+        "master-37401",
+        "master-57279"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10362",
           "hop_distance": 1
@@ -32811,6 +36220,15 @@
         "Backing Vocals"
       ],
       "albums": [
+        "master-10363",
+        "master-1046042",
+        "master-303567",
+        "master-3211",
+        "master-338175",
+        "master-403952",
+        "master-49965"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10363",
           "hop_distance": 1
@@ -32887,6 +36305,10 @@
         "Featuring"
       ],
       "albums": [
+        "master-10363",
+        "master-20387"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-20387",
           "hop_distance": 1
@@ -32940,6 +36362,10 @@
         "Written-By"
       ],
       "albums": [
+        "master-10363",
+        "master-20387"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10363",
           "hop_distance": 1
@@ -32988,6 +36414,10 @@
         "Translated By"
       ],
       "albums": [
+        "master-10363",
+        "master-172407"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-172407",
           "hop_distance": 1
@@ -33031,6 +36461,10 @@
         "Lithography"
       ],
       "albums": [
+        "master-10362",
+        "master-55281"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10362",
           "hop_distance": 1
@@ -33077,6 +36511,10 @@
         "Public Relations [Publicity, International]"
       ],
       "albums": [
+        "master-10363",
+        "master-5863"
+      ],
+      "album_hop_distances": [
         {
           "album_id": "master-10363",
           "hop_distance": 1

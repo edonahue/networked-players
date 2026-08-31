@@ -9,7 +9,7 @@ import { pathfindingGraphVersion } from "../src/game/pathfindingGraph";
 
 interface ContributorLite {
   artist_id: number;
-  albums: { album_id: string; hop_distance: number }[];
+  albums: string[];
   interesting_next_step: { artist_id: number; reason: string } | null;
 }
 
@@ -300,7 +300,7 @@ test("the center's interesting_next_step neighbor is visually highlighted", asyn
     await findBoundedRealInterestingNextStep(request);
 
   await page.goto(
-    `/explore/${contributor.albums[0].album_id}/?center=${contributor.artist_id}`,
+    `/explore/${contributor.albums[0]}/?center=${contributor.artist_id}`,
   );
   const highlighted = page.locator(
     `[data-explorer-nodes] .explorer-node[data-artist-id='${neighborId}']`,
@@ -351,17 +351,14 @@ test("the info panel links to the center's own record page and Connect, prefille
   // this same record.
   const res = await request.get("/data/contributors/index.v1.json");
   const { contributors } = (await res.json()) as {
-    contributors: {
-      artist_id: number;
-      albums: { album_id: string; hop_distance: number }[];
-    }[];
+    contributors: { artist_id: number; albums: string[] }[];
   };
   const elvis = contributors.find((c) => c.artist_id === 27518);
   if (!elvis || elvis.albums.length === 0)
     throw new Error(
       "Elvis Presley (27518) missing or has no albums in the real index",
     );
-  const ownAlbumId = elvis.albums[0].album_id;
+  const ownAlbumId = elvis.albums[0];
 
   await page.goto("/explore/master-107325/");
   const recordLink = page.locator(
@@ -389,7 +386,7 @@ test("the info panel explains a real, bounded interesting_next_step highlight in
   const reason = contributor.interesting_next_step!.reason;
 
   await page.goto(
-    `/explore/${contributor.albums[0].album_id}/?center=${contributor.artist_id}`,
+    `/explore/${contributor.albums[0]}/?center=${contributor.artist_id}`,
   );
   const worthALook = page.locator("[data-explorer-info-worth-a-look]");
   await expect(worthALook).toBeVisible({ timeout: 15000 });

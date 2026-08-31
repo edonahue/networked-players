@@ -135,7 +135,7 @@ See `data/contracts/contributor-index-v1.md` (updated) and
 `test_decade_activity_derived_from_the_contributors_own_evidence_release_years`
 (a real year-mismatch fixture asserting the fix).
 
-## Addendum: `albums[]` entries now carry `hop_distance`
+## Addendum: a new additive `album_hop_distances[]` field
 
 Real production data surfaced the gap this addendum closes: Jamiroquai's
 contributor page listed Pink Floyd's *The Dark Side Of The Moon* as a
@@ -149,21 +149,35 @@ tell a direct credit from a distant one, so a two-hop chain read as a direct
 tie to an artist's best-known record.
 
 The fix keeps the multi-hop attribution (still correct, still valuable) and
-makes the distance visible: each `albums[]` entry is now `{album_id,
-hop_distance}` instead of a bare id, where `hop_distance` is the minimum
-number of documented credit-hops from this contributor's nearest occurrence
-in any path/round to that endpoint album. `0` means the contributor is
-directly adjacent to that album's representative artist (the common case);
-higher values mean a real but more distant documented chain. The array is
-sorted by `(hop_distance, album_id)` so the frontend can render nearer
-connections first without its own sort step.
+makes the distance visible, without changing `albums[]`'s existing plain
+string-id shape. `albums` is a real, live, runtime-fetched artifact — not
+just a build-time import: `explorerStage.ts`, `connect.ts`, and
+`contributorsDirectory.ts` all `fetch()` this exact unhashed
+`/data/contributors/index.v1.json` URL from already-loaded client JS, so an
+open browser tab from before a deploy could fetch a freshly-published index
+after it. Changing `albums`'s element type from a string to an object would
+have silently broken that already-loaded old JS (caught in review on the PR
+that introduced this addendum). Instead, a new `album_hop_distances[]` field
+carries the richer `{album_id, hop_distance}` pairs alongside the unchanged
+`albums[]` — the same album-id set, additive only.
+
+`hop_distance` is the minimum number of documented credit-hops from this
+contributor's nearest occurrence in any path/round to that endpoint album.
+`0` means the contributor is directly adjacent to that album's representative
+artist (the common case); any value greater than zero — including `1` — means
+a real but more distant documented chain, not a direct credit on that album's
+own release (also caught in review: an earlier draft of this fix only
+flagged `hop_distance > 1`, leaving `1`-hop connections rendered identically
+to direct ones). The array is sorted by `(hop_distance, album_id)` so the
+frontend can render nearer connections first without its own sort step.
 
 `apps/web/src/pages/contributors/[id].astro` renders a short "N documented
-hops away" note for any entry with `hop_distance > 1`, and the section
-heading no longer implies every listed album is a direct credit. No other
-field changed; `connection_count`/`neighboring_contributor_ids`/`evidence`
-are unaffected, and `contributor_index_version`'s hash naturally moves since
-`albums` is one of its identity fields.
+hop(s) away" note for any entry with `hop_distance > 0`, and the section
+heading no longer implies every listed album is a direct credit. `albums`
+itself is byte-for-byte unchanged (same underlying id set as before this
+addendum); `connection_count`/`neighboring_contributor_ids`/`evidence` are
+also unaffected. `contributor_index_version`'s hash still moves, since
+`album_hop_distances` is now one of its identity fields too.
 
 See `data/contracts/contributor-index-v1.md` (updated) and
 `packages/graph-core/tests/test_contributor_index.py`'s hop-distance fixture.

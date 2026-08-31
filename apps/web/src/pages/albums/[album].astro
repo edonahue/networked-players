@@ -93,7 +93,7 @@ for (const artist of contributors) {
   for (const neighborId of indexed.neighboring_contributor_ids) {
     const neighbor = contributorById.get(neighborId);
     if (!neighbor) continue;
-    for (const { album_id: nearbyId } of neighbor.albums) {
+    for (const nearbyId of neighbor.albums) {
       if (!seenNearbyIds.has(nearbyId)) {
         seenNearbyIds.add(nearbyId);
         nearbyAlbumIds.push(nearbyId);
