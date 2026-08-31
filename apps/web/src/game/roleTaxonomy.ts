@@ -243,29 +243,46 @@ const NON_SUBSTANTIVE_ROLE_CATEGORIES = new Set([
   "unknown",
 ]);
 
-/** True when a contributor's own MOST FREQUENT credit (`role_text_examples`
+/** True when a contributor's own profile shows no evidence of substantive
+ * (non-background) work: their most frequent credit (`role_text_examples`
  * [0] -- contributors.ts's `Contributor` field is "ranked by frequency,
- * evidence not a summary") is a background-engineering credit, AND their
- * full `role_categories` set contains no substantive (non-background)
- * category. Used to de-emphasize (never hide) a contributor's non-direct
- * album/neighbor connections on the contributor and album detail pages --
- * reuses the page's own existing "Primarily credited for" signal rather
- * than attempting a fragile per-connection role lookup the available data
- * doesn't cleanly support.
+ * evidence not a summary") is background-engineering, their full
+ * `role_categories` set contains no substantive category, AND none of
+ * their OTHER `role_text_examples` is itself an engineering/production
+ * credit that isn't purely background. Used to de-emphasize (never hide)
+ * a contributor's non-direct album/neighbor connections on the
+ * contributor and album detail pages -- reuses the page's own existing
+ * "Primarily credited for" signal rather than attempting a fragile
+ * per-connection role lookup the available data doesn't cleanly support.
  *
- * Both conditions are load-bearing, caught in review against real
- * committed data: `role_text_examples[0]` alone is not enough, because a
- * real contributor (e.g. a singer who also mixed a handful of releases)
- * can have a background-engineering credit as their single most frequent
- * one while still carrying genuine substantive connections elsewhere --
- * the `role_categories` check keeps those contributors' real vocal/
- * production/etc. connections from being muted. Conversely "every credit
- * matches" (an earlier draft) is too strict the other way: a real
- * mastering engineer's profile routinely mixes "Mastered By" variants with
- * "Lacquer Cut By" (packaging/business), which would fail an ALL-must-
- * match bar despite being genuinely background-only -- the
- * `role_categories` allowlist handles that case correctly instead. An
- * empty `role_text_examples` array (a contributor with no evidence at
+ * All three conditions are load-bearing, each caught against real
+ * committed data in review:
+ * - `role_text_examples[0]` alone is not enough: a real contributor (e.g.
+ *   a singer who also mixed a handful of releases) can have a
+ *   background-engineering credit as their single most frequent one while
+ *   still carrying genuine substantive connections elsewhere (artist
+ *   67331: `role_text_examples` `["Mixed By", "Vocals"]`).
+ * - `role_categories` alone is not enough either: ENGINEERING is one
+ *   coarse category covering both the three narrow background tokens AND
+ *   generic "Engineer"/"Recorded By, Engineer" -- a real broader
+ *   engineer's entire profile can collapse to `["engineering"]` even
+ *   though most of their actual work isn't background-only (artist
+ *   92830: `role_text_examples` `["Mixed By", "Recorded By, Engineer",
+ *   "Engineer"]`, `role_categories` `["engineering"]` -- "Recorded By,
+ *   Engineer" and "Engineer" are each a real engineering/production
+ *   credit `isBackgroundEngineeringRole` correctly treats as substantive,
+ *   but the coarse category can't see that distinction). The third check
+ *   catches this by re-examining each individual role text, not just the
+ *   category it collapses to.
+ * - "every role_text_examples entry must be background" (an earlier
+ *   draft) is too strict the other way: a real mastering engineer's
+ *   profile routinely mixes "Mastered By" variants with "Lacquer Cut By"
+ *   (packaging/business, NOT an engineering/production credit at all by
+ *   this module's token sets) -- the third check only excludes on an
+ *   engineering/production credit that ISN'T background, so a
+ *   packaging/business credit like this one never trips it.
+ *
+ * An empty `role_text_examples` array (a contributor with no evidence at
  * all, e.g. a band credited only via release/track-artist billing with no
  * formal role of their own) is always false -- there is nothing to judge
  * as background-only, which is the honest answer for that case too: a
@@ -275,12 +292,18 @@ export function isBackgroundOnlyRoleProfile(
   roleTextExamples: string[],
   roleCategories: string[],
 ): boolean {
-  return (
-    roleTextExamples.length > 0 &&
-    isBackgroundEngineeringRole(roleTextExamples[0]) &&
-    roleCategories.every((category) =>
+  if (roleTextExamples.length === 0) return false;
+  if (!isBackgroundEngineeringRole(roleTextExamples[0])) return false;
+  if (
+    !roleCategories.every((category) =>
       NON_SUBSTANTIVE_ROLE_CATEGORIES.has(category),
     )
+  ) {
+    return false;
+  }
+  return !roleTextExamples.some(
+    (role) =>
+      isEngineeringOrProductionRole(role) && !isBackgroundEngineeringRole(role),
   );
 }
 

@@ -174,6 +174,34 @@ test.describe("isBackgroundOnlyRoleProfile", () => {
   test("false for an empty role_text_examples list -- nothing to judge as background-only", () => {
     expect(isBackgroundOnlyRoleProfile([], ["engineering"])).toBe(false);
   });
+
+  // Real gap caught in review against committed data (Mike Fraser, artist
+  // 92830): role_categories alone is not enough either. ENGINEERING is one
+  // coarse category covering both the three narrow background tokens and
+  // generic "Engineer"/"Recorded By, Engineer" -- his whole profile
+  // collapses to role_categories ["engineering"] even though two of his
+  // three most frequent credits ("Recorded By, Engineer" and "Engineer")
+  // are real engineering/production work isBackgroundEngineeringRole
+  // correctly treats as substantive, not purely background. Muting on
+  // role_text_examples[0] + role_categories alone would still incorrectly
+  // de-emphasize every one of his connections.
+  test("false when role_categories collapses to engineering-only but another role_text_examples entry is a non-background engineering credit", () => {
+    expect(
+      isBackgroundOnlyRoleProfile(
+        ["Mixed By", "Recorded By, Engineer", "Engineer"],
+        ["engineering"],
+      ),
+    ).toBe(false);
+  });
+
+  test("true when every engineering-flavored role_text_examples entry is itself purely background", () => {
+    expect(
+      isBackgroundOnlyRoleProfile(
+        ["Mixed By", "Mastered By", "Recorded By"],
+        ["engineering"],
+      ),
+    ).toBe(true);
+  });
 });
 
 test.describe("behindTheGlassEdgeFilter", () => {
