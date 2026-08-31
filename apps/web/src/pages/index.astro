@@ -66,8 +66,8 @@ const behindTheGlassTo = behindTheGlassPath
       <p class="eyebrow">Start here</p>
       <h2 id="ways-title">Four ways into the graph.</h2>
       <p class="lede">
-        Every mode below runs on the same real, documented credit data — pick the one that
-        matches what you're curious about.
+        Every mode below runs on the same credit data. Pick the one that matches what you're
+        curious about.
       </p>
     </div>
     <div class="feature-grid">
@@ -79,7 +79,7 @@ const behindTheGlassTo = behindTheGlassPath
       <a class="feature-card" data-tone="gold" href="/play/connect/">
         <span class="kicker">Pick any two</span>
         <h3>Connect Two Records</h3>
-        <p>Choose any two albums and search for a real, documented route between them.</p>
+        <p>Choose any two albums and search for a documented route between them.</p>
       </a>
       <a class="feature-card" data-tone="rust" href="/play/routes/">
         <span class="kicker">Guided</span>
@@ -104,10 +104,9 @@ const behindTheGlassTo = behindTheGlassPath
           <p class="eyebrow">Follow the credits</p>
           <h2 id="people-title">Every record has people behind it.</h2>
           <p class="lede">
-            Each album page lists who's documented on it. Open any name and you land on a real
-            person's page: their role categories, the records they connect, and — where the data
-            supports it — a "worth a look" nudge toward someone credited in a different kind of
-            role. No graph theory required, just follow the names.
+            Each album page lists who's documented on it. Open any name to land on their own
+            page: role categories, connected records, and sometimes a nudge toward someone
+            credited in a different kind of role. Just follow the names.
           </p>
         </div>
         <div class="contributor-grid">
@@ -145,8 +144,8 @@ const behindTheGlassTo = behindTheGlassPath
       <p class="eyebrow">A real connection</p>
       <h2 id="albums-title">{featuredPath.label}</h2>
       <p class="lede">
-        {featuredPath.description} Not a random pick — the first route in the current, versioned
-        challenge dataset. Search it yourself, or any other pair, at
+        {featuredPath.description} This is the first route in the current, versioned challenge
+        dataset. Search it yourself, or any other pair, at
         <a href="/play/connect/">Connect Two Records</a>.
       </p>
     </div>
@@ -159,10 +158,10 @@ const behindTheGlassTo = behindTheGlassPath
         <p class="lede" style="margin-top:24px">
           <em>{behindTheGlassFrom.title}</em> ({behindTheGlassFrom.artist}) and{' '}
           <em>{behindTheGlassTo.title}</em> ({behindTheGlassTo.artist}) connect end to end
-          through documented producer/engineer credits alone — a real{' '}
-          <a href="/play/connect/">Behind the Glass</a> route, not a random pick. It's one of
-          three role-restricted search modes that look only at a specific kind of credit
-          (producer/engineer, drums/bass, or guitar) instead of any documented one.
+          through producer/engineer credits alone — a real{' '}
+          <a href="/play/connect/">Behind the Glass</a> route. It's one of three role-restricted
+          search modes that look only at a specific kind of credit (producer/engineer,
+          drums/bass, or guitar) instead of any documented one.
         </p>
       )
     }
@@ -195,15 +194,14 @@ const behindTheGlassTo = behindTheGlassPath
       <p class="eyebrow">What's real here</p>
       <h2 id="state-title">Documented, not inferred.</h2>
       <p class="lede">
-        The album grid above and its evidence viewer run on real, Discogs monthly-dump-derived
-        data (snapshot {challenge.provenance.snapshot_date}) — {albums.length} studio albums
-        connected by {challenge.paths.length} documented credit paths, not a synthetic
-        placeholder. A role taxonomy for credits, real path search between any two records, and
-        an open-ended network explorer have all since shipped — see <a href="/about/">the full
-        picture</a> for what's live today and what's still ahead. The connections demo
-        (linked below) runs on a small, curated subset of <strong>real</strong> Discogs data,
-        fetched via the Discogs API ahead of the full CC0 dump pipeline — an earlier, smaller
-        slice kept during the transition, not the primary real dataset anymore.
+        The album grid above and its evidence viewer run on Discogs monthly-dump data (snapshot
+        {challenge.provenance.snapshot_date}): {albums.length} studio albums connected by
+        {challenge.paths.length} documented credit paths. A role taxonomy for credits, path
+        search between any two records, and an open-ended network explorer have all shipped
+        since — see <a href="/about/">the full picture</a> for what's live and what's still
+        ahead. The connections demo below runs on a separate, smaller dataset: a curated subset
+        fetched via the Discogs API, kept from an earlier version of the site before the CC0
+        dump pipeline became the primary source.
       </p>
     </div>
     <div class="hero-actions" style="margin-top:0">

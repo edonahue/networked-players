@@ -237,7 +237,7 @@ const description = [
             contributors.length > 0 && (
               <section aria-label="Linked contributors" style="margin-top:28px">
                 <p class="eyebrow" style="margin-bottom:10px">
-                  The names carrying these connections
+                  Contributors in these connections
                 </p>
                 <div class="contributor-grid">
                   {
@@ -271,8 +271,8 @@ const description = [
                   Nearby in the credit network
                 </p>
                 <p class="lede" style="margin-bottom:14px;font-size:0.92rem">
-                  Documented through shared contributors — not a claim these records sound
-                  alike, only that the credit graph connects them.
+                  Connected through shared contributors. The credit graph links them; it says
+                  nothing about how they sound.
                 </p>
                 <div class="album-grid">
                   {nearbyAlbums.map((nearbyAlbum) => <AlbumCard album={nearbyAlbum} />)}
@@ -292,8 +292,8 @@ const description = [
         <a href="/play/daily/">Connection of the Day</a> deals one for everyone.
       </p>
       <p class="lede" style="font-size:0.98rem">
-        Curious how {album.title} connects to everything else?{' '}
-        <a href={`/explore/${album.id}/`}>Open the Network Explorer</a> centered on {album.artist}, or{' '}
+        See how {album.title} connects to everything else in the{' '}
+        <a href={`/explore/${album.id}/`}>Network Explorer</a>, centered on {album.artist} — or{' '}
         <a href={`/play/connect/?a=${album.id}`}>try connecting it to another record</a> yourself.
       </p>
     </section>
