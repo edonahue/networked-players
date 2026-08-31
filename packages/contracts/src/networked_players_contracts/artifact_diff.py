@@ -36,6 +36,12 @@ _VERSION_FIELD_NAMES = frozenset(
         # album-credit-membership artifact.
         "evidence_release_registry_version",
         "album_credit_membership_version",
+        # Same recurring gap, caught again (round 7 Codex review on the
+        # PR that shipped `background_only_profiles_version`, plus
+        # `album_hop_distances_version` found missing by inspection while
+        # fixing that finding -- neither had been added here since).
+        "album_hop_distances_version",
+        "background_only_profiles_version",
     }
 )
 
