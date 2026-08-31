@@ -220,11 +220,10 @@ export async function initRoutes(): Promise<void> {
   function buildEvidence(): void {
     evidenceMount.replaceChildren();
     const heading = document.createElement("h3");
-    heading.textContent = "The documented route";
+    heading.textContent = "The liner notes";
     const stampLine = document.createElement("p");
     stampLine.className = "stamp";
-    stampLine.textContent =
-      "Real records · every hop is a documented liner-note credit shared on one release";
+    stampLine.textContent = "Real records";
     evidenceMount.append(heading, stampLine);
 
     route.hops.forEach((hop, index) => {
@@ -278,11 +277,11 @@ export async function initRoutes(): Promise<void> {
 
     let ratingText: string;
     if (lengthCorrect && (artistCorrect === null || artistCorrect)) {
-      ratingText = "Clean — every guess documented.";
+      ratingText = "Clean solve — every guess right.";
     } else if (lengthCorrect) {
-      ratingText = "Length confirmed — the bridging artist was different.";
+      ratingText = "Length confirmed — the bridge was a surprise.";
     } else {
-      ratingText = "Revealed — here is the documented route.";
+      ratingText = "Revealed — the liner notes have it.";
     }
 
     // A one-hop route's "connection" is the two named endpoint artists

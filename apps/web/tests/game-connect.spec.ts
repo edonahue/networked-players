@@ -331,7 +331,7 @@ test("the diagnostic pair (Discovery / Joshua Tree) is ranked away from its cave
   const explanation = page.locator("[data-connect-explain-primary]");
   await expect(explanation).toBeVisible();
   await expect(explanation).toContainText(
-    "no hop's evidence carries a published caveat",
+    "every hop's evidence is clean — no caveats",
   );
   // The bootleg release must never appear as the recommended route's own
   // evidence -- it may still appear elsewhere (the distinct alternate,
