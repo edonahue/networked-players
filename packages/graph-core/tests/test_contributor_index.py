@@ -429,6 +429,76 @@ def test_interesting_next_step_excludes_a_background_only_pair() -> None:
     assert carol["interesting_next_step"] is None
 
 
+def test_interesting_next_step_excludes_a_pair_with_a_non_substantive_companion_credit() -> None:
+    """Real gap caught in review (round 8), reproduced against the exact
+    cited real committed data: artist 399108 (Stan Ricker) has TWO credit
+    rows on release 1780725 -- "Lacquer Cut By" (packaging/business, not
+    one of the three narrow background-engineering tokens) and "Mastered
+    By [Half-speed Mastering For Vinyl]" (background-engineering). Before
+    this fix, `record_hop`'s `side_is_background` required
+    `is_background_engineering_role` to be true of EVERY individual
+    role_candidate, so the non-substantive "Lacquer Cut By" row wrongly
+    disqualified the whole side -- even though the SAME two credits
+    correctly classify this contributor's overall profile as
+    background-only via `is_background_only_role_profile` (and the
+    published background-only-profiles.v1.json artifact agrees). That
+    inconsistency let a contributor 399108's page render muted while
+    still winning a "worth a look" slot elsewhere -- fixed by evaluating
+    each hop side with the same background-or-non-substantive semantics
+    `is_background_only_role_profile` uses."""
+    catalog = {
+        "catalog_version": _CATALOG_VERSION,
+        "snapshot_date": _SNAPSHOT,
+        "albums": [
+            {"id": "master-1", "title": "First Light", "artist_id": 100, "year": 1995},
+            {"id": "master-2", "title": "Second Wave", "artist_id": 200, "year": 2001},
+        ],
+    }
+    challenge = {
+        "schema_version": 2,
+        "provenance": {"catalog_version": _CATALOG_VERSION},
+        "artists": [
+            {"artist_id": 100, "name": "Alice"},
+            {"artist_id": 200, "name": "Stan"},
+        ],
+        "paths": [
+            {
+                "id": "path-1",
+                "from_album_id": "master-1",
+                "to_album_id": "master-2",
+                "hops": [{"release_id": 1780725, "artist_a_id": 100, "artist_b_id": 200}],
+            }
+        ],
+        "releases": [
+            _challenge_release(
+                1780725,
+                [
+                    _credit(100, "Guitar"),
+                    _credit(200, "Lacquer Cut By"),
+                    _credit(200, "Mastered By [Half-speed Mastering For Vinyl]"),
+                ],
+            ),
+        ],
+    }
+    index = build_contributor_index(
+        challenge=challenge,
+        routes_universe=_routes_universe(),
+        routes_rounds={
+            "provenance": {"catalog_version": _CATALOG_VERSION},
+            "artists": [],
+            "rounds": [],
+            "releases": [],
+        },
+        catalog=catalog,
+        evidence_release_registry={"release_ids": [], "years": []},
+        generated_at="2026-08-03T00:00:00+00:00",
+    )
+    alice = next(c for c in index["contributors"] if c["artist_id"] == 100)
+    # Guitar (strings) is role-disjoint from Stan's engineering/packaging
+    # credits, so absent the fix this pair would still win the slot.
+    assert alice["interesting_next_step"] is None
+
+
 def test_interesting_next_step_still_picks_a_non_background_disjoint_neighbor() -> None:
     """The exclusion is narrow: a role-disjoint neighbor whose shared hop
     carries a REAL substantive role (not background-engineering-only) on

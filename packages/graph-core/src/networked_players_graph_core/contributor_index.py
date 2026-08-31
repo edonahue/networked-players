@@ -36,7 +36,6 @@ from networked_players_contracts.canonical import content_hash
 from .role_taxonomy import (
     RoleCategory,
     classify_role,
-    is_background_engineering_role,
     is_background_only_role_profile,
 )
 
@@ -237,12 +236,19 @@ def _annotate_interesting_next_step(
     deterministic tie-break.
 
     `background_only_pairs` (2026-08-31 addition) excludes a neighbor whose
-    ENTIRE shared connection to this contributor is background-engineering
-    credits (Mastered By/Recorded By/Mixed By on every hop that connects
-    them -- `is_background_engineering_role`). This nudge is meant to
-    surface a genuinely different, substantive collaborator; a tie that
-    exists only because an engineer mastered or mixed both people's
-    unrelated records shouldn't win the slot, even though the two role
+    ENTIRE shared connection to this contributor is background-only on
+    every hop that connects them -- each hop side evaluated with
+    `is_background_only_role_profile`'s own background-or-non-substantive
+    semantics (a real, committed credit can carry a non-substantive
+    packaging/business row like "Lacquer Cut By" alongside a background
+    one like "Mastered By" without that pair losing its background-only
+    status, matching how the same two credits classify the contributor's
+    OWN profile in background-only-profiles.v1.json -- a real
+    inconsistency an earlier, stricter per-role check caught in review).
+    This nudge is meant to surface a genuinely different, substantive
+    collaborator; a tie that exists only because an engineer mastered or
+    mixed both people's unrelated records shouldn't win the slot, even
+    though the two role
     categories are technically disjoint.
 
     `None` when no neighbor qualifies (measured: happens for about 31% of
@@ -331,7 +337,12 @@ def build_contributor_index(
     evidence_by_artist: dict[int, set[tuple[Any, str]]] = defaultdict(set)
     neighbor_counts: dict[int, Counter[int]] = defaultdict(Counter)
     # ADR 0060 addendum (2026-08-31): True only while every hop seen so far
-    # between this pair is background-engineering-only on at least one
+    # between this pair is background-only (background-engineering or
+    # non-substantive, `is_background_only_role_profile`'s own semantics --
+    # a real committed credit's OTHER row on the same release, e.g. a
+    # packaging/business "Lacquer Cut By" alongside "Mastered By", must
+    # not disqualify the side just because it isn't ITSELF a background
+    # token; a round-8 review finding against real data) on at least one
     # side -- AND-reduced across hops, so a pair that ALSO shares one real
     # substantive-role hop (on a different release) is never flagged, even
     # if another hop between them is pure mastering/mixing/recording work.
@@ -361,8 +372,7 @@ def build_contributor_index(
                 else challenge_role_lookup.get((release_id, artist_id), [])
             )
             side_is_background.append(
-                bool(role_candidates)
-                and all(is_background_engineering_role(r) for r in role_candidates)
+                bool(role_candidates) and is_background_only_role_profile(Counter(role_candidates))
             )
             for role_text in role_candidates:
                 role_texts[artist_id][role_text] += 1
