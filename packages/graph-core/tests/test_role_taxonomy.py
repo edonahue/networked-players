@@ -190,6 +190,35 @@ def test_is_background_only_role_profile_real_committed_data_regressions() -> No
     )
 
 
+def test_is_background_only_role_profile_recognizes_a_bracket_qualified_credit() -> None:
+    """Real gap caught in review (round 5): a contributor whose ONLY
+    engineering evidence is a real, committed credit with a comma inside
+    its bracket qualifier -- "Recorded By [Le Mobile, Los Angeles]" --
+    must still be recognized as background-engineering. `classify_role()`
+    splits on a bare comma before bracket-stripping, so it mis-splits this
+    into two unbalanced-bracket fragments and returns UNKNOWN for both,
+    never seeing RoleCategory.ENGINEERING at all -- the bracket-aware
+    `is_background_engineering_role()` must be consulted directly, not
+    inferred through `classify_role()`."""
+    assert (
+        is_background_only_role_profile(Counter({"Recorded By [Le Mobile, Los Angeles]": 3}))
+        is True
+    )
+    # Two independently-bracketed background credits, still correctly
+    # recognized together.
+    assert (
+        is_background_only_role_profile(
+            Counter(
+                {
+                    "Recorded By [Le Mobile, Los Angeles]": 2,
+                    "Mixed By [Abbey Road, London]": 1,
+                }
+            )
+        )
+        is True
+    )
+
+
 def test_is_background_only_role_profile_sees_beyond_the_five_entry_display_cap() -> None:
     """Real gap caught in review (round 4): `role_text_examples` is capped
     to the five most frequent role strings. A contributor with 5+ frequent

@@ -402,14 +402,27 @@ def is_background_only_role_profile(role_texts: Counter[str]) -> bool:
     same class of issue `_ROLE_COMPONENT_SPLIT` above already fixed once for
     a different reason. False for a profile with no engineering credit at
     all (nothing to background) or any credit classifying into a substantive
-    category (vocals, production, composition, ...)."""
+    category (vocals, production, composition, ...).
+
+    Establishes engineering status via the bracket-aware
+    `is_background_engineering_role` FIRST, before ever consulting
+    `classify_role`: a real, committed credit -- "Recorded By [Le Mobile,
+    Los Angeles]" -- has a comma inside its bracket qualifier, which
+    `classify_role`'s plain `role_text.split(",")` mis-splits into two
+    unbalanced-bracket fragments that both classify as UNKNOWN, never
+    RoleCategory.ENGINEERING. Consulting `classify_role` first would make a
+    contributor whose only engineering evidence is such a credit invisible
+    to this predicate entirely (a real gap caught in review)."""
     saw_engineering = False
     for role_text in role_texts:
+        if is_background_engineering_role(role_text):
+            saw_engineering = True
+            continue
         categories = classify_role(role_text)
         if RoleCategory.ENGINEERING in categories:
-            saw_engineering = True
-            if not is_background_engineering_role(role_text):
-                return False
+            # Engineering work that is NOT purely background (e.g. generic
+            # "Engineer") -- substantive, disqualifies the whole profile.
+            return False
         if any(
             category
             not in (RoleCategory.ENGINEERING, RoleCategory.PACKAGING_BUSINESS, RoleCategory.UNKNOWN)
