@@ -66,5 +66,6 @@ export const ROLE_CATEGORY_LABEL: Record<string, string> = {
   rework: "Rework",
   packaging_business: "Packaging & Business",
   audiovisual_production: "Film & Video",
+  performance: "Performance",
   unknown: "Unclassified",
 };

@@ -331,12 +331,15 @@ def test_real_2026_08_04_coverage_additions_classify_correctly() -> None:
         RoleCategory.UNKNOWN,
         RoleCategory.ARRANGEMENT,
     )
-    # Genuinely frequent real strings deliberately left UNKNOWN (see
-    # role_taxonomy.py's comment): "Featuring" is not an eligibility.py
-    # performer token either, and "Compiled By" would require also
-    # extending graph.py's denylist, which this module alone must not do.
-    assert classify_role("Featuring") == (RoleCategory.UNKNOWN,)
+    # "Compiled By" would require extending graph.py's denylist, which this
+    # module alone must not do -- stays genuinely UNKNOWN.
     assert classify_role("Compiled By") == (RoleCategory.UNKNOWN,)
+    # "Featuring" was reclassified 2026-09-01 (ADR 0068 real-corpus audit):
+    # it is now a recognized eligibility.py performer token (real
+    # co-occurrence data -- "Vocals, Featuring", "Rap [Featuring]" -- showed
+    # its real-world meaning is guest performance), so it now classifies as
+    # the new RoleCategory.PERFORMANCE, not UNKNOWN.
+    assert classify_role("Featuring") == (RoleCategory.PERFORMANCE,)
 
 
 def test_performer_roles_map_into_coarser_taxonomy_buckets() -> None:

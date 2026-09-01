@@ -61,6 +61,46 @@ def _credit(
 
 
 @pytest.fixture
+def non_performer_dataset_root(tmp_path: Path) -> Path:
+    """One release: Alice and Bob, both track-performers of the same track
+    (a real `credit_edges` `co_performers` edge) but each also explicitly
+    credited "Producer" -- real `challenge.v2`/cohort evidence, but never
+    eligible for `is_performer_role`'s stricter allowlist. Mirrors
+    `conftest.py`'s `_performed()` shape exactly, replacing its former
+    "Performer" role text here: that text became genuinely
+    performer-eligible itself in the 2026-09-01 ADR 0068 audit, so a test
+    asserting the OPPOSITE (bare, non-performer credit correctly rejected)
+    needs a role text that still is one."""
+    from conftest import write_synthetic_dataset
+
+    root = tmp_path / f"snapshot={SNAPSHOT_DATE}"
+    return write_synthetic_dataset(
+        root,
+        release_rows=[_release(1, "First Light")],
+        credit_rows=[
+            _credit(1, artist_id=100, name="Alice", scope="release_artist", role_text="Producer"),
+            _credit(
+                1,
+                artist_id=100,
+                name="Alice",
+                scope="track_artist",
+                role_text=None,
+                track_index=0,
+            ),
+            _credit(1, artist_id=200, name="Bob", scope="release_artist", role_text="Producer"),
+            _credit(
+                1,
+                artist_id=200,
+                name="Bob",
+                scope="track_artist",
+                role_text=None,
+                track_index=0,
+            ),
+        ],
+    )
+
+
+@pytest.fixture
 def performer_dataset_root(tmp_path: Path) -> Path:
     """One release: Alice (Vocals) and Bob (Guitar), both explicitly
     performer-eligible -- a real one-hop round's happy path."""
@@ -106,12 +146,14 @@ def test_build_round_hop_succeeds_with_explicit_performer_roles(
     assert "same_recording" in hop["quality_flags"]
 
 
-def test_build_round_hop_rejects_bare_release_artist_billing(dataset_root: Path) -> None:
-    """The shared fixture graph (conftest.py) credits everyone with the
-    generic role_text "Performer" -- real evidence of collaboration, but not
-    an explicit instrument/vocal role, so it must fail the game's allowlist
-    even though it is perfectly valid challenge.v2/cohort evidence."""
-    with CreditGraph.open(dataset_root) as graph:
+def test_build_round_hop_rejects_bare_release_artist_billing(
+    non_performer_dataset_root: Path,
+) -> None:
+    """Alice and Bob are each credited "Producer" -- real evidence of
+    collaboration, but not an explicit instrument/vocal role, so it must
+    fail the game's allowlist even though it is perfectly valid
+    challenge.v2/cohort evidence."""
+    with CreditGraph.open(non_performer_dataset_root) as graph:
         path = graph.find_path(100, 200, max_hops=1)
         assert path is not None
         hop = build_round_hop(graph, path.hops[0])
@@ -139,9 +181,9 @@ def test_build_round_from_path_one_hop(performer_dataset_root: Path) -> None:
 
 
 def test_build_round_from_path_returns_none_when_any_hop_is_ineligible(
-    dataset_root: Path,
+    non_performer_dataset_root: Path,
 ) -> None:
-    with CreditGraph.open(dataset_root) as graph:
+    with CreditGraph.open(non_performer_dataset_root) as graph:
         path = graph.find_path(100, 200, max_hops=1)
         assert path is not None
         round_json = build_round_from_path(
@@ -149,7 +191,7 @@ def test_build_round_from_path_returns_none_when_any_hop_is_ineligible(
             path,
             round_id="round-000001",
             from_album_id="release-1",
-            to_album_id="release-2",
+            to_album_id="release-1",
         )
     assert round_json is None
 

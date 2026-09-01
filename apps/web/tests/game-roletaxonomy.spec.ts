@@ -274,6 +274,72 @@ test.describe("isPerformerRole", () => {
       expect(isPerformerRole(role), role).toBe(false);
     }
   });
+
+  // ADR 0068 real-corpus audit (2026-09-01): pinned parity cases for every
+  // token GROUP added to eligibility.py's `_PERFORMER_ROLE_TOKENS` this
+  // round, plus the tokens explicitly considered and excluded. A future
+  // edit to either side's set that isn't mirrored on the other fails one
+  // of these, the same convention the rest of this describe block uses.
+  test("ADR 0068 audit: matches eligibility.py's expanded token set", () => {
+    const included: string[] = [
+      "Soprano Vocals",
+      "Tenor Vocals",
+      "Alto Vocals",
+      "Baritone Vocals",
+      "Bass Vocals",
+      "Human Beatbox",
+      "Whistling",
+      "Featuring",
+      "Performer",
+      "Musician",
+      "Instruments",
+      "Orchestra",
+      "Strings",
+      "Soloist",
+      "Turntables",
+      "Scratches",
+      "Concertmaster",
+      "Zither",
+      "Dulcimer",
+      "Bouzouki",
+      "Kora",
+      "Autoharp",
+      "Dobro",
+      "Tambourine",
+      "Cowbell",
+      "Steel Drums",
+      "Theremin",
+      "Moog",
+      "Mellotron",
+      "Clavinet",
+      "Rhodes",
+      "Wurlitzer",
+      "Vocoder",
+      "Talk Box",
+      "Recorder",
+      "Didgeridoo",
+      "Whistle",
+      "Melodica",
+      "Kazoo",
+    ];
+    for (const role of included) {
+      expect(isPerformerRole(role), role).toBe(true);
+    }
+    // Real, measured-at-scale tokens explicitly considered and EXCLUDED
+    // (see eligibility.py's own audit comment for the corpus-count
+    // reasoning behind each).
+    const excluded: string[] = [
+      "Conductor",
+      "Orchestrated By",
+      "Programming",
+      "Sampler",
+      "Cover",
+      "Leader",
+    ];
+    for (const role of excluded) {
+      expect(isPerformerRole(role), role).toBe(false);
+    }
+  });
 });
 
 test.describe("isGuitarRole", () => {
@@ -393,6 +459,7 @@ test.describe("ROLE_CATEGORY_LABEL parity", () => {
         "engineering",
         "packaging_business",
         "percussion_keys",
+        "performance",
         "production",
         "rework",
         "strings",

@@ -83,3 +83,22 @@ via the CLI's `--dump-unmatched-roles` diagnostic), extend
 Revisit the allowlist-vs-denylist split itself only if a second surface ever needs
 this same narrower definition; a third fail-closed rule layered the same way is a
 signal to extract a shared helper, not to relax `credit_edges_sql`'s denylist.
+
+## Addendum (2026-09-01): superseded by ADR 0068 for `eligibility.py`'s import restriction
+
+**[ADR 0068](0068-performer-only-public-graph.md) supersedes this ADR's "must
+never be imported by `graph.py`, `challenge.py`, or the cohort pipeline"
+restriction**, by explicit owner product decision: the public graph itself is
+now meant to ask the same narrower "did this person document a performance"
+question this ADR built `eligibility.py` to answer only for game rounds. The
+concern this restriction protected against — the game's rule silently
+narrowing the album/cohort surfaces' broader graph — is moot once the graph
+and the game share the same base definition on purpose. `_PERFORMER_ROLE_TOKENS`,
+`is_performer_role`, `is_performer_role_sql`, and this file's location are
+otherwise unchanged; this is a policy reversal of the layering boundary, not a
+rewrite of the predicate itself. Everything else in this ADR — the fail-closed
+default, the allowlist-not-denylist structure, the "expand only by reviewing
+real unmatched role strings" discipline — remains exactly as decided here and
+is the same discipline ADR 0068's own real-corpus audit used to expand the
+token set. See ADR 0068 for the full reasoning and the current authoritative
+statement of `eligibility.py`'s role.

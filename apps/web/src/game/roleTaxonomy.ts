@@ -86,6 +86,27 @@ const PERFORMER_TOKENS = new Set([
   "voice",
   "rap",
   "spoken word",
+  // Voice, range-qualified, and other explicit performance credits (ADR
+  // 0068 real-corpus audit, 2026-09-01 -- kept in lockstep with
+  // eligibility.py's own additions, same real corpus counts).
+  "soprano vocals",
+  "tenor vocals",
+  "alto vocals",
+  "baritone vocals",
+  "bass vocals",
+  "human beatbox",
+  "whistling",
+  "featuring",
+  // Ensemble / generic self-declared performance (ADR 0068 audit).
+  "performer",
+  "musician",
+  "instruments",
+  "orchestra",
+  "strings",
+  "soloist",
+  // Turntablism (ADR 0068 audit).
+  "turntables",
+  "scratches",
   // Fretted / plucked / bowed strings
   "guitar",
   "acoustic guitar",
@@ -108,6 +129,15 @@ const PERFORMER_TOKENS = new Set([
   "cello",
   "fiddle",
   "harp",
+  // Fretted / plucked / bowed strings, additional real instruments (ADR
+  // 0068 audit).
+  "concertmaster",
+  "zither",
+  "dulcimer",
+  "bouzouki",
+  "kora",
+  "autoharp",
+  "dobro",
   // Percussion / keys
   "drums",
   "percussion",
@@ -128,6 +158,18 @@ const PERFORMER_TOKENS = new Set([
   "vibraphone",
   "marimba",
   "xylophone",
+  // Percussion / keys, additional real instruments (ADR 0068 audit).
+  "tambourine",
+  "cowbell",
+  "steel drums",
+  "theremin",
+  "moog",
+  "mellotron",
+  "clavinet",
+  "rhodes",
+  "wurlitzer",
+  "vocoder",
+  "talk box",
   // Brass
   "trumpet",
   "trombone",
@@ -148,6 +190,13 @@ const PERFORMER_TOKENS = new Set([
   "bassoon",
   "bagpipes",
   "harmonica",
+  // Woodwind / breath-performed, additional real instruments (ADR 0068
+  // audit).
+  "recorder",
+  "didgeridoo",
+  "whistle",
+  "melodica",
+  "kazoo",
 ]);
 
 // A secondary signal, never a reclassification: these three still count as

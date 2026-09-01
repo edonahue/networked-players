@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -91,12 +92,64 @@ def test_validate_rounds_cli_wiring(rounds_dataset_root: Path, tmp_path: Path, c
     assert json.loads(capsys.readouterr().out) == {"ok": True}
 
 
+@pytest.fixture
+def non_performer_dataset_root(tmp_path: Path) -> Path:
+    """Mirrors conftest.py's shared `dataset_root` topology (releases R1/R2/
+    R3/R4/R6: Alice-Bob-Cara-Dan-Eve, real and mutually reachable) but with
+    every credit's role text "Producer" instead of "Performer" -- that text
+    became genuinely performer-eligible itself in the 2026-09-01 ADR 0068
+    audit, so a test asserting NO eligible round exists despite real
+    connectivity needs a role text that still is one."""
+    from conftest import _credit, _release, write_synthetic_dataset
+
+    def _co_credited(release_id: int, *artists: tuple[int, str]) -> list[dict[str, Any]]:
+        rows = []
+        for artist_id, name in artists:
+            rows.append(
+                _credit(
+                    release_id,
+                    artist_id=artist_id,
+                    name=name,
+                    scope="release_artist",
+                    role_text="Producer",
+                )
+            )
+            rows.append(
+                _credit(
+                    release_id,
+                    artist_id=artist_id,
+                    name=name,
+                    scope="track_artist",
+                    role_text=None,
+                    track_index=0,
+                )
+            )
+        return rows
+
+    releases = [
+        _release(1, "First Light"),
+        _release(2, "Second Set"),
+        _release(3, "Third Wave"),
+        _release(4, "Large Ensemble"),
+        _release(6, "Sixth Sense"),
+    ]
+    credits = [
+        *_co_credited(1, (100, "Alice"), (200, "Bob")),
+        *_co_credited(2, (200, "Bob"), (300, "Cara")),
+        *_co_credited(3, (300, "Cara"), (400, "Dan")),
+        *_co_credited(4, (100, "Alice"), (500, "Eve")),
+        *_co_credited(6, (400, "Dan"), (500, "Eve")),
+    ]
+    root = tmp_path / f"snapshot={SNAPSHOT_DATE}"
+    return write_synthetic_dataset(root, release_rows=releases, credit_rows=credits)
+
+
 def test_build_rounds_from_dump_raises_when_no_eligible_rounds(
-    dataset_root: Path, tmp_path: Path
+    non_performer_dataset_root: Path, tmp_path: Path
 ) -> None:
-    """The shared fixture graph (conftest.py) credits everyone with the
-    generic role_text "Performer" -- no hop clears the performer allowlist,
-    so no eligible round exists at all."""
+    """The fixture graph credits everyone with "Producer" -- real, mutually
+    reachable connectivity, but no hop clears the performer allowlist, so no
+    eligible round exists at all."""
     albums = [
         {"artist": "Alice", "title": "First Light"},
         {"artist": "Cara", "title": "Third Wave"},
@@ -110,7 +163,7 @@ def test_build_rounds_from_dump_raises_when_no_eligible_rounds(
             [
                 "build-rounds-from-dump",
                 "--onehop-root",
-                str(dataset_root),
+                str(non_performer_dataset_root),
                 "--albums",
                 str(albums_path),
                 "--pool-version",
