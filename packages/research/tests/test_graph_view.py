@@ -14,7 +14,7 @@ from networked_players_graph_core.graph import CreditGraph
 from networked_players_graph_core.role_taxonomy import RoleCategory
 from networked_players_research.compare import CompareError, build_graph_view
 
-from .test_compare import BOB, CAROL, EVE, SEED_A, _build_corpus
+from .test_compare import BOB, CAROL, DEB, EVE, SEED_A, _build_corpus
 
 
 @pytest.fixture
@@ -32,12 +32,15 @@ def test_build_graph_view_returns_real_one_hop_neighbors_with_role_evidence(
     assert view["center"]["name"] == "Seed A"
     assert view["center"]["degree"] >= 2
     by_id = {n["artist_id"]: n for n in view["neighbors"]}
-    # Seed A (billed on R1) is joined to Bob and Carol via the
-    # `release_scope` edge rule (both are release-scope contributors on
-    # Seed A's album), each carrying their own real role text.
-    assert by_id[BOB]["role_b"] == "Engineer"
+    # Seed A (billed on R1) is joined to Deb and Carol via the
+    # `release_scope` edge rule (both are release-scope contributors whose
+    # role text documents a real performance -- ADR 0068), each carrying
+    # their own real role text. Bob's release-scope "Engineer" credit
+    # documents no performance, so he is never a neighbor at all.
+    assert by_id[DEB]["role_b"] == "Drums"
     assert by_id[CAROL]["role_b"] == "Violin"
-    assert by_id[BOB]["role_a"] == "Vocals"
+    assert by_id[DEB]["role_a"] == "Vocals"
+    assert BOB not in by_id
     assert view["truncated"] is False
 
 
@@ -48,10 +51,13 @@ def test_build_graph_view_role_filter_is_a_hard_traversal_constraint(corpus: Pat
         )
 
     ids = {n["artist_id"] for n in strings_only["neighbors"]}
-    # Carol (Violin -> strings) must be present; Bob (Engineer ->
-    # engineering) must be excluded entirely -- not merely dimmed/flagged,
-    # since a filtered traversal must never surface a non-matching edge.
+    # Carol (Violin -> strings) must be present; Deb (Drums ->
+    # percussion_keys, a real edge just not a STRINGS one) must be excluded
+    # entirely -- not merely dimmed/flagged, since a filtered traversal must
+    # never surface a non-matching edge. Bob was never a neighbor to begin
+    # with (Engineer documents no performance, ADR 0068).
     assert CAROL in ids
+    assert DEB not in ids
     assert BOB not in ids
 
 
@@ -66,7 +72,7 @@ def test_build_graph_view_truncates_to_max_neighbors_keeping_the_highest_degree(
     assert bounded["truncated"] is True
     assert len(bounded["neighbors"]) == 1
     # Carol has real edges to Seed A, Seed B, and Dan (degree 3) in this
-    # fixture; Bob has only the one edge to Seed A (degree 1) -- Carol must
+    # fixture; Deb has only the one edge to Seed A (degree 1) -- Carol must
     # be the one kept when only one neighbor fits.
     assert bounded["neighbors"][0]["artist_id"] == CAROL
 

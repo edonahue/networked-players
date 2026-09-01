@@ -45,7 +45,8 @@ from typing import Any
 from networked_players_contracts.canonical import content_hash
 
 from .compact_graph_bench import build_csr_adjacency
-from .graph import CreditGraph, edge_ineligible_role
+from .eligibility import is_performer_role
+from .graph import CreditGraph
 
 _MAX_JOINED_ROLE_LEN = 200
 
@@ -117,39 +118,45 @@ def edge_eligible_membership_artist_ids(membership: dict[str, Any]) -> set[int]:
     `album_credit_membership` is deliberately inclusive -- it is an album's
     *credits list*, so a sleeve designer, a photographer and a lacquer-cutting
     engineer all belong in it, and the album page renders them. Turning that
-    list 1:1 into album-anchor EDGES was a real traversal-policy gap: the exact
-    role text `graph.py` already refuses to build a contributor-to-contributor
-    edge from (`Design Concept, Art Direction`) became a first-class routing hop
-    the moment one endpoint was an album anchor. The same credit cannot be
-    non-collaborative in one edge class and substantive in another.
+    list 1:1 into album-anchor EDGES was a real traversal-policy gap: an
+    album anchor must justify a hop by the same rule `credit_edges_sql` uses
+    everywhere else, never a looser one just because one endpoint happens to
+    be an album virtual node rather than another artist.
 
-    So this reuses `graph.py`'s own `edge_ineligible_role` -- never a second
-    copy of the rule -- and applies it at the right granularity: an artist is
-    kept when ANY of their credits on the album is edge-eligible, and dropped
-    only when EVERY one is non-collaborative. Granularity is the whole fix.
-    Evaluating the single joined display role instead would detach nine real
-    catalog albums from their own billed artist (measured 2026-08-27: Bob Dylan
-    from `Blood On The Tracks`, U2 from `The Joshua Tree`, Wu-Tang Clan from
-    `36 Chambers`, ...), because the joined text for those happens to read
-    `Written-By` or `Composed By`. A billed artist's `release_artist` credit
-    carries a NULL role, and `edge_ineligible_role(None)` is False -- the same
-    always-eligible main-artist rule `credit_edges_sql` uses -- so evaluating
-    per credit keeps them, correctly.
+    So this applies `credit_edges_sql`'s own ADR 0068 performer gate --
+    never a second copy of the rule -- at the right granularity: an artist
+    is kept when ANY of their credits on the album qualifies, dropped only
+    when EVERY one fails. Granularity is the whole fix. Evaluating the
+    single joined display role instead would detach real catalog albums
+    from their own billed artist (measured 2026-08-27, pre-ADR-0068: Bob
+    Dylan from `Blood On The Tracks`, U2 from `The Joshua Tree`, Wu-Tang
+    Clan from `36 Chambers`, ...), because the joined text for those happens
+    to read `Written-By` or `Composed By`.
 
-    Measured on the real published artifacts before this changed: 1,219 of
-    5,446 (album, artist) anchor pairs are dropped, no album loses its primary
-    artist, and no album is left with zero anchors.
+    A credit qualifies when EITHER: its `credit_scope` is `track_artist` or
+    `release_artist` (billing -- always implicit performer-qualifying,
+    regardless of role text, including a bare `NULL`-role main-artist
+    billing -- the same rule that keeps a billed artist connected to their
+    own record in `credit_edges_sql`), OR its `credit_scope` is
+    `track_credit`/`release_credit` and its role text passes
+    `eligibility.py`'s `is_performer_role` (ADR 0068).
     """
-    roles_by_artist: dict[int, list[str | None]] = defaultdict(list)
+    credits_by_artist: dict[int, list[tuple[str | None, str]]] = defaultdict(list)
     for credit in membership.get("credits", []):
         role_text = credit.get("role_text")
-        roles_by_artist[int(credit["artist_id"])].append(
-            str(role_text) if isinstance(role_text, str) else None
+        credits_by_artist[int(credit["artist_id"])].append(
+            (
+                str(role_text) if isinstance(role_text, str) else None,
+                str(credit.get("credit_scope", "")),
+            )
         )
     return {
         artist_id
-        for artist_id, roles in roles_by_artist.items()
-        if any(not edge_ineligible_role(role) for role in roles)
+        for artist_id, credits in credits_by_artist.items()
+        if any(
+            credit_scope in ("track_artist", "release_artist") or is_performer_role(role_text)
+            for role_text, credit_scope in credits
+        )
     }
 
 

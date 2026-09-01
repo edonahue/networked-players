@@ -1,0 +1,307 @@
+{
+  "broad_pre_adr0068": {
+    "catalog_albums_in_largest_component": 173,
+    "component_count": 835,
+    "degree_max": 3592,
+    "degree_mean": 7.16,
+    "degree_median": 1.0,
+    "degree_min": 1,
+    "directed_edge_count": 2659414,
+    "isolated_catalog_anchors": [],
+    "largest_component_size": 367897,
+    "node_count": 371536,
+    "top_hubs": [
+      {
+        "artist_id": 299702,
+        "degree": 3592,
+        "name": null
+      },
+      {
+        "artist_id": 27518,
+        "degree": 1672,
+        "name": "Elvis Presley"
+      },
+      {
+        "artist_id": 57103,
+        "degree": 1606,
+        "name": "Elton John"
+      },
+      {
+        "artist_id": 249449,
+        "degree": 1571,
+        "name": null
+      },
+      {
+        "artist_id": 52833,
+        "degree": 1495,
+        "name": null
+      },
+      {
+        "artist_id": 253774,
+        "degree": 1444,
+        "name": null
+      },
+      {
+        "artist_id": 271098,
+        "degree": 1380,
+        "name": null
+      },
+      {
+        "artist_id": 23755,
+        "degree": 1340,
+        "name": "Miles Davis"
+      },
+      {
+        "artist_id": 253777,
+        "degree": 1318,
+        "name": null
+      },
+      {
+        "artist_id": 10263,
+        "degree": 1312,
+        "name": "David Bowie"
+      },
+      {
+        "artist_id": 59792,
+        "degree": 1249,
+        "name": "Bob Dylan"
+      },
+      {
+        "artist_id": 17827,
+        "degree": 1240,
+        "name": "Eric Clapton"
+      },
+      {
+        "artist_id": 307942,
+        "degree": 1239,
+        "name": null
+      },
+      {
+        "artist_id": 31617,
+        "degree": 1229,
+        "name": null
+      },
+      {
+        "artist_id": 3865,
+        "degree": 1216,
+        "name": "Herbie Hancock"
+      }
+    ],
+    "undirected_edge_count": 1329707
+  },
+  "catalog_album_count": 173,
+  "catalog_primary_artist_count": 173,
+  "dataset_root": "local/processed/discogs-onehop-v4/snapshot=20260601",
+  "excluded_edges_by_role_text": [
+    {
+      "count": 8676059,
+      "role_text": "Written-By"
+    },
+    {
+      "count": 1921760,
+      "role_text": "Producer"
+    },
+    {
+      "count": 766734,
+      "role_text": "Engineer"
+    },
+    {
+      "count": 604678,
+      "role_text": "Mixed By"
+    },
+    {
+      "count": 395285,
+      "role_text": "Arranged By"
+    },
+    {
+      "count": 385065,
+      "role_text": "Engineer [Assistant]"
+    },
+    {
+      "count": 357644,
+      "role_text": "Composed By"
+    },
+    {
+      "count": 337616,
+      "role_text": "Recorded By"
+    },
+    {
+      "count": 332383,
+      "role_text": "Mastered By"
+    },
+    {
+      "count": 328882,
+      "role_text": "Photography By"
+    },
+    {
+      "count": 231703,
+      "role_text": "Music By"
+    },
+    {
+      "count": 207905,
+      "role_text": "Remix"
+    },
+    {
+      "count": 203342,
+      "role_text": "Written By"
+    },
+    {
+      "count": 171382,
+      "role_text": "Liner Notes"
+    },
+    {
+      "count": 169694,
+      "role_text": "Lyrics By"
+    },
+    {
+      "count": 167305,
+      "role_text": "Design"
+    },
+    {
+      "count": 165634,
+      "role_text": "Art Direction"
+    },
+    {
+      "count": 156317,
+      "role_text": "Executive-Producer"
+    },
+    {
+      "count": 147984,
+      "role_text": "Management"
+    },
+    {
+      "count": 131236,
+      "role_text": "Songwriter"
+    },
+    {
+      "count": 93484,
+      "role_text": "Co-producer"
+    },
+    {
+      "count": 87478,
+      "role_text": "Conductor"
+    },
+    {
+      "count": 79691,
+      "role_text": "Arranged By [Strings]"
+    },
+    {
+      "count": 74414,
+      "role_text": "Programmed By"
+    },
+    {
+      "count": 74236,
+      "role_text": "Recorded By, Mixed By"
+    },
+    {
+      "count": 73151,
+      "role_text": "Engineer [Additional]"
+    },
+    {
+      "count": 70841,
+      "role_text": "Words By, Music By"
+    },
+    {
+      "count": 67971,
+      "role_text": "Producer [Produced By]"
+    },
+    {
+      "count": 65104,
+      "role_text": "Engineer [Recording]"
+    },
+    {
+      "count": 64941,
+      "role_text": "Art Direction, Design"
+    }
+  ],
+  "gated_adr0068": {
+    "catalog_albums_in_largest_component": 173,
+    "component_count": 1398,
+    "degree_max": 1800,
+    "degree_mean": 6.62,
+    "degree_median": 1.0,
+    "degree_min": 1,
+    "directed_edge_count": 1677134,
+    "isolated_catalog_anchors": [],
+    "largest_component_size": 246496,
+    "node_count": 253448,
+    "top_hubs": [
+      {
+        "artist_id": 299702,
+        "degree": 1800,
+        "name": null
+      },
+      {
+        "artist_id": 253774,
+        "degree": 1198,
+        "name": null
+      },
+      {
+        "artist_id": 46163,
+        "degree": 1022,
+        "name": null
+      },
+      {
+        "artist_id": 253777,
+        "degree": 1007,
+        "name": null
+      },
+      {
+        "artist_id": 217242,
+        "degree": 924,
+        "name": null
+      },
+      {
+        "artist_id": 64694,
+        "degree": 913,
+        "name": null
+      },
+      {
+        "artist_id": 57103,
+        "degree": 895,
+        "name": "Elton John"
+      },
+      {
+        "artist_id": 249449,
+        "degree": 887,
+        "name": null
+      },
+      {
+        "artist_id": 30419,
+        "degree": 835,
+        "name": null
+      },
+      {
+        "artist_id": 52833,
+        "degree": 833,
+        "name": null
+      },
+      {
+        "artist_id": 75617,
+        "degree": 754,
+        "name": null
+      },
+      {
+        "artist_id": 23755,
+        "degree": 753,
+        "name": "Miles Davis"
+      },
+      {
+        "artist_id": 266403,
+        "degree": 751,
+        "name": null
+      },
+      {
+        "artist_id": 135847,
+        "degree": 746,
+        "name": null
+      },
+      {
+        "artist_id": 3865,
+        "degree": 744,
+        "name": "Herbie Hancock"
+      }
+    ],
+    "undirected_edge_count": 838567
+  }
+}

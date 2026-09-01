@@ -62,7 +62,7 @@ def scope_tier_corpus(tmp_path: Path) -> Path:
         _credit(
             1, artist_id=SEED, name="Seed", scope="track_artist", role_text=None, track_index=0
         ),
-        _credit(1, artist_id=200, name="Bob", scope="release_credit", role_text="Engineer"),
+        _credit(1, artist_id=200, name="Bob", scope="release_credit", role_text="Guitar"),
         _credit(2, artist_id=SEED, name="Seed", scope="release_artist", role_text=None),
         _credit(
             2, artist_id=SEED, name="Seed", scope="track_artist", role_text=None, track_index=0

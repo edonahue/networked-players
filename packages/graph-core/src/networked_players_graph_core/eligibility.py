@@ -105,12 +105,18 @@ _PERFORMER_ROLE_TOKENS = frozenset(
         # credits (the ensemble itself performed), distinct from "Conductor"
         # (excluded above) or the specific instrument tokens already listed.
         # "Soloist" (118,061, 85% track-scoped) explicitly means a featured
-        # solo performance.
+        # solo performance. "Horns" (124,760, found via PR 2's shadow-build
+        # diagnostic run against the real one-hop corpus, not the original
+        # PR 1 audit -- a real, measured gap the diagnostic exists to catch
+        # before production cutover) is the identical case to "Strings": a
+        # real collective brass-section performance credit, generic about
+        # which specific horn, not an inference.
         "performer",
         "musician",
         "instruments",
         "orchestra",
         "strings",
+        "horns",
         "soloist",
         # Turntablism (ADR 0068 audit: turntables 12,800 / scratches 97,466)
         # -- playing a turntable as an instrument is a real, physical,
@@ -371,6 +377,7 @@ _ROLE_CATEGORY_BY_TOKEN: dict[str, str] = {
     "instruments": "performer",
     "orchestra": "performer",
     "strings": "performer",
+    "horns": "performer",
     "featuring": "performer",
     "soloist": "performer",
     "turntables": "performer",

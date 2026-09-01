@@ -897,8 +897,10 @@ def test_two_featuring_guests_on_one_track_do_not_connect_to_each_other(tmp_path
 def test_a_sampled_artist_never_becomes_a_collaborator(tmp_path: Path) -> None:
     """Discogs release 34128775, "God Damn Fairy Tale" -- a rap track that
     samples both Pink Floyd and Nas. Same track_index, but a quotation, not a
-    contribution. `Sampler [Fairlight]` on the same track is an instrument and
-    must survive."""
+    contribution. `Keyboards` on the same track is a real instrument credit
+    and must survive. (Not `Sampler` -- ADR 0068 keeps that token fail-closed
+    excluded: the text alone can't tell "played the sampler as an instrument"
+    from "sampled someone else's recording".)"""
     rows = [
         _adr35_credit(34128775, artist_id=11771564, name="Lonely Wolf YD", scope="release_artist"),
         _adr35_credit(
@@ -925,7 +927,7 @@ def test_a_sampled_artist_never_becomes_a_collaborator(tmp_path: Path) -> None:
             artist_id=700001,
             name="Keys Player",
             scope="track_credit",
-            role_text="Sampler [Fairlight]",
+            role_text="Keyboards",
             track_index=0,
         ),
     ]
@@ -933,17 +935,22 @@ def test_a_sampled_artist_never_becomes_a_collaborator(tmp_path: Path) -> None:
         neighbors = graph.neighbors(11771564)
         assert 45467 not in neighbors, "a bare `Samples` credit must not create an edge"
         assert 50997 not in neighbors, "`Performer [Sample]` must not create an edge"
-        assert 700001 in neighbors, "`Sampler [Fairlight]` is an instrument, not a quotation"
+        assert 700001 in neighbors, "`Keyboards` is an instrument, not a quotation"
         assert graph.find_path(45467, 50997, max_hops=3) is None
 
 
 def test_album_producer_stars_off_the_billed_artist_rather_than_forming_a_clique(
     tmp_path: Path,
 ) -> None:
-    """Nevermind's shape: an album-wide producer, mixer and masterer all connect
-    to the billed artist, but not to each other -- a 40-credit album must not
-    become a 780-edge clique (that is what made Bob Ludwig a 32,054-release
-    hub)."""
+    """Nevermind's shape: an album-wide producer, mixer, and masterer no longer
+    connect to the billed artist at all under ADR 0068's performer gate --
+    none of "Producer, Engineer", "Mixed By", or "Mastered By" documents a
+    performance. Genuinely performer-qualifying release-scope credits
+    (uncredited backing vocals or strings, entered once for the whole album
+    rather than per track) still connect, but star off the billed artist
+    rather than forming a clique with each other -- a 40-credit album must
+    not become a 780-edge clique (that is what made Bob Ludwig a
+    32,054-release hub)."""
     rows = [
         _adr35_credit(1813006, artist_id=125246, name="Nirvana", scope="release_artist"),
         _adr35_credit(
@@ -970,18 +977,39 @@ def test_album_producer_stars_off_the_billed_artist_rather_than_forming_a_clique
             scope="release_credit",
             role_text="Mastered By",
         ),
+        _adr35_credit(
+            1813006,
+            artist_id=700200,
+            name="Backing Vocalist",
+            scope="release_credit",
+            role_text="Backing Vocals",
+        ),
+        _adr35_credit(
+            1813006,
+            artist_id=700201,
+            name="Strings Player",
+            scope="release_credit",
+            role_text="Strings",
+        ),
     ]
     with _adr35_graph(tmp_path, rows, "Nevermind") as graph:
-        assert set(graph.neighbors(125246)) == {42640, 59472, 254262}
-        # The contributors star off the band; they are not adjacent to each other.
-        assert graph.neighbors(42640) == {125246: (1813006,)}
-        assert 254262 not in graph.neighbors(59472)
+        assert set(graph.neighbors(125246)) == {700200, 700201}
+        assert 42640 not in graph.neighbors(125246), "Producer, Engineer documents no performance"
+        assert 59472 not in graph.neighbors(125246), "Mixed By documents no performance"
+        assert 254262 not in graph.neighbors(125246), "Mastered By documents no performance"
+        # The performer-caliber contributors star off the band; they are not
+        # adjacent to each other.
+        assert graph.neighbors(700200) == {125246: (1813006,)}
+        assert 700201 not in graph.neighbors(700200)
 
 
 def test_writing_and_packaging_credits_never_create_edges(tmp_path: Path) -> None:
     """A cover's songwriter and a sleeve designer are on the record but did not
-    contribute to the recording. `Written-By, Producer` keeps its edge -- only a
-    credit whose every component is non-collaborative is dropped."""
+    perform on it. `Written-By, Producer` no longer keeps its edge either --
+    ADR 0068 gates track_credit/release_credit scope on `is_performer_role`,
+    and neither component documents a performance. `Written-By, Vocals`
+    still connects: a compound credit with at least one performer-qualifying
+    component qualifies."""
     rows = [
         _adr35_credit(381060, artist_id=92476, name="RHCP", scope="release_artist"),
         _adr35_credit(381060, artist_id=92476, name="RHCP", scope="track_artist", track_index=0),
@@ -1003,12 +1031,129 @@ def test_writing_and_packaging_credits_never_create_edges(tmp_path: Path) -> Non
             scope="release_credit",
             role_text="Written-By, Producer",
         ),
+        _adr35_credit(
+            381060,
+            artist_id=42641,
+            name="A Songwriting Singer",
+            scope="release_credit",
+            role_text="Written-By, Vocals",
+        ),
     ]
     with _adr35_graph(tmp_path, rows, "Sessions And Videos") as graph:
         neighbors = graph.neighbors(92476)
-        assert 18956 not in neighbors, "a Written-By-only cover credit is not a collaboration"
-        assert 2551803 not in neighbors, "a Design credit is not a collaboration"
-        assert 42640 in neighbors, "`Written-By, Producer` has a collaborative component"
+        assert 18956 not in neighbors, "a Written-By-only cover credit is not a performance"
+        assert 2551803 not in neighbors, "a Design credit is not a performance"
+        assert 42640 not in neighbors, "`Written-By, Producer` documents no performance"
+        assert 42641 in neighbors, "`Written-By, Vocals` has a performer-qualifying component"
+
+
+def test_adr0068_billing_scope_is_always_implicit_performer_regardless_of_role_text(
+    tmp_path: Path,
+) -> None:
+    """ADR 0068's core asymmetry: `track_artist`/`release_artist` billing is
+    always implicit performer-qualifying, even with a bare `NULL` role text
+    -- unlike `track_credit`/`release_credit`, which must pass
+    `is_performer_role`. A single-billed release with no dedicated
+    `track_artist` rows falls back to its sole `release_artist` as the
+    track's implicit performer (`credit_edges_sql`'s `single_billed`
+    fallback) -- that NULL-role fallback anchor must still connect to a
+    genuine performer-qualifying track_credit on the same track."""
+    rows = [
+        _adr35_credit(1, artist_id=100, name="Solo Artist", scope="release_artist"),
+        _adr35_credit(
+            1,
+            artist_id=200,
+            name="Guest Vocalist",
+            scope="track_credit",
+            role_text="Vocals",
+            track_index=0,
+        ),
+        _adr35_credit(
+            1,
+            artist_id=300,
+            name="Session Engineer",
+            scope="track_credit",
+            role_text="Engineer",
+            track_index=0,
+        ),
+    ]
+    with _adr35_graph(tmp_path, rows, "Solo Session") as graph:
+        neighbors = graph.neighbors(100)
+        assert 200 in neighbors, "the NULL-role billing anchor still connects to a real performer"
+        assert 300 not in neighbors, "Engineer documents no performance, even against the anchor"
+
+
+def test_adr0068_extra_credit_scope_gate_applies_to_both_same_recording_and_release_scope(
+    tmp_path: Path,
+) -> None:
+    """The credit_scope-aware `is_performer_role` gate applies identically on
+    both CTEs it touches: `same_recording`'s non-anchor side (`track_credit`)
+    and `release_scope`'s non-anchor side (`release_credit`). One release,
+    both rule paths exercised side by side."""
+    rows = [
+        _adr35_credit(1, artist_id=100, name="Billed Artist", scope="release_artist"),
+        _adr35_credit(1, artist_id=100, name="Billed Artist", scope="track_artist", track_index=0),
+        # same_recording: track_credit scope, non-anchor side.
+        _adr35_credit(
+            1,
+            artist_id=200,
+            name="Track Guitarist",
+            scope="track_credit",
+            role_text="Guitar",
+            track_index=0,
+        ),
+        _adr35_credit(
+            1,
+            artist_id=201,
+            name="Track Producer",
+            scope="track_credit",
+            role_text="Producer",
+            track_index=0,
+        ),
+        # release_scope: release_credit scope, non-anchor side.
+        _adr35_credit(
+            1, artist_id=300, name="Album Pianist", scope="release_credit", role_text="Piano"
+        ),
+        _adr35_credit(
+            1, artist_id=301, name="Album Masterer", scope="release_credit", role_text="Mastered By"
+        ),
+    ]
+    with _adr35_graph(tmp_path, rows, "Gate Parity Album") as graph:
+        neighbors = graph.neighbors(100)
+        assert 200 in neighbors, "same_recording: Guitar passes is_performer_role"
+        assert 201 not in neighbors, "same_recording: Producer fails is_performer_role"
+        assert 300 in neighbors, "release_scope: Piano passes is_performer_role"
+        assert 301 not in neighbors, "release_scope: Mastered By fails is_performer_role"
+
+
+def test_adr0068_co_performers_ignores_role_text_entirely(tmp_path: Path) -> None:
+    """`co_performers` needs no ADR 0068 gate at all: both endpoints are
+    always `track_artist` scope, inherently implicit-performer-qualifying,
+    regardless of what role text (if any) happens to be attached -- even a
+    role text that would fail `is_performer_role` outright if it were
+    extra-credit scope."""
+    rows = [
+        _adr35_credit(1, artist_id=100, name="Alice", scope="release_artist"),
+        _adr35_credit(1, artist_id=200, name="Bob", scope="release_artist"),
+        _adr35_credit(
+            1,
+            artist_id=100,
+            name="Alice",
+            scope="track_artist",
+            role_text="Producer",
+            track_index=0,
+        ),
+        _adr35_credit(
+            1,
+            artist_id=200,
+            name="Bob",
+            scope="track_artist",
+            role_text="Mixed By",
+            track_index=0,
+        ),
+    ]
+    with _adr35_graph(tmp_path, rows, "Co-Billed Duet") as graph:
+        assert graph.neighbors(100) == {200: (1,)}
 
 
 def test_a_duet_track_on_an_album_shaped_release_still_connects_its_performers(
@@ -1276,8 +1421,10 @@ def test_a_remixer_never_connects_the_artists_they_remixed(tmp_path: Path) -> No
     different compilations, which made The Strokes two hops from The Cure. A
     rework credit is not a collaboration.
 
-    "Mixed By" is a different thing entirely -- studio mixing of the original
-    session -- and must survive.
+    "Mixed By" no longer survives either, under ADR 0068's performer gate --
+    studio mixing documents no performance, the same as any other
+    track_credit-scope role that fails `is_performer_role`. "Backing Vocals"
+    is the real contributor left standing: a genuine performance credit.
     """
     rows = [
         _adr35_credit(1, artist_id=55980, name="The Strokes", scope="release_artist"),
@@ -1306,7 +1453,7 @@ def test_a_remixer_never_connects_the_artists_they_remixed(tmp_path: Path) -> No
             role_text="DJ Mix",
             track_index=0,
         ),
-        # Studio mixing of the session itself: a real contributor.
+        # Studio mixing documents no performance -- no longer survives.
         _adr35_credit(
             1,
             artist_id=59472,
@@ -1315,7 +1462,8 @@ def test_a_remixer_never_connects_the_artists_they_remixed(tmp_path: Path) -> No
             role_text="Mixed By",
             track_index=0,
         ),
-        # A compound role keeps its edge -- an unlisted component always wins.
+        # Neither "Remix" nor "Producer" is a performer-qualifying token, so
+        # this compound credit no longer keeps its edge either.
         _adr35_credit(
             1,
             artist_id=900103,
@@ -1324,14 +1472,24 @@ def test_a_remixer_never_connects_the_artists_they_remixed(tmp_path: Path) -> No
             role_text="Remix, Producer",
             track_index=0,
         ),
+        # A genuine performance credit: the real contributor left standing.
+        _adr35_credit(
+            1,
+            artist_id=900104,
+            name="Backing Singer",
+            scope="track_credit",
+            role_text="Backing Vocals",
+            track_index=0,
+        ),
     ]
     with _adr35_graph(tmp_path, rows, "Culture Shock Volume Fifteen") as graph:
         neighbors = graph.neighbors(55980)
         assert 900100 not in neighbors, "a Remix credit is a rework, not a collaboration"
         assert 900101 not in neighbors, "Edited By is a rework"
         assert 900102 not in neighbors, "DJ Mix is a rework"
-        assert 59472 in neighbors, "Mixed By is studio mixing of the original session"
-        assert 900103 in neighbors, "'Remix, Producer' has a collaborative component"
+        assert 59472 not in neighbors, "Mixed By documents no performance"
+        assert 900103 not in neighbors, "'Remix, Producer' documents no performance"
+        assert 900104 in neighbors, "'Backing Vocals' is a genuine performance credit"
 
 
 ROLE_PARITY_CASES = [

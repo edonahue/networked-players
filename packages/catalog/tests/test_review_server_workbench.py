@@ -59,6 +59,7 @@ def _credit(
     name: str,
     scope: str = "release_artist",
     track_index: int | None = None,
+    role_text: str | None = None,
 ) -> dict[str, Any]:
     return {
         "snapshot_date": SNAPSHOT_DATE,
@@ -72,7 +73,7 @@ def _credit(
         "name": name,
         "anv": None,
         "join_text": None,
-        "role_text": None,
+        "role_text": role_text,
         "credited_tracks_text": None,
         "is_linked": True,
         "playable_identity": True,
@@ -117,13 +118,13 @@ def _build_corpus(
     releases = [_release(1, "Album Alpha")]
     credits = [
         *_performed(1, artist_id=SEED_A, name="Seed A"),
-        _credit(1, artist_id=CAROL, name="Carol", scope="release_credit"),
+        _credit(1, artist_id=CAROL, name="Carol", scope="release_credit", role_text="Violin"),
     ]
     if include_release_2:
         releases.append(_release(2, "Album Beta"))
         credits += [
             *_performed(2, artist_id=SEED_B, name="Seed B"),
-            _credit(2, artist_id=CAROL, name="Carol", scope="release_credit"),
+            _credit(2, artist_id=CAROL, name="Carol", scope="release_credit", role_text="Violin"),
         ]
     # exist_ok=True: also used to simulate a re-ingestion at an ALREADY
     # existing root (a fresh manifest.json/snapshot_date, same directory).

@@ -103,6 +103,25 @@ def test_classify_non_performer_only() -> None:
     assert flags == ["non_performer_only", "same_recording"]
 
 
+def test_classify_reconciled_with_the_shared_performer_gate() -> None:
+    """ADR 0068 reconciliation: `_artist_credit_tier` now imports the same
+    `is_performer_role` predicate `credit_edges_sql` gates edges with,
+    retiring the local `_is_non_performer_role` duplicate -- a real behavior
+    change, not just a refactor. The retired duplicate's small ~19-token
+    denylist did NOT include "A&R"; an unlisted component defaulted to "keep"
+    there, so a bare "A&R" release_credit used to tier as "performer"
+    (wrong -- A&R documents no performance). `is_performer_role`'s ~108-token
+    ALLOWLIST fails closed on anything unrecognized, correctly excluding it.
+    Neither side here is `release_artist`-scope, so the flag genuinely
+    depends on this tier (unlike `test_classify_release_scope_credit_when_
+    artists_share_no_track` above, where one side's `release_artist` tier
+    makes the flag insensitive to the other side's)."""
+    rows_a = [_row(artist_id=800, credit_scope="release_credit", role_text="A&R")]
+    rows_b = [_row(artist_id=900, credit_scope="release_credit", role_text="Producer, Engineer")]
+    flags = classify_hop_quality(rows_a, rows_b, artist_a_id=800, artist_b_id=900)
+    assert flags == ["non_performer_only", "same_recording"]
+
+
 def test_classify_placeholder_stacks_with_strength_flag() -> None:
     rows_a = [_row(artist_id=1000, credit_scope="release_artist", role_text=None)]
     rows_b = [_row(artist_id=151641, credit_scope="release_artist", role_text=None)]

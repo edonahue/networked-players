@@ -355,7 +355,14 @@ test.describe("isPerformerRole", () => {
   // block. It cannot say WHICH token drifted, only THAT the two sets'
   // sizes disagree.
   test("token-set size matches eligibility.py's _PERFORMER_ROLE_TOKENS count", () => {
-    expect(PERFORMER_TOKEN_COUNT).toBe(108);
+    expect(PERFORMER_TOKEN_COUNT).toBe(109);
+  });
+
+  // ADR 0068 addendum (PR 2): found via the shadow-build diagnostic against
+  // the real one-hop corpus (124,760 rows), not the original PR 1 audit --
+  // the identical case as "Strings".
+  test("ADR 0068 addendum: Horns (shadow-diagnostic finding)", () => {
+    expect(isPerformerRole("Horns")).toBe(true);
   });
 });
 

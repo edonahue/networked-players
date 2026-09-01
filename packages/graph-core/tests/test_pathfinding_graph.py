@@ -528,12 +528,15 @@ def test_a_billed_artist_keeps_its_anchor_edge_despite_a_non_collaborative_role(
 def test_edge_eligible_membership_artist_ids_keeps_an_artist_with_any_eligible_credit() -> None:
     membership = {
         "credits": [
-            {"artist_id": 1, "role_text": "Photography By"},
-            {"artist_id": 1, "role_text": "Bass"},
-            {"artist_id": 2, "role_text": "Art Direction"},
-            {"artist_id": 2, "role_text": "Design"},
-            {"artist_id": 3, "role_text": None},
-            {"artist_id": 4, "role_text": "Film Director"},
+            {"artist_id": 1, "role_text": "Photography By", "credit_scope": "release_credit"},
+            {"artist_id": 1, "role_text": "Bass", "credit_scope": "release_credit"},
+            {"artist_id": 2, "role_text": "Art Direction", "credit_scope": "release_credit"},
+            {"artist_id": 2, "role_text": "Design", "credit_scope": "release_credit"},
+            # A bare NULL-role billing (the primary artist's own record) --
+            # always kept, regardless of role text, because it is billing
+            # scope (ADR 0068), the same rule `credit_edges_sql` uses.
+            {"artist_id": 3, "role_text": None, "credit_scope": "release_artist"},
+            {"artist_id": 4, "role_text": "Film Director", "credit_scope": "release_credit"},
         ]
     }
     assert edge_eligible_membership_artist_ids(membership) == {1, 3}

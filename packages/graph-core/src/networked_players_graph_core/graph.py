@@ -24,6 +24,8 @@ from typing import Any
 
 import duckdb
 
+from .eligibility import is_performer_role_sql
+
 # Discogs placeholder identities -- IDs that stand in for "we don't know who"
 # or "many people", not for a person. Defined in `placeholder_artists.json`
 # beside this module so the list is reviewable and editable without touching
@@ -454,29 +456,46 @@ def credit_edges_sql(
     """A SELECT producing the directed, deduplicated co-credit edge relation
     `(artist_a_id, artist_b_id, release_id)` over `credits_relation`.
 
-    An edge means "these two artists contributed to the same recording", not
-    "these two artists appear somewhere on the same disc". Sharing a
-    `release_id` is emphatically NOT enough: a 46-track DJ compilation would
-    otherwise make a 46-artist clique, which is exactly how a 2026-07-10 audit
-    found Pink Floyd one hop from Nas. Three rules, all keyed on numeric
-    `artist_id` (see ADR 0035):
+    An edge means "these two artists are documented as performing on the same
+    recording or release" (ADR 0068), not "these two names appear somewhere in
+    the same release's credits". Sharing a `release_id` is emphatically NOT
+    enough: a 46-track DJ compilation would otherwise make a 46-artist clique,
+    which is exactly how a 2026-07-10 audit found Pink Floyd one hop from Nas.
+    Three rules, all keyed on numeric `artist_id` (see ADR 0035):
 
     * `same_recording` -- a track's performers (its `track_artist` rows; or,
       when a track has none and the release is billed to exactly one artist,
-      that artist) are joined to every other edge-eligible credit on that same
-      `track_index`, PROVIDED one endpoint is a billed artist on the release.
-      This is a star from the performers outward, not a clique (two `Featuring`
-      guests on one DVD chapter never touch each other), and the billed-anchor
-      keeps a DJ sampler's track from connecting the two unrelated artists it
-      samples ("2 Worlds Collide", billed to DJ KO).
+      that artist) are joined to every other edge-eligible, performer-
+      qualifying credit on that same `track_index`, PROVIDED one endpoint is a
+      billed artist on the release. This is a star from the performers
+      outward, not a clique (two `Featuring` guests on one DVD chapter never
+      touch each other), and the billed-anchor keeps a DJ sampler's track from
+      connecting the two unrelated artists it samples ("2 Worlds Collide",
+      billed to DJ KO).
     * `co_performers` -- performers of one track are joined to each other, but
       only on an album-shaped release. On a mashup ("New Dress / The Robots")
       or a bootleg split, the co-billed "performers" of a track never played
-      together.
+      together. Both endpoints are always `track_artist`-scope billing, which
+      is inherently performer-qualifying (ADR 0068) -- no additional role
+      check is needed here.
     * `release_scope` -- an album-shaped release's billed artist is joined to
-      its release-scope contributors (an album-wide producer, engineer, or
-      mixer). Track-scope credits are excluded here: they belong to their own
-      track's performers, not to whoever is billed on the sleeve.
+      its release-scope contributors, but only those whose role text
+      documents an actual performance (ADR 0068) -- an album-wide producer,
+      engineer, or mixing credit no longer qualifies on its own. Track-scope
+      credits are excluded here: they belong to their own track's performers,
+      not to whoever is billed on the sleeve.
+
+    **Performer gate (ADR 0068, superseding ADR 0039's import restriction on
+    `eligibility.py`).** Billing scope (`track_artist`/`release_artist`) is
+    always implicit performer-qualifying, regardless of role text -- this is
+    the correct treatment of main-release album anchors, groups/bands billed
+    as artists, and a release's primary billed artist's own record (a bare
+    `NULL`-role billing must never be excluded the way a `NULL`-role extra
+    credit correctly is). Extra-credit scope (`track_credit`/`release_credit`
+    -- the non-anchor side of `same_recording` and `release_scope`) must pass
+    `eligibility.py`'s `is_performer_role_sql` to be edge-forming.
+    `co_performers`' both endpoints are always `track_artist` scope, so it
+    needs no additional condition.
 
     Two compilation guards apply throughout. `compilation_track_artist_threshold`
     catches releases that bill many artists per track; `max_artists_per_track`
@@ -486,6 +505,7 @@ def credit_edges_sql(
     otherwise a festival film's director inherits every act on the bill.
     """
     ineligible = _edge_ineligible_role_sql("role_text")
+    performer_qualifying = is_performer_role_sql("c.role_text")
     not_placeholder = _not_placeholder_sql()
     studio_track = _non_studio_track_variant_sql()
     studio_release = (
@@ -503,7 +523,8 @@ def credit_edges_sql(
         policy_filter = "AND rfp.decision = 'allow'"
     return f"""
     WITH edge_credits AS (
-        SELECT c.release_id, c.track_index, c.track_title, c.credit_scope, c.artist_id
+        SELECT c.release_id, c.track_index, c.track_title, c.credit_scope, c.artist_id,
+               c.role_text
         FROM {credits_relation} c
         JOIN releases r USING (release_id)
         {policy_join}
@@ -570,6 +591,7 @@ def credit_edges_sql(
         JOIN edge_credits c USING (release_id, track_index)
         JOIN track_groups USING (release_id, track_index)
         WHERE p.artist_id <> c.artist_id AND c.credit_scope <> 'track_artist'
+          AND {performer_qualifying}
           AND {studio_track.replace("track_title", "c.track_title")}
           AND (
               EXISTS (SELECT 1 FROM billed_artists b
@@ -600,6 +622,7 @@ def credit_edges_sql(
         WHERE billed.credit_scope = 'release_artist'
           AND c.credit_scope = 'release_credit'
           AND billed.artist_id <> c.artist_id
+          AND {performer_qualifying}
     ), directed AS (
         SELECT artist_a_id, artist_b_id, release_id FROM same_recording
         UNION ALL SELECT artist_b_id, artist_a_id, release_id FROM same_recording
@@ -1178,8 +1201,12 @@ class CreditGraph:
         grouped by `release_id` -- one query, not one per release. Unlike
         `credit_rows`, no `artist_ids` filter: the caller doesn't yet know which
         artists matter (e.g. discovering who performs on an album at all), only
-        which releases. Applies no role-eligibility filter -- that is the game
-        allowlist's job (`eligibility.py`), which this module must never import.
+        which releases. Applies no role-eligibility filter: these are raw
+        evidence rows for display, not edge construction. The performer gate
+        (ADR 0068, `eligibility.py`'s `is_performer_role_sql`) applies only
+        inside `credit_edges_sql` itself -- this module now imports
+        `eligibility.py` for that one purpose, but every other method here,
+        including this one, stays intentionally unfiltered.
         """
         if not release_ids:
             return {}
