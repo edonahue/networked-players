@@ -14,6 +14,7 @@ import {
   isGuitarRole,
   isPerformerRole,
   isRhythmSectionRole,
+  PERFORMER_TOKEN_COUNT,
   rhythmSectionEdgeFilter,
 } from "../src/game/roleTaxonomy";
 import { ROLE_CATEGORY_LABEL } from "../src/data/contributors";
@@ -339,6 +340,22 @@ test.describe("isPerformerRole", () => {
     for (const role of excluded) {
       expect(isPerformerRole(role), role).toBe(false);
     }
+  });
+
+  // Round-4 Codex review finding on PR #203: the pinned per-token cases
+  // above only catch drift on the specific tokens they name -- a token
+  // added to (or removed from) one side's set without a matching edit on
+  // the other, outside this list, would pass every pinned case. A full
+  // set-equality check would need generated-fixture infrastructure this
+  // repo does not otherwise have (every other Python/TS parity block in
+  // this file -- isEngineeringOrProductionRole, isBackgroundEngineeringRole,
+  // isRhythmSectionRole, isGuitarRole -- uses this same pinned-example
+  // convention); a plain size comparison is the cheap, real, partial
+  // guard available without introducing that infrastructure for one
+  // block. It cannot say WHICH token drifted, only THAT the two sets'
+  // sizes disagree.
+  test("token-set size matches eligibility.py's _PERFORMER_ROLE_TOKENS count", () => {
+    expect(PERFORMER_TOKEN_COUNT).toBe(108);
   });
 });
 
