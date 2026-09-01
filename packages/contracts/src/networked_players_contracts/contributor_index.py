@@ -40,6 +40,9 @@ _VALID_ROLE_CATEGORIES = frozenset(
         # every value an already-published index carries stays valid, so this
         # accepts both the current artifact and the next regeneration.
         "audiovisual_production",
+        # Added 2026-09-01 (ADR 0068) alongside `role_taxonomy.RoleCategory.
+        # PERFORMANCE` -- same purely-additive discipline as above.
+        "performance",
         "unknown",
     }
 )

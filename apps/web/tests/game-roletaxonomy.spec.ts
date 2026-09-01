@@ -14,6 +14,7 @@ import {
   isGuitarRole,
   isPerformerRole,
   isRhythmSectionRole,
+  PERFORMER_TOKEN_COUNT,
   rhythmSectionEdgeFilter,
 } from "../src/game/roleTaxonomy";
 import { ROLE_CATEGORY_LABEL } from "../src/data/contributors";
@@ -274,6 +275,88 @@ test.describe("isPerformerRole", () => {
       expect(isPerformerRole(role), role).toBe(false);
     }
   });
+
+  // ADR 0068 real-corpus audit (2026-09-01): pinned parity cases for every
+  // token GROUP added to eligibility.py's `_PERFORMER_ROLE_TOKENS` this
+  // round, plus the tokens explicitly considered and excluded. A future
+  // edit to either side's set that isn't mirrored on the other fails one
+  // of these, the same convention the rest of this describe block uses.
+  test("ADR 0068 audit: matches eligibility.py's expanded token set", () => {
+    const included: string[] = [
+      "Soprano Vocals",
+      "Tenor Vocals",
+      "Alto Vocals",
+      "Baritone Vocals",
+      "Bass Vocals",
+      "Human Beatbox",
+      "Whistling",
+      "Featuring",
+      "Performer",
+      "Musician",
+      "Instruments",
+      "Orchestra",
+      "Strings",
+      "Soloist",
+      "Turntables",
+      "Scratches",
+      "Concertmaster",
+      "Zither",
+      "Dulcimer",
+      "Bouzouki",
+      "Kora",
+      "Autoharp",
+      "Dobro",
+      "Tambourine",
+      "Cowbell",
+      "Steel Drums",
+      "Theremin",
+      "Moog",
+      "Mellotron",
+      "Clavinet",
+      "Rhodes",
+      "Wurlitzer",
+      "Vocoder",
+      "Talk Box",
+      "Recorder",
+      "Didgeridoo",
+      "Whistle",
+      "Melodica",
+      "Kazoo",
+    ];
+    for (const role of included) {
+      expect(isPerformerRole(role), role).toBe(true);
+    }
+    // Real, measured-at-scale tokens explicitly considered and EXCLUDED
+    // (see eligibility.py's own audit comment for the corpus-count
+    // reasoning behind each).
+    const excluded: string[] = [
+      "Conductor",
+      "Orchestrated By",
+      "Programming",
+      "Sampler",
+      "Cover",
+      "Leader",
+    ];
+    for (const role of excluded) {
+      expect(isPerformerRole(role), role).toBe(false);
+    }
+  });
+
+  // Round-4 Codex review finding on PR #203: the pinned per-token cases
+  // above only catch drift on the specific tokens they name -- a token
+  // added to (or removed from) one side's set without a matching edit on
+  // the other, outside this list, would pass every pinned case. A full
+  // set-equality check would need generated-fixture infrastructure this
+  // repo does not otherwise have (every other Python/TS parity block in
+  // this file -- isEngineeringOrProductionRole, isBackgroundEngineeringRole,
+  // isRhythmSectionRole, isGuitarRole -- uses this same pinned-example
+  // convention); a plain size comparison is the cheap, real, partial
+  // guard available without introducing that infrastructure for one
+  // block. It cannot say WHICH token drifted, only THAT the two sets'
+  // sizes disagree.
+  test("token-set size matches eligibility.py's _PERFORMER_ROLE_TOKENS count", () => {
+    expect(PERFORMER_TOKEN_COUNT).toBe(108);
+  });
 });
 
 test.describe("isGuitarRole", () => {
@@ -393,6 +476,7 @@ test.describe("ROLE_CATEGORY_LABEL parity", () => {
         "engineering",
         "packaging_business",
         "percussion_keys",
+        "performance",
         "production",
         "rework",
         "strings",

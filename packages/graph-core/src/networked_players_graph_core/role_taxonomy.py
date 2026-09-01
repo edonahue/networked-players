@@ -48,7 +48,11 @@ unrecognized.
 
 This module may import from both `graph.py` and `eligibility.py` (it is a new
 consumer, not `graph.py`/`challenge.py`/cohort code, so ADR 0039's "must never
-be imported by" prohibition does not apply to it).
+be imported by" prohibition -- itself since superseded by ADR 0068 for
+`graph.py`/`challenge.py`/the cohort pipeline directly -- never applied to it
+in the first place). This module remains presentation-only per ADR 0047
+regardless: `graph.py`'s new performer gate (ADR 0068) imports
+`eligibility.py` directly, never this module's `RoleCategory`/`classify_role`.
 """
 
 from __future__ import annotations
@@ -71,6 +75,15 @@ class RoleCategory(StrEnum):
     STRINGS = "strings"
     PERCUSSION_KEYS = "percussion_keys"
     BRASS_WOODWIND = "brass_woodwind"
+    # Added 2026-09-01 (ADR 0068 real-corpus audit): a real, measured-at-scale
+    # performance credit that doesn't name a specific instrument or vocal
+    # range -- "Performer" (999,112), "Musician" (220,705), "Orchestra"
+    # (1,116,885), "Featuring" (3,221,801), "Soloist" (118,061), and similar.
+    # Deliberately its own category rather than UNKNOWN (we know it IS a
+    # documented performance, just not which kind) or a forced fit into
+    # VOCALS/STRINGS/PERCUSSION_KEYS/BRASS_WOODWIND (which would fabricate an
+    # instrument the credit itself doesn't name).
+    PERFORMANCE = "performance"
     PRODUCTION = "production"
     ENGINEERING = "engineering"
     ARRANGEMENT = "arrangement"
@@ -90,6 +103,7 @@ CATEGORY_TRAVERSABLE: dict[RoleCategory, bool] = {
     RoleCategory.STRINGS: True,
     RoleCategory.PERCUSSION_KEYS: True,
     RoleCategory.BRASS_WOODWIND: True,
+    RoleCategory.PERFORMANCE: True,
     RoleCategory.PRODUCTION: True,
     RoleCategory.ENGINEERING: True,
     RoleCategory.ARRANGEMENT: True,
@@ -125,6 +139,7 @@ _PERFORMANCE_SUBCATEGORY: dict[str, RoleCategory] = {
     "sax": RoleCategory.BRASS_WOODWIND,
     "woodwind": RoleCategory.BRASS_WOODWIND,
     "flute": RoleCategory.BRASS_WOODWIND,
+    "performer": RoleCategory.PERFORMANCE,
 }
 
 # Studio/production/arrangement tokens: real strings already named in
@@ -280,13 +295,13 @@ _AUDIOVISUAL_TOKENS = frozenset(
 # "Promotion" (~31 combined), "Commissioned By" (85), and "Score" (part of
 # the 94-count "Score [Strings], Conductor [Strings]") all stay UNKNOWN,
 # correctly, until a future change deliberately re-measures and touches
-# `graph.py`'s denylist too. "Featuring" (2,375, the single largest
-# non-empty UNKNOWN string) stays UNKNOWN for a different reason: it is not
-# an `eligibility.py` performer token either (deliberately fail-closed
-# there -- it names a billing relationship, not an instrument/vocal type),
-# and this module's `_PERFORMANCE_SUBCATEGORY` only remaps categories
-# `eligibility.py` already recognizes, never invents new performance
-# tokens independently. The film/video-production strings this note previously
+# `graph.py`'s denylist too. "Featuring" (2,375, formerly the single largest
+# non-empty UNKNOWN string) is UNKNOWN no longer: ADR 0068 (2026-09-01) added
+# it to `eligibility.py`'s `_PERFORMER_ROLE_TOKENS` after a real-corpus
+# review concluded it reliably co-occurs with an explicit vocal/rap credit,
+# so `classify_role("Featuring")` now returns `RoleCategory.PERFORMANCE` via
+# `_PERFORMANCE_SUBCATEGORY`'s generic fallback, the same as "Performer" or
+# "Musician". The film/video-production strings this note previously
 # deferred (Film Director, Director Of Photography, Film Producer, Film
 # Editor, Video Editor) ARE now classified: 2026-08-27's Phase 7 preflight
 # measured them on the real published graph, added them to `graph.py`'s
