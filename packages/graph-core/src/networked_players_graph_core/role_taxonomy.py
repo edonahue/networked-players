@@ -295,13 +295,13 @@ _AUDIOVISUAL_TOKENS = frozenset(
 # "Promotion" (~31 combined), "Commissioned By" (85), and "Score" (part of
 # the 94-count "Score [Strings], Conductor [Strings]") all stay UNKNOWN,
 # correctly, until a future change deliberately re-measures and touches
-# `graph.py`'s denylist too. "Featuring" (2,375, the single largest
-# non-empty UNKNOWN string) stays UNKNOWN for a different reason: it is not
-# an `eligibility.py` performer token either (deliberately fail-closed
-# there -- it names a billing relationship, not an instrument/vocal type),
-# and this module's `_PERFORMANCE_SUBCATEGORY` only remaps categories
-# `eligibility.py` already recognizes, never invents new performance
-# tokens independently. The film/video-production strings this note previously
+# `graph.py`'s denylist too. "Featuring" (2,375, formerly the single largest
+# non-empty UNKNOWN string) is UNKNOWN no longer: ADR 0068 (2026-09-01) added
+# it to `eligibility.py`'s `_PERFORMER_ROLE_TOKENS` after a real-corpus
+# review concluded it reliably co-occurs with an explicit vocal/rap credit,
+# so `classify_role("Featuring")` now returns `RoleCategory.PERFORMANCE` via
+# `_PERFORMANCE_SUBCATEGORY`'s generic fallback, the same as "Performer" or
+# "Musician". The film/video-production strings this note previously
 # deferred (Film Director, Director Of Photography, Film Producer, Film
 # Editor, Video Editor) ARE now classified: 2026-08-27's Phase 7 preflight
 # measured them on the real published graph, added them to `graph.py`'s

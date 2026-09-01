@@ -145,8 +145,12 @@ collaboration, directly contrary to the task's own requirement to cover
 **Explicitly considered and excluded** (kept fail-closed), with reasoning:
 
 - **Conductor** (1,119,397) / **Orchestrated By** (114,331) -- directing or
-  arranging a performance is not itself performing; `role_taxonomy.py` already
-  buckets both under `ARRANGEMENT`, a category this decision does not disturb.
+  arranging a performance is not itself performing. `role_taxonomy.py`
+  currently buckets `Conductor` under `ARRANGEMENT`; `Orchestrated By` is not
+  yet in `_ARRANGEMENT_TOKENS` and classifies as `UNKNOWN` today. Either way,
+  neither is a performer-eligibility token, which is the only claim this
+  decision makes -- `role_taxonomy.py`'s own bucketing of `Orchestrated By` is
+  a separate, unaudited presentation-layer question this PR does not disturb.
 - **Programming** (123) / the much larger **Programmed By** (already excluded,
   unaffected) -- a production/engineering process, not a real-time performance
   act.
