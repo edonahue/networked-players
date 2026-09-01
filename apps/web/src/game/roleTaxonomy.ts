@@ -103,6 +103,10 @@ const PERFORMER_TOKENS = new Set([
   "instruments",
   "orchestra",
   "strings",
+  // Found via PR 2's shadow-build diagnostic against the real one-hop
+  // corpus (124,760 rows), not the original PR 1 audit -- the identical
+  // case as "strings": a real collective brass-section performance credit.
+  "horns",
   "soloist",
   // Turntablism (ADR 0068 audit).
   "turntables",

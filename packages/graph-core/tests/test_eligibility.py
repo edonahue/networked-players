@@ -75,6 +75,13 @@ def test_explicit_instrument_and_vocal_roles_are_eligible() -> None:
     assert is_performer_role("Backing Vocals [Uncredited]") is True
 
 
+def test_adr0068_addendum_horns_found_via_the_shadow_diagnostic() -> None:
+    """ADR 0068 addendum (PR 2): "Horns" (124,760 real rows) was found via
+    the shadow-build diagnostic against the real one-hop corpus, not the
+    original PR 1 audit -- the identical case as "Strings"."""
+    assert is_performer_role("Horns") is True
+
+
 def test_production_and_business_roles_are_excluded() -> None:
     assert is_performer_role("Producer") is False
     assert is_performer_role("Mixed By") is False

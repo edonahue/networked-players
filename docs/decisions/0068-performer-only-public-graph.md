@@ -250,3 +250,17 @@ retained-edge count than this ADR's token additions alone would predict,
 that is expected (billing-scope implicit performance is the larger structural
 change) and should be reported honestly in that PR's own shadow-diagnostic,
 not treated as a contradiction of this ADR.
+
+## Addendum (2026-09-01, PR 2): "Horns" added, found by the shadow diagnostic
+
+PR 2's shadow-build diagnostic (`shadow_report.py`, run against the real
+one-hop corpus, `local/processed/discogs-onehop-v4`) surfaced a real,
+currently-excluded token with real volume that this ADR's own PR 1 audit
+missed: **"Horns" (124,760 rows)** -- a real collective brass-section
+performance credit, the identical case as "Strings" (which this ADR already
+includes). Added to `_PERFORMER_ROLE_TOKENS` and `roleTaxonomy.ts`'s mirror
+(109 tokens on both sides now, up from 108) with a pinned test on each side,
+exactly the revisit process described above. This is the process working as
+designed -- a real-corpus diagnostic measuring the actual production dataset
+found what a smaller or differently-scoped audit missed -- not a defect in
+either PR.

@@ -15,10 +15,11 @@ hop, and `placeholder_artist_hop` stays armed purely as a regression alarm
 (ADR 0035 excludes 194/151641 from `credit_edges` outright).
 
 This module never imports from `networked_players_catalog` (graph-core's
-standing rule: catalog -> graph-core only, never the reverse) -- the
-placeholder-artist-ID set and non-performer role tokens below are kept as
-our own copy, the same precedent `graph.py`'s own `NON_INDIVIDUAL_ARTIST_IDS`
-already uses.
+standing rule: catalog -> graph-core only, never the reverse). Performer-
+credit grading imports `eligibility.py`'s `is_performer_role` directly
+(ADR 0068 supersedes ADR 0039's restriction on that import) rather than
+keeping a second, locally-duplicated token set -- the retired
+`_is_non_performer_role` used to be that duplicate.
 
 Performance note, two generations deep:
 
@@ -49,7 +50,6 @@ from __future__ import annotations
 
 import json
 import math
-import re
 import threading
 import time
 import uuid
@@ -62,6 +62,7 @@ import duckdb
 
 from networked_players_contracts import CONNECTIVITY_SCHEMA_VERSION, connectivity_failures
 
+from .eligibility import is_performer_role
 from .graph import PLACEHOLDER_ARTIST_IDS, CreditGraph, EvidencePath, Hop
 
 # 2: "skipped" status/skip_reason added alongside the cohort-scoped BFS
@@ -72,7 +73,14 @@ from .graph import PLACEHOLDER_ARTIST_IDS, CreditGraph, EvidencePath, Hop
 # 4: track-scoped `credit_edges` traversal (ADR 0035). Scores from versions
 #    <= 3 came from a release-container graph in which any two artists on one
 #    compilation were one hop apart; they are not comparable to these.
-SCORER_VERSION = 4
+# 5: performer-gated `credit_edges` traversal (ADR 0068). `find_path`/
+#    `score_pairs` now traverse a materially smaller edge relation --
+#    `same_recording`/`release_scope` edges whose non-anchor side fails
+#    `is_performer_role` no longer exist, so both real paths and quality
+#    flags (`_artist_credit_tier` now also gated on `is_performer_role`
+#    rather than the retired `_is_non_performer_role` denylist) can differ
+#    from version 4. Scores from version <= 4 are not comparable to these.
+SCORER_VERSION = 5
 
 # Default per-seed bound on materialized reach rows: a seed exceeding it is
 # reported skipped/reach_too_large rather than ground on. The worst real seed
@@ -97,38 +105,6 @@ _SCOPE_FLAGS = frozenset({"same_recording", "release_scope_credit"})
 # what surfaces it for human review.
 _PLACEHOLDER_ARTIST_IDS = PLACEHOLDER_ARTIST_IDS
 
-# onehop.py's _NON_PERFORMER_ROLE_TOKENS, plus "remastered by": a reissue's
-# mastering engineer was never in the room with the band, and grading such a
-# hop `performer_credit` is how Bernie Grundman (who remastered The Wall and
-# mastered DAMN.) came back as a two-hop bridge worth +10. This list only
-# *grades* a hop; which credits create an edge at all is graph.py's
-# `_NON_COLLABORATIVE_ROLE_TOKENS`.
-_NON_PERFORMER_ROLE_TOKENS = frozenset(
-    {
-        "written-by",
-        "written by",
-        "mastered by",
-        "remastered by",
-        "mixed by",
-        "recorded by",
-        "lacquer cut by",
-        "arranged by",
-        "liner notes",
-        "composed by",
-        "lyrics by",
-        "music by",
-        "words by",
-        "engineer",
-        "producer",
-        "co-producer",
-        "design",
-        "design concept",
-        "photography by",
-    }
-)
-
-_BRACKET_SUFFIX_RE = re.compile(r"\[.*\]")
-
 # Every generated sentence describing a connection must use this phrase, per
 # docs/DATA_AND_RIGHTS.md's standing rule against inferring relationships
 # from credits -- never "worked with"/"collaborated with".
@@ -144,28 +120,29 @@ def _album_id(entry: dict[str, Any]) -> str:
     return f"master-{master_id}" if master_id else f"release-{entry['release_id']}"
 
 
-def _is_non_performer_role(role_text: str | None) -> bool:
-    """Python port of onehop.py's `_performer_credit_sql`, negated: True only
-    when role_text is non-null and every comma-separated component is a known
-    non-performer token. An unlisted component always means "keep" (False) --
-    an incomplete list can only under-flag, never silently over-flag."""
-    if role_text is None:
-        return False
-    components = role_text.split(",")
-    for component in components:
-        stripped = _BRACKET_SUFFIX_RE.sub("", component).strip().lower()
-        if stripped not in _NON_PERFORMER_ROLE_TOKENS:
-            return False
-    return True
-
-
 def _artist_credit_tier(rows: list[dict[str, Any]], artist_id: int) -> str:
     """One of "release_artist" / "performer" / "non_performer" for the given
-    artist's credit(s) on the release these rows came from."""
+    artist's credit(s) on the release these rows came from.
+
+    Reconciled with the hard performer gate `credit_edges_sql` and
+    `edge_eligible_membership_artist_ids` now both apply (ADR 0068): a
+    credit qualifies for "performer" tier when it is `track_artist` scope
+    (billing -- always implicit performer-qualifying, regardless of role
+    text) or its role text passes `eligibility.py`'s `is_performer_role`.
+    `release_artist` scope keeps its own, higher tier regardless of role
+    text, same as before. Since every hop reaching this function already
+    traversed a real graph edge, "non_performer" should now be structurally
+    unreachable for the SPECIFIC credit that formed the edge -- it can still
+    appear for an artist's OTHER credits on the same release that didn't
+    happen to be the qualifying one, which is real, useful diagnostic
+    detail, not a bug."""
     artist_rows = [row for row in rows if row["artist_id"] == artist_id]
     if any(row["credit_scope"] == "release_artist" for row in artist_rows):
         return "release_artist"
-    if any(not _is_non_performer_role(row["role_text"]) for row in artist_rows):
+    if any(
+        row["credit_scope"] == "track_artist" or is_performer_role(row["role_text"])
+        for row in artist_rows
+    ):
         return "performer"
     return "non_performer"
 

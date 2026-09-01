@@ -11,9 +11,13 @@ Every artist meant to participate in a traversal edge gets the same two-row
 shape `packages/graph-core/tests/conftest.py`'s `_performed` helper uses
 (`release_artist` + `track_artist` on the same `track_index`) -- co-billed,
 co-performing artists on an album-shaped release, matching `credit_edges_sql`'s
-real `co_performers` rule. A credit-only contributor (Bob, engineer) uses a
-single `release_credit`-scope row instead, since this fixture doesn't need
-Bob to be traversable, only counted.
+real `co_performers` rule. A `release_credit`-scope contributor whose role
+text documents a real performance (Carol, Violin; Deb, Drums) still forms a
+`release_scope` edge on its own. Bob (Engineer) is the deliberate negative
+case: a single `release_credit`-scope row whose role documents no
+performance, so ADR 0068's gate keeps him credited but never graph-
+traversable -- counted by anything that reads raw credits, never a neighbor
+in anything that reads `credit_edges`.
 """
 
 from __future__ import annotations
@@ -45,6 +49,7 @@ EVE = 700
 FRANK = 800
 SEED_F = 900
 GINA = 1000
+DEB = 1100
 
 
 def _performed(release_id: int, *, artist_id: int, name: str) -> list[dict[str, Any]]:
@@ -76,8 +81,12 @@ def _build_corpus(tmp_path: Path) -> Path:
     ]
 
     credits: list[dict[str, Any]] = []
-    # R1: Seed A (billed, Vocals) + Carol (co-performer, Strings) + Bob
-    # (release-scope credit only, Engineer -- not traversable, just counted).
+    # R1: Seed A (billed, Vocals) + Carol (co-performer, Strings) + Deb
+    # (release-scope, Drums -- a second real performer-qualifying edge,
+    # distinct role category from Carol's) + Bob (release-scope credit
+    # only, Engineer -- ADR 0068: documents no performance, so credited but
+    # never graph-traversable; kept only for role_category_counts-style
+    # tests that inspect an artist's own raw credits, not graph edges).
     credits += [
         _credit(1, artist_id=SEED_A, name="Seed A", scope="release_artist", role_text="Vocals"),
         _credit(
@@ -93,13 +102,16 @@ def _build_corpus(tmp_path: Path) -> Path:
         # artist resolution below); Carol is still a real credited
         # contributor on R1 either way.
         _credit(1, artist_id=CAROL, name="Carol", scope="release_credit", role_text="Violin"),
+        _credit(1, artist_id=DEB, name="Deb", scope="release_credit", role_text="Drums"),
         _credit(1, artist_id=BOB, name="Bob", scope="release_credit", role_text="Engineer"),
     ]
     # R2: Seed B (sole release_artist, needed for scope-tier resolution) +
     # Carol again (release_credit, same as R1) -- the direct shared
     # contributor.
     credits += _performed(2, artist_id=SEED_B, name="Seed B")
-    credits.append(_credit(2, artist_id=CAROL, name="Carol", scope="release_credit"))
+    credits.append(
+        _credit(2, artist_id=CAROL, name="Carol", scope="release_credit", role_text="Violin")
+    )
     # R3: Seed C (billed) + Dan -- no overlap with R1 at all.
     credits += _performed(3, artist_id=SEED_C, name="Seed C")
     credits += _performed(3, artist_id=DAN, name="Dan")
@@ -145,7 +157,7 @@ def test_shared_and_unique_contributors_both_directions(corpus: Path) -> None:
 
     shared_ids = {p["artist_id"] for p in result["shared_vs_unique"]["recurring_personnel"]}
     assert shared_ids == {CAROL}
-    assert set(result["shared_vs_unique"]["unique_to_album_a"]) == {SEED_A, BOB}
+    assert set(result["shared_vs_unique"]["unique_to_album_a"]) == {SEED_A, BOB, DEB}
     assert set(result["shared_vs_unique"]["unique_to_album_b"]) == {SEED_B}
 
 
@@ -216,7 +228,7 @@ def test_indirect_route_found_via_a_real_bridge_artist(corpus: Path) -> None:
     # one hop) may or may not be the specific pair found here. What must
     # hold regardless: the endpoints belong to the right rosters, and the
     # hop chain is real, evidenced, and actually connects them.
-    assert indirect["from_artist_id"] in {SEED_A, CAROL, BOB}
+    assert indirect["from_artist_id"] in {SEED_A, CAROL, BOB, DEB}
     assert indirect["to_artist_id"] in {SEED_C, DAN}
     assert 1 <= len(indirect["hops"]) <= 4
     chain = [indirect["from_artist_id"]] + [hop["artist_b_id"] for hop in indirect["hops"]]
