@@ -353,13 +353,23 @@ def build_shadow_comparison_report(
         # extra-credit corpus rather than joined per dropped pair (a real
         # per-pair join at this scale is a materially heavier query for a
         # diagnostic that only needs "what kinds of roles are we now
-        # correctly excluding").
+        # correctly excluding"). Restricted to role texts `edge_ineligible_
+        # role` does NOT already reject -- credit_edges_sql's universal
+        # entry gate (ADR 0035's denylist) excludes those from BOTH the
+        # broad and gated relations already, so a role like "Written-By"
+        # was never edge-forming even pre-ADR-0068 and describing it as
+        # "now excluded by the performer gate" would be false (round-1
+        # Codex review finding on PR #204). This query describes the
+        # actual delta: roles that survived ADR 0035's denylist but fail
+        # ADR 0068's new allowlist.
+        denylist_ineligible = _edge_ineligible_role_sql("role_text")
         role_rows = connection.execute(
-            """
+            f"""
             SELECT role_text, count(*) AS n
             FROM credits
             WHERE credit_scope IN ('track_credit', 'release_credit')
               AND role_text IS NOT NULL
+              AND NOT {denylist_ineligible}
             GROUP BY role_text
             ORDER BY n DESC
             LIMIT 500

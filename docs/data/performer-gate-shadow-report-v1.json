@@ -95,10 +95,6 @@
   "dataset_root": "local/processed/discogs-onehop-v4/snapshot=20260601",
   "excluded_edges_by_role_text": [
     {
-      "count": 8676059,
-      "role_text": "Written-By"
-    },
-    {
       "count": 1921760,
       "role_text": "Producer"
     },
@@ -119,60 +115,12 @@
       "role_text": "Engineer [Assistant]"
     },
     {
-      "count": 357644,
-      "role_text": "Composed By"
-    },
-    {
       "count": 337616,
       "role_text": "Recorded By"
     },
     {
       "count": 332383,
       "role_text": "Mastered By"
-    },
-    {
-      "count": 328882,
-      "role_text": "Photography By"
-    },
-    {
-      "count": 231703,
-      "role_text": "Music By"
-    },
-    {
-      "count": 207905,
-      "role_text": "Remix"
-    },
-    {
-      "count": 203342,
-      "role_text": "Written By"
-    },
-    {
-      "count": 171382,
-      "role_text": "Liner Notes"
-    },
-    {
-      "count": 169694,
-      "role_text": "Lyrics By"
-    },
-    {
-      "count": 167305,
-      "role_text": "Design"
-    },
-    {
-      "count": 165634,
-      "role_text": "Art Direction"
-    },
-    {
-      "count": 156317,
-      "role_text": "Executive-Producer"
-    },
-    {
-      "count": 147984,
-      "role_text": "Management"
-    },
-    {
-      "count": 131236,
-      "role_text": "Songwriter"
     },
     {
       "count": 93484,
@@ -199,10 +147,6 @@
       "role_text": "Engineer [Additional]"
     },
     {
-      "count": 70841,
-      "role_text": "Words By, Music By"
-    },
-    {
       "count": 67971,
       "role_text": "Producer [Produced By]"
     },
@@ -211,8 +155,64 @@
       "role_text": "Engineer [Recording]"
     },
     {
-      "count": 64941,
-      "role_text": "Art Direction, Design"
+      "count": 61251,
+      "role_text": "Mixed By [Assistant]"
+    },
+    {
+      "count": 49829,
+      "role_text": "Producer, Arranged By"
+    },
+    {
+      "count": 45950,
+      "role_text": "Engineer, Mixed By"
+    },
+    {
+      "count": 45377,
+      "role_text": "Arranged By, Conductor"
+    },
+    {
+      "count": 42480,
+      "role_text": "Remastered By"
+    },
+    {
+      "count": 40837,
+      "role_text": "Arranged By [Horns]"
+    },
+    {
+      "count": 40751,
+      "role_text": "Written-By, Producer"
+    },
+    {
+      "count": 38207,
+      "role_text": "Recorded By [Assistant]"
+    },
+    {
+      "count": 38116,
+      "role_text": "Harmony Vocals"
+    },
+    {
+      "count": 37145,
+      "role_text": "Drum Programming"
+    },
+    {
+      "count": 36257,
+      "role_text": "Producer, Mixed By"
+    },
+    {
+      "count": 36115,
+      "role_text": "Engineer [Assistant Engineer]"
+    },
+    {
+      "count": 34024,
+      "role_text": "Electric Bass"
+    },
+    {
+      "count": 29082,
+      "role_text": "Producer, Written-By"
+    },
+    {
+      "count": 27820,
+      "role_text": "Orchestrated By"
     }
   ],
   "gated_adr0068": {

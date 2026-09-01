@@ -46,7 +46,7 @@ from networked_players_contracts.canonical import content_hash
 
 from .compact_graph_bench import build_csr_adjacency
 from .eligibility import is_performer_role
-from .graph import CreditGraph
+from .graph import CreditGraph, edge_ineligible_role
 
 _MAX_JOINED_ROLE_LEN = 200
 
@@ -133,13 +133,20 @@ def edge_eligible_membership_artist_ids(membership: dict[str, Any]) -> set[int]:
     Clan from `36 Chambers`, ...), because the joined text for those happens
     to read `Written-By` or `Composed By`.
 
-    A credit qualifies when EITHER: its `credit_scope` is `track_artist` or
-    `release_artist` (billing -- always implicit performer-qualifying,
-    regardless of role text, including a bare `NULL`-role main-artist
-    billing -- the same rule that keeps a billed artist connected to their
-    own record in `credit_edges_sql`), OR its `credit_scope` is
-    `track_credit`/`release_credit` and its role text passes
-    `eligibility.py`'s `is_performer_role` (ADR 0068).
+    A credit qualifies when its role text is not `edge_ineligible_role`
+    (`credit_edges_sql`'s universal entry gate -- excludes both the
+    composition/packaging-business/rework/audiovisual denylist AND
+    quotation-style role text like `Performer [Sample]`/`Featuring [Samples
+    From]`, which `is_performer_role` alone does not know to reject: its
+    bracket-stripping normalizes `Performer [Sample]` down to `performer`,
+    a real performer token, without the quotation check `edge_ineligible_role`
+    applies -- round-1 Codex review finding on PR #204) AND EITHER: its
+    `credit_scope` is `track_artist` or `release_artist` (billing -- always
+    implicit performer-qualifying, regardless of role text, including a
+    bare `NULL`-role main-artist billing -- the same rule that keeps a
+    billed artist connected to their own record in `credit_edges_sql`), OR
+    its `credit_scope` is `track_credit`/`release_credit` and its role text
+    passes `eligibility.py`'s `is_performer_role` (ADR 0068).
     """
     credits_by_artist: dict[int, list[tuple[str | None, str]]] = defaultdict(list)
     for credit in membership.get("credits", []):
@@ -154,7 +161,8 @@ def edge_eligible_membership_artist_ids(membership: dict[str, Any]) -> set[int]:
         artist_id
         for artist_id, credits in credits_by_artist.items()
         if any(
-            credit_scope in ("track_artist", "release_artist") or is_performer_role(role_text)
+            not edge_ineligible_role(role_text)
+            and (credit_scope in ("track_artist", "release_artist") or is_performer_role(role_text))
             for role_text, credit_scope in credits
         )
     }

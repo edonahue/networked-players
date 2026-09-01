@@ -98,14 +98,22 @@ gesturing at is PR 3's job, once `graph.v3.json` exists to measure.
 
 ## What's now excluded (real corpus role-text frequency)
 
-Every one of the top 20 most frequent now-excluded `track_credit`/
-`release_credit` role texts is a genuine non-performance credit — Written-By
-(8,676,059 rows), Producer (1,921,760), Engineer (766,734), Mixed By
-(604,678), Arranged By, Engineer [Assistant], Composed By, Recorded By,
-Mastered By, Photography By, Music By, Remix, Written By, Liner Notes,
-Lyrics By, Design, Art Direction, Executive-Producer, Management, Songwriter
-— matching ADR 0068's own audit exactly. No surprises among the high-volume
-exclusions. Full list: `docs/data/performer-gate-shadow-report-v1.json`'s
+This list is restricted to role texts that **survived** ADR 0035's
+pre-existing denylist (`_NON_COLLABORATIVE_ROLE_TOKENS`, applied to both the
+broad and gated relations identically) but fail ADR 0068's new
+performer-only allowlist — the actual delta the performer gate introduces,
+not every non-performance role text in the corpus (round-2 Codex review
+finding on PR #204: an earlier version of this report counted every
+`track_credit`/`release_credit` role text unconditionally, so Written-By
+appeared as the #1 "now-excluded" role at 8.68M rows despite having been
+excluded from both relations since ADR 0035, long before this PR).
+
+The corrected top exclusions are all genuinely new: Producer (1,921,760
+rows), Engineer (766,734), Mixed By (604,678), Arranged By, Engineer
+[Assistant], Recorded By, Mastered By, Co-producer, Conductor, Arranged By
+[Strings], Programmed By, Remastered By — matching ADR 0068's own audit
+exactly, and none of them were excluded before this PR. Full list:
+`docs/data/performer-gate-shadow-report-v1.json`'s
 `excluded_edges_by_role_text`.
 
 ## A real finding: "Horns" was missing from ADR 0068's own token set
@@ -122,6 +130,25 @@ headline numbers above already reflect this fix (re-run after the addition,
 not the pre-fix numbers). This is the shadow-diagnostic process catching a
 real gap before production cutover, exactly as intended — not a defect in
 either PR.
+
+## A real finding: album-anchor eligibility missed the quotation guard
+
+Code review caught a second real bug during this PR, separate from the
+shadow report's own numbers: `pathfinding_graph.py`'s
+`edge_eligible_membership_artist_ids` (which decides who an album's virtual
+anchor node can reach) was rewritten to check `is_performer_role` directly,
+but `is_performer_role`'s bracket-stripping alone cannot tell "played the
+sampler as an instrument" from "quoted someone else's recording" —
+`Performer [Sample]` normalizes to the real performer token `performer`.
+`credit_edges_sql` never has this problem because its universal
+`edge_ineligible_role` entry gate (which DOES check for quotation patterns)
+runs before the performer condition; the album-anchor function needed the
+same two-part check and didn't have it. Fixed: `edge_eligible_membership_
+artist_ids` now requires both `not edge_ineligible_role(...)` and the
+credit-scope-aware performer check, with a regression test. This function
+is not exercised by this report's own numbers (it's used only when
+`pathfinding-graph.v3.json` is built, in PR 3) — noted here because it was
+found during this PR's review, not because it changes any number above.
 
 ## Non-goals of this report
 

@@ -47,6 +47,18 @@ def _dataset(tmp_path: Path) -> Path:
             scope="release_credit",
             role_text="Backing Vocals",
         ),
+        # Already excluded from BOTH relations by ADR 0035's pre-existing
+        # denylist (`_NON_COLLABORATIVE_ROLE_TOKENS`) -- never edge-forming
+        # even pre-ADR-0068, so it must never appear in
+        # excluded_edges_by_role_text as if the performer gate newly
+        # excluded it (round-1 Codex review finding on PR #204).
+        _credit(
+            1,
+            artist_id=600,
+            name="Songwriter",
+            scope="release_credit",
+            role_text="Written-By",
+        ),
         _credit(2, artist_id=500, name="Solo Artist", scope="release_artist", role_text=None),
         _credit(
             2,
@@ -127,6 +139,10 @@ def test_build_shadow_comparison_report_real_metrics(tmp_path: Path) -> None:
     assert "Producer, Engineer" in role_texts
     assert "Mixed By" in role_texts
     assert "Backing Vocals" not in role_texts, "a real performer credit is never 'excluded'"
+    assert "Written-By" not in role_texts, (
+        "already excluded by ADR 0035's pre-existing denylist in both relations -- "
+        "not something the performer gate newly excludes"
+    )
 
 
 def test_build_shadow_comparison_report_from_dataset_thin_wrapper(tmp_path: Path) -> None:
