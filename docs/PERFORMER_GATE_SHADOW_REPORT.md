@@ -35,10 +35,14 @@ the identical `credits`/`releases` views:
 
 For each relation: node/edge/component counts via a Python union-find over
 the real undirected edge set; "catalog-albums-in-largest-component" and
-"isolated anchors" by checking each of the 173 real catalog albums' primary
+"isolated anchors" by checking each of the 179 real catalog albums' primary
 `artist_id` (`apps/web/public/data/catalog/albums.v1.json`) against graph
-membership and the largest component; degree distribution and the top 15
-highest-degree nodes. "Excluded edges by role text" is a real frequency
+membership and the largest component — one entry per real album, not
+deduplicated by artist (round-1 Codex review finding on PR #204: the
+catalog's 179 albums span only 173 distinct primary artists, e.g. 5
+Jamiroquai albums, and an earlier version of this report incorrectly
+collapsed that multiplicity into a set, undercounting both fields);
+degree distribution and the top 15 highest-degree nodes. "Excluded edges by role text" is a real frequency
 count of `track_credit`/`release_credit`-scope role texts that fail
 `is_performer_role` today, sampled from the top 500 most frequent
 `track_credit`/`release_credit` role texts in the corpus (not a per-dropped-
@@ -67,9 +71,9 @@ what `graph.v3.json` is bounded to.
 | Mean degree | 7.16 | 6.62 | −7.5% |
 | Median degree | 1.0 | 1.0 | unchanged |
 
-**Every one of the 173 real, published catalog albums' primary artist stays
-in the largest component under both the broad and the gated relation — zero
-isolated catalog anchors either way.** The performer gate roughly halves the
+**Every one of the 179 real, published catalog albums stays in the largest
+component under both the broad and the gated relation — zero isolated
+catalog anchors either way.** The performer gate roughly halves the
 corpus-wide hub degree of the single largest hub (3,592 → 1,800) without
 disconnecting any catalog album, which is the shape of result ADR 0068 set
 out to produce: real, non-performing "everyone connects to the prolific

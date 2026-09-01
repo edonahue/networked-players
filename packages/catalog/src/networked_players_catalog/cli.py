@@ -1964,11 +1964,16 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
 
         catalog = json.loads(args.catalog.read_text())
-        catalog_artist_ids = {int(a["artist_id"]) for a in catalog["albums"]}
+        # One entry per real album, duplicates preserved -- a set would
+        # collapse an artist with multiple catalog albums (e.g. Jamiroquai,
+        # 5 of the real 179) to one, under-reporting catalog_album_count and
+        # catalog_albums_in_largest_component (round-1 Codex review finding
+        # on PR #204).
+        catalog_album_artist_ids = [int(a["artist_id"]) for a in catalog["albums"]]
         catalog_names = {int(a["artist_id"]): str(a["artist"]) for a in catalog["albums"]}
         shadow_comparison = build_shadow_comparison_report_from_dataset(
             args.dataset,
-            catalog_artist_ids=catalog_artist_ids,
+            catalog_album_artist_ids=catalog_album_artist_ids,
             catalog_names=catalog_names,
             max_artists_per_release=args.max_artists_per_release,
         )

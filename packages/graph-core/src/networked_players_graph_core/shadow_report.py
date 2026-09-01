@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import statistics
 from collections import Counter, defaultdict
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -172,6 +173,7 @@ class _GraphMetrics:
     largest_component_size: int = 0
     catalog_albums_in_largest_component: int = 0
     isolated_catalog_anchors: list[int] = field(default_factory=list)
+    isolated_catalog_album_count: int = 0
     degree_min: int = 0
     degree_max: int = 0
     degree_mean: float = 0.0
@@ -187,6 +189,7 @@ class _GraphMetrics:
             "largest_component_size": self.largest_component_size,
             "catalog_albums_in_largest_component": self.catalog_albums_in_largest_component,
             "isolated_catalog_anchors": self.isolated_catalog_anchors,
+            "isolated_catalog_album_count": self.isolated_catalog_album_count,
             "degree_min": self.degree_min,
             "degree_max": self.degree_max,
             "degree_mean": round(self.degree_mean, 2),
@@ -203,10 +206,16 @@ def _compute_metrics(
     undirected: set[tuple[int, int]],
     directed_count: int,
     *,
-    catalog_artist_ids: set[int],
+    catalog_album_artist_ids: Sequence[int],
     catalog_names: dict[int, str],
     top_n_hubs: int = 15,
 ) -> _GraphMetrics:
+    """`catalog_album_artist_ids` is one entry per real catalog ALBUM (its
+    primary artist_id) -- duplicates preserved on purpose. A catalog artist
+    with multiple albums (e.g. Jamiroquai, 5 of the real 179) must count as
+    multiple albums here, not collapse to one: a `set` would under-report
+    both `catalog_album_count` and `catalog_albums_in_largest_component`
+    (round-1 Codex review finding on PR #204)."""
     metrics = _GraphMetrics()
     metrics.directed_edge_count = directed_count
     metrics.undirected_edge_count = len(undirected)
@@ -232,9 +241,17 @@ def _compute_metrics(
     else:
         in_largest = set()
     metrics.catalog_albums_in_largest_component = sum(
-        1 for aid in catalog_artist_ids if aid in in_largest
+        1 for aid in catalog_album_artist_ids if aid in in_largest
     )
-    metrics.isolated_catalog_anchors = sorted(aid for aid in catalog_artist_ids if aid not in nodes)
+    # Distinct artist ids, not one entry per album -- a listed id is worth
+    # naming once regardless of how many of the artist's albums it isolates;
+    # `isolated_catalog_album_count` below carries the real album-level count.
+    metrics.isolated_catalog_anchors = sorted(
+        {aid for aid in catalog_album_artist_ids if aid not in nodes}
+    )
+    metrics.isolated_catalog_album_count = sum(
+        1 for aid in catalog_album_artist_ids if aid not in nodes
+    )
 
     if degree:
         degrees = list(degree.values())
@@ -277,7 +294,7 @@ def build_shadow_comparison_report(
     connection: duckdb.DuckDBPyConnection,
     *,
     dataset_root: str,
-    catalog_artist_ids: set[int],
+    catalog_album_artist_ids: Sequence[int],
     catalog_names: dict[int, str] | None = None,
     max_artists_per_release: int = 50,
     top_unmatched: int = 30,
@@ -288,7 +305,15 @@ def build_shadow_comparison_report(
     only (node/edge/component counts, degree distribution, catalog-anchor
     connectivity) -- aggregate counts, not raw per-credit dumps, matching
     the same disclosure posture ADR 0068's own real-corpus audit table
-    already used."""
+    already used.
+
+    `catalog_album_artist_ids` is one entry per real catalog ALBUM (its
+    primary artist_id), duplicates preserved -- never deduplicate into a
+    `set` before calling this: the real catalog has 179 albums but only 173
+    distinct primary artists (e.g. 5 Jamiroquai albums), and a deduplicated
+    set would under-report both `catalog_album_count` and
+    `catalog_albums_in_largest_component` (round-1 Codex review finding on
+    PR #204)."""
     names = catalog_names or {}
 
     gated_sql = credit_edges_sql(max_artists_per_release=max_artists_per_release)
@@ -299,7 +324,7 @@ def build_shadow_comparison_report(
     gated_metrics = _compute_metrics(
         gated_undirected,
         len(gated_rows),
-        catalog_artist_ids=catalog_artist_ids,
+        catalog_album_artist_ids=catalog_album_artist_ids,
         catalog_names=names,
     )
 
@@ -311,7 +336,7 @@ def build_shadow_comparison_report(
     broad_metrics = _compute_metrics(
         broad_undirected,
         len(broad_rows),
-        catalog_artist_ids=catalog_artist_ids,
+        catalog_album_artist_ids=catalog_album_artist_ids,
         catalog_names=names,
     )
 
@@ -351,8 +376,8 @@ def build_shadow_comparison_report(
 
     return ShadowComparisonReport(
         dataset_root=dataset_root,
-        catalog_album_count=len(catalog_artist_ids),
-        catalog_primary_artist_count=len(catalog_artist_ids),
+        catalog_album_count=len(catalog_album_artist_ids),
+        catalog_primary_artist_count=len(set(catalog_album_artist_ids)),
         broad=broad_metrics.as_dict(),
         gated=gated_metrics.as_dict(),
         excluded_edges_by_role_text=excluded_edges_by_role_text,
@@ -362,7 +387,7 @@ def build_shadow_comparison_report(
 def build_shadow_comparison_report_from_dataset(
     dataset_root: Path,
     *,
-    catalog_artist_ids: set[int],
+    catalog_album_artist_ids: Sequence[int],
     catalog_names: dict[int, str] | None = None,
     max_artists_per_release: int = 50,
 ) -> ShadowComparisonReport:
@@ -378,7 +403,7 @@ def build_shadow_comparison_report_from_dataset(
         return build_shadow_comparison_report(
             connection,
             dataset_root=str(dataset_root),
-            catalog_artist_ids=catalog_artist_ids,
+            catalog_album_artist_ids=catalog_album_artist_ids,
             catalog_names=catalog_names,
             max_artists_per_release=max_artists_per_release,
         )

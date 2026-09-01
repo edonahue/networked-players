@@ -1,12 +1,13 @@
 {
   "broad_pre_adr0068": {
-    "catalog_albums_in_largest_component": 173,
+    "catalog_albums_in_largest_component": 179,
     "component_count": 835,
     "degree_max": 3592,
     "degree_mean": 7.16,
     "degree_median": 1.0,
     "degree_min": 1,
     "directed_edge_count": 2659414,
+    "isolated_catalog_album_count": 0,
     "isolated_catalog_anchors": [],
     "largest_component_size": 367897,
     "node_count": 371536,
@@ -89,7 +90,7 @@
     ],
     "undirected_edge_count": 1329707
   },
-  "catalog_album_count": 173,
+  "catalog_album_count": 179,
   "catalog_primary_artist_count": 173,
   "dataset_root": "local/processed/discogs-onehop-v4/snapshot=20260601",
   "excluded_edges_by_role_text": [
@@ -215,13 +216,14 @@
     }
   ],
   "gated_adr0068": {
-    "catalog_albums_in_largest_component": 173,
+    "catalog_albums_in_largest_component": 179,
     "component_count": 1398,
     "degree_max": 1800,
     "degree_mean": 6.62,
     "degree_median": 1.0,
     "degree_min": 1,
     "directed_edge_count": 1677134,
+    "isolated_catalog_album_count": 0,
     "isolated_catalog_anchors": [],
     "largest_component_size": 246496,
     "node_count": 253448,

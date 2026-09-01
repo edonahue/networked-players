@@ -73,7 +73,14 @@ from .graph import PLACEHOLDER_ARTIST_IDS, CreditGraph, EvidencePath, Hop
 # 4: track-scoped `credit_edges` traversal (ADR 0035). Scores from versions
 #    <= 3 came from a release-container graph in which any two artists on one
 #    compilation were one hop apart; they are not comparable to these.
-SCORER_VERSION = 4
+# 5: performer-gated `credit_edges` traversal (ADR 0068). `find_path`/
+#    `score_pairs` now traverse a materially smaller edge relation --
+#    `same_recording`/`release_scope` edges whose non-anchor side fails
+#    `is_performer_role` no longer exist, so both real paths and quality
+#    flags (`_artist_credit_tier` now also gated on `is_performer_role`
+#    rather than the retired `_is_non_performer_role` denylist) can differ
+#    from version 4. Scores from version <= 4 are not comparable to these.
+SCORER_VERSION = 5
 
 # Default per-seed bound on materialized reach rows: a seed exceeding it is
 # reported skipped/reach_too_large rather than ground on. The worst real seed

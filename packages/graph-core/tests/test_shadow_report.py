@@ -90,23 +90,38 @@ def test_build_shadow_comparison_report_real_metrics(tmp_path: Path) -> None:
     connection.read_parquet(str(root / "table=credits" / "*.parquet")).create_view("credits")
     connection.read_parquet(str(root / "table=releases" / "*.parquet")).create_view("releases")
 
+    # Round-1 Codex review finding on PR #204: Nirvana counted TWICE here
+    # (as if it had two real catalog albums, matching Jamiroquai's real
+    # 5-album shape) -- catalog_album_artist_ids must preserve that
+    # multiplicity, never silently deduplicated into a set.
     report = build_shadow_comparison_report(
         connection,
         dataset_root=str(root),
-        catalog_artist_ids={100, 500},
+        catalog_album_artist_ids=[100, 100, 500],
         catalog_names={100: "Nirvana", 500: "Solo Artist"},
     )
     data = report.as_dict()
+
+    assert data["catalog_album_count"] == 3, "3 albums, not 2 distinct artists"
+    assert data["catalog_primary_artist_count"] == 2
 
     # Broad: Nirvana connects to Butch Vig, Andy Wallace, Backing Singer (3
     # undirected edges); Solo Artist is fully isolated either way.
     assert data["broad_pre_adr0068"]["undirected_edge_count"] == 3
     assert data["broad_pre_adr0068"]["isolated_catalog_anchors"] == [500]
+    assert data["broad_pre_adr0068"]["isolated_catalog_album_count"] == 1
+    # Nirvana connects (both its "albums"): 2 + Solo Artist's 1 (isolated,
+    # but still itself a node) -- catalog_albums_in_largest_component counts
+    # ALBUMS in the largest component, so Nirvana's 2 both count, Solo
+    # Artist's 1 does not (it's its own isolated component).
+    assert data["broad_pre_adr0068"]["catalog_albums_in_largest_component"] == 2
 
     # Gated: only the Backing Vocals edge survives.
     assert data["gated_adr0068"]["undirected_edge_count"] == 1
     assert data["gated_adr0068"]["isolated_catalog_anchors"] == [500]
+    assert data["gated_adr0068"]["isolated_catalog_album_count"] == 1
     assert data["gated_adr0068"]["largest_component_size"] == 2
+    assert data["gated_adr0068"]["catalog_albums_in_largest_component"] == 2
 
     role_texts = {row["role_text"] for row in data["excluded_edges_by_role_text"]}
     assert "Producer, Engineer" in role_texts
@@ -117,7 +132,10 @@ def test_build_shadow_comparison_report_real_metrics(tmp_path: Path) -> None:
 def test_build_shadow_comparison_report_from_dataset_thin_wrapper(tmp_path: Path) -> None:
     root = _dataset(tmp_path)
     report = build_shadow_comparison_report_from_dataset(
-        root, catalog_artist_ids={100, 500}, catalog_names={100: "Nirvana", 500: "Solo Artist"}
+        root,
+        catalog_album_artist_ids=[100, 100, 500],
+        catalog_names={100: "Nirvana", 500: "Solo Artist"},
     )
+    assert report.catalog_album_count == 3
     assert report.gated["undirected_edge_count"] == 1
     assert report.broad["undirected_edge_count"] == 3
