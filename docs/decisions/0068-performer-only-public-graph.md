@@ -74,39 +74,46 @@ This is a `credit_scope`-aware *application* of an existing, already-tested
 predicate, not a second definition. `eligibility.py`'s file location, token
 set (expanded below), and `NULL`-excluded behavior are otherwise unchanged.
 
-**Mechanically, this changes exactly two of `credit_edges_sql`'s three CTEs**
-(`packages/graph-core/.../graph.py`):
-- `co_performers` needs **no change**. Both its endpoints are `track_artist`
-  scope -- inherently strong implicit-performance evidence already.
-- `same_recording` and `release_scope` each gain one new condition on their
-  non-anchor side: that side's row must pass `is_performer_role` whenever its
-  `credit_scope` is `track_credit` or `release_credit` (the only two scopes
-  that ever reach that position in either CTE, confirmed by inspection of the
-  join conditions). The anchor side (`track_artist`/`release_artist`) is
-  untouched.
+**Mechanically, the follow-on implementation PR will change exactly two of
+`credit_edges_sql`'s three CTEs** (`packages/graph-core/.../graph.py`) --
+**not this PR, which touches neither `graph.py` nor `pathfinding_graph.py`
+at all** (see Consequences: no production cutover ships here):
+- `co_performers` will need **no change**. Both its endpoints are
+  `track_artist` scope -- inherently strong implicit-performance evidence
+  already.
+- `same_recording` and `release_scope` will each gain one new condition on
+  their non-anchor side: that side's row must pass `is_performer_role`
+  whenever its `credit_scope` is `track_credit` or `release_credit` (the only
+  two scopes that ever reach that position in either CTE, confirmed by
+  inspection of the join conditions). The anchor side
+  (`track_artist`/`release_artist`) will be untouched.
 
 `pathfinding_graph.py`'s `edge_eligible_membership_artist_ids` (which decides
 who an album's virtual anchor node can reach -- exactly as load-bearing as
 `credit_edges_sql` for what Connect/Explore can search "from this album")
-gets the identical `credit_scope`-aware upgrade; `album_credit_membership.v1.json`
-already carries `credit_scope` per credit.
+will get the identical `credit_scope`-aware upgrade; `album_credit_membership.v1.json`
+already carries `credit_scope` per credit today, so no artifact shape change
+is needed to support it when that PR lands.
 
 **ADR 0039's "must never be imported by" restriction is superseded, for
 `eligibility.py` specifically, by this ADR.** The concern it protected against
 -- the game's narrower rule silently narrowing the album/cohort surfaces'
 broader graph -- is now moot by the owner's own product decision: the public
 graph is meant to ask the same narrower question `eligibility.py` already
-answered for game rounds. `graph.py`, `challenge.py` (via `CreditGraph.find_path`
-traversing the now-gated `credit_edges`), and the cohort pipeline
-(`cohort_connectivity.py`, which retires its own local, duplicate
-`_is_non_performer_role` in favor of this shared predicate) all import
-`eligibility.py` directly as of this decision. `eligibility.py`'s own module
-docstring is revised to state this plainly rather than leaving the old
-restriction looking authoritative. `role_taxonomy.py` remains presentation-
-only exactly as ADR 0047 requires -- it is not on this import path and does
-not gate anything; the new performer gate lives in `graph.py`/
-`pathfinding_graph.py` importing `eligibility.py` directly, never through
-`role_taxonomy.py`'s `RoleCategory`/`classify_role`.
+answered for game rounds. The follow-on implementation PR will have
+`graph.py`, `challenge.py` (via `CreditGraph.find_path` traversing the then-
+gated `credit_edges`), and the cohort pipeline (`cohort_connectivity.py`,
+which will retire its own local, duplicate `_is_non_performer_role` in favor
+of this shared predicate) all import `eligibility.py` directly. **This
+addendum only lifts the restriction and revises `eligibility.py`'s own
+module docstring to state that plainly rather than leaving the old
+restriction looking authoritative -- `graph.py`, `challenge.py`, and
+`cohort_connectivity.py` do not yet import `eligibility.py` as of this PR**
+(see Consequences below: no production cutover ships here). `role_taxonomy.py`
+remains presentation-only exactly as ADR 0047 requires -- it is not on this
+import path and does not gate anything; the new performer gate will live in
+`graph.py`/`pathfinding_graph.py` importing `eligibility.py` directly, never
+through `role_taxonomy.py`'s `RoleCategory`/`classify_role`.
 
 **Allowlist expansion is measured, not guessed.** Ran `is_performer_role_sql`
 against the full public one-hop corpus (`local/processed/discogs-v3-full`,

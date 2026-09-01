@@ -15,16 +15,22 @@ existed to keep the flagship game's narrower question from silently
 narrowing the album/cohort surfaces' broader "did these two people plausibly
 share a recording session" question. The owner's own product decision
 (2026-09-01, ADR 0068) is that the public graph should now ask the SAME
-narrower question this module already answered for game rounds -- so
-`graph.py`'s `credit_edges_sql` and `pathfinding_graph.py`'s
-`edge_eligible_membership_artist_ids` import this module directly (applied
-only to `track_credit`/`release_credit`-scope rows; `track_artist`/
-`release_artist`-scope billing remains implicitly performer-qualifying at
-those call sites without needing this predicate at all -- see ADR 0068).
-This module's own file location, token set, and NULL-excluded behavior are
-otherwise unchanged by that decision; it is not a new, second definition,
-just a newly authoritative one. `role_taxonomy.py` remains presentation-only
-per ADR 0047 and does not import from here for gating purposes.
+narrower question this module already answered for game rounds. ADR 0068's
+own follow-on implementation PR will have `graph.py`'s `credit_edges_sql` and
+`pathfinding_graph.py`'s `edge_eligible_membership_artist_ids` import this
+module directly (applied only to `track_credit`/`release_credit`-scope rows;
+`track_artist`/`release_artist`-scope billing will remain implicitly
+performer-qualifying at those call sites without needing this predicate at
+all -- see ADR 0068). **As of this module's current state, `graph.py` and
+`pathfinding_graph.py` do NOT yet import it** -- this PR only lifts ADR
+0039's restriction and expands the token set; the graph-construction cutover
+is deliberately deferred to keep this PR reviewable independently (ADR
+0068's Consequences section states this explicitly). This module's own file
+location, token set, and NULL-excluded behavior are otherwise unchanged by
+the ADR 0068 decision; it is not a new, second definition, just one whose
+authorized callers are about to widen. `role_taxonomy.py` remains
+presentation-only per ADR 0047 and does not import from here for gating
+purposes.
 """
 
 from __future__ import annotations
