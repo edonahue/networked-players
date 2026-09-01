@@ -187,8 +187,9 @@ would introduce false positives (crediting an arranger as a vocalist), not fix
 a false negative. This is a considered non-change, not an oversight.
 
 **TypeScript parity.** `apps/web/src/game/roleTaxonomy.ts`'s `PERFORMER_TOKENS`
-receives the identical 28-token expansion, verified byte-for-byte equal to
-`eligibility.py`'s `_PERFORMER_ROLE_TOKENS` (108 tokens on both sides). A
+receives the identical 39-token expansion (69 → 108), verified byte-for-byte
+equal to `eligibility.py`'s `_PERFORMER_ROLE_TOKENS` (108 tokens on both
+sides). A
 pinned parity test (`apps/web/tests/game-roletaxonomy.spec.ts`, "ADR 0068
 audit") exercises every included and excluded token so a future one-sided edit
 fails loudly, the same convention this file's header already documents for

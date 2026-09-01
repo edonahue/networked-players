@@ -340,6 +340,13 @@ def test_real_2026_08_04_coverage_additions_classify_correctly() -> None:
     # its real-world meaning is guest performance), so it now classifies as
     # the new RoleCategory.PERFORMANCE, not UNKNOWN.
     assert classify_role("Featuring") == (RoleCategory.PERFORMANCE,)
+    # Real gap caught in review (round 2): the generic "Strings" token (a
+    # collective ensemble credit, ADR 0068's own stated intent -- see its
+    # Decision section) must classify as PERFORMANCE, the same as "Orchestra"
+    # or bare "Performer", NOT as RoleCategory.STRINGS -- that specific
+    # bucket is reserved for credits naming an actual stringed instrument
+    # (Guitar, Violin, Banjo, ...), which generic "Strings" does not.
+    assert classify_role("Strings") == (RoleCategory.PERFORMANCE,)
 
 
 def test_performer_roles_map_into_coarser_taxonomy_buckets() -> None:

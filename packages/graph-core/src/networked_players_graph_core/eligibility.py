@@ -296,7 +296,6 @@ _ROLE_CATEGORY_BY_TOKEN: dict[str, str] = {
     "cello": "strings",
     "fiddle": "violin",
     "harp": "harp",
-    "strings": "strings",
     "concertmaster": "violin",
     "zither": "strings",
     "dulcimer": "strings",
@@ -359,11 +358,19 @@ _ROLE_CATEGORY_BY_TOKEN: dict[str, str] = {
     "kazoo": "woodwind",
     # Generic / ensemble / other (ADR 0068 audit) -- no more specific real
     # category exists for these without guessing at an instrument the credit
-    # itself doesn't name.
+    # itself doesn't name. "strings" belongs here, not the specific-instrument
+    # "strings" display bucket above (banjo/viola/cello/...): it's a generic
+    # ensemble credit like "Orchestra", naming no particular stringed
+    # instrument, and role_taxonomy.py's `_PERFORMANCE_SUBCATEGORY` maps this
+    # module's "strings" display bucket to `RoleCategory.STRINGS` -- keeping
+    # generic "Strings" out of it is what makes `classify_role("Strings")`
+    # correctly land on `RoleCategory.PERFORMANCE` instead (round-2 review
+    # finding).
     "performer": "performer",
     "musician": "performer",
     "instruments": "performer",
     "orchestra": "performer",
+    "strings": "performer",
     "featuring": "performer",
     "soloist": "performer",
     "turntables": "performer",
