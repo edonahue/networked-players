@@ -158,7 +158,8 @@ def test_build_pathfinding_graph_cli_wiring(
 
     written = json.loads(output_path.read_text())
     assert set(n for n in written["node_ids"] if n > 0) == {100, 200}
-    assert written["schema_version"] == 2
+    assert written["schema_version"] == 3
+    assert written["graph_policy_version"] == 1
 
 
 def test_validate_pathfinding_graph_cli_wiring(

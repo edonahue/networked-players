@@ -59,6 +59,8 @@ PUBLIC_ARTIFACT_GROUPS = (
     "album_hop_distances",
     "background_only_profiles",
     "pathfinding_graph_v2",
+    "pathfinding_graph_v3",
+    "challenge_v3",
     "album_credit_membership",
     "evidence_release_registry",
 )
@@ -79,6 +81,8 @@ def public_artifacts_failures(
     album_hop_distances: Any,
     background_only_profiles: Any,
     pathfinding_graph_v2: Any,
+    pathfinding_graph_v3: Any,
+    challenge_v3: Any,
     album_credit_membership: Any,
     evidence_release_registry: Any,
 ) -> dict[str, list[str]]:
@@ -90,7 +94,16 @@ def public_artifacts_failures(
     `pathfinding_graph_v2` uses the same schema-version-aware
     `pathfinding_graph_failures` that validated the retired v1 artifact --
     v1 (`graph.v1.json`) was retired once both real browser consumers
-    (Connect Two Records, Network Explorer) had cut over to v2 (ADR 0058)."""
+    (Connect Two Records, Network Explorer) had cut over to v2 (ADR 0058).
+
+    `pathfinding_graph_v3` and `challenge_v3` (ADR 0068) are dual-live,
+    additive artifacts: `graph.v3.json`/`challenge.v3.json` exist alongside
+    the still-live, unedited `graph.v2.json`/`challenge.v2.json`, published
+    but not yet fetched by any real consumer until the cutover PR flips
+    their default URLs. Validating both here from day one (rather than
+    waiting for the cutover) is what makes the dual-live window itself
+    provably safe -- a defect in the new artifact is caught by `make check`
+    immediately, not only once something starts depending on it."""
     return {
         "catalog": public_album_catalog_failures(catalog),
         "album_art_registry": album_art_failures(album_art, catalog),
@@ -108,6 +121,8 @@ def public_artifacts_failures(
             background_only_profiles, catalog, contributor_index
         ),
         "pathfinding_graph_v2": pathfinding_graph_failures(pathfinding_graph_v2, catalog),
+        "pathfinding_graph_v3": pathfinding_graph_failures(pathfinding_graph_v3, catalog),
+        "challenge_v3": challenge_failures(challenge_v3, catalog),
         "album_credit_membership": album_credit_membership_failures(
             album_credit_membership, catalog
         ),

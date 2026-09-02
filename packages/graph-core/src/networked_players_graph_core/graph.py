@@ -444,6 +444,26 @@ class EvidenceReleasePreference:
         return ", ".join(terms)
 
 
+# Tracks the RULE ARCHITECTURE `credit_edges_sql`/`edge_eligible_membership_
+# artist_ids` implement, not `eligibility.py`'s token set (that keeps
+# changing via ordinary, config-only real-corpus review -- see ADR 0039's
+# Revisit trigger -- without this version needing to move). Bumped only when
+# the SHAPE of the traversal rule itself changes materially enough that a
+# graph-dependent artifact built under the old value is not directly
+# comparable to one built under the new value -- the same discipline
+# `cohort_connectivity.SCORER_VERSION` already uses for the same class of
+# decision, kept as a separate constant because it stamps a different set of
+# artifacts (`pathfinding_graph.py`/`challenge.py`'s public artifacts, not
+# the private cohort-connectivity artifact `SCORER_VERSION` stamps).
+#
+# 1: performer-gated `same_recording`/`release_scope` (ADR 0068) --
+#    `track_artist`/`release_artist` billing scope is always implicit
+#    performer-qualifying; `track_credit`/`release_credit` scope must pass
+#    `eligibility.py`'s `is_performer_role`. Everything built before this
+#    constant existed predates any performer gate at all.
+GRAPH_POLICY_VERSION = 1
+
+
 def credit_edges_sql(
     *,
     max_artists_per_release: int,
@@ -718,6 +738,127 @@ class EvidencePath:
     from_artist_id: int
     to_artist_id: int
     hops: tuple[Hop, ...]
+
+
+class InMemoryEdgeIndex:
+    """The whole `credit_edges` relation as an in-memory adjacency map, with
+    a `find_path` that is a behavioral twin of `CreditGraph.find_path`.
+
+    **Why this exists.** `CreditGraph.find_path` runs its BFS *inside*
+    DuckDB: per hop it issues a degree query, a join against a temp frontier
+    table, a `NOT IN` anti-join against a growing visited table, and an
+    `ORDER BY`. That is two SQL round-trips per hop, per pair -- roughly
+    120,000 queries for a real full-catalog challenge build, each one
+    scanning and sorting against a multi-million-row table. Measured on the
+    real 2026-09-01 performer-gated corpus (ADR 0068), that build did not
+    finish in over two hours across four attempts at progressively tighter
+    `max_frontier_expansion` values.
+
+    The relation it is querying is small: 1,677,134 directed edges over
+    253,448 artists, which `fetchall()`s in 1.9s and builds into this map in
+    5.8s -- about 13MB. Running the identical BFS over that map instead
+    completed **all 14,878 real candidate pairs in 636s (42.7ms/pair),
+    finding 14,343 paths (96.4%) with no frontier cap at all**, versus a
+    capped, never-completing DuckDB run. This is the same "a bounded graph
+    fits in memory, so stop paying database costs to walk it" observation
+    `compact_graph_bench.py` already applies to the published pathfinding
+    graph; nothing here is a new algorithm, only a different substrate for
+    the one `graph.py` already had.
+
+    **Exact-parity contract.** This must return the *same* path as
+    `CreditGraph.find_path` for the same inputs, not merely *a* valid path
+    (`test_in_memory_find_path_matches_the_duckdb_implementation` asserts
+    this over the shared synthetic fixtures). Two details carry that:
+
+    * `credit_edges` is unique on `(artist_a_id, artist_b_id)` -- the
+      `_evidence_collapse_sql` GROUP BY guarantees it -- so the SQL's
+      `ORDER BY e.artist_a_id, e.artist_b_id` is a total order, and
+      replicating it here is well-defined rather than a tie-break guess.
+    * Each level is therefore walked in `(artist_a_id, artist_b_id)` order
+      with first-seen-wins per discovered artist, and `visited` is only
+      updated *after* the whole level, exactly as the SQL's per-level
+      anti-join against the prior `visited` state does.
+
+    Not a replacement for `CreditGraph`: this only answers `find_path`, over
+    an already-built `credit_edges`. Every other query stays in DuckDB.
+    """
+
+    __slots__ = ("_adjacency",)
+
+    def __init__(self, adjacency: dict[int, list[tuple[int, int]]]):
+        # artist_a_id -> [(artist_b_id, release_id), ...] ascending by
+        # artist_b_id, so a level walked in sorted-`a` order reproduces the
+        # SQL's global `ORDER BY artist_a_id, artist_b_id` exactly.
+        self._adjacency = adjacency
+
+    @property
+    def node_count(self) -> int:
+        return len(self._adjacency)
+
+    @property
+    def edge_count(self) -> int:
+        return sum(len(neighbors) for neighbors in self._adjacency.values())
+
+    def find_path(
+        self,
+        from_artist_id: int,
+        to_artist_id: int,
+        *,
+        max_hops: int = 4,
+        max_frontier_expansion: int | None = None,
+    ) -> EvidencePath | None:
+        """Behavioral twin of `CreditGraph.find_path` -- same signature, same
+        result, same `FrontierTooLargeError` semantics (an inconclusive
+        search is never reported as a confirmed no-path)."""
+        if from_artist_id == to_artist_id:
+            raise GraphError("from_artist_id and to_artist_id must differ")
+
+        parent: dict[int, tuple[int, int]] = {}
+        visited: set[int] = {from_artist_id}
+        frontier: list[int] = [from_artist_id]
+        capped_artist_ids: set[int] = set()
+
+        for _ in range(max_hops):
+            expand_from = frontier
+            if max_frontier_expansion is not None:
+                # Same rule as the SQL's degree query: a node whose OUT-degree
+                # exceeds the threshold is excluded from expansion this call,
+                # though it can still be reached as a target via another node.
+                newly_capped = {
+                    artist_id
+                    for artist_id in frontier
+                    if len(self._adjacency.get(artist_id, ())) > max_frontier_expansion
+                }
+                if newly_capped:
+                    capped_artist_ids |= newly_capped
+                    expand_from = [a for a in frontier if a not in newly_capped]
+
+            discovered: list[int] = []
+            seen_this_level: set[int] = set()
+            for artist_a_id in sorted(expand_from):
+                for artist_b_id, release_id in self._adjacency.get(artist_a_id, ()):
+                    # `visited` is the state BEFORE this level, exactly what
+                    # the SQL anti-joins against; `seen_this_level` is its
+                    # first-seen-wins guard over the `(a, b)`-ordered level.
+                    if artist_b_id in visited or artist_b_id in seen_this_level:
+                        continue
+                    seen_this_level.add(artist_b_id)
+                    parent[artist_b_id] = (artist_a_id, release_id)
+                    discovered.append(artist_b_id)
+                    if artist_b_id == to_artist_id:
+                        return CreditGraph._reconstruct_path(from_artist_id, to_artist_id, parent)
+
+            if not discovered:
+                if capped_artist_ids:
+                    raise FrontierTooLargeError(frozenset(capped_artist_ids))
+                return None
+
+            visited.update(discovered)
+            frontier = discovered
+
+        if capped_artist_ids:
+            raise FrontierTooLargeError(frozenset(capped_artist_ids))
+        return None
 
 
 class CreditGraph:
@@ -1040,6 +1181,32 @@ class CreditGraph:
         for a_id, b_id, release_id in rows:
             result[int(a_id)][int(b_id)] = (int(release_id),)
         return result
+
+    def load_in_memory_edge_index(self) -> InMemoryEdgeIndex:
+        """Materialize the whole `credit_edges` relation as an
+        `InMemoryEdgeIndex` (see that class for why, and for the measured
+        numbers that justify it).
+
+        One `fetchall()` of an already-built, already-indexed table --
+        measured at 1.9s to fetch 1,677,134 edges and 5.8s to build the map
+        on the real 2026-09-01 performer-gated corpus. Bounded by the edge
+        count, which every caller already knows: this is the same relation
+        `credit_edges_sql` produced, not a fresh scan of the 49M-row
+        `credits` view.
+
+        `ORDER BY` here (not at query time in `find_path`) is what makes each
+        adjacency list ascending by `artist_b_id`, which is half of the
+        exact-parity contract documented on `InMemoryEdgeIndex`.
+        """
+        self._require_edges()
+        rows = self._connection.execute(
+            "SELECT artist_a_id, artist_b_id, release_id FROM credit_edges "
+            "ORDER BY artist_a_id, artist_b_id"
+        ).fetchall()
+        adjacency: dict[int, list[tuple[int, int]]] = {}
+        for artist_a_id, artist_b_id, release_id in rows:
+            adjacency.setdefault(int(artist_a_id), []).append((int(artist_b_id), int(release_id)))
+        return InMemoryEdgeIndex(adjacency)
 
     def find_path(
         self,

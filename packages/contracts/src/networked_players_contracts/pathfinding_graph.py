@@ -1,10 +1,10 @@
 """Canonical, dependency-free validation for the public pathfinding graph.
 
-The pathfinding graph (`apps/web/public/data/pathfinding/graph.v2.json`,
-`data/contracts/pathfinding-graph-v2.md`, ADR 0050/0051/0058) is a compact
-CSR adjacency scoped to a bounded 1-hop ego network around the canonical
-catalog's primary artists -- not the full one-hop corpus (ADR 0050's
-measured scope decision). Every per-node/per-edge field is a PARALLEL
+The pathfinding graph (`apps/web/public/data/pathfinding/graph.v3.json`,
+`data/contracts/pathfinding-graph-v3.md`, ADR 0050/0051/0058/0068) is a
+compact CSR adjacency scoped to a bounded 1-hop ego network around the
+canonical catalog's primary artists -- not the full one-hop corpus (ADR
+0050's measured scope decision). Every per-node/per-edge field is a PARALLEL
 ARRAY aligned with the CSR arrays (`names[i]` describes `node_ids[i]`;
 `edge_role_a[slot]`/`edge_role_b[slot]` describe the same directed slot as
 `neighbors[slot]`/`evidence_release_ids[slot]`) -- measured during Slice F
@@ -15,11 +15,19 @@ same rule every other catalog-derived artifact enforces.
 v2 (ADR 0058) adds `album_virtual_nodes`: one synthetic node per catalog
 album, connected to its real credited contributors, letting a
 record-to-record search anchor on real album personnel instead of one
-primary artist. This module still accepts a v1-shaped payload
-(`data/contracts/pathfinding-graph-v1.md`, kept as historical record) for
-whatever legacy export might need re-validating, but no live artifact
-publishes v1 anymore -- it retired once both real browser consumers
-(Connect Two Records, Network Explorer) cut over to v2.
+primary artist. v3 (ADR 0068) keeps that same shape and adds
+`graph_policy_version`: the edges themselves are now performer-gated (a
+`track_credit`/`release_credit` credit must pass `is_performer_role`;
+`track_artist`/`release_artist` billing stays always-eligible), a policy
+change with no shape change, so this field is what lets a validator or a
+stale cached client tell a policy-only regeneration apart from an old
+payload with the identical CSR shape. This module still accepts v1- and
+v2-shaped payloads (`data/contracts/pathfinding-graph-v1.md`/`-v2.md`, kept
+as historical record) for whatever legacy export might need re-validating;
+`graph.v2.json` remains live and registered (`pathfinding_graph_v2`)
+alongside `graph.v3.json` until every real consumer has cut over and it is
+retired as an explicit, separate step (ADR 0058's own real precedent for
+the v1 retirement).
 
 Pure Python (no lxml/pyarrow/duckdb), safe for the Pi fleet and the web build
 to independently verify an already-generated graph against the canonical
@@ -33,7 +41,7 @@ from typing import Any, TypeGuard
 
 from .canonical import content_hash
 
-PATHFINDING_GRAPH_SCHEMA_VERSIONS = frozenset({1, 2})
+PATHFINDING_GRAPH_SCHEMA_VERSIONS = frozenset({1, 2, 3})
 
 # Dependency-free duplicate of graph-core's own
 # `pathfinding_graph.ALBUM_ANCHOR_SENTINEL` -- this package stays
@@ -44,6 +52,7 @@ _ALBUM_ANCHOR_SENTINEL = "__np_album_anchor__"
 _VERSION_PATTERN_BY_SCHEMA = {
     1: re.compile(r"^pathfinding-graph-v1-[0-9A-Za-z]+-[0-9a-f]{12}$"),
     2: re.compile(r"^pathfinding-graph-v2-[0-9A-Za-z]+-[0-9a-f]{12}$"),
+    3: re.compile(r"^pathfinding-graph-v3-[0-9A-Za-z]+-[0-9a-f]{12}$"),
 }
 
 _BASE_TOP_LEVEL_KEYS = frozenset(
@@ -65,6 +74,11 @@ _BASE_TOP_LEVEL_KEYS = frozenset(
     }
 )
 _V2_ONLY_KEYS = frozenset({"album_virtual_nodes"})
+# v3 (ADR 0068): keeps every v2 key (album_virtual_nodes included -- the CSR/
+# parallel-array SHAPE is unchanged, only which edges exist changed) and adds
+# `graph_policy_version`, recording which `graph.py.GRAPH_POLICY_VERSION`
+# produced this graph's edges.
+_V3_ONLY_KEYS = frozenset({"graph_policy_version"})
 _ALBUM_VIRTUAL_NODE_KEYS = frozenset({"album_id", "virtual_artist_id", "main_release_id"})
 
 
@@ -90,8 +104,10 @@ def pathfinding_graph_version(payload: dict[str, Any], snapshot_date: str) -> st
         "edge_role_b": payload.get("edge_role_b"),
     }
     schema_version = payload.get("schema_version")
-    if schema_version == 2:
+    if schema_version in (2, 3):
         identity["album_virtual_nodes"] = payload.get("album_virtual_nodes")
+    if schema_version == 3:
+        identity["graph_policy_version"] = payload.get("graph_policy_version")
     digest = content_hash(identity, length=12)
     return f"pathfinding-graph-v{schema_version}-{snapshot_date}-{digest}"
 
@@ -100,7 +116,7 @@ def pathfinding_graph_failures(graph: Any, catalog: Any) -> list[str]:
     """Every contract failure in a pathfinding graph, validated against the
     canonical catalog it claims to belong to and its own internal CSR
     invariants (offsets monotonic, neighbor indices in range, every parallel
-    array the correct length). For a v2 graph, also validates
+    array the correct length). For a v2 or v3 graph, also validates
     `album_virtual_nodes` (negative ids disjoint from real ones, every
     album_id resolving to the canonical catalog, no duplicates, EVERY
     catalog album -- including one with zero in-scope credited
@@ -124,7 +140,11 @@ def pathfinding_graph_failures(graph: Any, catalog: Any) -> list[str]:
             f"schema_version must be one of {sorted(PATHFINDING_GRAPH_SCHEMA_VERSIONS)}"
         )
 
-    expected_keys = _BASE_TOP_LEVEL_KEYS | (_V2_ONLY_KEYS if schema_version == 2 else frozenset())
+    expected_keys = _BASE_TOP_LEVEL_KEYS
+    if schema_version in (2, 3):
+        expected_keys = expected_keys | _V2_ONLY_KEYS
+    if schema_version == 3:
+        expected_keys = expected_keys | _V3_ONLY_KEYS
     if set(graph.keys()) != expected_keys:
         failures.append(f"graph has unexpected top-level keys: {sorted(graph.keys())}")
 
@@ -242,10 +262,15 @@ def pathfinding_graph_failures(graph: Any, catalog: Any) -> list[str]:
                 f"(expected {expected!r})"
             )
 
-    if schema_version != 2:
+    if schema_version == 3:
+        graph_policy_version = graph.get("graph_policy_version")
+        if not _is_int_not_bool(graph_policy_version) or graph_policy_version < 1:
+            failures.append("graph_policy_version must be a positive integer")
+
+    if schema_version not in (2, 3):
         return failures
 
-    # --- v2-only: album_virtual_nodes and sentinel-role placement ----------
+    # --- v2+: album_virtual_nodes and sentinel-role placement ---------------
     album_virtual_nodes = graph.get("album_virtual_nodes")
     if not isinstance(album_virtual_nodes, list):
         failures.append("album_virtual_nodes must be an array")

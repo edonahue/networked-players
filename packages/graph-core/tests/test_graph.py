@@ -96,6 +96,143 @@ def test_path_finding_is_deterministic(dataset_root: Path) -> None:
     assert first == second
 
 
+# --- InMemoryEdgeIndex: exact parity with the DuckDB find_path -------------
+# The whole point of the in-memory index is that it is a drop-in substrate
+# swap, not a different algorithm: it must return the SAME path, not merely
+# A valid path, or a challenge artifact built with it would silently differ
+# from one built without it. See InMemoryEdgeIndex's own docstring for the
+# two ordering details that make that well-defined.
+
+
+def test_in_memory_find_path_matches_the_duckdb_implementation(dataset_root: Path) -> None:
+    """Exhaustive over every ordered pair in the fixture, at several hop
+    budgets -- every result identical, including the `None`s."""
+    with CreditGraph.open(dataset_root) as graph:
+        index = graph.load_in_memory_edge_index()
+        artist_ids = [100, 200, 300, 400, 500, 600, 999_999]
+        compared = 0
+        found = 0
+        for max_hops in (1, 2, 3, 4):
+            for a in artist_ids:
+                for b in artist_ids:
+                    if a == b:
+                        continue
+                    expected = graph.find_path(a, b, max_hops=max_hops)
+                    actual = index.find_path(a, b, max_hops=max_hops)
+                    assert actual == expected, (
+                        f"in-memory diverged for {a}->{b} at max_hops={max_hops}: "
+                        f"{actual!r} != {expected!r}"
+                    )
+                    compared += 1
+                    found += expected is not None
+    # Guard against a vacuous pass: the comparison must actually exercise
+    # real found paths, not only symmetric `None == None`.
+    assert compared == 4 * 7 * 6
+    assert found > 0
+
+
+def test_in_memory_find_path_matches_under_a_frontier_cap(dataset_root: Path) -> None:
+    """`max_frontier_expansion` is a per-node OUT-degree threshold; the
+    in-memory index must reproduce both the capped path result AND the
+    inconclusive-vs-no-path distinction."""
+    with CreditGraph.open(dataset_root, max_artists_per_release=3) as graph:
+        index = graph.load_in_memory_edge_index()
+        for cap in (1, 2, 3, 50):
+            for a, b in ((100, 500), (100, 300), (500, 100)):
+                expected_error = None
+                expected_path = None
+                try:
+                    expected_path = graph.find_path(a, b, max_hops=4, max_frontier_expansion=cap)
+                except FrontierTooLargeError as exc:
+                    expected_error = exc.capped_artist_ids
+
+                actual_error = None
+                actual_path = None
+                try:
+                    actual_path = index.find_path(a, b, max_hops=4, max_frontier_expansion=cap)
+                except FrontierTooLargeError as exc:
+                    actual_error = exc.capped_artist_ids
+
+                assert actual_path == expected_path, f"{a}->{b} cap={cap}"
+                assert actual_error == expected_error, f"{a}->{b} cap={cap}"
+
+
+def test_in_memory_find_path_matches_when_two_parents_race_for_one_node(
+    tmp_path: Path,
+) -> None:
+    """The ONLY shape where the `(artist_a_id, artist_b_id)` walk order is
+    observable in the RESULT: a diamond, where the target is reachable from
+    two different level-2 parents. Whichever parent is walked first wins the
+    `parent` entry, so the returned path's middle hop differs if the order
+    differs.
+
+    Written because the exhaustive same-fixture parity test above passed
+    even with the sort order deliberately reversed -- the shared fixture has
+    no diamond, so it could not distinguish the orderings and gave the
+    parity claim no teeth. Verified by reverting `sorted(expand_from)` to
+    `sorted(..., reverse=True)`: this test fails, that one does not.
+
+        100 -> 200 -> 400
+        100 -> 300 -> 400
+
+    Ascending order reaches 400 through 200 (the lower id); descending
+    reaches it through 300. Distinct release ids per edge make the two
+    outcomes distinguishable in the assertion.
+    """
+    from conftest import _performed, _release, write_synthetic_dataset
+
+    releases = [
+        _release(1, "Alpha Session"),
+        _release(2, "Beta Session"),
+        _release(3, "Gamma Session"),
+        _release(4, "Delta Session"),
+    ]
+    credits = (
+        _performed(1, artist_id=100, name="Alice")
+        + _performed(1, artist_id=200, name="Bob")
+        + _performed(2, artist_id=100, name="Alice")
+        + _performed(2, artist_id=300, name="Cara")
+        + _performed(3, artist_id=200, name="Bob")
+        + _performed(3, artist_id=400, name="Dan")
+        + _performed(4, artist_id=300, name="Cara")
+        + _performed(4, artist_id=400, name="Dan")
+    )
+    root = write_synthetic_dataset(
+        tmp_path / "snapshot=20260601", release_rows=releases, credit_rows=credits
+    )
+
+    with CreditGraph.open(root) as graph:
+        expected = graph.find_path(100, 400, max_hops=4)
+        index = graph.load_in_memory_edge_index()
+        actual = index.find_path(100, 400, max_hops=4)
+
+    assert expected is not None
+    assert len(expected.hops) == 2
+    # Pins the real ordering outcome, so a silent flip in EITHER
+    # implementation is caught, not just a divergence between them.
+    assert expected.hops[0].artist_b_id == 200, "ascending (a, b) order takes the lower id"
+    assert actual == expected
+
+
+def test_in_memory_find_path_raises_for_identical_endpoints(dataset_root: Path) -> None:
+    with CreditGraph.open(dataset_root) as graph:
+        index = graph.load_in_memory_edge_index()
+        with pytest.raises(GraphError):
+            index.find_path(100, 100)
+
+
+def test_in_memory_edge_index_reports_real_counts(dataset_root: Path) -> None:
+    with CreditGraph.open(dataset_root) as graph:
+        index = graph.load_in_memory_edge_index()
+        expected_edges = graph._connection.execute("SELECT count(*) FROM credit_edges").fetchone()
+        expected_nodes = graph._connection.execute(
+            "SELECT count(DISTINCT artist_a_id) FROM credit_edges"
+        ).fetchone()
+    assert expected_edges is not None and expected_nodes is not None
+    assert index.edge_count == expected_edges[0]
+    assert index.node_count == expected_nodes[0]
+
+
 def test_credit_rows_returns_full_evidence(dataset_root: Path) -> None:
     with CreditGraph.open(dataset_root) as graph:
         rows = graph.credit_rows(1, {100, 200})

@@ -315,6 +315,20 @@ def _parser() -> argparse.ArgumentParser:
         "0 or negative disables the bound",
     )
     build_challenge.add_argument("--max-artists-per-release", type=int, default=50)
+    build_challenge.add_argument(
+        "--in-memory-search",
+        action="store_true",
+        help=(
+            "run path search over an in-memory copy of credit_edges instead of "
+            "issuing per-hop DuckDB queries (identical results, asserted by "
+            "test_in_memory_find_path_matches_the_duckdb_implementation). On the "
+            "real catalog this is the difference between a build that finishes "
+            "and one that does not: measured 2026-09-01, all 14,878 candidate "
+            "pairs in 636s with no frontier cap, versus not completing in 2h+ "
+            "via DuckDB. Pair with --max-frontier-expansion 0 to disable the cap "
+            "entirely, which is what makes full album coverage achievable"
+        ),
+    )
     build_challenge.add_argument("--memory-limit", default="1GB")
     build_challenge.add_argument("--threads", type=int, default=2)
     build_challenge.add_argument(
@@ -1461,6 +1475,14 @@ def _parser() -> argparse.ArgumentParser:
         default=Path("apps/web/public/data/pathfinding/graph.v2.json"),
     )
     validate_public_artifacts.add_argument(
+        "--pathfinding-graph-v3",
+        type=Path,
+        default=Path("apps/web/public/data/pathfinding/graph.v3.json"),
+    )
+    validate_public_artifacts.add_argument(
+        "--challenge-v3", type=Path, default=Path("apps/web/public/data/challenge.v3.json")
+    )
+    validate_public_artifacts.add_argument(
         "--album-credit-membership",
         type=Path,
         default=Path("apps/web/public/data/albums/credit-membership.v1.json"),
@@ -2293,6 +2315,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                     is_family_excluded=is_family_excluded,
                     max_frontier_expansion=max_frontier_expansion,
                     catalog_version=catalog_version,
+                    in_memory=args.in_memory_search,
                 )
             else:
                 artifact, report = build_challenge_v2(
@@ -2309,6 +2332,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                     allowed_release_ids=allowed_release_ids,
                     master_exclusions=master_exclusions,
                     max_frontier_expansion=max_frontier_expansion,
+                    in_memory=args.in_memory_search,
                 )
 
         if args.enrich_images:
@@ -4147,6 +4171,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             album_hop_distances=json.loads(args.album_hop_distances.read_text()),
             background_only_profiles=json.loads(args.background_only_profiles.read_text()),
             pathfinding_graph_v2=json.loads(args.pathfinding_graph_v2.read_text()),
+            pathfinding_graph_v3=json.loads(args.pathfinding_graph_v3.read_text()),
+            challenge_v3=json.loads(args.challenge_v3.read_text()),
             album_credit_membership=json.loads(args.album_credit_membership.read_text()),
             evidence_release_registry=json.loads(args.evidence_release_registry.read_text()),
         )

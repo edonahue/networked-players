@@ -71,6 +71,14 @@ bidirectional zero-cost edge per credited contributor (e.g. weighting by
 credit prominence), that is a real, separate design decision — extend
 this contract explicitly, or add a clearly-named `v3`.
 
+**Addendum (2026-09-01): a v3 exists, for a different reason.**
+`pathfinding-graph-v3.md` adds `graph_policy_version` (ADR 0068's performer
+gate) — not the credit-prominence-weighting trigger this section
+anticipated, which has not happened. `graph.v2.json` remains this
+document's live, unedited artifact; v3 is a new, additive, dual-live file,
+not a replacement, until a later cutover PR retires v2 the same way this
+file's own v1 retirement addendum describes.
+
 **Addendum (2026-08-09): v1 retirement completed.** The original plan
 above (retire once Connect Two Records cuts over) undercounted the real
 consumer set — Network Explorer also fetched `graph.v1.json` and wasn't

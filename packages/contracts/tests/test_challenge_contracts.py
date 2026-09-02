@@ -177,3 +177,51 @@ def test_no_catalog_argument_skips_the_cross_check_entirely() -> None:
     artifact = _artifact()
     artifact["provenance"]["catalog_version"] = "catalog-v1-20260601-anything-at-all"
     assert challenge_failures(artifact) == []
+
+
+# --- provenance.graph_policy_version (ADR 0068, optional) ------------------
+# Absent entirely on the still-live challenge.v1.json/challenge.v2.json
+# (built before this field existed); present on the new challenge.v3.json.
+# CHALLENGE_SCHEMA_VERSION stays 2 for both, so this field -- not the
+# schema version -- is what tells them apart.
+
+
+def test_missing_graph_policy_version_still_passes() -> None:
+    """The default `_artifact()` fixture has no graph_policy_version at all
+    -- matching the real, still-live challenge.v1.json/challenge.v2.json --
+    and that must not be a failure."""
+    assert "graph_policy_version" not in _artifact()["provenance"]
+    assert challenge_failures(_artifact()) == []
+
+
+def test_valid_graph_policy_version_passes() -> None:
+    artifact = _artifact()
+    artifact["provenance"] = deepcopy(artifact["provenance"])
+    artifact["provenance"]["graph_policy_version"] = 1
+    assert challenge_failures(artifact) == []
+
+
+def test_non_positive_graph_policy_version_is_rejected() -> None:
+    artifact = _artifact()
+    artifact["provenance"] = deepcopy(artifact["provenance"])
+    artifact["provenance"]["graph_policy_version"] = 0
+    failures = challenge_failures(artifact)
+    assert any("graph_policy_version must be a positive integer" in f for f in failures)
+
+
+def test_non_integer_graph_policy_version_is_rejected() -> None:
+    artifact = _artifact()
+    artifact["provenance"] = deepcopy(artifact["provenance"])
+    artifact["provenance"]["graph_policy_version"] = "1"
+    failures = challenge_failures(artifact)
+    assert any("graph_policy_version must be a positive integer" in f for f in failures)
+
+
+def test_bool_graph_policy_version_is_rejected() -> None:
+    """`bool` is an `int` subtype in Python -- `True` must not silently pass
+    as a valid positive integer."""
+    artifact = _artifact()
+    artifact["provenance"] = deepcopy(artifact["provenance"])
+    artifact["provenance"]["graph_policy_version"] = True
+    failures = challenge_failures(artifact)
+    assert any("graph_policy_version must be a positive integer" in f for f in failures)

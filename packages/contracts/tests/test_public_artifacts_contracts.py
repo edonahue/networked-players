@@ -389,6 +389,15 @@ def _challenge() -> dict[str, Any]:
     }
 
 
+def _challenge_v3() -> dict[str, Any]:
+    """ADR 0068: identical shape to `_challenge()` (CHALLENGE_SCHEMA_VERSION
+    stays 2 -- the shape is genuinely unchanged) -- only the new, optional
+    provenance.graph_policy_version field is added."""
+    artifact = deepcopy(_challenge())
+    artifact["provenance"]["graph_policy_version"] = 1
+    return artifact
+
+
 # --- contributor index -----------------------------------------------------
 
 
@@ -519,6 +528,17 @@ def _pathfinding_graph_v2() -> dict[str, Any]:
     return payload
 
 
+def _pathfinding_graph_v3() -> dict[str, Any]:
+    """ADR 0068: identical CSR/album_virtual_nodes shape to
+    `_pathfinding_graph_v2` -- only schema_version and the new
+    graph_policy_version field differ."""
+    payload = _pathfinding_graph_v2()
+    payload["schema_version"] = 3
+    payload["graph_policy_version"] = 1
+    payload["pathfinding_graph_version"] = pathfinding_graph_version(payload, _SNAPSHOT)
+    return payload
+
+
 # --- album-credit-membership --------------------------------------------------
 
 
@@ -614,6 +634,8 @@ def _clean_artifacts() -> dict[str, Any]:
         "album_hop_distances": _album_hop_distances(),
         "background_only_profiles": _background_only_profiles(),
         "pathfinding_graph_v2": _pathfinding_graph_v2(),
+        "pathfinding_graph_v3": _pathfinding_graph_v3(),
+        "challenge_v3": _challenge_v3(),
         "album_credit_membership": _album_credit_membership(),
         "evidence_release_registry": _evidence_release_registry(),
     }
@@ -632,6 +654,8 @@ def test_clean_publication_set_has_no_failures() -> None:
         "album_hop_distances": [],
         "background_only_profiles": [],
         "pathfinding_graph_v2": [],
+        "pathfinding_graph_v3": [],
+        "challenge_v3": [],
         "album_credit_membership": [],
         "evidence_release_registry": [],
     }
@@ -650,6 +674,8 @@ def test_every_group_key_always_present() -> None:
         "album_hop_distances",
         "background_only_profiles",
         "pathfinding_graph_v2",
+        "pathfinding_graph_v3",
+        "challenge_v3",
         "album_credit_membership",
         "evidence_release_registry",
     }
@@ -759,6 +785,42 @@ def test_pathfinding_graph_v2_defect_is_caught_independently() -> None:
 
     report = public_artifacts_failures(**artifacts)
     assert report["pathfinding_graph_v2"] != []
+    assert report["pathfinding_graph_v3"] == []
     assert report["catalog"] == []
     assert report["challenge"] == []
+    assert report["challenge_v3"] == []
     assert report["contributor_index"] == []
+
+
+def test_pathfinding_graph_v3_defect_is_caught_independently() -> None:
+    """ADR 0068: a defect in the new, dual-live graph.v3.json must be caught
+    without disturbing the still-live, unedited graph.v2.json's own clean
+    report -- proof the two coexist independently, the whole point of
+    shipping v3 as a new artifact rather than editing v2 in place."""
+    artifacts = _clean_artifacts()
+    broken_graph_v3 = deepcopy(artifacts["pathfinding_graph_v3"])
+    broken_graph_v3["album_virtual_nodes"][0]["virtual_artist_id"] = 1  # must be negative
+    artifacts["pathfinding_graph_v3"] = broken_graph_v3
+
+    report = public_artifacts_failures(**artifacts)
+    assert report["pathfinding_graph_v3"] != []
+    assert report["pathfinding_graph_v2"] == []
+    assert report["catalog"] == []
+    assert report["challenge"] == []
+    assert report["challenge_v3"] == []
+    assert report["contributor_index"] == []
+
+
+def test_challenge_v3_defect_is_caught_independently() -> None:
+    """Same independence proof for challenge_v3/challenge (ADR 0068)."""
+    artifacts = _clean_artifacts()
+    broken_challenge_v3 = deepcopy(artifacts["challenge_v3"])
+    del broken_challenge_v3["provenance"]["source"]
+    artifacts["challenge_v3"] = broken_challenge_v3
+
+    report = public_artifacts_failures(**artifacts)
+    assert report["challenge_v3"] != []
+    assert report["challenge"] == []
+    assert report["pathfinding_graph_v2"] == []
+    assert report["pathfinding_graph_v3"] == []
+    assert report["catalog"] == []

@@ -40,6 +40,7 @@ Integer, always `2` for this contract.
 | `generated_by` | Tool + version string that produced the artifact. |
 | `graph_core_version` | `networked_players_graph_core.__version__` at generation time. |
 | `catalog_version` | The canonical `apps/web/public/data/catalog/albums.v1.json` this artifact's album set was resolved from (`--albums` pointed at that file), or `null` for a hand-written `{artist,title}` query list not built from it. See ADR 0043 — that catalog is the single source of truth for which albums exist across every real public surface; this artifact never re-derives its own album set independently. When a caller passes the canonical catalog into `challenge_failures`/`validate_challenge` and this field is non-`null`, it must equal the catalog's own `catalog_version` exactly -- `null` is never itself a failure (it's the documented hand-written-list case above). |
+| `graph_policy_version` | **Optional** (ADR 0068). Absent entirely on artifacts built before this field existed -- the still-live `challenge.v1.json`/`challenge.v2.json` correctly have no opinion on it, and that absence is never a failure. When present, must be a positive integer: which `graph.py.GRAPH_POLICY_VERSION` produced this artifact's paths (every hop's edge passed that version's performer gate). `challenge.v3.json` (same filename convention as `pathfinding-graph-v3.md`, published alongside this file, not replacing it) sets this field; `CHALLENGE_SCHEMA_VERSION` stays `2` for both, since the shape genuinely does not change -- this field, not the schema version, is what tells an "old" artifact apart from a "new" one. |
 | `note` | Honest caveats: the private collection seed is never published; the album list is editorial, not a ranking. |
 
 No part of the artifact may contain seed identifiers, seed counts, seed hashes, or any
@@ -129,4 +130,18 @@ always calls this before writing.
 `networked-players-catalog validate-public-artifacts` (`make check`) re-runs the same
 dependency-free checklist against the real committed `challenge.v2.json`, cross-checked
 against the real committed catalog -- the CI gate that catches a defect in an
-already-published artifact that no other check exercises.
+already-published artifact that no other check exercises. Since ADR 0068, the same
+command also validates the real committed `challenge.v3.json` (`challenge_v3` group)
+against this identical contract -- `CHALLENGE_SCHEMA_VERSION` does not distinguish them,
+so both are checked, independently, on every change.
+
+## Dual-live status (ADR 0068)
+
+`challenge.v3.json` is published alongside the still-live, byte-unedited
+`challenge.v2.json` at the same schema version. No real page fetches
+`challenge.v3.json` yet -- that cutover (homepage, album/contributor pages,
+sitemap, `catalogStats.ts`, and everything else the real consumer audit
+found) is a separate, later change, tracked alongside the pathfinding
+graph's own v2→v3 cutover. Both files stay registered in
+`PUBLIC_ARTIFACT_GROUPS` and validated by `make check` for the duration of
+the dual-live window.
