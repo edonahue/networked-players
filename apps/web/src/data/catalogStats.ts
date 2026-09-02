@@ -7,7 +7,7 @@
 // can drift independently again.
 
 import type { ChallengeV2 } from "./challenge";
-import challengeData from "../../public/data/challenge.v2.json";
+import challengeData from "../../public/data/challenge.v3.json";
 import dailyManifestData from "../../public/data/game/daily-manifest.v1.json";
 
 const challenge = challengeData as ChallengeV2;

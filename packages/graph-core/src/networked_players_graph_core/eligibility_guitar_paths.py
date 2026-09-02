@@ -1,7 +1,7 @@
 """Fail-closed guitar eligibility for the "Guitar Paths" role-aware
 experience (Phase 2 follow-up slice, ADR 0053 addendum).
 
-Layered the same way `eligibility_engineering.py`/`eligibility_rhythm_section.py`
+Layered the same way `eligibility_rhythm_section.py`
 layer their own scoped questions: a standalone module answering "is this
 specific credit a guitar contribution" -- never imported by `graph.py`/
 `challenge.py`/the cohort pipeline. Wraps `eligibility.py`'s fine-grained

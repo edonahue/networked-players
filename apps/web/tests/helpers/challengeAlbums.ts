@@ -42,7 +42,7 @@ export interface PickedAlbum {
 export async function pickBoundedConnectedAlbum(
   request: APIRequestContext,
 ): Promise<PickedAlbum> {
-  const res = await request.get("/data/challenge.v2.json");
+  const res = await request.get("/data/challenge.v3.json");
   expect(res.ok()).toBeTruthy();
   const { albums, paths } = (await res.json()) as {
     albums: ChallengeAlbum[];
@@ -107,7 +107,7 @@ export async function pickConnectedAlbumWithArt(
   request: APIRequestContext,
 ): Promise<PickedAlbum> {
   const [challengeRes, artRes, catalogRes] = await Promise.all([
-    request.get("/data/challenge.v2.json"),
+    request.get("/data/challenge.v3.json"),
     request.get("/data/catalog/album-art.v1.json"),
     request.get("/data/catalog/albums.v1.json"),
   ]);

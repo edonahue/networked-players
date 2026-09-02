@@ -256,7 +256,7 @@ test("a contributor page offers to connect two of their own records", async ({
     contributor.albums.length < 2,
     "this contributor has fewer than 2 connected albums in the real index",
   );
-  const challengeRes = await request.get("/data/challenge.v2.json");
+  const challengeRes = await request.get("/data/challenge.v3.json");
   const { albums } = (await challengeRes.json()) as {
     albums: { id: string; title: string }[];
   };

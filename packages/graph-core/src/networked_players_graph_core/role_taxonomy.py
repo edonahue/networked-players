@@ -21,17 +21,13 @@ gate. Classifying a role here does not change whether it creates a
 `credit_edges` row or whether it counts as a performer credit for the
 flagship game; it only labels it.
 
-Real, live exception to "it only labels it": `eligibility_engineering.py`
-(the "Behind the Glass" role-aware game mode, ADR 0053) is a thin wrapper
-over `classify_role` that turns PRODUCTION/ENGINEERING category membership
-directly into gameplay eligibility -- and `apps/web/src/game/roleTaxonomy.ts`
-independently hand-mirrors that same token set for the live client-side
-pathfinding UI. **Adding or removing a PRODUCTION/ENGINEERING/ARRANGEMENT
-token here changes real Behind-the-Glass eligibility and must be mirrored
-in both `eligibility_engineering.py`'s own tests and `roleTaxonomy.ts`
-(kept in sync by inspection, checked by `apps/web/tests/
-game-roletaxonomy.spec.ts`'s pinned-value parity cases) -- it is not a
-display-only change for that one mode.** Rhythm Section/Guitar Paths are
+That exception used to be real: `eligibility_engineering.py` (the "Behind
+the Glass" mode, ADR 0053) turned PRODUCTION/ENGINEERING membership
+directly into gameplay eligibility, so a token edit here changed real
+gameplay. Both that module and the mode were RETIRED with ADR 0068's
+performer-gated cutover -- a graph in which no edge has producer/engineer
+credits on both sides cannot satisfy that mode -- so this module is once
+again purely presentational. Rhythm Section/Guitar Paths are
 unaffected -- they use `eligibility.py`'s separate, finer-grained token map
 instead of this module.
 

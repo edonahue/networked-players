@@ -111,7 +111,7 @@ test("searchAlbums's unknown-year bucket only matches albums with no year", () =
 test("a real search against the committed catalog finds a real album by title", async ({
   request,
 }) => {
-  const challenge = await (await request.get("/data/challenge.v2.json")).json();
+  const challenge = await (await request.get("/data/challenge.v3.json")).json();
   const albums: DirectoryAlbum[] = challenge.albums;
   const target = albums[Math.floor(albums.length / 2)];
   const needle = target.title.slice(0, 5);

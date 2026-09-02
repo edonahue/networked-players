@@ -7,10 +7,8 @@
 
 import { expect, test } from "@playwright/test";
 import {
-  behindTheGlassEdgeFilter,
   guitarPathsEdgeFilter,
   isBackgroundEngineeringRole,
-  isEngineeringOrProductionRole,
   isGuitarRole,
   isPerformerRole,
   isRhythmSectionRole,
@@ -24,63 +22,6 @@ import {
   type PathfindingGraph,
 } from "../src/game/pathfindingGraph";
 
-test.describe("isEngineeringOrProductionRole", () => {
-  test("recognizes real production/engineering role strings", () => {
-    for (const role of [
-      "Producer",
-      "Co-Producer",
-      "Engineer",
-      "Mixed By",
-      "Mastered By",
-      "Recorded By",
-    ]) {
-      expect(isEngineeringOrProductionRole(role)).toBe(true);
-    }
-  });
-
-  test("does not classify performer or non-collaborative roles", () => {
-    for (const role of ["Vocals", "Guitar", "Written-By", "Design"]) {
-      expect(isEngineeringOrProductionRole(role)).toBe(false);
-    }
-  });
-
-  test("matches a qualifying component among several comma-separated roles", () => {
-    expect(isEngineeringOrProductionRole("Vocals, Producer")).toBe(true);
-  });
-
-  test("is fail-closed for empty text", () => {
-    expect(isEngineeringOrProductionRole("")).toBe(false);
-  });
-
-  // Pinned parity cases against Python's role_taxonomy.py/
-  // eligibility_engineering.py (see roleTaxonomy.ts's own header comment).
-  // Reproduce with:
-  //   uv run python3 -c "
-  //   from networked_players_graph_core.eligibility_engineering import is_engineering_or_production_role
-  //   print(is_engineering_or_production_role('Programmed By'))   # True
-  //   print(is_engineering_or_production_role('Drum Programming')) # True
-  //   print(is_engineering_or_production_role('Conductor'))        # False
-  //   "
-  // Real 2026-08-04 finding: "Programmed By"/"Drum Programming" were added
-  // to role_taxonomy.py's ENGINEERING tokens from a real corpus coverage
-  // run, silently changing Python-side Behind-the-Glass eligibility while
-  // this file stayed stale -- these two cases are the fix, and the
-  // "Conductor" case pins the real negative (ARRANGEMENT isn't gated here).
-  test("real 2026-08-04 token additions: matches Python's current behavior", () => {
-    expect(isEngineeringOrProductionRole("Programmed By")).toBe(true);
-    expect(isEngineeringOrProductionRole("Drum Programming")).toBe(true);
-    expect(isEngineeringOrProductionRole("Conductor")).toBe(false);
-  });
-});
-
-// Pinned parity cases against Python's role_taxonomy.py
-// (is_background_engineering_role). Reproduce with:
-//   uv run python3 -c "
-//   from networked_players_graph_core.role_taxonomy import is_background_engineering_role
-//   print(is_background_engineering_role('Mastered By'))              # True
-//   print(is_background_engineering_role('Producer, Mastered By'))    # False
-//   print(is_background_engineering_role('Engineer'))                 # False
-//   "
 test.describe("isBackgroundEngineeringRole", () => {
   test("recognizes the three background-engineering tokens, including bracketed qualifiers", () => {
     for (const role of [
@@ -186,14 +127,6 @@ test.describe("isBackgroundEngineeringRole", () => {
 // TestIsBackgroundOnlyRoleProfile for the equivalent (and more complete)
 // coverage, including the real committed-data regressions (Julio Iglesias
 // artist 67331, Mike Fraser artist 92830) this suite used to carry.
-
-test.describe("behindTheGlassEdgeFilter", () => {
-  test("requires both endpoints to qualify", () => {
-    expect(behindTheGlassEdgeFilter("Producer", "Mixed By")).toBe(true);
-    expect(behindTheGlassEdgeFilter("Producer", "Guitar")).toBe(false);
-    expect(behindTheGlassEdgeFilter("Guitar", "Bass")).toBe(false);
-  });
-});
 
 test.describe("isRhythmSectionRole", () => {
   test("recognizes real drums/bass role strings, including bracketed qualifiers", () => {
@@ -348,7 +281,7 @@ test.describe("isPerformerRole", () => {
   // the other, outside this list, would pass every pinned case. A full
   // set-equality check would need generated-fixture infrastructure this
   // repo does not otherwise have (every other Python/TS parity block in
-  // this file -- isEngineeringOrProductionRole, isBackgroundEngineeringRole,
+  // this file -- isBackgroundEngineeringRole,
   // isRhythmSectionRole, isGuitarRole -- uses this same pinned-example
   // convention); a plain size comparison is the cheap, real, partial
   // guard available without introducing that infrastructure for one
@@ -404,7 +337,11 @@ test.describe("rhythmSectionEdgeFilter / guitarPathsEdgeFilter", () => {
 
 // A -Producer/Producer- B -Credited artist/Credited artist- C: only the
 // first hop qualifies under Behind the Glass.
-function producerThenCreditedGraph(): PathfindingGraph {
+// 100 <-> 200 is a Guitar/Guitar edge; 200 <-> 300 is not. Uses Guitar
+// Paths since Behind the Glass (the original qualifying filter here)
+// was retired by ADR 0068 -- the fixture's SHAPE is what this test
+// needs, not that specific mode.
+function guitarThenCreditedGraph(): PathfindingGraph {
   return {
     schema_version: 1,
     catalog_version: "catalog-v1-test",
@@ -418,16 +355,16 @@ function producerThenCreditedGraph(): PathfindingGraph {
     neighbors: [1, 2, 0, 2, 0],
     evidence_release_ids: [1, 9, 1, 9, 9],
     edge_role_a: [
-      "Producer",
+      "Guitar",
       "Credited artist",
-      "Producer",
+      "Guitar",
       "Credited artist",
       "Credited artist",
     ],
     edge_role_b: [
-      "Producer",
+      "Guitar",
       "Credited artist",
-      "Producer",
+      "Guitar",
       "Credited artist",
       "Credited artist",
     ],
@@ -436,30 +373,16 @@ function producerThenCreditedGraph(): PathfindingGraph {
 }
 
 test("findPath's edgeFilter restricts traversal to qualifying edges", () => {
-  const graph = producerThenCreditedGraph();
+  const graph = guitarThenCreditedGraph();
   const index = buildArtistIndex(graph);
 
   const unfiltered = findPath(graph, index, 100, 300, 4);
   expect(unfiltered).toEqual({ ok: true, hops: expect.any(Array) });
 
-  const filtered = findPath(
-    graph,
-    index,
-    100,
-    300,
-    4,
-    behindTheGlassEdgeFilter,
-  );
+  const filtered = findPath(graph, index, 100, 300, 4, guitarPathsEdgeFilter);
   expect(filtered).toEqual({ ok: false, reason: "no-path" });
 
-  const directHop = findPath(
-    graph,
-    index,
-    100,
-    200,
-    4,
-    behindTheGlassEdgeFilter,
-  );
+  const directHop = findPath(graph, index, 100, 200, 4, guitarPathsEdgeFilter);
   expect(directHop.ok).toBe(true);
 });
 

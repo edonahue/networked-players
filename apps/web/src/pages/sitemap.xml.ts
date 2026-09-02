@@ -1,6 +1,6 @@
 import type { APIRoute } from "astro";
 import type { ChallengeV2 } from "../data/challenge";
-import challengeData from "../../public/data/challenge.v2.json";
+import challengeData from "../../public/data/challenge.v3.json";
 
 export const prerender = true;
 

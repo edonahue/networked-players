@@ -1,14 +1,16 @@
 // Narrow TypeScript ports of real role-text token sets, each powering one
-// filtered-search toggle on Connect Two Records: Behind the Glass (ADR
-// 0053, PRODUCTION/ENGINEERING), Rhythm Section (drums/bass), and Guitar
-// Paths (guitar) -- the latter two shipped in a Phase 2 follow-up slice
-// once role_mode_candidates.py's real measurement cleared the launch floor
-// for them too (170/455 and 109/196 candidate pairs respectively). This is
+// filtered-search toggle on Connect Two Records: Rhythm Section
+// (drums/bass) and Guitar Paths (guitar), both shipped in a Phase 2
+// follow-up slice once role_mode_candidates.py's real measurement cleared
+// the launch floor for them (170/455 and 109/196 candidate pairs
+// respectively). A third mode, Behind the Glass (ADR 0053,
+// PRODUCTION/ENGINEERING), was RETIRED by ADR 0068: it required
+// producer/engineer credits on BOTH sides of every hop, and the
+// performer-gated graph.v3.json contains no such edge, so it could only
+// ever have reported "no path". This is
 // deliberately NOT a full RoleCategory port -- each function answers one
 // bounded question, mirroring role_mode_candidates.py's Python-side
-// predicates exactly: Behind the Glass mirrors role_taxonomy.py's coarse
-// PRODUCTION/ENGINEERING categories (eligibility_engineering.py on the
-// Python side); Rhythm Section/Guitar Paths mirror eligibility.py's
+// predicates exactly: Rhythm Section/Guitar Paths mirror eligibility.py's
 // fine-grained `_ROLE_CATEGORY_BY_TOKEN` display-category tokens instead,
 // since role_taxonomy.py's coarser STRINGS/PERCUSSION_KEYS buckets bundle
 // guitar with bass/banjo/violin and drums with keys/organ -- too broad for
@@ -23,23 +25,6 @@
 // automated cross-runner harness, so it still requires updating both sides
 // by hand, but a forgotten update now fails a real test instead of silently
 // shipping.
-
-const PRODUCTION_AND_ENGINEERING_TOKENS = new Set([
-  "producer",
-  "co-producer",
-  "produced by",
-  "engineer",
-  "mixed by",
-  "mastered by",
-  "recorded by",
-  // Added 2026-08-04 from a real Jamiroquai-corpus role_taxonomy.py coverage
-  // run (packages/graph-core role_taxonomy.py's _ENGINEERING_TOKENS) --
-  // "conductor" was added to Python's ARRANGEMENT category in the same run
-  // but deliberately does NOT belong here, since ARRANGEMENT isn't part of
-  // eligibility_engineering.py's PRODUCTION/ENGINEERING gate either.
-  "programmed by",
-  "drum programming",
-]);
 
 // eligibility.py's _ROLE_CATEGORY_BY_TOKEN entries mapping to "drums" or
 // "bass" -- "percussion" is a separate display category and deliberately
@@ -204,7 +189,7 @@ const PERFORMER_TOKENS = new Set([
 ]);
 
 // A secondary signal, never a reclassification: these three still count as
-// PRODUCTION_AND_ENGINEERING_TOKENS above (Behind the Glass is unaffected).
+// the performer/background token sets above.
 // Mirrors role_taxonomy.py's `_BACKGROUND_ENGINEERING_TOKENS` exactly --
 // the narrow "pure post-production technical" subset the owner asked to
 // de-prioritize on core/default pages (2026-08-31), keep in lockstep with
@@ -322,9 +307,6 @@ function matchesBackgroundOrNonSubstantive(
 /** True when at least one comma-separated component of `roleText`
  * classifies as PRODUCTION or ENGINEERING. Fail-closed: empty/unrecognized
  * text never qualifies, matching eligibility_engineering.py's default. */
-export function isEngineeringOrProductionRole(roleText: string): boolean {
-  return matchesAnyComponent(roleText, PRODUCTION_AND_ENGINEERING_TOKENS);
-}
 
 /** True when at least one comma-separated component of `roleText` is a
  * drums or bass credit. Fail-closed, same default as the other predicates
@@ -369,27 +351,13 @@ export const PERFORMER_TOKEN_COUNT = PERFORMER_TOKENS.size;
  * "Mastered By" on the same credit string does not negate the background
  * verdict, even though it isn't itself one of the three narrow background
  * tokens. A secondary display/ranking signal, never a change to edge
- * eligibility or to `isEngineeringOrProductionRole`'s own Behind-the-Glass
- * gate. `None`/empty is always false, and a genuinely mixed credit (e.g.
+ * eligibility. `None`/empty is always false, and a genuinely mixed credit (e.g.
  * "Producer, Mastered By") is also false -- real creative involvement is
  * present too, so it's never treated as background-only. */
 export function isBackgroundEngineeringRole(roleText: string): boolean {
   return matchesBackgroundOrNonSubstantive(
     roleText,
     BACKGROUND_ENGINEERING_TOKENS,
-  );
-}
-
-/** Edge filter for `findPath`: both endpoints' credited roles on the
- * bridging release must be a producer/engineer contribution -- a "Behind
- * the Glass" connection is a chain of producer/engineer credits end to
- * end, not just one qualifying hop among several. */
-export function behindTheGlassEdgeFilter(
-  roleA: string,
-  roleB: string,
-): boolean {
-  return (
-    isEngineeringOrProductionRole(roleA) && isEngineeringOrProductionRole(roleB)
   );
 }
 

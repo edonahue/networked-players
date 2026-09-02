@@ -4,7 +4,7 @@
 // modes. Old URLs keep working via an instant meta refresh plus a visible
 // link; the canonical points at the new home and the stub is noindex.
 import type { ChallengeV2 } from '../../data/challenge';
-import challengeData from '../../../public/data/challenge.v2.json';
+import challengeData from '../../../public/data/challenge.v3.json';
 
 export function getStaticPaths() {
   const data = challengeData as ChallengeV2;

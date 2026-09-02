@@ -13,7 +13,7 @@
     {
       "heading": "Evidence, not influence",
       "paragraphs": [
-        "A shared credit proves participation — that two artists are credited on the same release. It doesn't prove they influenced each other, that they were friends, or that any artistic lineage exists between them. This site only shows what the credits themselves say, nothing it has to guess at."
+        "A documented performance credit proves participation — that two artists are credited as performing on the same recording or release. It doesn't prove they influenced each other, that they were friends, or that any artistic lineage exists between them. This site only shows what the credits themselves say, nothing it has to guess at."
       ]
     },
     {
@@ -34,7 +34,7 @@
     {
       "heading": "What's shipped since Phase 1",
       "paragraphs": [
-        "A first-class role taxonomy for credits (producer, engineer, performer, and more, alongside the original role text), a searchable contributors directory that makes the people behind these records as navigable as the albums themselves, and a real record-to-record search — Connect Two Records — over every credited contributor on any two catalog albums, not just their primary artists. Explore adds an open-ended, bounded network view of one album's documented credit neighborhood, and three role-restricted search modes (Behind the Glass, Rhythm Section, Guitar Paths) narrow a search to a specific kind of credit.",
+        "A first-class role taxonomy for credits (producer, engineer, performer, and more, alongside the original role text), a searchable contributors directory that makes the people behind these records as navigable as the albums themselves, and a real record-to-record search — Connect Two Records — over every credited contributor on any two catalog albums, not just their primary artists. Explore adds an open-ended, bounded network view of one album's documented credit neighborhood, and two role-restricted search modes (Rhythm Section, Guitar Paths) narrow a search to a specific kind of performance.",
         "Every one of those surfaces now links directly into the others: an album page opens straight into Connect (pre-filled) or Explore (centered on the album's own artist); a contributor page opens Explore centered on that person specifically; Explore's current center links back to its own contributor page when one exists; and every documented evidence hop, in both Connect and Explore, links each credited name to their own contributor page. The site stays one connected graph to move through, page to page."
       ]
     },

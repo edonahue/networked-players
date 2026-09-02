@@ -25,7 +25,7 @@ interface ChallengeData {
 
 const challengeData: ChallengeData = JSON.parse(
   readFileSync(
-    fileURLToPath(new URL("../public/data/challenge.v2.json", import.meta.url)),
+    fileURLToPath(new URL("../public/data/challenge.v3.json", import.meta.url)),
     "utf8",
   ),
 );
