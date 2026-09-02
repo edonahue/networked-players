@@ -235,6 +235,17 @@ def _parser() -> argparse.ArgumentParser:
     compare.add_argument(
         "--max-route-candidate-pairs", type=int, default=DEFAULT_MAX_ROUTE_CANDIDATE_PAIRS
     )
+    compare.add_argument(
+        "--include-non-performers",
+        action="store_true",
+        help="ADR 0068: by default this traverses the same performer-only edge relation "
+        "as the public site (matching CreditGraph.open's own performer_only=True "
+        "default), so a result can always be reconciled against what the site would "
+        "show. Pass this to widen the traversal to the broader, pre-ADR-0068 relation "
+        "-- producers, engineers, mixers, mastering, arrangers, and bare-NULL extra "
+        "credits all edge-forming again. Never appropriate for anything that becomes a "
+        "public artifact.",
+    )
     compare.add_argument("--research-root", type=Path, default=RESEARCH_ROOT)
     compare.add_argument("--run-id")
 
@@ -551,6 +562,7 @@ def main(argv: list[str] | None = None) -> int:
                     album_b_release_id=args.album_b,
                     max_hops=args.max_hops,
                     max_route_candidate_pairs=args.max_route_candidate_pairs,
+                    performer_only=not args.include_non_performers,
                 )
             elif args.mode == "artists":
                 if args.artist_a is None or args.artist_b is None:
@@ -560,6 +572,7 @@ def main(argv: list[str] | None = None) -> int:
                     artist_a_id=args.artist_a,
                     artist_b_id=args.artist_b,
                     max_hops=args.max_hops,
+                    performer_only=not args.include_non_performers,
                 )
             else:
                 if args.scene_a is None or args.scene_b is None:
@@ -570,6 +583,7 @@ def main(argv: list[str] | None = None) -> int:
                     scene_b_artist_ids=tuple(args.scene_b),
                     max_hops=args.max_hops,
                     max_route_candidate_pairs=args.max_route_candidate_pairs,
+                    performer_only=not args.include_non_performers,
                 )
 
             compare_result = run_comparison_and_persist(

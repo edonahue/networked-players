@@ -68,6 +68,7 @@ def test_research_compare_albums_writes_a_run_with_manifest_and_comparison(
         "album_b_release_id": 2,
         "max_hops": 4,
         "max_route_candidate_pairs": 200,
+        "performer_only": True,
     }
 
 
@@ -165,6 +166,7 @@ def test_research_compare_artists_writes_a_run_with_manifest_and_comparison(
         "artist_a_id": SEED_A,
         "artist_b_id": SEED_B,
         "max_hops": 4,
+        "performer_only": True,
     }
 
 
@@ -263,6 +265,7 @@ def test_research_compare_scenes_writes_a_run_with_manifest_and_comparison(
         "scene_b_artist_ids": [SEED_B],
         "max_hops": 4,
         "max_route_candidate_pairs": 200,
+        "performer_only": True,
     }
 
 

@@ -207,6 +207,7 @@ table.kv{border-collapse:collapse;width:100%}table.kv td{padding:3px 8px 3px 0;v
   <div><label for="topic">Run topic (bookkeeping slug)</label><input id="topic" placeholder="my-comparison" required></div></div>
   <div class="row"><div><label for="max_hops">Max hops (optional, default 4)</label><input id="max_hops" type="number" min="1"></div>
   <div id="field-max_route_candidate_pairs"><label for="max_route_candidate_pairs">Max route candidate pairs (optional, default 200; albums/scenes only)</label><input id="max_route_candidate_pairs" type="number" min="0"></div></div>
+  <div class="row"><div><label for="performer_only"><input id="performer_only" type="checkbox" checked style="width:auto;padding:0"> Performer-only (matches the public site; uncheck for the broader research view including producers/engineers/mixers)</label></div></div>
   <div class="row" id="fields-albums"><div><label for="album_a">Album A (release_id)</label><input id="album_a" type="number"></div><div><label for="album_b">Album B (release_id)</label><input id="album_b" type="number"></div></div>
   <div class="row hidden" id="fields-artists"><div><label for="artist_a">Artist A (artist_id)</label><input id="artist_a" type="number"></div><div><label for="artist_b">Artist B (artist_id)</label><input id="artist_b" type="number"></div></div>
   <div class="row hidden" id="fields-scenes"><div><label for="scene_a">Scene A (space-separated artist_ids)</label><input id="scene_a" placeholder="100 200 300"></div><div><label for="scene_b">Scene B (space-separated artist_ids)</label><input id="scene_b" placeholder="400 500"></div></div>
@@ -282,6 +283,10 @@ function loadRequestIntoForm(request){
   // rather than showing a stale value from whatever was loaded before it.
   $('#max_hops').value=request.max_hops??'';
   $('#max_route_candidate_pairs').value=request.max_route_candidate_pairs??'';
+  // A run persisted before performer_only existed has no such key in its
+  // saved request.json -- ?? true matches CompareAlbumsRequest/etc.'s own
+  // dataclass default, same convention the comment above already uses.
+  $('#performer_only').checked=request.performer_only??true;
   if(request.mode==='albums'){
     $('#album_a').value=request.album_a_release_id;
     $('#album_b').value=request.album_b_release_id;
@@ -357,7 +362,7 @@ async function loadEvidence(corpus_root,kind,id){
     const viewGraphBtn=kind==='artist'?'<button type="button" class="run-load-btn" id="view-graph-btn">View network</button>':'';
     $('#evidence').innerHTML='<div class="panel"><h3>'+esc(title)+'</h3><p class="runs">'+subtitle+' '+viewGraphBtn+'</p>'
       +evidenceCreditRows(data.credit_rows)+scopeTiersPanel(data.scope_tiers)+'</div>';
-    if(kind==='artist')$('#view-graph-btn').onclick=()=>loadGraph(corpus_root,id,'');
+    if(kind==='artist')$('#view-graph-btn').onclick=()=>loadGraph(corpus_root,id,'',$('#performer_only').checked);
   }catch(err){$('#evidence').innerHTML='<p class="error">'+esc(String(err))+'</p>'}
 }
 const GRAPH_VIEW_SIZE=360,GRAPH_CENTER=GRAPH_VIEW_SIZE/2,GRAPH_RADIUS=140;
@@ -373,10 +378,10 @@ function graphNodeGroup(x,y,label,isCenter,artistId){
     +'transform="translate('+x+','+y+')"><circle r="'+r+'"></circle>'
     +'<text x="0" y="'+(r+13)+'" text-anchor="middle">'+esc(label.length>18?label.slice(0,17)+'…':label)+'</text></g>';
 }
-async function loadGraph(corpus_root,centerId,roleFilter){
+async function loadGraph(corpus_root,centerId,roleFilter,performerOnly){
   $('#graph').innerHTML='<p class="runs">Loading network…</p>';
   try{
-    let url='/api/graph?corpus_root='+encodeURIComponent(corpus_root)+'&center_id='+encodeURIComponent(centerId);
+    let url='/api/graph?corpus_root='+encodeURIComponent(corpus_root)+'&center_id='+encodeURIComponent(centerId)+'&performer_only='+(performerOnly?'true':'false');
     if(roleFilter)url+='&role_filter='+encodeURIComponent(roleFilter);
     const res=await fetch(url);
     const data=await res.json();
@@ -402,14 +407,15 @@ async function loadGraph(corpus_root,centerId,roleFilter){
     $('#graph').innerHTML='<div class="panel"><h3>Network: '+esc(data.center.name)+'</h3>'
       +'<div class="row"><div><label for="graph_role_filter">Role filter (comma-separated, e.g. vocals,production)</label>'
       +'<input id="graph_role_filter" value="'+esc(roleFilter)+'"></div>'
+      +'<div><label for="graph_performer_only"><input id="graph_performer_only" type="checkbox"'+(performerOnly?' checked':'')+' style="width:auto;padding:0"> Performer-only</label></div>'
       +'<button type="button" id="graph_role_filter_apply" style="align-self:flex-end">Apply</button></div>'
       +truncatedNote+svg+table+'</div>';
     document.querySelectorAll('#graph .graph-node[data-artist-id]').forEach(g=>{
-      const recenter=()=>{if(Number(g.dataset.artistId)!==data.center.artist_id)loadGraph(corpus_root,g.dataset.artistId,roleFilter)};
+      const recenter=()=>{if(Number(g.dataset.artistId)!==data.center.artist_id)loadGraph(corpus_root,g.dataset.artistId,roleFilter,performerOnly)};
       g.onclick=recenter;
       g.onkeydown=(e)=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();recenter()}};
     });
-    $('#graph_role_filter_apply').onclick=()=>loadGraph(corpus_root,centerId,$('#graph_role_filter').value.trim());
+    $('#graph_role_filter_apply').onclick=()=>loadGraph(corpus_root,centerId,$('#graph_role_filter').value.trim(),$('#graph_performer_only').checked);
   }catch(err){$('#graph').innerHTML='<p class="error">'+esc(String(err))+'</p>'}
 }
 function pinToCompare(kind,slot,id,corpus_root){
@@ -457,6 +463,7 @@ $('#form').onsubmit=async(e)=>{
   const payload={mode,corpus_root:$('#corpus_root').value.trim(),topic:$('#topic').value.trim()};
   const maxHopsRaw=$('#max_hops').value.trim();
   if(maxHopsRaw)payload.max_hops=Number(maxHopsRaw);
+  payload.performer_only=$('#performer_only').checked;
   if(mode!=='artists'){
     const maxPairsRaw=$('#max_route_candidate_pairs').value.trim();
     if(maxPairsRaw)payload.max_route_candidate_pairs=Number(maxPairsRaw);
@@ -567,18 +574,30 @@ def _optional_int(payload: dict[str, Any], field: str) -> int | None:
     return value
 
 
+def _optional_bool(payload: dict[str, Any], field: str) -> bool | None:
+    value = payload.get(field)
+    if value is None:
+        return None
+    if not isinstance(value, bool):
+        raise WorkbenchRequestError(f"{field} must be a boolean")
+    return value
+
+
 def build_compare_request(
     mode: str, payload: dict[str, Any], corpus_root: Path
 ) -> CompareAlbumsRequest | CompareArtistsRequest | CompareScenesRequest:
-    """`max_hops`/`max_route_candidate_pairs` are optional overrides of the
-    request dataclasses' own defaults -- only forwarded when the form (or a
-    loaded saved request) actually supplied them, so an ordinary run keeps
-    using `DEFAULT_MAX_HOPS`/`DEFAULT_MAX_ROUTE_CANDIDATE_PAIRS` exactly as
-    the dataclass fields already default. `CompareArtistsRequest` has no
+    """`max_hops`/`max_route_candidate_pairs`/`performer_only` are optional
+    overrides of the request dataclasses' own defaults -- only forwarded
+    when the form (or a loaded saved request) actually supplied them, so an
+    ordinary run keeps using `DEFAULT_MAX_HOPS`/
+    `DEFAULT_MAX_ROUTE_CANDIDATE_PAIRS`/`performer_only=True` exactly as the
+    dataclass fields already default (ADR 0068 -- see `compare.py`'s own
+    module docstring). `CompareArtistsRequest` has no
     `max_route_candidate_pairs` field at all -- it only ever bounds a single
     direct path -- so that override is never read for `artists`."""
     max_hops = _optional_int(payload, "max_hops")
     max_route_candidate_pairs = _optional_int(payload, "max_route_candidate_pairs")
+    performer_only = _optional_bool(payload, "performer_only")
     if mode == "albums":
         album_kwargs: dict[str, Any] = {
             "corpus_snapshot_root": corpus_root,
@@ -589,6 +608,8 @@ def build_compare_request(
             album_kwargs["max_hops"] = max_hops
         if max_route_candidate_pairs is not None:
             album_kwargs["max_route_candidate_pairs"] = max_route_candidate_pairs
+        if performer_only is not None:
+            album_kwargs["performer_only"] = performer_only
         return CompareAlbumsRequest(**album_kwargs)
     if mode == "artists":
         artist_kwargs: dict[str, Any] = {
@@ -598,6 +619,8 @@ def build_compare_request(
         }
         if max_hops is not None:
             artist_kwargs["max_hops"] = max_hops
+        if performer_only is not None:
+            artist_kwargs["performer_only"] = performer_only
         return CompareArtistsRequest(**artist_kwargs)
     if mode == "scenes":
         scene_kwargs: dict[str, Any] = {
@@ -609,6 +632,8 @@ def build_compare_request(
             scene_kwargs["max_hops"] = max_hops
         if max_route_candidate_pairs is not None:
             scene_kwargs["max_route_candidate_pairs"] = max_route_candidate_pairs
+        if performer_only is not None:
+            scene_kwargs["performer_only"] = performer_only
         return CompareScenesRequest(**scene_kwargs)
     raise WorkbenchRequestError(f"unrecognized mode: {mode!r}")
 
@@ -666,6 +691,23 @@ def _parse_role_filter(raw: str) -> frozenset[RoleCategory] | None:
                 f"role_filter token {token!r} is not a known role category ({valid})"
             ) from None
     return frozenset(categories) if categories else None
+
+
+def _parse_performer_only_query(raw: str) -> bool:
+    """`/api/graph`'s `performer_only` query param (ADR 0068). Absent/empty
+    defaults to `True`, matching `CreditGraph.open`'s own default and the
+    public product. Only the literal strings `"true"`/`"false"` (any case)
+    are accepted -- a typo'd value should never silently fall back to the
+    default the way `int("nonsense")` would raise but a looser truthiness
+    check would not."""
+    if not raw:
+        return True
+    lowered = raw.strip().lower()
+    if lowered == "true":
+        return True
+    if lowered == "false":
+        return False
+    raise WorkbenchRequestError(f"performer_only must be 'true' or 'false', got {raw!r}")
 
 
 def search_corpus(graph: CreditGraph, kind: str, query: str) -> list[dict[str, Any]]:
@@ -744,13 +786,18 @@ class WorkbenchGraphCache:
     called `CreditGraph.open` unconditionally, with no reuse mechanism
     anywhere in this file).
 
-    Keyed by resolved corpus root; the cached VALUE also carries
-    `corpus_version_string(corpus_root)` (a hash of the manifest's own
-    per-file content hashes, so a rebuild that changes the actual Parquet
-    bytes is detected even when the directory name, snapshot_date, and any
-    declared build parameters are all unchanged) so a corpus that gets
-    re-ingested/regenerated at the same root is detected and the stale
-    graph is replaced, never silently reused. Each checkout hands back
+    Keyed by (resolved corpus root, `performer_only`) -- ADR 0068's two
+    edge relations over the SAME corpus are cached as independent entries,
+    never sharing or evicting each other's graph; a request for the
+    broader view can never be silently handed the performer-gated one, or
+    vice versa. The cached VALUE also carries `corpus_version_string(corpus_root)`
+    (a hash of the manifest's own per-file content hashes, so a rebuild that
+    changes the actual Parquet bytes is detected even when the directory
+    name, snapshot_date, and any declared build parameters are all
+    unchanged) so a corpus that gets re-ingested/regenerated at the same
+    root is detected and the stale graph is replaced, never silently
+    reused -- for BOTH cached views of that root, since each is checked
+    independently under the same corpus identity. Each checkout hands back
     `graph.cursor()` -- a real,
     independent DuckDB cursor per `CreditGraph.cursor()`'s own documented
     concurrency contract -- never the shared owning graph itself, so
@@ -766,26 +813,29 @@ class WorkbenchGraphCache:
     def __init__(self, max_entries: int = 4) -> None:
         self._max_entries = max_entries
         self._lock = threading.Lock()
-        self._entries: OrderedDict[str, _CachedGraphEntry] = OrderedDict()
-        self._build_locks: dict[str, threading.Lock] = {}
+        self._entries: OrderedDict[tuple[str, bool], _CachedGraphEntry] = OrderedDict()
+        self._build_locks: dict[tuple[str, bool], threading.Lock] = {}
 
-    def _build_lock_for(self, root_key: str) -> threading.Lock:
+    def _build_lock_for(self, cache_key: tuple[str, bool]) -> threading.Lock:
         with self._lock:
-            lock = self._build_locks.get(root_key)
+            lock = self._build_locks.get(cache_key)
             if lock is None:
                 lock = threading.Lock()
-                self._build_locks[root_key] = lock
+                self._build_locks[cache_key] = lock
             return lock
 
     @contextmanager
-    def checkout(self, corpus_root: Path) -> Iterator[CreditGraph]:
+    def checkout(self, corpus_root: Path, performer_only: bool = True) -> Iterator[CreditGraph]:
         root_key = str(Path(corpus_root).resolve())
+        cache_key = (root_key, performer_only)
         # Held only across the check-or-build decision below, never across
         # the actual checkout -- serializing every request against a
         # corpus for its whole lifetime would defeat the entire point of
-        # reuse. Per-root, not global, so building corpus A never blocks a
-        # concurrent request already using an already-cached corpus B.
-        build_lock = self._build_lock_for(root_key)
+        # reuse. Per (root, performer_only), not global or even per-root --
+        # building the broader view of a corpus never blocks a concurrent
+        # request already using the performer-gated view of the SAME root,
+        # which is genuinely independent work.
+        build_lock = self._build_lock_for(cache_key)
         with build_lock:
             identity = corpus_version_string(corpus_root)
             # A real Codex-review finding: the reuse check and the promote
@@ -799,10 +849,10 @@ class WorkbenchGraphCache:
             # unbroken critical section so eviction can never land in that
             # window.
             with self._lock:
-                existing = self._entries.get(root_key)
+                existing = self._entries.get(cache_key)
                 if existing is not None and existing.identity == identity and not existing.stale:
                     entry = existing
-                    self._entries.move_to_end(root_key)
+                    self._entries.move_to_end(cache_key)
                     entry.refcount += 1
                     reused = True
                 else:
@@ -813,7 +863,7 @@ class WorkbenchGraphCache:
                 # corpus root -- that exception propagates here with
                 # NOTHING written to the cache, so a failed build is never
                 # mistaken for a cached success on a later request.
-                new_graph = CreditGraph.open(corpus_root)
+                new_graph = CreditGraph.open(corpus_root, performer_only=performer_only)
                 entry = _CachedGraphEntry(identity=identity, graph=new_graph)
                 entry.refcount = 1
                 with self._lock:
@@ -821,8 +871,8 @@ class WorkbenchGraphCache:
                         existing.stale = True
                         if existing.refcount == 0:
                             existing.graph.close()
-                    self._entries[root_key] = entry
-                    self._entries.move_to_end(root_key)
+                    self._entries[cache_key] = entry
+                    self._entries.move_to_end(cache_key)
                     self._evict_excess_locked()
         try:
             cursor = entry.graph.cursor()
@@ -1024,12 +1074,16 @@ def make_workbench_handler(
                     if max_neighbors <= 0:
                         raise WorkbenchRequestError("max_neighbors must be positive")
                     role_categories = _parse_role_filter(query_params.get("role_filter", [""])[0])
+                    performer_only = _parse_performer_only_query(
+                        query_params.get("performer_only", [""])[0]
+                    )
                     # graph_cache.checkout, not CreditGraph.open(build_edges=
                     # False): a bounded neighbor view needs credit_edges
                     # traversal, unlike search/evidence above -- reuses PR
                     # B's cache instead of paying the ~2.5-minute edge-build
-                    # cost on every graph-view request.
-                    with graph_cache.checkout(corpus_root) as graph:
+                    # cost on every graph-view request. Cached as an
+                    # independent entry per `performer_only` (ADR 0068).
+                    with graph_cache.checkout(corpus_root, performer_only) as graph:
                         view = build_graph_view(
                             graph,
                             center_id,

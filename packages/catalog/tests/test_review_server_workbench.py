@@ -406,6 +406,7 @@ def test_workbench_lists_runs_for_a_topic(server: tuple[str, Path], corpus: Path
         "album_b_release_id": 2,
         "max_hops": 4,
         "max_route_candidate_pairs": 200,
+        "performer_only": True,
     }
 
 
@@ -1143,3 +1144,133 @@ def test_workbench_graph_reuses_the_cached_graph_across_requests(
             assert status == 200
 
     assert calls == [True]
+
+
+# --- ADR 0068 cleanup pass: performer_only wiring through /api/compare and
+# /api/graph -- previously implemented only at CreditGraph.open()/
+# credit_edges_sql() itself, reachable from no CLI flag, no server request
+# field, and no cache dimension anywhere a person could actually invoke it.
+
+
+def test_workbench_compare_performer_only_false_reaches_an_engineering_only_artist(
+    server: tuple[str, Path], tmp_path: Path
+) -> None:
+    """Bob is credited on release 1 alongside billed Seed A via a single
+    `release_credit`-scope "Engineer" row -- documents no performance, so
+    ADR 0068's default gate keeps him credited but never graph-traversable.
+    `performer_only: false` in the POST payload must reach `CreditGraph.
+    open` and make the direct route to him real."""
+    base, _ = server
+    engineer_id = 900001
+    root = tmp_path / "corpus_root_with_engineer" / f"snapshot={SNAPSHOT_DATE}"
+    (root / "table=releases").mkdir(parents=True)
+    (root / "table=credits").mkdir(parents=True)
+    (root / "table=tracks").mkdir(parents=True)
+    pq.write_table(
+        pa.Table.from_pylist([_release(1, "Album Alpha")], schema=SCHEMAS["releases"]),
+        root / "table=releases" / "part-00000.parquet",
+    )
+    pq.write_table(
+        pa.Table.from_pylist(
+            [
+                *_performed(1, artist_id=SEED_A, name="Seed A"),
+                _credit(
+                    1,
+                    artist_id=engineer_id,
+                    name="Bob",
+                    scope="release_credit",
+                    role_text="Engineer",
+                ),
+            ],
+            schema=SCHEMAS["credits"],
+        ),
+        root / "table=credits" / "part-00000.parquet",
+    )
+    pq.write_table(
+        pa.Table.from_pylist([], schema=SCHEMAS["tracks"]),
+        root / "table=tracks" / "part-00000.parquet",
+    )
+    (root / "manifest.json").write_text(json.dumps({"schema_version": 3}))
+
+    gated_status, gated_data = _post_compare(
+        base,
+        {
+            "mode": "artists",
+            "corpus_root": str(root),
+            "topic": "engineer-gated",
+            "artist_a": SEED_A,
+            "artist_b": engineer_id,
+        },
+    )
+    assert gated_status == 200
+    assert gated_data["comparison"]["route"]["case"] == "no_path_within_bound"
+
+    broad_status, broad_data = _post_compare(
+        base,
+        {
+            "mode": "artists",
+            "corpus_root": str(root),
+            "topic": "engineer-broad",
+            "artist_a": SEED_A,
+            "artist_b": engineer_id,
+            "performer_only": False,
+        },
+    )
+    assert broad_status == 200
+    assert broad_data["comparison"]["route"]["case"] == "found"
+    assert len(broad_data["comparison"]["route"]["hops"]) == 1
+
+
+def test_workbench_compare_rejects_a_non_boolean_performer_only(
+    server: tuple[str, Path], corpus: Path
+) -> None:
+    base, _ = server
+    status, data = _post_compare(
+        base,
+        {
+            "mode": "artists",
+            "corpus_root": str(corpus),
+            "topic": "bad-performer-only",
+            "artist_a": SEED_A,
+            "artist_b": SEED_B,
+            "performer_only": "false",
+        },
+    )
+    assert status == 400
+    assert "performer_only" in data["error"]
+
+
+def test_workbench_graph_cache_keys_performer_only_views_independently(
+    server: tuple[str, Path], corpus: Path
+) -> None:
+    """The two `performer_only` views of the SAME corpus root must be cached
+    as independent entries -- neither reuses, evicts, nor is confused with
+    the other's graph. A request for each, interleaved twice, must open
+    `CreditGraph` exactly once per (root, performer_only) pair, never a
+    single shared entry serving both."""
+    calls: list[bool] = []
+    real_open = _MODULE.CreditGraph.open
+
+    def spying_open(*args: Any, **kwargs: Any) -> Any:
+        calls.append(kwargs.get("performer_only", True))
+        return real_open(*args, **kwargs)
+
+    with mock.patch.object(_MODULE.CreditGraph, "open", staticmethod(spying_open)):
+        base, _ = server
+        for performer_only in (True, False, True, False):
+            status, _data = _post_compare(
+                base,
+                {
+                    "mode": "artists",
+                    "corpus_root": str(corpus),
+                    "topic": "cache-key-independence",
+                    "artist_a": SEED_A,
+                    "artist_b": SEED_B,
+                    "performer_only": performer_only,
+                },
+            )
+            assert status == 200
+
+    # One real open per distinct performer_only value, not per request --
+    # the SAME two entries reused across the four interleaved requests.
+    assert calls == [True, False]
