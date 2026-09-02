@@ -1,7 +1,7 @@
 // Connect Two Records (ADR 0051) integration tests against the real
 // committed pathfinding graph. "Discovery" (Daft Punk) and "The Joshua
 // Tree" (U2) are a real, directly-connected pair in the committed artifact
-// (verified against apps/web/public/data/pathfinding/graph.v2.json) --
+// (verified against apps/web/public/data/pathfinding/graph.v3.json) --
 // picked from the artifact itself, not hardcoded blindly, so this survives
 // a future regeneration only if that specific edge remains; if it doesn't,
 // this test's failure is itself a useful signal to pick a new real pair.
@@ -248,7 +248,7 @@ test("endpoint cards link back to their own album page", async ({
   ).toBeVisible();
 
   // The link must actually resolve, not just render -- a real regression
-  // guard for the 3 real catalog albums that have no challenge.v2 path
+  // guard for the 3 real catalog albums that have no challenge.v3 path
   // (and so, before this PR, no /albums/<id>/ page at all).
   await endpoints.first().locator(`a[href='/albums/${discovery.id}/']`).click();
   await expect(page.getByRole("heading", { level: 1 })).toContainText(
@@ -347,7 +347,7 @@ test("the diagnostic pair (Discovery / Joshua Tree) is ranked away from its cave
 // hard-excludes the first route's own edges. Discovery <-> Joshua Tree's
 // real committed data has a genuinely distinct alternate route within the
 // same hop budget (verified against
-// apps/web/public/data/pathfinding/graph.v2.json) -- this directly
+// apps/web/public/data/pathfinding/graph.v3.json) -- this directly
 // regression-guards the pre-Slice-7 bug where this section silently
 // re-rendered the same hop list under a second heading.
 test("the distinct alternate route section renders content genuinely distinct from the documented route", async ({

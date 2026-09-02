@@ -68,7 +68,7 @@ const unconnectedCount = connectedAlbumIds
     unconnectedCount > 0 && (
       // "connected to the credit graph" would overclaim -- these albums
       // are real graph nodes with real neighbors, just not yet an endpoint
-      // of a documented challenge.v2 path (ADR 0067).
+      // of a documented challenge.v3 path (ADR 0067).
       <p class="albums-directory__note" data-albums-unconnected-note>
         {unconnectedCount} without a documented path yet.
       </p>

@@ -152,13 +152,20 @@ test("static challenge.v3 artifact is reachable", async ({ request }) => {
   expect(Array.isArray(body.paths)).toBe(true);
 });
 
-test("static challenge.v2 artifact is reachable", async ({ request }) => {
-  const res = await request.get("/data/challenge.v2.json");
-  expect(res.ok()).toBeTruthy();
-  const body = await res.json();
-  expect(body.schema_version).toBe(2);
-  expect(Array.isArray(body.albums)).toBe(true);
-  expect(Array.isArray(body.paths)).toBe(true);
+// ADR 0068: challenge.v2.json and pathfinding/graph.v2.json were deleted
+// once every consumer had cut over to the performer-gated v3 artifacts.
+// Asserting they are GONE is the real check now -- a stale v2 file left
+// deployed would be a valid-looking artifact carrying pre-0068 semantics,
+// exactly the "valid but stale combination" the migration's lineage rules
+// exist to prevent.
+test("the retired v2 artifacts are no longer served", async ({ request }) => {
+  for (const path of [
+    "/data/challenge.v2.json",
+    "/data/pathfinding/graph.v2.json",
+  ]) {
+    const res = await request.get(path);
+    expect(res.ok(), `${path} should no longer be served`).toBeFalsy();
+  }
 });
 
 test("an album page renders mode controls and reveals evidence", async ({
@@ -292,7 +299,7 @@ test("an album page surfaces nearby records via shared contributors", async ({
   await expect(nearbySection.locator(".album-card").first()).toBeVisible();
 });
 
-// The 3 real catalog albums with zero documented challenge.v2 paths
+// The 3 real catalog albums with zero documented challenge.v3 paths
 // (Phase 6 PR 6-07 widened getStaticPaths to cover them) used to be a
 // silent, CTA-less dead end.
 test("an album with zero documented connections still offers a real way onward", async ({

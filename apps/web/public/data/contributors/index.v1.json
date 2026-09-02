@@ -2,8 +2,8 @@
   "schema_version": 1,
   "catalog_version": "catalog-v1-20260601-7fbbb46b28e6",
   "contributor_index_version": "contributor-index-v1-20260601-9ad4c9cd1817",
-  "generated_at": "2026-09-02T03:55:22Z",
-  "source": "Derived from apps/web/public/data/challenge.v2.json, apps/web/public/data/routes/{universe,rounds}.v1.json, and apps/web/public/data/evidence/release-registry.v1.json (decade_activity only) -- no fresh full-corpus graph query. See docs/DATA_AND_RIGHTS.md.",
+  "generated_at": "2026-09-02T00:00:00+00:00",
+  "source": "Derived from apps/web/public/data/challenge.v3.json, apps/web/public/data/routes/{universe,rounds}.v1.json, and apps/web/public/data/evidence/release-registry.v1.json (decade_activity only) -- no fresh full-corpus graph query. See docs/DATA_AND_RIGHTS.md.",
   "license": "Derived from the Discogs monthly CC0 data dumps via the three published artifacts above. See docs/DATA_AND_RIGHTS.md.",
   "contributors": [
     {
@@ -42,7 +42,8 @@
       "decade_activity": [
         1980,
         1990,
-        2000
+        2000,
+        2010
       ],
       "connection_count": 11,
       "neighboring_contributor_ids": [
@@ -262,6 +263,7 @@
         "master-5863"
       ],
       "decade_activity": [
+        1990,
         2000
       ],
       "connection_count": 3,
@@ -596,7 +598,9 @@
         "master-96362"
       ],
       "decade_activity": [
-        1950
+        1950,
+        1960,
+        2000
       ],
       "connection_count": 4,
       "neighboring_contributor_ids": [
@@ -655,6 +659,7 @@
         "master-21520"
       ],
       "decade_activity": [
+        1990,
         2000
       ],
       "connection_count": 2,
@@ -760,6 +765,7 @@
         "master-96362"
       ],
       "decade_activity": [
+        1960,
         1970,
         1980,
         1990,
@@ -1001,7 +1007,8 @@
         "master-8179"
       ],
       "decade_activity": [
-        1970
+        1970,
+        2000
       ],
       "connection_count": 2,
       "neighboring_contributor_ids": [
@@ -1334,6 +1341,7 @@
         "master-57940"
       ],
       "decade_activity": [
+        1970,
         1980
       ],
       "connection_count": 5,
@@ -1415,6 +1423,7 @@
         "master-16545"
       ],
       "decade_activity": [
+        1980,
         1990
       ],
       "connection_count": 2,
@@ -2397,6 +2406,7 @@
       ],
       "decade_activity": [
         1970,
+        1980,
         1990,
         2010
       ],
@@ -2507,7 +2517,9 @@
         "master-10362",
         "master-135633"
       ],
-      "decade_activity": [],
+      "decade_activity": [
+        1970
+      ],
       "connection_count": 2,
       "neighboring_contributor_ids": [
         8029,
@@ -2613,7 +2625,8 @@
         "master-59538"
       ],
       "decade_activity": [
-        1970
+        1970,
+        1990
       ],
       "connection_count": 2,
       "neighboring_contributor_ids": [
@@ -2658,7 +2671,8 @@
       ],
       "decade_activity": [
         1990,
-        2000
+        2000,
+        2010
       ],
       "connection_count": 3,
       "neighboring_contributor_ids": [
@@ -2855,6 +2869,7 @@
       "decade_activity": [
         1970,
         1980,
+        1990,
         2000
       ],
       "connection_count": 7,
@@ -3380,6 +3395,7 @@
         "master-35793"
       ],
       "decade_activity": [
+        1990,
         2000
       ],
       "connection_count": 3,
@@ -4006,7 +4022,8 @@
         "master-35401"
       ],
       "decade_activity": [
-        1970
+        1970,
+        1980
       ],
       "connection_count": 2,
       "neighboring_contributor_ids": [
@@ -4336,6 +4353,7 @@
         "master-91767"
       ],
       "decade_activity": [
+        1970,
         1980
       ],
       "connection_count": 5,
@@ -4639,7 +4657,10 @@
         "master-10362",
         "master-172407"
       ],
-      "decade_activity": [],
+      "decade_activity": [
+        1980,
+        1990
+      ],
       "connection_count": 2,
       "neighboring_contributor_ids": [
         69621,
@@ -4792,7 +4813,8 @@
         "master-43063"
       ],
       "decade_activity": [
-        1990
+        1990,
+        2000
       ],
       "connection_count": 2,
       "neighboring_contributor_ids": [
@@ -4962,7 +4984,10 @@
         "master-10363",
         "master-104399"
       ],
-      "decade_activity": [],
+      "decade_activity": [
+        1980,
+        1990
+      ],
       "connection_count": 2,
       "neighboring_contributor_ids": [
         46764,
@@ -5227,7 +5252,9 @@
         "master-10363",
         "master-25688"
       ],
-      "decade_activity": [],
+      "decade_activity": [
+        1980
+      ],
       "connection_count": 1,
       "neighboring_contributor_ids": [
         634
@@ -5929,7 +5956,9 @@
         "master-42522"
       ],
       "decade_activity": [
-        1970
+        1970,
+        1980,
+        1990
       ],
       "connection_count": 4,
       "neighboring_contributor_ids": [
@@ -6531,7 +6560,10 @@
         "master-10363",
         "master-13814"
       ],
-      "decade_activity": [],
+      "decade_activity": [
+        1990,
+        2000
+      ],
       "connection_count": 2,
       "neighboring_contributor_ids": [
         39600,
@@ -7381,7 +7413,9 @@
         "master-10363",
         "master-20137"
       ],
-      "decade_activity": [],
+      "decade_activity": [
+        1990
+      ],
       "connection_count": 2,
       "neighboring_contributor_ids": [
         83080,
@@ -7433,7 +7467,10 @@
         "master-10363",
         "master-52998"
       ],
-      "decade_activity": [],
+      "decade_activity": [
+        1980,
+        2020
+      ],
       "connection_count": 2,
       "neighboring_contributor_ids": [
         229176,
@@ -7503,6 +7540,7 @@
       ],
       "decade_activity": [
         1980,
+        1990,
         2000
       ],
       "connection_count": 5,
@@ -7558,6 +7596,7 @@
         "master-55281"
       ],
       "decade_activity": [
+        1970,
         1980
       ],
       "connection_count": 5,
@@ -7739,7 +7778,9 @@
         "master-10363",
         "master-57279"
       ],
-      "decade_activity": [],
+      "decade_activity": [
+        1990
+      ],
       "connection_count": 2,
       "neighboring_contributor_ids": [
         42627,
@@ -7818,7 +7859,10 @@
         "master-10363",
         "master-13814"
       ],
-      "decade_activity": [],
+      "decade_activity": [
+        1990,
+        2000
+      ],
       "connection_count": 2,
       "neighboring_contributor_ids": [
         31617,
@@ -8120,7 +8164,8 @@
         "master-8179"
       ],
       "decade_activity": [
-        1990
+        1990,
+        2000
       ],
       "connection_count": 2,
       "neighboring_contributor_ids": [
@@ -8492,6 +8537,7 @@
       ],
       "decade_activity": [
         1980,
+        1990,
         2000
       ],
       "connection_count": 4,
@@ -8795,7 +8841,9 @@
         "master-37145",
         "master-37401"
       ],
-      "decade_activity": [],
+      "decade_activity": [
+        1980
+      ],
       "connection_count": 3,
       "neighboring_contributor_ids": [
         252119,
@@ -9145,6 +9193,7 @@
       ],
       "decade_activity": [
         1970,
+        1990,
         2010,
         2020
       ],
@@ -10273,7 +10322,9 @@
         "master-10363",
         "master-26436"
       ],
-      "decade_activity": [],
+      "decade_activity": [
+        1990
+      ],
       "connection_count": 2,
       "neighboring_contributor_ids": [
         60480,
@@ -11006,6 +11057,7 @@
         "master-122261"
       ],
       "decade_activity": [
+        1970,
         2000
       ],
       "connection_count": 2,
@@ -11145,6 +11197,7 @@
         "master-89665"
       ],
       "decade_activity": [
+        1970,
         1990,
         2010
       ],
@@ -11752,6 +11805,7 @@
         "master-42522"
       ],
       "decade_activity": [
+        1980,
         2010
       ],
       "connection_count": 2,
@@ -12516,7 +12570,8 @@
       ],
       "decade_activity": [
         1970,
-        1980
+        1980,
+        1990
       ],
       "connection_count": 3,
       "neighboring_contributor_ids": [
@@ -12766,6 +12821,7 @@
         "master-303567"
       ],
       "decade_activity": [
+        2000,
         2020
       ],
       "connection_count": 2,
@@ -12819,6 +12875,7 @@
       "decade_activity": [
         1970,
         1980,
+        1990,
         2010
       ],
       "connection_count": 4,
@@ -12862,7 +12919,9 @@
         "master-10362",
         "master-76678"
       ],
-      "decade_activity": [],
+      "decade_activity": [
+        1990
+      ],
       "connection_count": 1,
       "neighboring_contributor_ids": [
         17827
@@ -12921,6 +12980,7 @@
         "master-4424"
       ],
       "decade_activity": [
+        1970,
         1990
       ],
       "connection_count": 2,
@@ -13074,7 +13134,9 @@
         "master-55576"
       ],
       "decade_activity": [
-        1990
+        1990,
+        2000,
+        2010
       ],
       "connection_count": 3,
       "neighboring_contributor_ids": [
@@ -14251,7 +14313,9 @@
         "master-10363",
         "master-302"
       ],
-      "decade_activity": [],
+      "decade_activity": [
+        1980
+      ],
       "connection_count": 1,
       "neighboring_contributor_ids": [
         59770
@@ -14378,7 +14442,8 @@
         "master-31755"
       ],
       "decade_activity": [
-        2000
+        2000,
+        2010
       ],
       "connection_count": 2,
       "neighboring_contributor_ids": [
@@ -14422,7 +14487,8 @@
         "master-49058"
       ],
       "decade_activity": [
-        1970
+        1970,
+        1980
       ],
       "connection_count": 3,
       "neighboring_contributor_ids": [
@@ -14610,6 +14676,7 @@
         "master-3878"
       ],
       "decade_activity": [
+        2000,
         2010
       ],
       "connection_count": 2,
@@ -15313,7 +15380,9 @@
         "master-10362",
         "master-24047"
       ],
-      "decade_activity": [],
+      "decade_activity": [
+        1990
+      ],
       "connection_count": 2,
       "neighboring_contributor_ids": [
         45467,
@@ -15518,6 +15587,7 @@
         1980,
         1990,
         2000,
+        2010,
         2020
       ],
       "connection_count": 13,
@@ -15908,7 +15978,8 @@
         "master-47868"
       ],
       "decade_activity": [
-        1960
+        1960,
+        1970
       ],
       "connection_count": 2,
       "neighboring_contributor_ids": [
@@ -16021,7 +16092,8 @@
         "master-172407"
       ],
       "decade_activity": [
-        1990
+        1990,
+        2020
       ],
       "connection_count": 3,
       "neighboring_contributor_ids": [
@@ -16680,7 +16752,9 @@
         "master-10363",
         "master-27765"
       ],
-      "decade_activity": [],
+      "decade_activity": [
+        1980
+      ],
       "connection_count": 1,
       "neighboring_contributor_ids": [
         37730
@@ -17030,7 +17104,8 @@
         "master-6495"
       ],
       "decade_activity": [
-        2000
+        2000,
+        2010
       ],
       "connection_count": 3,
       "neighboring_contributor_ids": [
@@ -18059,6 +18134,7 @@
       "decade_activity": [
         1970,
         1980,
+        1990,
         2000
       ],
       "connection_count": 4,
@@ -18281,7 +18357,9 @@
         "master-10362",
         "master-1046042"
       ],
-      "decade_activity": [],
+      "decade_activity": [
+        2010
+      ],
       "connection_count": 2,
       "neighboring_contributor_ids": [
         194118,
@@ -18424,7 +18502,9 @@
       ],
       "decade_activity": [
         1970,
-        1990
+        1980,
+        1990,
+        2000
       ],
       "connection_count": 11,
       "neighboring_contributor_ids": [
@@ -18770,7 +18850,10 @@
         "master-10363",
         "master-59501"
       ],
-      "decade_activity": [],
+      "decade_activity": [
+        1990,
+        2000
+      ],
       "connection_count": 2,
       "neighboring_contributor_ids": [
         46163,
@@ -19842,6 +19925,7 @@
         "master-59538"
       ],
       "decade_activity": [
+        1990,
         2010
       ],
       "connection_count": 2,
@@ -20058,6 +20142,7 @@
       ],
       "decade_activity": [
         1990,
+        2000,
         2010
       ],
       "connection_count": 4,
@@ -20704,7 +20789,8 @@
         "master-54449"
       ],
       "decade_activity": [
-        2010
+        2010,
+        2020
       ],
       "connection_count": 5,
       "neighboring_contributor_ids": [
@@ -20799,7 +20885,9 @@
         "master-10362",
         "master-21520"
       ],
-      "decade_activity": [],
+      "decade_activity": [
+        1990
+      ],
       "connection_count": 2,
       "neighboring_contributor_ids": [
         3840,
@@ -22274,7 +22362,8 @@
         "master-99919"
       ],
       "decade_activity": [
-        1970
+        1970,
+        1990
       ],
       "connection_count": 4,
       "neighboring_contributor_ids": [
@@ -22468,7 +22557,9 @@
         "master-10363",
         "master-172407"
       ],
-      "decade_activity": [],
+      "decade_activity": [
+        1980
+      ],
       "connection_count": 2,
       "neighboring_contributor_ids": [
         216847,

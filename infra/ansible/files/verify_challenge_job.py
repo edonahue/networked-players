@@ -11,7 +11,7 @@ packages/graph-core/tests/test_verify_job_body.py cross-checks the two
 against the same synthetic inputs to catch drift.
 
 Deployed by infra/ansible/playbooks/deploy-verify-job.yml alongside a small
-challenge.v2.json artifact, both placed at rq_jobs_dir. Enqueued by
+challenge.v3.json artifact, both placed at rq_jobs_dir. Enqueued by
 scripts/enqueue_verify_challenge.py via
 ``Queue(...).enqueue("verify_challenge_job.verify_shard", artifact_path, path_ids)``.
 
@@ -116,7 +116,7 @@ def verify_shard(artifact_path: str, path_ids: list[str]) -> dict[str, Any]:
 
     A relative artifact_path resolves against THIS file's own directory, not
     the process's cwd (unpredictable under systemd-run) -- the enqueuer
-    always passes the relative filename "challenge.v2.json" since it can't
+    always passes the relative filename "challenge.v3.json" since it can't
     know each worker's absolute rq_jobs_dir (ansible_env.HOME varies per
     host); deploy-verify-job.yml places the artifact right next to this
     script.

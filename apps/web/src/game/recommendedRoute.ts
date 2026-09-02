@@ -272,7 +272,7 @@ function rawCandidateToHops(
  * under-search exactly the pairs the research measurement proved need the
  * full budget to avoid a partial, order-dependent sample.
  *
- * Observed locally (this machine, the committed graph.v2.json artifact,
+ * Observed locally (this machine, the committed graph.v3.json artifact,
  * Node 22, warm/post-JIT): both the diagnostic pair (Discovery/The Joshua
  * Tree) and the research sample's worst pair (master-24047/master-3878)
  * run in ~34ms under these caps -- see the ADR's PR 3 addendum for the

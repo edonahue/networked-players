@@ -1,7 +1,7 @@
 // Network Explorer integration tests (ADR 0052) against the real committed
 // pathfinding graph. master-107325 (Elvis Presley) is a real, high-degree
 // entry in the committed artifact (verified against
-// apps/web/public/data/pathfinding/graph.v2.json, ADR 0058) -- picked from
+// apps/web/public/data/pathfinding/graph.v3.json, ADR 0058) -- picked from
 // the artifact itself so this exercises the truncation path for real.
 
 import { expect, test } from "@playwright/test";
@@ -219,7 +219,7 @@ test("a keyboard-activated recenter moves focus to the new center and announces 
 
 // Phase 6 PR 6-03: a read-only ?center= deep link overrides the default
 // album-artist center. U2 (artist_id 6520) is a real, documented neighbor
-// of Elvis in the committed graph (verified against graph.v2.json) -- this
+// of Elvis in the committed graph (verified against graph.v3.json) -- this
 // exercises a genuine override, not a no-op landing on the same node.
 test("a valid ?center= query param overrides the album's default center", async ({
   page,

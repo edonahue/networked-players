@@ -1,6 +1,6 @@
 """Build the public evidence-release registry (ADR 0058): a deduplicated,
 addressable lookup of every release id that can appear as evidence anywhere
-in the product -- the union of `challenge.v2.json`'s releases,
+in the product -- the union of `challenge.v3.json`'s releases,
 `routes/rounds.v1.json`'s releases, and every distinct `evidence_release_id`
 in the pathfinding graph. The pathfinding graph's broader ego network
 reaches far more releases than the other two artifacts describe on their
@@ -8,7 +8,7 @@ own (measured: over 17,000 release ids reachable only through it) -- this
 registry is what lets any of those hops render a real evidence card
 (title/year/cover/source) instead of a bare release id.
 
-Release-level metadata for ids already covered by `challenge.v2.json`/
+Release-level metadata for ids already covered by `challenge.v3.json`/
 `routes/rounds.v1.json` comes straight from there. Metadata for the
 remaining ids comes from `CreditGraph.releases_for_ids`, one batched query
 covering every missing id -- not one query per id, which would dominate
@@ -148,8 +148,8 @@ def build_evidence_release_registry(
         "catalog_version": catalog_version,
         "generated_at": generated_at,
         "source": (
-            "Union of apps/web/public/data/challenge.v2.json, routes/rounds.v1.json, and "
-            "every evidence_release_id in pathfinding/graph.v2.json -- release-level metadata "
+            "Union of apps/web/public/data/challenge.v3.json, routes/rounds.v1.json, and "
+            "every evidence_release_id in pathfinding/graph.v3.json -- release-level metadata "
             "for ids not already covered by the first two comes from the one-hop dataset. "
             "See docs/DATA_AND_RIGHTS.md."
         ),

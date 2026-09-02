@@ -61,7 +61,7 @@ def _artifact() -> dict[str, Any]:
         "catalog_version": catalog["catalog_version"],
         "album_hop_distances_version": album_hop_distances_version(entries, _SNAPSHOT),
         "generated_at": "2026-08-03T00:00:00+00:00",
-        "source": "Derived from challenge.v2.json and routes/rounds.v1.json.",
+        "source": "Derived from challenge.v3.json and routes/rounds.v1.json.",
         "license": "See docs/DATA_AND_RIGHTS.md.",
         "entries": entries,
     }
@@ -160,7 +160,7 @@ def test_empty_entries_list_is_valid() -> None:
         "catalog_version": catalog["catalog_version"],
         "album_hop_distances_version": album_hop_distances_version([], _SNAPSHOT),
         "generated_at": "2026-08-03T00:00:00+00:00",
-        "source": "Derived from challenge.v2.json and routes/rounds.v1.json.",
+        "source": "Derived from challenge.v3.json and routes/rounds.v1.json.",
         "license": "See docs/DATA_AND_RIGHTS.md.",
         "entries": [],
     }

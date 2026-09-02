@@ -657,7 +657,7 @@ export async function initConnect(): Promise<void> {
     // Search, overlapping fetch/parse/validate time with their own
     // think-time between picking and searching -- the single biggest
     // piece of the measured cold-search waterfall (ADR 0059's own
-    // baseline: graph.v2.json wasn't even requested until the search
+    // baseline: graph.v3.json wasn't even requested until the search
     // click). The graph doesn't depend on WHICH pair is eventually
     // searched, only that a search is likely coming, so the first pick is
     // just as valid a signal as the second -- there is no reason to wait

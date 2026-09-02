@@ -30,7 +30,7 @@ artifact alone, the full set of performers shared between any two albums and
 compare it for exact equality against a round's published `answer_set`/
 `bridge_answer_sets` — not merely check that the published set is a subset of
 some narrower, differently-purposed artifact (the trap the prior
-`challenge.v2.json`-derived check fell into; `challenge.v2.json`'s own
+`challenge.v3.json`-derived check fell into; `challenge.v3.json`'s own
 credits are pre-filtered to an unrelated path-discovery process and routinely
 under-report real credits).
 

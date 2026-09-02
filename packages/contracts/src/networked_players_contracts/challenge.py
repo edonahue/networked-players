@@ -1,6 +1,6 @@
-"""Canonical, dependency-free validation for the challenge.v2 artifact.
+"""Canonical, dependency-free validation for the challenge artifact.
 
-challenge.v2 (`apps/web/public/data/challenge.v2.json`) is the album-centered,
+`apps/web/public/data/challenge.v3.json` is the album-centered,
 evidence-preserving static challenge: an album -> artist -> album documented
 credit path over a bounded one-hop working set (ADR 0012). Generation-time
 validation lives in
@@ -16,13 +16,14 @@ Reuses `.rounds`'s `_seed_key_paths`/`_privacy_failures` for the no-leaked-
 the same protection every other real artifact in this package already gets.
 
 `provenance.graph_policy_version` (ADR 0068, optional) records which
-`graph.py.GRAPH_POLICY_VERSION` produced this artifact's paths --
-`challenge.v3.json` sets it; the still-live, untouched `challenge.v1.json`/
-`challenge.v2.json` predate the field entirely and correctly have no
-opinion on it. `CHALLENGE_SCHEMA_VERSION` stays 2 for both the old and the
-new file (the shape is genuinely unchanged), so this field -- not the
-schema version -- is what a consumer checks to know whether an artifact's
-paths were built under the performer gate.
+`graph.py.GRAPH_POLICY_VERSION` produced this artifact's paths.
+`challenge.v3.json` sets it; the still-live `challenge.v1.json` demo
+artifact predates the field entirely and correctly has no opinion on it
+(the retired `challenge.v2.json` was in the same position). The field stays
+OPTIONAL rather than required because `CHALLENGE_SCHEMA_VERSION` is 2 for
+both the old and the new shape (the shape is genuinely unchanged), so this
+field -- not the schema version -- is what a consumer checks to know
+whether an artifact's paths were built under the performer gate.
 
 Pure Python (no lxml/pyarrow/duckdb), safe for the Pi fleet and the web build.
 """
@@ -86,7 +87,7 @@ def challenge_failures(artifact: Any, catalog: Any | None = None) -> list[str]:
             if not provenance.get(field_name):
                 failures.append(f"provenance.{field_name} is required")
         # Optional, not required (ADR 0068): a pre-existing artifact built
-        # before this field existed (challenge.v1.json, the still-live
+        # before this field existed (challenge.v1.json, and the retired
         # challenge.v2.json) legitimately has no graph_policy_version --
         # CHALLENGE_SCHEMA_VERSION stays 2 for both, so schema_version alone
         # cannot distinguish "old" from "new" the way pathfinding_graph.py's

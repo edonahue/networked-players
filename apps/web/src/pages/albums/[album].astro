@@ -22,7 +22,7 @@ const contributorById = new Map(
 export function getStaticPaths() {
   const data = challengeData as ChallengeV2;
   // Phase 6 PR 6-07: every catalog album gets a real page, not just the
-  // ones with a documented challenge.v2 path -- the page body already
+  // ones with a documented challenge.v3 path -- the page body already
   // handles zero connections gracefully ("No documented connections from
   // this album yet."). Narrowing this to path-endpoint albums left 3 real
   // catalog albums (each a real pathfinding-graph node, individually

@@ -89,7 +89,7 @@ _DEFAULT_ARTIFACTS: dict[str, tuple[str, ...]] = {
         "apps/web/public/data/game/rounds.v1.json",
     ),
     "pathfinding-graph": (
-        "apps/web/public/data/pathfinding/graph.v2.json",
+        "apps/web/public/data/pathfinding/graph.v3.json",
         "apps/web/public/data/catalog/albums.v1.json",
     ),
     "record-routes": (

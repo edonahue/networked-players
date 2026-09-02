@@ -62,16 +62,20 @@ recomputation, `album_virtual_nodes` catalog-coverage/sentinel-placement)
 plus, when `schema_version == 3`: `graph_policy_version` is a positive
 integer.
 
-## Dual-live status
+## Status: the only published pathfinding graph
 
-`graph.v3.json` is published alongside the still-live, byte-unedited
-`graph.v2.json`. Neither Connect Two Records nor Network Explorer fetches
-`graph.v3.json` yet — that cutover, and `graph.v2.json`'s eventual
-retirement once every real consumer (identified by the same grep-based
-consumer audit `pathfinding-graph-v1.md`'s own retirement note describes)
-has migrated, is a separate, later change. Both `pathfinding_graph_v2` and
-`pathfinding_graph_v3` stay registered in `PUBLIC_ARTIFACT_GROUPS` and
-validated by `make check` for the duration of the dual-live window.
+`graph.v3.json` shipped dual-live alongside the byte-unedited
+`graph.v2.json`, with both registered in `PUBLIC_ARTIFACT_GROUPS` and
+validated by `make check` for the duration of that window. Connect Two
+Records and Network Explorer cut over to it, followed by the private
+research workbench and the fleet artifact-check default — every consumer
+identified by the same grep-based audit `pathfinding-graph-v1.md`'s own
+retirement note describes. `graph.v2.json` was then deleted as an explicit,
+separate step, and the two registered groups collapsed into one,
+`pathfinding_graph`. `data/contracts/pathfinding-graph-v2.md` was removed
+with it; `pathfinding_graph_failures` still accepts v1- and v2-shaped
+payloads, since the validator never narrowed — only the published artifact
+set did.
 
 ## Revisit trigger
 

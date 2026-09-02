@@ -155,7 +155,7 @@ test("an album page links to a contributor page that resolves", async ({
 // Phase 6 PR 6-04: a contributor page links into the Network Explorer
 // centered on that contributor specifically -- routed through the first
 // of their own connected albums (contributor_index.py's `albums` field is
-// built from challenge.v2.json path endpoints, the same set that backs
+// built from challenge.v3.json path endpoints, the same set that backs
 // every /explore/<album.id>/ static page, so this route always resolves).
 test("a contributor page links into the Network Explorer centered on themselves", async ({
   page,
@@ -266,7 +266,7 @@ test("a contributor page offers to connect two of their own records", async ({
   const albumA = albumById.get(idA);
   const albumB = albumById.get(idB);
   if (!albumA || !albumB)
-    throw new Error("connected album missing from challenge.v2.json");
+    throw new Error("connected album missing from challenge.v3.json");
 
   await page.goto(`/contributors/${contributor.artist_id}/`);
   const connectLink = page.locator(

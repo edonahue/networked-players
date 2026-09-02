@@ -64,7 +64,7 @@ def test_a_list_length_change_is_reported_directly_not_element_by_element() -> N
 
 
 def test_a_version_field_nested_under_provenance_is_reported_with_its_path() -> None:
-    """`challenge.v2.json` and `game/rounds.v1.json` store every version field
+    """`challenge.v3.json` and `game/rounds.v1.json` store every version field
     under a `provenance` object rather than at the top level. A top-level-only
     lookup silently reported `{}` here even though the fields genuinely
     changed -- still visible in `structural_diff`, just missing from the one

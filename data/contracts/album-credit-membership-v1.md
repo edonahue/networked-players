@@ -9,7 +9,7 @@ The public album-credit-membership artifact
 
 > **The single canonical answer to "who's credited on album X."** Before
 > this artifact, that question was answered three different, disagreeing
-> ways across `challenge.v2.json`, Connection Guesser/Record Routes, and
+> ways across `challenge.v3.json`, Connection Guesser/Record Routes, and
 > the pathfinding graph. This artifact settles it for the 140-album
 > catalog: for each album, the definitive credited-contributor list on
 > that album's own `main_release_id` — the same release
@@ -54,7 +54,7 @@ No `is_linked` field: every row in this artifact is, by construction,
 already linked (`credit_rows_for_releases` filters to `artist_id IS NOT
 NULL`) — carrying a field that would always be `true` would be redundant
 rather than informative. Unlinked/evidence-only names are not represented
-here; they remain visible where other artifacts (e.g. `challenge.v2.json`)
+here; they remain visible where other artifacts (e.g. `challenge.v3.json`)
 already carry them alongside real hop evidence.
 
 ## Validation

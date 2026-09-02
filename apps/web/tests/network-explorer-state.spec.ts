@@ -50,7 +50,7 @@ function starGraph(): PathfindingGraph {
 
 // Same star graph as starGraph(), but on a v2 schema with one extra virtual
 // album-anchor node (-1) bidirectionally connected to the center (100) --
-// exactly the shape a real catalog artist gets in graph.v2.json (ADR 0058)
+// exactly the shape a real catalog artist gets in graph.v3.json (ADR 0058)
 // once they're credited on any catalog album.
 function starGraphWithAlbumAnchor(): PathfindingGraph {
   return {

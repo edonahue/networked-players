@@ -2,7 +2,7 @@
 
 The contributor index (`apps/web/public/data/contributors/index.v1.json`,
 `data/contracts/contributor-index-v1.md`, ADR 0048) is a small, deterministic
-lookup built entirely from two already-published artifacts (`challenge.v2.json`
+lookup built entirely from two already-published artifacts (`challenge.v3.json`
 and `routes/{universe,rounds}.v1.json`) -- never a fresh full-corpus graph
 query. It belongs to exactly one catalog generation, the same rule
 `album_art_failures` enforces for the album-art registry.

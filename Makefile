@@ -72,12 +72,12 @@ expand-onehop: ## One-hop expansion from the private seed over a parsed snapshot
 		--dataset local/processed/discogs/snapshot=$(SNAPSHOT) \
 		--output-root local/processed/discogs-onehop $(ARGS)
 
-build-challenge: ## Build the album-centered challenge.v2 artifact from a one-hop dataset (needs SNAPSHOT=YYYYMMDD)
+build-challenge: ## Build the album-centered challenge.v3 artifact from a one-hop dataset (needs SNAPSHOT=YYYYMMDD)
 	@test -n "$(SNAPSHOT)" || (echo "Set SNAPSHOT=YYYYMMDD (a completed expand-onehop under local/processed/discogs-onehop/)" >&2; exit 1)
 	uv run networked-players-catalog build-challenge-from-dump \
 		--onehop-root local/processed/discogs-onehop/snapshot=$(SNAPSHOT) \
 		--albums data/albums/top-albums-v1.json \
-		--output apps/web/public/data/challenge.v2.json $(ARGS)
+		--output apps/web/public/data/challenge.v3.json $(ARGS)
 
 export-graph-snapshot: ## Export the materialized co-credit graph snapshot from a one-hop dataset (needs SNAPSHOT=YYYYMMDD)
 	@test -n "$(SNAPSHOT)" || (echo "Set SNAPSHOT=YYYYMMDD (a completed expand-onehop under local/processed/discogs-onehop/)" >&2; exit 1)
@@ -148,7 +148,7 @@ cluster-benchmark-distributed: ## Cluster-vs-single-node RQ benchmark; needs dep
 deploy-verify-job: ## Deploy the challenge-evidence verification job to Pi workers; ARGS="--limit worker-01"
 	./infra/ansible/run-deploy-verify-job-local.sh $(ARGS)
 
-verify-challenge-distributed: ## Re-verify a challenge.v2 artifact's evidence across Pi workers' local caches (ADR 0025); needs deploy-jobs-broker + deploy-verify-job; writes local/jobs/ only
+verify-challenge-distributed: ## Re-verify a challenge.v3 artifact's evidence across Pi workers' local caches (ADR 0025); needs deploy-jobs-broker + deploy-verify-job; writes local/jobs/ only
 	./scripts/enqueue-verify-challenge.sh $(ARGS)
 
 connection-rounds-check-distributed: ## Independently re-validate the published Connection Guesser rounds pool on every targeted worker via the ADR 0034 capability platform (real redundant fan-out, pass only if all pass); needs deploy-jobs-broker; writes local/jobs/ only; ARGS="--limit worker-01" to debug one worker

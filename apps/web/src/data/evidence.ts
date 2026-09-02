@@ -1,5 +1,5 @@
 // Normalized hop-evidence views for EvidencePanel.astro (plan §12.7): the
-// challenge.v1 demo, the challenge.v2 album pages, and the playable-cohort
+// challenge.v1 demo, the challenge.v3 album pages, and the playable-cohort
 // pages all reduce to this one shape, so a documented connection renders the
 // same way everywhere it appears.
 

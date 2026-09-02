@@ -13,11 +13,11 @@
 //        agreement with an independently recomputed intersection, not just
 //        containment.
 //     2. A one-directional role-eligibility spot-check against
-//        challenge.v2.json's own published credit rows, using an
+//        challenge.v3.json's own published credit rows, using an
 //        independent TypeScript port of the Python performer-role allowlist
 //        (not an import) -- catches a real allowlist regression that (1)
 //        alone cannot, since (1) trusts the universe's own role filtering.
-//        challenge.v2.json is pre-filtered for an unrelated path-discovery
+//        challenge.v3.json is pre-filtered for an unrelated path-discovery
 //        process and routinely under-reports real credits, so this
 //        direction only (real-derivable => published) is sound; the
 //        opposite direction is check (1)'s job now, not this one's.
@@ -176,9 +176,9 @@ function isPerformerRole(roleText: string | null): boolean {
   );
 }
 
-/** artist_id -> set of real album ids (challenge.v2.json's AlbumV2.id) where
+/** artist_id -> set of real album ids (challenge.v3.json's AlbumV2.id) where
  * that artist holds an explicit, eligible performer credit on the album's
- * own main_release_id, per challenge.v2.json's OWN (narrower, differently-
+ * own main_release_id, per challenge.v3.json's OWN (narrower, differently-
  * filtered) evidence. Role-eligibility spot-check only -- see the file
  * header for why this can't support an exact-equality claim. */
 function realPerformersByAlbum(): Map<string, Set<number>> {
@@ -288,13 +288,13 @@ test("real pool: two-hop bridge_answer_sets exactly match the universe's own sha
 });
 
 test("real pool: every real-derivable shared performer is a published answer (role-eligibility spot-check, subset)", () => {
-  // challenge.v2.json's releases[].credits[] is EvidenceRelease-shaped: pre-
+  // challenge.v3.json's releases[].credits[] is EvidenceRelease-shaped: pre-
   // filtered to whichever artists happen to be endpoints of *that separate
   // artifact's own* path discovery (a different generator, a different
   // question -- see challenge.ts's EvidenceRelease comment). It routinely
   // omits a real credit the Guesser's own generator legitimately found
   // (confirmed: e.g. Futuresex/Lovesounds <-> Still Bill's real session
-  // players are absent from challenge.v2.json's filtered evidence entirely).
+  // players are absent from challenge.v3.json's filtered evidence entirely).
   // So this can only check one direction safely -- but it exercises an
   // INDEPENDENT role-allowlist port the exact-equality checks above don't,
   // since those trust universe.v1.json's own (Python-filtered) credits.
@@ -309,7 +309,7 @@ test("real pool: every real-derivable shared performer is a published answer (ro
     for (const id of derivedShared) {
       expect(
         actualAnswers.has(id),
-        `round ${round.id}: artist ${id} is a real shared performer per challenge.v2.json but missing from answer_set`,
+        `round ${round.id}: artist ${id} is a real shared performer per challenge.v3.json but missing from answer_set`,
       ).toBe(true);
     }
   }
@@ -404,7 +404,7 @@ test("real distractors never satisfy the connection (first principles, exact)", 
         ).toBe(false);
         expect(
           legacyA.has(distractor.id) && legacyC.has(distractor.id),
-          `round ${round.id}: distractor ${distractor.name} is credited on both albums (challenge.v2.json spot-check)`,
+          `round ${round.id}: distractor ${distractor.name} is credited on both albums (challenge.v3.json spot-check)`,
         ).toBe(false);
       }
     } else if (round.middle) {

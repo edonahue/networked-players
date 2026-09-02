@@ -5,7 +5,7 @@
 // longer uses that filter (ADR 0067) -- it shows the full catalog and
 // marks unconnected albums honestly instead of hiding them, so it
 // INTENTIONALLY diverges from /explore/'s connected-only count below.
-// This file asserts the real, committed challenge.v2.json artifact
+// This file asserts the real, committed challenge.v3.json artifact
 // produces the right count in each of those distinct places, and that
 // Explore's cards link into /explore/ while Albums' cards link into
 // /albums/.
@@ -35,7 +35,7 @@ const connectedAlbumCount = new Set(
 ).size;
 
 test("the real committed catalog has at least one album excluded from the connected set", () => {
-  // Not a tautology: this only holds if challenge.v2.json's albums[] and
+  // Not a tautology: this only holds if challenge.v3.json's albums[] and
   // paths[] genuinely diverge in the committed artifact -- if a future
   // regeneration connects every album, this failing is the useful signal
   // to drop the dedup-boundary assertions below, not a bug in the test.
@@ -44,7 +44,7 @@ test("the real committed catalog has at least one album excluded from the connec
 });
 
 // Phase 6 PR 6-07: an album excluded from the "connected" set (no
-// challenge.v2 path) still needs a real /albums/ and /explore/ page --
+// challenge.v3 path) still needs a real /albums/ and /explore/ page --
 // Connect's own endpoint cards link to /albums/<id>/ unconditionally for
 // any catalog album a visitor picks, including these.
 test("an album excluded from the connected set still has a real /albums/ and /explore/ page", async ({
@@ -143,7 +143,7 @@ test("an Explore card and an Albums card for the same album link to different se
 // the FULL catalog (getStaticPaths no longer filters to connectedAlbumCount
 // -- a catalog album can be a real, individually reachable pathfinding-graph
 // node, and so a valid Connect/Explore destination, without ever being a
-// challenge.v2 path endpoint). /explore/'s GRID stays at connectedAlbumCount
+// challenge.v3 path endpoint). /explore/'s GRID stays at connectedAlbumCount
 // on purpose (ADR 0067: exploring from a disconnected node isn't a
 // meaningful entry into that experience); /albums/'s grid does not (ADR
 // 0067 flipped that for the shelf specifically). The sitemap lists every

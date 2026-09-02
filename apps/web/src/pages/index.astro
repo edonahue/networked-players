@@ -16,7 +16,7 @@ const albums = connectedCatalogAlbums(challenge);
 const contributorIndex = contributorIndexData as ContributorIndex;
 
 // Deterministic, not random: challenge.paths[0] is a real documented route,
-// content-hash versioned along with the rest of challenge.v2.json (ADR
+// content-hash versioned along with the rest of challenge.v3.json (ADR
 // 0043) -- its position in the array is the artifact's own stable order,
 // not a pick made at render time.
 const featuredPath = challenge.paths[0];

@@ -37,7 +37,7 @@ by `networked-players-catalog build-album-hop-distances` and validated by
 | --- | --- | --- |
 | `artist_id` | int | The Discogs PAN artist id. Must be a real `artist_id` in the companion `contributor-index-v1` artifact. |
 | `album_id` | string | A canonical catalog album id (must exist in the catalog). |
-| `hop_distance` | int | The minimum number of documented credit-hops from this artist's nearest occurrence in any `challenge.v2.json` path or `routes/rounds.v1.json` round to this endpoint album. `0` means the artist is directly adjacent to that album's representative artist (the common case, e.g. every artist is `0` hops from their own album); any value greater than zero — including `1` — means a real but more distant documented chain, never a claim of a direct credit on that album's own release. Frontend copy must surface this whenever `hop_distance !== 0`. |
+| `hop_distance` | int | The minimum number of documented credit-hops from this artist's nearest occurrence in any `challenge.v3.json` path or `routes/rounds.v1.json` round to this endpoint album. `0` means the artist is directly adjacent to that album's representative artist (the common case, e.g. every artist is `0` hops from their own album); any value greater than zero — including `1` — means a real but more distant documented chain, never a claim of a direct credit on that album's own release. Frontend copy must surface this whenever `hop_distance !== 0`. |
 
 `entries` is sorted by `(artist_id, hop_distance, album_id)` and contains no
 duplicate `(artist_id, album_id)` pair.
@@ -58,7 +58,7 @@ allowed to crash validation via an unguarded set/dict operation.
 ## Revisit trigger
 
 If a future surface needs hop-distance data scoped beyond
-`challenge.v2.json`/`routes/rounds.v1.json` (the same two artifacts
+`challenge.v3.json`/`routes/rounds.v1.json` (the same two artifacts
 `contributor-index-v1` is built from), extend those two source artifacts
 first, or add a clearly-named `v2` artifact with its own version namespace —
 never silently widen `album-hop-distances-v1`, and never fold this data back

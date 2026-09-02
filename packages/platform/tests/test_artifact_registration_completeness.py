@@ -52,7 +52,7 @@ _VALIDATOR_NAME_BY_ARTIFACT_GROUP = {
     "connection_daily_manifest": "daily-manifest",
     "record_routes": "record-routes",
     "contributor_index": "contributor-index",
-    "pathfinding_graph_v2": "pathfinding-graph",
+    "pathfinding_graph": "pathfinding-graph",
     "album_credit_membership": "album-credit-membership",
     "evidence_release_registry": "evidence-release-registry",
 }
@@ -60,16 +60,6 @@ _ARTIFACT_GROUPS_WITHOUT_A_PI_CHECK = frozenset(
     {
         "challenge",
         "album_hop_distances",
-        # ADR 0068: dual-live, not-yet-cut-over artifacts. Neither is fetched
-        # by any real consumer yet (that's the cutover PR's job), so neither
-        # needs its own distributed re-check today. `pathfinding_graph_v3`
-        # will get one once it REPLACES `pathfinding_graph_v2`'s entry (the
-        # same in-place flip the v1->v2 transition used, not a second
-        # parallel entry -- see this test module's own docstring on why five
-        # registries matter). `challenge_v3` follows `challenge`'s existing,
-        # deliberate "no Pi check by design" precedent above.
-        "pathfinding_graph_v3",
-        "challenge_v3",
     }
 )
 

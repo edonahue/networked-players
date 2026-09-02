@@ -23,11 +23,12 @@ change with no shape change, so this field is what lets a validator or a
 stale cached client tell a policy-only regeneration apart from an old
 payload with the identical CSR shape. This module still accepts v1- and
 v2-shaped payloads (`data/contracts/pathfinding-graph-v1.md`/`-v2.md`, kept
-as historical record) for whatever legacy export might need re-validating;
-`graph.v2.json` remains live and registered (`pathfinding_graph_v2`)
-alongside `graph.v3.json` until every real consumer has cut over and it is
-retired as an explicit, separate step (ADR 0058's own real precedent for
-the v1 retirement).
+as historical record) for whatever legacy export might need re-validating.
+`graph.v3.json` is now the only published pathfinding graph, registered as
+`pathfinding_graph`: v2 stayed live and registered alongside it until every
+real consumer had cut over, then was retired as an explicit, separate step
+(ADR 0058's own real precedent for the v1 retirement). The validator itself
+never narrowed -- only the published artifact set did.
 
 Pure Python (no lxml/pyarrow/duckdb), safe for the Pi fleet and the web build
 to independently verify an already-generated graph against the canonical

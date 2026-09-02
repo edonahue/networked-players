@@ -54,7 +54,7 @@ def cached_artifact(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
         artifact, _ = build_challenge_v2(
             graph, ALBUMS, snapshot_date="20260601", generated_by="test-suite"
         )
-    artifact_path = tmp_path / "challenge.v2.json"
+    artifact_path = tmp_path / "challenge.v3.json"
     artifact_path.write_text(json.dumps(artifact))
 
     monkeypatch.setenv("CATALOG_DATA_DIR", str(cache_root))

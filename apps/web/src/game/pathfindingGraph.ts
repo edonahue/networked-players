@@ -1,5 +1,5 @@
 // Runtime type + validation + BFS for the pathfinding graph artifact
-// (apps/web/public/data/pathfinding/graph.v2.json,
+// (apps/web/public/data/pathfinding/graph.v3.json,
 // data/contracts/pathfinding-graph-v2.md, ADR 0050/0051/0058). v1
 // (graph.v1.json, data/contracts/pathfinding-graph-v1.md, kept as historical
 // record) retired once both real browser consumers (Connect Two Records,

@@ -56,9 +56,7 @@ PUBLIC_ARTIFACT_GROUPS = (
     "challenge",
     "contributor_index",
     "album_hop_distances",
-    "pathfinding_graph_v2",
-    "pathfinding_graph_v3",
-    "challenge_v3",
+    "pathfinding_graph",
     "album_credit_membership",
     "evidence_release_registry",
 )
@@ -77,9 +75,7 @@ def public_artifacts_failures(
     challenge: Any,
     contributor_index: Any,
     album_hop_distances: Any,
-    pathfinding_graph_v2: Any,
-    pathfinding_graph_v3: Any,
-    challenge_v3: Any,
+    pathfinding_graph: Any,
     album_credit_membership: Any,
     evidence_release_registry: Any,
 ) -> dict[str, list[str]]:
@@ -88,19 +84,16 @@ def public_artifacts_failures(
     present, with an empty list when that artifact is clean -- callers can
     report "N/N clean" without special-casing an absent key.
 
-    `pathfinding_graph_v2` uses the same schema-version-aware
-    `pathfinding_graph_failures` that validated the retired v1 artifact --
-    v1 (`graph.v1.json`) was retired once both real browser consumers
-    (Connect Two Records, Network Explorer) had cut over to v2 (ADR 0058).
-
-    `pathfinding_graph_v3` and `challenge_v3` (ADR 0068) are dual-live,
-    additive artifacts: `graph.v3.json`/`challenge.v3.json` exist alongside
-    the still-live, unedited `graph.v2.json`/`challenge.v2.json`, published
-    but not yet fetched by any real consumer until the cutover PR flips
-    their default URLs. Validating both here from day one (rather than
-    waiting for the cutover) is what makes the dual-live window itself
-    provably safe -- a defect in the new artifact is caught by `make check`
-    immediately, not only once something starts depending on it."""
+    `challenge` and `pathfinding_graph` are the single live artifacts of
+    their kind: `challenge.v3.json` and `pathfinding/graph.v3.json`, both
+    performer-gated (ADR 0068). Their v2 predecessors went through the same
+    dual-live-then-retire sequence ADR 0058 established for `graph.v1.json`
+    -- published alongside the old file, validated here from day one so a
+    defect was caught by `make check` rather than by a consumer, cut over
+    once, then deleted as an explicit separate step. `pathfinding_graph`
+    still uses the schema-version-aware `pathfinding_graph_failures`, which
+    continues to accept the older schema versions it has always validated;
+    only the published artifact set narrowed, not the validator."""
     return {
         "catalog": public_album_catalog_failures(catalog),
         "album_art_registry": album_art_failures(album_art, catalog),
@@ -114,9 +107,7 @@ def public_artifacts_failures(
         "album_hop_distances": album_hop_distances_failures(
             album_hop_distances, catalog, contributor_index
         ),
-        "pathfinding_graph_v2": pathfinding_graph_failures(pathfinding_graph_v2, catalog),
-        "pathfinding_graph_v3": pathfinding_graph_failures(pathfinding_graph_v3, catalog),
-        "challenge_v3": challenge_failures(challenge_v3, catalog),
+        "pathfinding_graph": pathfinding_graph_failures(pathfinding_graph, catalog),
         "album_credit_membership": album_credit_membership_failures(
             album_credit_membership, catalog
         ),

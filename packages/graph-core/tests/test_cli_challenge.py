@@ -15,7 +15,7 @@ ALBUMS = [
 def test_build_challenge_from_dump_cli_wiring(dataset_root: Path, tmp_path: Path, capsys) -> None:
     albums_path = tmp_path / "albums.json"
     albums_path.write_text(json.dumps({"albums": ALBUMS}))
-    output_path = tmp_path / "challenge.v2.json"
+    output_path = tmp_path / "challenge.v3.json"
 
     exit_code = main(
         [
@@ -41,7 +41,7 @@ def test_build_challenge_from_dump_cli_wiring(dataset_root: Path, tmp_path: Path
 def test_validate_challenge_cli_wiring(dataset_root: Path, tmp_path: Path, capsys) -> None:
     albums_path = tmp_path / "albums.json"
     albums_path.write_text(json.dumps({"albums": ALBUMS}))
-    output_path = tmp_path / "challenge.v2.json"
+    output_path = tmp_path / "challenge.v3.json"
     main(
         [
             "build-challenge-from-dump",
@@ -80,7 +80,7 @@ def test_build_challenge_from_dump_applies_artist_family_exclusions_cli_wiring(
             }
         )
     )
-    output_path = tmp_path / "challenge.v2.json"
+    output_path = tmp_path / "challenge.v3.json"
 
     exit_code = main(
         [
@@ -166,7 +166,7 @@ def test_build_album_catalog_cli_wiring(dataset_root: Path, tmp_path: Path, caps
     assert len(catalog["albums"]) == 3
 
     # The generated catalog is a valid --albums input for build-challenge-from-dump.
-    output_path = tmp_path / "challenge.v2.json"
+    output_path = tmp_path / "challenge.v3.json"
     exit_code = main(
         [
             "build-challenge-from-dump",

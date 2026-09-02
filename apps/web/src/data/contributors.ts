@@ -2,7 +2,7 @@
 // (apps/web/public/data/contributors/index.v1.json,
 // data/contracts/contributor-index-v1.md, ADR 0048).
 //
-// Built entirely from challenge.v2.json + routes/{universe,rounds}.v1.json --
+// Built entirely from challenge.v3.json + routes/{universe,rounds}.v1.json --
 // never a fresh full-corpus query. connection_count/neighboring_contributor_ids
 // reflect this contributor's degree within those two published artifacts
 // only, never the private full corpus.

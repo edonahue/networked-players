@@ -5,7 +5,7 @@ The album-credit-membership artifact
 (`apps/web/public/data/albums/credit-membership.v1.json`,
 `data/contracts/album-credit-membership-v1.md`, ADR 0058) is the single
 canonical answer to "who's credited on album X" for the 140-album catalog
--- replacing the pre-existing 3-way inconsistency across `challenge.v2.json`,
+-- replacing the pre-existing 3-way inconsistency across `challenge.v3.json`,
 Connection Guesser/Record Routes, and the pathfinding graph. Every album's
 `main_release_id` must agree exactly with the canonical catalog's own
 choice; this artifact never invents its own release selection.
