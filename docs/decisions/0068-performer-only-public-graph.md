@@ -1,7 +1,6 @@
 # ADR 0068: Public connections mean documented musical performance
 
-- **Status:** Accepted (policy and audit only in this addendum; graph-construction
-  cutover ships in follow-on PRs, tracked below)
+- **Status:** Accepted
 - **Date:** 2026-09-01
 - **Supersedes:** [ADR 0039](0039-performer-allowlist-layered-for-game-rounds.md)'s
   "must never be imported by `graph.py`, `challenge.py`, or the cohort pipeline"

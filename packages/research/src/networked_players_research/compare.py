@@ -8,22 +8,31 @@ Every graph traversal here goes through `CreditGraph` (`.find_path`,
 `.credit_rows_for_artist`, `.release`, `.releases_for_ids`) -- this module
 never re-derives BFS or edge SQL itself.
 
-**Traversal breadth is the caller's choice, made once when the graph is
-opened.** Every function here operates on whatever edge relation the
-`CreditGraph` it is handed was built with, so ADR 0068's performer gate is
-inherited rather than re-implemented. `CreditGraph.open(...)` defaults to
-`performer_only=True`, matching the public product exactly: a comparison run
-against a default graph traverses only documented-performance edges, so a
-private result can always be reconciled against what the public site would
-show. Passing `performer_only=False` restores the broader, pre-ADR-0068
-"any edge-eligible shared credit" relation -- producers, engineers, mixers,
-mastering, arrangers, and bare-`NULL` extra credits all edge-forming again.
-That broader view is deliberately retained for private research (it answers
-real questions the performer graph cannot, e.g. "who did this studio team
-actually work across"), and it is *only* ever appropriate here: it must
-never produce a public artifact, whose contract is performer-only by
-construction. Label any output derived from it as the broader research
-view, never as a site connection. Scope-tier comparison reuses
+**Traversal breadth is the request's own choice.** Every function here
+operates on whatever edge relation the `CreditGraph` it is handed was built
+with, so ADR 0068's performer gate is inherited rather than
+re-implemented -- this module never has its own copy of the eligibility
+predicate. Each `Compare*Request` carries `performer_only: bool = True`
+(the same field name/default `CreditGraph.open` itself uses), which
+`run_comparison_and_persist` forwards into `open_graph` to decide which
+relation the graph it opens or reuses is built from. `performer_only=True`
+matches the public product exactly: a comparison run traverses only
+documented-performance edges, so a private result can always be reconciled
+against what the public site would show. `performer_only=False` restores
+the broader, pre-ADR-0068 "any edge-eligible shared credit" relation --
+producers, engineers, mixers, mastering, arrangers, and bare-`NULL` extra
+credits all edge-forming again. That broader view is deliberately retained
+for private research (it answers real questions the performer graph
+cannot, e.g. "who did this studio team actually work across"), reachable
+from both the CLI (`research-compare --include-non-performers`) and the
+workbench server (`POST /api/compare` with `"performer_only": false`,
+`GET .../graph-view` with `?performer_only=false`) -- and it is *only*
+ever appropriate here: it must never produce a public artifact, whose
+contract is performer-only by construction. Every persisted run's
+manifest records which `performer_only` value it used (a plain field on
+the serialized request), so a saved run is self-describing. Label any
+output derived from the broader view as the broader research view, never
+as a site connection. Scope-tier comparison reuses
 `scope_tier.measure_scope_tiers` directly. Role-category composition reuses
 `role_taxonomy.classify_role`, the same taxonomy every other role-aware
 feature in the repo uses.
@@ -104,6 +113,10 @@ class CompareAlbumsRequest:
     album_b_release_id: int
     max_hops: int = DEFAULT_MAX_HOPS
     max_route_candidate_pairs: int = DEFAULT_MAX_ROUTE_CANDIDATE_PAIRS
+    # ADR 0068: which edge relation `run_comparison_and_persist` opens the
+    # graph with. True (default) matches the public product; False restores
+    # the broader, pre-0068 relation -- see this module's own docstring.
+    performer_only: bool = True
 
 
 def _credited_artist_ids(credit_rows: list[dict[str, Any]]) -> list[int]:
@@ -420,6 +433,8 @@ class CompareArtistsRequest:
     artist_a_id: int
     artist_b_id: int
     max_hops: int = DEFAULT_MAX_HOPS
+    # See CompareAlbumsRequest.performer_only.
+    performer_only: bool = True
 
 
 def _era_counts(
@@ -635,6 +650,8 @@ class CompareScenesRequest:
     scene_b_artist_ids: tuple[int, ...]
     max_hops: int = DEFAULT_MAX_HOPS
     max_route_candidate_pairs: int = DEFAULT_MAX_ROUTE_CANDIDATE_PAIRS
+    # See CompareAlbumsRequest.performer_only.
+    performer_only: bool = True
 
 
 def _resolve_scene(
@@ -790,6 +807,14 @@ def _serialize_request(
     return data
 
 
+def _open_graph_default(root: Path, performer_only: bool) -> AbstractContextManager[CreditGraph]:
+    """The CLI's one-shot default `open_graph`: open, compare, close --
+    completely unchanged from before `performer_only` existed, just now
+    forwarding the request's own choice of edge relation instead of always
+    taking `CreditGraph.open`'s own `performer_only=True` default."""
+    return CreditGraph.open(root, performer_only=performer_only)
+
+
 def run_comparison_and_persist(
     mode: str,
     request: CompareAlbumsRequest | CompareArtistsRequest | CompareScenesRequest,
@@ -797,30 +822,34 @@ def run_comparison_and_persist(
     topic: str,
     research_root: Path = RESEARCH_ROOT,
     run_id: str | None = None,
-    open_graph: Callable[[Path], AbstractContextManager[CreditGraph]] = CreditGraph.open,
+    open_graph: Callable[[Path, bool], AbstractContextManager[CreditGraph]] = _open_graph_default,
 ) -> dict[str, Any]:
-    """Opens a `CreditGraph` over the request's own corpus root, runs the
-    right `compare_*` function for `mode`, and persists the result as a run
-    under `research_root/<topic>/runs/<run-id>/` -- exactly the same
-    bookkeeping `research-analyze` already uses. Shared by the CLI
+    """Opens a `CreditGraph` over the request's own corpus root and its own
+    `performer_only` choice (ADR 0068 -- see this module's own docstring),
+    runs the right `compare_*` function for `mode`, and persists the result
+    as a run under `research_root/<topic>/runs/<run-id>/` -- exactly the
+    same bookkeeping `research-analyze` already uses. Shared by the CLI
     (`research-compare`) and the workbench server mode so both stay in
     lockstep rather than maintaining two copies of this dispatch.
 
-    `open_graph` defaults to `CreditGraph.open` itself -- the CLI's
-    existing one-shot behavior (open, compare, close), completely
-    unchanged. The workbench server passes a cache-backed context manager
-    instead (`WorkbenchGraphCache.checkout` in `apps/review/review_server.
-    py`), so repeated comparisons against the SAME corpus reuse one
-    already-materialized graph (skipping the ~2.5-minute credit_edges
-    rebuild) via `CreditGraph.cursor()` rather than every request paying
-    that cost fresh -- a real, independently-confirmed performance gap
-    (Phase 7 closeout, sibling to PR #178's own uncached scope-tier
-    finding, which the same closeout fixes separately)."""
+    `open_graph` defaults to `_open_graph_default` -- the CLI's existing
+    one-shot behavior (open, compare, close), completely unchanged. The
+    workbench server passes a cache-backed context manager instead
+    (`WorkbenchGraphCache.checkout` in `apps/review/review_server.py`), so
+    repeated comparisons against the SAME corpus AND the SAME
+    `performer_only` choice reuse one already-materialized graph (skipping
+    the ~2.5-minute credit_edges rebuild) via `CreditGraph.cursor()` rather
+    than every request paying that cost fresh -- a real,
+    independently-confirmed performance gap (Phase 7 closeout, sibling to
+    PR #178's own uncached scope-tier finding, which the same closeout
+    fixes separately). The two `performer_only` views of the same corpus
+    are cached as independent entries, never sharing or evicting each
+    other's graph."""
     if mode not in COMPARE_MODES:
         raise CompareError(f"unrecognized mode: {mode!r}; must be one of {COMPARE_MODES}")
 
     started_at = datetime.now(UTC).isoformat()
-    with open_graph(request.corpus_snapshot_root) as graph:
+    with open_graph(request.corpus_snapshot_root, request.performer_only) as graph:
         if mode == "albums":
             if not isinstance(request, CompareAlbumsRequest):
                 raise CompareError("mode 'albums' requires a CompareAlbumsRequest")

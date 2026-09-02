@@ -30,10 +30,12 @@ import pytest
 from networked_players_graph_core.graph import CreditGraph, EvidencePath, FrontierTooLargeError, Hop
 from networked_players_research.compare import (
     CompareAlbumsRequest,
+    CompareArtistsRequest,
     CompareError,
     _route_between,
     _sorted_role_texts,
     compare_albums,
+    run_comparison_and_persist,
 )
 from networked_players_research.report import ResearchReportError, _scan_for_forbidden_phrases
 
@@ -380,3 +382,88 @@ def test_forbidden_phrase_guard_is_really_wired_in() -> None:
     # must raise exactly like it does everywhere else in the repo.
     with pytest.raises(ResearchReportError):
         _scan_for_forbidden_phrases("Seed A collaborated with Seed B on this")
+
+
+def test_run_comparison_and_persist_forwards_performer_only_to_open_graph(
+    tmp_path: Path, corpus: Path
+) -> None:
+    """ADR 0068 / cleanup pass: `request.performer_only` must actually reach
+    whatever `open_graph` callable does the opening -- the CLI's default
+    `_open_graph_default` and the workbench server's `WorkbenchGraphCache.
+    checkout` both take `(root, performer_only)` positionally. A spy that
+    still delegates to a real `CreditGraph.open` proves both the VALUE
+    forwarded and that the resulting graph genuinely differs."""
+    calls: list[bool] = []
+
+    def spying_open(root: Path, performer_only: bool) -> Any:
+        calls.append(performer_only)
+        return CreditGraph.open(root, performer_only=performer_only)
+
+    request = CompareArtistsRequest(corpus, SEED_A, BOB, performer_only=False)
+    run_comparison_and_persist(
+        "artists",
+        request,
+        topic="performer-only-forwarding",
+        research_root=tmp_path / "research",
+        open_graph=spying_open,
+    )
+    assert calls == [False]
+
+    default_request = CompareArtistsRequest(corpus, SEED_A, BOB)
+    run_comparison_and_persist(
+        "artists",
+        default_request,
+        topic="performer-only-forwarding",
+        research_root=tmp_path / "research",
+        open_graph=spying_open,
+    )
+    assert calls == [False, True]
+
+
+def test_run_comparison_and_persist_records_performer_only_in_the_persisted_request(
+    tmp_path: Path, corpus: Path
+) -> None:
+    import json
+
+    research_root = tmp_path / "research"
+    run_comparison_and_persist(
+        "artists",
+        CompareArtistsRequest(corpus, SEED_A, BOB, performer_only=False),
+        topic="performer-only-manifest",
+        research_root=research_root,
+    )
+    runs = list((research_root / "performer-only-manifest" / "runs").iterdir())
+    assert len(runs) == 1
+    request = json.loads((runs[0] / "request.json").read_text())
+    assert request["performer_only"] is False
+
+
+def test_run_comparison_and_persist_default_open_graph_honors_performer_only(
+    tmp_path: Path, corpus: Path
+) -> None:
+    """No custom `open_graph` at all -- the real default
+    (`_open_graph_default`) must still open a genuinely performer-gated
+    graph by default, and a genuinely broader one when asked. Bob is
+    `release_credit`/"Engineer", credited on release 1 alongside billed
+    Seed A (this file's own module docstring): under the performer gate he
+    has zero traversable edges at all (his only credit row documents no
+    performance), so `find_path` reports no route; opened broader, the
+    release_scope edge from Seed A's billing to Bob's extra credit forms,
+    and it is a genuine one-hop path."""
+    default_result = run_comparison_and_persist(
+        "artists",
+        CompareArtistsRequest(corpus, SEED_A, BOB),
+        topic="default-open-graph-gated",
+        research_root=tmp_path / "research",
+    )
+    assert default_result["comparison"]["route"]["case"] == "no_path_within_bound"
+
+    broad_result = run_comparison_and_persist(
+        "artists",
+        CompareArtistsRequest(corpus, SEED_A, BOB, performer_only=False),
+        topic="default-open-graph-broad",
+        research_root=tmp_path / "research",
+    )
+    broad_route = broad_result["comparison"]["route"]
+    assert broad_route["case"] == "found"
+    assert len(broad_route["hops"]) == 1
