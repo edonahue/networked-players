@@ -48,7 +48,7 @@ def test_review_album_candidates_refuses_to_write_outside_local(
     tmp_path: Path, output_name: str
 ) -> None:
     candidates = _write(tmp_path / "candidates.json", [])
-    graph = _write(tmp_path / "graph.v2.json", {"node_ids": [1, 2, 3]})
+    graph = _write(tmp_path / "graph.v3.json", {"node_ids": [1, 2, 3]})
     output = tmp_path / output_name
 
     with pytest.raises(ValueError, match="refuses to write outside local/"):
@@ -100,7 +100,7 @@ def test_review_album_candidates_accepts_a_local_path(tmp_path: Path) -> None:
     repo-relative `local/research/...` and an absolute path under a checkout
     must work identically."""
     candidates = _write(tmp_path / "candidates.json", [])
-    graph = _write(tmp_path / "graph.v2.json", {"node_ids": [1]})
+    graph = _write(tmp_path / "graph.v3.json", {"node_ids": [1]})
     output = tmp_path / "local" / "research" / "catalog-expansion" / "review.json"
 
     # Gets past the guard, then fails on the missing dataset -- which is the

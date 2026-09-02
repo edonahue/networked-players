@@ -15,7 +15,7 @@
 // "keep fixtures synthetic and reproducible"), plus its own preview server
 // on a distinct port -- the normal suite's dist/ and port-4321 server are
 // never touched, so this cannot destabilize any other test. The one real
-// read is challenge.v2.json, used only to pick which real, already-
+// read is challenge.v3.json, used only to pick which real, already-
 // generated album page to navigate to.
 
 import { execSync, spawn, type ChildProcess } from "node:child_process";

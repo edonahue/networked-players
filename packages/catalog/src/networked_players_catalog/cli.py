@@ -888,7 +888,7 @@ def _parser() -> argparse.ArgumentParser:
         "--pathfinding-graph",
         type=Path,
         required=True,
-        help="apps/web/public/data/graph.v2.json -- supplies the published node_ids "
+        help="apps/web/public/data/pathfinding/graph.v3.json -- supplies the published node_ids "
         "this report treats as 'already in the graph'",
     )
     review_candidates.add_argument("--output", type=Path, required=True)
@@ -1113,13 +1113,13 @@ def _parser() -> argparse.ArgumentParser:
         help=(
             "build the public contributor index "
             "(apps/web/public/data/contributors/index.v1.json) entirely from two "
-            "already-published artifacts (challenge.v2.json + routes/{universe,rounds}.v1.json) "
+            "already-published artifacts (challenge.v3.json + routes/{universe,rounds}.v1.json) "
             "-- no fresh full-corpus graph query. Deterministic given the same inputs "
             "(ADR 0048)"
         ),
     )
     build_contributor_index.add_argument(
-        "--challenge", type=Path, required=True, help="apps/web/public/data/challenge.v2.json"
+        "--challenge", type=Path, required=True, help="apps/web/public/data/challenge.v3.json"
     )
     build_contributor_index.add_argument(
         "--routes-universe",
@@ -1170,14 +1170,14 @@ def _parser() -> argparse.ArgumentParser:
             "companion to contributor-index-v1 (ADR 0048 addendum) carrying each "
             "contributor's minimum documented-credit hop distance to every endpoint "
             "album they help connect, entirely from two already-published artifacts "
-            "(challenge.v2.json + routes/rounds.v1.json). A separate artifact rather "
+            "(challenge.v3.json + routes/rounds.v1.json). A separate artifact rather "
             "than a new contributor-index-v1 field, since that index's contract is "
             "validated as an exact key set -- widening it in place would be a real "
             "breaking change hiding behind an unchanged schema_version"
         ),
     )
     build_album_hop_distances.add_argument(
-        "--challenge", type=Path, required=True, help="apps/web/public/data/challenge.v2.json"
+        "--challenge", type=Path, required=True, help="apps/web/public/data/challenge.v3.json"
     )
     build_album_hop_distances.add_argument(
         "--routes-rounds",
@@ -1221,7 +1221,7 @@ def _parser() -> argparse.ArgumentParser:
         "build-pathfinding-graph",
         help=(
             "OPERATOR/coordination-host only: build the public pathfinding graph "
-            "(apps/web/public/data/pathfinding/graph.v2.json) -- a compact CSR adjacency "
+            "(apps/web/public/data/pathfinding/graph.v3.json) -- a compact CSR adjacency "
             "scoped to a bounded 1-hop ego network around the canonical catalog's primary "
             "artists (ADR 0050's measured scope decision), plus one virtual album-anchor "
             "node per catalog album for real record-to-record search endpoints (ADR 0058). "
@@ -1300,7 +1300,7 @@ def _parser() -> argparse.ArgumentParser:
             "OPERATOR/coordination-host only: build the public evidence-release registry "
             "(apps/web/public/data/evidence/release-registry.v1.json) -- a deduplicated "
             "lookup of every release id that can appear as evidence anywhere in the "
-            "product (union of challenge.v2.json, routes/rounds.v1.json, and the "
+            "product (union of challenge.v3.json, routes/rounds.v1.json, and the "
             "pathfinding graph's evidence_release_ids). Needs the real one-hop working "
             "set (--onehop-root) to resolve release ids only reachable via the "
             "pathfinding graph; never a Pi job (ADR 0058)"
@@ -1308,7 +1308,7 @@ def _parser() -> argparse.ArgumentParser:
     )
     build_evidence_release_registry.add_argument("--onehop-root", type=Path, required=True)
     build_evidence_release_registry.add_argument(
-        "--challenge", type=Path, required=True, help="apps/web/public/data/challenge.v2.json"
+        "--challenge", type=Path, required=True, help="apps/web/public/data/challenge.v3.json"
     )
     build_evidence_release_registry.add_argument(
         "--routes-rounds",
@@ -1320,7 +1320,7 @@ def _parser() -> argparse.ArgumentParser:
         "--pathfinding-graph",
         type=Path,
         required=True,
-        help="apps/web/public/data/pathfinding/graph.v2.json (v1 retired, ADR 0058)",
+        help="apps/web/public/data/pathfinding/graph.v3.json (v1/v2 retired, ADR 0058/0068)",
     )
     build_evidence_release_registry.add_argument(
         "--album-art",
@@ -1395,7 +1395,7 @@ def _parser() -> argparse.ArgumentParser:
         "--routes-rounds", type=Path, default=Path("apps/web/public/data/routes/rounds.v1.json")
     )
     validate_public_artifacts.add_argument(
-        "--challenge", type=Path, default=Path("apps/web/public/data/challenge.v2.json")
+        "--challenge", type=Path, default=Path("apps/web/public/data/challenge.v3.json")
     )
     validate_public_artifacts.add_argument(
         "--contributor-index",
@@ -1408,17 +1408,9 @@ def _parser() -> argparse.ArgumentParser:
         default=Path("apps/web/public/data/contributors/album-hop-distances.v1.json"),
     )
     validate_public_artifacts.add_argument(
-        "--pathfinding-graph-v2",
-        type=Path,
-        default=Path("apps/web/public/data/pathfinding/graph.v2.json"),
-    )
-    validate_public_artifacts.add_argument(
-        "--pathfinding-graph-v3",
+        "--pathfinding-graph",
         type=Path,
         default=Path("apps/web/public/data/pathfinding/graph.v3.json"),
-    )
-    validate_public_artifacts.add_argument(
-        "--challenge-v3", type=Path, default=Path("apps/web/public/data/challenge.v3.json")
     )
     validate_public_artifacts.add_argument(
         "--album-credit-membership",
@@ -4052,9 +4044,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             challenge=json.loads(args.challenge.read_text()),
             contributor_index=json.loads(args.contributor_index.read_text()),
             album_hop_distances=json.loads(args.album_hop_distances.read_text()),
-            pathfinding_graph_v2=json.loads(args.pathfinding_graph_v2.read_text()),
-            pathfinding_graph_v3=json.loads(args.pathfinding_graph_v3.read_text()),
-            challenge_v3=json.loads(args.challenge_v3.read_text()),
+            pathfinding_graph=json.loads(args.pathfinding_graph.read_text()),
             album_credit_membership=json.loads(args.album_credit_membership.read_text()),
             evidence_release_registry=json.loads(args.evidence_release_registry.read_text()),
         )

@@ -339,6 +339,7 @@ def _challenge(catalog: dict[str, Any]) -> dict[str, Any]:
             "generated_by": "test",
             "graph_core_version": "0.1.0",
             "catalog_version": catalog["catalog_version"],
+            "graph_policy_version": 1,
             "note": "Derived from a bounded one-hop working set.",
         },
         "albums": [_catalog_album("master-1", artist_id=100, main_release_id=1)],
@@ -346,14 +347,6 @@ def _challenge(catalog: dict[str, Any]) -> dict[str, Any]:
         "paths": [],
         "releases": [_challenge_release(1, "Alpha's Album")],
     }
-
-
-def _challenge_v3(catalog: dict[str, Any]) -> dict[str, Any]:
-    """ADR 0068: identical shape to `_challenge` -- only the new, optional
-    provenance.graph_policy_version field is added."""
-    artifact = _challenge(catalog)
-    artifact["provenance"]["graph_policy_version"] = 1
-    return artifact
 
 
 def _contributor_index(catalog: dict[str, Any]) -> dict[str, Any]:
@@ -376,7 +369,7 @@ def _contributor_index(catalog: dict[str, Any]) -> dict[str, Any]:
         "catalog_version": catalog["catalog_version"],
         "contributor_index_version": contributor_index_version(contributors, _SNAPSHOT),
         "generated_at": "2026-08-03T00:00:00+00:00",
-        "source": "Derived from challenge.v2.json and routes artifacts.",
+        "source": "Derived from challenge.v3.json and routes artifacts.",
         "license": "See docs/DATA_AND_RIGHTS.md.",
         "contributors": contributors,
     }
@@ -389,7 +382,7 @@ def _album_hop_distances(catalog: dict[str, Any]) -> dict[str, Any]:
         "catalog_version": catalog["catalog_version"],
         "album_hop_distances_version": album_hop_distances_version(entries, _SNAPSHOT),
         "generated_at": "2026-08-03T00:00:00+00:00",
-        "source": "Derived from challenge.v2.json and routes/rounds.v1.json.",
+        "source": "Derived from challenge.v3.json and routes/rounds.v1.json.",
         "license": "See docs/DATA_AND_RIGHTS.md.",
         "entries": entries,
     }
@@ -398,11 +391,12 @@ def _album_hop_distances(catalog: dict[str, Any]) -> dict[str, Any]:
 _PATHFINDING_ANCHOR_SENTINEL = "__np_album_anchor__"
 
 
-def _pathfinding_graph_v2(catalog: dict[str, Any]) -> dict[str, Any]:
+def _pathfinding_graph(catalog: dict[str, Any]) -> dict[str, Any]:
     """master-1's virtual anchor (-1) connected to its sole credited
     contributor, Alice (100)."""
     payload: dict[str, Any] = {
-        "schema_version": 2,
+        "schema_version": 3,
+        "graph_policy_version": 1,
         "catalog_version": catalog["catalog_version"],
         "snapshot_date": _SNAPSHOT,
         "generated_at": "2026-08-08T00:00:00+00:00",
@@ -419,16 +413,6 @@ def _pathfinding_graph_v2(catalog: dict[str, Any]) -> dict[str, Any]:
             {"album_id": "master-1", "virtual_artist_id": -1, "main_release_id": 1}
         ],
     }
-    payload["pathfinding_graph_version"] = pathfinding_graph_version(payload, _SNAPSHOT)
-    return payload
-
-
-def _pathfinding_graph_v3(catalog: dict[str, Any]) -> dict[str, Any]:
-    """ADR 0068: identical shape to `_pathfinding_graph_v2` -- only
-    schema_version and the new graph_policy_version field differ."""
-    payload = _pathfinding_graph_v2(catalog)
-    payload["schema_version"] = 3
-    payload["graph_policy_version"] = 1
     payload["pathfinding_graph_version"] = pathfinding_graph_version(payload, _SNAPSHOT)
     return payload
 
@@ -505,20 +489,16 @@ def _write_all(tmp_path: Path) -> dict[str, Path]:
         "daily_manifest": _write(tmp_path / "daily-manifest.v1.json", _daily_manifest()),
         "routes_universe": _write(tmp_path / "routes-universe.v1.json", routes_universe),
         "routes_rounds": _write(tmp_path / "routes-rounds.v1.json", routes_rounds),
-        "challenge": _write(tmp_path / "challenge.v2.json", _challenge(catalog)),
+        "challenge": _write(tmp_path / "challenge.v3.json", _challenge(catalog)),
         "contributor_index": _write(
             tmp_path / "contributor-index.v1.json", _contributor_index(catalog)
         ),
         "album_hop_distances": _write(
             tmp_path / "album-hop-distances.v1.json", _album_hop_distances(catalog)
         ),
-        "pathfinding_graph_v2": _write(
-            tmp_path / "pathfinding-graph.v2.json", _pathfinding_graph_v2(catalog)
+        "pathfinding_graph": _write(
+            tmp_path / "pathfinding-graph.v3.json", _pathfinding_graph(catalog)
         ),
-        "pathfinding_graph_v3": _write(
-            tmp_path / "pathfinding-graph.v3.json", _pathfinding_graph_v3(catalog)
-        ),
-        "challenge_v3": _write(tmp_path / "challenge.v3.json", _challenge_v3(catalog)),
         "album_credit_membership": _write(
             tmp_path / "album-credit-membership.v1.json", _album_credit_membership(catalog)
         ),
@@ -551,12 +531,8 @@ def _args(paths: dict[str, Path]) -> list[str]:
         str(paths["contributor_index"]),
         "--album-hop-distances",
         str(paths["album_hop_distances"]),
-        "--pathfinding-graph-v2",
-        str(paths["pathfinding_graph_v2"]),
-        "--pathfinding-graph-v3",
-        str(paths["pathfinding_graph_v3"]),
-        "--challenge-v3",
-        str(paths["challenge_v3"]),
+        "--pathfinding-graph",
+        str(paths["pathfinding_graph"]),
         "--album-credit-membership",
         str(paths["album_credit_membership"]),
         "--evidence-release-registry",
@@ -579,9 +555,7 @@ def test_clean_set_exits_zero(tmp_path: Path, capsys) -> None:
         "challenge": [],
         "contributor_index": [],
         "album_hop_distances": [],
-        "pathfinding_graph_v2": [],
-        "pathfinding_graph_v3": [],
-        "challenge_v3": [],
+        "pathfinding_graph": [],
         "album_credit_membership": [],
         "evidence_release_registry": [],
     }
@@ -615,14 +589,12 @@ def test_default_paths_point_at_the_real_repo_layout(tmp_path: Path, capsys, mon
         "apps/web/public/data/game/daily-manifest.v1.json": _daily_manifest(),
         "apps/web/public/data/routes/universe.v1.json": routes_universe,
         "apps/web/public/data/routes/rounds.v1.json": routes_rounds,
-        "apps/web/public/data/challenge.v2.json": _challenge(catalog),
+        "apps/web/public/data/challenge.v3.json": _challenge(catalog),
         "apps/web/public/data/contributors/index.v1.json": _contributor_index(catalog),
         "apps/web/public/data/contributors/album-hop-distances.v1.json": (
             _album_hop_distances(catalog)
         ),
-        "apps/web/public/data/pathfinding/graph.v2.json": _pathfinding_graph_v2(catalog),
-        "apps/web/public/data/pathfinding/graph.v3.json": _pathfinding_graph_v3(catalog),
-        "apps/web/public/data/challenge.v3.json": _challenge_v3(catalog),
+        "apps/web/public/data/pathfinding/graph.v3.json": _pathfinding_graph(catalog),
         "apps/web/public/data/albums/credit-membership.v1.json": _album_credit_membership(catalog),
         "apps/web/public/data/evidence/release-registry.v1.json": _evidence_release_registry(
             catalog

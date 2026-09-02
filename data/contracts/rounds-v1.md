@@ -46,7 +46,7 @@ has been generated.
 Both artifacts describe the same kind of album-centered evidence path, but for
 different audiences and eligibility rules:
 
-- `challenge.v2.json` (the album browser) uses the graph's existing broad
+- `challenge.v3.json` (the album browser) uses the graph's existing broad
   `credit_edges` eligibility (any collaborative role, per ADR 0035) and shows
   every path the generator finds.
 - `rounds.v1.json` (Record Routes, ADR 0046 — not the flagship Connection

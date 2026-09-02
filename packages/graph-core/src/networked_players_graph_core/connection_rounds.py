@@ -654,7 +654,7 @@ def build_connection_universe_and_rounds(
     this complete index (every qualifying performer, not a sample of one);
     publishing anything less would make that claim unverifiable by an
     independent consumer (see Finding 7, ADR 0043) -- exactly the trap the
-    prior "subset check" against `challenge.v2.json` fell into.
+    prior "subset check" against `challenge.v3.json` fell into.
     """
     used_album_ids: set[str] = set()
     for round_json in rounds_json:
@@ -1091,7 +1091,7 @@ def validate_connection_rounds_artifact(universe: dict[str, Any], rounds: dict[s
     if "discogs" not in source:
         failures.append("universe provenance.source does not identify a real Discogs source")
     if "synthetic" in generated_by or "ci placeholder" in generated_by:
-        # The challenge.v2.json trap: a generator name that quietly marks the
+        # The challenge.v3.json trap: a generator name that quietly marks the
         # artifact as a synthetic/CI fixture while everything else looks real.
         failures.append("universe provenance.generated_by marks this as a synthetic fixture")
 

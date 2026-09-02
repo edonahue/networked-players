@@ -68,10 +68,10 @@ uv run networked-players-catalog validate-masters \
 uv run networked-players-catalog build-challenge-from-dump \
   --onehop-root local/processed/discogs-onehop/snapshot=20260501 \
   --albums data/albums/top-albums-v1.json \
-  --output apps/web/public/data/challenge.v2.json
+  --output apps/web/public/data/challenge.v3.json
 
 uv run networked-players-catalog validate-challenge \
-  --input apps/web/public/data/challenge.v2.json
+  --input apps/web/public/data/challenge.v3.json
 
 # Medium-term album curation: rank master_ids by release-variant count x credit
 # richness (see data/albums/README.md). Output is a local-only shortlist.

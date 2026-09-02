@@ -10,11 +10,11 @@ import challengeData from '../../../public/data/challenge.v3.json';
 export function getStaticPaths() {
   const data = challengeData as ChallengeV2;
   // Phase 6 PR 6-07: every catalog album, not just connectedCatalogAlbums'
-  // narrower "has a documented challenge.v2 path" subset -- matching the
+  // narrower "has a documented challenge.v3 path" subset -- matching the
   // same widening on /albums/[album].astro and for the same reason: a
   // catalog album can be a real, individually reachable pathfinding-graph
   // node (and so a valid Connect/Explore destination) without ever being a
-  // challenge.v2 path endpoint. Album pages link here unconditionally
+  // challenge.v3 path endpoint. Album pages link here unconditionally
   // (PR 6-02), so leaving this narrower would reopen the exact
   // dangling-href risk that widening fixed there.
   return data.albums.map((album) => ({

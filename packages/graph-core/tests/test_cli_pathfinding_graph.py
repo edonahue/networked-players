@@ -134,7 +134,7 @@ def test_build_pathfinding_graph_cli_wiring(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    output_path = tmp_path / "graph.v2.json"
+    output_path = tmp_path / "graph.v3.json"
     exit_code = main(
         [
             "build-pathfinding-graph",
@@ -169,7 +169,7 @@ def test_validate_pathfinding_graph_cli_wiring(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    output_path = tmp_path / "graph.v2.json"
+    output_path = tmp_path / "graph.v3.json"
     main(
         [
             "build-pathfinding-graph",

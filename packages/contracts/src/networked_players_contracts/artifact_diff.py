@@ -45,7 +45,7 @@ _VERSION_FIELD_NAMES = frozenset(
 
 def _version_field_changes(old: Any, new: Any, _prefix: str = "") -> dict[str, dict[str, Any]]:
     """Recurses into nested dicts (e.g. a `provenance` block) so a version
-    field is caught wherever it lives -- several artifacts (`challenge.v2.json`,
+    field is caught wherever it lives -- several artifacts (`challenge.v3.json`,
     `game/rounds.v1.json`, `game/universe.v1.json`) nest every version field
     under `provenance` rather than at the top level, and a top-level-only
     lookup silently reported `{}` for all three even though their version

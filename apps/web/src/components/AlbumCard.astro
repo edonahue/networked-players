@@ -7,7 +7,7 @@ interface Props {
   /** Where this card links -- defaults to the album detail page; Explore's
    * grid passes "/explore/" to link into the network view instead. */
   hrefBase?: string;
-  /** Whether this album has a documented challenge.v2 path. Defaults to
+  /** Whether this album has a documented challenge.v3 path. Defaults to
    * true so every existing caller (the homepage's featured section,
    * Explore's grid) is unaffected -- only the full-catalog album shelf
    * (ADR 0067) passes false for the handful of albums with no documented
@@ -67,7 +67,7 @@ const cover = coverFor(album.id) ?? album.cover_image;
       // "Not yet connected" would overclaim -- these albums are real
       // pathfinding-graph nodes with real credited neighbors (individually
       // explorable at /explore/<id>/), just not yet an endpoint of a
-      // documented challenge.v2 path (ADR 0067). "No documented path yet"
+      // documented challenge.v3 path (ADR 0067). "No documented path yet"
       // mirrors the album detail page's own established phrasing for the
       // same case.
       <span class="tag tag--unconnected">No documented path yet</span>

@@ -8,7 +8,7 @@ The public contributor index
 (ADR 0048).
 
 > **Deliberately derived from already-published artifacts only.** This index
-> is built entirely from `apps/web/public/data/challenge.v2.json`,
+> is built entirely from `apps/web/public/data/challenge.v3.json`,
 > `apps/web/public/data/routes/{universe,rounds}.v1.json`, and (ADR 0058
 > Slice 8) `apps/web/public/data/evidence/release-registry.v1.json` — never a
 > fresh full-corpus DuckDB query. The evidence registry is itself an
@@ -40,7 +40,7 @@ The public contributor index
 | `role_text_examples` | array of string | Up to 5 distinct verbatim role-text strings actually observed, ranked by frequency — evidence, not a summary. |
 | `albums` | array of string | Canonical catalog album ids (must exist in the catalog) whose documented path or route this contributor's credits help establish — **not** a claim that this is "their" album; frontend copy must say "co-credited on a documented release connecting these albums," never "worked on"/"appears on this album." Sorted, non-empty. |
 | `decade_activity` | array of int | Decades (e.g. `1990`) derived from the real release year of this contributor's own evidence releases (via the evidence-release registry, keyed by `evidence[].release_id`), sorted — not the `year` of a connected catalog album, which may differ from the evidence release's own year. |
-| `connection_count` | int | This contributor's degree within the published `challenge.v2.json` + `routes/rounds.v1.json` graph only. |
+| `connection_count` | int | This contributor's degree within the published `challenge.v3.json` + `routes/rounds.v1.json` graph only. |
 | `neighboring_contributor_ids` | array of int | Other contributors directly adjacent via a shared hop, ranked by shared-hop count then id, capped at 20. Every id must itself be a contributor in this same index. |
 | `evidence` | array of object | Up to 10 `{release_id, role_text}` pairs, sorted, resolving against a release referenced by either source artifact. |
 | `interesting_next_step` | object or `null` | ADR 0060 (amended 2026-08-31). `{artist_id, reason}` naming one of this contributor's own `neighboring_contributor_ids` whose `role_categories` are ENTIRELY DISJOINT from this contributor's own — a real structural fact (a genuinely different kind of credited collaborator), never an inferred claim about interest or importance — AND excluding any candidate whose ENTIRE shared connection to this contributor is background-engineering-only (every hop between them is Mastered By/Recorded By/Mixed By on at least one side; a pair that ALSO shares even one substantive-role hop is never excluded on this basis). Ties among the remaining candidates break toward the LOWEST `connection_count` (deliberately anti-hub — never the highest), then `artist_id`. `null` when no neighbor qualifies — this can now mean either that no role-disjoint neighbor exists at all, or that one exists but every connection to them is background-engineering-only; both are the same honest "nothing to suggest here," never a fabricated pick. |
@@ -61,7 +61,7 @@ phrases ("worked with", "collaborated with", "influenced" — the same list
 ## Revisit trigger
 
 If a future exploration-graph tier (Slice D) or Connect Two Records (Slice F)
-needs contributor data beyond what `challenge.v2.json`/`routes/*.json` cover,
+needs contributor data beyond what `challenge.v3.json`/`routes/*.json` cover,
 extend the two source artifacts first, or add a clearly-named `v2` index with
 its own version namespace — never silently widen `contributor-index-v1` to
 depend on the private one-hop corpus. This is the same discipline that

@@ -3,7 +3,7 @@
 // for both endpoints, real evidence (title/year/cover/source) per hop, and
 // must never leak the internal ALBUM_ANCHOR_SENTINEL string into the DOM
 // -- verified against the real committed
-// apps/web/public/data/pathfinding/graph.v2.json artifact, same real
+// apps/web/public/data/pathfinding/graph.v3.json artifact, same real
 // Discovery <-> Joshua Tree pair game-connect.spec.ts already uses.
 //
 // The endpoint-A role text changed with ADR 0059 (Phase 5 PR 3): the

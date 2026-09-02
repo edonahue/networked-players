@@ -15,7 +15,7 @@ leak-scanning posture, but adds one further gate `challenge.py` does not
 apply: every hop must independently satisfy `eligibility.py::is_performer_role`
 -- an explicit, displayable instrument/vocal role text on both sides, not
 just any collaborative credit. A path that is valid evidence for the album
-browser (`challenge.v2.json`) may still be rejected here if its only
+browser (`challenge.v3.json`) may still be rejected here if its only
 connecting credit is non-performer (e.g. a shared producer).
 
 This module builds evidence for a *single* round from an already-found

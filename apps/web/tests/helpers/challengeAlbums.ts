@@ -1,5 +1,5 @@
 // Deterministic album selection for tests that need "a real connected album
-// page" from the committed challenge.v2 artifact.
+// page" from the committed challenge.v3 artifact.
 //
 // Specs used to write `albums.find((a) => connectedIds.has(a.id))`, i.e.
 // whichever connected album happens to come FIRST in artifact order. That is
@@ -65,7 +65,7 @@ export async function pickBoundedConnectedAlbum(
 
   expect(
     candidates.length,
-    "challenge.v2.json must contain a connected album with at least 2 documented paths",
+    "challenge.v3.json must contain a connected album with at least 2 documented paths",
   ).toBeGreaterThan(0);
 
   const album = candidates[0];
@@ -86,7 +86,7 @@ interface CatalogAlbum {
  * Returns the connected album with the fewest documented paths (>= 2, ties
  * broken by id) among those with real cover art -- deterministically known
  * to render `.play-header__cover`, independent of `pickBoundedConnectedAlbum`
- * and of whatever `challenge.v2.json` happens to contain.
+ * and of whatever `challenge.v3.json` happens to contain.
  *
  * Cover art is resolved at build time from a wholly separate artifact
  * (`public/data/catalog/album-art.v1.json`, see `src/data/albumArt.ts`),
@@ -158,7 +158,7 @@ export async function pickConnectedAlbumWithArt(
 
   expect(
     candidates.length,
-    "challenge.v2.json must contain a connected album with real registry cover art",
+    "challenge.v3.json must contain a connected album with real registry cover art",
   ).toBeGreaterThan(0);
 
   const album = candidates[0];

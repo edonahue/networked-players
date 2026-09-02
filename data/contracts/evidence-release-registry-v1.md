@@ -10,7 +10,7 @@ by `validate-evidence-release-registry` /
 > **A deduplicated, addressable lookup for every evidence release, not just
 > the ones already described elsewhere.** Before this artifact, release
 > metadata (title/year/country/source) existed only inside
-> `challenge.v2.json` and `routes/rounds.v1.json` — a real but small subset
+> `challenge.v3.json` and `routes/rounds.v1.json` — a real but small subset
 > (432 and 326 releases respectively). The pathfinding graph's broader ego
 > network reaches far more releases than either of those describes
 > (measured: over 17,000 release ids reachable only through it). This

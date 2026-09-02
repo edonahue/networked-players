@@ -10,7 +10,7 @@
 //   node scripts/reprofile-site.mjs [--mobile-throttled]
 //
 // What's compared against a real prior baseline, and what's a new one:
-// - graph.v2.json payload size and sitemap URL counts have a real recorded
+// - graph.v3.json payload size and sitemap URL counts have a real recorded
 //   140-album figure in the Phase 7 plan doc's section 10 (13.6 MB,
 //   843 URLs: 140 album/140 explore/549 contributor/14 static) -- this
 //   script's own output should be read alongside those, not instead of.
@@ -40,8 +40,8 @@ function payloadSize(relPath) {
 function measurePayloads() {
   return [
     "data/catalog/albums.v1.json",
-    "data/challenge.v2.json",
-    "data/pathfinding/graph.v2.json",
+    "data/challenge.v3.json",
+    "data/pathfinding/graph.v3.json",
     "data/contributors/index.v1.json",
     "data/evidence/release-registry.v1.json",
   ].map(payloadSize);
@@ -247,7 +247,7 @@ async function run() {
   // measurements below (Connect's warm pair, Explorer's start album) can
   // both resolve real, current catalog data without a second round trip.
   const challengeRes = await context.request.get(
-    `${BASE_URL}/data/challenge.v2.json`,
+    `${BASE_URL}/data/challenge.v3.json`,
   );
   const challenge = await challengeRes.json();
 

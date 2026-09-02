@@ -78,7 +78,7 @@ def _index() -> dict[str, Any]:
         "catalog_version": catalog["catalog_version"],
         "contributor_index_version": contributor_index_version(contributors, _SNAPSHOT),
         "generated_at": "2026-08-03T00:00:00+00:00",
-        "source": "Derived from challenge.v2.json and routes artifacts.",
+        "source": "Derived from challenge.v3.json and routes artifacts.",
         "license": "See docs/DATA_AND_RIGHTS.md.",
         "contributors": contributors,
     }
@@ -144,7 +144,7 @@ def test_empty_contributors_list_is_valid() -> None:
         "catalog_version": catalog["catalog_version"],
         "contributor_index_version": contributor_index_version([], _SNAPSHOT),
         "generated_at": "2026-08-03T00:00:00+00:00",
-        "source": "Derived from challenge.v2.json and routes artifacts.",
+        "source": "Derived from challenge.v3.json and routes artifacts.",
         "license": "See docs/DATA_AND_RIGHTS.md.",
         "contributors": [],
     }

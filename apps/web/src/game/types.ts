@@ -31,7 +31,7 @@ export type RoleCategory =
 
 /** Provenance for either pool -- synthetic or real. Field content must
  * self-identify which one (see the game-universe-v1/game-rounds-v1 contracts'
- * self-identification requirement, born from the challenge.v2.json trap
+ * self-identification requirement, born from the challenge.v3.json trap
  * where only `generated_by` revealed a synthetic fixture). */
 export interface GameProvenance {
   source: string;

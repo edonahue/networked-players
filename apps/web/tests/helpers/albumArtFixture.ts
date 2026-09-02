@@ -16,7 +16,7 @@
 // are statically generated per real catalog album via getStaticPaths, the
 // same reason every other spec in this suite (pickBoundedConnectedAlbum,
 // pickConnectedAlbumWithArt) navigates to a real id rather than a
-// fabricated one. That real challenge.v2.json read is used only to find a
+// fabricated one. That real challenge.v3.json read is used only to find a
 // real, connected album whose own cover_image field is also already null
 // (true for all 140 today) -- never to shape the registry itself.
 
@@ -78,7 +78,7 @@ export function generatePlaceholderFixture(
     );
   if (candidates.length === 0) {
     throw new Error(
-      "challenge.v2.json must contain a connected album with no cover_image fallback to build the placeholder fixture from",
+      "challenge.v3.json must contain a connected album with no cover_image fallback to build the placeholder fixture from",
     );
   }
   const chosen = candidates[0];

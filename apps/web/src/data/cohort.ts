@@ -1,7 +1,7 @@
 // Types for a playable-cohort-v1 artifact (data/contracts/playable-cohort-v1.md).
 // Produced by `networked-players-catalog promote-playable-cohort` after an
 // explicit, human-reviewed selection step (see ADR 0031) -- deliberately
-// narrower than challenge.v2: no cover art, no per-credit evidence rows,
+// narrower than challenge.v3: no cover art, no per-credit evidence rows,
 // only the minimum needed to present a reviewed connection.
 
 /** A promoted album -- no cover_image, unlike AlbumV2: the contract omits it. */

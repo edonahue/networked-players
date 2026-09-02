@@ -1,5 +1,5 @@
 """Build the public contributor index from already-published public
-artifacts -- `challenge.v2.json`, `routes/{universe,rounds}.v1.json`, and
+artifacts -- `challenge.v3.json`, `routes/{universe,rounds}.v1.json`, and
 (ADR 0058 Slice 8) `evidence/release-registry.v1.json` -- never a fresh
 full-corpus graph query. This is what keeps the index deterministic, small,
 and safely publishable through the same discipline as every other artifact
@@ -10,7 +10,7 @@ already-published artifact, not a fresh corpus query.
 Every field traces to content already published in one of the source
 artifacts:
 
-- `challenge.v2.json`: `paths[].hops[]` (artist_a_id/artist_b_id/release_id)
+- `challenge.v3.json`: `paths[].hops[]` (artist_a_id/artist_b_id/release_id)
   and `releases[].credits[]` (verbatim role_text, looked up by
   (release_id, artist_id)).
 - `routes/rounds.v1.json`: `rounds[].hops[]`, which already carry
@@ -85,7 +85,7 @@ def album_hop_distances_version(entries: list[dict[str, Any]], snapshot_date: st
 
 def _credit_role_lookup(releases: list[dict[str, Any]]) -> dict[tuple[Any, int], list[str]]:
     """(release_id, artist_id) -> verbatim role_text values from linked
-    credits on that release, in `challenge.v2.json`'s `releases[]` shape."""
+    credits on that release, in `challenge.v3.json`'s `releases[]` shape."""
     lookup: dict[tuple[Any, int], list[str]] = defaultdict(list)
     for release in releases:
         release_id = release.get("release_id")
@@ -386,7 +386,7 @@ def build_contributor_index(
         "contributor_index_version": index_version,
         "generated_at": generated_at,
         "source": (
-            "Derived from apps/web/public/data/challenge.v2.json, "
+            "Derived from apps/web/public/data/challenge.v3.json, "
             "apps/web/public/data/routes/{universe,rounds}.v1.json, and "
             "apps/web/public/data/evidence/release-registry.v1.json (decade_activity only) "
             "-- no fresh full-corpus graph query. See docs/DATA_AND_RIGHTS.md."
@@ -458,7 +458,7 @@ def build_album_hop_distances(
         "album_hop_distances_version": version,
         "generated_at": generated_at,
         "source": (
-            "Derived from apps/web/public/data/challenge.v2.json and "
+            "Derived from apps/web/public/data/challenge.v3.json and "
             "apps/web/public/data/routes/rounds.v1.json -- companion artifact to "
             "contributor-index-v1 (ADR 0048 addendum), never a fresh full-corpus query."
         ),

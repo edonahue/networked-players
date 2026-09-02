@@ -2,7 +2,7 @@
 """Enqueue challenge-evidence verification shards across the joined Pi
 workers, via the jobs broker + RQ. This is a real production job (the first
 one, per docs/DISCOGS_INGESTION.md's "challenge batches" hardware profile),
-not a benchmark -- it re-verifies a published challenge.v2 artifact's
+not a benchmark -- it re-verifies a published challenge.v3 artifact's
 evidence against each Pi's own local one-hop cache (ADR 0025).
 
 Mirrors scripts/cluster_benchmark_distributed.py's inventory-loading,
@@ -168,7 +168,7 @@ def main() -> None:
     parser.add_argument(
         "--artifact",
         type=Path,
-        default=REPO_ROOT / "apps" / "web" / "public" / "data" / "challenge.v2.json",
+        default=REPO_ROOT / "apps" / "web" / "public" / "data" / "challenge.v3.json",
     )
     parser.add_argument("--shard-size", type=int, default=4)
     parser.add_argument("--workers", default="pi_workers", help="ansible inventory group to target")
@@ -208,7 +208,7 @@ def main() -> None:
         worker = workers[index % len(workers)]
         job = queues[worker].enqueue(
             "verify_challenge_job.verify_shard",
-            "challenge.v2.json",
+            "challenge.v3.json",
             shard,
             job_timeout=JOB_TIMEOUT_S,
         )

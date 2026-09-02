@@ -1,6 +1,6 @@
 // The Explore grid, per-album static paths, and sitemap all need the same
 // set: catalog albums that are actually reachable through
-// challenge.v2.json's documented paths (ADR 0058 Slice 8 dedup -- this
+// challenge.v3.json's documented paths (ADR 0058 Slice 8 dedup -- this
 // logic was independently copied five times before this file existed). The
 // album shelf (/albums/) itself stopped using this filter as of ADR 0067 --
 // it shows the full catalog and marks unconnected albums honestly instead

@@ -10,7 +10,7 @@ which is what lets ADR 0059 pick a hop allowance and a candidate bound
 from evidence instead of taste.
 
 Deliberately dependency-free of `graph-core`'s builder and of DuckDB: it
-reads only the published artifacts (`pathfinding/graph.v2.json`,
+reads only the published artifacts (`pathfinding/graph.v3.json`,
 `evidence/release-registry.v1.json`, `catalog/albums.v1.json`), so any
 checkout can reproduce a measurement without the private one-hop corpus.
 The one graph-core import is `role_taxonomy.classify_role`, reused rather

@@ -180,7 +180,7 @@ def test_no_catalog_argument_skips_the_cross_check_entirely() -> None:
 
 
 # --- provenance.graph_policy_version (ADR 0068, optional) ------------------
-# Absent entirely on the still-live challenge.v1.json/challenge.v2.json
+# Absent entirely on the still-live challenge.v1.json/challenge.v3.json
 # (built before this field existed); present on the new challenge.v3.json.
 # CHALLENGE_SCHEMA_VERSION stays 2 for both, so this field -- not the
 # schema version -- is what tells them apart.
@@ -188,7 +188,7 @@ def test_no_catalog_argument_skips_the_cross_check_entirely() -> None:
 
 def test_missing_graph_policy_version_still_passes() -> None:
     """The default `_artifact()` fixture has no graph_policy_version at all
-    -- matching the real, still-live challenge.v1.json/challenge.v2.json --
+    -- matching the real, still-live challenge.v1.json/challenge.v3.json --
     and that must not be a failure."""
     assert "graph_policy_version" not in _artifact()["provenance"]
     assert challenge_failures(_artifact()) == []

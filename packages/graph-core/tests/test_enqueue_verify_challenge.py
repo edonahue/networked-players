@@ -169,7 +169,7 @@ def test_build_run_record_is_ok_on_an_all_clean_run(enqueue_module, tmp_path: Pa
     finished = [_ResultJob("j1", result={"failures": []})]
 
     record = enqueue_module.build_run_record(
-        artifact_path=tmp_path / "challenge.v2.json",
+        artifact_path=tmp_path / "challenge.v3.json",
         workers=["pi-a"],
         enqueued=enqueued,
         finished_jobs=finished,
@@ -188,7 +188,7 @@ def test_build_run_record_surfaces_evidence_failures_from_a_shards_result(
     finished = [_ResultJob("j1", result={"failures": ["bad evidence"]})]
 
     record = enqueue_module.build_run_record(
-        artifact_path=tmp_path / "challenge.v2.json",
+        artifact_path=tmp_path / "challenge.v3.json",
         workers=["pi-a"],
         enqueued=enqueued,
         finished_jobs=finished,
@@ -206,7 +206,7 @@ def test_build_run_record_surfaces_a_failed_job_with_no_result(
     finished = [_ResultJob("j1", result=None, failed=True)]
 
     record = enqueue_module.build_run_record(
-        artifact_path=tmp_path / "challenge.v2.json",
+        artifact_path=tmp_path / "challenge.v3.json",
         workers=["pi-a"],
         enqueued=enqueued,
         finished_jobs=finished,

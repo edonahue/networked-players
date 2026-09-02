@@ -336,7 +336,7 @@ def _routes_pair() -> tuple[dict[str, Any], dict[str, Any]]:
     return universe, rounds
 
 
-# --- challenge.v2 --------------------------------------------------------
+# --- challenge --------------------------------------------------------
 
 
 def _challenge_release(release_id: int, title: str) -> dict[str, Any]:
@@ -366,6 +366,7 @@ def _challenge() -> dict[str, Any]:
             "generated_by": "networked-players-catalog build-challenge-from-dump 0.1.0",
             "graph_core_version": "0.1.0",
             "catalog_version": _catalog()["catalog_version"],
+            "graph_policy_version": 1,
             "note": "Derived from a bounded one-hop working set.",
         },
         "albums": [
@@ -384,15 +385,6 @@ def _challenge() -> dict[str, Any]:
             _challenge_release(2, "Bravo's Album"),
         ],
     }
-
-
-def _challenge_v3() -> dict[str, Any]:
-    """ADR 0068: identical shape to `_challenge()` (CHALLENGE_SCHEMA_VERSION
-    stays 2 -- the shape is genuinely unchanged) -- only the new, optional
-    provenance.graph_policy_version field is added."""
-    artifact = deepcopy(_challenge())
-    artifact["provenance"]["graph_policy_version"] = 1
-    return artifact
 
 
 # --- contributor index -----------------------------------------------------
@@ -431,7 +423,7 @@ def _contributor_index() -> dict[str, Any]:
         "catalog_version": catalog_version,
         "contributor_index_version": contributor_index_version(contributors, _SNAPSHOT),
         "generated_at": "2026-08-03T00:00:00+00:00",
-        "source": "Derived from challenge.v2.json and routes/{universe,rounds}.v1.json.",
+        "source": "Derived from challenge.v3.json and routes/{universe,rounds}.v1.json.",
         "license": "See docs/DATA_AND_RIGHTS.md.",
         "contributors": contributors,
     }
@@ -453,7 +445,7 @@ def _album_hop_distances() -> dict[str, Any]:
         "catalog_version": catalog_version,
         "album_hop_distances_version": album_hop_distances_version(entries, _SNAPSHOT),
         "generated_at": "2026-08-03T00:00:00+00:00",
-        "source": "Derived from challenge.v2.json and routes/rounds.v1.json.",
+        "source": "Derived from challenge.v3.json and routes/rounds.v1.json.",
         "license": "See docs/DATA_AND_RIGHTS.md.",
         "entries": entries,
     }
@@ -465,14 +457,16 @@ def _album_hop_distances() -> dict[str, Any]:
 _PATHFINDING_ANCHOR_SENTINEL = "__np_album_anchor__"
 
 
-def _pathfinding_graph_v2() -> dict[str, Any]:
+def _pathfinding_graph() -> dict[str, Any]:
     """Two catalog albums (master-1/artist 100, master-2/artist 200), one
     real edge between them (release 1), and one virtual anchor per album
-    connected to its own credited artist. node_ids sorted:
+    connected to its own credited artist. Schema 3, the single live
+    performer-gated graph (ADR 0068). node_ids sorted:
     [-2 (master-2 anchor), -1 (master-1 anchor), 100, 200]."""
     catalog_version = _catalog()["catalog_version"]
     payload: dict[str, Any] = {
-        "schema_version": 2,
+        "schema_version": 3,
+        "graph_policy_version": 1,
         "catalog_version": catalog_version,
         "snapshot_date": _SNAPSHOT,
         "generated_at": "2026-08-08T00:00:00+00:00",
@@ -504,17 +498,6 @@ def _pathfinding_graph_v2() -> dict[str, Any]:
             {"album_id": "master-2", "virtual_artist_id": -2, "main_release_id": 2},
         ],
     }
-    payload["pathfinding_graph_version"] = pathfinding_graph_version(payload, _SNAPSHOT)
-    return payload
-
-
-def _pathfinding_graph_v3() -> dict[str, Any]:
-    """ADR 0068: identical CSR/album_virtual_nodes shape to
-    `_pathfinding_graph_v2` -- only schema_version and the new
-    graph_policy_version field differ."""
-    payload = _pathfinding_graph_v2()
-    payload["schema_version"] = 3
-    payload["graph_policy_version"] = 1
     payload["pathfinding_graph_version"] = pathfinding_graph_version(payload, _SNAPSHOT)
     return payload
 
@@ -612,9 +595,7 @@ def _clean_artifacts() -> dict[str, Any]:
         "challenge": _challenge(),
         "contributor_index": _contributor_index(),
         "album_hop_distances": _album_hop_distances(),
-        "pathfinding_graph_v2": _pathfinding_graph_v2(),
-        "pathfinding_graph_v3": _pathfinding_graph_v3(),
-        "challenge_v3": _challenge_v3(),
+        "pathfinding_graph": _pathfinding_graph(),
         "album_credit_membership": _album_credit_membership(),
         "evidence_release_registry": _evidence_release_registry(),
     }
@@ -631,9 +612,7 @@ def test_clean_publication_set_has_no_failures() -> None:
         "challenge": [],
         "contributor_index": [],
         "album_hop_distances": [],
-        "pathfinding_graph_v2": [],
-        "pathfinding_graph_v3": [],
-        "challenge_v3": [],
+        "pathfinding_graph": [],
         "album_credit_membership": [],
         "evidence_release_registry": [],
     }
@@ -650,9 +629,7 @@ def test_every_group_key_always_present() -> None:
         "challenge",
         "contributor_index",
         "album_hop_distances",
-        "pathfinding_graph_v2",
-        "pathfinding_graph_v3",
-        "challenge_v3",
+        "pathfinding_graph",
         "album_credit_membership",
         "evidence_release_registry",
     }
@@ -696,7 +673,7 @@ def test_catalog_defect_is_caught_independently() -> None:
 
 
 def test_deleted_provenance_field_on_challenge_is_caught() -> None:
-    """Finding B's required regression test: challenge.v2.json was never
+    """Finding B's required regression test: challenge.v3.json was never
     part of this gate before -- deleting a required provenance field must
     surface in the combined report, isolated to the challenge group."""
     artifacts = _clean_artifacts()
@@ -741,50 +718,14 @@ def test_album_hop_distances_defect_is_caught_independently() -> None:
     assert report["contributor_index"] == []
 
 
-def test_pathfinding_graph_v2_defect_is_caught_independently() -> None:
+def test_pathfinding_graph_defect_is_caught_independently() -> None:
     artifacts = _clean_artifacts()
-    broken_graph_v2 = deepcopy(artifacts["pathfinding_graph_v2"])
-    broken_graph_v2["album_virtual_nodes"][0]["virtual_artist_id"] = 1  # must be negative
-    artifacts["pathfinding_graph_v2"] = broken_graph_v2
+    broken = deepcopy(artifacts["pathfinding_graph"])
+    broken["album_virtual_nodes"][0]["virtual_artist_id"] = 1  # must be negative
+    artifacts["pathfinding_graph"] = broken
 
     report = public_artifacts_failures(**artifacts)
-    assert report["pathfinding_graph_v2"] != []
-    assert report["pathfinding_graph_v3"] == []
+    assert report["pathfinding_graph"] != []
     assert report["catalog"] == []
     assert report["challenge"] == []
-    assert report["challenge_v3"] == []
     assert report["contributor_index"] == []
-
-
-def test_pathfinding_graph_v3_defect_is_caught_independently() -> None:
-    """ADR 0068: a defect in the new, dual-live graph.v3.json must be caught
-    without disturbing the still-live, unedited graph.v2.json's own clean
-    report -- proof the two coexist independently, the whole point of
-    shipping v3 as a new artifact rather than editing v2 in place."""
-    artifacts = _clean_artifacts()
-    broken_graph_v3 = deepcopy(artifacts["pathfinding_graph_v3"])
-    broken_graph_v3["album_virtual_nodes"][0]["virtual_artist_id"] = 1  # must be negative
-    artifacts["pathfinding_graph_v3"] = broken_graph_v3
-
-    report = public_artifacts_failures(**artifacts)
-    assert report["pathfinding_graph_v3"] != []
-    assert report["pathfinding_graph_v2"] == []
-    assert report["catalog"] == []
-    assert report["challenge"] == []
-    assert report["challenge_v3"] == []
-    assert report["contributor_index"] == []
-
-
-def test_challenge_v3_defect_is_caught_independently() -> None:
-    """Same independence proof for challenge_v3/challenge (ADR 0068)."""
-    artifacts = _clean_artifacts()
-    broken_challenge_v3 = deepcopy(artifacts["challenge_v3"])
-    del broken_challenge_v3["provenance"]["source"]
-    artifacts["challenge_v3"] = broken_challenge_v3
-
-    report = public_artifacts_failures(**artifacts)
-    assert report["challenge_v3"] != []
-    assert report["challenge"] == []
-    assert report["pathfinding_graph_v2"] == []
-    assert report["pathfinding_graph_v3"] == []
-    assert report["catalog"] == []

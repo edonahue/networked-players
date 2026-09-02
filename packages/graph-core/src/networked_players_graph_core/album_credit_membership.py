@@ -4,7 +4,7 @@ own `main_release_id` -- the same release `assemble_album_catalog` already
 chose, never re-derived here.
 
 This exists because "who's credited on album X" was previously answered
-three different, disagreeing ways across `challenge.v2.json` (denylist
+three different, disagreeing ways across `challenge.v3.json` (denylist
 only), Connection Guesser/Record Routes (denylist + performer allowlist),
 and the pathfinding graph (denylist only, scoped to an artist ego network,
 not any specific album's release). This module fixes the album-membership

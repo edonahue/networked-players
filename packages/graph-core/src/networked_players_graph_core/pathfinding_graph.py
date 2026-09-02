@@ -42,8 +42,9 @@ from a v2 payload without re-deriving the whole graph. Published as a new
 file (`graph.v3.json`), dual-live alongside the unedited `graph.v2.json`
 until every real consumer (Connect, Explore, the private research
 workbench, the fleet artifact-check default -- see the PR that introduced
-this version for the full consumer audit) has cut over; retiring v2 is a
-later, separate step (ADR 0058's own real precedent for the v1 retirement).
+this version for the full consumer audit) had cut over; v2 was then retired
+and deleted as an explicit, separate step (ADR 0058's own real precedent for
+the v1 retirement).
 
 This is an OPERATOR-run build (like `build-album-art-registry`): it needs
 the real one-hop working set on disk (`CreditGraph.open`, `build_edges=True`)

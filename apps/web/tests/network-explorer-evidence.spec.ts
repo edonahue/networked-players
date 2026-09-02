@@ -290,7 +290,7 @@ test("a newer edge's open invalidates an older edge's still-pending evidence", a
   const edges = page.locator("[data-explorer-edges] .explorer-edge-group");
   const count = await edges.count();
   // master-107325 is documented (this file's own header) as a real,
-  // high-degree center -- 1696 real edges in the committed graph.v2.json,
+  // high-degree center -- 1696 real edges in the committed graph.v3.json,
   // capped at 24 in the DOM. A hard precondition, not a skip: if this ever
   // drops below 2, the fixture itself has changed and this test's premise
   // needs revisiting, not a silently-skipped CI run.
