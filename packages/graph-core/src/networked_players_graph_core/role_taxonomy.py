@@ -172,24 +172,6 @@ _ENGINEERING_TOKENS = frozenset(
         "drum programming",
     }
 )
-# A secondary signal, never a reclassification: these three stay
-# RoleCategory.ENGINEERING like every other token above. This is the
-# specific, narrow subset of "pure post-production technical" work the
-# owner asked to de-prioritize on core/default pages (2026-08-31): a
-# mastering, recording, or mixing credit is real, but -- unlike Producer or
-# a generic Engineer credit, which imply broader creative/session
-# involvement -- it's also the credit type most likely to be an engineer's
-# later, unrelated reissue/remaster work with no real period overlap with
-# the other credited artist. Deliberately does NOT include "engineer"
-# (too broad/ambiguous a token to single out), "programmed by", or
-# "drum programming" (electronic-sequencing work, a different concern).
-_BACKGROUND_ENGINEERING_TOKENS = frozenset(
-    {
-        "mastered by",
-        "recorded by",
-        "mixed by",
-    }
-)
 _ARRANGEMENT_TOKENS = frozenset(
     {
         "arranged by",
@@ -358,107 +340,6 @@ def primary_role_category(role_text: str | None) -> RoleCategory:
         if category is not RoleCategory.UNKNOWN:
             return category
     return RoleCategory.UNKNOWN
-
-
-#: Splits on a comma only when it's NOT inside a `[...]` qualifier -- a
-#: plain `role_text.split(",")` (the convention `_classify_component`'s
-#: caller `classify_role` uses elsewhere in this module) breaks on a real,
-#: committed credit like "Recorded By [Le Mobile, Los Angeles]", whose
-#: qualifier itself contains a comma: naively splitting first yields
-#: "Recorded By [Le Mobile" and " Los Angeles]", neither of which has a
-#: balanced bracket for the later `re.sub(r"\[.*\]", "", ...)` strip to
-#: remove, so neither normalizes to a known token and the credit silently
-#: fails to classify as background-engineering (a real false negative
-#: caught in review, since this predicate -- unlike `classify_role` -- is
-#: new code with no other established convention to match). Deliberately
-#: scoped to this function only, not the shared `_classify_component`
-#: path `classify_role` and every other caller of it still use, to avoid
-#: widening this fix into `classify_role`'s much broader, already-
-#: published blast radius (every contributor's `role_categories`) as part
-#: of a background-engineering-specific change.
-_ROLE_COMPONENT_SPLIT = re.compile(r",\s*(?![^\[]*\])")
-
-
-def is_background_engineering_role(role_text: str | None) -> bool:
-    """True when at least one comma-separated component of `role_text` is a
-    background-engineering token (Mastered By / Recorded By / Mixed By) and
-    every OTHER component is non-substantive (PACKAGING_BUSINESS/UNKNOWN via
-    `_classify_component` -- a real, non-substantive companion credit like
-    "Lacquer Cut By" alongside "Mastered By" on the same credit string must
-    not negate the background verdict, even though "Lacquer Cut By" isn't
-    ITSELF one of the three narrow background tokens; a round-9 review
-    finding against real committed data, release 35780023 artist 520370:
-    "Mastered By [Mastering], Lacquer Cut By [Lacquer Cutting]"). A
-    genuinely substantive companion (Producer, Engineer, a performer role,
-    ...) still disqualifies the whole credit -- this is not a blanket "any
-    background component wins" rule, matching the existing pinned "Producer,
-    Mastered By" -> False case. A secondary display/ranking signal, never a
-    change to `classify_role`'s own ENGINEERING classification or to
-    `graph.py`'s edge eligibility. `None`/empty and a role text with no
-    background component at all (nothing to background) are both `False` --
-    fail-closed, the same default `is_performer_role` uses."""
-    if not role_text:
-        return False
-    saw_background = False
-    for component in _ROLE_COMPONENT_SPLIT.split(role_text):
-        if re.sub(r"\[.*\]", "", component).strip().lower() in _BACKGROUND_ENGINEERING_TOKENS:
-            saw_background = True
-            continue
-        if _classify_component(component) not in (
-            RoleCategory.PACKAGING_BUSINESS,
-            RoleCategory.UNKNOWN,
-        ):
-            return False
-    return saw_background
-
-
-def is_background_only_role_profile(role_texts: Counter[str]) -> bool:
-    """True when EVERY distinct role_text a contributor has ever been
-    credited with -- the full observed vocabulary, never `role_text_examples`'
-    frequency-capped top-`_MAX_ROLE_TEXT_EXAMPLES` display sample -- is either
-    background-engineering or non-substantive (PACKAGING_BUSINESS, UNKNOWN,
-    or ENGINEERING when the specific credit is itself background-only).
-
-    Deliberately takes the full `Counter[str]` a builder already has on hand
-    (`contributor_index.py`'s `role_texts[artist_id]`), not the published,
-    capped `role_text_examples` sample: a contributor with 5+ distinct
-    background-engineering credits and one rarer substantive credit (e.g. a
-    single "Producer" hop) would have that credit silently truncated from
-    the display sample, causing a false-positive "background-only" verdict
-    if inferred from the sample alone -- a real gap caught in review, the
-    same class of issue `_ROLE_COMPONENT_SPLIT` above already fixed once for
-    a different reason. False for a profile with no engineering credit at
-    all (nothing to background) or any credit classifying into a substantive
-    category (vocals, production, composition, ...).
-
-    Classifies every role_text bracket-aware, PER COMPONENT, the same way
-    `is_background_engineering_role` does -- never by handing a whole
-    role_text to `classify_role`, which splits on a bare comma before
-    bracket-stripping. A real, committed credit -- "Engineer [Multi-channel
-    Master Eq, Balance, Preparation]" (round 11) -- has TWO commas inside
-    its bracket qualifier; `classify_role`'s naive split mis-splits it into
-    unbalanced-bracket fragments that both classify as UNKNOWN, silently
-    hiding the real, substantive ENGINEERING credit and letting a
-    contributor whose only other credit is background be wrongly judged
-    background-only. An earlier version of this function called
-    `is_background_engineering_role(role_text)` first and fell back to
-    whole-string `classify_role(role_text)` only when that returned False
-    -- exactly the path this bracket-comma credit took, since it isn't
-    purely background either. A single bracket-aware per-component loop
-    avoids ever reintroducing that class of gap by construction."""
-    saw_engineering = False
-    for role_text in role_texts:
-        for component in _ROLE_COMPONENT_SPLIT.split(role_text):
-            normalized = re.sub(r"\[.*\]", "", component).strip().lower()
-            if normalized in _BACKGROUND_ENGINEERING_TOKENS:
-                saw_engineering = True
-                continue
-            if _classify_component(component) not in (
-                RoleCategory.PACKAGING_BUSINESS,
-                RoleCategory.UNKNOWN,
-            ):
-                return False
-    return saw_engineering
 
 
 def classify_role_sql(role_column: str) -> str:

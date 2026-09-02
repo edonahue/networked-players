@@ -21,35 +21,6 @@
 .album-card:focus-visible {
   background: var(--surface);
 }
-/* De-emphasized, never removed -- same convention as Explore's
-   .explorer-node--dimmed: the connection is real and stays fully visible
-   and clickable, just visually secondary (2026-08-31, background-
-   engineering-only connections). Scoped to the cover and title only --
-   NOT the whole card: .album-card__meta already renders in var(--muted),
-   a deliberately lower-contrast color, and a real automated a11y scan
-   caught that a blanket card-level opacity compounds with that already-
-   reduced contrast to fail WCAG AA (measured 3.59:1, needs 4.5:1).
-   opacity 0.6 on .album-card__title alone still wasn't enough: caught in
-   a second review round, --ink/--ink-strong composited over --surface at
-   0.6 opacity in the LIGHT theme (the automated a11y suite only scans
-   the default dark theme) measures ~4.02:1, still under 4.5:1. 0.7 was
-   computed against the real WCAG relative-luminance formula for every
-   ink/surface token pair in both themes -- the tightest case (light
-   theme, --ink on --surface) comes out to ~5.46:1, a real margin above
-   the 4.5:1 floor, not just barely over it. */
-.album-card--muted .album-card__cover,
-.album-card--muted .album-card__placeholder,
-.album-card--muted .album-card__title {
-  opacity: 0.7;
-}
-.album-card--muted:hover .album-card__cover,
-.album-card--muted:hover .album-card__placeholder,
-.album-card--muted:hover .album-card__title,
-.album-card--muted:focus-visible .album-card__cover,
-.album-card--muted:focus-visible .album-card__placeholder,
-.album-card--muted:focus-visible .album-card__title {
-  opacity: 1;
-}
 .album-card__cover,
 .album-card__placeholder {
   width: 100%;

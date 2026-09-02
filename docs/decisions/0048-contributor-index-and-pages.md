@@ -207,49 +207,36 @@ clean contract failure, never crash the validator via an unguarded
 set/dict operation, and a repeated `(artist_id, album_id)` pair must be
 rejected even when the sort check alone would pass).
 
-## Addendum: a second companion artifact, `background-only-profiles-v1`
+## Addendum: a second companion artifact, `background-only-profiles-v1` (RETIRED by ADR 0068)
 
-The owner's original background-Mastered-By-connections request (see ADR
-0060's own addendum) added `apps/web/src/game/roleTaxonomy.ts`'s
-`isBackgroundOnlyRoleProfile` to de-emphasize a contributor's non-direct
-connections on the contributor and album detail pages when that
-contributor's profile is background-engineering-only. That function
-inferred the answer from `contributor-index-v1`'s own published
-`role_text_examples` — capped, per `_MAX_ROLE_TEXT_EXAMPLES`, to the five
-most frequent role strings per contributor — plus `role_categories`.
-Review (round 4 on the PR that introduced this addendum) found the gap
-inferring from a capped sample always risks: a contributor with several
-frequent background-engineering credits and one rarer substantive credit
-(e.g. a single low-frequency "Producer" hop) could have that credit
-truncated from the published sample entirely, causing a false-positive
-"background-only" verdict that de-emphasized a genuinely substantive
-connection.
+**Status: retired 2026-09-02.** This addendum described
+`apps/web/public/data/contributors/background-only-profiles.v1.json`, a
+companion artifact listing every contributor whose ENTIRE observed role
+vocabulary was background-engineering (Mastered By / Recorded By / Mixed
+By) or non-substantive, used to de-emphasize ("mute") their non-direct
+connections on the contributor and album detail pages. It existed because
+`credit_edges_sql` could form a public graph edge from a purely technical
+credit, so a mastering-only tie could legitimately appear as a
+"connection" that deserved visual de-emphasis rather than removal.
 
-The fix follows the same architecture as `album-hop-distances-v1` above,
-for the same two reasons (an exact-key-set contract on
-`contributor-index-v1` that a new required key would break, and this
-signal needing data — the full, uncapped role-text vocabulary — that
-artifact never published in the first place). `apps/web/public/data/
-contributors/background-only-profiles.v1.json`
-(`data/contracts/background-only-profiles-v1.md`, built by
-`build_background_only_profiles` in the same `contributor_index.py`
-module, validated by `networked_players_contracts.
-background_only_profiles::background_only_profiles_failures`) lists the
-`artist_id`s whose ENTIRE observed role vocabulary — computed from
-`_compute_role_text_counters`, a standalone helper mirroring
-`_compute_album_distances`'s existing extraction — is
-background-engineering or non-substantive
-(`role_taxonomy.py`'s `is_background_only_role_profile`). The client-side
-`isBackgroundOnlyRoleProfile` inference function was removed entirely
-(`apps/web/src/pages/contributors/[id].astro` and
-`apps/web/src/pages/albums/[album].astro` now check membership in this
-artifact's `artist_ids` set directly) rather than kept as a fallback --
-the authoritative, uncapped-derived answer supersedes it completely, and
-this repo's convention is to delete an approach once its replacement is
-correct rather than carry both.
+ADR 0068 removed that possibility at the source: a `track_credit`/
+`release_credit` row must now pass `is_performer_role` before it can form
+an edge at all, so a background-only pair can no longer be a connection
+in the first place. Verified fail-closed against the regenerated
+artifacts before deletion: **0 of 891** contributor pairs in
+`challenge.v3.json` + `routes/rounds.v1.json` classify as background-only,
+and **0** contributors in the regenerated `contributors/index.v1.json`
+have an entirely background-only role vocabulary. With nothing left to
+flag, the artifact, its builder (`build_background_only_profiles`),
+contract (`background_only_profiles_failures`), CLI commands, registration
+entries, the `is_background_engineering_role` /
+`is_background_only_role_profile` predicates and their TS mirrors, and the
+`.album-card--muted` / `.contributor-card--muted` styling were all
+removed rather than kept as a dormant safety net — this repo's convention
+is to delete an approach once it is genuinely unreachable.
 
-See `data/contracts/background-only-profiles-v1.md`,
-`packages/graph-core/tests/test_role_taxonomy.py`'s
-`is_background_only_role_profile` coverage (including a regression pinned
-to the exact capped-sample gap review found), and
-`packages/contracts/tests/test_background_only_profiles_contracts.py`.
+The underlying evidence is untouched: a mastering, mixing, or recording
+credit is still fully published in `album-credit-membership.v1.json` and
+still rendered on album pages as an additional documented credit. Only
+its ability to form a traversable public edge (and therefore its need for
+muting) is gone.

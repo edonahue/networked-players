@@ -175,6 +175,15 @@ The real committed artifact was regenerated
 (`contributor-index-v1-20260601-<hash tracked in the addendum PR>`) under
 this amended rule.
 
+**Superseded by ADR 0068 (2026-09-02).** The `background_only_by_pair`
+exclusion above was removed along with the rest of the background-only
+machinery: under the performer graph a hop can no longer be
+background-engineering-only on either side, so the condition could never
+fire again (verified: 0 of 891 real pairs in the regenerated artifacts
+classify as background-only). Step 1's candidate filter is once more
+role-disjointness alone, and `null` again means exactly "no role-disjoint
+neighbor exists". See ADR 0068 and ADR 0048's own retirement addendum.
+
 ## Revisit trigger
 
 If a future measurement shows the role-disjoint condition degrading (e.g. a

@@ -4,12 +4,6 @@ import {
   pickConnectedAlbumWithArt,
 } from "./helpers/challengeAlbums";
 import { stubCoverArt } from "./helpers/coverArt";
-import {
-  buildAlbumIndex,
-  buildArtistIndex,
-  findAlbumRoute,
-  type PathfindingGraph,
-} from "../src/game/pathfindingGraph";
 
 // Shared by the about-page and llms.txt regression tests below: both quote
 // the same real, current catalog/round counts, and both were caught stating

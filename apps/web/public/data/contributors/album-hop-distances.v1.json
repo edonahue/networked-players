@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "catalog_version": "catalog-v1-20260601-7fbbb46b28e6",
-  "album_hop_distances_version": "album-hop-distances-v1-20260601-d69666696eb6",
-  "generated_at": "2026-08-31T10:50:13Z",
+  "album_hop_distances_version": "album-hop-distances-v1-20260601-832c54f947ba",
+  "generated_at": "2026-09-02T03:56:09Z",
   "source": "Derived from apps/web/public/data/challenge.v2.json and apps/web/public/data/routes/rounds.v1.json -- companion artifact to contributor-index-v1 (ADR 0048 addendum), never a fresh full-corpus query.",
   "license": "Derived from the Discogs monthly CC0 data dumps via the two published artifacts above. See docs/DATA_AND_RIGHTS.md.",
   "entries": [
@@ -13,18 +13,58 @@
     },
     {
       "artist_id": 634,
+      "album_id": "master-18080",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 634,
+      "album_id": "master-25688",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 634,
       "album_id": "master-54449",
       "hop_distance": 1
+    },
+    {
+      "artist_id": 634,
+      "album_id": "master-553",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 634,
+      "album_id": "master-55576",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 634,
+      "album_id": "master-55658",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 634,
+      "album_id": "master-58313",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 634,
+      "album_id": "master-64290",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 634,
+      "album_id": "master-10362",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 634,
+      "album_id": "master-10363",
+      "hop_distance": 2
     },
     {
       "artist_id": 1289,
       "album_id": "master-26647",
       "hop_distance": 0
-    },
-    {
-      "artist_id": 1289,
-      "album_id": "master-10362",
-      "hop_distance": 2
     },
     {
       "artist_id": 1289,
@@ -38,6 +78,11 @@
     },
     {
       "artist_id": 1289,
+      "album_id": "master-10362",
+      "hop_distance": 3
+    },
+    {
+      "artist_id": 1289,
       "album_id": "master-10363",
       "hop_distance": 3
     },
@@ -45,21 +90,6 @@
       "artist_id": 1373,
       "album_id": "master-36251",
       "hop_distance": 0
-    },
-    {
-      "artist_id": 1373,
-      "album_id": "master-30926",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 1373,
-      "album_id": "master-45922",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 1373,
-      "album_id": "master-10362",
-      "hop_distance": 2
     },
     {
       "artist_id": 1373,
@@ -92,13 +122,23 @@
       "hop_distance": 2
     },
     {
-      "artist_id": 1600,
-      "album_id": "master-90844",
+      "artist_id": 1373,
+      "album_id": "master-10362",
+      "hop_distance": 3
+    },
+    {
+      "artist_id": 1830,
+      "album_id": "master-51607",
       "hop_distance": 1
     },
     {
-      "artist_id": 1600,
-      "album_id": "master-10362",
+      "artist_id": 1830,
+      "album_id": "master-5863",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 1830,
+      "album_id": "master-10363",
       "hop_distance": 2
     },
     {
@@ -119,6 +159,11 @@
     {
       "artist_id": 2266,
       "album_id": "master-5460",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 2266,
+      "album_id": "master-75606",
       "hop_distance": 1
     },
     {
@@ -162,16 +207,6 @@
       "hop_distance": 2
     },
     {
-      "artist_id": 2538,
-      "album_id": "master-54449",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 2538,
-      "album_id": "master-10362",
-      "hop_distance": 2
-    },
-    {
       "artist_id": 2656,
       "album_id": "master-10362",
       "hop_distance": 1
@@ -183,57 +218,17 @@
     },
     {
       "artist_id": 2656,
-      "album_id": "master-64290",
+      "album_id": "master-40048",
       "hop_distance": 1
     },
     {
       "artist_id": 2656,
-      "album_id": "master-89665",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 2656,
-      "album_id": "master-1164779",
+      "album_id": "master-12236",
       "hop_distance": 2
     },
     {
       "artist_id": 2656,
-      "album_id": "master-35706",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 2656,
-      "album_id": "master-75606",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 2709,
-      "album_id": "master-18080",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 2709,
-      "album_id": "master-10363",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 2714,
-      "album_id": "master-35706",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 2714,
-      "album_id": "master-10362",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 2714,
-      "album_id": "master-10363",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 2714,
-      "album_id": "master-31755",
+      "album_id": "master-92517",
       "hop_distance": 2
     },
     {
@@ -250,36 +245,6 @@
       "artist_id": 2725,
       "album_id": "master-10363",
       "hop_distance": 3
-    },
-    {
-      "artist_id": 2729,
-      "album_id": "master-31755",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 2729,
-      "album_id": "master-10363",
-      "hop_distance": 3
-    },
-    {
-      "artist_id": 2737,
-      "album_id": "master-27460",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 2737,
-      "album_id": "master-10363",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 3101,
-      "album_id": "master-12236",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 3101,
-      "album_id": "master-10362",
-      "hop_distance": 2
     },
     {
       "artist_id": 3268,
@@ -288,37 +253,42 @@
     },
     {
       "artist_id": 3268,
-      "album_id": "master-1164779",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 3268,
-      "album_id": "master-151766",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 3268,
-      "album_id": "master-16158",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 3268,
-      "album_id": "master-30577",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 3268,
-      "album_id": "master-57279",
-      "hop_distance": 1
+      "album_id": "master-10362",
+      "hop_distance": 3
     },
     {
       "artist_id": 3268,
       "album_id": "master-10363",
+      "hop_distance": 3
+    },
+    {
+      "artist_id": 3550,
+      "album_id": "master-10363",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 3550,
+      "album_id": "master-21520",
       "hop_distance": 2
     },
     {
-      "artist_id": 3268,
+      "artist_id": 3750,
+      "album_id": "master-34081",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 3750,
+      "album_id": "master-96362",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 3750,
       "album_id": "master-10362",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 3750,
+      "album_id": "master-10363",
       "hop_distance": 3
     },
     {
@@ -329,22 +299,12 @@
     {
       "artist_id": 3840,
       "album_id": "master-10362",
-      "hop_distance": 2
+      "hop_distance": 3
     },
     {
       "artist_id": 3840,
       "album_id": "master-10363",
       "hop_distance": 3
-    },
-    {
-      "artist_id": 3851,
-      "album_id": "master-34081",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 3851,
-      "album_id": "master-10363",
-      "hop_distance": 2
     },
     {
       "artist_id": 3857,
@@ -353,13 +313,8 @@
     },
     {
       "artist_id": 3857,
-      "album_id": "master-18027",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 3857,
       "album_id": "master-10362",
-      "hop_distance": 2
+      "hop_distance": 3
     },
     {
       "artist_id": 3857,
@@ -388,7 +343,22 @@
     },
     {
       "artist_id": 3865,
+      "album_id": "master-31598",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 3865,
       "album_id": "master-32208",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 3865,
+      "album_id": "master-32708",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 3865,
+      "album_id": "master-3762",
       "hop_distance": 1
     },
     {
@@ -453,6 +423,11 @@
     },
     {
       "artist_id": 3865,
+      "album_id": "master-34081",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 3865,
       "album_id": "master-66510",
       "hop_distance": 2
     },
@@ -468,18 +443,18 @@
     },
     {
       "artist_id": 3880,
-      "album_id": "master-10363",
+      "album_id": "master-8357",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 3880,
+      "album_id": "master-10362",
       "hop_distance": 2
     },
     {
       "artist_id": 3918,
       "album_id": "master-54449",
       "hop_distance": 0
-    },
-    {
-      "artist_id": 3918,
-      "album_id": "master-10363",
-      "hop_distance": 2
     },
     {
       "artist_id": 3918,
@@ -512,6 +487,31 @@
       "hop_distance": 3
     },
     {
+      "artist_id": 3918,
+      "album_id": "master-10363",
+      "hop_distance": 3
+    },
+    {
+      "artist_id": 3928,
+      "album_id": "master-37615",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 3928,
+      "album_id": "master-10363",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 3990,
+      "album_id": "master-8179",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 3990,
+      "album_id": "master-10362",
+      "hop_distance": 3
+    },
+    {
       "artist_id": 4091,
       "album_id": "master-8357",
       "hop_distance": 0
@@ -520,6 +520,51 @@
       "artist_id": 4091,
       "album_id": "master-10362",
       "hop_distance": 3
+    },
+    {
+      "artist_id": 4158,
+      "album_id": "master-38722",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 4158,
+      "album_id": "master-10362",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 4778,
+      "album_id": "master-1164779",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 4778,
+      "album_id": "master-20148",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 4778,
+      "album_id": "master-57279",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 4778,
+      "album_id": "master-57970",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 4778,
+      "album_id": "master-66510",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 4778,
+      "album_id": "master-750386",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 4778,
+      "album_id": "master-10362",
+      "hop_distance": 2
     },
     {
       "artist_id": 4800,
@@ -548,6 +593,11 @@
     },
     {
       "artist_id": 5049,
+      "album_id": "master-36251",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 5049,
       "album_id": "master-10362",
       "hop_distance": 2
     },
@@ -557,13 +607,38 @@
       "hop_distance": 2
     },
     {
-      "artist_id": 5493,
-      "album_id": "master-66510",
+      "artist_id": 5083,
+      "album_id": "master-35006",
       "hop_distance": 1
     },
     {
-      "artist_id": 5493,
-      "album_id": "master-10362",
+      "artist_id": 5083,
+      "album_id": "master-406634",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 5083,
+      "album_id": "master-57940",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 5083,
+      "album_id": "master-10363",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 5083,
+      "album_id": "master-4424",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 5647,
+      "album_id": "master-16545",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 5647,
+      "album_id": "master-10363",
       "hop_distance": 2
     },
     {
@@ -597,16 +672,6 @@
       "hop_distance": 3
     },
     {
-      "artist_id": 5705,
-      "album_id": "master-8357",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 5705,
-      "album_id": "master-10362",
-      "hop_distance": 2
-    },
-    {
       "artist_id": 5951,
       "album_id": "master-9382",
       "hop_distance": 0
@@ -637,28 +702,38 @@
       "hop_distance": 2
     },
     {
-      "artist_id": 6197,
-      "album_id": "master-10362",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 6197,
-      "album_id": "master-3211",
-      "hop_distance": 2
-    },
-    {
       "artist_id": 6270,
       "album_id": "master-25893",
       "hop_distance": 0
     },
     {
       "artist_id": 6270,
+      "album_id": "master-41722",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 6270,
+      "album_id": "master-45720",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 6270,
       "album_id": "master-10362",
       "hop_distance": 2
     },
     {
       "artist_id": 6270,
+      "album_id": "master-10363",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 6270,
       "album_id": "master-19493",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 6270,
+      "album_id": "master-48605",
       "hop_distance": 2
     },
     {
@@ -672,33 +747,13 @@
       "hop_distance": 2
     },
     {
-      "artist_id": 6270,
-      "album_id": "master-10363",
-      "hop_distance": 3
-    },
-    {
-      "artist_id": 6277,
-      "album_id": "master-1164779",
-      "hop_distance": 1
-    },
-    {
       "artist_id": 6277,
       "album_id": "master-12236",
       "hop_distance": 1
     },
     {
       "artist_id": 6277,
-      "album_id": "master-75606",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 6277,
       "album_id": "master-10362",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 6277,
-      "album_id": "master-10363",
       "hop_distance": 2
     },
     {
@@ -708,8 +763,38 @@
     },
     {
       "artist_id": 6520,
+      "album_id": "master-107325",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 6520,
+      "album_id": "master-20387",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 6520,
+      "album_id": "master-26647",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 6520,
+      "album_id": "master-39248",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 6520,
       "album_id": "master-10362",
       "hop_distance": 2
+    },
+    {
+      "artist_id": 6520,
+      "album_id": "master-3211",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 6520,
+      "album_id": "master-10363",
+      "hop_distance": 3
     },
     {
       "artist_id": 6952,
@@ -729,12 +814,22 @@
     {
       "artist_id": 7987,
       "album_id": "master-10362",
-      "hop_distance": 2
+      "hop_distance": 3
     },
     {
       "artist_id": 7987,
       "album_id": "master-10363",
       "hop_distance": 3
+    },
+    {
+      "artist_id": 8024,
+      "album_id": "master-90844",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 8024,
+      "album_id": "master-10362",
+      "hop_distance": 2
     },
     {
       "artist_id": 8029,
@@ -744,20 +839,10 @@
     {
       "artist_id": 8029,
       "album_id": "master-10362",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 8029,
-      "album_id": "master-10363",
       "hop_distance": 3
     },
     {
-      "artist_id": 8211,
-      "album_id": "master-15841",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 8211,
+      "artist_id": 8029,
       "album_id": "master-10363",
       "hop_distance": 3
     },
@@ -773,7 +858,7 @@
     },
     {
       "artist_id": 8591,
-      "album_id": "master-403952",
+      "album_id": "master-18027",
       "hop_distance": 1
     },
     {
@@ -785,6 +870,11 @@
       "artist_id": 8760,
       "album_id": "master-67836",
       "hop_distance": 0
+    },
+    {
+      "artist_id": 8760,
+      "album_id": "master-27460",
+      "hop_distance": 1
     },
     {
       "artist_id": 8760,
@@ -829,7 +919,7 @@
     {
       "artist_id": 8887,
       "album_id": "master-10363",
-      "hop_distance": 4
+      "hop_distance": 3
     },
     {
       "artist_id": 8978,
@@ -845,6 +935,11 @@
       "artist_id": 8978,
       "album_id": "master-18080",
       "hop_distance": 1
+    },
+    {
+      "artist_id": 8978,
+      "album_id": "master-3719",
+      "hop_distance": 2
     },
     {
       "artist_id": 9136,
@@ -883,6 +978,11 @@
     },
     {
       "artist_id": 10263,
+      "album_id": "master-3719",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 10263,
       "album_id": "master-44278",
       "hop_distance": 1
     },
@@ -913,11 +1013,6 @@
     },
     {
       "artist_id": 10263,
-      "album_id": "master-10363",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 10263,
       "album_id": "master-1046042",
       "hop_distance": 2
     },
@@ -937,29 +1032,9 @@
       "hop_distance": 2
     },
     {
-      "artist_id": 10351,
-      "album_id": "master-10362",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 10351,
-      "album_id": "master-58313",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 10351,
-      "album_id": "master-104399",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 10351,
-      "album_id": "master-24511",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 10351,
-      "album_id": "master-8179",
-      "hop_distance": 2
+      "artist_id": 10263,
+      "album_id": "master-10363",
+      "hop_distance": 3
     },
     {
       "artist_id": 10463,
@@ -968,17 +1043,27 @@
     },
     {
       "artist_id": 10463,
+      "album_id": "master-30303",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 10463,
+      "album_id": "master-403952",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 10463,
       "album_id": "master-72235",
       "hop_distance": 1
     },
     {
-      "artist_id": 10504,
-      "album_id": "master-15841",
-      "hop_distance": 1
+      "artist_id": 10463,
+      "album_id": "master-10362",
+      "hop_distance": 2
     },
     {
-      "artist_id": 10504,
-      "album_id": "master-10362",
+      "artist_id": 10463,
+      "album_id": "master-10363",
       "hop_distance": 2
     },
     {
@@ -992,7 +1077,12 @@
       "hop_distance": 1
     },
     {
-      "artist_id": 10514,
+      "artist_id": 10552,
+      "album_id": "master-135633",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 10552,
       "album_id": "master-10362",
       "hop_distance": 2
     },
@@ -1004,11 +1094,6 @@
     {
       "artist_id": 10584,
       "album_id": "master-10362",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 10584,
-      "album_id": "master-10363",
       "hop_distance": 2
     },
     {
@@ -1029,6 +1114,36 @@
     {
       "artist_id": 10584,
       "album_id": "master-96362",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 10584,
+      "album_id": "master-10363",
+      "hop_distance": 3
+    },
+    {
+      "artist_id": 10620,
+      "album_id": "master-59538",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 10620,
+      "album_id": "master-10362",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 10643,
+      "album_id": "master-151766",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 10643,
+      "album_id": "master-10362",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 10643,
+      "album_id": "master-10363",
       "hop_distance": 2
     },
     {
@@ -1058,11 +1173,6 @@
     },
     {
       "artist_id": 10933,
-      "album_id": "master-10363",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 10933,
       "album_id": "master-2452996",
       "hop_distance": 2
     },
@@ -1082,13 +1192,33 @@
       "hop_distance": 2
     },
     {
+      "artist_id": 10933,
+      "album_id": "master-10363",
+      "hop_distance": 3
+    },
+    {
       "artist_id": 11012,
       "album_id": "master-68399",
       "hop_distance": 0
     },
     {
       "artist_id": 11012,
+      "album_id": "master-13280",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 11012,
+      "album_id": "master-4300",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 11012,
       "album_id": "master-10362",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 11012,
+      "album_id": "master-10363",
       "hop_distance": 2
     },
     {
@@ -1118,17 +1248,42 @@
     },
     {
       "artist_id": 11070,
+      "album_id": "master-3878",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 11070,
       "album_id": "master-79241",
       "hop_distance": 1
     },
     {
       "artist_id": 11070,
-      "album_id": "master-8179",
+      "album_id": "master-10363",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 11073,
+      "album_id": "master-38175",
       "hop_distance": 1
     },
     {
-      "artist_id": 11070,
+      "artist_id": 11073,
+      "album_id": "master-44278",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 11073,
+      "album_id": "master-6495",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 11073,
       "album_id": "master-10362",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 11073,
+      "album_id": "master-10363",
       "hop_distance": 2
     },
     {
@@ -1144,6 +1299,16 @@
     {
       "artist_id": 11136,
       "album_id": "master-32708",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 11136,
+      "album_id": "master-3719",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 11136,
+      "album_id": "master-39248",
       "hop_distance": 1
     },
     {
@@ -1207,66 +1372,6 @@
       "hop_distance": 3
     },
     {
-      "artist_id": 11415,
-      "album_id": "master-105802",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 11415,
-      "album_id": "master-138283",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 11415,
-      "album_id": "master-23069",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 11415,
-      "album_id": "master-26037",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 11415,
-      "album_id": "master-406634",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 11415,
-      "album_id": "master-43063",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 11415,
-      "album_id": "master-58313",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 11415,
-      "album_id": "master-10363",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 11442,
-      "album_id": "master-52497",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 11442,
-      "album_id": "master-10363",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 11449,
-      "album_id": "master-57970",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 11449,
-      "album_id": "master-10362",
-      "hop_distance": 2
-    },
-    {
       "artist_id": 11867,
       "album_id": "master-27460",
       "hop_distance": 1
@@ -1288,17 +1393,22 @@
     },
     {
       "artist_id": 11879,
+      "album_id": "master-35276",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 11879,
+      "album_id": "master-45922",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 11879,
       "album_id": "master-57940",
       "hop_distance": 1
     },
     {
       "artist_id": 11879,
       "album_id": "master-10362",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 11879,
-      "album_id": "master-10363",
       "hop_distance": 2
     },
     {
@@ -1322,6 +1432,11 @@
       "hop_distance": 2
     },
     {
+      "artist_id": 11879,
+      "album_id": "master-10363",
+      "hop_distance": 3
+    },
+    {
       "artist_id": 12208,
       "album_id": "master-18027",
       "hop_distance": 0
@@ -1335,16 +1450,6 @@
       "artist_id": 12208,
       "album_id": "master-10363",
       "hop_distance": 3
-    },
-    {
-      "artist_id": 12372,
-      "album_id": "master-21520",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 12372,
-      "album_id": "master-10363",
-      "hop_distance": 2
     },
     {
       "artist_id": 12686,
@@ -1385,6 +1490,21 @@
       "artist_id": 12686,
       "album_id": "master-10362",
       "hop_distance": 3
+    },
+    {
+      "artist_id": 12803,
+      "album_id": "master-26647",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 12803,
+      "album_id": "master-35793",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 12803,
+      "album_id": "master-10363",
+      "hop_distance": 2
     },
     {
       "artist_id": 13608,
@@ -1432,16 +1552,6 @@
       "hop_distance": 2
     },
     {
-      "artist_id": 13733,
-      "album_id": "master-20148",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 13733,
-      "album_id": "master-10362",
-      "hop_distance": 2
-    },
-    {
       "artist_id": 13735,
       "album_id": "master-106396",
       "hop_distance": 0
@@ -1449,6 +1559,11 @@
     {
       "artist_id": 13735,
       "album_id": "master-30577",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 13735,
+      "album_id": "master-38722",
       "hop_distance": 1
     },
     {
@@ -1488,11 +1603,6 @@
     },
     {
       "artist_id": 13932,
-      "album_id": "master-10362",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 13932,
       "album_id": "master-151766",
       "hop_distance": 2
     },
@@ -1510,6 +1620,11 @@
       "artist_id": 13932,
       "album_id": "master-9382",
       "hop_distance": 2
+    },
+    {
+      "artist_id": 13932,
+      "album_id": "master-10362",
+      "hop_distance": 3
     },
     {
       "artist_id": 13932,
@@ -1553,6 +1668,11 @@
     },
     {
       "artist_id": 13961,
+      "album_id": "master-57029",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 13961,
       "album_id": "master-68209",
       "hop_distance": 1
     },
@@ -1583,11 +1703,6 @@
     },
     {
       "artist_id": 13961,
-      "album_id": "master-10363",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 13961,
       "album_id": "master-20387",
       "hop_distance": 2
     },
@@ -1605,6 +1720,11 @@
       "artist_id": 13961,
       "album_id": "master-92517",
       "hop_distance": 2
+    },
+    {
+      "artist_id": 13961,
+      "album_id": "master-10363",
+      "hop_distance": 3
     },
     {
       "artist_id": 14068,
@@ -1627,16 +1747,6 @@
       "hop_distance": 1
     },
     {
-      "artist_id": 15261,
-      "album_id": "master-51607",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 15261,
-      "album_id": "master-10363",
-      "hop_distance": 2
-    },
-    {
       "artist_id": 15687,
       "album_id": "master-27460",
       "hop_distance": 0
@@ -1648,13 +1758,13 @@
     },
     {
       "artist_id": 15687,
-      "album_id": "master-10362",
+      "album_id": "master-31337",
       "hop_distance": 2
     },
     {
       "artist_id": 15687,
-      "album_id": "master-31337",
-      "hop_distance": 2
+      "album_id": "master-10362",
+      "hop_distance": 3
     },
     {
       "artist_id": 15687,
@@ -1668,7 +1778,52 @@
     },
     {
       "artist_id": 15885,
+      "album_id": "master-1164779",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 15885,
+      "album_id": "master-122051",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 15885,
+      "album_id": "master-12236",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 15885,
+      "album_id": "master-138283",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 15885,
+      "album_id": "master-20148",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 15885,
+      "album_id": "master-20387",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 15885,
+      "album_id": "master-25303",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 15885,
+      "album_id": "master-57970",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 15885,
       "album_id": "master-10362",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 15885,
+      "album_id": "master-10363",
       "hop_distance": 2
     },
     {
@@ -1689,6 +1844,16 @@
     {
       "artist_id": 15885,
       "album_id": "master-89665",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 17035,
+      "album_id": "master-35401",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 17035,
+      "album_id": "master-10363",
       "hop_distance": 2
     },
     {
@@ -1733,6 +1898,11 @@
     },
     {
       "artist_id": 17546,
+      "album_id": "master-10363",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 17546,
       "album_id": "master-106396",
       "hop_distance": 2
     },
@@ -1752,26 +1922,6 @@
       "hop_distance": 2
     },
     {
-      "artist_id": 17546,
-      "album_id": "master-10363",
-      "hop_distance": 3
-    },
-    {
-      "artist_id": 17589,
-      "album_id": "master-25303",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 17589,
-      "album_id": "master-57970",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 17589,
-      "album_id": "master-10363",
-      "hop_distance": 2
-    },
-    {
       "artist_id": 17827,
       "album_id": "master-69859",
       "hop_distance": 0
@@ -1783,12 +1933,37 @@
     },
     {
       "artist_id": 17827,
+      "album_id": "master-104166",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 17827,
+      "album_id": "master-17249",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 17827,
+      "album_id": "master-23684",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 17827,
+      "album_id": "master-24047",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 17827,
       "album_id": "master-30577",
       "hop_distance": 1
     },
     {
       "artist_id": 17827,
       "album_id": "master-32708",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 17827,
+      "album_id": "master-35706",
       "hop_distance": 1
     },
     {
@@ -1833,7 +2008,17 @@
     },
     {
       "artist_id": 17827,
+      "album_id": "master-56036",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 17827,
       "album_id": "master-72879",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 17827,
+      "album_id": "master-76678",
       "hop_distance": 1
     },
     {
@@ -1844,6 +2029,11 @@
     {
       "artist_id": 17827,
       "album_id": "master-10362",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 17827,
+      "album_id": "master-10363",
       "hop_distance": 2
     },
     {
@@ -1898,6 +2088,11 @@
     },
     {
       "artist_id": 18160,
+      "album_id": "master-4424",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 18160,
       "album_id": "master-91767",
       "hop_distance": 1
     },
@@ -1907,6 +2102,21 @@
       "hop_distance": 2
     },
     {
+      "artist_id": 18160,
+      "album_id": "master-10363",
+      "hop_distance": 3
+    },
+    {
+      "artist_id": 18837,
+      "album_id": "master-31755",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 18837,
+      "album_id": "master-10363",
+      "hop_distance": 3
+    },
+    {
       "artist_id": 18839,
       "album_id": "master-6495",
       "hop_distance": 0
@@ -1914,7 +2124,12 @@
     {
       "artist_id": 18839,
       "album_id": "master-10362",
-      "hop_distance": 2
+      "hop_distance": 3
+    },
+    {
+      "artist_id": 18839,
+      "album_id": "master-10363",
+      "hop_distance": 3
     },
     {
       "artist_id": 18956,
@@ -1973,11 +2188,6 @@
     },
     {
       "artist_id": 18956,
-      "album_id": "master-10362",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 18956,
       "album_id": "master-2452996",
       "hop_distance": 2
     },
@@ -1995,6 +2205,11 @@
       "artist_id": 18956,
       "album_id": "master-91767",
       "hop_distance": 2
+    },
+    {
+      "artist_id": 18956,
+      "album_id": "master-10362",
+      "hop_distance": 3
     },
     {
       "artist_id": 18984,
@@ -2027,6 +2242,16 @@
       "hop_distance": 2
     },
     {
+      "artist_id": 19132,
+      "album_id": "master-10362",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 19132,
+      "album_id": "master-172407",
+      "hop_distance": 2
+    },
+    {
       "artist_id": 19298,
       "album_id": "master-133278",
       "hop_distance": 0
@@ -2038,7 +2263,17 @@
     },
     {
       "artist_id": 19298,
+      "album_id": "master-107325",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 19298,
       "album_id": "master-10362",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 19298,
+      "album_id": "master-10363",
       "hop_distance": 2
     },
     {
@@ -2062,11 +2297,6 @@
       "hop_distance": 2
     },
     {
-      "artist_id": 19298,
-      "album_id": "master-10363",
-      "hop_distance": 3
-    },
-    {
       "artist_id": 19696,
       "album_id": "master-106274",
       "hop_distance": 1
@@ -2075,6 +2305,21 @@
       "artist_id": 19696,
       "album_id": "master-133278",
       "hop_distance": 1
+    },
+    {
+      "artist_id": 19696,
+      "album_id": "master-16921",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 19696,
+      "album_id": "master-57029",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 19696,
+      "album_id": "master-10363",
+      "hop_distance": 2
     },
     {
       "artist_id": 19814,
@@ -2089,7 +2334,7 @@
     {
       "artist_id": 19814,
       "album_id": "master-10363",
-      "hop_distance": 3
+      "hop_distance": 2
     },
     {
       "artist_id": 19828,
@@ -2108,37 +2353,22 @@
     },
     {
       "artist_id": 19828,
-      "album_id": "master-133278",
+      "album_id": "master-28680",
       "hop_distance": 2
     },
     {
       "artist_id": 19828,
-      "album_id": "master-135633",
+      "album_id": "master-3719",
       "hop_distance": 2
     },
     {
       "artist_id": 19828,
-      "album_id": "master-26647",
+      "album_id": "master-37615",
       "hop_distance": 2
     },
     {
       "artist_id": 19828,
-      "album_id": "master-30926",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 20389,
-      "album_id": "master-20148",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 20389,
-      "album_id": "master-2452996",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 20389,
-      "album_id": "master-10363",
+      "album_id": "master-39248",
       "hop_distance": 2
     },
     {
@@ -2164,6 +2394,16 @@
     {
       "artist_id": 20991,
       "album_id": "master-10363",
+      "hop_distance": 3
+    },
+    {
+      "artist_id": 21262,
+      "album_id": "master-104399",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 21262,
+      "album_id": "master-10363",
       "hop_distance": 2
     },
     {
@@ -2185,6 +2425,16 @@
       "artist_id": 21658,
       "album_id": "master-99919",
       "hop_distance": 1
+    },
+    {
+      "artist_id": 22164,
+      "album_id": "master-45922",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 22164,
+      "album_id": "master-10363",
+      "hop_distance": 2
     },
     {
       "artist_id": 22757,
@@ -2223,8 +2473,8 @@
     },
     {
       "artist_id": 22765,
-      "album_id": "master-25303",
-      "hop_distance": 2
+      "album_id": "master-97173",
+      "hop_distance": 1
     },
     {
       "artist_id": 22854,
@@ -2234,22 +2484,12 @@
     {
       "artist_id": 22854,
       "album_id": "master-10362",
-      "hop_distance": 2
+      "hop_distance": 3
     },
     {
       "artist_id": 22854,
       "album_id": "master-10363",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 22855,
-      "album_id": "master-106274",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 22855,
-      "album_id": "master-10362",
-      "hop_distance": 2
+      "hop_distance": 3
     },
     {
       "artist_id": 23755,
@@ -2377,6 +2617,21 @@
       "hop_distance": 1
     },
     {
+      "artist_id": 25809,
+      "album_id": "master-10363",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 27467,
+      "album_id": "master-48605",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 27467,
+      "album_id": "master-10363",
+      "hop_distance": 3
+    },
+    {
       "artist_id": 27517,
       "album_id": "master-110874",
       "hop_distance": 0
@@ -2387,29 +2642,9 @@
       "hop_distance": 1
     },
     {
-      "artist_id": 27517,
-      "album_id": "master-10363",
-      "hop_distance": 3
-    },
-    {
-      "artist_id": 27517,
-      "album_id": "master-10362",
-      "hop_distance": 4
-    },
-    {
       "artist_id": 27518,
       "album_id": "master-107325",
       "hop_distance": 0
-    },
-    {
-      "artist_id": 27518,
-      "album_id": "master-10362",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 27518,
-      "album_id": "master-10363",
-      "hop_distance": 2
     },
     {
       "artist_id": 27518,
@@ -2432,6 +2667,16 @@
       "hop_distance": 2
     },
     {
+      "artist_id": 27518,
+      "album_id": "master-10362",
+      "hop_distance": 3
+    },
+    {
+      "artist_id": 27518,
+      "album_id": "master-10363",
+      "hop_distance": 3
+    },
+    {
       "artist_id": 27937,
       "album_id": "master-8179",
       "hop_distance": 0
@@ -2439,7 +2684,7 @@
     {
       "artist_id": 27937,
       "album_id": "master-10362",
-      "hop_distance": 3
+      "hop_distance": 4
     },
     {
       "artist_id": 27991,
@@ -2482,16 +2727,6 @@
       "hop_distance": 3
     },
     {
-      "artist_id": 28209,
-      "album_id": "master-104115",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 28209,
-      "album_id": "master-10363",
-      "hop_distance": 2
-    },
-    {
       "artist_id": 28630,
       "album_id": "master-403952",
       "hop_distance": 1
@@ -2523,6 +2758,11 @@
     },
     {
       "artist_id": 28795,
+      "album_id": "master-10363",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 28795,
       "album_id": "master-12236",
       "hop_distance": 2
     },
@@ -2530,11 +2770,6 @@
       "artist_id": 28795,
       "album_id": "master-35759",
       "hop_distance": 2
-    },
-    {
-      "artist_id": 28795,
-      "album_id": "master-10363",
-      "hop_distance": 3
     },
     {
       "artist_id": 28970,
@@ -2554,12 +2789,37 @@
     {
       "artist_id": 28972,
       "album_id": "master-10362",
-      "hop_distance": 2
+      "hop_distance": 3
     },
     {
       "artist_id": 28972,
       "album_id": "master-10363",
       "hop_distance": 4
+    },
+    {
+      "artist_id": 29262,
+      "album_id": "master-15841",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 29262,
+      "album_id": "master-16158",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 29262,
+      "album_id": "master-42522",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 29262,
+      "album_id": "master-10363",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 29807,
+      "album_id": "master-15841",
+      "hop_distance": 1
     },
     {
       "artist_id": 29807,
@@ -2578,16 +2838,6 @@
     },
     {
       "artist_id": 29807,
-      "album_id": "master-10362",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 29827,
-      "album_id": "master-122051",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 29827,
       "album_id": "master-10362",
       "hop_distance": 2
     },
@@ -2617,12 +2867,12 @@
       "hop_distance": 1
     },
     {
-      "artist_id": 30093,
-      "album_id": "master-3762",
+      "artist_id": 29981,
+      "album_id": "master-20135",
       "hop_distance": 1
     },
     {
-      "artist_id": 30093,
+      "artist_id": 29981,
       "album_id": "master-10363",
       "hop_distance": 2
     },
@@ -2748,6 +2998,11 @@
     },
     {
       "artist_id": 30552,
+      "album_id": "master-10362",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 30552,
       "album_id": "master-10363",
       "hop_distance": 2
     },
@@ -2777,11 +3032,6 @@
       "hop_distance": 2
     },
     {
-      "artist_id": 30552,
-      "album_id": "master-10362",
-      "hop_distance": 3
-    },
-    {
       "artist_id": 30721,
       "album_id": "master-51607",
       "hop_distance": 1
@@ -2799,47 +3049,22 @@
     {
       "artist_id": 30724,
       "album_id": "master-10362",
-      "hop_distance": 2
+      "hop_distance": 3
     },
     {
       "artist_id": 30724,
       "album_id": "master-10363",
+      "hop_distance": 3
+    },
+    {
+      "artist_id": 31617,
+      "album_id": "master-10363",
       "hop_distance": 2
     },
     {
-      "artist_id": 31213,
-      "album_id": "master-10362",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 31213,
-      "album_id": "master-13280",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 31213,
-      "album_id": "master-24047",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 31213,
-      "album_id": "master-32708",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 31213,
-      "album_id": "master-68399",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 31213,
-      "album_id": "master-69859",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 31213,
-      "album_id": "master-92517",
-      "hop_distance": 1
+      "artist_id": 31617,
+      "album_id": "master-13814",
+      "hop_distance": 2
     },
     {
       "artist_id": 33534,
@@ -2887,6 +3112,16 @@
       "hop_distance": 2
     },
     {
+      "artist_id": 33591,
+      "album_id": "master-21520",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 33591,
+      "album_id": "master-10363",
+      "hop_distance": 2
+    },
+    {
       "artist_id": 33708,
       "album_id": "master-19493",
       "hop_distance": 1
@@ -2918,28 +3153,28 @@
     },
     {
       "artist_id": 34278,
-      "album_id": "master-10363",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 34292,
-      "album_id": "master-104399",
+      "album_id": "master-30303",
       "hop_distance": 1
     },
     {
-      "artist_id": 34292,
-      "album_id": "master-10363",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 34316,
-      "album_id": "master-25303",
+      "artist_id": 34278,
+      "album_id": "master-37615",
       "hop_distance": 1
     },
     {
-      "artist_id": 34316,
-      "album_id": "master-10362",
-      "hop_distance": 2
+      "artist_id": 34278,
+      "album_id": "master-553",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 34278,
+      "album_id": "master-68399",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 34278,
+      "album_id": "master-10363",
+      "hop_distance": 3
     },
     {
       "artist_id": 35022,
@@ -3008,11 +3243,6 @@
     },
     {
       "artist_id": 35301,
-      "album_id": "master-10362",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 35301,
       "album_id": "master-52671",
       "hop_distance": 1
     },
@@ -3058,8 +3288,18 @@
     },
     {
       "artist_id": 35301,
+      "album_id": "master-92517",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 35301,
       "album_id": "master-99919",
       "hop_distance": 1
+    },
+    {
+      "artist_id": 35301,
+      "album_id": "master-10362",
+      "hop_distance": 2
     },
     {
       "artist_id": 35301,
@@ -3088,6 +3328,11 @@
     },
     {
       "artist_id": 35646,
+      "album_id": "master-27460",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 35646,
       "album_id": "master-66510",
       "hop_distance": 1
     },
@@ -3097,13 +3342,18 @@
       "hop_distance": 1
     },
     {
-      "artist_id": 36276,
-      "album_id": "master-26647",
+      "artist_id": 35646,
+      "album_id": "master-10363",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 35848,
+      "album_id": "master-37401",
       "hop_distance": 1
     },
     {
-      "artist_id": 36276,
-      "album_id": "master-10363",
+      "artist_id": 35848,
+      "album_id": "master-10362",
       "hop_distance": 2
     },
     {
@@ -3189,12 +3439,12 @@
     {
       "artist_id": 36860,
       "album_id": "master-10362",
-      "hop_distance": 3
+      "hop_distance": 4
     },
     {
       "artist_id": 36860,
       "album_id": "master-10363",
-      "hop_distance": 3
+      "hop_distance": 4
     },
     {
       "artist_id": 36862,
@@ -3205,6 +3455,26 @@
       "artist_id": 36862,
       "album_id": "master-82337",
       "hop_distance": 1
+    },
+    {
+      "artist_id": 37120,
+      "album_id": "master-20137",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 37120,
+      "album_id": "master-10363",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 37224,
+      "album_id": "master-52998",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 37224,
+      "album_id": "master-10363",
+      "hop_distance": 2
     },
     {
       "artist_id": 37729,
@@ -3227,6 +3497,21 @@
       "hop_distance": 1
     },
     {
+      "artist_id": 37730,
+      "album_id": "master-27765",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 37730,
+      "album_id": "master-10362",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 37730,
+      "album_id": "master-10363",
+      "hop_distance": 2
+    },
+    {
       "artist_id": 37735,
       "album_id": "master-104166",
       "hop_distance": 1
@@ -3237,13 +3522,18 @@
       "hop_distance": 1
     },
     {
-      "artist_id": 37906,
-      "album_id": "master-57279",
+      "artist_id": 37735,
+      "album_id": "master-55281",
       "hop_distance": 1
     },
     {
-      "artist_id": 37906,
+      "artist_id": 37735,
       "album_id": "master-10362",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 37735,
+      "album_id": "master-10363",
       "hop_distance": 2
     },
     {
@@ -3277,6 +3567,16 @@
       "hop_distance": 3
     },
     {
+      "artist_id": 38863,
+      "album_id": "master-57279",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 38863,
+      "album_id": "master-10363",
+      "hop_distance": 2
+    },
+    {
       "artist_id": 39293,
       "album_id": "master-67836",
       "hop_distance": 1
@@ -3287,24 +3587,14 @@
       "hop_distance": 1
     },
     {
-      "artist_id": 39414,
-      "album_id": "master-3719",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 39414,
-      "album_id": "master-10363",
-      "hop_distance": 2
-    },
-    {
       "artist_id": 39600,
-      "album_id": "master-5863",
+      "album_id": "master-13814",
       "hop_distance": 1
     },
     {
       "artist_id": 39600,
       "album_id": "master-10363",
-      "hop_distance": 2
+      "hop_distance": 3
     },
     {
       "artist_id": 39766,
@@ -3314,12 +3604,12 @@
     {
       "artist_id": 39766,
       "album_id": "master-10362",
-      "hop_distance": 2
+      "hop_distance": 3
     },
     {
       "artist_id": 39766,
       "album_id": "master-10363",
-      "hop_distance": 2
+      "hop_distance": 3
     },
     {
       "artist_id": 39770,
@@ -3329,37 +3619,12 @@
     {
       "artist_id": 39770,
       "album_id": "master-10362",
-      "hop_distance": 2
+      "hop_distance": 3
     },
     {
       "artist_id": 39770,
       "album_id": "master-10363",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 40026,
-      "album_id": "master-45720",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 40026,
-      "album_id": "master-52998",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 40026,
-      "album_id": "master-10363",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 40916,
-      "album_id": "master-37401",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 40916,
-      "album_id": "master-10362",
-      "hop_distance": 2
+      "hop_distance": 3
     },
     {
       "artist_id": 41237,
@@ -3380,16 +3645,6 @@
       "artist_id": 41266,
       "album_id": "master-3878",
       "hop_distance": 1
-    },
-    {
-      "artist_id": 41513,
-      "album_id": "master-129759",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 41513,
-      "album_id": "master-10362",
-      "hop_distance": 2
     },
     {
       "artist_id": 42058,
@@ -3452,6 +3707,16 @@
       "hop_distance": 3
     },
     {
+      "artist_id": 42895,
+      "album_id": "master-10362",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 42895,
+      "album_id": "master-8179",
+      "hop_distance": 2
+    },
+    {
       "artist_id": 43745,
       "album_id": "master-108242",
       "hop_distance": 1
@@ -3460,26 +3725,6 @@
       "artist_id": 43745,
       "album_id": "master-67836",
       "hop_distance": 1
-    },
-    {
-      "artist_id": 44130,
-      "album_id": "master-113224",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 44130,
-      "album_id": "master-10362",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 44566,
-      "album_id": "master-5460",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 44566,
-      "album_id": "master-10363",
-      "hop_distance": 2
     },
     {
       "artist_id": 44944,
@@ -3533,27 +3778,12 @@
     },
     {
       "artist_id": 45467,
-      "album_id": "master-40048",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 45467,
       "album_id": "master-4300",
       "hop_distance": 1
     },
     {
       "artist_id": 45467,
       "album_id": "master-47744",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 45467,
-      "album_id": "master-49965",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 45467,
-      "album_id": "master-97173",
       "hop_distance": 1
     },
     {
@@ -3568,12 +3798,17 @@
     },
     {
       "artist_id": 45467,
-      "album_id": "master-106396",
+      "album_id": "master-105802",
       "hop_distance": 2
     },
     {
       "artist_id": 45467,
-      "album_id": "master-107325",
+      "album_id": "master-106274",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 45467,
+      "album_id": "master-106396",
       "hop_distance": 2
     },
     {
@@ -3593,17 +3828,17 @@
     },
     {
       "artist_id": 45467,
+      "album_id": "master-129759",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 45467,
       "album_id": "master-13280",
       "hop_distance": 2
     },
     {
       "artist_id": 45467,
       "album_id": "master-133278",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 45467,
-      "album_id": "master-135633",
       "hop_distance": 2
     },
     {
@@ -3663,16 +3898,6 @@
     },
     {
       "artist_id": 45467,
-      "album_id": "master-20387",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 45467,
-      "album_id": "master-21520",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 45467,
       "album_id": "master-23069",
       "hop_distance": 2
     },
@@ -3693,11 +3918,6 @@
     },
     {
       "artist_id": 45467,
-      "album_id": "master-25688",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 45467,
       "album_id": "master-25893",
       "hop_distance": 2
     },
@@ -3713,32 +3933,12 @@
     },
     {
       "artist_id": 45467,
-      "album_id": "master-26647",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 45467,
       "album_id": "master-26725",
       "hop_distance": 2
     },
     {
       "artist_id": 45467,
-      "album_id": "master-27460",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 45467,
-      "album_id": "master-27765",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 45467,
       "album_id": "master-28680",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 45467,
-      "album_id": "master-302",
       "hop_distance": 2
     },
     {
@@ -3768,16 +3968,6 @@
     },
     {
       "artist_id": 45467,
-      "album_id": "master-31598",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 45467,
-      "album_id": "master-31755",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 45467,
       "album_id": "master-32708",
       "hop_distance": 2
     },
@@ -3788,17 +3978,7 @@
     },
     {
       "artist_id": 45467,
-      "album_id": "master-34081",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 45467,
       "album_id": "master-35006",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 45467,
-      "album_id": "master-35276",
       "hop_distance": 2
     },
     {
@@ -3818,17 +3998,7 @@
     },
     {
       "artist_id": 45467,
-      "album_id": "master-36251",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 45467,
       "album_id": "master-37145",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 45467,
-      "album_id": "master-3719",
       "hop_distance": 2
     },
     {
@@ -3843,12 +4013,7 @@
     },
     {
       "artist_id": 45467,
-      "album_id": "master-38175",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 45467,
-      "album_id": "master-38722",
+      "album_id": "master-38712",
       "hop_distance": 2
     },
     {
@@ -3858,12 +4023,17 @@
     },
     {
       "artist_id": 45467,
-      "album_id": "master-39248",
+      "album_id": "master-39341",
       "hop_distance": 2
     },
     {
       "artist_id": 45467,
-      "album_id": "master-39341",
+      "album_id": "master-40048",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 45467,
+      "album_id": "master-403952",
       "hop_distance": 2
     },
     {
@@ -3889,11 +4059,6 @@
     {
       "artist_id": 45467,
       "album_id": "master-43063",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 45467,
-      "album_id": "master-4424",
       "hop_distance": 2
     },
     {
@@ -3948,17 +4113,7 @@
     },
     {
       "artist_id": 45467,
-      "album_id": "master-55281",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 45467,
       "album_id": "master-553",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 45467,
-      "album_id": "master-55576",
       "hop_distance": 2
     },
     {
@@ -3969,11 +4124,6 @@
     {
       "artist_id": 45467,
       "album_id": "master-56036",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 45467,
-      "album_id": "master-57029",
       "hop_distance": 2
     },
     {
@@ -3993,11 +4143,6 @@
     },
     {
       "artist_id": 45467,
-      "album_id": "master-59501",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 45467,
       "album_id": "master-60680",
       "hop_distance": 2
     },
@@ -4009,11 +4154,6 @@
     {
       "artist_id": 45467,
       "album_id": "master-64290",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 45467,
-      "album_id": "master-6495",
       "hop_distance": 2
     },
     {
@@ -4083,16 +4223,6 @@
     },
     {
       "artist_id": 45467,
-      "album_id": "master-750386",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 45467,
-      "album_id": "master-76678",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 45467,
       "album_id": "master-79241",
       "hop_distance": 2
     },
@@ -4128,11 +4258,6 @@
     },
     {
       "artist_id": 45467,
-      "album_id": "master-87446",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 45467,
       "album_id": "master-8883",
       "hop_distance": 2
     },
@@ -4148,7 +4273,7 @@
     },
     {
       "artist_id": 45467,
-      "album_id": "master-92517",
+      "album_id": "master-92896",
       "hop_distance": 2
     },
     {
@@ -4159,6 +4284,11 @@
     {
       "artist_id": 45467,
       "album_id": "master-9382",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 45467,
+      "album_id": "master-97173",
       "hop_distance": 2
     },
     {
@@ -4183,12 +4313,7 @@
     },
     {
       "artist_id": 45467,
-      "album_id": "master-105802",
-      "hop_distance": 3
-    },
-    {
-      "artist_id": 45467,
-      "album_id": "master-106274",
+      "album_id": "master-107325",
       "hop_distance": 3
     },
     {
@@ -4213,7 +4338,7 @@
     },
     {
       "artist_id": 45467,
-      "album_id": "master-129759",
+      "album_id": "master-135633",
       "hop_distance": 3
     },
     {
@@ -4229,11 +4354,6 @@
     {
       "artist_id": 45467,
       "album_id": "master-16158",
-      "hop_distance": 3
-    },
-    {
-      "artist_id": 45467,
-      "album_id": "master-172407",
       "hop_distance": 3
     },
     {
@@ -4258,6 +4378,16 @@
     },
     {
       "artist_id": 45467,
+      "album_id": "master-20387",
+      "hop_distance": 3
+    },
+    {
+      "artist_id": 45467,
+      "album_id": "master-21520",
+      "hop_distance": 3
+    },
+    {
+      "artist_id": 45467,
       "album_id": "master-24511",
       "hop_distance": 3
     },
@@ -4268,7 +4398,42 @@
     },
     {
       "artist_id": 45467,
+      "album_id": "master-25688",
+      "hop_distance": 3
+    },
+    {
+      "artist_id": 45467,
+      "album_id": "master-26647",
+      "hop_distance": 3
+    },
+    {
+      "artist_id": 45467,
+      "album_id": "master-27460",
+      "hop_distance": 3
+    },
+    {
+      "artist_id": 45467,
+      "album_id": "master-27765",
+      "hop_distance": 3
+    },
+    {
+      "artist_id": 45467,
+      "album_id": "master-302",
+      "hop_distance": 3
+    },
+    {
+      "artist_id": 45467,
       "album_id": "master-303567",
+      "hop_distance": 3
+    },
+    {
+      "artist_id": 45467,
+      "album_id": "master-31598",
+      "hop_distance": 3
+    },
+    {
+      "artist_id": 45467,
+      "album_id": "master-31755",
       "hop_distance": 3
     },
     {
@@ -4278,7 +4443,27 @@
     },
     {
       "artist_id": 45467,
+      "album_id": "master-34081",
+      "hop_distance": 3
+    },
+    {
+      "artist_id": 45467,
+      "album_id": "master-35276",
+      "hop_distance": 3
+    },
+    {
+      "artist_id": 45467,
       "album_id": "master-35706",
+      "hop_distance": 3
+    },
+    {
+      "artist_id": 45467,
+      "album_id": "master-36251",
+      "hop_distance": 3
+    },
+    {
+      "artist_id": 45467,
+      "album_id": "master-3719",
       "hop_distance": 3
     },
     {
@@ -4288,12 +4473,22 @@
     },
     {
       "artist_id": 45467,
-      "album_id": "master-38712",
+      "album_id": "master-38175",
       "hop_distance": 3
     },
     {
       "artist_id": 45467,
-      "album_id": "master-403952",
+      "album_id": "master-38722",
+      "hop_distance": 3
+    },
+    {
+      "artist_id": 45467,
+      "album_id": "master-39248",
+      "hop_distance": 3
+    },
+    {
+      "artist_id": 45467,
+      "album_id": "master-4424",
       "hop_distance": 3
     },
     {
@@ -4318,6 +4513,21 @@
     },
     {
       "artist_id": 45467,
+      "album_id": "master-55281",
+      "hop_distance": 3
+    },
+    {
+      "artist_id": 45467,
+      "album_id": "master-55576",
+      "hop_distance": 3
+    },
+    {
+      "artist_id": 45467,
+      "album_id": "master-57029",
+      "hop_distance": 3
+    },
+    {
+      "artist_id": 45467,
       "album_id": "master-57279",
       "hop_distance": 3
     },
@@ -4328,7 +4538,17 @@
     },
     {
       "artist_id": 45467,
+      "album_id": "master-59501",
+      "hop_distance": 3
+    },
+    {
+      "artist_id": 45467,
       "album_id": "master-59538",
+      "hop_distance": 3
+    },
+    {
+      "artist_id": 45467,
+      "album_id": "master-6495",
       "hop_distance": 3
     },
     {
@@ -4348,12 +4568,17 @@
     },
     {
       "artist_id": 45467,
+      "album_id": "master-750386",
+      "hop_distance": 3
+    },
+    {
+      "artist_id": 45467,
       "album_id": "master-75606",
       "hop_distance": 3
     },
     {
       "artist_id": 45467,
-      "album_id": "master-8179",
+      "album_id": "master-76678",
       "hop_distance": 3
     },
     {
@@ -4363,12 +4588,17 @@
     },
     {
       "artist_id": 45467,
+      "album_id": "master-87446",
+      "hop_distance": 3
+    },
+    {
+      "artist_id": 45467,
       "album_id": "master-90844",
       "hop_distance": 3
     },
     {
       "artist_id": 45467,
-      "album_id": "master-92896",
+      "album_id": "master-92517",
       "hop_distance": 3
     },
     {
@@ -4378,12 +4608,17 @@
     },
     {
       "artist_id": 45467,
-      "album_id": "master-110874",
+      "album_id": "master-172407",
       "hop_distance": 4
     },
     {
       "artist_id": 45467,
       "album_id": "master-3211",
+      "hop_distance": 4
+    },
+    {
+      "artist_id": 45467,
+      "album_id": "master-8179",
       "hop_distance": 4
     },
     {
@@ -4393,8 +4628,18 @@
     },
     {
       "artist_id": 46163,
+      "album_id": "master-59501",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 46163,
       "album_id": "master-67836",
       "hop_distance": 1
+    },
+    {
+      "artist_id": 46163,
+      "album_id": "master-10362",
+      "hop_distance": 2
     },
     {
       "artist_id": 46481,
@@ -4504,12 +4749,12 @@
     {
       "artist_id": 47333,
       "album_id": "master-10362",
-      "hop_distance": 2
+      "hop_distance": 3
     },
     {
       "artist_id": 47333,
       "album_id": "master-10363",
-      "hop_distance": 2
+      "hop_distance": 3
     },
     {
       "artist_id": 48412,
@@ -4518,18 +4763,23 @@
     },
     {
       "artist_id": 48412,
-      "album_id": "master-10363",
-      "hop_distance": 2
+      "album_id": "master-10362",
+      "hop_distance": 3
     },
     {
       "artist_id": 48412,
-      "album_id": "master-10362",
+      "album_id": "master-10363",
       "hop_distance": 3
     },
     {
       "artist_id": 48424,
       "album_id": "master-37145",
       "hop_distance": 0
+    },
+    {
+      "artist_id": 48424,
+      "album_id": "master-37401",
+      "hop_distance": 1
     },
     {
       "artist_id": 48424,
@@ -4549,11 +4799,6 @@
     {
       "artist_id": 48512,
       "album_id": "master-104166",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 48512,
-      "album_id": "master-25893",
       "hop_distance": 1
     },
     {
@@ -4593,6 +4838,11 @@
     },
     {
       "artist_id": 49624,
+      "album_id": "master-48605",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 49624,
       "album_id": "master-87446",
       "hop_distance": 1
     },
@@ -4602,23 +4852,8 @@
       "hop_distance": 1
     },
     {
-      "artist_id": 50123,
-      "album_id": "master-20135",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 50123,
-      "album_id": "master-57940",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 50123,
+      "artist_id": 49624,
       "album_id": "master-10362",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 50123,
-      "album_id": "master-10363",
       "hop_distance": 2
     },
     {
@@ -4634,37 +4869,7 @@
     {
       "artist_id": 50263,
       "album_id": "master-10363",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 50513,
-      "album_id": "master-151766",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 50513,
-      "album_id": "master-10362",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 50809,
-      "album_id": "master-26436",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 50809,
-      "album_id": "master-10363",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 50984,
-      "album_id": "master-10363",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 50984,
-      "album_id": "master-110874",
-      "hop_distance": 2
+      "hop_distance": 3
     },
     {
       "artist_id": 50997,
@@ -4808,8 +5013,8 @@
     },
     {
       "artist_id": 54212,
-      "album_id": "master-57970",
-      "hop_distance": 2
+      "album_id": "master-8179",
+      "hop_distance": 3
     },
     {
       "artist_id": 56621,
@@ -4839,7 +5044,7 @@
     {
       "artist_id": 56798,
       "album_id": "master-10363",
-      "hop_distance": 2
+      "hop_distance": 3
     },
     {
       "artist_id": 56978,
@@ -4938,6 +5143,11 @@
     },
     {
       "artist_id": 57103,
+      "album_id": "master-10363",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 57103,
       "album_id": "master-138283",
       "hop_distance": 2
     },
@@ -4955,11 +5165,6 @@
       "artist_id": 57103,
       "album_id": "master-9382",
       "hop_distance": 2
-    },
-    {
-      "artist_id": 57103,
-      "album_id": "master-10363",
-      "hop_distance": 3
     },
     {
       "artist_id": 57375,
@@ -4983,6 +5188,11 @@
     },
     {
       "artist_id": 58349,
+      "album_id": "master-15841",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 58349,
       "album_id": "master-16158",
       "hop_distance": 2
     },
@@ -4993,18 +5203,13 @@
     },
     {
       "artist_id": 58687,
-      "album_id": "master-35793",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 58687,
       "album_id": "master-10362",
       "hop_distance": 2
     },
     {
       "artist_id": 58687,
       "album_id": "master-10363",
-      "hop_distance": 2
+      "hop_distance": 3
     },
     {
       "artist_id": 59249,
@@ -5020,6 +5225,11 @@
       "artist_id": 59249,
       "album_id": "master-81575",
       "hop_distance": 1
+    },
+    {
+      "artist_id": 59249,
+      "album_id": "master-10362",
+      "hop_distance": 2
     },
     {
       "artist_id": 59249,
@@ -5042,14 +5252,14 @@
       "hop_distance": 2
     },
     {
-      "artist_id": 59249,
-      "album_id": "master-10362",
-      "hop_distance": 3
-    },
-    {
       "artist_id": 59770,
       "album_id": "master-41155",
       "hop_distance": 0
+    },
+    {
+      "artist_id": 59770,
+      "album_id": "master-302",
+      "hop_distance": 1
     },
     {
       "artist_id": 59770,
@@ -5133,11 +5343,6 @@
     },
     {
       "artist_id": 59792,
-      "album_id": "master-10363",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 59792,
       "album_id": "master-16545",
       "hop_distance": 2
     },
@@ -5157,14 +5362,9 @@
       "hop_distance": 2
     },
     {
-      "artist_id": 60450,
-      "album_id": "master-92896",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 60450,
-      "album_id": "master-10362",
-      "hop_distance": 2
+      "artist_id": 59792,
+      "album_id": "master-10363",
+      "hop_distance": 3
     },
     {
       "artist_id": 60451,
@@ -5208,17 +5408,12 @@
     },
     {
       "artist_id": 62409,
+      "album_id": "master-13280",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 62409,
       "album_id": "master-3762",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 62409,
-      "album_id": "master-38722",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 62409,
-      "album_id": "master-66782",
       "hop_distance": 1
     },
     {
@@ -5228,17 +5423,7 @@
     },
     {
       "artist_id": 62409,
-      "album_id": "master-99919",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 62909,
-      "album_id": "master-10362",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 62909,
-      "album_id": "master-59538",
+      "album_id": "master-27460",
       "hop_distance": 2
     },
     {
@@ -5250,16 +5435,6 @@
       "artist_id": 62947,
       "album_id": "master-55576",
       "hop_distance": 1
-    },
-    {
-      "artist_id": 63019,
-      "album_id": "master-10363",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 63019,
-      "album_id": "master-15841",
-      "hop_distance": 2
     },
     {
       "artist_id": 63771,
@@ -5303,8 +5478,18 @@
     },
     {
       "artist_id": 64652,
+      "album_id": "master-135633",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 64652,
       "album_id": "master-92986",
       "hop_distance": 1
+    },
+    {
+      "artist_id": 64652,
+      "album_id": "master-10363",
+      "hop_distance": 2
     },
     {
       "artist_id": 65049,
@@ -5322,13 +5507,48 @@
       "hop_distance": 3
     },
     {
+      "artist_id": 65787,
+      "album_id": "master-26436",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 65787,
+      "album_id": "master-10363",
+      "hop_distance": 2
+    },
+    {
       "artist_id": 66452,
       "album_id": "master-10362",
       "hop_distance": 1
     },
     {
       "artist_id": 66452,
+      "album_id": "master-32708",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 66452,
+      "album_id": "master-69859",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 66452,
       "album_id": "master-20137",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 66452,
+      "album_id": "master-35706",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 66452,
+      "album_id": "master-57029",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 66452,
+      "album_id": "master-76678",
       "hop_distance": 2
     },
     {
@@ -5374,12 +5594,12 @@
     {
       "artist_id": 66916,
       "album_id": "master-10362",
-      "hop_distance": 2
+      "hop_distance": 3
     },
     {
       "artist_id": 66916,
       "album_id": "master-10363",
-      "hop_distance": 3
+      "hop_distance": 4
     },
     {
       "artist_id": 67331,
@@ -5400,16 +5620,6 @@
       "artist_id": 67331,
       "album_id": "master-41155",
       "hop_distance": 2
-    },
-    {
-      "artist_id": 67636,
-      "album_id": "master-3211",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 67636,
-      "album_id": "master-10362",
-      "hop_distance": 3
     },
     {
       "artist_id": 68693,
@@ -5448,13 +5658,128 @@
     },
     {
       "artist_id": 69621,
+      "album_id": "master-10362",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 69621,
+      "album_id": "master-104166",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 69621,
+      "album_id": "master-106274",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 69621,
       "album_id": "master-129759",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 69621,
+      "album_id": "master-13960",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 69621,
+      "album_id": "master-16921",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 69621,
+      "album_id": "master-18442",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 69621,
+      "album_id": "master-30712",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 69621,
+      "album_id": "master-30926",
       "hop_distance": 1
     },
     {
       "artist_id": 69621,
       "album_id": "master-338175",
       "hop_distance": 1
+    },
+    {
+      "artist_id": 69621,
+      "album_id": "master-37145",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 69621,
+      "album_id": "master-49227",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 69621,
+      "album_id": "master-51607",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 69621,
+      "album_id": "master-56036",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 69621,
+      "album_id": "master-60680",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 69621,
+      "album_id": "master-60721",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 69621,
+      "album_id": "master-67405",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 69621,
+      "album_id": "master-74227",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 69621,
+      "album_id": "master-79241",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 69621,
+      "album_id": "master-80514",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 69621,
+      "album_id": "master-10363",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 69621,
+      "album_id": "master-27765",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 69621,
+      "album_id": "master-49058",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 69621,
+      "album_id": "master-55281",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 69621,
+      "album_id": "master-172407",
+      "hop_distance": 3
     },
     {
       "artist_id": 69687,
@@ -5622,16 +5947,6 @@
       "hop_distance": 3
     },
     {
-      "artist_id": 79480,
-      "album_id": "master-55576",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 79480,
-      "album_id": "master-10363",
-      "hop_distance": 2
-    },
-    {
       "artist_id": 79751,
       "album_id": "master-106396",
       "hop_distance": 1
@@ -5640,6 +5955,16 @@
       "artist_id": 79751,
       "album_id": "master-30926",
       "hop_distance": 1
+    },
+    {
+      "artist_id": 80101,
+      "album_id": "master-122261",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 80101,
+      "album_id": "master-10363",
+      "hop_distance": 2
     },
     {
       "artist_id": 80725,
@@ -5719,7 +6044,7 @@
     {
       "artist_id": 82730,
       "album_id": "master-10363",
-      "hop_distance": 2
+      "hop_distance": 3
     },
     {
       "artist_id": 83080,
@@ -5728,12 +6053,12 @@
     },
     {
       "artist_id": 83080,
-      "album_id": "master-10363",
-      "hop_distance": 2
+      "album_id": "master-10362",
+      "hop_distance": 3
     },
     {
       "artist_id": 83080,
-      "album_id": "master-10362",
+      "album_id": "master-10363",
       "hop_distance": 3
     },
     {
@@ -5753,7 +6078,7 @@
     },
     {
       "artist_id": 83242,
-      "album_id": "master-122051",
+      "album_id": "master-20137",
       "hop_distance": 2
     },
     {
@@ -5762,19 +6087,14 @@
       "hop_distance": 2
     },
     {
-      "artist_id": 83378,
-      "album_id": "master-10362",
-      "hop_distance": 1
+      "artist_id": 83242,
+      "album_id": "master-26436",
+      "hop_distance": 2
     },
     {
-      "artist_id": 83378,
-      "album_id": "master-21520",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 83378,
-      "album_id": "master-72879",
-      "hop_distance": 1
+      "artist_id": 83242,
+      "album_id": "master-35276",
+      "hop_distance": 2
     },
     {
       "artist_id": 84145,
@@ -5785,31 +6105,6 @@
       "artist_id": 84145,
       "album_id": "master-51607",
       "hop_distance": 1
-    },
-    {
-      "artist_id": 85730,
-      "album_id": "master-10362",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 85730,
-      "album_id": "master-23684",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 85730,
-      "album_id": "master-30303",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 85730,
-      "album_id": "master-35006",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 85730,
-      "album_id": "master-129759",
-      "hop_distance": 2
     },
     {
       "artist_id": 85929,
@@ -5833,17 +6128,7 @@
     },
     {
       "artist_id": 85929,
-      "album_id": "master-553",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 85929,
       "album_id": "master-10362",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 85929,
-      "album_id": "master-10363",
       "hop_distance": 2
     },
     {
@@ -5867,14 +6152,9 @@
       "hop_distance": 2
     },
     {
-      "artist_id": 89939,
-      "album_id": "master-133278",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 89939,
+      "artist_id": 85929,
       "album_id": "master-10363",
-      "hop_distance": 2
+      "hop_distance": 3
     },
     {
       "artist_id": 90037,
@@ -5894,6 +6174,11 @@
     {
       "artist_id": 90233,
       "album_id": "master-10362",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 90233,
+      "album_id": "master-104115",
       "hop_distance": 1
     },
     {
@@ -5928,7 +6213,22 @@
     },
     {
       "artist_id": 90233,
+      "album_id": "master-38712",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 90233,
+      "album_id": "master-3878",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 90233,
       "album_id": "master-45720",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 90233,
+      "album_id": "master-68209",
       "hop_distance": 1
     },
     {
@@ -5943,7 +6243,32 @@
     },
     {
       "artist_id": 90233,
+      "album_id": "master-113224",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 90233,
       "album_id": "master-122051",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 90233,
+      "album_id": "master-151766",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 90233,
+      "album_id": "master-31598",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 90233,
+      "album_id": "master-32208",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 90233,
+      "album_id": "master-37401",
       "hop_distance": 2
     },
     {
@@ -5958,18 +6283,23 @@
     },
     {
       "artist_id": 90233,
+      "album_id": "master-59501",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 90233,
       "album_id": "master-81172",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 90233,
+      "album_id": "master-90844",
       "hop_distance": 2
     },
     {
       "artist_id": 90541,
       "album_id": "master-97173",
       "hop_distance": 0
-    },
-    {
-      "artist_id": 90541,
-      "album_id": "master-10362",
-      "hop_distance": 1
     },
     {
       "artist_id": 90541,
@@ -5980,6 +6310,11 @@
       "artist_id": 90541,
       "album_id": "master-338175",
       "hop_distance": 1
+    },
+    {
+      "artist_id": 90541,
+      "album_id": "master-10362",
+      "hop_distance": 2
     },
     {
       "artist_id": 90541,
@@ -6024,7 +6359,7 @@
     {
       "artist_id": 92476,
       "album_id": "master-10363",
-      "hop_distance": 2
+      "hop_distance": 3
     },
     {
       "artist_id": 92623,
@@ -6034,6 +6369,11 @@
     {
       "artist_id": 92623,
       "album_id": "master-10362",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 92623,
+      "album_id": "master-47868",
       "hop_distance": 1
     },
     {
@@ -6048,12 +6388,22 @@
     },
     {
       "artist_id": 92623,
+      "album_id": "master-73013",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 92623,
       "album_id": "master-91767",
       "hop_distance": 1
     },
     {
       "artist_id": 92623,
       "album_id": "master-32208",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 92623,
+      "album_id": "master-38722",
       "hop_distance": 2
     },
     {
@@ -6077,26 +6427,6 @@
       "hop_distance": 3
     },
     {
-      "artist_id": 92830,
-      "album_id": "master-10362",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 92830,
-      "album_id": "master-37145",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 92830,
-      "album_id": "master-41155",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 92830,
-      "album_id": "master-6495",
-      "hop_distance": 1
-    },
-    {
       "artist_id": 96036,
       "album_id": "master-10362",
       "hop_distance": 1
@@ -6104,16 +6434,6 @@
     {
       "artist_id": 96036,
       "album_id": "master-49965",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 96036,
-      "album_id": "master-553",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 96036,
-      "album_id": "master-56036",
       "hop_distance": 1
     },
     {
@@ -6128,22 +6448,22 @@
     },
     {
       "artist_id": 96036,
-      "album_id": "master-67405",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 96036,
-      "album_id": "master-79241",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 96036,
       "album_id": "master-81172",
       "hop_distance": 1
     },
     {
       "artist_id": 96036,
-      "album_id": "master-8357",
+      "album_id": "master-99919",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 96036,
+      "album_id": "master-135633",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 96036,
+      "album_id": "master-48605",
       "hop_distance": 2
     },
     {
@@ -6165,11 +6485,6 @@
       "artist_id": 97545,
       "album_id": "master-59538",
       "hop_distance": 1
-    },
-    {
-      "artist_id": 97545,
-      "album_id": "master-10363",
-      "hop_distance": 2
     },
     {
       "artist_id": 97545,
@@ -6197,24 +6512,9 @@
       "hop_distance": 3
     },
     {
-      "artist_id": 98825,
-      "album_id": "master-41722",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 98825,
+      "artist_id": 97545,
       "album_id": "master-10363",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 98905,
-      "album_id": "master-10363",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 98905,
-      "album_id": "master-24047",
-      "hop_distance": 1
+      "hop_distance": 3
     },
     {
       "artist_id": 100702,
@@ -6234,11 +6534,6 @@
     {
       "artist_id": 100702,
       "album_id": "master-30577",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 100702,
-      "album_id": "master-37615",
       "hop_distance": 1
     },
     {
@@ -6302,28 +6597,13 @@
       "hop_distance": 3
     },
     {
-      "artist_id": 102333,
-      "album_id": "master-1046042",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 102333,
-      "album_id": "master-10362",
-      "hop_distance": 2
-    },
-    {
       "artist_id": 102984,
       "album_id": "master-10363",
       "hop_distance": 0
     },
     {
       "artist_id": 102984,
-      "album_id": "master-37615",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 102984,
-      "album_id": "master-104166",
+      "album_id": "master-105802",
       "hop_distance": 2
     },
     {
@@ -6334,11 +6614,6 @@
     {
       "artist_id": 102984,
       "album_id": "master-106396",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 102984,
-      "album_id": "master-107325",
       "hop_distance": 2
     },
     {
@@ -6358,7 +6633,7 @@
     },
     {
       "artist_id": 102984,
-      "album_id": "master-122261",
+      "album_id": "master-122051",
       "hop_distance": 2
     },
     {
@@ -6368,12 +6643,7 @@
     },
     {
       "artist_id": 102984,
-      "album_id": "master-13280",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 102984,
-      "album_id": "master-13814",
+      "album_id": "master-133278",
       "hop_distance": 2
     },
     {
@@ -6383,22 +6653,7 @@
     },
     {
       "artist_id": 102984,
-      "album_id": "master-1561",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 102984,
-      "album_id": "master-16921",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 102984,
       "album_id": "master-17217",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 102984,
-      "album_id": "master-18442",
       "hop_distance": 2
     },
     {
@@ -6408,22 +6663,17 @@
     },
     {
       "artist_id": 102984,
-      "album_id": "master-20137",
+      "album_id": "master-23069",
       "hop_distance": 2
     },
     {
       "artist_id": 102984,
-      "album_id": "master-23684",
+      "album_id": "master-25893",
       "hop_distance": 2
     },
     {
       "artist_id": 102984,
-      "album_id": "master-24047",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 102984,
-      "album_id": "master-25688",
+      "album_id": "master-26037",
       "hop_distance": 2
     },
     {
@@ -6433,17 +6683,7 @@
     },
     {
       "artist_id": 102984,
-      "album_id": "master-28680",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 102984,
-      "album_id": "master-302",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 102984,
-      "album_id": "master-30303",
+      "album_id": "master-30577",
       "hop_distance": 2
     },
     {
@@ -6453,52 +6693,22 @@
     },
     {
       "artist_id": 102984,
+      "album_id": "master-30926",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 102984,
       "album_id": "master-31337",
       "hop_distance": 2
     },
     {
       "artist_id": 102984,
-      "album_id": "master-31598",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 102984,
-      "album_id": "master-32208",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 102984,
-      "album_id": "master-32708",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 102984,
-      "album_id": "master-35006",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 102984,
-      "album_id": "master-35276",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 102984,
-      "album_id": "master-35401",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 102984,
-      "album_id": "master-35706",
+      "album_id": "master-338175",
       "hop_distance": 2
     },
     {
       "artist_id": 102984,
       "album_id": "master-35759",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 102984,
-      "album_id": "master-36227",
       "hop_distance": 2
     },
     {
@@ -6513,31 +6723,6 @@
     },
     {
       "artist_id": 102984,
-      "album_id": "master-38175",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 102984,
-      "album_id": "master-38712",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 102984,
-      "album_id": "master-38722",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 102984,
-      "album_id": "master-3878",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 102984,
-      "album_id": "master-39341",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 102984,
       "album_id": "master-40048",
       "hop_distance": 2
     },
@@ -6548,47 +6733,12 @@
     },
     {
       "artist_id": 102984,
-      "album_id": "master-42522",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 102984,
-      "album_id": "master-4300",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 102984,
-      "album_id": "master-44278",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 102984,
-      "album_id": "master-45432",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 102984,
-      "album_id": "master-45922",
+      "album_id": "master-43063",
       "hop_distance": 2
     },
     {
       "artist_id": 102984,
       "album_id": "master-47744",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 102984,
-      "album_id": "master-47868",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 102984,
-      "album_id": "master-48605",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 102984,
-      "album_id": "master-49058",
       "hop_distance": 2
     },
     {
@@ -6603,27 +6753,12 @@
     },
     {
       "artist_id": 102984,
+      "album_id": "master-52497",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 102984,
       "album_id": "master-52671",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 102984,
-      "album_id": "master-54449",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 102984,
-      "album_id": "master-55281",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 102984,
-      "album_id": "master-55658",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 102984,
-      "album_id": "master-56036",
       "hop_distance": 2
     },
     {
@@ -6638,12 +6773,22 @@
     },
     {
       "artist_id": 102984,
+      "album_id": "master-60721",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 102984,
       "album_id": "master-10362",
       "hop_distance": 3
     },
     {
       "artist_id": 102984,
       "album_id": "master-104115",
+      "hop_distance": 3
+    },
+    {
+      "artist_id": 102984,
+      "album_id": "master-104166",
       "hop_distance": 3
     },
     {
@@ -6658,12 +6803,7 @@
     },
     {
       "artist_id": 102984,
-      "album_id": "master-105802",
-      "hop_distance": 3
-    },
-    {
-      "artist_id": 102984,
-      "album_id": "master-110874",
+      "album_id": "master-107325",
       "hop_distance": 3
     },
     {
@@ -6673,7 +6813,7 @@
     },
     {
       "artist_id": 102984,
-      "album_id": "master-122051",
+      "album_id": "master-122261",
       "hop_distance": 3
     },
     {
@@ -6683,7 +6823,7 @@
     },
     {
       "artist_id": 102984,
-      "album_id": "master-133278",
+      "album_id": "master-13280",
       "hop_distance": 3
     },
     {
@@ -6703,6 +6843,16 @@
     },
     {
       "artist_id": 102984,
+      "album_id": "master-1561",
+      "hop_distance": 3
+    },
+    {
+      "artist_id": 102984,
+      "album_id": "master-15841",
+      "hop_distance": 3
+    },
+    {
+      "artist_id": 102984,
       "album_id": "master-16158",
       "hop_distance": 3
     },
@@ -6713,7 +6863,7 @@
     },
     {
       "artist_id": 102984,
-      "album_id": "master-172407",
+      "album_id": "master-16921",
       "hop_distance": 3
     },
     {
@@ -6733,7 +6883,17 @@
     },
     {
       "artist_id": 102984,
+      "album_id": "master-18442",
+      "hop_distance": 3
+    },
+    {
+      "artist_id": 102984,
       "album_id": "master-20135",
+      "hop_distance": 3
+    },
+    {
+      "artist_id": 102984,
+      "album_id": "master-20137",
       "hop_distance": 3
     },
     {
@@ -6753,7 +6913,12 @@
     },
     {
       "artist_id": 102984,
-      "album_id": "master-23069",
+      "album_id": "master-23684",
+      "hop_distance": 3
+    },
+    {
+      "artist_id": 102984,
+      "album_id": "master-24047",
       "hop_distance": 3
     },
     {
@@ -6773,12 +6938,7 @@
     },
     {
       "artist_id": 102984,
-      "album_id": "master-25893",
-      "hop_distance": 3
-    },
-    {
-      "artist_id": 102984,
-      "album_id": "master-26037",
+      "album_id": "master-25688",
       "hop_distance": 3
     },
     {
@@ -6803,37 +6963,67 @@
     },
     {
       "artist_id": 102984,
+      "album_id": "master-28680",
+      "hop_distance": 3
+    },
+    {
+      "artist_id": 102984,
+      "album_id": "master-302",
+      "hop_distance": 3
+    },
+    {
+      "artist_id": 102984,
+      "album_id": "master-30303",
+      "hop_distance": 3
+    },
+    {
+      "artist_id": 102984,
       "album_id": "master-303567",
       "hop_distance": 3
     },
     {
       "artist_id": 102984,
-      "album_id": "master-30577",
+      "album_id": "master-31598",
       "hop_distance": 3
     },
     {
       "artist_id": 102984,
-      "album_id": "master-30926",
+      "album_id": "master-32208",
       "hop_distance": 3
     },
     {
       "artist_id": 102984,
-      "album_id": "master-3211",
+      "album_id": "master-32708",
       "hop_distance": 3
     },
     {
       "artist_id": 102984,
-      "album_id": "master-338175",
+      "album_id": "master-35006",
       "hop_distance": 3
     },
     {
       "artist_id": 102984,
-      "album_id": "master-34081",
+      "album_id": "master-35276",
+      "hop_distance": 3
+    },
+    {
+      "artist_id": 102984,
+      "album_id": "master-35401",
+      "hop_distance": 3
+    },
+    {
+      "artist_id": 102984,
+      "album_id": "master-35706",
       "hop_distance": 3
     },
     {
       "artist_id": 102984,
       "album_id": "master-35793",
+      "hop_distance": 3
+    },
+    {
+      "artist_id": 102984,
+      "album_id": "master-36227",
       "hop_distance": 3
     },
     {
@@ -6848,12 +7038,42 @@
     },
     {
       "artist_id": 102984,
+      "album_id": "master-37615",
+      "hop_distance": 3
+    },
+    {
+      "artist_id": 102984,
       "album_id": "master-3762",
       "hop_distance": 3
     },
     {
       "artist_id": 102984,
+      "album_id": "master-38175",
+      "hop_distance": 3
+    },
+    {
+      "artist_id": 102984,
+      "album_id": "master-38712",
+      "hop_distance": 3
+    },
+    {
+      "artist_id": 102984,
+      "album_id": "master-38722",
+      "hop_distance": 3
+    },
+    {
+      "artist_id": 102984,
+      "album_id": "master-3878",
+      "hop_distance": 3
+    },
+    {
+      "artist_id": 102984,
       "album_id": "master-39248",
+      "hop_distance": 3
+    },
+    {
+      "artist_id": 102984,
+      "album_id": "master-39341",
       "hop_distance": 3
     },
     {
@@ -6873,12 +7093,22 @@
     },
     {
       "artist_id": 102984,
-      "album_id": "master-43063",
+      "album_id": "master-42522",
       "hop_distance": 3
     },
     {
       "artist_id": 102984,
-      "album_id": "master-4424",
+      "album_id": "master-4300",
+      "hop_distance": 3
+    },
+    {
+      "artist_id": 102984,
+      "album_id": "master-44278",
+      "hop_distance": 3
+    },
+    {
+      "artist_id": 102984,
+      "album_id": "master-45432",
       "hop_distance": 3
     },
     {
@@ -6888,12 +7118,22 @@
     },
     {
       "artist_id": 102984,
-      "album_id": "master-51607",
+      "album_id": "master-45922",
       "hop_distance": 3
     },
     {
       "artist_id": 102984,
-      "album_id": "master-52497",
+      "album_id": "master-47868",
+      "hop_distance": 3
+    },
+    {
+      "artist_id": 102984,
+      "album_id": "master-49058",
+      "hop_distance": 3
+    },
+    {
+      "artist_id": 102984,
+      "album_id": "master-51607",
       "hop_distance": 3
     },
     {
@@ -6903,7 +7143,17 @@
     },
     {
       "artist_id": 102984,
+      "album_id": "master-54449",
+      "hop_distance": 3
+    },
+    {
+      "artist_id": 102984,
       "album_id": "master-5460",
+      "hop_distance": 3
+    },
+    {
+      "artist_id": 102984,
+      "album_id": "master-55281",
       "hop_distance": 3
     },
     {
@@ -6914,6 +7164,16 @@
     {
       "artist_id": 102984,
       "album_id": "master-55576",
+      "hop_distance": 3
+    },
+    {
+      "artist_id": 102984,
+      "album_id": "master-55658",
+      "hop_distance": 3
+    },
+    {
+      "artist_id": 102984,
+      "album_id": "master-56036",
       "hop_distance": 3
     },
     {
@@ -6953,12 +7213,47 @@
     },
     {
       "artist_id": 102984,
-      "album_id": "master-15841",
+      "album_id": "master-64290",
+      "hop_distance": 3
+    },
+    {
+      "artist_id": 102984,
+      "album_id": "master-6495",
+      "hop_distance": 3
+    },
+    {
+      "artist_id": 102984,
+      "album_id": "master-13814",
+      "hop_distance": 4
+    },
+    {
+      "artist_id": 102984,
+      "album_id": "master-172407",
       "hop_distance": 4
     },
     {
       "artist_id": 102984,
       "album_id": "master-31755",
+      "hop_distance": 4
+    },
+    {
+      "artist_id": 102984,
+      "album_id": "master-3211",
+      "hop_distance": 4
+    },
+    {
+      "artist_id": 102984,
+      "album_id": "master-34081",
+      "hop_distance": 4
+    },
+    {
+      "artist_id": 102984,
+      "album_id": "master-4424",
+      "hop_distance": 4
+    },
+    {
+      "artist_id": 102984,
+      "album_id": "master-48605",
       "hop_distance": 4
     },
     {
@@ -6968,43 +7263,13 @@
     },
     {
       "artist_id": 103687,
-      "album_id": "master-39248",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 103687,
-      "album_id": "master-57029",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 103687,
       "album_id": "master-10362",
       "hop_distance": 2
     },
     {
       "artist_id": 103687,
       "album_id": "master-10363",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 103999,
-      "album_id": "master-10363",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 103999,
-      "album_id": "master-18027",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 103999,
-      "album_id": "master-20148",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 103999,
-      "album_id": "master-2452996",
-      "hop_distance": 2
+      "hop_distance": 3
     },
     {
       "artist_id": 106474,
@@ -7028,11 +7293,6 @@
     },
     {
       "artist_id": 106474,
-      "album_id": "master-10363",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 106474,
       "album_id": "master-107325",
       "hop_distance": 2
     },
@@ -7052,29 +7312,24 @@
       "hop_distance": 2
     },
     {
+      "artist_id": 106474,
+      "album_id": "master-10363",
+      "hop_distance": 3
+    },
+    {
       "artist_id": 106802,
       "album_id": "master-10362",
       "hop_distance": 1
     },
     {
       "artist_id": 106802,
-      "album_id": "master-3878",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 106802,
-      "album_id": "master-41722",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 106802,
-      "album_id": "master-5863",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 106802,
       "album_id": "master-82337",
       "hop_distance": 1
+    },
+    {
+      "artist_id": 106802,
+      "album_id": "master-303567",
+      "hop_distance": 2
     },
     {
       "artist_id": 106909,
@@ -7098,12 +7353,52 @@
     },
     {
       "artist_id": 106910,
-      "album_id": "master-16545",
+      "album_id": "master-1561",
       "hop_distance": 2
     },
     {
       "artist_id": 106910,
-      "album_id": "master-3762",
+      "album_id": "master-18080",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 106910,
+      "album_id": "master-25688",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 106910,
+      "album_id": "master-45432",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 106910,
+      "album_id": "master-54449",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 106910,
+      "album_id": "master-553",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 106910,
+      "album_id": "master-55576",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 106910,
+      "album_id": "master-55658",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 106910,
+      "album_id": "master-58313",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 106910,
+      "album_id": "master-64290",
       "hop_distance": 2
     },
     {
@@ -7147,14 +7442,34 @@
       "hop_distance": 2
     },
     {
+      "artist_id": 108050,
+      "album_id": "master-10363",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 108050,
+      "album_id": "master-303567",
+      "hop_distance": 2
+    },
+    {
       "artist_id": 108475,
       "album_id": "master-106396",
       "hop_distance": 1
     },
     {
       "artist_id": 108475,
+      "album_id": "master-303567",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 108475,
       "album_id": "master-8883",
       "hop_distance": 1
+    },
+    {
+      "artist_id": 108475,
+      "album_id": "master-10362",
+      "hop_distance": 2
     },
     {
       "artist_id": 110252,
@@ -7164,7 +7479,7 @@
     {
       "artist_id": 110252,
       "album_id": "master-10362",
-      "hop_distance": 2
+      "hop_distance": 3
     },
     {
       "artist_id": 110253,
@@ -7182,13 +7497,18 @@
       "hop_distance": 3
     },
     {
-      "artist_id": 110650,
-      "album_id": "master-49058",
+      "artist_id": 110861,
+      "album_id": "master-10362",
       "hop_distance": 1
     },
     {
-      "artist_id": 110650,
-      "album_id": "master-10362",
+      "artist_id": 110861,
+      "album_id": "master-104399",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 110861,
+      "album_id": "master-4424",
       "hop_distance": 2
     },
     {
@@ -7223,17 +7543,12 @@
     },
     {
       "artist_id": 110862,
+      "album_id": "master-18027",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 110862,
       "album_id": "master-26037",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 110862,
-      "album_id": "master-403952",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 110862,
-      "album_id": "master-49058",
       "hop_distance": 2
     },
     {
@@ -7249,6 +7564,36 @@
     {
       "artist_id": 110862,
       "album_id": "master-65826",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 110863,
+      "album_id": "master-10362",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 110863,
+      "album_id": "master-24511",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 110863,
+      "album_id": "master-25688",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 110863,
+      "album_id": "master-36251",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 110863,
+      "album_id": "master-54449",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 110863,
+      "album_id": "master-55576",
       "hop_distance": 2
     },
     {
@@ -7288,8 +7633,18 @@
     },
     {
       "artist_id": 112851,
+      "album_id": "master-31755",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 112851,
       "album_id": "master-97173",
       "hop_distance": 1
+    },
+    {
+      "artist_id": 112851,
+      "album_id": "master-10362",
+      "hop_distance": 2
     },
     {
       "artist_id": 112875,
@@ -7308,13 +7663,13 @@
     },
     {
       "artist_id": 113655,
-      "album_id": "master-10363",
-      "hop_distance": 2
+      "album_id": "master-10362",
+      "hop_distance": 3
     },
     {
       "artist_id": 113655,
-      "album_id": "master-10362",
-      "hop_distance": 3
+      "album_id": "master-10363",
+      "hop_distance": 4
     },
     {
       "artist_id": 117225,
@@ -7407,31 +7762,6 @@
       "hop_distance": 1
     },
     {
-      "artist_id": 122559,
-      "album_id": "master-1046042",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 122559,
-      "album_id": "master-303567",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 122559,
-      "album_id": "master-338175",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 122559,
-      "album_id": "master-403952",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 122559,
-      "album_id": "master-10363",
-      "hop_distance": 2
-    },
-    {
       "artist_id": 124497,
       "album_id": "master-60721",
       "hop_distance": 0
@@ -7444,6 +7774,11 @@
     {
       "artist_id": 124497,
       "album_id": "master-10362",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 124497,
+      "album_id": "master-10363",
       "hop_distance": 2
     },
     {
@@ -7489,7 +7824,7 @@
     {
       "artist_id": 125246,
       "album_id": "master-10363",
-      "hop_distance": 2
+      "hop_distance": 4
     },
     {
       "artist_id": 125350,
@@ -7498,7 +7833,7 @@
     },
     {
       "artist_id": 125350,
-      "album_id": "master-3719",
+      "album_id": "master-41722",
       "hop_distance": 1
     },
     {
@@ -7513,43 +7848,43 @@
     },
     {
       "artist_id": 125350,
-      "album_id": "master-60721",
+      "album_id": "master-64290",
       "hop_distance": 1
     },
     {
       "artist_id": 125350,
-      "album_id": "master-18027",
+      "album_id": "master-107325",
       "hop_distance": 2
     },
     {
-      "artist_id": 127854,
-      "album_id": "master-10362",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 127854,
-      "album_id": "master-26436",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 127854,
-      "album_id": "master-31598",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 127854,
-      "album_id": "master-105802",
+      "artist_id": 125350,
+      "album_id": "master-20387",
       "hop_distance": 2
     },
     {
-      "artist_id": 129238,
-      "album_id": "master-38712",
-      "hop_distance": 1
+      "artist_id": 125350,
+      "album_id": "master-26647",
+      "hop_distance": 2
     },
     {
-      "artist_id": 129238,
-      "album_id": "master-10362",
+      "artist_id": 125350,
+      "album_id": "master-35276",
       "hop_distance": 2
+    },
+    {
+      "artist_id": 125350,
+      "album_id": "master-39248",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 125350,
+      "album_id": "master-45922",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 125350,
+      "album_id": "master-3211",
+      "hop_distance": 3
     },
     {
       "artist_id": 129663,
@@ -7574,7 +7909,7 @@
     {
       "artist_id": 135478,
       "album_id": "master-10363",
-      "hop_distance": 2
+      "hop_distance": 3
     },
     {
       "artist_id": 135847,
@@ -7595,76 +7930,6 @@
       "artist_id": 135850,
       "album_id": "master-52671",
       "hop_distance": 1
-    },
-    {
-      "artist_id": 135969,
-      "album_id": "master-10363",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 135969,
-      "album_id": "master-107325",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 135969,
-      "album_id": "master-31598",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 135969,
-      "album_id": "master-3878",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 135969,
-      "album_id": "master-41155",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 135969,
-      "album_id": "master-44278",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 135969,
-      "album_id": "master-45922",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 135969,
-      "album_id": "master-104115",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 135969,
-      "album_id": "master-1164779",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 135969,
-      "album_id": "master-151766",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 135969,
-      "album_id": "master-16158",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 135969,
-      "album_id": "master-30577",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 135969,
-      "album_id": "master-51607",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 135969,
-      "album_id": "master-57279",
-      "hop_distance": 2
     },
     {
       "artist_id": 136179,
@@ -7693,11 +7958,6 @@
     },
     {
       "artist_id": 137418,
-      "album_id": "master-10362",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 137418,
       "album_id": "master-107325",
       "hop_distance": 2
     },
@@ -7718,6 +7978,11 @@
     },
     {
       "artist_id": 137418,
+      "album_id": "master-10362",
+      "hop_distance": 3
+    },
+    {
+      "artist_id": 137418,
       "album_id": "master-10363",
       "hop_distance": 3
     },
@@ -7725,11 +7990,6 @@
       "artist_id": 138556,
       "album_id": "master-37615",
       "hop_distance": 0
-    },
-    {
-      "artist_id": 138556,
-      "album_id": "master-10363",
-      "hop_distance": 1
     },
     {
       "artist_id": 138556,
@@ -7787,6 +8047,11 @@
       "hop_distance": 2
     },
     {
+      "artist_id": 138556,
+      "album_id": "master-10363",
+      "hop_distance": 3
+    },
+    {
       "artist_id": 138572,
       "album_id": "master-23069",
       "hop_distance": 1
@@ -7797,22 +8062,12 @@
       "hop_distance": 1
     },
     {
-      "artist_id": 141624,
-      "album_id": "master-105802",
+      "artist_id": 142142,
+      "album_id": "master-39341",
       "hop_distance": 1
     },
     {
-      "artist_id": 141624,
-      "album_id": "master-10362",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 142172,
-      "album_id": "master-37401",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 142172,
+      "artist_id": 142142,
       "album_id": "master-10363",
       "hop_distance": 2
     },
@@ -7844,12 +8099,12 @@
     {
       "artist_id": 144998,
       "album_id": "master-10362",
-      "hop_distance": 2
+      "hop_distance": 3
     },
     {
       "artist_id": 144998,
       "album_id": "master-10363",
-      "hop_distance": 2
+      "hop_distance": 3
     },
     {
       "artist_id": 145072,
@@ -7904,6 +8159,31 @@
     {
       "artist_id": 145072,
       "album_id": "master-65826",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 146031,
+      "album_id": "master-10363",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 146031,
+      "album_id": "master-31755",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 146284,
+      "album_id": "master-49058",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 146284,
+      "album_id": "master-10362",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 146284,
+      "album_id": "master-10363",
       "hop_distance": 2
     },
     {
@@ -7983,88 +8263,8 @@
     },
     {
       "artist_id": 150897,
-      "album_id": "master-28680",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 150897,
-      "album_id": "master-39341",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 150897,
-      "album_id": "master-104399",
+      "album_id": "master-3878",
       "hop_distance": 2
-    },
-    {
-      "artist_id": 150897,
-      "album_id": "master-105802",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 150897,
-      "album_id": "master-138283",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 150897,
-      "album_id": "master-172407",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 150897,
-      "album_id": "master-23069",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 150897,
-      "album_id": "master-26037",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 150897,
-      "album_id": "master-26436",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 150897,
-      "album_id": "master-27765",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 150897,
-      "album_id": "master-406634",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 150897,
-      "album_id": "master-43063",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 150897,
-      "album_id": "master-4424",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 150897,
-      "album_id": "master-553",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 150897,
-      "album_id": "master-55576",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 150897,
-      "album_id": "master-58313",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 150897,
-      "album_id": "master-15841",
-      "hop_distance": 3
     },
     {
       "artist_id": 152685,
@@ -8142,26 +8342,6 @@
       "hop_distance": 3
     },
     {
-      "artist_id": 154230,
-      "album_id": "master-135633",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 154230,
-      "album_id": "master-10363",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 157075,
-      "album_id": "master-10362",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 157075,
-      "album_id": "master-4424",
-      "hop_distance": 1
-    },
-    {
       "artist_id": 158709,
       "album_id": "master-31337",
       "hop_distance": 1
@@ -8184,7 +8364,7 @@
     {
       "artist_id": 160906,
       "album_id": "master-10363",
-      "hop_distance": 2
+      "hop_distance": 3
     },
     {
       "artist_id": 161091,
@@ -8208,6 +8388,16 @@
     },
     {
       "artist_id": 161091,
+      "album_id": "master-10362",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 161091,
+      "album_id": "master-10363",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 161091,
       "album_id": "master-23069",
       "hop_distance": 2
     },
@@ -8227,16 +8417,6 @@
       "hop_distance": 2
     },
     {
-      "artist_id": 161091,
-      "album_id": "master-10362",
-      "hop_distance": 3
-    },
-    {
-      "artist_id": 161091,
-      "album_id": "master-10363",
-      "hop_distance": 3
-    },
-    {
       "artist_id": 162614,
       "album_id": "master-553",
       "hop_distance": 1
@@ -8253,7 +8433,7 @@
     },
     {
       "artist_id": 165668,
-      "album_id": "master-303567",
+      "album_id": "master-21520",
       "hop_distance": 2
     },
     {
@@ -8267,16 +8447,6 @@
       "hop_distance": 1
     },
     {
-      "artist_id": 167361,
-      "album_id": "master-17249",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 167361,
-      "album_id": "master-10363",
-      "hop_distance": 2
-    },
-    {
       "artist_id": 168907,
       "album_id": "master-35401",
       "hop_distance": 0
@@ -8288,18 +8458,23 @@
     },
     {
       "artist_id": 168907,
-      "album_id": "master-10363",
+      "album_id": "master-68399",
       "hop_distance": 2
     },
     {
       "artist_id": 168907,
-      "album_id": "master-68399",
-      "hop_distance": 2
+      "album_id": "master-10363",
+      "hop_distance": 3
     },
     {
       "artist_id": 169154,
       "album_id": "master-122051",
       "hop_distance": 0
+    },
+    {
+      "artist_id": 169154,
+      "album_id": "master-10363",
+      "hop_distance": 2
     },
     {
       "artist_id": 169154,
@@ -8322,11 +8497,6 @@
       "hop_distance": 3
     },
     {
-      "artist_id": 169154,
-      "album_id": "master-10363",
-      "hop_distance": 3
-    },
-    {
       "artist_id": 169574,
       "album_id": "master-66631",
       "hop_distance": 1
@@ -8334,36 +8504,6 @@
     {
       "artist_id": 169574,
       "album_id": "master-68399",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 170015,
-      "album_id": "master-48605",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 170015,
-      "album_id": "master-10362",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 171450,
-      "album_id": "master-10362",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 171450,
-      "album_id": "master-30712",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 171879,
-      "album_id": "master-10362",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 171879,
-      "album_id": "master-49227",
       "hop_distance": 1
     },
     {
@@ -8387,24 +8527,29 @@
       "hop_distance": 1
     },
     {
-      "artist_id": 177516,
-      "album_id": "master-59538",
+      "artist_id": 175505,
+      "album_id": "master-10362",
       "hop_distance": 1
     },
     {
-      "artist_id": 177516,
-      "album_id": "master-10362",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 180298,
-      "album_id": "master-96362",
+      "artist_id": 175505,
+      "album_id": "master-23684",
       "hop_distance": 1
     },
     {
-      "artist_id": 180298,
+      "artist_id": 175505,
+      "album_id": "master-26436",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 178489,
       "album_id": "master-10362",
-      "hop_distance": 2
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 178489,
+      "album_id": "master-24047",
+      "hop_distance": 1
     },
     {
       "artist_id": 185751,
@@ -8448,13 +8593,78 @@
     },
     {
       "artist_id": 194118,
+      "album_id": "master-10362",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 194118,
+      "album_id": "master-26725",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 194118,
+      "album_id": "master-36227",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 194118,
+      "album_id": "master-39341",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 194118,
+      "album_id": "master-403952",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 194118,
       "album_id": "master-47744",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 194118,
+      "album_id": "master-69156",
       "hop_distance": 1
     },
     {
       "artist_id": 194118,
       "album_id": "master-81172",
       "hop_distance": 1
+    },
+    {
+      "artist_id": 194118,
+      "album_id": "master-92896",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 194118,
+      "album_id": "master-1046042",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 194118,
+      "album_id": "master-20135",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 194118,
+      "album_id": "master-34081",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 194118,
+      "album_id": "master-72235",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 194118,
+      "album_id": "master-8357",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 194118,
+      "album_id": "master-96362",
+      "hop_distance": 2
     },
     {
       "artist_id": 196766,
@@ -8503,6 +8713,11 @@
     },
     {
       "artist_id": 200567,
+      "album_id": "master-10363",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 200567,
       "album_id": "master-122051",
       "hop_distance": 2
     },
@@ -8522,18 +8737,8 @@
       "hop_distance": 2
     },
     {
-      "artist_id": 200567,
-      "album_id": "master-10363",
-      "hop_distance": 3
-    },
-    {
       "artist_id": 200762,
       "album_id": "master-10362",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 200762,
-      "album_id": "master-104166",
       "hop_distance": 1
     },
     {
@@ -8553,17 +8758,17 @@
     },
     {
       "artist_id": 200762,
-      "album_id": "master-68209",
+      "album_id": "master-58313",
       "hop_distance": 1
     },
     {
       "artist_id": 200762,
-      "album_id": "master-73013",
-      "hop_distance": 1
+      "album_id": "master-75606",
+      "hop_distance": 2
     },
     {
       "artist_id": 200762,
-      "album_id": "master-106274",
+      "album_id": "master-87446",
       "hop_distance": 2
     },
     {
@@ -8607,6 +8812,16 @@
       "hop_distance": 1
     },
     {
+      "artist_id": 205733,
+      "album_id": "master-47868",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 205733,
+      "album_id": "master-10363",
+      "hop_distance": 2
+    },
+    {
       "artist_id": 211643,
       "album_id": "master-151766",
       "hop_distance": 1
@@ -8615,16 +8830,6 @@
       "artist_id": 211643,
       "album_id": "master-74227",
       "hop_distance": 1
-    },
-    {
-      "artist_id": 213186,
-      "album_id": "master-3211",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 213186,
-      "album_id": "master-10363",
-      "hop_distance": 2
     },
     {
       "artist_id": 215920,
@@ -8637,14 +8842,19 @@
       "hop_distance": 1
     },
     {
-      "artist_id": 217456,
-      "album_id": "master-4424",
+      "artist_id": 216847,
+      "album_id": "master-172407",
       "hop_distance": 1
     },
     {
-      "artist_id": 217456,
+      "artist_id": 216847,
+      "album_id": "master-10362",
+      "hop_distance": 3
+    },
+    {
+      "artist_id": 216847,
       "album_id": "master-10363",
-      "hop_distance": 2
+      "hop_distance": 3
     },
     {
       "artist_id": 219213,
@@ -8737,6 +8947,16 @@
       "hop_distance": 2
     },
     {
+      "artist_id": 220651,
+      "album_id": "master-10363",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 220651,
+      "album_id": "master-3211",
+      "hop_distance": 2
+    },
+    {
       "artist_id": 222746,
       "album_id": "master-113224",
       "hop_distance": 1
@@ -8755,26 +8975,6 @@
       "artist_id": 224166,
       "album_id": "master-51607",
       "hop_distance": 1
-    },
-    {
-      "artist_id": 224506,
-      "album_id": "master-59538",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 224506,
-      "album_id": "master-10363",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 225402,
-      "album_id": "master-110874",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 225402,
-      "album_id": "master-10363",
-      "hop_distance": 2
     },
     {
       "artist_id": 227848,
@@ -8817,34 +9017,284 @@
       "hop_distance": 3
     },
     {
-      "artist_id": 227943,
-      "album_id": "master-10362",
+      "artist_id": 229176,
+      "album_id": "master-10363",
       "hop_distance": 1
     },
     {
-      "artist_id": 227943,
-      "album_id": "master-18442",
+      "artist_id": 229176,
+      "album_id": "master-105802",
       "hop_distance": 1
     },
     {
-      "artist_id": 227943,
-      "album_id": "master-302",
+      "artist_id": 229176,
+      "album_id": "master-106274",
       "hop_distance": 1
     },
     {
-      "artist_id": 227943,
-      "album_id": "master-406634",
+      "artist_id": 229176,
+      "album_id": "master-108242",
       "hop_distance": 1
     },
     {
-      "artist_id": 227943,
-      "album_id": "master-68469",
+      "artist_id": 229176,
+      "album_id": "master-113522",
       "hop_distance": 1
     },
     {
-      "artist_id": 227943,
-      "album_id": "master-54449",
+      "artist_id": 229176,
+      "album_id": "master-19493",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 229176,
+      "album_id": "master-30577",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 229176,
+      "album_id": "master-30712",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 229176,
+      "album_id": "master-30926",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 229176,
+      "album_id": "master-40048",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 229176,
+      "album_id": "master-47744",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 229176,
+      "album_id": "master-52497",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 229176,
+      "album_id": "master-52671",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 229176,
+      "album_id": "master-104115",
       "hop_distance": 2
+    },
+    {
+      "artist_id": 229176,
+      "album_id": "master-104166",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 229176,
+      "album_id": "master-104399",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 229176,
+      "album_id": "master-1046042",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 229176,
+      "album_id": "master-1164779",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 229176,
+      "album_id": "master-122261",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 229176,
+      "album_id": "master-12236",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 229176,
+      "album_id": "master-13280",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 229176,
+      "album_id": "master-135633",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 229176,
+      "album_id": "master-138283",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 229176,
+      "album_id": "master-16545",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 229176,
+      "album_id": "master-17249",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 229176,
+      "album_id": "master-20148",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 229176,
+      "album_id": "master-20387",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 229176,
+      "album_id": "master-23684",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 229176,
+      "album_id": "master-24047",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 229176,
+      "album_id": "master-2452996",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 229176,
+      "album_id": "master-25303",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 229176,
+      "album_id": "master-26647",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 229176,
+      "album_id": "master-31598",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 229176,
+      "album_id": "master-32208",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 229176,
+      "album_id": "master-32708",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 229176,
+      "album_id": "master-35006",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 229176,
+      "album_id": "master-35401",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 229176,
+      "album_id": "master-35706",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 229176,
+      "album_id": "master-35793",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 229176,
+      "album_id": "master-36227",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 229176,
+      "album_id": "master-3762",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 229176,
+      "album_id": "master-38712",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 229176,
+      "album_id": "master-406634",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 229176,
+      "album_id": "master-4300",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 229176,
+      "album_id": "master-45922",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 229176,
+      "album_id": "master-49058",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 229176,
+      "album_id": "master-52998",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 229176,
+      "album_id": "master-5460",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 229176,
+      "album_id": "master-55281",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 229176,
+      "album_id": "master-56036",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 229176,
+      "album_id": "master-57279",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 229176,
+      "album_id": "master-57940",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 229176,
+      "album_id": "master-57970",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 229176,
+      "album_id": "master-172407",
+      "hop_distance": 3
+    },
+    {
+      "artist_id": 229176,
+      "album_id": "master-34081",
+      "hop_distance": 3
+    },
+    {
+      "artist_id": 229176,
+      "album_id": "master-4424",
+      "hop_distance": 3
     },
     {
       "artist_id": 229494,
@@ -8863,12 +9313,12 @@
     },
     {
       "artist_id": 229621,
-      "album_id": "master-10363",
-      "hop_distance": 2
+      "album_id": "master-10362",
+      "hop_distance": 3
     },
     {
       "artist_id": 229621,
-      "album_id": "master-10362",
+      "album_id": "master-10363",
       "hop_distance": 3
     },
     {
@@ -8889,7 +9339,7 @@
     {
       "artist_id": 232157,
       "album_id": "master-10362",
-      "hop_distance": 2
+      "hop_distance": 3
     },
     {
       "artist_id": 232157,
@@ -8962,26 +9412,6 @@
       "hop_distance": 3
     },
     {
-      "artist_id": 240971,
-      "album_id": "master-10363",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 240971,
-      "album_id": "master-106396",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 240971,
-      "album_id": "master-40048",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 240971,
-      "album_id": "master-37401",
-      "hop_distance": 2
-    },
-    {
       "artist_id": 243955,
       "album_id": "master-56036",
       "hop_distance": 0
@@ -9043,11 +9473,6 @@
     },
     {
       "artist_id": 243955,
-      "album_id": "master-10363",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 243955,
       "album_id": "master-104115",
       "hop_distance": 2
     },
@@ -9067,6 +9492,11 @@
       "hop_distance": 2
     },
     {
+      "artist_id": 243955,
+      "album_id": "master-10363",
+      "hop_distance": 3
+    },
+    {
       "artist_id": 246096,
       "album_id": "master-10362",
       "hop_distance": 1
@@ -9077,8 +9507,18 @@
       "hop_distance": 1
     },
     {
-      "artist_id": 246096,
-      "album_id": "master-96362",
+      "artist_id": 246097,
+      "album_id": "master-10362",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 246097,
+      "album_id": "master-41155",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 246097,
+      "album_id": "master-302",
       "hop_distance": 2
     },
     {
@@ -9094,7 +9534,7 @@
     {
       "artist_id": 246650,
       "album_id": "master-10363",
-      "hop_distance": 2
+      "hop_distance": 3
     },
     {
       "artist_id": 247084,
@@ -9103,8 +9543,23 @@
     },
     {
       "artist_id": 247084,
-      "album_id": "master-59538",
+      "album_id": "master-38175",
       "hop_distance": 2
+    },
+    {
+      "artist_id": 247084,
+      "album_id": "master-44278",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 247084,
+      "album_id": "master-6495",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 247084,
+      "album_id": "master-31755",
+      "hop_distance": 3
     },
     {
       "artist_id": 249449,
@@ -9177,16 +9632,6 @@
       "hop_distance": 2
     },
     {
-      "artist_id": 249748,
-      "album_id": "master-10363",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 249748,
-      "album_id": "master-20137",
-      "hop_distance": 1
-    },
-    {
       "artist_id": 249829,
       "album_id": "master-67405",
       "hop_distance": 0
@@ -9207,54 +9652,14 @@
       "hop_distance": 2
     },
     {
-      "artist_id": 251578,
+      "artist_id": 251575,
       "album_id": "master-10362",
       "hop_distance": 1
     },
     {
-      "artist_id": 251578,
-      "album_id": "master-104115",
+      "artist_id": 251575,
+      "album_id": "master-68469",
       "hop_distance": 1
-    },
-    {
-      "artist_id": 251578,
-      "album_id": "master-32208",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 251633,
-      "album_id": "master-10363",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 251633,
-      "album_id": "master-302",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 251633,
-      "album_id": "master-30303",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 251633,
-      "album_id": "master-32708",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 251633,
-      "album_id": "master-42522",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 251633,
-      "album_id": "master-12236",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 251633,
-      "album_id": "master-17249",
-      "hop_distance": 2
     },
     {
       "artist_id": 251689,
@@ -9264,12 +9669,12 @@
     {
       "artist_id": 251689,
       "album_id": "master-10362",
-      "hop_distance": 2
+      "hop_distance": 3
     },
     {
       "artist_id": 251689,
       "album_id": "master-10363",
-      "hop_distance": 3
+      "hop_distance": 4
     },
     {
       "artist_id": 251877,
@@ -9292,26 +9697,6 @@
       "hop_distance": 1
     },
     {
-      "artist_id": 252100,
-      "album_id": "master-303567",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 252100,
-      "album_id": "master-10362",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 252101,
-      "album_id": "master-72235",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 252101,
-      "album_id": "master-10362",
-      "hop_distance": 2
-    },
-    {
       "artist_id": 252102,
       "album_id": "master-55281",
       "hop_distance": 0
@@ -9319,12 +9704,12 @@
     {
       "artist_id": 252102,
       "album_id": "master-10362",
-      "hop_distance": 2
+      "hop_distance": 3
     },
     {
       "artist_id": 252102,
       "album_id": "master-10363",
-      "hop_distance": 2
+      "hop_distance": 3
     },
     {
       "artist_id": 252118,
@@ -9335,6 +9720,71 @@
       "artist_id": 252118,
       "album_id": "master-68399",
       "hop_distance": 1
+    },
+    {
+      "artist_id": 252119,
+      "album_id": "master-10363",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 252119,
+      "album_id": "master-113224",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 252119,
+      "album_id": "master-23069",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 252119,
+      "album_id": "master-37145",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 252119,
+      "album_id": "master-60680",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 252119,
+      "album_id": "master-151766",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 252119,
+      "album_id": "master-27765",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 252119,
+      "album_id": "master-37401",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 252119,
+      "album_id": "master-39341",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 252119,
+      "album_id": "master-51607",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 252119,
+      "album_id": "master-5863",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 252119,
+      "album_id": "master-59538",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 252119,
+      "album_id": "master-13814",
+      "hop_distance": 3
     },
     {
       "artist_id": 252196,
@@ -9374,6 +9824,16 @@
     {
       "artist_id": 252993,
       "album_id": "master-45720",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 253108,
+      "album_id": "master-10362",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 253108,
+      "album_id": "master-5863",
       "hop_distance": 1
     },
     {
@@ -9473,7 +9933,37 @@
     },
     {
       "artist_id": 253592,
+      "album_id": "master-59538",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 253592,
       "album_id": "master-79241",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 253592,
+      "album_id": "master-10363",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 253974,
+      "album_id": "master-10362",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 253974,
+      "album_id": "master-138283",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 253974,
+      "album_id": "master-25893",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 253974,
+      "album_id": "master-5460",
       "hop_distance": 1
     },
     {
@@ -9483,8 +9973,53 @@
     },
     {
       "artist_id": 253974,
+      "album_id": "master-8883",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 253974,
       "album_id": "master-92986",
       "hop_distance": 1
+    },
+    {
+      "artist_id": 253974,
+      "album_id": "master-1164779",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 253974,
+      "album_id": "master-122051",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 253974,
+      "album_id": "master-20148",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 253974,
+      "album_id": "master-25303",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 253974,
+      "album_id": "master-57279",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 253974,
+      "album_id": "master-57970",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 253974,
+      "album_id": "master-66510",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 253974,
+      "album_id": "master-750386",
+      "hop_distance": 2
     },
     {
       "artist_id": 254259,
@@ -9494,6 +10029,11 @@
     {
       "artist_id": 254259,
       "album_id": "master-10362",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 254259,
+      "album_id": "master-10363",
       "hop_distance": 2
     },
     {
@@ -9517,9 +10057,14 @@
       "hop_distance": 2
     },
     {
-      "artist_id": 254259,
-      "album_id": "master-10363",
-      "hop_distance": 3
+      "artist_id": 254479,
+      "album_id": "master-1046042",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 254479,
+      "album_id": "master-10362",
+      "hop_distance": 2
     },
     {
       "artist_id": 254878,
@@ -9540,6 +10085,101 @@
       "artist_id": 254959,
       "album_id": "master-54449",
       "hop_distance": 1
+    },
+    {
+      "artist_id": 255142,
+      "album_id": "master-10363",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 255142,
+      "album_id": "master-122051",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 255142,
+      "album_id": "master-133278",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 255142,
+      "album_id": "master-25893",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 255142,
+      "album_id": "master-107325",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 255142,
+      "album_id": "master-15841",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 255142,
+      "album_id": "master-16158",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 255142,
+      "album_id": "master-16921",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 255142,
+      "album_id": "master-18442",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 255142,
+      "album_id": "master-20135",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 255142,
+      "album_id": "master-27460",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 255142,
+      "album_id": "master-30303",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 255142,
+      "album_id": "master-403952",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 255142,
+      "album_id": "master-41722",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 255142,
+      "album_id": "master-42522",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 255142,
+      "album_id": "master-45720",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 255142,
+      "album_id": "master-47868",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 255142,
+      "album_id": "master-57029",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 255142,
+      "album_id": "master-48605",
+      "hop_distance": 3
     },
     {
       "artist_id": 255185,
@@ -9633,17 +10273,47 @@
     },
     {
       "artist_id": 255680,
-      "album_id": "master-10362",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 255680,
       "album_id": "master-10363",
       "hop_distance": 2
     },
     {
+      "artist_id": 255680,
+      "album_id": "master-10362",
+      "hop_distance": 3
+    },
+    {
+      "artist_id": 256225,
+      "album_id": "master-10362",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 256225,
+      "album_id": "master-105802",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 256225,
+      "album_id": "master-35006",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 256225,
+      "album_id": "master-406634",
+      "hop_distance": 1
+    },
+    {
       "artist_id": 256225,
       "album_id": "master-52998",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 256225,
+      "album_id": "master-55658",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 256225,
+      "album_id": "master-66782",
       "hop_distance": 1
     },
     {
@@ -9662,28 +10332,8 @@
       "hop_distance": 1
     },
     {
-      "artist_id": 257502,
-      "album_id": "master-10362",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 257502,
-      "album_id": "master-35401",
-      "hop_distance": 1
-    },
-    {
       "artist_id": 258111,
       "album_id": "master-10362",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 258111,
-      "album_id": "master-16921",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 258111,
-      "album_id": "master-30926",
       "hop_distance": 1
     },
     {
@@ -9693,38 +10343,8 @@
     },
     {
       "artist_id": 258111,
-      "album_id": "master-69156",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 258111,
       "album_id": "master-70584",
       "hop_distance": 1
-    },
-    {
-      "artist_id": 258111,
-      "album_id": "master-74227",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 258111,
-      "album_id": "master-172407",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 258111,
-      "album_id": "master-20135",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 258111,
-      "album_id": "master-66510",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 258111,
-      "album_id": "master-110874",
-      "hop_distance": 3
     },
     {
       "artist_id": 258113,
@@ -9733,8 +10353,8 @@
     },
     {
       "artist_id": 258113,
-      "album_id": "master-72235",
-      "hop_distance": 2
+      "album_id": "master-35401",
+      "hop_distance": 1
     },
     {
       "artist_id": 258118,
@@ -9832,23 +10452,13 @@
       "hop_distance": 2
     },
     {
-      "artist_id": 259383,
-      "album_id": "master-10362",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 259383,
-      "album_id": "master-138283",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 259383,
-      "album_id": "master-92986",
+      "artist_id": 259384,
+      "album_id": "master-3878",
       "hop_distance": 1
     },
     {
       "artist_id": 259384,
-      "album_id": "master-3878",
+      "album_id": "master-45432",
       "hop_distance": 1
     },
     {
@@ -9857,18 +10467,8 @@
       "hop_distance": 1
     },
     {
-      "artist_id": 260199,
-      "album_id": "master-10362",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 260199,
-      "album_id": "master-13960",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 260199,
-      "album_id": "master-1046042",
+      "artist_id": 259384,
+      "album_id": "master-10363",
       "hop_distance": 2
     },
     {
@@ -9880,31 +10480,6 @@
       "artist_id": 260574,
       "album_id": "master-92986",
       "hop_distance": 1
-    },
-    {
-      "artist_id": 260576,
-      "album_id": "master-10363",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 260576,
-      "album_id": "master-108242",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 260576,
-      "album_id": "master-129759",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 260576,
-      "album_id": "master-56036",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 260576,
-      "album_id": "master-3719",
-      "hop_distance": 2
     },
     {
       "artist_id": 261760,
@@ -9948,6 +10523,11 @@
     },
     {
       "artist_id": 261867,
+      "album_id": "master-10362",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 261867,
       "album_id": "master-10363",
       "hop_distance": 2
     },
@@ -9972,11 +10552,6 @@
       "hop_distance": 2
     },
     {
-      "artist_id": 261867,
-      "album_id": "master-10362",
-      "hop_distance": 3
-    },
-    {
       "artist_id": 262270,
       "album_id": "master-16545",
       "hop_distance": 1
@@ -9985,11 +10560,6 @@
       "artist_id": 262270,
       "album_id": "master-72879",
       "hop_distance": 1
-    },
-    {
-      "artist_id": 262270,
-      "album_id": "master-10363",
-      "hop_distance": 2
     },
     {
       "artist_id": 262770,
@@ -10087,21 +10657,6 @@
       "hop_distance": 2
     },
     {
-      "artist_id": 263514,
-      "album_id": "master-10362",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 263514,
-      "album_id": "master-17249",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 263514,
-      "album_id": "master-19493",
-      "hop_distance": 1
-    },
-    {
       "artist_id": 264645,
       "album_id": "master-10362",
       "hop_distance": 1
@@ -10109,26 +10664,6 @@
     {
       "artist_id": 264645,
       "album_id": "master-23069",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 264645,
-      "album_id": "master-25893",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 264645,
-      "album_id": "master-26037",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 264645,
-      "album_id": "master-36227",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 264645,
-      "album_id": "master-45720",
       "hop_distance": 1
     },
     {
@@ -10140,6 +10675,16 @@
       "artist_id": 265119,
       "album_id": "master-66631",
       "hop_distance": 1
+    },
+    {
+      "artist_id": 266344,
+      "album_id": "master-10362",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 266344,
+      "album_id": "master-31755",
+      "hop_distance": 2
     },
     {
       "artist_id": 266352,
@@ -10178,11 +10723,6 @@
     },
     {
       "artist_id": 266352,
-      "album_id": "master-10363",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 266352,
       "album_id": "master-19493",
       "hop_distance": 2
     },
@@ -10202,6 +10742,11 @@
       "hop_distance": 2
     },
     {
+      "artist_id": 266352,
+      "album_id": "master-10363",
+      "hop_distance": 3
+    },
+    {
       "artist_id": 266403,
       "album_id": "master-106274",
       "hop_distance": 1
@@ -10218,8 +10763,8 @@
     },
     {
       "artist_id": 267089,
-      "album_id": "master-55658",
-      "hop_distance": 1
+      "album_id": "master-59538",
+      "hop_distance": 2
     },
     {
       "artist_id": 268047,
@@ -10272,6 +10817,16 @@
       "hop_distance": 2
     },
     {
+      "artist_id": 270964,
+      "album_id": "master-35276",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 270964,
+      "album_id": "master-10363",
+      "hop_distance": 2
+    },
+    {
       "artist_id": 271387,
       "album_id": "master-108242",
       "hop_distance": 1
@@ -10283,12 +10838,22 @@
     },
     {
       "artist_id": 271409,
+      "album_id": "master-10363",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 271409,
       "album_id": "master-106274",
       "hop_distance": 1
     },
     {
       "artist_id": 271409,
       "album_id": "master-338175",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 271409,
+      "album_id": "master-43063",
       "hop_distance": 1
     },
     {
@@ -10377,24 +10942,14 @@
       "hop_distance": 1
     },
     {
-      "artist_id": 277531,
-      "album_id": "master-10362",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 277531,
-      "album_id": "master-80514",
-      "hop_distance": 1
-    },
-    {
       "artist_id": 277582,
       "album_id": "master-10362",
       "hop_distance": 1
     },
     {
       "artist_id": 277582,
-      "album_id": "master-48605",
-      "hop_distance": 2
+      "album_id": "master-17249",
+      "hop_distance": 1
     },
     {
       "artist_id": 277686,
@@ -10447,8 +11002,53 @@
       "hop_distance": 1
     },
     {
+      "artist_id": 284482,
+      "album_id": "master-10363",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 284482,
+      "album_id": "master-106396",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 284482,
+      "album_id": "master-129759",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 284482,
+      "album_id": "master-26037",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 284482,
+      "album_id": "master-59501",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 284482,
+      "album_id": "master-60721",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 284482,
+      "album_id": "master-18027",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 284482,
+      "album_id": "master-38722",
+      "hop_distance": 2
+    },
+    {
       "artist_id": 284906,
       "album_id": "master-303567",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 284906,
+      "album_id": "master-3211",
       "hop_distance": 1
     },
     {
@@ -10457,98 +11057,38 @@
       "hop_distance": 1
     },
     {
+      "artist_id": 284906,
+      "album_id": "master-10362",
+      "hop_distance": 3
+    },
+    {
+      "artist_id": 284906,
+      "album_id": "master-10363",
+      "hop_distance": 3
+    },
+    {
       "artist_id": 285408,
       "album_id": "master-38712",
       "hop_distance": 0
     },
     {
       "artist_id": 285408,
-      "album_id": "master-10363",
+      "album_id": "master-10362",
       "hop_distance": 2
     },
     {
       "artist_id": 285408,
-      "album_id": "master-10362",
+      "album_id": "master-10363",
       "hop_distance": 3
     },
     {
-      "artist_id": 287251,
+      "artist_id": 289278,
+      "album_id": "master-21520",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 289278,
       "album_id": "master-10362",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 287251,
-      "album_id": "master-51607",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 287251,
-      "album_id": "master-122051",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 289513,
-      "album_id": "master-10362",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 289513,
-      "album_id": "master-13814",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 289513,
-      "album_id": "master-26647",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 289513,
-      "album_id": "master-27460",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 289513,
-      "album_id": "master-35276",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 289513,
-      "album_id": "master-39248",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 289513,
-      "album_id": "master-39341",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 289513,
-      "album_id": "master-55576",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 289513,
-      "album_id": "master-57029",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 289513,
-      "album_id": "master-87446",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 289513,
-      "album_id": "master-8883",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 289513,
-      "album_id": "master-151766",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 289513,
-      "album_id": "master-90844",
       "hop_distance": 2
     },
     {
@@ -10564,11 +11104,6 @@
     {
       "artist_id": 290587,
       "album_id": "master-10362",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 290587,
-      "album_id": "master-10363",
       "hop_distance": 2
     },
     {
@@ -10592,6 +11127,11 @@
       "hop_distance": 2
     },
     {
+      "artist_id": 290587,
+      "album_id": "master-10363",
+      "hop_distance": 3
+    },
+    {
       "artist_id": 292813,
       "album_id": "master-35401",
       "hop_distance": 1
@@ -10612,6 +11152,11 @@
       "hop_distance": 1
     },
     {
+      "artist_id": 293887,
+      "album_id": "master-10363",
+      "hop_distance": 2
+    },
+    {
       "artist_id": 293896,
       "album_id": "master-133278",
       "hop_distance": 1
@@ -10620,101 +11165,6 @@
       "artist_id": 293896,
       "album_id": "master-66631",
       "hop_distance": 1
-    },
-    {
-      "artist_id": 299589,
-      "album_id": "master-10363",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 299589,
-      "album_id": "master-52497",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 300113,
-      "album_id": "master-10362",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 300113,
-      "album_id": "master-25688",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 300113,
-      "album_id": "master-27765",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 300113,
-      "album_id": "master-79666",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 300186,
-      "album_id": "master-10362",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 300186,
-      "album_id": "master-5460",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 300186,
-      "album_id": "master-59501",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 300468,
-      "album_id": "master-10362",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 300468,
-      "album_id": "master-135633",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 300468,
-      "album_id": "master-36251",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 300468,
-      "album_id": "master-750386",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 300468,
-      "album_id": "master-20148",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 300468,
-      "album_id": "master-45922",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 300468,
-      "album_id": "master-3211",
-      "hop_distance": 3
-    },
-    {
-      "artist_id": 302529,
-      "album_id": "master-172407",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 302529,
-      "album_id": "master-10362",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 302529,
-      "album_id": "master-110874",
-      "hop_distance": 2
     },
     {
       "artist_id": 303282,
@@ -10735,21 +11185,6 @@
       "artist_id": 304307,
       "album_id": "master-60680",
       "hop_distance": 1
-    },
-    {
-      "artist_id": 305081,
-      "album_id": "master-10362",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 305081,
-      "album_id": "master-38712",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 305081,
-      "album_id": "master-92896",
-      "hop_distance": 2
     },
     {
       "artist_id": 306264,
@@ -10813,11 +11248,6 @@
     },
     {
       "artist_id": 321128,
-      "album_id": "master-10362",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 321128,
       "album_id": "master-104115",
       "hop_distance": 2
     },
@@ -10830,6 +11260,11 @@
       "artist_id": 321128,
       "album_id": "master-3878",
       "hop_distance": 2
+    },
+    {
+      "artist_id": 321128,
+      "album_id": "master-10362",
+      "hop_distance": 3
     },
     {
       "artist_id": 321128,
@@ -10867,16 +11302,6 @@
       "hop_distance": 1
     },
     {
-      "artist_id": 327238,
-      "album_id": "master-122051",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 327238,
-      "album_id": "master-10363",
-      "hop_distance": 2
-    },
-    {
       "artist_id": 328530,
       "album_id": "master-17217",
       "hop_distance": 1
@@ -10887,16 +11312,6 @@
       "hop_distance": 1
     },
     {
-      "artist_id": 329354,
-      "album_id": "master-10362",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 329354,
-      "album_id": "master-107325",
-      "hop_distance": 1
-    },
-    {
       "artist_id": 332625,
       "album_id": "master-25893",
       "hop_distance": 1
@@ -10904,16 +11319,6 @@
     {
       "artist_id": 332625,
       "album_id": "master-65826",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 337195,
-      "album_id": "master-10363",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 337195,
-      "album_id": "master-35006",
       "hop_distance": 1
     },
     {
@@ -10957,86 +11362,6 @@
       "hop_distance": 1
     },
     {
-      "artist_id": 366299,
-      "album_id": "master-10363",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 366299,
-      "album_id": "master-13280",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 366299,
-      "album_id": "master-25688",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 367595,
-      "album_id": "master-27765",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 367595,
-      "album_id": "master-10363",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 370051,
-      "album_id": "master-10363",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 370051,
-      "album_id": "master-13814",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 370051,
-      "album_id": "master-1561",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 370051,
-      "album_id": "master-31755",
-      "hop_distance": 3
-    },
-    {
-      "artist_id": 375522,
-      "album_id": "master-10363",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 375522,
-      "album_id": "master-113522",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 375522,
-      "album_id": "master-25893",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 376979,
-      "album_id": "master-10362",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 376979,
-      "album_id": "master-38175",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 379985,
-      "album_id": "master-10362",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 379985,
-      "album_id": "master-15841",
-      "hop_distance": 2
-    },
-    {
       "artist_id": 388494,
       "album_id": "master-68209",
       "hop_distance": 1
@@ -11067,41 +11392,6 @@
       "hop_distance": 1
     },
     {
-      "artist_id": 394599,
-      "album_id": "master-10363",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 394599,
-      "album_id": "master-18442",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 394599,
-      "album_id": "master-38175",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 394599,
-      "album_id": "master-45432",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 394599,
-      "album_id": "master-47744",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 394599,
-      "album_id": "master-25303",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 394599,
-      "album_id": "master-57970",
-      "hop_distance": 2
-    },
-    {
       "artist_id": 396655,
       "album_id": "master-303567",
       "hop_distance": 1
@@ -11110,101 +11400,6 @@
       "artist_id": 396655,
       "album_id": "master-31337",
       "hop_distance": 1
-    },
-    {
-      "artist_id": 399108,
-      "album_id": "master-10363",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 399108,
-      "album_id": "master-113224",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 399108,
-      "album_id": "master-23684",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 399108,
-      "album_id": "master-35401",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 399108,
-      "album_id": "master-35706",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 399108,
-      "album_id": "master-36227",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 399108,
-      "album_id": "master-38722",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 399108,
-      "album_id": "master-4300",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 399108,
-      "album_id": "master-47868",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 399108,
-      "album_id": "master-52671",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 399108,
-      "album_id": "master-55281",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 399108,
-      "album_id": "master-35793",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 399108,
-      "album_id": "master-39248",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 399108,
-      "album_id": "master-57029",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 399108,
-      "album_id": "master-57940",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 406473,
-      "album_id": "master-10362",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 406473,
-      "album_id": "master-34081",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 406473,
-      "album_id": "master-76678",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 406473,
-      "album_id": "master-113224",
-      "hop_distance": 2
     },
     {
       "artist_id": 414957,
@@ -11227,31 +11422,6 @@
       "hop_distance": 1
     },
     {
-      "artist_id": 427226,
-      "album_id": "master-27460",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 430600,
-      "album_id": "master-10363",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 430600,
-      "album_id": "master-122261",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 430600,
-      "album_id": "master-32208",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 430600,
-      "album_id": "master-60680",
-      "hop_distance": 1
-    },
-    {
       "artist_id": 447673,
       "album_id": "master-13960",
       "hop_distance": 1
@@ -11270,21 +11440,6 @@
       "artist_id": 451329,
       "album_id": "master-10362",
       "hop_distance": 2
-    },
-    {
-      "artist_id": 462349,
-      "album_id": "master-10363",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 462349,
-      "album_id": "master-48605",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 462349,
-      "album_id": "master-54449",
-      "hop_distance": 1
     },
     {
       "artist_id": 463597,
@@ -11332,31 +11487,6 @@
       "hop_distance": 3
     },
     {
-      "artist_id": 464788,
-      "album_id": "master-10363",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 464788,
-      "album_id": "master-104166",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 464788,
-      "album_id": "master-35276",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 464788,
-      "album_id": "master-38712",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 464788,
-      "album_id": "master-49058",
-      "hop_distance": 1
-    },
-    {
       "artist_id": 465889,
       "album_id": "master-75606",
       "hop_distance": 1
@@ -11364,106 +11494,6 @@
     {
       "artist_id": 465889,
       "album_id": "master-92896",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 484862,
-      "album_id": "master-10363",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 484862,
-      "album_id": "master-16921",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 486267,
-      "album_id": "master-10362",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 486267,
-      "album_id": "master-42522",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 497420,
-      "album_id": "master-10363",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 497420,
-      "album_id": "master-20135",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 513241,
-      "album_id": "master-10362",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 513241,
-      "album_id": "master-31755",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 520370,
-      "album_id": "master-10363",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 520370,
-      "album_id": "master-19493",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 520370,
-      "album_id": "master-34081",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 520613,
-      "album_id": "master-10363",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 520613,
-      "album_id": "master-45720",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 520613,
-      "album_id": "master-52998",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 522251,
-      "album_id": "master-10363",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 522251,
-      "album_id": "master-106274",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 563236,
-      "album_id": "master-10362",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 563236,
-      "album_id": "master-338175",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 593502,
-      "album_id": "master-10363",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 593502,
-      "album_id": "master-59501",
       "hop_distance": 1
     },
     {
@@ -11484,16 +11514,6 @@
     {
       "artist_id": 661928,
       "album_id": "master-303567",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 705727,
-      "album_id": "master-10363",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 705727,
-      "album_id": "master-55658",
       "hop_distance": 1
     },
     {
@@ -11538,12 +11558,12 @@
     },
     {
       "artist_id": 861083,
-      "album_id": "master-10363",
-      "hop_distance": 3
+      "album_id": "master-10362",
+      "hop_distance": 4
     },
     {
       "artist_id": 861083,
-      "album_id": "master-10362",
+      "album_id": "master-10363",
       "hop_distance": 4
     },
     {
@@ -11568,11 +11588,6 @@
     },
     {
       "artist_id": 938844,
-      "album_id": "master-10362",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 938844,
       "album_id": "master-104166",
       "hop_distance": 2
     },
@@ -11587,14 +11602,9 @@
       "hop_distance": 2
     },
     {
-      "artist_id": 1079856,
-      "album_id": "master-10363",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 1079856,
-      "album_id": "master-41722",
-      "hop_distance": 2
+      "artist_id": 938844,
+      "album_id": "master-10362",
+      "hop_distance": 3
     },
     {
       "artist_id": 1103159,
@@ -11623,6 +11633,11 @@
     },
     {
       "artist_id": 1103159,
+      "album_id": "master-10363",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 1103159,
       "album_id": "master-106274",
       "hop_distance": 2
     },
@@ -11642,19 +11657,9 @@
       "hop_distance": 2
     },
     {
-      "artist_id": 1103159,
-      "album_id": "master-10363",
-      "hop_distance": 3
-    },
-    {
       "artist_id": 1124645,
       "album_id": "master-750386",
       "hop_distance": 0
-    },
-    {
-      "artist_id": 1124645,
-      "album_id": "master-10362",
-      "hop_distance": 2
     },
     {
       "artist_id": 1124645,
@@ -11677,6 +11682,21 @@
       "hop_distance": 2
     },
     {
+      "artist_id": 1124645,
+      "album_id": "master-10362",
+      "hop_distance": 3
+    },
+    {
+      "artist_id": 1249160,
+      "album_id": "master-10363",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 1249160,
+      "album_id": "master-172407",
+      "hop_distance": 2
+    },
+    {
       "artist_id": 1561067,
       "album_id": "master-1046042",
       "hop_distance": 1
@@ -11684,16 +11704,6 @@
     {
       "artist_id": 1561067,
       "album_id": "master-54449",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 1744578,
-      "album_id": "master-10362",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 1744578,
-      "album_id": "master-26725",
       "hop_distance": 1
     },
     {
@@ -11715,46 +11725,6 @@
       "artist_id": 1778977,
       "album_id": "master-10363",
       "hop_distance": 3
-    },
-    {
-      "artist_id": 1832640,
-      "album_id": "master-10362",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 1832640,
-      "album_id": "master-47868",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 1834753,
-      "album_id": "master-10363",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 1834753,
-      "album_id": "master-21520",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 1834754,
-      "album_id": "master-10363",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 1834754,
-      "album_id": "master-18080",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 1834921,
-      "album_id": "master-10363",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 1834921,
-      "album_id": "master-5460",
-      "hop_distance": 2
     },
     {
       "artist_id": 2013868,
@@ -11833,6 +11803,11 @@
     },
     {
       "artist_id": 2445772,
+      "album_id": "master-10362",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 2445772,
       "album_id": "master-108242",
       "hop_distance": 2
     },
@@ -11853,57 +11828,17 @@
     },
     {
       "artist_id": 2445772,
-      "album_id": "master-10362",
-      "hop_distance": 3
-    },
-    {
-      "artist_id": 2445772,
       "album_id": "master-10363",
       "hop_distance": 3
-    },
-    {
-      "artist_id": 2594837,
-      "album_id": "master-10363",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 2594837,
-      "album_id": "master-30712",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 2594837,
-      "album_id": "master-37145",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 3117146,
-      "album_id": "master-10362",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 3117146,
-      "album_id": "master-20387",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 3117146,
-      "album_id": "master-12236",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 3117146,
-      "album_id": "master-37401",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 3117146,
-      "album_id": "master-57279",
-      "hop_distance": 2
     },
     {
       "artist_id": 3237636,
       "album_id": "master-10363",
+      "hop_distance": 1
+    },
+    {
+      "artist_id": 3237636,
+      "album_id": "master-41155",
       "hop_distance": 1
     },
     {
@@ -11913,77 +11848,37 @@
     },
     {
       "artist_id": 3237636,
-      "album_id": "master-1046042",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 3237636,
-      "album_id": "master-303567",
+      "album_id": "master-302",
       "hop_distance": 2
     },
     {
       "artist_id": 3237636,
       "album_id": "master-3211",
-      "hop_distance": 2
+      "hop_distance": 3
     },
     {
-      "artist_id": 3237636,
-      "album_id": "master-338175",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 3237636,
-      "album_id": "master-403952",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 3272791,
-      "album_id": "master-20387",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 3272791,
-      "album_id": "master-10363",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 3276907,
-      "album_id": "master-10363",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 3276907,
-      "album_id": "master-20387",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 4204725,
-      "album_id": "master-172407",
-      "hop_distance": 1
-    },
-    {
-      "artist_id": 4204725,
-      "album_id": "master-10363",
-      "hop_distance": 2
-    },
-    {
-      "artist_id": 5368368,
+      "artist_id": 7884136,
       "album_id": "master-10362",
       "hop_distance": 1
     },
     {
-      "artist_id": 5368368,
-      "album_id": "master-55281",
+      "artist_id": 7884136,
+      "album_id": "master-13814",
       "hop_distance": 1
     },
     {
-      "artist_id": 7739959,
-      "album_id": "master-10363",
+      "artist_id": 7884136,
+      "album_id": "master-42522",
       "hop_distance": 1
     },
     {
-      "artist_id": 7739959,
-      "album_id": "master-5863",
+      "artist_id": 7884136,
+      "album_id": "master-38175",
+      "hop_distance": 2
+    },
+    {
+      "artist_id": 7884136,
+      "album_id": "master-6495",
       "hop_distance": 2
     }
   ]

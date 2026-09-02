@@ -472,6 +472,7 @@ def credit_edges_sql(
     credits_relation: str = "credits",
     release_format_policy_relation: str | None = None,
     evidence_release_preference: EvidenceReleasePreference | None = None,
+    performer_only: bool = True,
 ) -> str:
     """A SELECT producing the directed, deduplicated co-credit edge relation
     `(artist_a_id, artist_b_id, release_id)` over `credits_relation`.
@@ -525,7 +526,14 @@ def credit_edges_sql(
     otherwise a festival film's director inherits every act on the bill.
     """
     ineligible = _edge_ineligible_role_sql("role_text")
-    performer_qualifying = is_performer_role_sql("c.role_text")
+    # ADR 0068's gate. `performer_only=False` restores the broader,
+    # pre-0068 "any edge-eligible shared credit" relation -- NEVER for a
+    # public artifact (the public contract is performer-only by
+    # construction), only for the private research workbench, which is
+    # explicitly permitted to keep a clearly-labeled broader view of the
+    # same corpus. The denylist (`edge_ineligible_role`, ADR 0035) still
+    # applies in both modes; this toggles only the added allowlist.
+    performer_qualifying = is_performer_role_sql("c.role_text") if performer_only else "TRUE"
     not_placeholder = _not_placeholder_sql()
     studio_track = _non_studio_track_variant_sql()
     studio_release = (
@@ -896,12 +904,17 @@ class CreditGraph:
         build_edges: bool = True,
         release_format_policy: Path | None = None,
         evidence_release_preference: EvidenceReleasePreference | None = None,
+        performer_only: bool = True,
     ) -> CreditGraph:
         """`build_edges=False` skips materializing `credit_edges` -- the ~2.5
         minute step on the real corpus. The result can read evidence rows
         (`credit_rows`, `release`, `artist_name`) but raises on any traversal
         call. Used by the editorial packet, which explains hops that were
-        already found rather than searching for new ones."""
+        already found rather than searching for new ones.
+
+        `performer_only=False` opens the broader, pre-ADR-0068 edge relation
+        (see `credit_edges_sql`) -- private research only, never a public
+        artifact."""
         dataset_root = Path(dataset_root)
         manifest_path = dataset_root / "manifest.json"
         if not manifest_path.exists():
@@ -1043,6 +1056,7 @@ class CreditGraph:
                     max_artists_per_release=max_artists_per_release,
                     release_format_policy_relation=policy_relation,
                     evidence_release_preference=evidence_release_preference,
+                    performer_only=performer_only,
                 )
             )
             connection.execute("CREATE INDEX credit_edges_a ON credit_edges (artist_a_id)")

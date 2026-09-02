@@ -114,15 +114,13 @@ def test_registry_and_membership_version_fields_are_reported() -> None:
 
 
 def test_contributor_index_companion_version_fields_are_reported() -> None:
-    """`album_hop_distances_version` and `background_only_profiles_version`
-    (ADR 0048/0060 addenda) are the same recurring gap this file's own
-    comment already documents once: a new artifact's version field shipped
-    without a matching addition to `_VERSION_FIELD_NAMES`, real Codex
-    review findings for both (round 7 caught `background_only_profiles_
-    version` missing; `album_hop_distances_version` was found missing by
-    inspection while fixing that finding)."""
-    for field in ("album_hop_distances_version", "background_only_profiles_version"):
-        report = artifact_diff({field: "a"}, {field: "b"})
-        assert field in report["version_field_changes"], field
-        assert report["version_field_changes"][field]["old"] == "a"
-        assert report["version_field_changes"][field]["new"] == "b"
+    """`album_hop_distances_version` (ADR 0048 addendum) is the same
+    recurring gap this file's own comment already documents once: a new
+    artifact's version field shipped without a matching addition to
+    `_VERSION_FIELD_NAMES`, found by inspection during a round-7 Codex
+    review."""
+    field = "album_hop_distances_version"
+    report = artifact_diff({field: "a"}, {field: "b"})
+    assert field in report["version_field_changes"], field
+    assert report["version_field_changes"][field]["old"] == "a"
+    assert report["version_field_changes"][field]["new"] == "b"
