@@ -6,7 +6,24 @@ not a new graph engine.
 Every graph traversal here goes through `CreditGraph` (`.find_path`,
 `.neighbors_batch`, `.degrees`, `.degree`, `.credit_rows_for_releases`,
 `.credit_rows_for_artist`, `.release`, `.releases_for_ids`) -- this module
-never re-derives BFS or edge SQL itself. Scope-tier comparison reuses
+never re-derives BFS or edge SQL itself.
+
+**Traversal breadth is the caller's choice, made once when the graph is
+opened.** Every function here operates on whatever edge relation the
+`CreditGraph` it is handed was built with, so ADR 0068's performer gate is
+inherited rather than re-implemented. `CreditGraph.open(...)` defaults to
+`performer_only=True`, matching the public product exactly: a comparison run
+against a default graph traverses only documented-performance edges, so a
+private result can always be reconciled against what the public site would
+show. Passing `performer_only=False` restores the broader, pre-ADR-0068
+"any edge-eligible shared credit" relation -- producers, engineers, mixers,
+mastering, arrangers, and bare-`NULL` extra credits all edge-forming again.
+That broader view is deliberately retained for private research (it answers
+real questions the performer graph cannot, e.g. "who did this studio team
+actually work across"), and it is *only* ever appropriate here: it must
+never produce a public artifact, whose contract is performer-only by
+construction. Label any output derived from it as the broader research
+view, never as a site connection. Scope-tier comparison reuses
 `scope_tier.measure_scope_tiers` directly. Role-category composition reuses
 `role_taxonomy.classify_role`, the same taxonomy every other role-aware
 feature in the repo uses.

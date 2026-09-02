@@ -14,9 +14,6 @@ from networked_players_catalog.cli import main
 from networked_players_contracts.album_art import album_art_version
 from networked_players_contracts.album_credit_membership import album_credit_membership_version
 from networked_players_contracts.album_hop_distances import album_hop_distances_version
-from networked_players_contracts.background_only_profiles import (
-    background_only_profiles_version,
-)
 from networked_players_contracts.canonical import content_hash, stable_id_digest
 from networked_players_contracts.catalog import _catalog_version
 from networked_players_contracts.connection_rounds import round_content_fingerprint
@@ -398,19 +395,6 @@ def _album_hop_distances(catalog: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _background_only_profiles(catalog: dict[str, Any]) -> dict[str, Any]:
-    artist_ids: list[int] = []
-    return {
-        "schema_version": 1,
-        "catalog_version": catalog["catalog_version"],
-        "background_only_profiles_version": background_only_profiles_version(artist_ids, _SNAPSHOT),
-        "generated_at": "2026-08-31T00:00:00+00:00",
-        "source": "Derived from challenge.v2.json and routes/rounds.v1.json.",
-        "license": "See docs/DATA_AND_RIGHTS.md.",
-        "artist_ids": artist_ids,
-    }
-
-
 _PATHFINDING_ANCHOR_SENTINEL = "__np_album_anchor__"
 
 
@@ -528,9 +512,6 @@ def _write_all(tmp_path: Path) -> dict[str, Path]:
         "album_hop_distances": _write(
             tmp_path / "album-hop-distances.v1.json", _album_hop_distances(catalog)
         ),
-        "background_only_profiles": _write(
-            tmp_path / "background-only-profiles.v1.json", _background_only_profiles(catalog)
-        ),
         "pathfinding_graph_v2": _write(
             tmp_path / "pathfinding-graph.v2.json", _pathfinding_graph_v2(catalog)
         ),
@@ -570,8 +551,6 @@ def _args(paths: dict[str, Path]) -> list[str]:
         str(paths["contributor_index"]),
         "--album-hop-distances",
         str(paths["album_hop_distances"]),
-        "--background-only-profiles",
-        str(paths["background_only_profiles"]),
         "--pathfinding-graph-v2",
         str(paths["pathfinding_graph_v2"]),
         "--pathfinding-graph-v3",
@@ -600,7 +579,6 @@ def test_clean_set_exits_zero(tmp_path: Path, capsys) -> None:
         "challenge": [],
         "contributor_index": [],
         "album_hop_distances": [],
-        "background_only_profiles": [],
         "pathfinding_graph_v2": [],
         "pathfinding_graph_v3": [],
         "challenge_v3": [],
@@ -641,9 +619,6 @@ def test_default_paths_point_at_the_real_repo_layout(tmp_path: Path, capsys, mon
         "apps/web/public/data/contributors/index.v1.json": _contributor_index(catalog),
         "apps/web/public/data/contributors/album-hop-distances.v1.json": (
             _album_hop_distances(catalog)
-        ),
-        "apps/web/public/data/contributors/background-only-profiles.v1.json": (
-            _background_only_profiles(catalog)
         ),
         "apps/web/public/data/pathfinding/graph.v2.json": _pathfinding_graph_v2(catalog),
         "apps/web/public/data/pathfinding/graph.v3.json": _pathfinding_graph_v3(catalog),

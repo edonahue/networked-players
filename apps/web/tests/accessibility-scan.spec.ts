@@ -172,23 +172,27 @@ test("a contributor page has no automated accessibility violations", async ({
 });
 
 // A real review finding: the default dark-theme scan above can pass while
-// a muted card (2026-08-31, background-engineering-only connections)
-// still fails WCAG AA contrast after a visitor switches to light theme --
-// --ink/--ink-strong composited over --surface at a given opacity has a
-// different real contrast ratio per theme, and the automated suite only
-// ever renders the default theme. Hardcoded to a known real contributor
-// (Stuart Hawkes, #300468) rather than picked generically from the index,
-// since finding "a contributor whose page actually renders a muted card"
-// requires replicating the muting predicate itself in test code -- verify
-// this id is still listed in the real committed
-// background-only-profiles.v1.json artifact if this test ever needs
-// updating (packages/graph-core's `is_background_only_role_profile`
-// against contributor 300468's real, full role vocabulary).
-test("a contributor page with muted cards has no automated accessibility violations in light theme", async ({
+// the same page fails WCAG AA contrast after a visitor switches to light
+// theme -- --ink/--ink-strong composited over --surface has a different
+// real contrast ratio per theme, and the automated suite otherwise only
+// ever renders the default theme. This used to be pinned to a specific
+// contributor who rendered a muted card (2026-08-31,
+// background-engineering-only connections); ADR 0068 retired that muting
+// entirely, so the scan now uses the same generic index-derived pick the
+// dark-theme scan above does -- the per-theme contrast coverage this test
+// exists for is unchanged.
+test("a contributor page has no automated accessibility violations in light theme", async ({
   page,
+  request,
 }) => {
-  await page.goto("/contributors/300468/");
-  await expect(page.locator(".album-card--muted").first()).toBeVisible();
+  const res = await request.get("/data/contributors/index.v1.json");
+  const { contributors } = (await res.json()) as {
+    contributors: { artist_id: number; albums: string[] }[];
+  };
+  const withAlbum = contributors.find((c) => c.albums.length > 0);
+  if (!withAlbum) throw new Error("no contributor with an album in the index");
+
+  await page.goto(`/contributors/${withAlbum.artist_id}/`);
   await page.locator("[data-theme-toggle]").click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
   await expectNoViolations(page);

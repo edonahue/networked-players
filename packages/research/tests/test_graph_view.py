@@ -95,3 +95,36 @@ def test_build_graph_view_reports_no_neighbors_for_a_real_but_isolated_artist(
 def test_build_graph_view_raises_compare_error_for_an_unknown_artist(corpus: Path) -> None:
     with CreditGraph.open(corpus) as graph, pytest.raises(CompareError):
         build_graph_view(graph, 999999)
+
+
+def test_graph_view_traversal_breadth_follows_the_graphs_own_performer_gate(
+    corpus: Path,
+) -> None:
+    """ADR 0068 / PR 6: `compare.py` inherits its traversal breadth from the
+    `CreditGraph` it is handed rather than re-implementing the gate, so the
+    same `build_graph_view` call answers differently depending on how the
+    graph was opened.
+
+    Bob is credited on release 1 at `release_credit` scope with role text
+    "Engineer" -- an extra credit that is edge-eligible under ADR 0035's
+    denylist but fails `is_performer_role`. He is therefore invisible to
+    the default (public-matching) performer graph, and visible in the
+    broader private research view. Carol ("Violin", also `release_credit`)
+    is the control: a real performer extra-credit, present in both."""
+    with CreditGraph.open(corpus) as graph:
+        public_view = build_graph_view(graph, SEED_A)
+    with CreditGraph.open(corpus, performer_only=False) as graph:
+        research_view = build_graph_view(graph, SEED_A)
+
+    public_ids = {n["artist_id"] for n in public_view["neighbors"]}
+    research_ids = {n["artist_id"] for n in research_view["neighbors"]}
+
+    # The public default matches the site: an engineering-only credit
+    # cannot reach the graph at all.
+    assert BOB not in public_ids
+    # The broader research view retains it, clearly as the wider relation.
+    assert BOB in research_ids
+    # Same corpus, same center: the performer graph is a strict subset.
+    assert public_ids < research_ids
+    # A real performer extra-credit is unaffected by the toggle.
+    assert CAROL in public_ids and CAROL in research_ids

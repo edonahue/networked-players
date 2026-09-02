@@ -35,17 +35,16 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 # `_artifact_validators()`/`_DEFAULT_ARTIFACTS` -- deliberately an explicit
 # table, not a naming-convention guess, since the two sides don't share one
 # spelling convention (e.g. "connection_guesser" here is "connection-rounds"
-# there). "challenge", "album_hop_distances", and "background_only_profiles"
-# are the real public artifact groups with NO per-artifact Pi check by
-# design (docs/OPERATOR_SETUP.md's reference table: validated only via
+# there). "challenge" and "album_hop_distances" are the real public
+# artifact groups with NO per-artifact Pi check by design
+# (docs/OPERATOR_SETUP.md's reference table: validated only via
 # `validate-public-artifacts`/`make check`) -- "challenge" since it's a
 # one-shot static artifact with no independent `artifact_version` to
-# re-verify in isolation, and "album_hop_distances" (ADR 0048 addendum) /
-# "background_only_profiles" (ADR 0048/0060 addendum) since each is a
-# small, cheap, purely-derived companion to `contributor_index` with no
-# independent operational need yet for a distributed re-check separate
-# from that artifact's own -- deliberately absent from this map, not a gap
-# this test should flag.
+# re-verify in isolation, and "album_hop_distances" (ADR 0048 addendum)
+# since it is a small, cheap, purely-derived companion to
+# `contributor_index` with no independent operational need yet for a
+# distributed re-check separate from that artifact's own -- deliberately
+# absent from this map, not a gap this test should flag.
 _VALIDATOR_NAME_BY_ARTIFACT_GROUP = {
     "catalog": "catalog",
     "album_art_registry": "album-art",
@@ -61,7 +60,6 @@ _ARTIFACT_GROUPS_WITHOUT_A_PI_CHECK = frozenset(
     {
         "challenge",
         "album_hop_distances",
-        "background_only_profiles",
         # ADR 0068: dual-live, not-yet-cut-over artifacts. Neither is fetched
         # by any real consumer yet (that's the cutover PR's job), so neither
         # needs its own distributed re-check today. `pathfinding_graph_v3`

@@ -4,7 +4,6 @@ from typing import Any
 
 from networked_players_graph_core.contributor_index import (
     build_album_hop_distances,
-    build_background_only_profiles,
     build_contributor_index,
 )
 from networked_players_graph_core.role_taxonomy import RoleCategory
@@ -275,94 +274,6 @@ def test_build_album_hop_distances_mismatched_catalog_version_raises() -> None:
         )
 
 
-def _background_only_profiles_build() -> dict[str, Any]:
-    return build_background_only_profiles(
-        challenge=_challenge(),
-        routes_rounds=_routes_rounds(),
-        catalog=_catalog(),
-        generated_at="2026-08-31T00:00:00+00:00",
-    )
-
-
-def test_build_background_only_profiles_top_level_shape() -> None:
-    result = _background_only_profiles_build()
-    assert result["schema_version"] == 1
-    assert result["catalog_version"] == _CATALOG_VERSION
-    assert result["background_only_profiles_version"].startswith(
-        f"background-only-profiles-v1-{_SNAPSHOT}-"
-    )
-    assert result["generated_at"] == "2026-08-31T00:00:00+00:00"
-
-
-def test_background_only_profiles_flags_only_the_pure_mastering_credit() -> None:
-    """Using the main fixture: Alice (100) is credited only "Guitar" (no
-    engineering at all -- nothing to background), Bob (200) is credited
-    "Bass" and "Producer" (real substantive work), Carol (300) is credited
-    ONLY "Mastered By" -- background-only."""
-    result = _background_only_profiles_build()
-    assert result["artist_ids"] == [300]
-
-
-def test_background_only_profiles_artist_ids_sorted_with_no_duplicates() -> None:
-    catalog = {
-        "catalog_version": _CATALOG_VERSION,
-        "snapshot_date": _SNAPSHOT,
-        "albums": [
-            {"id": "master-a", "title": "A", "artist_id": 1, "year": 1990},
-            {"id": "master-b", "title": "B", "artist_id": 2, "year": 1991},
-        ],
-    }
-    challenge = {
-        "schema_version": 2,
-        "provenance": {"catalog_version": _CATALOG_VERSION},
-        "artists": [{"artist_id": 1, "name": "One"}, {"artist_id": 2, "name": "Two"}],
-        "paths": [
-            {
-                "id": "path-1",
-                "from_album_id": "master-a",
-                "to_album_id": "master-b",
-                "hops": [{"release_id": 1, "artist_a_id": 2, "artist_b_id": 1}],
-            }
-        ],
-        "releases": [
-            _challenge_release(1, [_credit(2, "Mastered By"), _credit(1, "Recorded By")]),
-        ],
-    }
-    routes_rounds = {
-        "provenance": {"catalog_version": _CATALOG_VERSION},
-        "artists": [],
-        "rounds": [],
-    }
-    result = build_background_only_profiles(
-        challenge=challenge,
-        routes_rounds=routes_rounds,
-        catalog=catalog,
-        generated_at="2026-08-31T00:00:00+00:00",
-    )
-    assert result["artist_ids"] == [1, 2]
-
-
-def test_build_background_only_profiles_deterministic_across_repeated_builds() -> None:
-    def _run() -> dict[str, Any]:
-        return _background_only_profiles_build()
-
-    assert _run() == _run()
-
-
-def test_build_background_only_profiles_mismatched_catalog_version_raises() -> None:
-    import pytest
-
-    challenge = _challenge()
-    challenge["provenance"]["catalog_version"] = "catalog-v1-wrong"
-    with pytest.raises(ValueError, match="catalog_version"):
-        build_background_only_profiles(
-            challenge=challenge,
-            routes_rounds=_routes_rounds(),
-            catalog=_catalog(),
-            generated_at="2026-08-31T00:00:00+00:00",
-        )
-
-
 def test_decade_activity_derived_from_the_contributors_own_evidence_release_years() -> None:
     # Alice is credited only via release 501 (real year 1979, per the
     # evidence-release registry fixture) -- her decade must be [1970], not
@@ -403,106 +314,26 @@ def test_interesting_next_step_picks_a_role_disjoint_neighbor() -> None:
     assert alice["interesting_next_step"] is None
 
     # Bob (Producer) and Carol (Mastered By) are role-disjoint (production
-    # vs engineering), but their ONLY shared hop is background-engineering-
-    # only on Carol's side (2026-08-31 addendum) -- Carol is excluded from
-    # Bob's candidates, and the exclusion is symmetric (Bob is excluded
-    # from Carol's too), so BOTH get no interesting_next_step here. See
-    # test_interesting_next_step_excludes_a_background_only_pair below for
-    # the direct assertion of this exclusion, and
-    # test_interesting_next_step_still_picks_a_non_background_disjoint_neighbor
-    # for the happy path with a genuinely substantive disjoint neighbor.
+    # vs engineering), so each is the other's pick. ADR 0068 retired the
+    # 2026-08-31 background-only exclusion that used to suppress this pair:
+    # under the performer graph a mastering-only credit can no longer form
+    # the hop in the first place, so there is nothing left to suppress here
+    # and the plain role-disjointness rule applies symmetrically.
     bob = next(c for c in index["contributors"] if c["artist_id"] == 200)
-    assert bob["interesting_next_step"] is None
-    carol = next(c for c in index["contributors"] if c["artist_id"] == 300)
-    assert carol["interesting_next_step"] is None
-
-
-def test_interesting_next_step_excludes_a_background_only_pair() -> None:
-    """Direct regression guard for the ADR 0060 addendum: a role-disjoint
-    neighbor whose ENTIRE shared connection is background-engineering
-    credits (Mastered By/Recorded By/Mixed By) must never win the "worth a
-    look" slot, even though the role categories are technically disjoint."""
-    index = _build()
-    bob = next(c for c in index["contributors"] if c["artist_id"] == 200)
-    carol = next(c for c in index["contributors"] if c["artist_id"] == 300)
-    assert bob["interesting_next_step"] is None
-    assert carol["interesting_next_step"] is None
-
-
-def test_interesting_next_step_excludes_a_pair_with_a_non_substantive_companion_credit() -> None:
-    """Real gap caught in review (round 8), reproduced against the exact
-    cited real committed data: artist 399108 (Stan Ricker) has TWO credit
-    rows on release 1780725 -- "Lacquer Cut By" (packaging/business, not
-    one of the three narrow background-engineering tokens) and "Mastered
-    By [Half-speed Mastering For Vinyl]" (background-engineering). Before
-    this fix, `record_hop`'s `side_is_background` required
-    `is_background_engineering_role` to be true of EVERY individual
-    role_candidate, so the non-substantive "Lacquer Cut By" row wrongly
-    disqualified the whole side -- even though the SAME two credits
-    correctly classify this contributor's overall profile as
-    background-only via `is_background_only_role_profile` (and the
-    published background-only-profiles.v1.json artifact agrees). That
-    inconsistency let a contributor 399108's page render muted while
-    still winning a "worth a look" slot elsewhere -- fixed by evaluating
-    each hop side with the same background-or-non-substantive semantics
-    `is_background_only_role_profile` uses."""
-    catalog = {
-        "catalog_version": _CATALOG_VERSION,
-        "snapshot_date": _SNAPSHOT,
-        "albums": [
-            {"id": "master-1", "title": "First Light", "artist_id": 100, "year": 1995},
-            {"id": "master-2", "title": "Second Wave", "artist_id": 200, "year": 2001},
-        ],
+    assert bob["interesting_next_step"] == {
+        "artist_id": 300,
+        "reason": "credited in a different kind of role than this contributor",
     }
-    challenge = {
-        "schema_version": 2,
-        "provenance": {"catalog_version": _CATALOG_VERSION},
-        "artists": [
-            {"artist_id": 100, "name": "Alice"},
-            {"artist_id": 200, "name": "Stan"},
-        ],
-        "paths": [
-            {
-                "id": "path-1",
-                "from_album_id": "master-1",
-                "to_album_id": "master-2",
-                "hops": [{"release_id": 1780725, "artist_a_id": 100, "artist_b_id": 200}],
-            }
-        ],
-        "releases": [
-            _challenge_release(
-                1780725,
-                [
-                    _credit(100, "Guitar"),
-                    _credit(200, "Lacquer Cut By"),
-                    _credit(200, "Mastered By [Half-speed Mastering For Vinyl]"),
-                ],
-            ),
-        ],
+    carol = next(c for c in index["contributors"] if c["artist_id"] == 300)
+    assert carol["interesting_next_step"] == {
+        "artist_id": 200,
+        "reason": "credited in a different kind of role than this contributor",
     }
-    index = build_contributor_index(
-        challenge=challenge,
-        routes_universe=_routes_universe(),
-        routes_rounds={
-            "provenance": {"catalog_version": _CATALOG_VERSION},
-            "artists": [],
-            "rounds": [],
-            "releases": [],
-        },
-        catalog=catalog,
-        evidence_release_registry={"release_ids": [], "years": []},
-        generated_at="2026-08-03T00:00:00+00:00",
-    )
-    alice = next(c for c in index["contributors"] if c["artist_id"] == 100)
-    # Guitar (strings) is role-disjoint from Stan's engineering/packaging
-    # credits, so absent the fix this pair would still win the slot.
-    assert alice["interesting_next_step"] is None
 
 
-def test_interesting_next_step_still_picks_a_non_background_disjoint_neighbor() -> None:
-    """The exclusion is narrow: a role-disjoint neighbor whose shared hop
-    carries a REAL substantive role (not background-engineering-only) on
-    at least one side still qualifies normally."""
+def test_interesting_next_step_picks_a_substantive_disjoint_neighbor() -> None:
+    """A role-disjoint neighbor sharing a hop that carries a real
+    substantive role qualifies normally -- the ordinary happy path."""
     catalog = {
         "catalog_version": _CATALOG_VERSION,
         "snapshot_date": _SNAPSHOT,
@@ -544,9 +375,8 @@ def test_interesting_next_step_still_picks_a_non_background_disjoint_neighbor() 
         generated_at="2026-08-03T00:00:00+00:00",
     )
     alice = next(c for c in index["contributors"] if c["artist_id"] == 100)
-    # "Engineer" is disjoint from "Guitar" (strings) but is NOT
-    # background-engineering-only (only Mastered By/Recorded By/Mixed By
-    # are), so this pair is never excluded.
+    # "Engineer" is disjoint from "Guitar" (strings), so this pair wins
+    # the slot.
     assert alice["interesting_next_step"] == {
         "artist_id": 200,
         "reason": "credited in a different kind of role than this contributor",
@@ -560,10 +390,7 @@ def test_interesting_next_step_never_ranks_by_connection_count_alone() -> None:
     Here Carol (engineering, connection_count 1) is Bob's ONLY disjoint-role
     candidate even though Alice (connection_count 1 too, but same-category)
     would otherwise tie -- role disjointness gates the candidate set before
-    connection_count ever breaks a tie. Uses "Engineer" rather than the
-    shared fixture's "Mastered By" for Carol's credit so this pair isn't
-    excluded by the 2026-08-31 background-only addendum -- that exclusion
-    has its own dedicated tests above."""
+    connection_count ever breaks a tie."""
     routes_rounds = _routes_rounds()
     routes_rounds["rounds"][0]["hops"][0]["role_b"] = "Engineer"
     index = build_contributor_index(

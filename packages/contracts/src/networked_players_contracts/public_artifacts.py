@@ -31,7 +31,6 @@ from typing import Any
 from .album_art import album_art_failures
 from .album_credit_membership import album_credit_membership_failures
 from .album_hop_distances import album_hop_distances_failures
-from .background_only_profiles import background_only_profiles_failures
 from .catalog import public_album_catalog_failures
 from .challenge import challenge_failures
 from .connection_daily_manifest import (
@@ -57,7 +56,6 @@ PUBLIC_ARTIFACT_GROUPS = (
     "challenge",
     "contributor_index",
     "album_hop_distances",
-    "background_only_profiles",
     "pathfinding_graph_v2",
     "pathfinding_graph_v3",
     "challenge_v3",
@@ -79,7 +77,6 @@ def public_artifacts_failures(
     challenge: Any,
     contributor_index: Any,
     album_hop_distances: Any,
-    background_only_profiles: Any,
     pathfinding_graph_v2: Any,
     pathfinding_graph_v3: Any,
     challenge_v3: Any,
@@ -116,9 +113,6 @@ def public_artifacts_failures(
         "contributor_index": contributor_index_failures(contributor_index, catalog),
         "album_hop_distances": album_hop_distances_failures(
             album_hop_distances, catalog, contributor_index
-        ),
-        "background_only_profiles": background_only_profiles_failures(
-            background_only_profiles, catalog, contributor_index
         ),
         "pathfinding_graph_v2": pathfinding_graph_failures(pathfinding_graph_v2, catalog),
         "pathfinding_graph_v3": pathfinding_graph_failures(pathfinding_graph_v3, catalog),

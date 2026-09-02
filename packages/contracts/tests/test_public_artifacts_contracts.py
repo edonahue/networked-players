@@ -12,9 +12,6 @@ from networked_players_contracts import public_artifacts_failures
 from networked_players_contracts.album_art import album_art_version
 from networked_players_contracts.album_credit_membership import album_credit_membership_version
 from networked_players_contracts.album_hop_distances import album_hop_distances_version
-from networked_players_contracts.background_only_profiles import (
-    background_only_profiles_version,
-)
 from networked_players_contracts.canonical import content_hash, stable_id_digest
 from networked_players_contracts.catalog import _catalog_version
 from networked_players_contracts.connection_rounds import round_content_fingerprint
@@ -462,23 +459,6 @@ def _album_hop_distances() -> dict[str, Any]:
     }
 
 
-# --- background-only-profiles (ADR 0048/0060 addendum) ----------------------
-
-
-def _background_only_profiles() -> dict[str, Any]:
-    catalog_version = _catalog()["catalog_version"]
-    artist_ids = [200]
-    return {
-        "schema_version": 1,
-        "catalog_version": catalog_version,
-        "background_only_profiles_version": background_only_profiles_version(artist_ids, _SNAPSHOT),
-        "generated_at": "2026-08-31T00:00:00+00:00",
-        "source": "Derived from challenge.v2.json and routes/rounds.v1.json.",
-        "license": "See docs/DATA_AND_RIGHTS.md.",
-        "artist_ids": artist_ids,
-    }
-
-
 # --- pathfinding graph -------------------------------------------------------
 
 
@@ -632,7 +612,6 @@ def _clean_artifacts() -> dict[str, Any]:
         "challenge": _challenge(),
         "contributor_index": _contributor_index(),
         "album_hop_distances": _album_hop_distances(),
-        "background_only_profiles": _background_only_profiles(),
         "pathfinding_graph_v2": _pathfinding_graph_v2(),
         "pathfinding_graph_v3": _pathfinding_graph_v3(),
         "challenge_v3": _challenge_v3(),
@@ -652,7 +631,6 @@ def test_clean_publication_set_has_no_failures() -> None:
         "challenge": [],
         "contributor_index": [],
         "album_hop_distances": [],
-        "background_only_profiles": [],
         "pathfinding_graph_v2": [],
         "pathfinding_graph_v3": [],
         "challenge_v3": [],
@@ -672,7 +650,6 @@ def test_every_group_key_always_present() -> None:
         "challenge",
         "contributor_index",
         "album_hop_distances",
-        "background_only_profiles",
         "pathfinding_graph_v2",
         "pathfinding_graph_v3",
         "challenge_v3",
@@ -759,19 +736,6 @@ def test_album_hop_distances_defect_is_caught_independently() -> None:
 
     report = public_artifacts_failures(**artifacts)
     assert report["album_hop_distances"] != []
-    assert report["catalog"] == []
-    assert report["challenge"] == []
-    assert report["contributor_index"] == []
-
-
-def test_background_only_profiles_defect_is_caught_independently() -> None:
-    artifacts = _clean_artifacts()
-    broken = deepcopy(artifacts["background_only_profiles"])
-    broken["artist_ids"] = [999999]
-    artifacts["background_only_profiles"] = broken
-
-    report = public_artifacts_failures(**artifacts)
-    assert report["background_only_profiles"] != []
     assert report["catalog"] == []
     assert report["challenge"] == []
     assert report["contributor_index"] == []
