@@ -46,7 +46,7 @@ test("clicking an edge shows real evidence in the drawer", async ({ page }) => {
   await expect(drawer).toHaveAttribute("aria-busy", "false");
   const content = page.locator("[data-explorer-evidence-content]");
   await expect(content).toContainText(
-    /co-credited on the same documented release/i,
+    /documented performing on the same release/i,
   );
   await expect(
     content.locator("a[href*='discogs.com/release/']"),
@@ -73,7 +73,7 @@ test("evidence drawer hop names link to their own contributor page when one is p
 
   const content = page.locator("[data-explorer-evidence-content]");
   await expect(content).toContainText(
-    /co-credited on the same documented release/i,
+    /documented performing on the same release/i,
   );
   const nameEls = content.locator("[data-hop-artist-id]");
   await expect(nameEls).toHaveCount(2);
@@ -396,7 +396,7 @@ test("hovering an edge shows the drawer without a click", async ({ page }) => {
 
   await expect(page.locator("[data-explorer-evidence-drawer]")).toBeVisible();
   await expect(page.locator("[data-explorer-evidence-content]")).toContainText(
-    /co-credited on the same documented release/i,
+    /documented performing on the same release/i,
   );
 });
 
@@ -428,7 +428,7 @@ test("an edge is keyboard-reachable and Enter opens the same evidence", async ({
 
   await expect(page.locator("[data-explorer-evidence-drawer]")).toBeVisible();
   await expect(page.locator("[data-explorer-evidence-content]")).toContainText(
-    /co-credited on the same documented release/i,
+    /documented performing on the same release/i,
   );
 });
 
@@ -574,6 +574,6 @@ test("the drawer degrades gracefully when the evidence registry fetch fails", as
     content.locator("a[href*='discogs.com/release/']"),
   ).toBeVisible();
   await expect(content).toContainText(
-    /co-credited on the same documented release/i,
+    /documented performing on the same release/i,
   );
 });

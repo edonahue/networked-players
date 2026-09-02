@@ -101,11 +101,11 @@ function releaseMetaLine(release: EvidenceRelease | undefined): string {
   return `<strong>${escapeHtml(release.title)}</strong>${yearCountry}`;
 }
 
-/** One documented co-credit hop: the two contributors' names/roles as plain
- * prose, plus a visually distinct evidence-release sub-card (cover when
- * known, title/year/country, always a source link) -- kept as two separate
- * blocks rather than one run-on sentence so a reader can tell "who's
- * connected" from "what document proves it" at a glance. */
+/** One documented performance hop: the two contributors' names/roles as
+ * plain prose, plus a visually distinct evidence-release sub-card (cover
+ * when known, title/year/country, always a source link) -- kept as two
+ * separate blocks rather than one run-on sentence so a reader can tell
+ * "who's connected" from "what document proves it" at a glance. */
 export function renderEvidenceHop(
   hop: PathHop,
   nameById: Map<number, string>,
@@ -130,7 +130,7 @@ export function renderEvidenceHop(
     `<div class="connect-hop">` +
     `<p class="connect-hop__contributors">${nameASpan} <span class="connect-hop__role">(${escapeHtml(hop.role_a)})</span>` +
     ` and ${nameBSpan} <span class="connect-hop__role">(${escapeHtml(hop.role_b)})</span>` +
-    ` are co-credited on the same documented release.</p>` +
+    ` are documented performing on the same release.</p>` +
     `<div class="connect-hop__release">` +
     (cover || "") +
     `<div class="connect-hop__release-text">` +

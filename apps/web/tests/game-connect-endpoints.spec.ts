@@ -91,7 +91,7 @@ test("a real search renders real evidence cards with title, source link, and no 
     // Not a bare "Release #12345 on Discogs" link -- co-credit prose must
     // also be present (the pre-v2 rendering had only the bare link).
     await expect(hop).toContainText(
-      /co-credited on the same documented release/i,
+      /documented performing on the same release/i,
     );
   }
 });
