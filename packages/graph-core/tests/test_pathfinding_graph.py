@@ -329,9 +329,10 @@ def test_top_level_shape_and_version(onehop_dataset: Path) -> None:
             snapshot_date=_SNAPSHOT,
             generated_at="2026-08-03T00:00:00+00:00",
         )
-    assert payload["schema_version"] == 2
+    assert payload["schema_version"] == 3
     assert payload["catalog_version"] == _CATALOG_VERSION
-    assert payload["pathfinding_graph_version"].startswith(f"pathfinding-graph-v2-{_SNAPSHOT}-")
+    assert payload["graph_policy_version"] == 1
+    assert payload["pathfinding_graph_version"].startswith(f"pathfinding-graph-v3-{_SNAPSHOT}-")
 
 
 def test_deterministic_across_repeated_builds(onehop_dataset: Path) -> None:

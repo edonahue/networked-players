@@ -15,6 +15,15 @@ Reuses `.rounds`'s `_seed_key_paths`/`_privacy_failures` for the no-leaked-
 `seed`-key and forbidden-substring/phrase scan, rather than a second copy --
 the same protection every other real artifact in this package already gets.
 
+`provenance.graph_policy_version` (ADR 0068, optional) records which
+`graph.py.GRAPH_POLICY_VERSION` produced this artifact's paths --
+`challenge.v3.json` sets it; the still-live, untouched `challenge.v1.json`/
+`challenge.v2.json` predate the field entirely and correctly have no
+opinion on it. `CHALLENGE_SCHEMA_VERSION` stays 2 for both the old and the
+new file (the shape is genuinely unchanged), so this field -- not the
+schema version -- is what a consumer checks to know whether an artifact's
+paths were built under the performer gate.
+
 Pure Python (no lxml/pyarrow/duckdb), safe for the Pi fleet and the web build.
 """
 
@@ -76,6 +85,22 @@ def challenge_failures(artifact: Any, catalog: Any | None = None) -> list[str]:
         for field_name in _PROVENANCE_REQUIRED:
             if not provenance.get(field_name):
                 failures.append(f"provenance.{field_name} is required")
+        # Optional, not required (ADR 0068): a pre-existing artifact built
+        # before this field existed (challenge.v1.json, the still-live
+        # challenge.v2.json) legitimately has no graph_policy_version --
+        # CHALLENGE_SCHEMA_VERSION stays 2 for both, so schema_version alone
+        # cannot distinguish "old" from "new" the way pathfinding_graph.py's
+        # schema_version bump does. When present, it must be a real graph
+        # policy generation, not merely truthy -- `bool` is an `int` subtype
+        # in Python, so `True` must not silently pass as a valid version.
+        if "graph_policy_version" in provenance:
+            graph_policy_version = provenance.get("graph_policy_version")
+            if (
+                not isinstance(graph_policy_version, int)
+                or isinstance(graph_policy_version, bool)
+                or graph_policy_version < 1
+            ):
+                failures.append("provenance.graph_policy_version must be a positive integer")
 
     if isinstance(catalog, dict):
         catalog_version = provenance.get("catalog_version")

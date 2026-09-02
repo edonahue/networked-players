@@ -1,13 +1,13 @@
 # Pathfinding graph fixtures
 
 Shared, cross-language test fixtures for the pathfinding graph contract
-(`data/contracts/pathfinding-graph-v1.md` / `pathfinding-graph-v2.md`).
+(`data/contracts/pathfinding-graph-v1.md` / `-v2.md` / `-v3.md`).
 Loaded by both:
 
 - `packages/contracts/tests/test_pathfinding_graph_contracts.py`
   (`pathfinding_graph_failures`)
-- `apps/web/tests/pathfinding-bfs.spec.ts` / `pathfinding-bfs-v2.spec.ts`
-  (`validatePathfindingGraph`)
+- `apps/web/tests/pathfinding-bfs.spec.ts` / `pathfinding-bfs-v2.spec.ts` /
+  `pathfinding-bfs-v3.spec.ts` (`validatePathfindingGraph`)
 
 so a new malformed case added here is automatically exercised against both
 validators, closing the parity-drift risk ADR 0051's revisit trigger names
@@ -16,9 +16,9 @@ validators, closing the parity-drift risk ADR 0051's revisit trigger names
 - `catalog.json` -- the small synthetic catalog every graph fixture here
   claims to belong to (its `catalog_version` matches). Only the Python
   suite uses this (the browser validator has no catalog cross-check).
-- `well-formed-v1.json` / `well-formed-v2.json` -- internally consistent,
-  real content-hashed `pathfinding_graph_version`. Must pass both
-  validators with zero failures.
+- `well-formed-v1.json` / `well-formed-v2.json` / `well-formed-v3.json` --
+  internally consistent, real content-hashed `pathfinding_graph_version`.
+  Must pass both validators with zero failures.
 - `malformed-*.json` -- each file is well-formed except for exactly one
   violated invariant, and (except `malformed-tampered-hash.json`, whose
   whole point is a stale hash) has its `pathfinding_graph_version`
@@ -33,18 +33,21 @@ general "shared test fixtures" framework.
 
 Every fixture below is loaded by both a Python test in
 `test_pathfinding_graph_contracts.py` and a TypeScript test in
-`pathfinding-bfs.spec.ts`/`pathfinding-bfs-v2.spec.ts`, asserting the same
-outcome -- proof both validators agree on internal-structure invariants,
-not just a claim. "Catalog-dependent" marks the one intentional asymmetry:
-Python receives the real catalog and can cross-check against it; the
-browser validator never has the catalog loaded alongside the graph, so it
-only proves internal self-consistency (documented in both validators' own
-docstrings, and in `pathfinding_graph.py`/`pathfindingGraph.ts` directly).
+`pathfinding-bfs.spec.ts`/`pathfinding-bfs-v2.spec.ts`/
+`pathfinding-bfs-v3.spec.ts`, asserting the same outcome -- proof both
+validators agree on internal-structure invariants, not just a claim.
+"Catalog-dependent" marks the one intentional asymmetry: Python receives
+the real catalog and can cross-check against it; the browser validator
+never has the catalog loaded alongside the graph, so it only proves
+internal self-consistency (documented in both validators' own docstrings,
+and in `pathfinding_graph.py`/`pathfindingGraph.ts` directly).
 
 | Fixture | Invariant | Python | TypeScript | Catalog-dependent |
 | --- | --- | --- | --- | --- |
 | `well-formed-v1.json` | baseline | accept | accept | -- |
 | `well-formed-v2.json` | baseline | accept | accept | -- |
+| `well-formed-v3.json` | baseline | accept | accept | -- |
+| `malformed-graph-policy-version-non-positive.json` | `graph_policy_version` must be a positive integer | reject | reject | no |
 | `malformed-non-monotonic-offsets.json` | offsets must be non-decreasing | reject | reject | no |
 | `malformed-unsorted-node-ids.json` | node_ids must be sorted | reject | reject | no |
 | `malformed-duplicate-node-ids.json` | node_ids must be unique | reject | reject | no |
@@ -67,6 +70,18 @@ rather than as fixture files here:
   so there is nothing to test on that side)
 - an unhashable `node_ids` element (proves no uncaught exception, not
   achievable as a JSON value distinct from the wrong-type case above)
+- a boolean `graph_policy_version` (same `bool`-is-an-`int`-subtype reason
+  as the `neighbors` case above; `test_v3_bool_graph_policy_version_is_rejected`)
+
+Covered by inline-built tests on BOTH sides rather than a shared fixture
+(the missing-key and wrong-top-level-keys checks are already generically
+proven by `malformed-wrong-top-level-keys.json` for v2; these specifically
+exercise the same generic key-set check for v3's one new key, which didn't
+need its own fixture file): `graph_policy_version` missing entirely
+(`test_v3_missing_graph_policy_version_key_is_rejected`, TS: "rejects a v3
+graph missing graph_policy_version") and non-numeric
+(`test_v3_non_integer_graph_policy_version_is_rejected`, TS: "rejects a
+non-numeric graph_policy_version").
 
 TypeScript-only, since JSON has no literal for either value:
 - `Infinity`/`NaN` totality tests in `pathfinding-bfs-v2.spec.ts`, proving

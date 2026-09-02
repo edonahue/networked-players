@@ -13,13 +13,13 @@ from __future__ import annotations
 from collections.abc import Callable, Iterator
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Protocol
 
 from networked_players_contracts.challenge import challenge_failures
 
 from . import __version__
 from .album_policy import master_non_studio_reason
-from .graph import CreditGraph, EvidencePath, FrontierTooLargeError
+from .graph import GRAPH_POLICY_VERSION, CreditGraph, EvidencePath, FrontierTooLargeError
 
 CHALLENGE_SCHEMA_VERSION = 2
 
@@ -235,8 +235,26 @@ def _candidate_album_pairs(
     return candidates
 
 
+class _PathFinder(Protocol):
+    """What `_bounded_find_path` actually needs: a `find_path`, nothing else.
+
+    Satisfied by `CreditGraph`, by the per-worker `CreditGraph.cursor()`
+    objects the concurrent path uses, and by `InMemoryEdgeIndex` -- which is
+    the point, since the in-memory substrate is a drop-in swap rather than a
+    separate code path through this function."""
+
+    def find_path(
+        self,
+        from_artist_id: int,
+        to_artist_id: int,
+        *,
+        max_hops: int = ...,
+        max_frontier_expansion: int | None = ...,
+    ) -> EvidencePath | None: ...
+
+
 def _bounded_find_path(
-    graph: CreditGraph,
+    graph: _PathFinder,
     from_artist_id: int,
     to_artist_id: int,
     *,
@@ -278,6 +296,7 @@ def _iter_path_results(
     max_hops: int,
     max_workers: int,
     max_frontier_expansion: int | None,
+    in_memory: bool = False,
 ) -> Iterator[tuple[MatchedAlbum, MatchedAlbum, EvidencePath | None, bool]]:
     """Yield `(from_album, to_album, path, capped)` in `candidate_pairs`
     order, computing lazily so the caller can stop early.
@@ -301,6 +320,28 @@ def _iter_path_results(
     remaining candidate list, and the yielded sequence is byte-identical to
     the sequential path's regardless of `max_workers`.
     """
+    if in_memory:
+        # One `fetchall()` of the already-built `credit_edges`, then every
+        # search runs against RAM instead of issuing ~8 SQL round-trips per
+        # pair (see `InMemoryEdgeIndex`). No threads: the DuckDB cursor
+        # machinery below exists to overlap query LATENCY, which no longer
+        # exists once the graph is resident, and a plain lazy loop preserves
+        # the early stop exactly. Measured on the real 2026-09-01
+        # performer-gated corpus: all 14,878 candidate pairs in 636s with
+        # 14,343 paths found and no frontier cap, versus a DuckDB build that
+        # did not finish in over two hours across four attempts.
+        index = graph.load_in_memory_edge_index()
+        for from_album, to_album in candidate_pairs:
+            path, capped = _bounded_find_path(
+                index,
+                from_album.artist_id,
+                to_album.artist_id,
+                max_hops=max_hops,
+                max_frontier_expansion=max_frontier_expansion,
+            )
+            yield from_album, to_album, path, capped
+        return
+
     if max_workers <= 1:
         for from_album, to_album in candidate_pairs:
             path, capped = _bounded_find_path(
@@ -366,6 +407,7 @@ def build_challenge_v2(
     master_exclusions: frozenset[int] | None = None,
     max_frontier_expansion: int | None = 300,
     catalog_version: str | None = None,
+    in_memory: bool = False,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     """Match `{artist, title}` name/title queries against the graph, then
     build the artifact. For albums already resolved to a real artist_id
@@ -392,6 +434,7 @@ def build_challenge_v2(
         is_family_excluded=is_family_excluded,
         max_frontier_expansion=max_frontier_expansion,
         catalog_version=catalog_version,
+        in_memory=in_memory,
     )
 
 
@@ -408,6 +451,7 @@ def build_challenge_v2_from_matched(
     is_family_excluded: Callable[[int, int], bool] | None = None,
     max_frontier_expansion: int | None = 300,
     catalog_version: str | None = None,
+    in_memory: bool = False,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     """Build the artifact from an already-resolved album list -- no further
     name-based matching happens here. `missed` is carried through only for
@@ -418,7 +462,20 @@ def build_challenge_v2_from_matched(
     thousands of candidate pairs, most NOT connected), an unbounded BFS
     through a high-degree hub artist is the real cost driver, not edge
     construction. A pair whose search hits the cap is reported inconclusive
-    (`paths_capped` in the report), never as a confirmed no-path."""
+    (`paths_capped` in the report), never as a confirmed no-path.
+
+    `in_memory=True` runs the identical BFS over an `InMemoryEdgeIndex`
+    instead of DuckDB. It returns byte-identical results (asserted by
+    `test_in_memory_find_path_matches_the_duckdb_implementation` and the
+    diamond-shaped ordering test beside it) and is dramatically faster on a
+    real corpus, which in practice means `max_frontier_expansion=None` --
+    no cap at all -- becomes affordable. That matters for correctness, not
+    just speed: the cap is a per-node OUT-degree threshold, and catalog
+    albums are billed to systematically high-degree artists, so any cap low
+    enough to make the DuckDB path finish also refuses to expand from the
+    very artists every search must start at. The real 2026-09-01 measurement
+    was 13,079 of 13,179 searches capped (yielding 100 paths over 68 of 179
+    albums) versus 14,343 paths found uncapped in memory."""
     distinct_artist_matches = {m.artist_id: m for m in matched}
     if len(distinct_artist_matches) < 2:
         raise ValueError(
@@ -452,6 +509,7 @@ def build_challenge_v2_from_matched(
         max_hops=max_hops,
         max_workers=max_workers,
         max_frontier_expansion=max_frontier_expansion,
+        in_memory=in_memory,
     )
     if max_paths <= 0:
         # Nothing to fill: never advance the iterator at all (a top-of-loop
@@ -543,6 +601,7 @@ def build_challenge_v2_from_matched(
             "generated_by": generated_by,
             "graph_core_version": __version__,
             "catalog_version": catalog_version,
+            "graph_policy_version": GRAPH_POLICY_VERSION,
             "note": (
                 "Derived from a bounded one-hop working set; the private "
                 "collection seed used to build that working set is never "
@@ -550,7 +609,10 @@ def build_challenge_v2_from_matched(
                 "ranking. catalog_version identifies the canonical "
                 "apps/web/public/data/catalog/albums.v1.json this artifact's "
                 "album set was resolved from, when built from that artifact "
-                "(null for a hand-written {artist,title} query list)."
+                "(null for a hand-written {artist,title} query list). "
+                "graph_policy_version (ADR 0068) records which "
+                "graph.GRAPH_POLICY_VERSION produced these paths -- every "
+                "hop's edge passed that version's performer gate."
             ),
         },
         "albums": albums_json,

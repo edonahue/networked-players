@@ -13,6 +13,12 @@
 //
 // v2 (ADR 0058) adds virtual album-anchor nodes -- one synthetic node per
 // catalog album, connected to that album's real credited contributors.
+// v3 (ADR 0068, graph.v3.json, data/contracts/pathfinding-graph-v3.md)
+// keeps that same shape and adds `graph_policy_version`: real edges are now
+// performer-gated. This validator accepts v3 payloads (fixture/test parity
+// with the Python contract), but no default fetch URL here points at
+// graph.v3.json yet -- that cutover is a separate, later change, once every
+// consumer identified in that PR's own audit is ready.
 // findAlbumRoute below is a thin wrapper that searches between two albums'
 // virtual nodes and strips the (never user-visible) anchor hops from the
 // result. findPath's BFS refuses to VISIT a virtual node except as the
@@ -65,8 +71,10 @@ export interface PathfindingGraph {
   edge_role_a: string[];
   edge_role_b: string[];
   pathfinding_graph_version: string;
-  /** Present only when schema_version === 2. */
+  /** Present only when schema_version === 2 or 3. */
   album_virtual_nodes?: AlbumVirtualNode[];
+  /** Present only when schema_version === 3 (ADR 0068). */
+  graph_policy_version?: number;
 }
 
 export interface PathHop {
@@ -132,7 +140,8 @@ function isStringArray(value: unknown): value is string[] {
 }
 
 /** Top-level key sets, kept byte-identical to Python's
- * `_BASE_TOP_LEVEL_KEYS`/`_V2_ONLY_KEYS` (`pathfinding_graph.py:49-67`). */
+ * `_BASE_TOP_LEVEL_KEYS`/`_V2_ONLY_KEYS`/`_V3_ONLY_KEYS`
+ * (`pathfinding_graph.py:58-81`). */
 const BASE_TOP_LEVEL_KEYS = [
   "schema_version",
   "catalog_version",
@@ -150,6 +159,8 @@ const BASE_TOP_LEVEL_KEYS = [
   "pathfinding_graph_version",
 ] as const;
 const V2_ONLY_KEYS = ["album_virtual_nodes"] as const;
+/** v3 (ADR 0068): keeps every v2 key and adds `graph_policy_version`. */
+const V3_ONLY_KEYS = ["graph_policy_version"] as const;
 
 /** Kept byte-identical to Python's `_ALBUM_VIRTUAL_NODE_KEYS`
  * (`pathfinding_graph.py:68`). */
@@ -162,6 +173,7 @@ const ALBUM_VIRTUAL_NODE_KEYS = new Set([
 const VERSION_PATTERN_BY_SCHEMA: Record<number, RegExp> = {
   1: /^pathfinding-graph-v1-[0-9A-Za-z]+-[0-9a-f]{12}$/,
   2: /^pathfinding-graph-v2-[0-9A-Za-z]+-[0-9a-f]{12}$/,
+  3: /^pathfinding-graph-v3-[0-9A-Za-z]+-[0-9a-f]{12}$/,
 };
 
 /** Recomputation mirror of the generation-time function in
@@ -183,8 +195,11 @@ export async function pathfindingGraphVersion(
     edge_role_a: value.edge_role_a,
     edge_role_b: value.edge_role_b,
   };
-  if (schemaVersion === 2) {
+  if (schemaVersion === 2 || schemaVersion === 3) {
     identity.album_virtual_nodes = value.album_virtual_nodes;
+  }
+  if (schemaVersion === 3) {
+    identity.graph_policy_version = value.graph_policy_version;
   }
   const digest = await contentHash(identity, 12);
   return `pathfinding-graph-v${schemaVersion}-${snapshotDate}-${digest}`;
@@ -199,7 +214,7 @@ export async function pathfindingGraphVersion(
  * neighbor indices in range, exact key set on each `album_virtual_nodes`
  * entry, `pathfinding_graph_version` recomputed from content (not merely
  * shape-checked, closing the integrity gap a tampered or truncated fetch
- * would otherwise pass through silently), and (schema_version 2 only)
+ * would otherwise pass through silently), and (schema_version 2 or 3)
  * `album_virtual_nodes`' negative/disjoint virtual ids resolving into
  * node_ids plus the album-anchor sentinel appearing on exactly the virtual
  * side of every CSR slot. A malformed or truncated fetch must be caught
@@ -224,11 +239,20 @@ export async function validatePathfindingGraph(
   value: unknown,
 ): Promise<PathfindingGraph | null> {
   if (!isRecord(value)) return null;
-  if (value.schema_version !== 1 && value.schema_version !== 2) return null;
+  if (
+    value.schema_version !== 1 &&
+    value.schema_version !== 2 &&
+    value.schema_version !== 3
+  ) {
+    return null;
+  }
 
   const expectedKeys = new Set<string>(BASE_TOP_LEVEL_KEYS);
-  if (value.schema_version === 2) {
+  if (value.schema_version === 2 || value.schema_version === 3) {
     for (const key of V2_ONLY_KEYS) expectedKeys.add(key);
+  }
+  if (value.schema_version === 3) {
+    for (const key of V3_ONLY_KEYS) expectedKeys.add(key);
   }
   const actualKeys = Object.keys(value);
   if (
@@ -291,7 +315,17 @@ export async function validatePathfindingGraph(
     if (neighbor < 0 || neighbor >= nodeCount) return null;
   }
 
-  if (value.schema_version === 2) {
+  if (value.schema_version === 3) {
+    if (
+      typeof value.graph_policy_version !== "number" ||
+      !Number.isInteger(value.graph_policy_version) ||
+      value.graph_policy_version < 1
+    ) {
+      return null;
+    }
+  }
+
+  if (value.schema_version === 2 || value.schema_version === 3) {
     if (!Array.isArray(value.album_virtual_nodes)) return null;
     const nodeIdSet = new Set(value.node_ids);
     const seenAlbumIds = new Set<string>();

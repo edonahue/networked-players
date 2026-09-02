@@ -30,6 +30,21 @@ against it is a confirmed "no-path," never a crash or a false
 frontend an explicit `album_id -> virtual_artist_id` map instead of
 relying on the sign convention alone.
 
+**v3 (ADR 0068): performer-gated traversal.** The real edges (`credit_edges`,
+built by `CreditGraph.open`'s `credit_edges_sql`) and the virtual album-anchor
+edges (`edge_eligible_membership_artist_ids`) both now require a performer-
+qualifying credit, not merely any edge-eligible one -- see `graph.py`'s
+`GRAPH_POLICY_VERSION`. The CSR/parallel-array SHAPE is byte-for-byte
+identical to v2; only which edges exist changed, and a new top-level
+`graph_policy_version` field records which rule version produced them, so a
+validator or a stale cached client can tell a policy-only regeneration apart
+from a v2 payload without re-deriving the whole graph. Published as a new
+file (`graph.v3.json`), dual-live alongside the unedited `graph.v2.json`
+until every real consumer (Connect, Explore, the private research
+workbench, the fleet artifact-check default -- see the PR that introduced
+this version for the full consumer audit) has cut over; retiring v2 is a
+later, separate step (ADR 0058's own real precedent for the v1 retirement).
+
 This is an OPERATOR-run build (like `build-album-art-registry`): it needs
 the real one-hop working set on disk (`CreditGraph.open`, `build_edges=True`)
 and is never run as part of `make check` or CI. The resulting artifact is
@@ -46,7 +61,7 @@ from networked_players_contracts.canonical import content_hash
 
 from .compact_graph_bench import build_csr_adjacency
 from .eligibility import is_performer_role
-from .graph import CreditGraph, edge_ineligible_role
+from .graph import GRAPH_POLICY_VERSION, CreditGraph, edge_ineligible_role
 
 _MAX_JOINED_ROLE_LEN = 200
 
@@ -173,8 +188,12 @@ def pathfinding_graph_version(payload: dict[str, Any], snapshot_date: str) -> st
     full CSR adjacency plus per-slot evidence -- changes on any published-
     field change, not just membership (mirrors
     `record_routes_artifact_version`'s "hash everything actually published"
-    rule, ADR 0046's slice-9 addendum). v2 additionally hashes
-    `album_virtual_nodes`."""
+    rule, ADR 0046's slice-9 addendum). v2+ additionally hashes
+    `album_virtual_nodes`; v3+ additionally hashes `graph_policy_version` --
+    two payloads with identical edges but different policy versions must not
+    collide (they never actually would, since a different policy changes
+    which edges exist, but hashing it explicitly documents the intent rather
+    than relying on that as an accident of the data)."""
     identity: dict[str, Any] = {
         "node_ids": payload["node_ids"],
         "names": payload["names"],
@@ -187,6 +206,8 @@ def pathfinding_graph_version(payload: dict[str, Any], snapshot_date: str) -> st
     schema_version = int(payload.get("schema_version", 1))
     if schema_version >= 2:
         identity["album_virtual_nodes"] = payload["album_virtual_nodes"]
+    if schema_version >= 3:
+        identity["graph_policy_version"] = payload["graph_policy_version"]
     digest = content_hash(identity, length=12)
     return f"pathfinding-graph-v{schema_version}-{snapshot_date}-{digest}"
 
@@ -202,9 +223,10 @@ def build_pathfinding_graph(
     """Deterministic given the same real one-hop dataset, catalog, and
     album-credit-membership artifact: a 1-hop ego network around
     `catalog["albums"][].artist_id`, plus one virtual album-anchor node per
-    catalog album (v2, ADR 0058), serialized as a CSR adjacency plus
-    parallel-array names/edge-role evidence (so the frontend never needs a
-    second fetch to render evidence for a found path)."""
+    catalog album (v2, ADR 0058), performer-gated (v3, ADR 0068), serialized
+    as a CSR adjacency plus parallel-array names/edge-role evidence (so the
+    frontend never needs a second fetch to render evidence for a found
+    path)."""
     seed_artist_ids = sorted({int(a["artist_id"]) for a in catalog["albums"]})
     if not seed_artist_ids:
         raise ValueError("catalog has no albums to seed the pathfinding graph from")
@@ -338,7 +360,7 @@ def build_pathfinding_graph(
     ]
 
     payload: dict[str, Any] = {
-        "schema_version": 2,
+        "schema_version": 3,
         "catalog_version": catalog["catalog_version"],
         "snapshot_date": snapshot_date,
         "generated_at": generated_at,
@@ -346,9 +368,10 @@ def build_pathfinding_graph(
             "Discogs monthly data dump (CC0), one-hop working set, scoped to a "
             "1-hop ego network around the canonical catalog's primary artists "
             "(ADR 0050), plus one virtual album-anchor node per catalog album "
-            "(ADR 0058). See docs/DATA_AND_RIGHTS.md."
+            "(ADR 0058), performer-gated (ADR 0068). See docs/DATA_AND_RIGHTS.md."
         ),
         "license": "Derived from the Discogs monthly CC0 data dumps. See docs/DATA_AND_RIGHTS.md.",
+        "graph_policy_version": GRAPH_POLICY_VERSION,
         "node_ids": compact.node_ids,
         "names": names,
         "offsets": compact.offsets,

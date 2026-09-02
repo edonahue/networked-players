@@ -318,6 +318,79 @@ def test_v2_zero_contributor_album_virtual_node_is_accepted() -> None:
     assert pathfinding_graph_failures(graph, catalog) == []
 
 
+# --- v3 (ADR 0068): performer-gated traversal, adds graph_policy_version ---
+# Same CSR/album_virtual_nodes shape as v2 -- only the new top-level field
+# and its own validation are new. Real edge CONTENT differences (which
+# edges the performer gate keeps or drops) are a graph-core concern, already
+# covered by test_pathfinding_graph.py; this file only proves the shape/
+# field contract.
+
+
+def _graph_v3() -> dict[str, Any]:
+    graph = deepcopy(_graph_v2())
+    graph["schema_version"] = 3
+    graph["graph_policy_version"] = 1
+    graph["pathfinding_graph_version"] = pathfinding_graph_version(graph, _SNAPSHOT)
+    return graph
+
+
+def test_clean_v3_graph_has_no_failures() -> None:
+    assert pathfinding_graph_failures(_graph_v3(), _catalog()) == []
+
+
+def test_v3_version_prefix_is_v3() -> None:
+    graph = _graph_v3()
+    assert graph["pathfinding_graph_version"].startswith(f"pathfinding-graph-v3-{_SNAPSHOT}-")
+
+
+def test_v3_missing_graph_policy_version_key_is_rejected() -> None:
+    graph = deepcopy(_graph_v3())
+    del graph["graph_policy_version"]
+    failures = pathfinding_graph_failures(graph, _catalog())
+    assert any("unexpected top-level keys" in f for f in failures)
+
+
+def test_v3_non_positive_graph_policy_version_is_rejected() -> None:
+    graph = deepcopy(_graph_v3())
+    graph["graph_policy_version"] = 0
+    failures = pathfinding_graph_failures(graph, _catalog())
+    assert any("graph_policy_version must be a positive integer" in f for f in failures)
+
+
+def test_v3_non_integer_graph_policy_version_is_rejected() -> None:
+    graph = deepcopy(_graph_v3())
+    graph["graph_policy_version"] = "1"
+    failures = pathfinding_graph_failures(graph, _catalog())
+    assert any("graph_policy_version must be a positive integer" in f for f in failures)
+
+
+def test_v3_bool_graph_policy_version_is_rejected() -> None:
+    """`bool` is an `int` subtype in Python -- `True` must not silently pass
+    as a valid positive integer."""
+    graph = deepcopy(_graph_v3())
+    graph["graph_policy_version"] = True
+    failures = pathfinding_graph_failures(graph, _catalog())
+    assert any("graph_policy_version must be a positive integer" in f for f in failures)
+
+
+def test_v3_still_validates_album_virtual_nodes() -> None:
+    """v3 inherits every v2 album-anchor check -- confirmed with one
+    representative case, not the full v2 suite duplicated."""
+    graph = deepcopy(_graph_v3())
+    graph["album_virtual_nodes"][0]["virtual_artist_id"] = 1
+    failures = pathfinding_graph_failures(graph, _catalog())
+    assert any("must be a" in f and "negative integer" in f for f in failures)
+
+
+def test_v2_and_v3_can_coexist_independently() -> None:
+    """Dual-live: a v2 payload and a v3 payload, differing only in
+    schema_version/graph_policy_version, each validate cleanly on their
+    own -- the whole point of shipping v3 as a new file alongside the
+    unedited v2 one."""
+    assert pathfinding_graph_failures(_graph_v2(), _catalog()) == []
+    assert pathfinding_graph_failures(_graph_v3(), _catalog()) == []
+
+
 # --- shared, cross-language fixture set --------------------------------
 # Every file under data/fixtures/pathfinding-graph/ is also loaded by
 # apps/web/tests/pathfinding-bfs*.spec.ts against validatePathfindingGraph
@@ -333,6 +406,17 @@ def test_shared_well_formed_v1_fixture_has_no_failures() -> None:
 def test_shared_well_formed_v2_fixture_has_no_failures() -> None:
     graph = _load_fixture("well-formed-v2")
     assert pathfinding_graph_failures(graph, _FIXTURE_CATALOG) == []
+
+
+def test_shared_well_formed_v3_fixture_has_no_failures() -> None:
+    graph = _load_fixture("well-formed-v3")
+    assert pathfinding_graph_failures(graph, _FIXTURE_CATALOG) == []
+
+
+def test_shared_graph_policy_version_non_positive_fixture_is_rejected() -> None:
+    graph = _load_fixture("malformed-graph-policy-version-non-positive")
+    failures = pathfinding_graph_failures(graph, _FIXTURE_CATALOG)
+    assert any("graph_policy_version must be a positive integer" in f for f in failures)
 
 
 def test_shared_non_monotonic_offsets_fixture_is_rejected() -> None:

@@ -97,6 +97,7 @@ def test_build_challenge_v2_produces_a_valid_artifact(dataset_root: Path) -> Non
 
     validate_challenge(artifact)
     assert artifact["schema_version"] == 2
+    assert artifact["provenance"]["graph_policy_version"] == 1
     assert report["albums_matched"] == 3
     assert report["albums_missed"] == 0
     assert report["paths_found"] >= 1
