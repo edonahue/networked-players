@@ -10,14 +10,16 @@ import {
   findAlbumRoute,
   type PathfindingGraph,
 } from "../src/game/pathfindingGraph";
-import { behindTheGlassEdgeFilter } from "../src/game/roleTaxonomy";
 
 // Shared by the about-page and llms.txt regression tests below: both quote
 // the same real, current catalog/round counts, and both were caught stating
 // stale hardcoded numbers ("140 studio albums, 250 artists...") after the
 // Phase 7 catalog expansion to 179 albums.
 async function realCatalogStats(request: APIRequestContext) {
-  const challenge = await (await request.get("/data/challenge.v2.json")).json();
+  // challenge.v3.json: the artifact catalogStats.ts itself now reads (ADR
+  // 0068 cutover). Reading v2 here would re-derive counts from a file the
+  // page no longer renders from, which is exactly the drift this guards.
+  const challenge = await (await request.get("/data/challenge.v3.json")).json();
   const manifest = await (
     await request.get("/data/game/daily-manifest.v1.json")
   ).json();
@@ -32,37 +34,6 @@ async function realCatalogStats(request: APIRequestContext) {
     twoHopRoundCount: rounds.filter((r) => r.kind === "two_hop").length,
   };
 }
-
-test("homepage's hardcoded Behind the Glass editorial pick still resolves a real producer-only route", async ({
-  request,
-}) => {
-  // index.astro's "An editorial pick" paragraph hardcodes Ziggy Stardust
-  // (master-1561) / A Night At The Opera (master-5863) as a real Behind the
-  // Glass example -- unlike featuredPath just above it in that file (picked
-  // deterministically from challenge.paths[0]), this specific pair is prose,
-  // not derived from the artifact. It happens to still be true after the
-  // Phase 7 catalog expansion (verified directly against the real published
-  // graph.v2.json below), but nothing catches it silently going false on a
-  // future expansion the way about.json's stale counts did -- this test is
-  // that catch. If this ever fails, either the pair no longer has a real
-  // producer-only route (fix the copy) or the album ids no longer exist in
-  // the catalog (same).
-  const graph = (await (
-    await request.get("/data/pathfinding/graph.v3.json")
-  ).json()) as PathfindingGraph;
-  const artistIndex = buildArtistIndex(graph);
-  const albumIndex = buildAlbumIndex(graph);
-  const result = findAlbumRoute(
-    graph,
-    artistIndex,
-    albumIndex,
-    "master-1561",
-    "master-5863",
-    4,
-    behindTheGlassEdgeFilter,
-  );
-  expect(result.ok).toBe(true);
-});
 
 test("home renders hero, nav, and the album grid", async ({ page }) => {
   await page.goto("/");
@@ -172,6 +143,18 @@ test("static demo artifact is reachable", async ({ request }) => {
   expect(res.ok()).toBeTruthy();
   const body = await res.json();
   expect(body.schema_version).toBe(1);
+  expect(Array.isArray(body.paths)).toBe(true);
+});
+
+test("static challenge.v3 artifact is reachable", async ({ request }) => {
+  // The artifact every page now renders from (ADR 0068). The v2 test below
+  // stays because v2 is deliberately still published and dual-live until
+  // its own retirement step.
+  const res = await request.get("/data/challenge.v3.json");
+  expect(res.ok()).toBeTruthy();
+  const body = await res.json();
+  expect(body.schema_version).toBe(2);
+  expect(body.provenance.graph_policy_version).toBe(1);
   expect(Array.isArray(body.paths)).toBe(true);
 });
 
@@ -322,7 +305,7 @@ test("an album with zero documented connections still offers a real way onward",
   page,
   request,
 }) => {
-  const res = await request.get("/data/challenge.v2.json");
+  const res = await request.get("/data/challenge.v3.json");
   const { albums, paths } = (await res.json()) as {
     albums: { id: string; title: string }[];
     paths: { from_album_id: string; to_album_id: string }[];
@@ -367,7 +350,7 @@ test("a non-indexed contributor card explains itself instead of silently failing
   request,
 }) => {
   const [challengeRes, contributorRes] = await Promise.all([
-    request.get("/data/challenge.v2.json"),
+    request.get("/data/challenge.v3.json"),
     request.get("/data/contributors/index.v1.json"),
   ]);
   const { albums, paths } = (await challengeRes.json()) as {
@@ -421,7 +404,7 @@ test("an album page's documented connections link directly into Connect Two Reco
   request,
 }) => {
   const { album } = await pickBoundedConnectedAlbum(request);
-  const challengeRes = await request.get("/data/challenge.v2.json");
+  const challengeRes = await request.get("/data/challenge.v3.json");
   const { albums, paths } = (await challengeRes.json()) as {
     albums: { id: string; title: string }[];
     paths: { from_album_id: string; to_album_id: string }[];
@@ -437,7 +420,7 @@ test("an album page's documented connections link directly into Connect Two Reco
       : firstPath.from_album_id;
   const otherAlbum = albumById.get(otherAlbumId);
   if (!otherAlbum)
-    throw new Error(`album ${otherAlbumId} missing from challenge.v2.json`);
+    throw new Error(`album ${otherAlbumId} missing from challenge.v3.json`);
 
   await page.goto(`/albums/${album.id}/`);
   const connectLink = page

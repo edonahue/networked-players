@@ -44,7 +44,7 @@ const roundsArtifact = JSON.parse(
   readFileSync(join(webRoot, "public/data/game/rounds.v1.json"), "utf8"),
 ) as GameRounds;
 const challenge = JSON.parse(
-  readFileSync(join(webRoot, "public/data/challenge.v2.json"), "utf8"),
+  readFileSync(join(webRoot, "public/data/challenge.v3.json"), "utf8"),
 ) as ChallengeV2;
 
 const syntheticUniverse = JSON.parse(

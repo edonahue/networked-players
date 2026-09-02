@@ -5,10 +5,9 @@ import AlbumCard from '../components/AlbumCard.astro';
 import site from '../data/site.json';
 import type { ChallengeV2 } from '../data/challenge';
 import type { Contributor, ContributorIndex } from '../data/contributors';
-import challengeData from '../../public/data/challenge.v2.json';
+import challengeData from '../../public/data/challenge.v3.json';
 import contributorIndexData from '../../public/data/contributors/index.v1.json';
 import { connectedCatalogAlbums } from '../data/connectedAlbums';
-import { findBehindTheGlassPath } from '../data/featuredExamples';
 
 const { hero, focus } = site;
 
@@ -38,13 +37,6 @@ const featuredNeighbor = featuredContributor
   ? contributorById.get(featuredContributor.interesting_next_step!.artist_id)
   : undefined;
 
-const behindTheGlassPath = findBehindTheGlassPath(challenge);
-const behindTheGlassFrom = behindTheGlassPath
-  ? albumsById.get(behindTheGlassPath.from_album_id)
-  : undefined;
-const behindTheGlassTo = behindTheGlassPath
-  ? albumsById.get(behindTheGlassPath.to_album_id)
-  : undefined;
 ---
 
 <BaseLayout>
@@ -153,18 +145,6 @@ const behindTheGlassTo = behindTheGlassPath
       {featuredFrom && <AlbumCard album={featuredFrom} />}
       {featuredTo && <AlbumCard album={featuredTo} />}
     </div>
-    {
-      behindTheGlassPath && behindTheGlassFrom && behindTheGlassTo && (
-        <p class="lede" style="margin-top:24px">
-          <em>{behindTheGlassFrom.title}</em> ({behindTheGlassFrom.artist}) and{' '}
-          <em>{behindTheGlassTo.title}</em> ({behindTheGlassTo.artist}) connect end to end
-          through producer/engineer credits alone — a real{' '}
-          <a href="/play/connect/">Behind the Glass</a> route. It's one of three role-restricted
-          search modes that look only at a specific kind of credit (producer/engineer,
-          drums/bass, or guitar) instead of any documented one.
-        </p>
-      )
-    }
     <p class="lede">
       The full shelf of {albums.length} connected albums lives at <a href="/albums/">/albums/</a>.
     </p>

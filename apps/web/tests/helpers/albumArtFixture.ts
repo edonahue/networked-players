@@ -58,7 +58,7 @@ export function generatePlaceholderFixture(
   webRoot: string,
 ): PlaceholderFixture {
   const challenge = JSON.parse(
-    readFileSync(join(webRoot, "public/data/challenge.v2.json"), "utf8"),
+    readFileSync(join(webRoot, "public/data/challenge.v3.json"), "utf8"),
   ) as { albums: ChallengeAlbum[]; paths: ChallengePath[] };
 
   const pathCount = new Map<string, number>();

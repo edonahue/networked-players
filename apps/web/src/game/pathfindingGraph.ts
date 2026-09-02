@@ -621,7 +621,7 @@ export function reverseRoute<
  * `edgeFilter`, if given, is never applied to an anchor edge -- only to
  * real contributor-to-contributor edges. An anchor edge's role is always
  * `ALBUM_ANCHOR_SENTINEL` on the virtual side, which cannot match any
- * real role-filter predicate (Behind the Glass/Rhythm Section/Guitar
+ * real role-filter predicate (Rhythm Section/Guitar
  * Paths); applying the caller's filter to it unwrapped would make every
  * role-filtered search fail to leave the start album's anchor at all,
  * confirmed against real album pairs that have a real, filter-qualifying

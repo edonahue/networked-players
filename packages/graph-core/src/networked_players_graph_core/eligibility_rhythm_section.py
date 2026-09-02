@@ -1,7 +1,8 @@
 """Fail-closed drums/bass eligibility for the "Rhythm Section" role-aware
 experience (Phase 2 follow-up slice, ADR 0053 addendum).
 
-Layered the same way `eligibility_engineering.py` layers Behind the Glass:
+Layered the same way the retired `eligibility_engineering.py` layered
+Behind the Glass (ADR 0053, retired by ADR 0068):
 a standalone, scoped module answering one narrow question -- "is this
 specific credit a drums or bass contribution" -- never imported by
 `graph.py`/`challenge.py`/the cohort pipeline. Unlike

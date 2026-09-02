@@ -12,7 +12,7 @@ import type { RoutesRounds } from '../../game/routesTypes';
 import contributorIndexData from '../../../public/data/contributors/index.v1.json';
 import albumHopDistancesData from '../../../public/data/contributors/album-hop-distances.v1.json';
 import backgroundOnlyProfilesData from '../../../public/data/contributors/background-only-profiles.v1.json';
-import challengeData from '../../../public/data/challenge.v2.json';
+import challengeData from '../../../public/data/challenge.v3.json';
 import routesRoundsData from '../../../public/data/routes/rounds.v1.json';
 
 const contributorIndex = contributorIndexData as ContributorIndex;
@@ -105,18 +105,45 @@ const interestingNeighbor = interestingNextStep
 // Every documented hop this contributor is party to, from both real-data
 // sources this index is built from -- the same evidence component every
 // other surface (album pages, the demo, cohorts) already renders through.
-const challengeHops = challenge.paths
-  .flatMap((path) => path.hops)
-  .filter(
-    (hop) =>
-      hop.artist_a_id === contributor.artist_id || hop.artist_b_id === contributor.artist_id,
-  );
-const routeHops = routesRounds.rounds
-  .flatMap((round) => round.hops)
-  .filter(
-    (hop) =>
-      hop.artist_a_id === contributor.artist_id || hop.artist_b_id === contributor.artist_id,
-  );
+// Deduplicated by (release, artist pair): the SAME documented hop is
+// reused across many paths/rounds, and rendering it once per path showed
+// the identical evidence card several times over. Real, measured on the
+// committed artifacts: Brian Eno's 24 challenge hops are only 11 distinct
+// hops, and the worst contributor's 170 collapse to 39 -- so the page was
+// rendering up to 131 duplicate cards. That is noise, not more evidence
+// (the same credit doesn't become better-attested by being listed again),
+// and the resulting DOM was heavy enough to time out this page's own axe
+// scan. Pre-existing, not introduced by the ADR 0068 cutover -- v2's own
+// worst case was 172 hops -> 62 distinct -- but the cutover changed WHICH
+// contributors are affected, which is how it surfaced.
+function dedupeHops<T extends { release_id: number; artist_a_id: number; artist_b_id: number }>(
+  hops: T[],
+): T[] {
+  const seen = new Set<string>();
+  return hops.filter((hop) => {
+    const key = `${hop.release_id}|${hop.artist_a_id}|${hop.artist_b_id}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+const challengeHops = dedupeHops(
+  challenge.paths
+    .flatMap((path) => path.hops)
+    .filter(
+      (hop) =>
+        hop.artist_a_id === contributor.artist_id || hop.artist_b_id === contributor.artist_id,
+    ),
+);
+const routeHops = dedupeHops(
+  routesRounds.rounds
+    .flatMap((round) => round.hops)
+    .filter(
+      (hop) =>
+        hop.artist_a_id === contributor.artist_id || hop.artist_b_id === contributor.artist_id,
+    ),
+);
 
 const evidenceHops = [
   ...buildHopViews(challengeHops, challenge.releases, challenge.artists),

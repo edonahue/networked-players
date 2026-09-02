@@ -28,7 +28,7 @@ export const GET: APIRoute = async ({ site: siteUrl }) => {
 
 > ${site.description}
 
-Networked Players (networked-players.com) is an evidence-first music-credit graph and game by Erich Donahue. The core idea: connect artists through **documented credits** (who played, produced, engineered, or sang on which release), and present a path between two artists where every hop is backed by release-level evidence and provenance. It deliberately does **not** infer artistic influence, friendship, or lineage -- a shared credit proves documented participation, nothing more.
+Networked Players (networked-players.com) is an evidence-first music-credit graph and game by Erich Donahue. The core idea: connect artists through **documented performance** (who played or sang on which recording), and present a path between two artists where every hop is backed by release-level evidence and provenance. It deliberately does **not** infer artistic influence, friendship, or lineage -- a documented performance credit proves participation, nothing more.
 
 ## Current state (honest)
 
