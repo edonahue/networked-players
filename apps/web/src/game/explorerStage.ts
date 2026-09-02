@@ -30,7 +30,7 @@ import type { Contributor, ContributorIndex } from "../data/contributors";
 import { ROLE_CATEGORY_LABEL } from "../data/contributors";
 
 const EVIDENCE_REGISTRY_URL = "/data/evidence/release-registry.v1.json";
-const PATHFINDING_GRAPH_URL = "/data/pathfinding/graph.v2.json";
+const PATHFINDING_GRAPH_URL = "/data/pathfinding/graph.v3.json";
 
 const VIEW_SIZE = 320;
 const CENTER = VIEW_SIZE / 2;
@@ -296,10 +296,6 @@ export async function initExplorerStage(): Promise<void> {
     const nodeNameById = new Map<number, string>(
       [view.center, ...view.neighbors].map((n) => [n.artistId, n.name]),
     );
-    const edgeByNeighborId = new Map(
-      view.edges.map((edge) => [edge.neighborArtistId, edge]),
-    );
-
     // ADR 0060: highlight the center's own interesting_next_step neighbor,
     // when currently rendered -- a small, additive marker, never hiding or
     // reordering any other neighbor. `undefined` (no signal, the signaled
@@ -360,11 +356,7 @@ export async function initExplorerStage(): Promise<void> {
     // instead of every node being its own independent tab stop.
     const renderNode = (node: ExplorerNode) => {
       const pos = nodePositions.get(node.artistId)!;
-      const dimmed = isDimmed(
-        node,
-        activeCategories,
-        edgeByNeighborId.get(node.artistId),
-      );
+      const dimmed = isDimmed(node, activeCategories);
       const r = node.isCenter ? CENTER_NODE_RADIUS : NODE_RADIUS;
       const isInterestingNextStep =
         !node.isCenter && node.artistId === interestingNextStepArtistId;

@@ -43,7 +43,7 @@ import {
   type PathfindingGraph,
   type PathHop,
 } from "./pathfindingGraph";
-import { isBackgroundEngineeringRole, isPerformerRole } from "./roleTaxonomy";
+import { isPerformerRole } from "./roleTaxonomy";
 
 /** Caveat severity tiers, worst first -- mirrors graph-core's
  * `EVIDENCE_CAVEAT_TIERS` (`packages/graph-core/.../graph.py`) exactly, so
@@ -91,16 +91,13 @@ export interface RouteFacts {
   /** Highest CSR degree among the route's real (non-endpoint) contributor
    * nodes. Lower is less hub-dependent. */
   maxInteriorDegree: number;
+  /** Hops with a documented performer on at least one side. Since the ADR
+   * 0068 cutover to `graph.v3.json` this is ALWAYS equal to `hopCount` --
+   * a non-performer hop cannot exist in the graph -- so it is retained as
+   * a real, cheap invariant check (`explainRoute` states the guarantee
+   * rather than a ratio, and `test_no_route_contains_a_zero_performer_hop`
+   * asserts it structurally) rather than as a ranking signal. */
   performerHopCount: number;
-  /** Count of hops where at least one side's credited role is
-   * background-engineering-only (Mastered By/Recorded By/Mixed By,
-   * `roleTaxonomy.ts`'s `isBackgroundEngineeringRole`) -- the same
-   * either-side convention `performerHopCount` already uses. A secondary
-   * ranking signal within the unfiltered engine only (ADR 0059's own
-   * scope, extended 2026-08-31): these credits are real and stay fully
-   * findable everywhere else (Behind the Glass, Explore, full evidence),
-   * they just rank last among otherwise-equal candidates here. */
-  backgroundHopCount: number;
 }
 
 export interface RankedRoute {
@@ -321,7 +318,6 @@ export function computeRouteFacts(
   // mistake at query time instead of build time.
   let anyReleaseMissing = false;
   let performerHopCount = 0;
-  let backgroundHopCount = 0;
   const interiorNodeIndices = new Set<number>();
 
   for (const hop of hops) {
@@ -338,12 +334,6 @@ export function computeRouteFacts(
     }
     if (isPerformerRole(hop.role_a) || isPerformerRole(hop.role_b)) {
       performerHopCount++;
-    }
-    if (
-      isBackgroundEngineeringRole(hop.role_a) ||
-      isBackgroundEngineeringRole(hop.role_b)
-    ) {
-      backgroundHopCount++;
     }
     const aIndex = artistIndex.get(hop.artist_a_id);
     const bIndex = artistIndex.get(hop.artist_b_id);
@@ -372,7 +362,6 @@ export function computeRouteFacts(
     worstCaveatSeverity,
     maxInteriorDegree,
     performerHopCount,
-    backgroundHopCount,
   };
 }
 
@@ -391,9 +380,6 @@ function compareRanked(a: RankedRoute, b: RankedRoute): number {
   const aNonPerformer = a.facts.hopCount - a.facts.performerHopCount;
   const bNonPerformer = b.facts.hopCount - b.facts.performerHopCount;
   if (aNonPerformer !== bNonPerformer) return aNonPerformer - bNonPerformer;
-  if (a.facts.backgroundHopCount !== b.facts.backgroundHopCount) {
-    return a.facts.backgroundHopCount - b.facts.backgroundHopCount;
-  }
   const aKey = [...a.usedEdgeKeys].sort().join("|");
   const bKey = [...b.usedEdgeKeys].sort().join("|");
   return aKey < bKey ? -1 : aKey > bKey ? 1 : 0;
@@ -512,7 +498,6 @@ export function selectRecommendedRoute(
           worstCaveatSeverity: null,
           maxInteriorDegree: 0,
           performerHopCount: 0,
-          backgroundHopCount: 0,
         },
       },
       usedPlusOneHop: false,
@@ -694,16 +679,16 @@ export function explainRoute(
     );
   }
 
+  // A guarantee, not a measurement: graph.v3.json contains no non-performer
+  // edge, so this states the property rather than reporting a ratio that
+  // could only ever read "N of N". The ternary is kept as a real fail-loud:
+  // if a future graph regression ever reintroduced such an edge, the copy
+  // would immediately stop claiming the guarantee instead of asserting
+  // something false.
   lines.push(
     facts.performerHopCount === facts.hopCount
-      ? "every hop is bridged by a documented performer"
+      ? "every hop is backed by documented performance"
       : `${facts.performerHopCount} of ${facts.hopCount} hop${facts.hopCount === 1 ? "" : "s"} bridged by a documented performer`,
-  );
-
-  lines.push(
-    facts.backgroundHopCount === 0
-      ? "no hop includes a mastering/mixing/recording credit"
-      : `${facts.backgroundHopCount} of ${facts.hopCount} hop${facts.hopCount === 1 ? "" : "s"} include a mastering/mixing/recording credit`,
   );
 
   lines.push(

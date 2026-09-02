@@ -89,15 +89,20 @@ test("re-running the same pair under a different mode replaces the history entry
   page,
 }) => {
   await page.goto("/play/connect/");
-  await selectAlbum(page, "a", "Ziggy Stardust");
-  await selectAlbum(page, "b", "A Night At The Opera");
+  // Face Value <-> Talking Book under Rhythm Section: a real, verified
+  // pair that resolves in BOTH the unfiltered and the filtered mode, so the
+  // history assertion below is about history, not about one mode finding
+  // nothing. (Behind the Glass, this test's original filtered mode, was
+  // retired in ADR 0068.)
+  await selectAlbum(page, "a", "Face Value");
+  await selectAlbum(page, "b", "Talking Book");
   await page.locator("[data-connect-search]").click();
   await expect(page.locator("[data-connect-results]")).toBeVisible({
     timeout: 15000,
   });
   const afterFirstSearch = page.url();
 
-  await selectRouteFilter(page, "behind-the-glass");
+  await selectRouteFilter(page, "rhythm-section");
   await page.locator("[data-connect-search]").click();
   await expect(page.locator("[data-connect-results]")).toBeVisible({
     timeout: 15000,
@@ -105,7 +110,7 @@ test("re-running the same pair under a different mode replaces the history entry
   const afterModeChange = page.url();
   expect(afterModeChange).not.toBe(afterFirstSearch);
   expect(new URL(afterModeChange).searchParams.get("mode")).toBe(
-    "behind-the-glass",
+    "rhythm-section",
   );
 
   // A REPLACED entry means going back once returns to the page before this

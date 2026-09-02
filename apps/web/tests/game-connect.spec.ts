@@ -396,7 +396,7 @@ test("picking the same album twice keeps the search disabled", async ({
 test("a fetch failure for the pathfinding graph degrades gracefully", async ({
   page,
 }) => {
-  await page.route("**/data/pathfinding/graph.v2.json", (route) =>
+  await page.route("**/data/pathfinding/graph.v3.json", (route) =>
     route.abort(),
   );
   await page.goto("/play/connect/");
@@ -424,7 +424,7 @@ test("a fetch failure for the pathfinding graph degrades gracefully", async ({
 test("the rest of the page keeps working after a failed search", async ({
   page,
 }) => {
-  await page.route("**/data/pathfinding/graph.v2.json", (route) =>
+  await page.route("**/data/pathfinding/graph.v3.json", (route) =>
     route.abort(),
   );
   await page.goto("/play/connect/");
@@ -445,7 +445,7 @@ test("a multi-search session fetches the pathfinding graph exactly once", async 
   page,
 }) => {
   let fetchCount = 0;
-  await page.route("**/data/pathfinding/graph.v2.json", (route) => {
+  await page.route("**/data/pathfinding/graph.v3.json", (route) => {
     fetchCount++;
     return route.continue();
   });
@@ -468,60 +468,42 @@ test("a multi-search session fetches the pathfinding graph exactly once", async 
   expect(fetchCount).toBe(1);
 });
 
-// Behind the Glass (ADR 0053): restricts the same search to producer/
-// engineer/mixer-only credits. Ziggy Stardust (David Bowie) <-> A Night
-// At The Opera (Queen) is a real, directly-connected pair in the committed
-// artifact bridged by a shared "Producer" credit -- verified against
-// apps/web/public/data/pathfinding/graph.v2.json.
-test("Behind the Glass finds a real producer-only connection", async ({
+// Behind the Glass (ADR 0053) was RETIRED with the ADR 0068 cutover to
+// graph.v3.json. Its two tests here -- a real producer-only connection, and
+// an honest "no producer/engineer-only connection" negative -- are gone
+// because the mode required BOTH endpoints of every hop to hold a
+// producer/engineer credit, and a performer-gated graph contains zero such
+// edges (verified directly against the committed graph.v3.json: 0 of 76,646
+// directed edges have background-engineering-only roles on both sides). The
+// mode could therefore only ever have reported "no path", which is not a
+// product feature worth keeping.
+//
+// What replaces them: the URL-degradation test below proves an old
+// `?mode=behind-the-glass` link still lands somewhere real and correctly
+// labeled rather than erroring or showing a stale result.
+
+test("an old Behind the Glass URL degrades to a real, correctly-labeled default search", async ({
   page,
 }) => {
-  await page.goto("/play/connect/");
-  await selectAlbum(page, "a", "Ziggy Stardust");
-  await selectAlbum(page, "b", "A Night At The Opera");
-  await selectRouteFilter(page, "behind-the-glass");
-  await page.locator("[data-connect-search]").click();
-
-  await expect(page.locator("[data-connect-results]")).toBeVisible({
-    timeout: 15000,
-  });
-  const hop = page.locator("[data-connect-hops] .connect-hop").first();
-  await expect(hop).toBeVisible();
-  await expect(hop).toContainText(/producer/i);
-  // No role-signal re-ranking section in this mode -- every hop is already
-  // producer/engineer-only by construction.
-  await expect(page.locator("[data-connect-result='alternate']")).toBeHidden();
-});
-
-// "Time Out" (Dave Brubeck) <-> "Rumours" (Fleetwood Mac) has a real
-// unfiltered connection in the committed artifact but no producer/
-// engineer-only bridge within 4 hops from ANY of either album's credited
-// contributors (verified against apps/web/public/data/pathfinding/graph.v2.json,
-// re-checked against v2's multi-source-contributor search specifically --
-// Discovery <-> Joshua Tree, this test's pre-v2 negative pair, stopped
-// being a real negative case once search started from every credited
-// contributor on an album instead of only its primary artist).
-test("Behind the Glass reports no connection when the real path doesn't qualify", async ({
-  page,
-}) => {
-  await page.goto("/play/connect/");
-  await selectAlbum(page, "a", "Time Out");
-  await selectAlbum(page, "b", "Rumours");
-  await selectRouteFilter(page, "behind-the-glass");
-  await page.locator("[data-connect-search]").click();
-
-  await expect(page.locator("[data-connect-status]")).toBeVisible();
-  await expect(page.locator("[data-connect-status]")).toContainText(
-    /no producer\/engineer-only connection/i,
+  // `parseConnectUrlParams` normalizes any unrecognized `mode` to the
+  // default, so this is a genuinely fresh unfiltered search -- not an
+  // error, and not a stale result carried over from the retired mode.
+  await page.goto(
+    "/play/connect/?a=master-9313&b=master-19194&mode=behind-the-glass",
   );
-  await expect(page.locator("[data-connect-results]")).toBeHidden();
-  // A real, ordinary negative game outcome, not a data-integrity failure --
-  // stays on the polite region only, unlike the genuine fetch-failure tests
-  // above.
-  await expect(page.locator("[data-testid='connect-stage']")).toHaveAttribute(
-    "data-phase",
-    "idle",
+  const stage = page.locator("[data-testid='connect-stage']");
+  await expect(stage).toBeVisible();
+
+  // No retired chip is offered, and nothing is checked as if it were.
+  await expect(
+    page.locator("[data-connect-mode-option][data-value='behind-the-glass']"),
+  ).toHaveCount(0);
+  const checked = page.locator(
+    "[data-connect-mode-option][aria-checked='true']",
   );
+  if ((await checked.count()) > 0) {
+    await expect(checked).not.toHaveAttribute("data-value", "behind-the-glass");
+  }
 });
 
 // Rhythm Section: restricts the search to drums/bass-only credits.
@@ -611,11 +593,14 @@ test("a role-filtered search that finds no connection never fetches the evidence
   await page.goto("/play/connect/");
   await selectAlbum(page, "a", "Time Out");
   await selectAlbum(page, "b", "Rumours");
-  await selectRouteFilter(page, "behind-the-glass");
+  // Rhythm Section since Behind the Glass was retired (ADR 0068). Time Out
+  // <-> Rumours is the same real, verified negative pair the filtered-mode
+  // tests above already reuse.
+  await selectRouteFilter(page, "rhythm-section");
   await page.locator("[data-connect-search]").click();
 
   await expect(page.locator("[data-connect-status]")).toContainText(
-    /no producer\/engineer-only connection/i,
+    /no drums\/bass-only connection/i,
   );
   expect(evidenceFetches).toBe(0);
 });
@@ -632,9 +617,12 @@ test("a role-filtered search that finds a connection fetches evidence only after
     return route.continue();
   });
   await page.goto("/play/connect/");
-  await selectAlbum(page, "a", "Ziggy Stardust");
-  await selectAlbum(page, "b", "A Night At The Opera");
-  await selectRouteFilter(page, "behind-the-glass");
+  // Face Value <-> Talking Book, bridged by Nathan East (Bass/Drums) --
+  // the same real, verified positive pair the Rhythm Section test above
+  // uses, substituted for the retired Behind the Glass mode (ADR 0068).
+  await selectAlbum(page, "a", "Face Value");
+  await selectAlbum(page, "b", "Talking Book");
+  await selectRouteFilter(page, "rhythm-section");
   await page.locator("[data-connect-search]").click();
 
   await expect(page.locator("[data-connect-results]")).toBeVisible({
@@ -647,10 +635,10 @@ test("a role-filtered search that finds a connection fetches evidence only after
 // second filter must deselect the first, never leave two checked.
 test("only one route filter can be selected at a time", async ({ page }) => {
   await page.goto("/play/connect/");
-  await selectRouteFilter(page, "behind-the-glass");
+  await selectRouteFilter(page, "rhythm-section");
   await selectRouteFilter(page, "guitar-paths");
   await expect(
-    page.locator('[data-connect-mode-option][data-value="behind-the-glass"]'),
+    page.locator('[data-connect-mode-option][data-value="rhythm-section"]'),
   ).toHaveAttribute("aria-checked", "false");
   await expect(
     page.locator('[data-connect-mode-option][data-value="guitar-paths"]'),
@@ -670,7 +658,8 @@ test("the route filter is a keyboard radiogroup with roving focus", async ({
   const tray = page.locator("[data-connect-mode-group]");
   await expect(tray).toHaveAttribute("role", "radiogroup");
   const chips = tray.locator(".chip");
-  await expect(chips).toHaveCount(4);
+  // 3, not 4: Behind the Glass was retired with the ADR 0068 cutover.
+  await expect(chips).toHaveCount(3);
   await expect(chips.first()).toHaveAttribute("tabindex", "0");
   await expect(chips.first()).toHaveAttribute("aria-checked", "true");
 

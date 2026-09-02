@@ -665,7 +665,7 @@ export function findAlbumRoute(
   return { ok: true, ...stripped, usedEdgeKeys: edgeKeysForHops(result.hops) };
 }
 
-const DEFAULT_GRAPH_URL = "/data/pathfinding/graph.v2.json";
+const DEFAULT_GRAPH_URL = "/data/pathfinding/graph.v3.json";
 
 // Off-main-thread parse/canonicalize/hash (ADR 0059 Phase 5 PR 5c),
 // bounded to exactly that -- see graphWorker.ts's own header for the

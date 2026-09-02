@@ -13,7 +13,7 @@ test("the pathfinding graph is requested as soon as the FIRST album is picked, b
   page,
 }) => {
   let graphFetches = 0;
-  await page.route("**/data/pathfinding/graph.v2.json", (route) => {
+  await page.route("**/data/pathfinding/graph.v3.json", (route) => {
     graphFetches++;
     return route.continue();
   });
@@ -72,10 +72,10 @@ test("picking both albums does not eagerly fetch the evidence registry, even bef
   await selectAlbum(page, "b", "Rumours");
   expect(evidenceFetches).toBe(0);
 
-  await selectRouteFilter(page, "behind-the-glass");
+  await selectRouteFilter(page, "rhythm-section");
   await page.locator("[data-connect-search]").click();
   await expect(page.locator("[data-connect-status]")).toContainText(
-    /no producer\/engineer-only connection/i,
+    /no drums\/bass-only connection/i,
   );
   expect(evidenceFetches).toBe(0);
 });
@@ -87,7 +87,7 @@ test("status is staged honestly: loading the graph, then ranking, for an unfilte
   const graphGate = new Promise<void>((resolve) => {
     releaseGraph = resolve;
   });
-  await page.route("**/data/pathfinding/graph.v2.json", async (route) => {
+  await page.route("**/data/pathfinding/graph.v3.json", async (route) => {
     await graphGate;
     await route.continue();
   });
@@ -143,7 +143,7 @@ test("status is staged honestly: loading the graph, then searching, for a role-f
   const graphGate = new Promise<void>((resolve) => {
     releaseGraph = resolve;
   });
-  await page.route("**/data/pathfinding/graph.v2.json", async (route) => {
+  await page.route("**/data/pathfinding/graph.v3.json", async (route) => {
     await graphGate;
     await route.continue();
   });
@@ -174,9 +174,13 @@ test("status is staged honestly: loading the graph, then searching, for a role-f
   );
 
   await page.goto("/play/connect/");
-  await selectAlbum(page, "a", "Ziggy Stardust");
-  await selectAlbum(page, "b", "A Night At The Opera");
-  await selectRouteFilter(page, "behind-the-glass");
+  // Face Value <-> Talking Book, bridged by Nathan East (Bass/Drums) --
+  // the real, verified Rhythm Section pair. The original Ziggy Stardust
+  // <-> A Night At The Opera pair was chosen for Behind the Glass's
+  // producer bridge, which ADR 0068 retired.
+  await selectAlbum(page, "a", "Face Value");
+  await selectAlbum(page, "b", "Talking Book");
+  await selectRouteFilter(page, "rhythm-section");
   await page.locator("[data-connect-search]").click();
 
   await expect(page.locator("[data-connect-status]")).toHaveText(
@@ -222,9 +226,13 @@ test("a role-filtered search's structural route survives an evidence-registry fa
   );
 
   await page.goto("/play/connect/");
-  await selectAlbum(page, "a", "Ziggy Stardust");
-  await selectAlbum(page, "b", "A Night At The Opera");
-  await selectRouteFilter(page, "behind-the-glass");
+  // Face Value <-> Talking Book, bridged by Nathan East (Bass/Drums) --
+  // the real, verified Rhythm Section pair. The original Ziggy Stardust
+  // <-> A Night At The Opera pair was chosen for Behind the Glass's
+  // producer bridge, which ADR 0068 retired.
+  await selectAlbum(page, "a", "Face Value");
+  await selectAlbum(page, "b", "Talking Book");
+  await selectRouteFilter(page, "rhythm-section");
   await page.locator("[data-connect-search]").click();
 
   await expect(page.locator("[data-connect-results]")).toBeVisible({
@@ -232,7 +240,8 @@ test("a role-filtered search's structural route survives an evidence-registry fa
   });
   const hop = page.locator("[data-connect-hops] .connect-hop").first();
   await expect(hop).toBeVisible();
-  await expect(hop).toContainText(/producer/i);
+  // Drums/bass, not producer: this is a Rhythm Section route now.
+  await expect(hop).toContainText(/drums|bass/i);
   await expect(hop.locator("a[href*='discogs.com/release/']")).toBeVisible();
 
   // The enhancement itself is a real no-op, not a delayed success: no
