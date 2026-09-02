@@ -21,7 +21,7 @@ const PARAM_ORDER = ["a", "b", "mode"] as const;
 export interface ConnectUrlState {
   albumAId: string;
   albumBId: string;
-  /** The checked role-filter-mode radio value, e.g. "behind-the-glass" --
+  /** The checked role-filter-mode radio value, e.g. "rhythm-section" --
    * "none" (the unfiltered default) is never actually present in this
    * field's source URL param; see `parseConnectUrlParams`. */
   mode: string;

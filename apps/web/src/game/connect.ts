@@ -56,13 +56,9 @@ import {
   explainRoute,
   selectRecommendedRoute,
 } from "./recommendedRoute";
-import {
-  behindTheGlassEdgeFilter,
-  guitarPathsEdgeFilter,
-  rhythmSectionEdgeFilter,
-} from "./roleTaxonomy";
+import { guitarPathsEdgeFilter, rhythmSectionEdgeFilter } from "./roleTaxonomy";
 
-const PATHFINDING_GRAPH_URL = "/data/pathfinding/graph.v2.json";
+const PATHFINDING_GRAPH_URL = "/data/pathfinding/graph.v3.json";
 const EVIDENCE_REGISTRY_URL = "/data/evidence/release-registry.v1.json";
 const ALBUM_CATALOG_URL = "/data/catalog/albums.v1.json";
 const CONTRIBUTOR_INDEX_URL = "/data/contributors/index.v1.json";
@@ -85,12 +81,16 @@ interface RoleFilterMode {
   noPathMessage: string;
 }
 
+// "behind-the-glass" was retired with the ADR 0068 cutover to
+// graph.v3.json: that mode required BOTH endpoints of every hop to hold a
+// producer/engineer credit, and a performer-gated graph contains no such
+// edge, so the mode could only ever have reported "no path" -- an honest
+// message for a search that had become structurally impossible to satisfy.
+// `connectUrlState.ts`'s `parseConnectUrlParams` already normalizes any
+// unrecognized `mode` value to the default, so an old
+// `?mode=behind-the-glass` link degrades to a real, correctly-labeled
+// unfiltered search rather than an error or a stale result.
 const ROLE_FILTER_MODES: Record<string, RoleFilterMode> = {
-  "behind-the-glass": {
-    edgeFilter: behindTheGlassEdgeFilter,
-    noPathMessage:
-      "No producer/engineer-only connection was found between these two records within 4 hops.",
-  },
   "rhythm-section": {
     edgeFilter: rhythmSectionEdgeFilter,
     noPathMessage:

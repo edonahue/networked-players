@@ -52,7 +52,7 @@ test("swap after a search redisplays the reversed route without a new network re
   });
 
   let graphFetches = 0;
-  await page.route("**/data/pathfinding/graph.v2.json", (route) => {
+  await page.route("**/data/pathfinding/graph.v3.json", (route) => {
     graphFetches++;
     return route.continue();
   });
@@ -139,9 +139,13 @@ test("swap preserves the active role filter across the reversed redisplay", asyn
   page,
 }) => {
   await page.goto("/play/connect/");
-  await selectAlbum(page, "a", "Ziggy Stardust");
-  await selectAlbum(page, "b", "A Night At The Opera");
-  await selectRouteFilter(page, "behind-the-glass");
+  // Face Value <-> Talking Book, bridged by Nathan East (Bass/Drums) --
+  // the real, verified Rhythm Section pair. The original Ziggy Stardust
+  // <-> A Night At The Opera pair was chosen for Behind the Glass's
+  // producer bridge, which ADR 0068 retired.
+  await selectAlbum(page, "a", "Face Value");
+  await selectAlbum(page, "b", "Talking Book");
+  await selectRouteFilter(page, "rhythm-section");
   await page.locator("[data-connect-search]").click();
   await expect(page.locator("[data-connect-results]")).toBeVisible({
     timeout: 15000,
@@ -149,8 +153,8 @@ test("swap preserves the active role filter across the reversed redisplay", asyn
 
   await page.locator("[data-connect-swap]").click();
   await expect(
-    page.locator("[data-connect-mode-option][data-value='behind-the-glass']"),
+    page.locator("[data-connect-mode-option][data-value='rhythm-section']"),
   ).toHaveAttribute("aria-checked", "true");
   const params = new URL(page.url()).searchParams;
-  expect(params.get("mode")).toBe("behind-the-glass");
+  expect(params.get("mode")).toBe("rhythm-section");
 });

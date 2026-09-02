@@ -41,8 +41,7 @@ export async function selectAlbum(
   await pickerResults(page, side).first().click();
 }
 
-export type RouteFilterMode =
-  "none" | "behind-the-glass" | "rhythm-section" | "guitar-paths";
+export type RouteFilterMode = "none" | "rhythm-section" | "guitar-paths";
 
 /** Picks a route filter chip in Connect's role="radiogroup" tray (Slice 4
  * of the UI design/copy pass -- previously a native radio input, `.check()`

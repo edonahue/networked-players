@@ -48,7 +48,7 @@ test("homepage's hardcoded Behind the Glass editorial pick still resolves a real
   // producer-only route (fix the copy) or the album ids no longer exist in
   // the catalog (same).
   const graph = (await (
-    await request.get("/data/pathfinding/graph.v2.json")
+    await request.get("/data/pathfinding/graph.v3.json")
   ).json()) as PathfindingGraph;
   const artistIndex = buildArtistIndex(graph);
   const albumIndex = buildAlbumIndex(graph);

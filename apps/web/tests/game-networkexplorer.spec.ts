@@ -23,7 +23,7 @@ async function findBoundedRealInterestingNextStep(
 ): Promise<{ contributor: ContributorLite; neighborId: number }> {
   const [contributorRes, graphRes] = await Promise.all([
     request.get("/data/contributors/index.v1.json"),
-    request.get("/data/pathfinding/graph.v2.json"),
+    request.get("/data/pathfinding/graph.v3.json"),
   ]);
   const { contributors } = (await contributorRes.json()) as {
     contributors: ContributorLite[];
@@ -438,7 +438,7 @@ test("recentering builds a session trail, and a trail step re-centers back", asy
 test("an unknown artist id shows a graceful message instead of a blank graph", async ({
   page,
 }) => {
-  await page.route("**/data/pathfinding/graph.v2.json", async (route) => {
+  await page.route("**/data/pathfinding/graph.v3.json", async (route) => {
     const response = await route.fetch();
     const json = await response.json();
     json.node_ids = [999999999];
@@ -479,7 +479,7 @@ test("an unknown artist id shows a graceful message instead of a blank graph", a
 test("an unreachable pathfinding graph shows a terminal error, not a blank graph", async ({
   page,
 }) => {
-  await page.route("**/data/pathfinding/graph.v2.json", (route) =>
+  await page.route("**/data/pathfinding/graph.v3.json", (route) =>
     route.abort(),
   );
   await page.goto("/explore/master-107325/");

@@ -91,3 +91,7 @@ infra/ansible/group_vars/
 
 # Jupyter autosave artifacts (infra/dask/notebooks)
 .ipynb_checkpoints/
+
+# Playwright writes here if the suite is run from the repo root rather
+# than apps/web (the canonical location, whose own .gitignore covers it).
+test-results/

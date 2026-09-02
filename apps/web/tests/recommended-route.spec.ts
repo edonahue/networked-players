@@ -289,14 +289,25 @@ test.describe("selectRecommendedRoute: ranking axes", () => {
     expect(result.recommended.facts.performerHopCount).toBe(1);
   });
 
-  // 2026-08-31 extension: once caveat, degree, AND performer-hop-count all
-  // tie (both bridges are entirely non-performer, exactly the real
-  // Jamiroquai/Pink-Floyd shape that motivated this axis), prefer the
-  // bridge that isn't purely a mastering/recording/mixing credit.
-  test("once caveat, degree, and performer-hop-count all tie, prefers the bridge that isn't background-engineering-only", () => {
+  // The 2026-08-31 background-engineering tie-break was REMOVED with the
+  // ADR 0068 cutover to graph.v3.json. Its test constructed two bridges
+  // that were BOTH entirely non-performer (Mastered By vs
+  // Executive-Producer) -- the real Jamiroquai/Pink-Floyd shape that
+  // motivated the axis. That shape is now structurally impossible: neither
+  // bridge could exist as an edge at all, so there is no tie left to break
+  // and no honest way to keep exercising it. The guarantee that replaced
+  // it is asserted directly by
+  // "no recommended route contains a zero-performer hop" below.
+
+  test("no recommended route contains a zero-performer hop", () => {
+    // The ADR 0068 guarantee, asserted STRUCTURALLY: not "the ranker
+    // prefers performer routes" (the old, weaker property) but "a
+    // non-performer route cannot be returned, because it cannot exist".
+    // Every bridge here carries a real performer credit, mirroring what
+    // graph.v3.json actually contains.
     const graph = twoBridgeGraph({
-      bridgeOneRoles: ["Mastered By", "Mastered By"], // background-only, non-performer
-      bridgeTwoRoles: ["Executive-Producer", "Executive-Producer"], // non-performer, not background
+      bridgeOneRoles: ["Guitar", "Drums"],
+      bridgeTwoRoles: ["Vocals", "Bass"],
     });
     const { artistIndex, albumIndex } = indices(graph);
     const evidence = evidenceIndex([release(900, null), release(901, null)]);
@@ -312,9 +323,17 @@ test.describe("selectRecommendedRoute: ranking axes", () => {
     );
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(result.recommended.endpointA.artistId).toBe(200); // Q, the non-background bridge
-    expect(result.recommended.facts.backgroundHopCount).toBe(0);
-    expect(result.recommended.facts.performerHopCount).toBe(0);
+
+    // The recommended route must have a performer on EVERY hop -- not
+    // merely rank above one that doesn't. The distinct-alternate search in
+    // connect.ts is not exercised here (it lives on that module, not this
+    // return type), but it derives its facts from this same
+    // `computeRouteFacts` over the same graph, so it inherits the property
+    // rather than needing its own copy of the rule.
+    expect(result.recommended.facts.hopCount).toBeGreaterThan(0);
+    expect(result.recommended.facts.performerHopCount).toBe(
+      result.recommended.facts.hopCount,
+    );
   });
 
   test("with no caveat vocabulary available, ranking degrades to degree+role only", () => {
@@ -727,7 +746,6 @@ test.describe("computeRouteFacts / explainRoute", () => {
       worstCaveatSeverity: 0,
       maxInteriorDegree: 5,
       performerHopCount: 1,
-      backgroundHopCount: 0,
       ...overrides,
     };
   }
@@ -742,39 +760,42 @@ test.describe("computeRouteFacts / explainRoute", () => {
     expect(lines.some((l) => l.toLowerCase().includes("caveat"))).toBe(false);
   });
 
-  test("explains backgroundHopCount, the newest ranking axis, not just older facts", () => {
-    // Real review finding: RouteFacts's own doc comment says explainRoute
-    // must explain the SAME facts compareRanked ranks by, so a route
-    // could win a tie specifically because of backgroundHopCount while
-    // the rendered text stayed silent about it.
-    const allBackground = explainRoute(
-      facts({ hopCount: 2, performerHopCount: 0, backgroundHopCount: 2 }),
+  // The backgroundHopCount ranking axis and its explainRoute line were
+  // REMOVED with the ADR 0068 cutover to graph.v3.json: a graph that cannot
+  // contain a non-performer edge has nothing to rank down or narrate. The
+  // performer line changed from a MEASUREMENT ("N of M hops bridged...")
+  // to a GUARANTEE ("every hop is backed by documented performance"),
+  // which is only honest because the graph now enforces it structurally.
+  test("states the performer guarantee rather than a ratio", () => {
+    const lines = explainRoute(
+      facts({ hopCount: 3, performerHopCount: 3 }),
       false,
     );
     expect(
-      allBackground.some((l) => l.toLowerCase().includes("mastering")),
+      lines.some((l) => l === "every hop is backed by documented performance"),
     ).toBe(true);
-    const noBackground = explainRoute(facts({ backgroundHopCount: 0 }), false);
-    expect(
-      noBackground.some((l) => l.toLowerCase().includes("mastering")),
-    ).toBe(true);
+    // The retired axis must leave no narration behind.
+    expect(lines.some((l) => l.toLowerCase().includes("mastering"))).toBe(
+      false,
+    );
   });
 
-  // Real gap caught in review (round 12): backgroundHopCount uses the
-  // same either-side convention performerHopCount does (RouteFacts's own
-  // doc comment), so a single hop with a real performer on one side and a
-  // background-engineering credit on the other (e.g. real committed
-  // Guitar / Mastered By) increments BOTH counters. The round-6 wording
-  // said such a hop was "connected only by a mastering/mixing/recording
-  // credit" -- factually wrong and self-contradicting right next to the
-  // performer line above it, which correctly says a real performer
-  // bridges that same hop.
-  test("never claims a hop is connected ONLY by background work when it also bridges a performer", () => {
+  test("falls back to the honest ratio if a non-performer hop ever reappears", () => {
+    // Fail-loud, not decoration: if a future graph regression reintroduced
+    // a non-performer edge, the copy must stop claiming the guarantee
+    // rather than assert something false about real data.
     const lines = explainRoute(
-      facts({ hopCount: 1, performerHopCount: 1, backgroundHopCount: 1 }),
+      facts({ hopCount: 3, performerHopCount: 2 }),
       false,
     );
-    expect(lines.some((l) => /\bonly\b/i.test(l))).toBe(false);
+    expect(
+      lines.some((l) => l === "every hop is backed by documented performance"),
+    ).toBe(false);
+    expect(
+      lines.some((l) =>
+        l.includes("2 of 3 hops bridged by a documented performer"),
+      ),
+    ).toBe(true);
   });
 
   test("names the +1-hop exception only when it was actually used", () => {
@@ -807,50 +828,6 @@ test.describe("computeRouteFacts / explainRoute", () => {
     expect(result.hopCount).toBe(1);
     expect(result.worstCaveatSeverity).toBe(2); // compilation tier
     expect(result.performerHopCount).toBe(1); // Vocals qualifies even though the other side doesn't
-    expect(result.backgroundHopCount).toBe(0); // neither role is background-engineering-only
-  });
-
-  test("computeRouteFacts counts a hop as background-only when either side is Mastered By/Recorded By/Mixed By", () => {
-    const graph = twoBridgeGraph({});
-    const { artistIndex } = indices(graph);
-    const evidence = evidenceIndex([]);
-    const result = computeRouteFacts(
-      graph,
-      artistIndex,
-      [
-        {
-          release_id: 900,
-          artist_a_id: 100,
-          artist_b_id: 300,
-          role_a: "Primary Artist",
-          role_b: "Mastered By [Vinyl]",
-        },
-      ],
-      evidence,
-    );
-    expect(result.backgroundHopCount).toBe(1);
-    // Mirrors performerHopCount's own either-side convention: a hop still
-    // counts toward backgroundHopCount when the OTHER side is a real
-    // performer credit. This is deliberately not double jeopardy in
-    // practice -- such a hop already counts toward performerHopCount too,
-    // so it's already favored on the primary (non-performer) ranking axis;
-    // backgroundHopCount only breaks ties among routes already equal there.
-    const mixedResult = computeRouteFacts(
-      graph,
-      artistIndex,
-      [
-        {
-          release_id: 900,
-          artist_a_id: 100,
-          artist_b_id: 300,
-          role_a: "Guitar",
-          role_b: "Mastered By",
-        },
-      ],
-      evidence,
-    );
-    expect(mixedResult.backgroundHopCount).toBe(1);
-    expect(mixedResult.performerHopCount).toBe(1);
   });
 });
 

@@ -123,9 +123,13 @@ test("route length is always shown, for a ranked search, a role-filtered search,
     /^(one|two|three|four) hops? documented$/i,
   );
 
-  await selectAlbum(page, "a", "Ziggy Stardust");
-  await selectAlbum(page, "b", "A Night At The Opera");
-  await selectRouteFilter(page, "behind-the-glass");
+  // Face Value <-> Talking Book, bridged by Nathan East (Bass/Drums) --
+  // the real, verified Rhythm Section pair. The original Ziggy Stardust
+  // <-> A Night At The Opera pair was chosen for Behind the Glass's
+  // producer bridge, which ADR 0068 retired.
+  await selectAlbum(page, "a", "Face Value");
+  await selectAlbum(page, "b", "Talking Book");
+  await selectRouteFilter(page, "rhythm-section");
   await page.locator("[data-connect-search]").click();
   await expect(page.locator("[data-connect-results]")).toBeVisible({
     timeout: 15000,
@@ -164,9 +168,13 @@ test('"Why this route?" stays hidden entirely for a role-filtered search, which 
   page,
 }) => {
   await page.goto("/play/connect/");
-  await selectAlbum(page, "a", "Ziggy Stardust");
-  await selectAlbum(page, "b", "A Night At The Opera");
-  await selectRouteFilter(page, "behind-the-glass");
+  // Face Value <-> Talking Book, bridged by Nathan East (Bass/Drums) --
+  // the real, verified Rhythm Section pair. The original Ziggy Stardust
+  // <-> A Night At The Opera pair was chosen for Behind the Glass's
+  // producer bridge, which ADR 0068 retired.
+  await selectAlbum(page, "a", "Face Value");
+  await selectAlbum(page, "b", "Talking Book");
+  await selectRouteFilter(page, "rhythm-section");
   await page.locator("[data-connect-search]").click();
   await expect(page.locator("[data-connect-results]")).toBeVisible({
     timeout: 15000,

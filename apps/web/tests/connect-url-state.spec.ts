@@ -9,14 +9,31 @@ import {
   parsePartialConnectUrlParams,
 } from "../src/game/connectUrlState";
 
-const VALID_MODES = new Set([
-  "behind-the-glass",
-  "rhythm-section",
-  "guitar-paths",
-]);
+// The app's real surviving mode set -- "behind-the-glass" was retired with
+// the ADR 0068 cutover and is now exercised below as an UNRECOGNIZED mode,
+// which is exactly what an old bookmarked link now carries.
+const VALID_MODES = new Set(["rhythm-section", "guitar-paths"]);
 
 test.describe("parseConnectUrlParams", () => {
   test("parses a real a/b/mode query string", () => {
+    expect(
+      parseConnectUrlParams(
+        "?a=master-1&b=master-2&mode=rhythm-section",
+        VALID_MODES,
+      ),
+    ).toEqual({
+      albumAId: "master-1",
+      albumBId: "master-2",
+      mode: "rhythm-section",
+    });
+  });
+
+  test("a retired mode in an old link degrades to the default", () => {
+    // ADR 0068 retired Behind the Glass. A bookmarked or shared
+    // `?mode=behind-the-glass` link must land on a real, correctly-labeled
+    // default search rather than erroring or silently keeping a mode the
+    // app can no longer satisfy -- this is the parser-level guarantee the
+    // Connect UI test relies on.
     expect(
       parseConnectUrlParams(
         "?a=master-1&b=master-2&mode=behind-the-glass",
@@ -25,7 +42,7 @@ test.describe("parseConnectUrlParams", () => {
     ).toEqual({
       albumAId: "master-1",
       albumBId: "master-2",
-      mode: "behind-the-glass",
+      mode: "none",
     });
   });
 

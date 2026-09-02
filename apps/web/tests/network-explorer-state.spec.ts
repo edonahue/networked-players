@@ -225,55 +225,48 @@ test("isDimmed does not dim a neighbor matching the active filter", () => {
   expect(isDimmed(node, new Set(["vocals"]))).toBe(false);
 });
 
-// 2026-08-31 addition: a second, independent dimming reason -- the real
-// Jamiroquai/Pink-Floyd shape that motivated this whole change is a
-// contributor whose ENGINEERING role_categories chip would pass any role
-// filter that includes it, but whose specific edge to this center is
-// still just a mastering/mixing credit.
-test("isDimmed dims a neighbor reached only via a background-engineering-only edge, even with no filter active", () => {
+// The 2026-08-31 background-engineering dimming branch was REMOVED with the
+// ADR 0068 cutover to graph.v3.json. It existed to de-emphasize edges the
+// broad graph contained (a neighbor reachable from this center only via a
+// Mastered By/Mixed By credit) but the product did not want to promote. A
+// performer-gated graph cannot contain such an edge at all, so the branch
+// became unreachable -- and worse than dead: an edge whose role text
+// mentions mixing ALONGSIDE a real performance credit is now a legitimate
+// performer edge, and dimming it would be actively wrong.
+//
+// These tests pin the replacement contract: dimming depends on the role
+// filter and center-exemption only.
+
+test("isDimmed no longer dims a neighbor whose role text mentions mastering", () => {
   const node = {
     artistId: 200,
     name: "Bob",
     roleCategories: ["engineering"],
     isCenter: false,
   };
-  const edge = {
-    neighborArtistId: 200,
-    releaseId: 1,
-    roleCenter: "Primary Artist",
-    roleNeighbor: "Mastered By",
-  };
-  expect(isDimmed(node, new Set(), edge)).toBe(true);
+  // Reaches this center via what used to be a "background-only" pairing.
+  // In graph.v3.json such an edge cannot exist; if one is somehow present,
+  // it is a real documented edge and must render normally.
+  expect(isDimmed(node, new Set())).toBe(false);
 });
 
-test("isDimmed does not dim a neighbor whose edge carries a real substantive role", () => {
+test("isDimmed still dims on an active role filter the node does not match", () => {
   const node = {
     artistId: 200,
     name: "Bob",
-    roleCategories: ["production"],
+    roleCategories: ["engineering"],
     isCenter: false,
   };
-  const edge = {
-    neighborArtistId: 200,
-    releaseId: 1,
-    roleCenter: "Vocals",
-    roleNeighbor: "Producer",
-  };
-  expect(isDimmed(node, new Set(), edge)).toBe(false);
+  expect(isDimmed(node, new Set(["vocals"]))).toBe(true);
+  expect(isDimmed(node, new Set(["engineering"]))).toBe(false);
 });
 
-test("isDimmed still exempts the center even with a background-only edge somehow passed", () => {
+test("isDimmed still exempts the center from every filter", () => {
   const center = {
     artistId: 100,
     name: "Alice",
     roleCategories: [],
     isCenter: true,
   };
-  const edge = {
-    neighborArtistId: 100,
-    releaseId: 1,
-    roleCenter: "Mastered By",
-    roleNeighbor: "Mastered By",
-  };
-  expect(isDimmed(center, new Set(), edge)).toBe(false);
+  expect(isDimmed(center, new Set(["vocals"]))).toBe(false);
 });
