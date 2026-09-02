@@ -45,12 +45,14 @@ became part of it.
 | [#205](https://github.com/) | Dual-live `graph.v3.json` + `challenge.v3.json` | `f4a0a3f` |
 | [#206](https://github.com/) | Connect and Explore cutover to `graph.v3.json` | `dc1e716` |
 | [#207](https://github.com/) | Pages cut over to `challenge.v3.json`, Behind the Glass retired | `93683b5` |
-| #208 | Contributor-index regeneration, background-only retirement, closeout | *this PR* |
+| [#208](https://github.com/) | Contributor-index regeneration, background-only retirement | `4e58b28` |
+| [#209](https://github.com/) | `graph.v2.json` / `challenge.v2.json` retirement | `e4a9eff` |
 
-The plan's PR 6 was split: this PR retires the background-only machinery and
-regenerates the two stale derived artifacts; the `graph.v2.json` /
-`challenge.v2.json` file deletions follow as their own PR, matching ADR
-0058's precedent that retirement is a separate, explicit step from cutover.
+The plan's PR 6 was split in two. #208 retired the background-only machinery
+and regenerated the stale derived artifacts; #209 deleted the v2 files and
+collapsed their registration groups. That split follows ADR 0058's own
+precedent that retirement is a separate, explicit step from cutover — and it
+kept each PR reviewable, since the v2 retirement alone touched ~40 files.
 
 ## Before / after measurements
 
@@ -261,23 +263,73 @@ measured the slow name-matching path rather than the path the CLI takes.
 ## Deployment
 
 Every site-changing merge was live-verified against
-`networked-players.com`. After PR #207: `graph.v3.json` and
-`challenge.v3.json` both return HTTP 200 with the expected provenance.
+`networked-players.com`. Final state after #209:
 
-Live verification also caught a real miss: Stuart Hawkes' page still showed
-7 connected albums and "is co-credited on the releases connecting the albums
-below", because `contributors/index.v1.json` was still derived from
+| Check | Result |
+|---|---|
+| `challenge.v3.json`, `pathfinding/graph.v3.json` | 200 |
+| `challenge.v2.json`, `pathfinding/graph.v2.json` | **404** |
+| `contributors/index.v1.json` | 200, 445 contributors, `source` names `challenge.v3.json` |
+| `evidence/release-registry.v1.json` | 200, 10,232 release ids, `source` names `graph.v3.json` |
+| `/contributors/300468/` (Stuart Hawkes) | **404** — no longer a graph contributor |
+| `/play/connect/` route filters | Any documented route, Rhythm Section, Guitar Paths — no Behind the Glass |
+
+Live verification caught a real miss after #207: Stuart Hawkes' page still
+showed 7 connected albums and "is co-credited on the releases connecting the
+albums below", because `contributors/index.v1.json` was still derived from
 `challenge.v2.json`. PR 5's plan text had called for exactly this
-recomputation and I had not done it. Both derived artifacts are regenerated
-in this PR. This is the value of live-verifying rather than trusting CI:
-every gate was green while the migration's headline promise was still
-visibly unfulfilled on the production site.
+recomputation and I had not done it. Every gate was green while the
+migration's headline promise was still visibly unfulfilled in production.
+
+## v2 retirement (completed in #209)
+
+`graph.v2.json` and `challenge.v2.json` are deleted, along with
+`data/contracts/challenge-v2.md` and `pathfinding-graph-v2.md`. Both URLs
+now return **404** in production; `graph.v3.json` and `challenge.v3.json`
+return 200. The `challenge`/`challenge_v3` and
+`pathfinding_graph_v2`/`pathfinding_graph_v3` registration groups collapsed
+into `challenge` and `pathfinding_graph` — the same in-place flip
+`test_artifact_registration_completeness.py`'s own comment had predicted for
+the v1→v2 transition. `pathfinding_graph_failures` still accepts v1- and
+v2-shaped payloads: the validator never narrowed, only the published
+artifact set did.
+
+`smoke.spec.ts`'s "static challenge.v2 artifact is reachable" test became
+"the retired v2 artifacts are no longer served" — a stale v2 file left
+deployed would be a valid-looking artifact carrying pre-0068 semantics,
+so asserting absence is the real check.
+
+### A second defect live verification caught
+
+The artifacts #208 regenerated were **built** from `challenge.v3.json` but
+their published `source` strings still **claimed** `challenge.v2.json`;
+`evidence/release-registry.v1.json` named `graph.v2.json`. All three pointed
+at files #209 deletes. Provenance strings are not content-hashed, so no
+version changed and every gate stayed green while the wrong claim sat live
+in production — precisely the "valid but stale combination" this migration's
+lineage rules exist to prevent.
+
+Fixed by a real rebuild in dependency order rather than a string patch:
+
+| Artifact | Before | After |
+|---|---:|---:|
+| `evidence/release-registry.v1.json` | 21,062 release ids | **10,232** |
+| `contributors/index.v1.json` | 445 | 445 (hash unchanged) |
+| `contributors/album-hop-distances.v1.json` | 2,375 | 2,375 (hash unchanged) |
+
+The registry's drop is a genuine consequence of the performer-gated graph's
+smaller evidence set. Verified it still covers everything the site
+references: **0 missing** across `challenge.v3`'s 367 hops, routes' 367
+hops, and `graph.v3`'s 9,950 evidence release ids.
+
+**This is the second time live verification found something CI structurally
+could not.** Both misses shared a shape: a derived artifact was internally
+valid, passed every contract check, and was wrong about the world. Worth
+carrying forward as a standing habit rather than a one-off — content hashes
+prove an artifact is self-consistent, not that it describes reality.
 
 ## Remaining limitations and follow-ups
 
-- **`graph.v2.json` and `challenge.v2.json` still exist** and are still
-  registered. Every consumer has cut over; the file deletions and their
-  contract/CLI removals are the next PR.
 - **No vocals/keys route filter.** Rhythm Section and Guitar Paths survive
   as narrower filters within the performer baseline (their token sets are
   already subsets of the performer allowlist). Adding a vocals or keys
@@ -296,3 +348,22 @@ visibly unfulfilled on the production site.
   fully inclusive. Mastering, mixing, production, writing, and design
   credits remain published evidence in full. Only their ability to form a
   traversable public edge is gone.
+- **Provenance strings are not content-hashed.** Both defects live
+  verification caught were of this shape: an artifact internally valid and
+  wrong about the world. A cheap guard worth considering — assert in
+  `validate-public-artifacts` that every artifact's `source` names only
+  files that actually exist in `apps/web/public/data/`. That would have
+  caught the stale `challenge.v2.json` claim mechanically, at the point the
+  file was deleted.
+
+## Status
+
+**Complete.** All eight PRs (#203–#209) are merged, CI-green, and
+live-verified. The public graph means documented musical performance; ADR
+0068 is the governing contract; no non-performance-only credit can form a
+public edge; every route hop can explain its qualifying performance
+evidence; Connect cannot produce a zero-performer alternate (structurally,
+not by ranking); Explore traverses the performer graph rather than dimming;
+Behind the Glass is retired with its old URLs degrading safely; full
+evidence and provenance remain intact; and PR #202's mitigation machinery is
+gone rather than dormant.
