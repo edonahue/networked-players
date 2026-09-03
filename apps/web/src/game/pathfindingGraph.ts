@@ -15,19 +15,23 @@
 // catalog album, connected to that album's real credited contributors.
 // v3 (ADR 0068, graph.v3.json, data/contracts/pathfinding-graph-v3.md)
 // keeps that same shape and adds `graph_policy_version`: real edges are now
-// performer-gated. This validator accepts v3 payloads (fixture/test parity
-// with the Python contract), but no default fetch URL here points at
-// graph.v3.json yet -- that cutover is a separate, later change, once every
-// consumer identified in that PR's own audit is ready.
+// performer-gated. This validator accepts v1/v2/v3 payloads as historical
+// record even though every real consumer has since moved on (first to v3,
+// now v4 below) -- the validator itself never narrows, only the published
+// artifact set and the default fetch URL do.
 // v4 (graph-expansion Phase 1, ADR 0071, data/contracts/pathfinding-graph-v4.md)
 // keeps the same shape again and dictionary-encodes the per-slot role text:
 // a new `roles: string[]` array, with `edge_role_a`/`edge_role_b` becoming
-// indices into it on the wire (a real, measured size win -- see the ADR).
-// This validator accepts v4 payloads and DECODES them immediately, before
-// returning -- `PathfindingGraph.edge_role_a`/`edge_role_b` are always
-// plain strings, never indices, so every existing consumer needs zero
-// changes. As with v3, no default fetch URL points at graph.v4.json yet;
-// publishing it and cutting the fetch over is a separate, later change.
+// indices into it on the wire (real measured effect: −41.5% raw / −24.0%
+// gzip vs. v3 with byte-identical edges). This validator accepts v4
+// payloads and DECODES them immediately, before returning --
+// `PathfindingGraph.edge_role_a`/`edge_role_b` are always plain strings,
+// never indices, so every downstream consumer needed zero changes. v4 is
+// now the real default (`connect.ts`/`explorerStage.ts` both fetch
+// `graph.v4.json`); `graph.v3.json` stays published, dual-live, until the
+// research workbench and the fleet artifact-check default also cut over,
+// then retires as its own explicit step (the same precedent v1's
+// retirement set).
 // findAlbumRoute below is a thin wrapper that searches between two albums'
 // virtual nodes and strips the (never user-visible) anchor hops from the
 // result. findPath's BFS refuses to VISIT a virtual node except as the
@@ -754,7 +758,11 @@ export function findAlbumRoute(
   return { ok: true, ...stripped, usedEdgeKeys: edgeKeysForHops(result.hops) };
 }
 
-const DEFAULT_GRAPH_URL = "/data/pathfinding/graph.v3.json";
+// v4 (graph-expansion Phase 1, ADR 0071) -- both real callers (connect.ts,
+// explorerStage.ts) pass their own explicit URL and never rely on this
+// default in production; kept in step for hygiene and for any caller that
+// doesn't.
+const DEFAULT_GRAPH_URL = "/data/pathfinding/graph.v4.json";
 
 // Off-main-thread parse/canonicalize/hash (ADR 0059 Phase 5 PR 5c),
 // bounded to exactly that -- see graphWorker.ts's own header for the

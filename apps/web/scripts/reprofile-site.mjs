@@ -66,6 +66,11 @@ function measurePayloads() {
     "data/catalog/albums.v1.json",
     "data/challenge.v3.json",
     "data/pathfinding/graph.v3.json",
+    // v4 (graph-expansion Phase 1, ADR 0071): the real file Connect/Explore
+    // now fetch. v3 stays measured too, dual-live and zero-traffic, so the
+    // historical size-comparison baseline this script's own header comment
+    // describes isn't lost when v3 eventually retires.
+    "data/pathfinding/graph.v4.json",
     "data/contributors/index.v1.json",
     "data/evidence/release-registry.v1.json",
   ].map(payloadSize);

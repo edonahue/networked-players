@@ -13,7 +13,7 @@ test("the pathfinding graph is requested as soon as the FIRST album is picked, b
   page,
 }) => {
   let graphFetches = 0;
-  await page.route("**/data/pathfinding/graph.v3.json", (route) => {
+  await page.route("**/data/pathfinding/graph.v4.json", (route) => {
     graphFetches++;
     return route.continue();
   });
@@ -87,7 +87,7 @@ test("status is staged honestly: loading the graph, then ranking, for an unfilte
   const graphGate = new Promise<void>((resolve) => {
     releaseGraph = resolve;
   });
-  await page.route("**/data/pathfinding/graph.v3.json", async (route) => {
+  await page.route("**/data/pathfinding/graph.v4.json", async (route) => {
     await graphGate;
     await route.continue();
   });
@@ -143,7 +143,7 @@ test("status is staged honestly: loading the graph, then searching, for a role-f
   const graphGate = new Promise<void>((resolve) => {
     releaseGraph = resolve;
   });
-  await page.route("**/data/pathfinding/graph.v3.json", async (route) => {
+  await page.route("**/data/pathfinding/graph.v4.json", async (route) => {
     await graphGate;
     await route.continue();
   });

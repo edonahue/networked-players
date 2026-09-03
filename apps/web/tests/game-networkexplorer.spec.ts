@@ -2,7 +2,11 @@
 // pathfinding graph. master-107325 (Elvis Presley) is a real, high-degree
 // entry in the committed artifact (verified against
 // apps/web/public/data/pathfinding/graph.v3.json, ADR 0058) -- picked from
-// the artifact itself so this exercises the truncation path for real.
+// the artifact itself so this exercises the truncation path for real. Node
+// ids/offsets/neighbors are byte-identical between v3 and v4 (ADR 0071
+// only changed role-text encoding), so this file's own raw graph fetch
+// below reads graph.v4.json -- the real file Explore now fetches -- while
+// staying correct against the same real edges.
 
 import { expect, test } from "@playwright/test";
 import { pathfindingGraphVersion } from "../src/game/pathfindingGraph";
@@ -23,7 +27,7 @@ async function findBoundedRealInterestingNextStep(
 ): Promise<{ contributor: ContributorLite; neighborId: number }> {
   const [contributorRes, graphRes] = await Promise.all([
     request.get("/data/contributors/index.v1.json"),
-    request.get("/data/pathfinding/graph.v3.json"),
+    request.get("/data/pathfinding/graph.v4.json"),
   ]);
   const { contributors } = (await contributorRes.json()) as {
     contributors: ContributorLite[];
@@ -438,7 +442,7 @@ test("recentering builds a session trail, and a trail step re-centers back", asy
 test("an unknown artist id shows a graceful message instead of a blank graph", async ({
   page,
 }) => {
-  await page.route("**/data/pathfinding/graph.v3.json", async (route) => {
+  await page.route("**/data/pathfinding/graph.v4.json", async (route) => {
     const response = await route.fetch();
     const json = await response.json();
     json.node_ids = [999999999];
@@ -479,7 +483,7 @@ test("an unknown artist id shows a graceful message instead of a blank graph", a
 test("an unreachable pathfinding graph shows a terminal error, not a blank graph", async ({
   page,
 }) => {
-  await page.route("**/data/pathfinding/graph.v3.json", (route) =>
+  await page.route("**/data/pathfinding/graph.v4.json", (route) =>
     route.abort(),
   );
   await page.goto("/explore/master-107325/");

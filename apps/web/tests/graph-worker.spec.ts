@@ -111,7 +111,7 @@ test("a crashed worker is retired so a later retry doesn't hang waiting on a dea
     }),
   );
   let graphAttempts = 0;
-  await page.route("**/data/pathfinding/graph.v3.json", (route) => {
+  await page.route("**/data/pathfinding/graph.v4.json", (route) => {
     graphAttempts++;
     if (graphAttempts === 1) return route.abort();
     return route.continue();
@@ -137,7 +137,7 @@ test("a crashed worker is retired so a later retry doesn't hang waiting on a dea
 test("a fetch failure still degrades gracefully when going through the Worker", async ({
   page,
 }) => {
-  await page.route("**/data/pathfinding/graph.v3.json", (route) =>
+  await page.route("**/data/pathfinding/graph.v4.json", (route) =>
     route.abort(),
   );
   await page.goto("/play/connect/");
