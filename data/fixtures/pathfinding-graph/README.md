@@ -1,13 +1,14 @@
 # Pathfinding graph fixtures
 
 Shared, cross-language test fixtures for the pathfinding graph contract
-(`data/contracts/pathfinding-graph-v1.md` / `-v2.md` / `-v3.md`).
+(`data/contracts/pathfinding-graph-v1.md` / `-v2.md` / `-v3.md` / `-v4.md`).
 Loaded by both:
 
 - `packages/contracts/tests/test_pathfinding_graph_contracts.py`
   (`pathfinding_graph_failures`)
 - `apps/web/tests/pathfinding-bfs.spec.ts` / `pathfinding-bfs-v2.spec.ts` /
-  `pathfinding-bfs-v3.spec.ts` (`validatePathfindingGraph`)
+  `pathfinding-bfs-v3.spec.ts` / `pathfinding-bfs-v4.spec.ts`
+  (`validatePathfindingGraph`)
 
 so a new malformed case added here is automatically exercised against both
 validators, closing the parity-drift risk ADR 0051's revisit trigger names
@@ -47,6 +48,7 @@ and in `pathfinding_graph.py`/`pathfindingGraph.ts` directly).
 | `well-formed-v1.json` | baseline | accept | accept | -- |
 | `well-formed-v2.json` | baseline | accept | accept | -- |
 | `well-formed-v3.json` | baseline | accept | accept | -- |
+| `well-formed-v4.json` | baseline (role dictionary: `edge_role_a`/`edge_role_b` are `roles` indices) | accept | accept | -- |
 | `malformed-graph-policy-version-non-positive.json` | `graph_policy_version` must be a positive integer | reject | reject | no |
 | `malformed-non-monotonic-offsets.json` | offsets must be non-decreasing | reject | reject | no |
 | `malformed-unsorted-node-ids.json` | node_ids must be sorted | reject | reject | no |
@@ -82,6 +84,19 @@ need its own fixture file): `graph_policy_version` missing entirely
 graph missing graph_policy_version") and non-numeric
 (`test_v3_non_integer_graph_policy_version_is_rejected`, TS: "rejects a
 non-numeric graph_policy_version").
+
+v4's own new checks, same reasoning (the generic key-set check already
+covers a missing/extra top-level key; these specifically exercise the new
+index-vs-string type distinction, which needs a mutated copy of the
+baseline fixture per case rather than its own standalone file): `roles`
+missing entirely (`test_v4_missing_roles_key_is_rejected`, TS: "rejects a
+v4 graph missing the roles key"), `edge_role_a`/`edge_role_b` carrying text
+instead of indices -- i.e. a v3 payload mis-stamped `schema_version: 4`
+(`test_v4_edge_role_a_as_strings_is_rejected`, TS: "rejects a v4 graph
+whose edge_role_a is text, not an index"), and an out-of-range or negative
+role index (`test_v4_out_of_range_role_index_is_rejected`/
+`test_v4_negative_role_index_is_rejected`, TS: "rejects an out-of-range
+role index"/"rejects a negative role index").
 
 TypeScript-only, since JSON has no literal for either value:
 - `Infinity`/`NaN` totality tests in `pathfinding-bfs-v2.spec.ts`, proving

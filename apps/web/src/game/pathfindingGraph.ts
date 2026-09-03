@@ -19,6 +19,15 @@
 // with the Python contract), but no default fetch URL here points at
 // graph.v3.json yet -- that cutover is a separate, later change, once every
 // consumer identified in that PR's own audit is ready.
+// v4 (graph-expansion Phase 1, ADR 0071, data/contracts/pathfinding-graph-v4.md)
+// keeps the same shape again and dictionary-encodes the per-slot role text:
+// a new `roles: string[]` array, with `edge_role_a`/`edge_role_b` becoming
+// indices into it on the wire (a real, measured size win -- see the ADR).
+// This validator accepts v4 payloads and DECODES them immediately, before
+// returning -- `PathfindingGraph.edge_role_a`/`edge_role_b` are always
+// plain strings, never indices, so every existing consumer needs zero
+// changes. As with v3, no default fetch URL points at graph.v4.json yet;
+// publishing it and cutting the fetch over is a separate, later change.
 // findAlbumRoute below is a thin wrapper that searches between two albums'
 // virtual nodes and strips the (never user-visible) anchor hops from the
 // result. findPath's BFS refuses to VISIT a virtual node except as the
@@ -68,12 +77,15 @@ export interface PathfindingGraph {
   offsets: number[];
   neighbors: number[];
   evidence_release_ids: number[];
+  /** Always resolved text, even from a v4 (dictionary-encoded) fetch --
+   * `validatePathfindingGraph` decodes `roles[index]` before returning, so
+   * this shape never varies by schema_version. */
   edge_role_a: string[];
   edge_role_b: string[];
   pathfinding_graph_version: string;
-  /** Present only when schema_version === 2 or 3. */
+  /** Present only when schema_version === 2, 3, or 4. */
   album_virtual_nodes?: AlbumVirtualNode[];
-  /** Present only when schema_version === 3 (ADR 0068). */
+  /** Present only when schema_version === 3 or 4 (ADR 0068). */
   graph_policy_version?: number;
 }
 
@@ -161,6 +173,15 @@ const BASE_TOP_LEVEL_KEYS = [
 const V2_ONLY_KEYS = ["album_virtual_nodes"] as const;
 /** v3 (ADR 0068): keeps every v2 key and adds `graph_policy_version`. */
 const V3_ONLY_KEYS = ["graph_policy_version"] as const;
+/** v4 (graph-expansion Phase 1, ADR 0071): keeps every v3 key and adds
+ * `roles`, a deduplicated role-text dictionary; `edge_role_a`/`edge_role_b`
+ * become indices into it on the wire. This module decodes them back into
+ * plain strings before returning (see the end of `validatePathfindingGraph`),
+ * so `PathfindingGraph.edge_role_a`/`edge_role_b` stay `string[]` and every
+ * existing consumer (`connect.ts`, `explorerStage.ts`, `recommendedRoute.ts`)
+ * needs zero changes -- the dictionary is a wire-format optimization only,
+ * never a change to the in-memory shape this module hands out. */
+const V4_ONLY_KEYS = ["roles"] as const;
 
 /** Kept byte-identical to Python's `_ALBUM_VIRTUAL_NODE_KEYS`
  * (`pathfinding_graph.py:68`). */
@@ -174,6 +195,7 @@ const VERSION_PATTERN_BY_SCHEMA: Record<number, RegExp> = {
   1: /^pathfinding-graph-v1-[0-9A-Za-z]+-[0-9a-f]{12}$/,
   2: /^pathfinding-graph-v2-[0-9A-Za-z]+-[0-9a-f]{12}$/,
   3: /^pathfinding-graph-v3-[0-9A-Za-z]+-[0-9a-f]{12}$/,
+  4: /^pathfinding-graph-v4-[0-9A-Za-z]+-[0-9a-f]{12}$/,
 };
 
 /** Recomputation mirror of the generation-time function in
@@ -195,11 +217,14 @@ export async function pathfindingGraphVersion(
     edge_role_a: value.edge_role_a,
     edge_role_b: value.edge_role_b,
   };
-  if (schemaVersion === 2 || schemaVersion === 3) {
+  if (schemaVersion === 2 || schemaVersion === 3 || schemaVersion === 4) {
     identity.album_virtual_nodes = value.album_virtual_nodes;
   }
-  if (schemaVersion === 3) {
+  if (schemaVersion === 3 || schemaVersion === 4) {
     identity.graph_policy_version = value.graph_policy_version;
+  }
+  if (schemaVersion === 4) {
+    identity.roles = value.roles;
   }
   const digest = await contentHash(identity, 12);
   return `pathfinding-graph-v${schemaVersion}-${snapshotDate}-${digest}`;
@@ -242,17 +267,25 @@ export async function validatePathfindingGraph(
   if (
     value.schema_version !== 1 &&
     value.schema_version !== 2 &&
-    value.schema_version !== 3
+    value.schema_version !== 3 &&
+    value.schema_version !== 4
   ) {
     return null;
   }
 
   const expectedKeys = new Set<string>(BASE_TOP_LEVEL_KEYS);
-  if (value.schema_version === 2 || value.schema_version === 3) {
+  if (
+    value.schema_version === 2 ||
+    value.schema_version === 3 ||
+    value.schema_version === 4
+  ) {
     for (const key of V2_ONLY_KEYS) expectedKeys.add(key);
   }
-  if (value.schema_version === 3) {
+  if (value.schema_version === 3 || value.schema_version === 4) {
     for (const key of V3_ONLY_KEYS) expectedKeys.add(key);
+  }
+  if (value.schema_version === 4) {
+    for (const key of V4_ONLY_KEYS) expectedKeys.add(key);
   }
   const actualKeys = Object.keys(value);
   if (
@@ -301,21 +334,46 @@ export async function validatePathfindingGraph(
   ) {
     return null;
   }
-  if (
-    !isStringArray(value.edge_role_a) ||
-    value.edge_role_a.length !== slotCount
-  )
-    return null;
-  if (
-    !isStringArray(value.edge_role_b) ||
-    value.edge_role_b.length !== slotCount
-  )
-    return null;
+  // v4: edge_role_a/edge_role_b are indices into `roles` (number), not the
+  // role text (string) -- decoded back into plain strings just before this
+  // function returns, so every check below this point (and every consumer)
+  // keeps working against the same v1-3 string shape.
+  let roles: string[] | null = null;
+  if (value.schema_version === 4) {
+    if (!isStringArray(value.roles)) return null;
+    roles = value.roles;
+    const roleCount = roles.length;
+    if (
+      !isIntegerArray(value.edge_role_a) ||
+      value.edge_role_a.length !== slotCount ||
+      value.edge_role_a.some((i) => i < 0 || i >= roleCount)
+    ) {
+      return null;
+    }
+    if (
+      !isIntegerArray(value.edge_role_b) ||
+      value.edge_role_b.length !== slotCount ||
+      value.edge_role_b.some((i) => i < 0 || i >= roleCount)
+    ) {
+      return null;
+    }
+  } else {
+    if (
+      !isStringArray(value.edge_role_a) ||
+      value.edge_role_a.length !== slotCount
+    )
+      return null;
+    if (
+      !isStringArray(value.edge_role_b) ||
+      value.edge_role_b.length !== slotCount
+    )
+      return null;
+  }
   for (const neighbor of value.neighbors) {
     if (neighbor < 0 || neighbor >= nodeCount) return null;
   }
 
-  if (value.schema_version === 3) {
+  if (value.schema_version === 3 || value.schema_version === 4) {
     if (
       typeof value.graph_policy_version !== "number" ||
       !Number.isInteger(value.graph_policy_version) ||
@@ -325,7 +383,11 @@ export async function validatePathfindingGraph(
     }
   }
 
-  if (value.schema_version === 2 || value.schema_version === 3) {
+  if (
+    value.schema_version === 2 ||
+    value.schema_version === 3 ||
+    value.schema_version === 4
+  ) {
     if (!Array.isArray(value.album_virtual_nodes)) return null;
     const nodeIdSet = new Set(value.node_ids);
     const seenAlbumIds = new Set<string>();
@@ -360,6 +422,15 @@ export async function validatePathfindingGraph(
         return null;
     }
 
+    // v4: edge_role_a/edge_role_b are still `roles` indices at this point
+    // (decoding into plain strings happens after this whole block) --
+    // resolve through the dictionary before comparing to the sentinel
+    // string below, the same way the Python contract validator does.
+    const rawEdgeRoleA = value.edge_role_a as string[] | number[];
+    const rawEdgeRoleB = value.edge_role_b as string[] | number[];
+    const resolve = (raw: string | number): unknown =>
+      roles !== null ? roles[raw as number] : raw;
+
     for (let nodeIndex = 0; nodeIndex < nodeCount; nodeIndex++) {
       const artistAId = value.node_ids[nodeIndex];
       const start = value.offsets[nodeIndex];
@@ -367,8 +438,8 @@ export async function validatePathfindingGraph(
       for (let slot = start; slot < end; slot++) {
         const neighborIndex = value.neighbors[slot];
         const artistBId = value.node_ids[neighborIndex];
-        const roleA = value.edge_role_a[slot];
-        const roleB = value.edge_role_b[slot];
+        const roleA = resolve(rawEdgeRoleA[slot]);
+        const roleB = resolve(rawEdgeRoleB[slot]);
         if ((roleA === ALBUM_ANCHOR_SENTINEL) !== artistAId < 0) return null;
         if ((roleB === ALBUM_ANCHOR_SENTINEL) !== artistBId < 0) return null;
       }
@@ -383,6 +454,24 @@ export async function validatePathfindingGraph(
     value.snapshot_date,
   );
   if (value.pathfinding_graph_version !== expectedVersion) return null;
+
+  if (roles !== null) {
+    // Decode the dictionary NOW, once, so every consumer downstream of
+    // this function keeps working against the same v1-3 string shape it
+    // always has -- the dictionary is purely a wire-format optimization
+    // (ADR 0071), never a change to what a caller of
+    // `loadPathfindingGraph`/`loadPreparedGraph` receives.
+    const edgeRoleA = value.edge_role_a as number[];
+    const edgeRoleB = value.edge_role_b as number[];
+    const resolvedRoles = roles;
+    const { roles: _roles, ...rest } = value;
+    const decoded = {
+      ...rest,
+      edge_role_a: edgeRoleA.map((i) => resolvedRoles[i]),
+      edge_role_b: edgeRoleB.map((i) => resolvedRoles[i]),
+    };
+    return decoded as unknown as PathfindingGraph;
+  }
 
   return value as unknown as PathfindingGraph;
 }
