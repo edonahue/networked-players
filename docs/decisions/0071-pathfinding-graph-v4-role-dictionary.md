@@ -110,3 +110,34 @@ v4 build of the same inputs; an unsupported schema_version raises). CLI wiring t
 - Retire `graph.v3.json` only after every real consumer (Connect, Explore, the private
   research workbench, the fleet artifact-check default) has cut over to v4 — the same
   explicit, separate retirement step ADR 0058 set as precedent for v1 → v2.
+
+## Addendum (2026-09-03): published dual-live; TS decode strategy chosen
+
+Two follow-on slices resolved the open items above:
+
+1. **Consumption strategy decided:** `apps/web/src/game/pathfindingGraph.ts`'s
+   `validatePathfindingGraph` now accepts v4 payloads and decodes the role dictionary
+   into plain strings immediately, before returning — `PathfindingGraph.edge_role_a`/
+   `edge_role_b` stay `string[]` regardless of schema version, so every existing
+   consumer needs zero changes. Chosen over threading indices live through the worker
+   specifically because it makes graph.v4 acceptance a validator-only change with no
+   consumer risk, mirroring how this file already staged v3 acceptance well before any
+   default fetch URL pointed at `graph.v3.json`.
+2. **`graph.v4.json` published for real, dual-live.** Registered as its own
+   `pathfinding_graph_v4` group in `PUBLIC_ARTIFACT_GROUPS` (validated by `make check`
+   independently of `graph.v3.json`, the same mechanism the v2/v3 transition used) —
+   real committed file, `pathfinding-graph-v4-20260601-847c1c7dfe02`, 4,848,644 raw
+   bytes, matching the earlier measurement exactly (deterministic given the same real
+   inputs). No default fetch URL in `apps/web` points at it yet, so it carries zero
+   live traffic — the consumer cutover (Connect, Explore, the research workbench, the
+   fleet artifact-check default, in that order) remains a separate, later slice.
+   Deliberately no dedicated Pi-fleet workload registered for `pathfinding_graph_v4`
+   yet (`test_artifact_registration_completeness.py`'s
+   `_ARTIFACT_GROUPS_WITHOUT_A_PI_CHECK`) — no real consumer depends on it, so a
+   distributed re-check has no independent operational need before the cutover; the
+   existing `pathfinding-graph` Pi validator can already check it ad hoc via
+   `submit_artifact_check.py`'s `--artifact` override if ever wanted sooner.
+
+The recenter-measurement revisit trigger above is **still open** — it needs the actual
+consumer cutover, not just decode-capability + dual-live publication, to produce a
+measurement worth re-running ADR 0070's benchmark against.

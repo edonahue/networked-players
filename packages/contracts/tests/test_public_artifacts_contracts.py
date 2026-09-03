@@ -502,6 +502,31 @@ def _pathfinding_graph() -> dict[str, Any]:
     return payload
 
 
+def _pathfinding_graph_v4() -> dict[str, Any]:
+    """Same real content as `_pathfinding_graph()` (schema 3), dictionary-
+    encoded (ADR 0071, graph-expansion Phase 1): a new `roles` array,
+    `edge_role_a`/`edge_role_b` become indices into it."""
+    v3 = _pathfinding_graph()
+    roles: list[str] = []
+    index: dict[str, int] = {}
+
+    def role_id(text: str) -> int:
+        if text not in index:
+            index[text] = len(roles)
+            roles.append(text)
+        return index[text]
+
+    payload = {
+        **v3,
+        "schema_version": 4,
+        "roles": roles,
+        "edge_role_a": [role_id(t) for t in v3["edge_role_a"]],
+        "edge_role_b": [role_id(t) for t in v3["edge_role_b"]],
+    }
+    payload["pathfinding_graph_version"] = pathfinding_graph_version(payload, _SNAPSHOT)
+    return payload
+
+
 # --- album-credit-membership --------------------------------------------------
 
 
@@ -596,6 +621,7 @@ def _clean_artifacts() -> dict[str, Any]:
         "contributor_index": _contributor_index(),
         "album_hop_distances": _album_hop_distances(),
         "pathfinding_graph": _pathfinding_graph(),
+        "pathfinding_graph_v4": _pathfinding_graph_v4(),
         "album_credit_membership": _album_credit_membership(),
         "evidence_release_registry": _evidence_release_registry(),
     }
@@ -613,6 +639,7 @@ def test_clean_publication_set_has_no_failures() -> None:
         "contributor_index": [],
         "album_hop_distances": [],
         "pathfinding_graph": [],
+        "pathfinding_graph_v4": [],
         "album_credit_membership": [],
         "evidence_release_registry": [],
     }
@@ -630,6 +657,7 @@ def test_every_group_key_always_present() -> None:
         "contributor_index",
         "album_hop_distances",
         "pathfinding_graph",
+        "pathfinding_graph_v4",
         "album_credit_membership",
         "evidence_release_registry",
     }
