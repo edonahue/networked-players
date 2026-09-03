@@ -1133,6 +1133,51 @@ a.contributor-card:focus-visible {
   color: var(--ink-strong);
 }
 
+/* Mobile (graph-expansion Phase 1, plan §6: "a @media (max-width: 640px)
+   block (responsive SVG height, NODE_RADIUS/hit targets >= 24px, drawer
+   as bottom sheet)"). Node/edge hit-target SIZE itself is a runtime
+   concern, not a pure-CSS one -- the SVG viewBox stays a fixed 320x320
+   regardless of viewport, so a circle's ON-SCREEN size depends on how
+   large the rendered SVG element actually is; explorerStage.ts checks
+   this same breakpoint via matchMedia and renders larger NODE_RADIUS/
+   CENTER_NODE_RADIUS/EDGE_HIT_AREA_WIDTH values on a narrow viewport, the
+   same "real, deliberate, bounded improvement, not a guaranteed exact
+   target at every scale" honesty EDGE_HIT_AREA_WIDTH's own comment above
+   already sets. */
+@media (max-width: 640px) {
+  .explorer-svg {
+    /* Caps how much of a short phone viewport the graph alone can claim,
+       so the info panel/evidence below it doesn't get pushed off-screen
+       on first paint -- aspect-ratio:1 already keeps height tied to
+       width; this bounds the width (and so the height) further. */
+    max-height: 60vh;
+  }
+  /* Bottom sheet: fixed to the viewport's bottom edge instead of sitting
+     inline in normal document flow, so opening it never requires
+     scrolling to reach on a phone-sized screen -- the graph and evidence
+     drawer otherwise compete for the same limited vertical space. Every
+     existing behavior (hidden attribute, Escape/close-button dismissal,
+     aria-busy loading state, focus management) is untouched; only
+     position/sizing change here. */
+  .explorer-evidence-drawer {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 20;
+    max-width: none;
+    max-height: 70vh;
+    overflow-y: auto;
+    margin-inline: 0;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    border-bottom: none;
+    /* iOS home-indicator safe area -- falls back to 16px (this rule's own
+       existing bottom padding) when the environment variable is
+       unsupported, never a smaller, unsafe value. */
+    padding-bottom: max(16px, env(safe-area-inset-bottom));
+  }
+}
+
 :root[data-motion="off"] .explorer-node circle,
 :root[data-motion="off"] .explorer-edge {
   transition: none;
