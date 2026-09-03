@@ -226,7 +226,7 @@ def build_pathfinding_graph(
     *,
     snapshot_date: str,
     generated_at: str,
-    schema_version: int = 3,
+    schema_version: int = 4,
 ) -> dict[str, Any]:
     """Deterministic given the same real one-hop dataset, catalog, and
     album-credit-membership artifact: a 1-hop ego network around
@@ -236,17 +236,17 @@ def build_pathfinding_graph(
     frontend never needs a second fetch to render evidence for a found
     path).
 
-    `schema_version=4` (graph-expansion Phase 1) additionally dictionary-
-    encodes the per-slot role text: a new `roles` array (every distinct
-    role string, first-seen order) plus `edge_role_a`/`edge_role_b` becoming
-    indices into it rather than the text itself -- a real, measured size
-    win (role text is ~68% of the v3 payload's raw bytes across ~11.8K
-    distinct strings over ~76.6K slots) with no semantic change. Defaults
-    to 3 (today's published shape) so every existing caller is unaffected;
-    only a caller that explicitly asks for v4 gets it -- the same opt-in
-    pattern the catalog schema v2 capability (ADR 0069) already uses.
-    Callers of the resulting `edge_role_a`/`edge_role_b` MUST check
-    `payload["schema_version"]` before treating either as text vs. index."""
+    `schema_version=4` (graph-expansion Phase 1, ADR 0071) additionally
+    dictionary-encodes the per-slot role text: a new `roles` array (every
+    distinct role string, first-seen order) plus `edge_role_a`/`edge_role_b`
+    becoming indices into it rather than the text itself -- a real, measured
+    size win (raw -41.5%, gzip -24.0%, byte-identical edges) with no
+    semantic change. **v4 is the default and the only published shape as of
+    graph.v3.json's retirement** -- `schema_version=3` remains available
+    (never removed, the same "the validator never narrows" precedent
+    applied to the builder) for reproducing the pre-dictionary-encoding
+    shape on demand, e.g. for a size comparison like the one that measured
+    the numbers above, but no real build should pass it."""
     if schema_version not in (3, 4):
         raise ValueError(f"unsupported pathfinding graph schema_version: {schema_version}")
     seed_artist_ids = sorted({int(a["artist_id"]) for a in catalog["albums"]})

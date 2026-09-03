@@ -11,7 +11,7 @@ module never invents one itself.
 
 `published_graph_community_detection`/`published_graph_articulation_points`
 (graph-expansion Phase 0 slice 0-C) are a second, distinct data source in
-this same file: they measure the real PUBLISHED `pathfinding/graph.v3.json`
+this same file: they measure the real PUBLISHED `pathfinding/graph.v4.json`
 artifact directly (via `route_quality.load_published_graph`'s CSR), not a
 DuckDB-queried topic corpus. Dependency-free of the private one-hop corpus
 -- any checkout can reproduce these from the committed artifact alone, the
@@ -166,7 +166,7 @@ def _load_published_graph_as_igraph(path: Path) -> tuple[ig.Graph, PublishedGrap
 
 
 def published_graph_community_detection(path: Path) -> dict[str, Any]:
-    """Leiden over the real PUBLISHED `pathfinding/graph.v3.json` artifact
+    """Leiden over the real PUBLISHED `pathfinding/graph.v4.json` artifact
     (graph-expansion Phase 0 slice 0-C, plan section 8's "community
     detection earns its place with one cheap measurement"). Reports
     modularity, timing, and how many album-anchor nodes share a community
@@ -217,7 +217,7 @@ def published_graph_community_detection(path: Path) -> dict[str, Any]:
 
 
 def published_graph_articulation_points(path: Path) -> dict[str, Any]:
-    """Cut vertices in the real PUBLISHED `pathfinding/graph.v3.json`
+    """Cut vertices in the real PUBLISHED `pathfinding/graph.v4.json`
     artifact, filtered to ones separating >= 2 album anchors into different
     resulting components (plan section 8) -- ADR 0063's own research
     measured 140 raw cut vertices on a comparable-scale graph, and found

@@ -457,12 +457,13 @@ def _album_hop_distances() -> dict[str, Any]:
 _PATHFINDING_ANCHOR_SENTINEL = "__np_album_anchor__"
 
 
-def _pathfinding_graph() -> dict[str, Any]:
+def _pathfinding_graph_v3() -> dict[str, Any]:
     """Two catalog albums (master-1/artist 100, master-2/artist 200), one
     real edge between them (release 1), and one virtual anchor per album
-    connected to its own credited artist. Schema 3, the single live
-    performer-gated graph (ADR 0068). node_ids sorted:
-    [-2 (master-2 anchor), -1 (master-1 anchor), 100, 200]."""
+    connected to its own credited artist. Schema 3, the retired
+    pre-dictionary-encoding shape (ADR 0068), kept as the base content for
+    `_pathfinding_graph()`'s real schema-4 shape (ADR 0071). node_ids
+    sorted: [-2 (master-2 anchor), -1 (master-1 anchor), 100, 200]."""
     catalog_version = _catalog()["catalog_version"]
     payload: dict[str, Any] = {
         "schema_version": 3,
@@ -502,11 +503,12 @@ def _pathfinding_graph() -> dict[str, Any]:
     return payload
 
 
-def _pathfinding_graph_v4() -> dict[str, Any]:
-    """Same real content as `_pathfinding_graph()` (schema 3), dictionary-
-    encoded (ADR 0071, graph-expansion Phase 1): a new `roles` array,
-    `edge_role_a`/`edge_role_b` become indices into it."""
-    v3 = _pathfinding_graph()
+def _pathfinding_graph() -> dict[str, Any]:
+    """Same real content as `_pathfinding_graph_v3()`, dictionary-encoded
+    (ADR 0071, graph-expansion Phase 1): a new `roles` array,
+    `edge_role_a`/`edge_role_b` become indices into it. Schema 4, the only
+    published pathfinding graph as of the retirement of v3."""
+    v3 = _pathfinding_graph_v3()
     roles: list[str] = []
     index: dict[str, int] = {}
 
@@ -621,7 +623,6 @@ def _clean_artifacts() -> dict[str, Any]:
         "contributor_index": _contributor_index(),
         "album_hop_distances": _album_hop_distances(),
         "pathfinding_graph": _pathfinding_graph(),
-        "pathfinding_graph_v4": _pathfinding_graph_v4(),
         "album_credit_membership": _album_credit_membership(),
         "evidence_release_registry": _evidence_release_registry(),
     }
@@ -639,7 +640,6 @@ def test_clean_publication_set_has_no_failures() -> None:
         "contributor_index": [],
         "album_hop_distances": [],
         "pathfinding_graph": [],
-        "pathfinding_graph_v4": [],
         "album_credit_membership": [],
         "evidence_release_registry": [],
     }
@@ -657,7 +657,6 @@ def test_every_group_key_always_present() -> None:
         "contributor_index",
         "album_hop_distances",
         "pathfinding_graph",
-        "pathfinding_graph_v4",
         "album_credit_membership",
         "evidence_release_registry",
     }

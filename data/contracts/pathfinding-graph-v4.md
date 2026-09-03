@@ -6,15 +6,16 @@ The public pathfinding graph's role-dictionary encoding
 validated by `validate-pathfinding-graph` /
 `networked_players_contracts.pathfinding_graph::pathfinding_graph_failures`.
 
-> **Published, dual-live -- no consumer has cut over yet.** `graph.v4.json`
-> is now a real, committed artifact, registered as its own
+> **The only published pathfinding graph.** `graph.v4.json` shipped
+> dual-live alongside `graph.v3.json`, registered as its own
 > `pathfinding_graph_v4` group in `PUBLIC_ARTIFACT_GROUPS` (validated by
-> `make check` independently of `graph.v3.json`, the same way v2/v3's own
-> dual-live window worked). `graph.v3.json` remains the only file any real
-> consumer (Connect, Explore, the private research workbench, the fleet
-> artifact-check default) actually fetches — see `data/contracts/
-> pathfinding-graph-v3.md`'s own retirement note for the exact precedent
-> this migration is following.
+> `make check` independently of v3, the same way v2/v3's own dual-live
+> window worked). Every real consumer (Connect, Explore, the private
+> research workbench, the fleet artifact-check default) cut over across
+> PRs #219-#221; `graph.v3.json` was then deleted as an explicit, separate
+> step and the two registered groups collapsed back into one,
+> `pathfinding_graph` — the same precedent `pathfinding-graph-v3.md`'s own
+> retirement note (now itself removed) described for the v1/v2 transition.
 
 ## What changed from v3
 
@@ -77,17 +78,20 @@ positivity) plus, when `schema_version == 4`:
 (e.g. after `eligibility.py`'s token set changes) never collide on a
 recomputed hash.
 
-## Status: dual-live, no consumer cutover yet
+## Status: the only published pathfinding graph
 
-`build_pathfinding_graph`'s `schema_version` parameter defaults to 3 — every
-existing caller that never asks for v4 is unaffected. `graph.v4.json` is now
-real and committed, and `apps/web`'s `pathfindingGraph.ts` already accepts
-and decodes v4 payloads (ADR 0071's TS-side slice) — but no default fetch
-URL in `apps/web` points at `graph.v4.json` yet, so it has zero live traffic.
-Migrating `apps/web`'s real consumers (`Connect`, `Explore`, the private
-research workbench, the fleet artifact-check default, in that order — the
-same order the v2 → v3 migration used) and the eventual `graph.v3.json`
-retirement are separate, later Phase 1 slices.
+`build_pathfinding_graph`'s `schema_version` parameter now defaults to 4 —
+`schema_version=3` remains available on request (never removed, the same
+"the validator never narrows" precedent applied to the builder) for
+reproducing the pre-dictionary-encoding shape on demand, but no real build
+should pass it. `apps/web`'s `pathfindingGraph.ts`, `connect.ts`, and
+`explorerStage.ts` all fetch `graph.v4.json` by default; the private
+research workbench's `load_published_graph` and
+`scripts/submit_artifact_check.py`'s fleet default point at it too.
+`graph.v3.json` and its contract doc (`pathfinding-graph-v3.md`) have been
+deleted; `pathfinding_graph_failures` still accepts v1-, v2-, and
+v3-shaped payloads, since the validator never narrowed — only the
+published artifact set did.
 
 ## Revisit trigger
 

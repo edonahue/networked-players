@@ -189,6 +189,7 @@ def test_edge_roles_carry_real_role_text_for_both_endpoints(onehop_dataset: Path
             _membership(),
             snapshot_date=_SNAPSHOT,
             generated_at="2026-08-03T00:00:00+00:00",
+            schema_version=3,
         )
 
     by_pair = _by_pair(payload)
@@ -227,6 +228,7 @@ def test_edge_role_joins_multiple_distinct_roles(two_role_dataset: Path) -> None
             _membership(),
             snapshot_date=_SNAPSHOT,
             generated_at="2026-08-07T00:00:00+00:00",
+            schema_version=3,
         )
 
     by_pair = _by_pair(payload)
@@ -253,6 +255,7 @@ def test_edge_role_join_produces_clean_comma_components(two_role_dataset: Path) 
             _membership(),
             snapshot_date=_SNAPSHOT,
             generated_at="2026-08-07T00:00:00+00:00",
+            schema_version=3,
         )
 
     node_ids = payload["node_ids"]
@@ -306,6 +309,7 @@ def test_edge_role_join_stays_bounded(many_role_dataset: Path) -> None:
             _membership(),
             snapshot_date=_SNAPSHOT,
             generated_at="2026-08-07T00:00:00+00:00",
+            schema_version=3,
         )
 
     node_ids = payload["node_ids"]
@@ -328,6 +332,7 @@ def test_top_level_shape_and_version(onehop_dataset: Path) -> None:
             _membership(),
             snapshot_date=_SNAPSHOT,
             generated_at="2026-08-03T00:00:00+00:00",
+            schema_version=3,
         )
     assert payload["schema_version"] == 3
     assert payload["catalog_version"] == _CATALOG_VERSION
@@ -335,9 +340,9 @@ def test_top_level_shape_and_version(onehop_dataset: Path) -> None:
     assert payload["pathfinding_graph_version"].startswith(f"pathfinding-graph-v3-{_SNAPSHOT}-")
 
 
-def test_default_schema_version_is_unchanged_at_3(onehop_dataset: Path) -> None:
-    """The v4 capability is opt-in (graph-expansion Phase 1): a caller that
-    never passes schema_version gets today's exact v3 shape."""
+def test_default_schema_version_is_4_after_v3_retirement(onehop_dataset: Path) -> None:
+    """graph-expansion Phase 1 (ADR 0071), post-retirement: a caller that
+    never passes schema_version gets the real published shape, v4."""
     with CreditGraph.open(onehop_dataset) as graph:
         payload = build_pathfinding_graph(
             graph,
@@ -346,6 +351,26 @@ def test_default_schema_version_is_unchanged_at_3(onehop_dataset: Path) -> None:
             snapshot_date=_SNAPSHOT,
             generated_at="2026-08-03T00:00:00+00:00",
         )
+    assert payload["schema_version"] == 4
+    assert isinstance(payload["roles"], list)
+    assert all(isinstance(i, int) and not isinstance(i, bool) for i in payload["edge_role_a"])
+    assert all(isinstance(i, int) and not isinstance(i, bool) for i in payload["edge_role_b"])
+
+
+def test_schema_version_3_still_available_on_request(onehop_dataset: Path) -> None:
+    """v3 is retired as a published artifact but the builder still supports
+    reproducing its shape explicitly -- never removed, only no longer the
+    default (mirrors "the validator never narrows" for the builder side)."""
+    with CreditGraph.open(onehop_dataset) as graph:
+        payload = build_pathfinding_graph(
+            graph,
+            _catalog(),
+            _membership(),
+            snapshot_date=_SNAPSHOT,
+            generated_at="2026-08-03T00:00:00+00:00",
+            schema_version=3,
+        )
+    assert payload["schema_version"] == 3
     assert "roles" not in payload
     assert all(isinstance(r, str) for r in payload["edge_role_a"])
     assert all(isinstance(r, str) for r in payload["edge_role_b"])
@@ -665,6 +690,7 @@ def test_virtual_edge_role_is_sentinel_on_virtual_side_and_membership_role_on_re
             membership,
             snapshot_date=_SNAPSHOT,
             generated_at="2026-08-07T00:00:00+00:00",
+            schema_version=3,
         )
     virtual_id = payload["album_virtual_nodes"][0]["virtual_artist_id"]
     by_pair = _by_pair(payload)

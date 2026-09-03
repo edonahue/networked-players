@@ -1,7 +1,7 @@
 """Canonical, dependency-free validation for the public pathfinding graph.
 
-The pathfinding graph (`apps/web/public/data/pathfinding/graph.v3.json`,
-`data/contracts/pathfinding-graph-v3.md`, ADR 0050/0051/0058/0068) is a
+The pathfinding graph (`apps/web/public/data/pathfinding/graph.v4.json`,
+`data/contracts/pathfinding-graph-v4.md`, ADR 0050/0051/0058/0068/0071) is a
 compact CSR adjacency scoped to a bounded 1-hop ego network around the
 canonical catalog's primary artists -- not the full one-hop corpus (ADR
 0050's measured scope decision). Every per-node/per-edge field is a PARALLEL
@@ -21,23 +21,25 @@ primary artist. v3 (ADR 0068) keeps that same shape and adds
 `track_artist`/`release_artist` billing stays always-eligible), a policy
 change with no shape change, so this field is what lets a validator or a
 stale cached client tell a policy-only regeneration apart from an old
-payload with the identical CSR shape. This module still accepts v1- and
-v2-shaped payloads (`data/contracts/pathfinding-graph-v1.md`/`-v2.md`, kept
-as historical record) for whatever legacy export might need re-validating.
-`graph.v3.json` is now the only published pathfinding graph, registered as
-`pathfinding_graph`: v2 stayed live and registered alongside it until every
-real consumer had cut over, then was retired as an explicit, separate step
-(ADR 0058's own real precedent for the v1 retirement). The validator itself
-never narrowed -- only the published artifact set did.
+payload with the identical CSR shape. This module still accepts v1-, v2-, and v3-shaped payloads
+(`data/contracts/pathfinding-graph-v1.md`/`-v2.md`, kept as historical
+record; v3's own contract doc was deleted on retirement, same as v2's was)
+for whatever legacy export might need re-validating. `graph.v4.json` is
+now the only published pathfinding graph, registered as `pathfinding_graph`:
+v3 stayed live and registered alongside v4 (as the separate
+`pathfinding_graph_v4` group) until every real consumer had cut over
+(Connect, Explore, the private research workbench, the fleet
+artifact-check default -- PRs #219-#221), then v3 was retired as an
+explicit, separate step and the two groups collapsed back into one (ADR
+0058's own real precedent for the v1 and v2 retirements). The validator
+itself never narrowed -- only the published artifact set did.
 
-v4 (graph-expansion Phase 1) keeps v3's shape and edges byte-for-byte
-identical and adds `roles`: a deduplicated array of every distinct role
-text, with `edge_role_a`/`edge_role_b` becoming indices into it instead of
-the text itself -- a real, measured size win with no semantic change
-(role text repeats far more than it varies). This module accepts v4
-payloads; `graph.v3.json` remains the only published artifact until v4 is
-actually built, published as `graph.v4.json`, and every real consumer has
-cut over, per the same dual-live-then-retire precedent as v2 -> v3.
+v4 (graph-expansion Phase 1, ADR 0071) keeps v3's shape and edges
+byte-for-byte identical and adds `roles`: a deduplicated array of every
+distinct role text, with `edge_role_a`/`edge_role_b` becoming indices into
+it instead of the text itself -- a real, measured size win with no
+semantic change (role text repeats far more than it varies; measured
+raw -41.5%, gzip -24.0% against the same real catalog and one-hop corpus).
 
 Pure Python (no lxml/pyarrow/duckdb), safe for the Pi fleet and the web build
 to independently verify an already-generated graph against the canonical
