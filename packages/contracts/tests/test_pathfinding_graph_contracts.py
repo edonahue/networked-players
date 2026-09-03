@@ -516,6 +516,11 @@ def test_shared_well_formed_v3_fixture_has_no_failures() -> None:
     assert pathfinding_graph_failures(graph, _FIXTURE_CATALOG) == []
 
 
+def test_shared_well_formed_v4_fixture_has_no_failures() -> None:
+    graph = _load_fixture("well-formed-v4")
+    assert pathfinding_graph_failures(graph, _FIXTURE_CATALOG) == []
+
+
 def test_shared_graph_policy_version_non_positive_fixture_is_rejected() -> None:
     graph = _load_fixture("malformed-graph-policy-version-non-positive")
     failures = pathfinding_graph_failures(graph, _FIXTURE_CATALOG)
