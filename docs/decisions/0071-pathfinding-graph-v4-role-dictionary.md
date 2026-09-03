@@ -1,6 +1,7 @@
 # ADR 0071: Pathfinding graph v4 — role-text dictionary encoding
 
-- **Status:** Accepted (encoding capability); publication and consumer migration deferred
+- **Status:** Accepted and fully rolled out -- every real consumer has cut over and
+  `graph.v3.json` has been retired
 - **Extends:** [ADR 0050](0050-browser-pathfinding-architecture-selection.md),
   [ADR 0051](0051-connect-two-records.md),
   [ADR 0058](0058-album-credit-membership-and-evidence-registry.md) (v2 virtual anchors),
@@ -141,3 +142,36 @@ Two follow-on slices resolved the open items above:
 The recenter-measurement revisit trigger above is **still open** — it needs the actual
 consumer cutover, not just decode-capability + dual-live publication, to produce a
 measurement worth re-running ADR 0070's benchmark against.
+
+## Addendum (2026-09-03): every consumer cut over; `graph.v3.json` retired
+
+The remaining two revisit-trigger items above are now resolved:
+
+1. **Consumer cutover, one at a time (PRs #219-#221):** `apps/web`'s `connect.ts` and
+   `explorerStage.ts` (Connect Two Records and Network Explorer), then
+   `packages/research/src/networked_players_research/route_quality.py`'s
+   `load_published_graph` (the private research workbench, given its own schema-version-
+   aware decode step it was missing before the flip), then
+   `scripts/submit_artifact_check.py`'s fleet artifact-check default -- each its own PR,
+   CI-green, live-verified before the next, matching the order this ADR's original
+   revisit trigger named.
+2. **`graph.v3.json` retired.** `build_pathfinding_graph`'s `schema_version` default
+   flipped from 3 to 4; `schema_version=3` remains available on request (never removed --
+   the validator-never-narrows precedent applied to the builder too) for reproducing the
+   pre-dictionary-encoding shape on demand. The real committed `graph.v3.json` and its
+   contract doc (`data/contracts/pathfinding-graph-v3.md`) were deleted; the separate
+   `pathfinding_graph_v4` registration group collapsed back into the single
+   `pathfinding_graph` group (`PUBLIC_ARTIFACT_GROUPS`, its contracts/CLI/test call
+   sites, `docs/OPERATOR_SETUP.md`'s table) -- the same collapse-to-one-group step ADR
+   0058 set as precedent for the v1 retirement, and this ADR's own dual-live publication
+   used for v2 -> v3. One stale provenance string was found and fixed while checking for
+   the same class of defect PR #209 (the v2/v3 retirement) caught: `evidence/
+   release-registry.v1.json`'s `source` field still named `pathfinding/graph.v3.json`;
+   fixed and the artifact regenerated (the field is excluded from
+   `evidence_release_registry_version`'s content hash, so this is a real fix with no
+   version change).
+
+The recenter-measurement revisit trigger (re-run ADR 0070's `measureExplorerRecenter`
+benchmark against the real cutover, before deciding whether Phase 1's tiles-fallback
+trigger fires) remains the one open item, now unblocked -- every consumer is live on
+v4, so a real measurement is possible.

@@ -895,7 +895,7 @@ def _parser() -> argparse.ArgumentParser:
         "--pathfinding-graph",
         type=Path,
         required=True,
-        help="apps/web/public/data/pathfinding/graph.v3.json -- supplies the published node_ids "
+        help="apps/web/public/data/pathfinding/graph.v4.json -- supplies the published node_ids "
         "this report treats as 'already in the graph'",
     )
     review_candidates.add_argument("--output", type=Path, required=True)
@@ -1228,7 +1228,7 @@ def _parser() -> argparse.ArgumentParser:
         "build-pathfinding-graph",
         help=(
             "OPERATOR/coordination-host only: build the public pathfinding graph "
-            "(apps/web/public/data/pathfinding/graph.v3.json) -- a compact CSR adjacency "
+            "(apps/web/public/data/pathfinding/graph.v4.json) -- a compact CSR adjacency "
             "scoped to a bounded 1-hop ego network around the canonical catalog's primary "
             "artists (ADR 0050's measured scope decision), plus one virtual album-anchor "
             "node per catalog album for real record-to-record search endpoints (ADR 0058). "
@@ -1257,12 +1257,14 @@ def _parser() -> argparse.ArgumentParser:
     build_pathfinding_graph.add_argument(
         "--schema-version",
         type=int,
-        default=3,
+        default=4,
         choices=(3, 4),
         help=(
-            "3 (default): today's published graph.v3.json shape. 4 (graph-expansion "
-            "Phase 1): dictionary-encodes edge_role_a/edge_role_b as indices into a new "
-            "roles array -- not yet a published artifact; apps/web does not consume it."
+            "4 (default): today's published graph.v4.json shape (graph-expansion "
+            "Phase 1, ADR 0071) -- dictionary-encodes edge_role_a/edge_role_b as "
+            "indices into a new roles array. 3: the retired pre-dictionary-encoding "
+            "shape, kept available for reproducing it on demand; no real build should "
+            "pass it."
         ),
     )
 
@@ -1338,7 +1340,9 @@ def _parser() -> argparse.ArgumentParser:
         "--pathfinding-graph",
         type=Path,
         required=True,
-        help="apps/web/public/data/pathfinding/graph.v3.json (v1/v2 retired, ADR 0058/0068)",
+        help=(
+            "apps/web/public/data/pathfinding/graph.v4.json (v1/v2/v3 retired, ADR 0058/0068/0071)"
+        ),
     )
     build_evidence_release_registry.add_argument(
         "--album-art",
@@ -1428,16 +1432,7 @@ def _parser() -> argparse.ArgumentParser:
     validate_public_artifacts.add_argument(
         "--pathfinding-graph",
         type=Path,
-        default=Path("apps/web/public/data/pathfinding/graph.v3.json"),
-    )
-    validate_public_artifacts.add_argument(
-        "--pathfinding-graph-v4",
-        type=Path,
         default=Path("apps/web/public/data/pathfinding/graph.v4.json"),
-        help=(
-            "graph-expansion Phase 1 (ADR 0071): dual-live alongside --pathfinding-graph "
-            "until every real consumer cuts over, then this becomes the only file"
-        ),
     )
     validate_public_artifacts.add_argument(
         "--album-credit-membership",
@@ -4080,7 +4075,6 @@ def main(argv: Sequence[str] | None = None) -> int:
             contributor_index=json.loads(args.contributor_index.read_text()),
             album_hop_distances=json.loads(args.album_hop_distances.read_text()),
             pathfinding_graph=json.loads(args.pathfinding_graph.read_text()),
-            pathfinding_graph_v4=json.loads(args.pathfinding_graph_v4.read_text()),
             album_credit_membership=json.loads(args.album_credit_membership.read_text()),
             evidence_release_registry=json.loads(args.evidence_release_registry.read_text()),
         )

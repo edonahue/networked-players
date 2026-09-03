@@ -63,11 +63,11 @@ scaling factor.
 **What it measures:**
 
 - **Payload sizes** (raw + gzip): `catalog/albums.v1.json`,
-  `challenge.v3.json`, `pathfinding/graph.v3.json`,
-  `pathfinding/graph.v4.json` (real, dual-live since ADR 0071; the file
-  Connect/Explore now fetch -- v3 is measured too, zero-traffic, so its
-  own historical trend isn't lost before it retires),
-  `contributors/index.v1.json`, `evidence/release-registry.v1.json`.
+  `challenge.v3.json`, `pathfinding/graph.v4.json` (ADR 0071's
+  role-dictionary encoding; the only published pathfinding graph as of
+  `graph.v3.json`'s retirement -- every real consumer cut over across
+  PRs #219-#221), `contributors/index.v1.json`,
+  `evidence/release-registry.v1.json`.
 - **Sitemap composition**: total URL count, broken down into album /
   explore / contributor / other, fetched from the live `/sitemap.xml` route
   rather than read off disk, so it reflects exactly what a crawler sees.

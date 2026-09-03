@@ -57,7 +57,6 @@ PUBLIC_ARTIFACT_GROUPS = (
     "contributor_index",
     "album_hop_distances",
     "pathfinding_graph",
-    "pathfinding_graph_v4",
     "album_credit_membership",
     "evidence_release_registry",
 )
@@ -77,7 +76,6 @@ def public_artifacts_failures(
     contributor_index: Any,
     album_hop_distances: Any,
     pathfinding_graph: Any,
-    pathfinding_graph_v4: Any,
     album_credit_membership: Any,
     evidence_release_registry: Any,
 ) -> dict[str, list[str]]:
@@ -93,21 +91,17 @@ def public_artifacts_failures(
     defect was caught by `make check` rather than by a consumer, cut over
     once, then deleted as an explicit separate step.
 
-    `pathfinding_graph` (`pathfinding/graph.v3.json`) and
-    `pathfinding_graph_v4` (`pathfinding/graph.v4.json`, ADR 0071's
-    role-dictionary encoding) are DUAL-LIVE as of graph-expansion Phase 1:
-    v3 remains the only artifact any real consumer fetches; v4 is published
-    and validated here from day one, the same reason challenge's v2/v3
-    transition validated its new file before any consumer cut over, so a
-    defect is caught by `make check` rather than discovered mid-migration.
-    Once every consumer (Connect, Explore, the private research workbench,
-    the fleet artifact-check default) has cut over to v4, `pathfinding_graph`
-    will be repointed at the v4 file and `pathfinding_graph_v4` retired as
-    its own explicit step -- the same collapse-to-one-group precedent v1's
-    retirement set. Both keys use the same schema-version-aware
-    `pathfinding_graph_failures`, which continues to accept every schema
-    version it has always validated; only the published artifact SET
-    changes over time, never the validator."""
+    `pathfinding_graph` (`pathfinding/graph.v4.json`, ADR 0071's
+    role-dictionary encoding) is the only published pathfinding graph as of
+    graph-expansion Phase 1's retirement step: every real consumer (Connect,
+    Explore, the private research workbench, the fleet artifact-check
+    default) cut over from `graph.v3.json` across PRs #219-#221, and
+    `graph.v3.json` itself has been deleted -- the same
+    dual-live-then-collapse-to-one-group sequence v1's and v2's retirements
+    set. `pathfinding_graph_failures` remains schema-version-aware and
+    continues to accept every schema version it has always validated (the
+    validator never narrows); only the published artifact changes over
+    time."""
     return {
         "catalog": public_album_catalog_failures(catalog),
         "album_art_registry": album_art_failures(album_art, catalog),
@@ -122,7 +116,6 @@ def public_artifacts_failures(
             album_hop_distances, catalog, contributor_index
         ),
         "pathfinding_graph": pathfinding_graph_failures(pathfinding_graph, catalog),
-        "pathfinding_graph_v4": pathfinding_graph_failures(pathfinding_graph_v4, catalog),
         "album_credit_membership": album_credit_membership_failures(
             album_credit_membership, catalog
         ),

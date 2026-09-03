@@ -134,6 +134,46 @@ def test_build_pathfinding_graph_cli_wiring(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
+    """No --schema-version flag: post-retirement, this gets the real
+    published shape, v4 (graph-expansion Phase 1, ADR 0071)."""
+    output_path = tmp_path / "graph.v4.json"
+    exit_code = main(
+        [
+            "build-pathfinding-graph",
+            "--onehop-root",
+            str(onehop_dataset),
+            "--catalog",
+            str(catalog_path),
+            "--album-credit-membership",
+            str(album_credit_membership_path),
+            "--output",
+            str(output_path),
+            "--generated-at",
+            "2026-08-03T00:00:00+00:00",
+        ]
+    )
+    assert exit_code == 0
+    summary = json.loads(capsys.readouterr().out)
+    assert summary["nodes"] == 3  # Alice (100), Bob (200), master-1's virtual anchor
+    assert summary["catalog_version"] == _CATALOG_VERSION
+    assert summary["album_virtual_nodes"] == 1
+
+    written = json.loads(output_path.read_text())
+    assert set(n for n in written["node_ids"] if n > 0) == {100, 200}
+    assert written["schema_version"] == 4
+    assert written["graph_policy_version"] == 1
+
+
+def test_build_pathfinding_graph_cli_wiring_v3(
+    onehop_dataset: Path,
+    catalog_path: Path,
+    album_credit_membership_path: Path,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """--schema-version 3 (the retired pre-dictionary-encoding shape)
+    remains available on request -- never removed, the same "the validator
+    never narrows" precedent applied to the builder."""
     output_path = tmp_path / "graph.v3.json"
     exit_code = main(
         [
@@ -148,6 +188,8 @@ def test_build_pathfinding_graph_cli_wiring(
             str(output_path),
             "--generated-at",
             "2026-08-03T00:00:00+00:00",
+            "--schema-version",
+            "3",
         ]
     )
     assert exit_code == 0
