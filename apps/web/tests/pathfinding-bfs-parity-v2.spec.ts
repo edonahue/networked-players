@@ -51,7 +51,7 @@ function albumAnchorGraph(): PathfindingGraph {
     generated_at: "2026-08-08T00:00:00+00:00",
     source: "test",
     license: "test",
-    node_ids: [-3, -2, -1, 100, 200, 300, 400],
+    node_ids: new Int32Array([-3, -2, -1, 100, 200, 300, 400]),
     names: [
       "Album C (album anchor)",
       "Album B (album anchor)",
@@ -61,9 +61,9 @@ function albumAnchorGraph(): PathfindingGraph {
       "Cara",
       "Dan",
     ],
-    offsets: [0, 0, 1, 2, 4, 6, 8, 10],
-    neighbors: [6, 3, 2, 4, 3, 5, 4, 6, 1, 5],
-    evidence_release_ids: [20, 10, 10, 1, 1, 2, 2, 3, 20, 3],
+    offsets: new Int32Array([0, 0, 1, 2, 4, 6, 8, 10]),
+    neighbors: new Int32Array([6, 3, 2, 4, 3, 5, 4, 6, 1, 5]),
+    evidence_release_ids: new Int32Array([20, 10, 10, 1, 1, 2, 2, 3, 20, 3]),
     // Python's bench module carries no role text; placeholders here since
     // pathfindingGraph.ts's shape requires them but this parity test
     // doesn't assert on them (except confirming the sentinel is absent

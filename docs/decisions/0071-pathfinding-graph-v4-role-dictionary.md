@@ -174,4 +174,51 @@ The remaining two revisit-trigger items above are now resolved:
 The recenter-measurement revisit trigger (re-run ADR 0070's `measureExplorerRecenter`
 benchmark against the real cutover, before deciding whether Phase 1's tiles-fallback
 trigger fires) remains the one open item, now unblocked -- every consumer is live on
-v4, so a real measurement is possible.
+v4, so a real measurement is possible. (Re-run 2026-09-03, ADR 0070's own addendum: real
+improvement, budget still marginally open -- see that ADR, not repeated here.)
+
+## Addendum (2026-09-03): `graphWorker.ts` typed-array transfer
+
+The one named-but-deferred item from this ADR's original "scope of this slice" section --
+`graphWorker.ts`'s typed-array transfer -- is now done, a separate optimization from the
+role dictionary above (that shrank the WIRE payload; this shrinks what the parsed graph
+costs to hold and hand across the worker boundary once parsed).
+
+`validatePathfindingGraph`'s final step now converts the four large parallel CSR arrays
+(`node_ids`, `offsets`, `neighbors`, `evidence_release_ids` -- previously `number[]`) into
+real `Int32Array`s, for every schema version, both the worker path and the main-thread
+fallback (one shared conversion, not duplicated). `PathfindingGraph`'s own type reflects
+this; every real consumer only ever indexes these arrays (`graph.offsets[i]`), which a
+typed array supports identically to a plain array, so no consumer code changed. The one
+real internal fix this required: `loadPreparedGraph`'s `nameById` map construction used
+`graph.node_ids.map(...)` to build `[id, name]` tuples -- `Int32Array.prototype.map`'s
+callback must return a `number` (it produces another `Int32Array`), so this became
+`Array.from(graph.node_ids, (id, i) => [id, graph.names[i]])`, which has no such
+constraint.
+
+`graphWorker.ts`'s successful responses now pass these four arrays' underlying
+`ArrayBuffer`s as `postMessage`'s Transferable list instead of letting the structured-
+clone algorithm copy them -- each buffer comes from its own separate `Int32Array.from`
+call (no aliasing), and the worker never reuses `graph` after responding, so detaching
+these buffers on transfer is safe.
+
+**What was and wasn't independently re-measured:** the existing `reprofile-site.mjs`
+heap sample (`jsHeapUsedMb`) is a coarse, whole-page-lifecycle observation (its own
+header comment already says so), not an instrument isolating this specific effect, and
+`workerParseMs` measures only in-worker parse/hash time, not the `postMessage` transfer
+itself -- neither metric moved in a way that confirms or refutes the win here, and
+building a precise instrument (e.g. CDP heap profiling, or timing the transfer step in
+isolation) was judged a bigger lift than this slice's real scope. The change rests on the
+well-established, general JS-engine fact a packed typed array of N integers uses
+substantially less heap than a boxed `number[]` of the same length, and that a
+`postMessage` Transferable is a zero-copy ownership transfer versus structured-clone's
+full copy -- not a bespoke measurement this ADR invented. If this is ever worth
+confirming precisely, it needs new instrumentation, not a re-run of the existing script.
+
+Every real consumer (`connect.ts`, `explorerStage.ts`, `networkExplorer.ts`,
+`recommendedRoute.ts`) needed zero changes -- confirmed by inspection (only plain indexed
+access on these fields anywhere in `apps/web/src`) and by the full existing test suite
+(106 targeted unit tests, 85 real-browser Connect/Explore/worker tests including the
+actual `postMessage`/transfer path, then the full smoke suite: 520 passed, only the known
+pre-existing contributor-page a11y-scan timeout flake). `make check`-equivalent for
+`apps/web` (`npm run check`, `npm run format:check`) both green.

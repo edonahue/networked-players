@@ -76,11 +76,21 @@ export interface PathfindingGraph {
   generated_at: string;
   source: string;
   license: string;
-  node_ids: number[];
+  /** Typed arrays (graph-expansion Phase 1: `graphWorker.ts` typed-array
+   * transfer) -- `validatePathfindingGraph` converts the raw JSON's plain
+   * `number[]` into these once, as its final step, the same
+   * decode-once-on-return pattern already used for v4's role dictionary.
+   * Real measured motivation: a boxed `number[]` of ~77K elements costs
+   * substantially more main-thread heap than a packed `Int32Array` of the
+   * same values, and `graphWorker.ts` can `postMessage` these as zero-copy
+   * Transferable `ArrayBuffer`s instead of a structured-clone copy. Every
+   * real consumer only ever indexes these (`graph.offsets[i]`), which
+   * typed arrays support identically to plain arrays. */
+  node_ids: Int32Array;
   names: string[];
-  offsets: number[];
-  neighbors: number[];
-  evidence_release_ids: number[];
+  offsets: Int32Array;
+  neighbors: Int32Array;
+  evidence_release_ids: Int32Array;
   /** Always resolved text, even from a v4 (dictionary-encoded) fetch --
    * `validatePathfindingGraph` decodes `roles[index]` before returning, so
    * this shape never varies by schema_version. */
@@ -459,6 +469,22 @@ export async function validatePathfindingGraph(
   );
   if (value.pathfinding_graph_version !== expectedVersion) return null;
 
+  // Typed-array conversion (graph-expansion Phase 1): the four large CSR
+  // arrays were validated above as plain `number[]` (JSON.parse never
+  // produces anything else) -- converted to `Int32Array` NOW, once, as the
+  // final step before returning, the same decode-once-on-return pattern
+  // the v4 role dictionary already uses just below. Every real consumer
+  // only ever indexes these, so this is a pure memory/transfer-cost
+  // optimization with no behavior change.
+  const csrArrays = {
+    node_ids: Int32Array.from(value.node_ids as number[]),
+    offsets: Int32Array.from(value.offsets as number[]),
+    neighbors: Int32Array.from(value.neighbors as number[]),
+    evidence_release_ids: Int32Array.from(
+      value.evidence_release_ids as number[],
+    ),
+  };
+
   if (roles !== null) {
     // Decode the dictionary NOW, once, so every consumer downstream of
     // this function keeps working against the same v1-3 string shape it
@@ -471,13 +497,14 @@ export async function validatePathfindingGraph(
     const { roles: _roles, ...rest } = value;
     const decoded = {
       ...rest,
+      ...csrArrays,
       edge_role_a: edgeRoleA.map((i) => resolvedRoles[i]),
       edge_role_b: edgeRoleB.map((i) => resolvedRoles[i]),
     };
     return decoded as unknown as PathfindingGraph;
   }
 
-  return value as unknown as PathfindingGraph;
+  return { ...value, ...csrArrays } as unknown as PathfindingGraph;
 }
 
 /** Built once per graph, reused across searches within a session. */
@@ -1029,8 +1056,13 @@ export function loadPreparedGraph(
         graph,
         artistIndex: buildArtistIndex(graph),
         albumIndex: buildAlbumIndex(graph),
+        // `Array.from(typedArray, mapFn)`, not `.map()`: `Int32Array.prototype
+        // .map` returns another `Int32Array` (its callback must return a
+        // number), so it can't produce the `[id, name]` tuples this Map
+        // constructor needs -- `Array.from`'s generic form has no such
+        // constraint and works identically on any array-like/iterable.
         nameById: new Map<number, string>(
-          graph.node_ids.map((id, i) => [id, graph.names[i]]),
+          Array.from(graph.node_ids, (id, i) => [id, graph.names[i]]),
         ),
       },
     };
