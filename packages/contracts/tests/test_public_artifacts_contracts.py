@@ -20,6 +20,7 @@ from networked_players_contracts.evidence_release_registry import (
     evidence_release_registry_version,
 )
 from networked_players_contracts.pathfinding_graph import pathfinding_graph_version
+from networked_players_contracts.prominence import prominence_version
 
 _SNAPSHOT = "20260601"
 _CATALOG_VERSION = "catalog-v1-20260601-abc123abc123"
@@ -529,6 +530,34 @@ def _pathfinding_graph() -> dict[str, Any]:
     return payload
 
 
+def _prominence(pathfinding_graph: dict[str, Any]) -> dict[str, Any]:
+    """A minimal, structurally-valid companion to `_pathfinding_graph()`
+    (graph-expansion Phase 1, plan section 8) -- node-aligned with its
+    `node_ids`, every value zero/null (this fixture only needs to be
+    CLEAN, not realistic)."""
+    node_ids = pathfinding_graph["node_ids"]
+    node_count = len(node_ids)
+    payload: dict[str, Any] = {
+        "schema_version": 1,
+        "catalog_version": pathfinding_graph["catalog_version"],
+        "pathfinding_graph_version": pathfinding_graph["pathfinding_graph_version"],
+        "generated_at": "2026-09-03T00:00:00+00:00",
+        "source": "test",
+        "license": "test",
+        "node_ids": node_ids,
+        "degree": [0] * node_count,
+        "albums_1hop": [0] * node_count,
+        "albums_2hop": [0] * node_count,
+        "evidence_releases": [0] * node_count,
+        "role_diversity": [0] * node_count,
+        "first_year": [None] * node_count,
+        "last_year": [None] * node_count,
+        "rank": [0] * node_count,
+    }
+    payload["prominence_version"] = prominence_version(payload, _SNAPSHOT)
+    return payload
+
+
 # --- album-credit-membership --------------------------------------------------
 
 
@@ -611,6 +640,7 @@ def _evidence_release_registry() -> dict[str, Any]:
 
 def _clean_artifacts() -> dict[str, Any]:
     routes_universe, routes_rounds = _routes_pair()
+    pathfinding_graph = _pathfinding_graph()
     return {
         "catalog": _catalog(),
         "album_art": _album_art_registry(),
@@ -622,7 +652,8 @@ def _clean_artifacts() -> dict[str, Any]:
         "challenge": _challenge(),
         "contributor_index": _contributor_index(),
         "album_hop_distances": _album_hop_distances(),
-        "pathfinding_graph": _pathfinding_graph(),
+        "pathfinding_graph": pathfinding_graph,
+        "prominence": _prominence(pathfinding_graph),
         "album_credit_membership": _album_credit_membership(),
         "evidence_release_registry": _evidence_release_registry(),
     }
@@ -640,6 +671,7 @@ def test_clean_publication_set_has_no_failures() -> None:
         "contributor_index": [],
         "album_hop_distances": [],
         "pathfinding_graph": [],
+        "prominence": [],
         "album_credit_membership": [],
         "evidence_release_registry": [],
     }
@@ -657,6 +689,7 @@ def test_every_group_key_always_present() -> None:
         "contributor_index",
         "album_hop_distances",
         "pathfinding_graph",
+        "prominence",
         "album_credit_membership",
         "evidence_release_registry",
     }

@@ -51,6 +51,7 @@ def _artifact_validators() -> dict[str, tuple[Callable[..., list[str]], int]]:
     - contributor-index: (index, catalog)
     - daily-manifest: (manifest, rounds)
     - pathfinding-graph: (graph, catalog)
+    - prominence: (prominence, pathfinding_graph)
     - record-routes: (universe, rounds)
     - album-credit-membership: (membership, catalog)
     - evidence-release-registry: (registry, catalog)
@@ -65,6 +66,7 @@ def _artifact_validators() -> dict[str, tuple[Callable[..., list[str]], int]]:
         evidence_release_registry_failures,
         pathfinding_graph_failures,
         playable_cohort_failures,
+        prominence_failures,
         public_album_catalog_failures,
         record_routes_failures,
     )
@@ -78,6 +80,7 @@ def _artifact_validators() -> dict[str, tuple[Callable[..., list[str]], int]]:
         "contributor-index": (contributor_index_failures, 2),
         "daily-manifest": (connection_daily_manifest_failures, 2),
         "pathfinding-graph": (pathfinding_graph_failures, 2),
+        "prominence": (prominence_failures, 2),
         "record-routes": (record_routes_failures, 2),
         "album-credit-membership": (album_credit_membership_failures, 2),
         "evidence-release-registry": (evidence_release_registry_failures, 2),

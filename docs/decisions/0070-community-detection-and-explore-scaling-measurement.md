@@ -203,3 +203,38 @@ records that the encoding change alone measurably helped recenter cost, as ADR 0
 original finding asked Phase 1 to treat it as a target to *improve* — it does not close the
 open tiles question, which stays gated on the full §6 benchmark against the 500-tier
 fixture once the rest of Phase 1 ships.
+
+## Addendum (2026-09-03): prominence sidecar published — the ranking signal this ADR's §2 finding needed
+
+This ADR's §2 finding warned that a raw-degree-led ranking is exactly the hub trap the
+plan's own measurement identified; the plan's §8 answer (a precomputed, explainable
+prominence signal replacing the contributor index's `connection_count`, which only covers
+~445 indexed contributors and ties at 0 for most graph neighbors) is now real and published:
+`apps/web/public/data/pathfinding/prominence.v1.json` (contract `data/contracts/
+prominence-v1.md`, builder `networked_players_graph_core.prominence`, validator
+`networked_players_contracts.prominence::prominence_failures`, CLI `build-prominence`/
+`validate-prominence`, registered as its own `prominence` group in `PUBLIC_ARTIFACT_GROUPS`
+and the Pi fleet's `_artifact_validators`/`_DEFAULT_ARTIFACTS`).
+
+A node-aligned companion to `graph.v4.json` (parallel arrays, same index as that graph's own
+`node_ids`, pinned to its `pathfinding_graph_version` so a ranking retune never forces a
+graph rebuild), giving every real performer node: `degree`, `albums_1hop`/`albums_2hop`
+(the latter computed cheaply — union of small per-neighbor album sets, never a brute-force
+two-hop walk, since this graph's own heavy tail makes that genuinely expensive for hub
+nodes), `evidence_releases`, `role_diversity`, `first_year`/`last_year`, and a precomputed
+`rank` — a documented weighted sum favoring `albums_2hop`/`decade_span` (bridges between
+scenes/eras) over raw `degree` (deliberately not the dominant term), matching the owner's
+stated Explore discovery goal (plan §8, decided §15: "bridges between scenes/eras and band
+lineups and their orbits").
+
+Real measured artifact size (2026-09-03, the same real committed `graph.v4.json`/
+`evidence/release-registry.v1.json`): 1,030,416 raw bytes, 183,564 gzip bytes for 20,845
+nodes — a real byte count, not hardware performance data, published directly per the same
+ADR 0018 precedent `pathfinding-graph-v4.md`'s own table already sets.
+
+**Scope, deliberately narrow, matching every prior Phase 1 slice's own staged-publication
+precedent:** published and validated only. `explorerStage.ts`'s actual neighbor-ranking
+cutover (reading `rank` to order/page neighbors and choose label visibility) is separate,
+later Phase 1 work — this addendum does not claim Explore's hub-trap risk is resolved in
+production yet, only that the real ranking signal it needs now exists and is real,
+committed, and fleet-validated.

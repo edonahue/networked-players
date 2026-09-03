@@ -22,6 +22,7 @@ from networked_players_contracts.evidence_release_registry import (
     evidence_release_registry_version,
 )
 from networked_players_contracts.pathfinding_graph import pathfinding_graph_version
+from networked_players_contracts.prominence import prominence_version
 
 _SNAPSHOT = "20260601"
 _CATALOG_VERSION_STR = "catalog-v1-20260601-abc123abc123"
@@ -444,6 +445,34 @@ def _pathfinding_graph(catalog: dict[str, Any]) -> dict[str, Any]:
     return payload
 
 
+def _prominence(pathfinding_graph: dict[str, Any]) -> dict[str, Any]:
+    """A minimal, structurally-valid companion to `_pathfinding_graph()`
+    (graph-expansion Phase 1, plan section 8) -- node-aligned with its
+    `node_ids`, every value zero/null (this fixture only needs to be
+    CLEAN, not realistic)."""
+    node_ids = pathfinding_graph["node_ids"]
+    node_count = len(node_ids)
+    payload: dict[str, Any] = {
+        "schema_version": 1,
+        "catalog_version": pathfinding_graph["catalog_version"],
+        "pathfinding_graph_version": pathfinding_graph["pathfinding_graph_version"],
+        "generated_at": "2026-09-03T00:00:00+00:00",
+        "source": "test",
+        "license": "test",
+        "node_ids": node_ids,
+        "degree": [0] * node_count,
+        "albums_1hop": [0] * node_count,
+        "albums_2hop": [0] * node_count,
+        "evidence_releases": [0] * node_count,
+        "role_diversity": [0] * node_count,
+        "first_year": [None] * node_count,
+        "last_year": [None] * node_count,
+        "rank": [0] * node_count,
+    }
+    payload["prominence_version"] = prominence_version(payload, _SNAPSHOT)
+    return payload
+
+
 def _album_credit_membership(catalog: dict[str, Any]) -> dict[str, Any]:
     albums = [
         {
@@ -506,6 +535,7 @@ def _write(path: Path, payload: dict[str, Any]) -> Path:
 def _write_all(tmp_path: Path) -> dict[str, Path]:
     catalog = _catalog()
     routes_universe, routes_rounds = _routes_pair()
+    pathfinding_graph = _pathfinding_graph(catalog)
     return {
         "catalog": _write(tmp_path / "albums.v1.json", catalog),
         "album_art": _write(tmp_path / "album-art.v1.json", _album_art(catalog)),
@@ -523,9 +553,8 @@ def _write_all(tmp_path: Path) -> dict[str, Path]:
         "album_hop_distances": _write(
             tmp_path / "album-hop-distances.v1.json", _album_hop_distances(catalog)
         ),
-        "pathfinding_graph": _write(
-            tmp_path / "pathfinding-graph.v4.json", _pathfinding_graph(catalog)
-        ),
+        "pathfinding_graph": _write(tmp_path / "pathfinding-graph.v4.json", pathfinding_graph),
+        "prominence": _write(tmp_path / "prominence.v1.json", _prominence(pathfinding_graph)),
         "album_credit_membership": _write(
             tmp_path / "album-credit-membership.v1.json", _album_credit_membership(catalog)
         ),
@@ -560,6 +589,8 @@ def _args(paths: dict[str, Path]) -> list[str]:
         str(paths["album_hop_distances"]),
         "--pathfinding-graph",
         str(paths["pathfinding_graph"]),
+        "--prominence",
+        str(paths["prominence"]),
         "--album-credit-membership",
         str(paths["album_credit_membership"]),
         "--evidence-release-registry",
@@ -583,6 +614,7 @@ def test_clean_set_exits_zero(tmp_path: Path, capsys) -> None:
         "contributor_index": [],
         "album_hop_distances": [],
         "pathfinding_graph": [],
+        "prominence": [],
         "album_credit_membership": [],
         "evidence_release_registry": [],
     }
@@ -608,6 +640,7 @@ def test_default_paths_point_at_the_real_repo_layout(tmp_path: Path, capsys, mon
     wiring end-to-end, not just that explicit overrides work."""
     catalog = _catalog()
     routes_universe, routes_rounds = _routes_pair()
+    pathfinding_graph = _pathfinding_graph(catalog)
     layout = {
         "apps/web/public/data/catalog/albums.v1.json": catalog,
         "apps/web/public/data/catalog/album-art.v1.json": _album_art(catalog),
@@ -621,7 +654,8 @@ def test_default_paths_point_at_the_real_repo_layout(tmp_path: Path, capsys, mon
         "apps/web/public/data/contributors/album-hop-distances.v1.json": (
             _album_hop_distances(catalog)
         ),
-        "apps/web/public/data/pathfinding/graph.v4.json": _pathfinding_graph(catalog),
+        "apps/web/public/data/pathfinding/graph.v4.json": pathfinding_graph,
+        "apps/web/public/data/pathfinding/prominence.v1.json": _prominence(pathfinding_graph),
         "apps/web/public/data/albums/credit-membership.v1.json": _album_credit_membership(catalog),
         "apps/web/public/data/evidence/release-registry.v1.json": _evidence_release_registry(
             catalog

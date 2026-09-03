@@ -53,6 +53,7 @@ _VALIDATOR_NAME_BY_ARTIFACT_GROUP = {
     "record_routes": "record-routes",
     "contributor_index": "contributor-index",
     "pathfinding_graph": "pathfinding-graph",
+    "prominence": "prominence",
     "album_credit_membership": "album-credit-membership",
     "evidence_release_registry": "evidence-release-registry",
 }
