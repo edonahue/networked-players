@@ -143,6 +143,9 @@ export async function initExplorerStage(): Promise<void> {
     : EDGE_HIT_AREA_WIDTH;
 
   const svg = stage.querySelector<SVGSVGElement>("[data-explorer-svg]");
+  const viewportEl = stage.querySelector<SVGGElement>(
+    "[data-explorer-viewport]",
+  );
   const nodesLayer = stage.querySelector<SVGGElement>("[data-explorer-nodes]");
   const edgesLayer = stage.querySelector<SVGGElement>("[data-explorer-edges]");
   const roleFilterEl = stage.querySelector<HTMLElement>(
@@ -191,6 +194,7 @@ export async function initExplorerStage(): Promise<void> {
   const trailEl = stage.querySelector<HTMLElement>("[data-explorer-trail]");
   if (
     !svg ||
+    !viewportEl ||
     !nodesLayer ||
     !edgesLayer ||
     !roleFilterEl ||
@@ -479,6 +483,233 @@ export async function initExplorerStage(): Promise<void> {
   // it's more of the SAME center's neighborhood, not a new one.
   let neighborLimit = NEIGHBOR_PAGE_SIZE;
 
+  // Pan/zoom (plan §6: "viewBox pan/zoom on a <g> (pointer/wheel/pinch, no
+  // library)"). `panX`/`panY`/`zoom` describe a single `translate() scale()`
+  // transform applied to `viewportEl` (the `<g>` wrapping both the edges
+  // and nodes layers) -- neither layer's own rendering logic changes at
+  // all; this is purely an outer transform on top of whatever `renderView`
+  // already produces. Reset to identity on every real recenter
+  // (`centerOn`) -- a stale pan/zoom from the PREVIOUS center could leave
+  // the new one rendered off-view -- but deliberately NOT on `expandNeighbors`
+  // (paging in more of the SAME neighborhood shouldn't move or rescale
+  // what the visitor is currently looking at).
+  let panX = 0;
+  let panY = 0;
+  let zoom = 1;
+  const MIN_ZOOM = 1;
+  const MAX_ZOOM = 4;
+
+  function applyViewTransform() {
+    viewportEl!.setAttribute(
+      "transform",
+      `translate(${panX} ${panY}) scale(${zoom})`,
+    );
+  }
+
+  function resetViewTransform() {
+    panX = 0;
+    panY = 0;
+    zoom = 1;
+    applyViewTransform();
+  }
+
+  /** A client-space (`event.clientX/clientY`) point converted to this SVG's
+   * own viewBox coordinate space (0-320) -- the viewBox is always a fixed
+   * square uniformly scaled to the element's rendered box (no separate
+   * x/y scale factors to reconcile), so this is a plain linear remap
+   * against `getBoundingClientRect()`, no `getScreenCTM()` matrix inversion
+   * needed. */
+  function toViewBoxPoint(
+    clientX: number,
+    clientY: number,
+  ): {
+    x: number;
+    y: number;
+  } {
+    const rect = svg!.getBoundingClientRect();
+    return {
+      x:
+        rect.width === 0 ? 0 : ((clientX - rect.left) / rect.width) * VIEW_SIZE,
+      y:
+        rect.height === 0
+          ? 0
+          : ((clientY - rect.top) / rect.height) * VIEW_SIZE,
+    };
+  }
+
+  /** Applies `newZoom`, keeping the viewBox point `(px, py)` fixed on
+   * screen -- the standard "zoom to point" identity for a
+   * `translate() scale()` transform: solving `p*zoom + pan == p*newZoom +
+   * newPan` for `newPan` gives `newPan = pan + p*(zoom - newZoom)`. Used by
+   * both wheel (point = cursor) and pinch (point = the two touches'
+   * midpoint) -- the same math either way, only where `(px, py)` comes
+   * from differs. `panX`/`panY` are bounded to a generous but finite
+   * multiple of the viewBox size -- a coarse safety guard against a
+   * runaway drift, not a precise "some content must always stay visible"
+   * guarantee (that would need knowing the actual rendered content bounds,
+   * not just the viewBox). */
+  function zoomToPoint(newZoom: number, px: number, py: number) {
+    const clamped = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, newZoom));
+    panX += px * (zoom - clamped);
+    panY += py * (zoom - clamped);
+    zoom = clamped;
+    const maxPan = VIEW_SIZE * zoom;
+    panX = Math.min(maxPan, Math.max(-maxPan, panX));
+    panY = Math.min(maxPan, Math.max(-maxPan, panY));
+    applyViewTransform();
+  }
+
+  // One active gesture at a time: `null` (idle), a single pointer id (pan),
+  // or two pointer ids (pinch-zoom) -- upgrading/downgrading between pan
+  // and pinch as fingers are added or lifted, rather than two entirely
+  // separate code paths that both fight over the same pointer capture.
+  const activePointers = new Map<number, { x: number; y: number }>();
+  let panPointerId: number | null = null;
+  let panStart = { clientX: 0, clientY: 0, panX: 0, panY: 0 };
+  let pinchStartDistance = 0;
+  let pinchStartZoom = 1;
+  let pinchStartMidpoint = { x: 0, y: 0 };
+
+  function pointerDistance(
+    a: { x: number; y: number },
+    b: { x: number; y: number },
+  ): number {
+    return Math.hypot(a.x - b.x, a.y - b.y);
+  }
+  function pointerMidpoint(
+    a: { x: number; y: number },
+    b: { x: number; y: number },
+  ): {
+    x: number;
+    y: number;
+  } {
+    return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+  }
+
+  // Panning starts ONLY when a pointer goes down on the SVG's empty
+  // background -- never on a node or edge -- so this never competes with
+  // (or needs to distinguish itself from) the existing click-to-recenter/
+  // click-to-view-evidence handlers below, which keep working completely
+  // unmodified on their own elements. `event.target === svg` catches
+  // exactly that: any real node/edge element is a DIFFERENT element (a
+  // descendant `<g>`/`<circle>`/`<line>`/`<rect>`), so a press starting on
+  // one of those never reaches this branch at all.
+  svg.addEventListener("pointerdown", (event) => {
+    // A pointerdown that starts on a node or edge is left COMPLETELY
+    // alone here -- never added to `activePointers`, never pointer-
+    // captured. This is the one guard that keeps pan/pinch from ever
+    // competing with the existing click-to-recenter/click-to-view-evidence
+    // handlers below: `setPointerCapture` retargets not just later pointer
+    // events but the browser's own compatibility mouse events (including
+    // `click`) to the CAPTURING element, so capturing unconditionally here
+    // would silently break every node/edge click (confirmed by a real,
+    // reproducible test failure during development -- this comment exists
+    // because that bug was real, not hypothetical).
+    if (event.target !== svg) return;
+
+    const pointerPoint = { x: event.clientX, y: event.clientY };
+    activePointers.set(event.pointerId, pointerPoint);
+    try {
+      // Best-effort: keeps pointerup/pointermove arriving even if the
+      // pointer strays outside the SVG mid-gesture. Not load-bearing for
+      // correctness -- every handler below already keys off
+      // `activePointers`/`panPointerId`, not capture semantics -- and a
+      // browser can refuse this for a pointerId it has no real active-
+      // pointer state for (an untrusted/synthetic PointerEvent has no
+      // backing input device), which must never abort the state setup
+      // that follows.
+      svg!.setPointerCapture(event.pointerId);
+    } catch {
+      // Ignored -- see above.
+    }
+
+    if (activePointers.size === 1) {
+      panPointerId = event.pointerId;
+      panStart = {
+        clientX: event.clientX,
+        clientY: event.clientY,
+        panX,
+        panY,
+      };
+      svg!.dataset.panning = "true";
+    } else if (activePointers.size === 2) {
+      // A second finger landing mid-pan upgrades straight to pinch --
+      // panPointerId is cleared so a later pointermove never applies both
+      // pan and pinch math to the same movement.
+      panPointerId = null;
+      delete svg!.dataset.panning;
+      const [a, b] = [...activePointers.values()];
+      pinchStartDistance = pointerDistance(a, b);
+      pinchStartZoom = zoom;
+      pinchStartMidpoint = toViewBoxPoint(
+        pointerMidpoint(a, b).x,
+        pointerMidpoint(a, b).y,
+      );
+    }
+  });
+
+  svg.addEventListener("pointermove", (event) => {
+    if (!activePointers.has(event.pointerId)) return;
+    activePointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+
+    if (activePointers.size === 2) {
+      const [a, b] = [...activePointers.values()];
+      if (pinchStartDistance === 0) return; // guards a div-by-zero below
+      const ratio = pointerDistance(a, b) / pinchStartDistance;
+      zoomToPoint(
+        pinchStartZoom * ratio,
+        pinchStartMidpoint.x,
+        pinchStartMidpoint.y,
+      );
+      return;
+    }
+
+    if (event.pointerId !== panPointerId) return;
+    const rect = svg!.getBoundingClientRect();
+    const scale = rect.width === 0 ? 1 : VIEW_SIZE / rect.width;
+    panX = panStart.panX + (event.clientX - panStart.clientX) * scale;
+    panY = panStart.panY + (event.clientY - panStart.clientY) * scale;
+    const maxPan = VIEW_SIZE * zoom;
+    panX = Math.min(maxPan, Math.max(-maxPan, panX));
+    panY = Math.min(maxPan, Math.max(-maxPan, panY));
+    applyViewTransform();
+  });
+
+  function endPointer(event: PointerEvent) {
+    activePointers.delete(event.pointerId);
+    if (event.pointerId === panPointerId) {
+      panPointerId = null;
+      delete svg!.dataset.panning;
+    }
+    // Dropping from two fingers to one resumes panning from the REMAINING
+    // finger's current position (not its original pointerdown position),
+    // so the graph doesn't jump when the pinch ends.
+    if (activePointers.size === 1) {
+      const [[remainingId, point]] = activePointers;
+      panPointerId = remainingId;
+      panStart = { clientX: point.x, clientY: point.y, panX, panY };
+      svg!.dataset.panning = "true";
+    }
+  }
+  svg.addEventListener("pointerup", endPointer);
+  svg.addEventListener("pointercancel", endPointer);
+
+  // Wheel-to-zoom, centered on the cursor -- `preventDefault()` so this
+  // never also scrolls the page while the cursor happens to be over the
+  // graph. A real trackpad's "pinch" gesture also arrives as a wheel event
+  // with `ctrlKey: true` in every real browser, so this one listener
+  // already covers trackpad pinch-zoom too, not just a mouse wheel.
+  svg.addEventListener(
+    "wheel",
+    (event) => {
+      event.preventDefault();
+      const point = toViewBoxPoint(event.clientX, event.clientY);
+      const factor = event.deltaY < 0 ? 1.15 : 1 / 1.15;
+      zoomToPoint(zoom * factor, point.x, point.y);
+    },
+    { passive: false },
+  );
+
   // Session-only "recently centered on" trail (plan §12.7's continuity
   // pass): a capped, in-memory list, never persisted and never touching
   // history/URL state -- recentering elsewhere in the app (a fresh page
@@ -550,6 +781,7 @@ export async function initExplorerStage(): Promise<void> {
     }
     activeCategories = new Set();
     currentView = view;
+    resetViewTransform(); // a stale pan/zoom from the previous center could leave the new one off-view
     openEdgeRequestId++; // invalidate any evidence fetch still in flight for the old view
     evidenceDismissed = false; // a fresh view is a natural reset point regardless of the old one's state
     hideEvidenceDrawer();

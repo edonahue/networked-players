@@ -947,7 +947,23 @@ a.contributor-card:focus-visible {
   height: auto;
   margin-inline: auto;
   aspect-ratio: 1;
-  overflow: visible;
+  /* `hidden`, not the previous `visible`: pan/zoom (graph-expansion Phase
+     1, plan §6) now lets a visitor move content beyond the original
+     320x320 frame on purpose -- panned-out content should clip cleanly at
+     the SVG's own edge, not bleed onto the surrounding page. Nothing
+     relied on the old `visible` default: the circular layout's outermost
+     extent (RADIUS + a node's own radius + its label) already sits well
+     inside the 320x320 box at rest. */
+  overflow: hidden;
+  /* Required for pan/wheel/pinch to work reliably on touch devices --
+     without this, the browser's own native scroll/pinch-zoom gestures
+     compete with (and can outright swallow) the pointer events
+     explorerStage.ts's own pan/zoom handling depends on. */
+  touch-action: none;
+  cursor: grab;
+}
+.explorer-svg[data-panning="true"] {
+  cursor: grabbing;
 }
 .explorer-edge-group {
   cursor: pointer;
