@@ -1056,6 +1056,26 @@ a.contributor-card:focus-visible {
   color: var(--muted);
   text-align: center;
 }
+/* Paging (graph-expansion Phase 1, plan §6: "Showing 24 of 137 · show next
+   24 · ranked by explained prominence") -- same small pill button as the
+   continuity trail's own step buttons, for one consistent "small inline
+   action" visual language rather than a second one just for this. */
+.explorer-truncated-note button[data-explorer-show-more] {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  border-radius: 999px;
+  padding: 4px 12px;
+  font: inherit;
+  font-size: 0.82rem;
+  cursor: pointer;
+  margin-left: 6px;
+}
+.explorer-truncated-note button[data-explorer-show-more]:hover,
+.explorer-truncated-note button[data-explorer-show-more]:focus-visible {
+  border-color: var(--accent);
+  color: var(--accent-strong);
+}
 
 /* Continuity pass (plan §12.7): a sighted-user-visible summary/CTA panel
    alongside the SVG, and a small session-only trail of recent centers.

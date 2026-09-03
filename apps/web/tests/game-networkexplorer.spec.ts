@@ -91,7 +91,65 @@ test("a high-degree center shows the truncation note with real numbers", async (
   await page.goto("/explore/master-107325/");
   const note = page.locator("[data-explorer-truncated]");
   await expect(note).toBeVisible({ timeout: 15000 });
-  await expect(note).toHaveText(/^Showing 24 of \d+ documented connections\.$/);
+  await expect(page.locator("[data-explorer-truncated-count]")).toHaveText(
+    /^Showing 24 of \d+ documented connections\.$/,
+  );
+});
+
+// graph-expansion Phase 1 (plan §6: "Showing 24 of 137 · show next 24").
+test("show more pages in additional neighbors without recentering or losing the role filter", async ({
+  page,
+}) => {
+  await page.goto("/explore/master-107325/");
+  const countEl = page.locator("[data-explorer-truncated-count]");
+  await expect(countEl).toBeVisible({ timeout: 15000 });
+  const centerNode = page.locator(
+    "[data-explorer-nodes] .explorer-node[data-is-center='true']",
+  );
+  const centerArtistId = await centerNode.getAttribute("data-artist-id");
+
+  const chip = page.locator("[data-role-filter-chip]").first();
+  await chip.click();
+  await expect(chip).toHaveAttribute("aria-pressed", "true");
+
+  const showMore = page.locator("[data-explorer-show-more]");
+  await expect(showMore).toBeVisible();
+  await expect(showMore).toHaveText(/^Show \d+ more$/);
+
+  const neighborsBefore = await page
+    .locator("[data-explorer-nodes] .explorer-node[data-is-center='false']")
+    .count();
+  await showMore.click();
+  await expect(
+    page.locator(
+      "[data-explorer-nodes] .explorer-node[data-is-center='false']",
+    ),
+  ).toHaveCount(neighborsBefore + 24);
+
+  // Neither a recenter (same center, no new trail step) nor a URL/history
+  // change (no new ?center= value, same real navigation entry) --
+  // expandNeighbors deliberately never touches either.
+  await expect(centerNode).toHaveAttribute("data-artist-id", centerArtistId!);
+  await expect(page.locator("[data-explorer-trail]")).toBeHidden();
+  // The role filter selection survives the re-render -- expandNeighbors
+  // reuses the same activeCategories set, never resetting it the way a
+  // real recenter does.
+  await expect(chip).toHaveAttribute("aria-pressed", "true");
+});
+
+test("show more eventually pages in every real neighbor and the note disappears", async ({
+  page,
+}) => {
+  await page.goto("/explore/master-107325/");
+  const note = page.locator("[data-explorer-truncated]");
+  const showMore = page.locator("[data-explorer-show-more]");
+  await expect(note).toBeVisible({ timeout: 15000 });
+  // Bounded loop, not a while(true): a real stuck note would otherwise
+  // hang the test indefinitely instead of failing it.
+  for (let i = 0; i < 50 && (await note.isVisible()); i++) {
+    await showMore.click();
+  }
+  await expect(note).toBeHidden();
 });
 
 // docs/SITE_REPROFILE_METHOD.md's own documented gap ("worker parse time:

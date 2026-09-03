@@ -143,6 +143,81 @@ test("buildView ranks neighbors by degree and truncates beyond the cap", () => {
   expect(view?.truncated).toBe(true);
 });
 
+// graph-expansion Phase 1 (plan §8): prominence's rank field, when
+// supplied, ranks neighbors instead of connection_count -- a real
+// behavior change, not just an additional optional param.
+test("buildView ranks by the supplied prominence rank over connection_count", () => {
+  const graph = starGraph();
+  const index = buildArtistIndex(graph);
+  // connection_count alone would rank 300 highest; the prominence map
+  // inverts that -- 200 must win instead, proving rank is actually used,
+  // not just accepted and ignored.
+  const byId = new Map<number, Contributor>([
+    [200, contributor({ artist_id: 200, connection_count: 1 })],
+    [300, contributor({ artist_id: 300, connection_count: 50 })],
+    [400, contributor({ artist_id: 400, connection_count: 25 })],
+  ]);
+  const rankByArtistId = new Map<number, number>([
+    [200, 900],
+    [300, 10],
+    [400, 500],
+  ]);
+  const view = buildView(graph, index, byId, 100, 2, rankByArtistId);
+  expect(view?.neighbors.map((n) => n.artistId)).toEqual([200, 400]);
+});
+
+test("buildView falls back to connection_count for an artist absent from the prominence map", () => {
+  const graph = starGraph();
+  const index = buildArtistIndex(graph);
+  const byId = new Map<number, Contributor>([
+    [200, contributor({ artist_id: 200, connection_count: 5 })],
+    [300, contributor({ artist_id: 300, connection_count: 50 })],
+    [400, contributor({ artist_id: 400, connection_count: 1 })],
+  ]);
+  // A prominence map that only covers ONE of the three neighbors (400,
+  // explicitly ranked below where its own connection_count of 1 would
+  // have placed it) -- the other two must still rank sensibly via the
+  // connection_count fallback, not collapse to a tie at 0. 300 (rank 50)
+  // beats 200 (falls back to its connection_count, 5) beats 400 (explicit
+  // rank 5, tied with 200's fallback -- broken by the lower artistId).
+  const rankByArtistId = new Map<number, number>([[400, 5]]);
+  const view = buildView(graph, index, byId, 100, 2, rankByArtistId);
+  expect(view?.neighbors.map((n) => n.artistId)).toEqual([300, 200]);
+});
+
+test("buildView breaks a rank tie on artistId ascending, deterministically", () => {
+  const graph = starGraph();
+  const index = buildArtistIndex(graph);
+  const rankByArtistId = new Map<number, number>([
+    [200, 10],
+    [300, 10],
+    [400, 10],
+  ]);
+  const view = buildView(graph, index, new Map(), 100, 3, rankByArtistId);
+  expect(view?.neighbors.map((n) => n.artistId)).toEqual([200, 300, 400]);
+});
+
+// Paging (plan §6): calling buildView again with a larger cap must return
+// the SAME leading neighbors in the SAME order, with new ones only ever
+// appended -- the property "show more" depends on to avoid a visibly
+// reshuffled neighborhood on every click.
+test("buildView's ranking is stable across growing caps -- paging never reorders already-shown neighbors", () => {
+  const graph = starGraph();
+  const index = buildArtistIndex(graph);
+  const rankByArtistId = new Map<number, number>([
+    [200, 5],
+    [300, 20],
+    [400, 10],
+  ]);
+  const firstPage = buildView(graph, index, new Map(), 100, 1, rankByArtistId);
+  const secondPage = buildView(graph, index, new Map(), 100, 2, rankByArtistId);
+  const thirdPage = buildView(graph, index, new Map(), 100, 3, rankByArtistId);
+  expect(firstPage?.neighbors.map((n) => n.artistId)).toEqual([300]);
+  expect(secondPage?.neighbors.map((n) => n.artistId)).toEqual([300, 400]);
+  expect(thirdPage?.neighbors.map((n) => n.artistId)).toEqual([300, 400, 200]);
+  expect(thirdPage?.truncated).toBe(false);
+});
+
 test("buildView never surfaces a v2 graph's virtual album-anchor node as a neighbor", () => {
   const graph = starGraphWithAlbumAnchor();
   const index = buildArtistIndex(graph);
