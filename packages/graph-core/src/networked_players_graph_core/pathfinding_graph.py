@@ -194,7 +194,11 @@ def pathfinding_graph_version(payload: dict[str, Any], snapshot_date: str) -> st
     two payloads with identical edges but different policy versions must not
     collide (they never actually would, since a different policy changes
     which edges exist, but hashing it explicitly documents the intent rather
-    than relying on that as an accident of the data)."""
+    than relying on that as an accident of the data). v4+ additionally
+    hashes `roles` -- `edge_role_a`/`edge_role_b` are still hashed too, now
+    as indices rather than text, which is fine: `content_hash` normalizes
+    any JSON-compatible value, and a changed dictionary with the same index
+    sequence IS a real content change worth a different hash."""
     identity: dict[str, Any] = {
         "node_ids": payload["node_ids"],
         "names": payload["names"],
@@ -209,6 +213,8 @@ def pathfinding_graph_version(payload: dict[str, Any], snapshot_date: str) -> st
         identity["album_virtual_nodes"] = payload["album_virtual_nodes"]
     if schema_version >= 3:
         identity["graph_policy_version"] = payload["graph_policy_version"]
+    if schema_version >= 4:
+        identity["roles"] = payload["roles"]
     digest = content_hash(identity, length=12)
     return f"pathfinding-graph-v{schema_version}-{snapshot_date}-{digest}"
 
@@ -220,6 +226,7 @@ def build_pathfinding_graph(
     *,
     snapshot_date: str,
     generated_at: str,
+    schema_version: int = 3,
 ) -> dict[str, Any]:
     """Deterministic given the same real one-hop dataset, catalog, and
     album-credit-membership artifact: a 1-hop ego network around
@@ -227,7 +234,21 @@ def build_pathfinding_graph(
     catalog album (v2, ADR 0058), performer-gated (v3, ADR 0068), serialized
     as a CSR adjacency plus parallel-array names/edge-role evidence (so the
     frontend never needs a second fetch to render evidence for a found
-    path)."""
+    path).
+
+    `schema_version=4` (graph-expansion Phase 1) additionally dictionary-
+    encodes the per-slot role text: a new `roles` array (every distinct
+    role string, first-seen order) plus `edge_role_a`/`edge_role_b` becoming
+    indices into it rather than the text itself -- a real, measured size
+    win (role text is ~68% of the v3 payload's raw bytes across ~11.8K
+    distinct strings over ~76.6K slots) with no semantic change. Defaults
+    to 3 (today's published shape) so every existing caller is unaffected;
+    only a caller that explicitly asks for v4 gets it -- the same opt-in
+    pattern the catalog schema v2 capability (ADR 0069) already uses.
+    Callers of the resulting `edge_role_a`/`edge_role_b` MUST check
+    `payload["schema_version"]` before treating either as text vs. index."""
+    if schema_version not in (3, 4):
+        raise ValueError(f"unsupported pathfinding graph schema_version: {schema_version}")
     seed_artist_ids = sorted({int(a["artist_id"]) for a in catalog["albums"]})
     if not seed_artist_ids:
         raise ValueError("catalog has no albums to seed the pathfinding graph from")
@@ -361,7 +382,7 @@ def build_pathfinding_graph(
     ]
 
     payload: dict[str, Any] = {
-        "schema_version": 3,
+        "schema_version": schema_version,
         "catalog_version": catalog["catalog_version"],
         "snapshot_date": snapshot_date,
         "generated_at": generated_at,
@@ -378,9 +399,25 @@ def build_pathfinding_graph(
         "offsets": compact.offsets,
         "neighbors": compact.neighbors,
         "evidence_release_ids": compact.evidence_release_ids,
-        "edge_role_a": edge_role_a,
-        "edge_role_b": edge_role_b,
         "album_virtual_nodes": album_virtual_nodes,
     }
+    if schema_version >= 4:
+        roles: list[str] = []
+        role_index: dict[str, int] = {}
+
+        def _role_id(text: str) -> int:
+            index = role_index.get(text)
+            if index is None:
+                index = len(roles)
+                roles.append(text)
+                role_index[text] = index
+            return index
+
+        payload["roles"] = roles
+        payload["edge_role_a"] = [_role_id(t) for t in edge_role_a]
+        payload["edge_role_b"] = [_role_id(t) for t in edge_role_b]
+    else:
+        payload["edge_role_a"] = edge_role_a
+        payload["edge_role_b"] = edge_role_b
     payload["pathfinding_graph_version"] = pathfinding_graph_version(payload, snapshot_date)
     return payload

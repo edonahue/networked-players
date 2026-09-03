@@ -335,6 +335,81 @@ def test_top_level_shape_and_version(onehop_dataset: Path) -> None:
     assert payload["pathfinding_graph_version"].startswith(f"pathfinding-graph-v3-{_SNAPSHOT}-")
 
 
+def test_default_schema_version_is_unchanged_at_3(onehop_dataset: Path) -> None:
+    """The v4 capability is opt-in (graph-expansion Phase 1): a caller that
+    never passes schema_version gets today's exact v3 shape."""
+    with CreditGraph.open(onehop_dataset) as graph:
+        payload = build_pathfinding_graph(
+            graph,
+            _catalog(),
+            _membership(),
+            snapshot_date=_SNAPSHOT,
+            generated_at="2026-08-03T00:00:00+00:00",
+        )
+    assert "roles" not in payload
+    assert all(isinstance(r, str) for r in payload["edge_role_a"])
+    assert all(isinstance(r, str) for r in payload["edge_role_b"])
+
+
+def test_v4_dictionary_encodes_roles(onehop_dataset: Path) -> None:
+    with CreditGraph.open(onehop_dataset) as graph:
+        v3 = build_pathfinding_graph(
+            graph,
+            _catalog(),
+            _membership(),
+            snapshot_date=_SNAPSHOT,
+            generated_at="2026-08-03T00:00:00+00:00",
+            schema_version=3,
+        )
+    with CreditGraph.open(onehop_dataset) as graph:
+        v4 = build_pathfinding_graph(
+            graph,
+            _catalog(),
+            _membership(),
+            snapshot_date=_SNAPSHOT,
+            generated_at="2026-08-03T00:00:00+00:00",
+            schema_version=4,
+        )
+    assert v4["schema_version"] == 4
+    assert v4["pathfinding_graph_version"].startswith(f"pathfinding-graph-v4-{_SNAPSHOT}-")
+    assert isinstance(v4["roles"], list)
+    assert all(isinstance(r, str) for r in v4["roles"])
+    assert all(isinstance(i, int) and not isinstance(i, bool) for i in v4["edge_role_a"])
+    assert all(isinstance(i, int) and not isinstance(i, bool) for i in v4["edge_role_b"])
+    # Every index resolves back to the exact same text v3 published directly
+    # -- the dictionary encoding must be a pure re-encoding, never a lossy
+    # or reordering transform of the underlying role assignment.
+    assert [v4["roles"][i] for i in v4["edge_role_a"]] == v3["edge_role_a"]
+    assert [v4["roles"][i] for i in v4["edge_role_b"]] == v3["edge_role_b"]
+    # The dictionary never has more entries than slots (this fixture is too
+    # small to demonstrate the real-corpus compression win -- that's a
+    # separate, real measurement, not a unit-test-scale claim).
+    assert len(v4["roles"]) <= len(v4["edge_role_a"])
+    # roles has no duplicates -- every distinct text appears exactly once.
+    assert len(v4["roles"]) == len(set(v4["roles"]))
+    # Everything else is byte-for-byte identical to v3 except the two
+    # schema-gated fields and the two fields whose CONTENT is derived from
+    # schema_version (the version string, and the top-level schema_version
+    # itself).
+    ignored = {"schema_version", "edge_role_a", "edge_role_b", "roles", "pathfinding_graph_version"}
+    for key in v3:
+        if key not in ignored:
+            assert v4[key] == v3[key], f"{key} differs between v3 and v4 for the same build"
+
+
+def test_v4_rejects_an_unsupported_schema_version(onehop_dataset: Path) -> None:
+    with CreditGraph.open(onehop_dataset) as graph:
+        with pytest.raises(ValueError, match="unsupported pathfinding graph schema_version"):
+            build_pathfinding_graph(
+                graph,
+                _catalog(),
+                _membership(),
+                snapshot_date=_SNAPSHOT,
+                generated_at="2026-08-03T00:00:00+00:00",
+                schema_version=5,
+            )
+
+
 def test_deterministic_across_repeated_builds(onehop_dataset: Path) -> None:
     with CreditGraph.open(onehop_dataset) as graph:
         first = build_pathfinding_graph(
