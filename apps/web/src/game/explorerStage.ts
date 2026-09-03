@@ -51,6 +51,14 @@ const NEIGHBOR_PAGE_SIZE = MAX_NEIGHBORS;
 const VIEW_SIZE = 320;
 const CENTER = VIEW_SIZE / 2;
 const RADIUS = 120;
+/** Desktop defaults. Mobile uses larger values (see `MOBILE_BREAKPOINT`/
+ * `mobileTouchTargets` below) -- the SVG viewBox stays a fixed 320x320
+ * regardless of viewport, so a circle's actual ON-SCREEN size depends on
+ * how large the rendered SVG element is, not on these user-unit constants
+ * alone; bumping them is a real, deliberate, bounded improvement on a
+ * narrow viewport, not a guaranteed exact touch-target size at every
+ * possible scale (the same honesty `EDGE_HIT_AREA_WIDTH`'s own comment
+ * below already sets for desktop). */
 const NODE_RADIUS = 8;
 const CENTER_NODE_RADIUS = 14;
 
@@ -72,6 +80,15 @@ const CENTER_NODE_RADIUS = 14;
  * before rotation, so both real hit-testing and Playwright's own checks
  * agree the edge occupies real space. */
 const EDGE_HIT_AREA_WIDTH = 12;
+
+// Mobile (graph-expansion Phase 1, plan §6: "NODE_RADIUS/hit targets
+// >= 24px"). Same breakpoint game.css's own Explore media query uses --
+// kept as one literal here since matchMedia needs a real query string, not
+// a CSS custom property (those aren't readable from a media query).
+const MOBILE_BREAKPOINT = "(max-width: 640px)";
+const MOBILE_NODE_RADIUS = 12;
+const MOBILE_CENTER_NODE_RADIUS = 18;
+const MOBILE_EDGE_HIT_AREA_WIDTH = 18;
 
 function neighborPosition(
   index: number,
@@ -107,6 +124,23 @@ export async function initExplorerStage(): Promise<void> {
     "[data-testid='explorer-stage']",
   );
   if (!stage) return;
+
+  // Read once at init, like the `?center=` deep link below -- a phone
+  // rotation or a desktop window resized across the breakpoint mid-session
+  // won't retroactively resize already-rendered nodes/edges. A real,
+  // deliberate scope limit (a live-resize listener re-rendering the
+  // current view is a bigger lift this slice doesn't need), not an
+  // oversight.
+  const isMobileViewport =
+    typeof window.matchMedia === "function" &&
+    window.matchMedia(MOBILE_BREAKPOINT).matches;
+  const nodeRadius = isMobileViewport ? MOBILE_NODE_RADIUS : NODE_RADIUS;
+  const centerNodeRadius = isMobileViewport
+    ? MOBILE_CENTER_NODE_RADIUS
+    : CENTER_NODE_RADIUS;
+  const edgeHitAreaWidth = isMobileViewport
+    ? MOBILE_EDGE_HIT_AREA_WIDTH
+    : EDGE_HIT_AREA_WIDTH;
 
   const svg = stage.querySelector<SVGSVGElement>("[data-explorer-svg]");
   const nodesLayer = stage.querySelector<SVGGElement>("[data-explorer-nodes]");
@@ -389,8 +423,8 @@ export async function initExplorerStage(): Promise<void> {
         const length = Math.hypot(dx, dy);
         const angleDeg = (Math.atan2(dy, dx) * 180) / Math.PI;
         const hitArea =
-          `<rect x="${from.x}" y="${from.y - EDGE_HIT_AREA_WIDTH / 2}" ` +
-          `width="${length}" height="${EDGE_HIT_AREA_WIDTH}" ` +
+          `<rect x="${from.x}" y="${from.y - edgeHitAreaWidth / 2}" ` +
+          `width="${length}" height="${edgeHitAreaWidth}" ` +
           `transform="rotate(${angleDeg} ${from.x} ${from.y})" ` +
           `class="explorer-edge-hitarea" />`;
         return (
@@ -413,7 +447,7 @@ export async function initExplorerStage(): Promise<void> {
     const renderNode = (node: ExplorerNode) => {
       const pos = nodePositions.get(node.artistId)!;
       const dimmed = isDimmed(node, activeCategories);
-      const r = node.isCenter ? CENTER_NODE_RADIUS : NODE_RADIUS;
+      const r = node.isCenter ? centerNodeRadius : nodeRadius;
       const isInterestingNextStep =
         !node.isCenter && node.artistId === interestingNextStepArtistId;
       const label = isInterestingNextStep

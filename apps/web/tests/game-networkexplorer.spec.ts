@@ -673,4 +673,72 @@ test.describe("mobile layout", () => {
     );
     expect(overflow).toBeLessThanOrEqual(0);
   });
+
+  // graph-expansion Phase 1 (plan §6: "NODE_RADIUS/hit targets >= 24px").
+  test("nodes and edge hit-areas render larger on a phone-sized screen", async ({
+    page,
+  }) => {
+    await page.goto("/explore/master-107325/");
+    const centerCircle = page.locator(
+      "[data-explorer-nodes] .explorer-node[data-is-center='true'] circle",
+    );
+    await expect(centerCircle).toBeVisible({ timeout: 15000 });
+    // Desktop defaults are 14/8 -- mobile must be strictly larger, not
+    // merely present, or this would pass even if the breakpoint check
+    // were silently broken.
+    await expect(centerCircle).toHaveAttribute("r", "18");
+    const neighborCircle = page
+      .locator(
+        "[data-explorer-nodes] .explorer-node[data-is-center='false'] circle",
+      )
+      .first();
+    await expect(neighborCircle).toHaveAttribute("r", "12");
+
+    const edgeHitArea = page.locator(".explorer-edge-hitarea").first();
+    await expect(edgeHitArea).toHaveAttribute("height", "18");
+  });
+
+  test("the evidence drawer becomes a fixed bottom sheet on a phone-sized screen", async ({
+    page,
+  }) => {
+    await page.goto("/explore/master-107325/");
+    const firstEdge = page.locator(".explorer-edge-group").first();
+    await expect(firstEdge).toBeVisible({ timeout: 15000 });
+    await firstEdge.click();
+
+    const drawer = page.locator("[data-explorer-evidence-drawer]");
+    await expect(drawer).toBeVisible();
+    await expect(drawer).toHaveCSS("position", "fixed");
+    const box = await drawer.boundingBox();
+    if (!box) throw new Error("drawer has no bounding box");
+    // Anchored to the viewport's bottom edge -- within a couple of CSS
+    // pixels rather than an exact match, since a real browser's layout
+    // rounding (and the safe-area-inset padding on a real device) can
+    // shift this by a pixel or two even when genuinely bottom-anchored.
+    expect(Math.abs(box.y + box.height - 844)).toBeLessThanOrEqual(2);
+  });
+});
+
+test.describe("desktop layout", () => {
+  // Explicit, not just "whatever the default project viewport happens to
+  // be" -- this test's whole point is confirming the SAME page does NOT
+  // apply the mobile hit-target sizes above a real desktop width.
+  test.use({ viewport: { width: 1280, height: 800 } });
+
+  test("nodes keep the smaller desktop radii above the mobile breakpoint", async ({
+    page,
+  }) => {
+    await page.goto("/explore/master-107325/");
+    const centerCircle = page.locator(
+      "[data-explorer-nodes] .explorer-node[data-is-center='true'] circle",
+    );
+    await expect(centerCircle).toBeVisible({ timeout: 15000 });
+    await expect(centerCircle).toHaveAttribute("r", "14");
+    const neighborCircle = page
+      .locator(
+        "[data-explorer-nodes] .explorer-node[data-is-center='false'] circle",
+      )
+      .first();
+    await expect(neighborCircle).toHaveAttribute("r", "8");
+  });
 });
