@@ -186,6 +186,121 @@ def _matched_album(
     )
 
 
+def test_candidate_album_pairs_touch_every_album_before_revisiting_any() -> None:
+    """The real `challenge.v3.json` (179 albums, `--max-paths 300`) had every
+    one of its 300 paths start from the same two albums and left 7 albums
+    without any path, because the old `for i: for j > i` order enumerates
+    every pair of album 0 before album 1 gets a second look. Per-album
+    round-robin makes the first `N` candidates cover all `N` albums, so a
+    `max_paths` budget of about `2N` documents the whole catalog instead of
+    two corners of it. The candidate SET must stay exactly the old one --
+    this is a reordering, not a filter."""
+    from itertools import combinations
+
+    from networked_players_graph_core import challenge as challenge_module
+
+    ordered = [
+        _matched_album(
+            artist_id=100 + n,
+            artist_name=f"Artist {n}",
+            title=f"Album {n}",
+            master_id=900 + n,
+            main_release_id=n + 1,
+        )
+        for n in range(8)
+    ]
+
+    pairs = challenge_module._candidate_album_pairs(ordered)
+
+    album_count = len(ordered)
+    every_album = {a.album_id for a in ordered}
+    # Round 1: each album claims one pair, in `ordered` order, so the first
+    # N candidates START from albums 0..N-1 respectively and cover all N.
+    first_round = pairs[:album_count]
+    assert [pair[0].album_id for pair in first_round] == [a.album_id for a in ordered]
+    assert {a.album_id for pair in first_round for a in pair} == every_album
+    # Round 2 covers everything again.
+    second_round = pairs[album_count : 2 * album_count]
+    assert {a.album_id for pair in second_round for a in pair} == every_album
+    # Same set as the plain i < j enumeration, no pair duplicated or lost
+    # (direction is "whose turn it was", so compare unordered).
+    assert sorted(sorted((a.album_id, b.album_id)) for a, b in pairs) == sorted(
+        sorted((a.album_id, b.album_id)) for a, b in combinations(ordered, 2)
+    )
+    assert len(pairs) == len(set(frozenset((a.album_id, b.album_id)) for a, b in pairs))
+    # And the old order is gone: pairs[1] no longer starts from album 0.
+    assert pairs[1][0].album_id != ordered[0].album_id
+
+
+def test_candidate_album_pairs_give_adjacent_same_artist_albums_their_own_turn() -> None:
+    """The first, offset-stratified fix still left 2 of 179 real albums out:
+    pairs are deduplicated per ARTIST pair, and the catalog holds four
+    Jamiroquai masters that sort next to each other, so the first one took
+    the shared artist pairs with the neighbours and the middle two never
+    got a turn before `max_paths`. Per-album round-robin must hand every
+    album a DISTINCT artist pair in round 1, however its siblings sort."""
+    from networked_players_graph_core import challenge as challenge_module
+
+    def album(n: int, artist_id: int) -> MatchedAlbum:
+        return _matched_album(
+            artist_id=artist_id,
+            artist_name=f"Artist {artist_id}",
+            title=f"Album {n}",
+            master_id=900 + n,
+            main_release_id=n + 1,
+        )
+
+    # Albums 3..6 share artist 300 and sit adjacent, like the real catalog.
+    ordered = [
+        album(0, 100),
+        album(1, 101),
+        album(2, 102),
+        album(3, 300),
+        album(4, 300),
+        album(5, 300),
+        album(6, 300),
+        album(7, 107),
+        album(8, 108),
+        album(9, 109),
+    ]
+
+    pairs = challenge_module._candidate_album_pairs(ordered)
+
+    first_round = pairs[: len(ordered)]
+    assert {a.album_id for pair in first_round for a in pair} == {a.album_id for a in ordered}
+    # Each same-artist album's round-1 pair reaches a DIFFERENT partner
+    # artist -- that is what makes them distinct artist pairs.
+    same_artist_partners = [b.artist_id for a, b in first_round if a.artist_id == 300]
+    assert len(same_artist_partners) == 4
+    assert len(set(same_artist_partners)) == 4
+    # No pair ever joins two albums by the same artist, and no artist pair
+    # is ever emitted twice.
+    artist_pairs = [frozenset((a.artist_id, b.artist_id)) for a, b in pairs]
+    assert all(len(pair) == 2 for pair in artist_pairs)
+    assert len(artist_pairs) == len(set(artist_pairs))
+
+
+def test_build_challenge_v2_every_album_gets_a_path_within_two_per_album(
+    dataset_root: Path,
+) -> None:
+    """End-to-end form of the ordering guarantee on the synthetic fixture:
+    with `max_paths = 2 * N`, every matched album appears in at least one
+    published path."""
+    with CreditGraph.open(dataset_root) as graph:
+        artifact, _report = build_challenge_v2(
+            graph,
+            ALBUMS,
+            snapshot_date="20260601",
+            generated_by="test-suite",
+            max_paths=2 * len(ALBUMS),
+        )
+    validate_challenge(artifact)
+    touched = {p["from_album_id"] for p in artifact["paths"]} | {
+        p["to_album_id"] for p in artifact["paths"]
+    }
+    assert touched == {a["id"] for a in artifact["albums"]}
+
+
 def test_build_challenge_v2_skips_a_same_artist_pair_instead_of_raising(
     dataset_root: Path,
 ) -> None:

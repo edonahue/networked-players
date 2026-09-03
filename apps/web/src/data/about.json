@@ -6,7 +6,7 @@
     {
       "heading": "The idea",
       "paragraphs": [
-        "Release credits document who played, produced, engineered, arranged, or sang on a record. Networked Players treats those credits as a graph: two artists are connected when they're documented performing on the same release or track, and a path between two artists is a chain of those connections.",
+        "Release credits document who played, sang, produced, engineered, or arranged a record. Networked Players keeps only the performances as connections: two musicians are connected when they're documented playing or singing on the same release or track, and a path between two records is a chain of those performances. Production, engineering, and other non-performance credits stay visible as evidence, but they never form an edge on their own.",
         "The point is the evidence. Every hop in a path keeps its proof attached — the release, the role text, the credit scope — so you can see exactly why two artists are linked."
       ]
     },
@@ -19,9 +19,9 @@
     {
       "heading": "Where the project actually is",
       "paragraphs": [
-        "The album grid and evidence viewer run on Discogs monthly-dump data (snapshot 20260601): {{studioAlbumCount}} studio albums, {{artistCount}} artists, {{documentedConnectionCount}} documented connections, drawn from a bounded working set seeded by a private collection that's never itself published. Album years are the master's original release year, and the catalog excludes live albums, soundtracks, compilations, and other non-studio releases by default.",
+        "The album grid and evidence viewer run on Discogs monthly-dump data (snapshot 20260601): {{studioAlbumCount}} studio albums, {{artistCount}} artists, {{documentedConnectionCount}} documented performance paths, drawn from a bounded working set seeded by a private collection that's never itself published. Album years are the master's original release year, and the catalog excludes live albums, soundtracks, compilations, and other non-studio releases by default.",
         "The flagship Connection Guesser game (below) runs on the same catalog: {{oneHopRoundCount}} one-hop and {{twoHopRoundCount}} two-hop rounds derived from those {{studioAlbumCount}} studio albums and their credits. (An earlier synthetic round set still exists as a test fixture, but nobody plays it.) Connection of the Day serves one frozen round per local calendar day from a committed schedule. Record Routes is a third mode on the same catalog: guess how many credited hops connect two records, and, for two-hop routes, who bridges them.",
-        "The connections demo on this site runs separately, on a small, curated subset of Discogs releases and artist connections — fetched via the Discogs API ahead of the full CC0 dump pipeline (see the project's ADR 0012)."
+        "An earlier connections demo, linked from the footer as an archive, runs separately on a small, curated subset of Discogs releases fetched via the Discogs API before the CC0 dump pipeline existed (ADR 0012). It predates the performer-only graph model and is not part of the current site."
       ]
     },
     {
@@ -34,14 +34,14 @@
     {
       "heading": "What's shipped since Phase 1",
       "paragraphs": [
-        "A first-class role taxonomy for credits (producer, engineer, performer, and more, alongside the original role text), a searchable contributors directory that makes the people behind these records as navigable as the albums themselves, and a real record-to-record search — Connect Two Records — over every credited contributor on any two catalog albums, not just their primary artists. Explore adds an open-ended, bounded network view of one album's documented credit neighborhood, and two role-restricted search modes (Rhythm Section, Guitar Paths) narrow a search to a specific kind of performance.",
+        "A first-class role taxonomy for credits (producer, engineer, performer, and more, alongside the original role text), a searchable contributors directory that makes the people behind these records as navigable as the albums themselves, and a real record-to-record search — Connect Two Records — over every credited contributor on any two catalog albums, not just their primary artists. Explore adds an open-ended, bounded network view of the performers documented around one album, and two role-restricted search modes (Rhythm Section, Guitar Paths) narrow a search to a specific kind of performance.",
         "Every one of those surfaces now links directly into the others: an album page opens straight into Connect (pre-filled) or Explore (centered on the album's own artist); a contributor page opens Explore centered on that person specifically; Explore's current center links back to its own contributor page when one exists; and every documented evidence hop, in both Connect and Explore, links each credited name to their own contributor page. The site stays one connected graph to move through, page to page."
       ]
     },
     {
       "heading": "What's next",
       "paragraphs": [
-        "The connections demo still runs on its original API-sourced dataset; replacing it with one derived from the CC0 monthly dumps, with full provenance and no collection membership, hasn't happened yet. A future live-search mode would only ever add to the site — the static-first core keeps working on its own either way."
+        "The archived connections demo still runs on its original API-sourced dataset and will be retired rather than replaced. A future live-search mode would only ever add to the site — the static-first core keeps working on its own either way."
       ]
     }
   ]

@@ -305,7 +305,14 @@ def _parser() -> argparse.ArgumentParser:
         "--masters-root", type=Path, default=None, help="optional parsed masters snapshot root"
     )
     build_challenge.add_argument("--output", type=Path, required=True)
-    build_challenge.add_argument("--max-paths", type=int, default=12)
+    build_challenge.add_argument(
+        "--max-paths",
+        type=int,
+        default=None,
+        help="stop after this many paths; default is 2 x the album count, so every album "
+        "gets a documented path before any album gets a third (see "
+        "networked_players_graph_core.challenge._candidate_album_pairs)",
+    )
     build_challenge.add_argument("--max-hops", type=int, default=4)
     build_challenge.add_argument(
         "--max-frontier-expansion",
@@ -2192,6 +2199,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         # exact collision risk resolving it once already closed.
         albums_are_resolved = bool(albums) and "artist_id" in albums[0]
         catalog_version = albums_payload.get("catalog_version") if albums_are_resolved else None
+        # Two paths per album: with the stratified pair order, the first
+        # N-1 candidates touch every album once and the next N-2 touch each
+        # again, so 2N is the smallest budget that gives every album more
+        # than a single path even when a few candidate searches come back
+        # empty. A fixed number (the old default was 12) cannot track the
+        # catalog as it grows.
+        max_paths = args.max_paths if args.max_paths is not None else 2 * len(albums)
 
         is_family_excluded: Callable[[int, int], bool] | None = None
         if args.artist_family_exclusions is not None:
@@ -2239,7 +2253,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                     generated_by=(
                         f"networked-players-catalog build-challenge-from-dump {__version__}"
                     ),
-                    max_paths=args.max_paths,
+                    max_paths=max_paths,
                     max_hops=args.max_hops,
                     max_workers=args.max_workers,
                     is_family_excluded=is_family_excluded,
@@ -2255,7 +2269,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                     generated_by=(
                         f"networked-players-catalog build-challenge-from-dump {__version__}"
                     ),
-                    max_paths=args.max_paths,
+                    max_paths=max_paths,
                     max_hops=args.max_hops,
                     max_workers=args.max_workers,
                     is_family_excluded=is_family_excluded,

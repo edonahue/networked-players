@@ -17,5 +17,6 @@ detail; this file is the quick orientation for agents working here.
   the real credits schema in `packages/catalog` (`CREDIT_SCHEMA`) so a future CC0-dump-derived
   artifact (Milestone 8) can replace this API-sourced one under the same shape.
 - **Static-first:** the demo runs entirely client-side; no live API may become required.
-- Preserve evidence-first framing: connections are documented co-credits, never inferred
-  influence.
+- Preserve evidence-first framing: connections are documented musical performances (ADR 0068,
+  performer-only public graph); credits are the evidence. Never inferred influence, and never a
+  non-performance credit presented as a connection on its own.

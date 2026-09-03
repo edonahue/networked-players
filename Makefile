@@ -72,11 +72,13 @@ expand-onehop: ## One-hop expansion from the private seed over a parsed snapshot
 		--dataset local/processed/discogs/snapshot=$(SNAPSHOT) \
 		--output-root local/processed/discogs-onehop $(ARGS)
 
-build-challenge: ## Build the album-centered challenge.v3 artifact from a one-hop dataset (needs SNAPSHOT=YYYYMMDD)
-	@test -n "$(SNAPSHOT)" || (echo "Set SNAPSHOT=YYYYMMDD (a completed expand-onehop under local/processed/discogs-onehop/)" >&2; exit 1)
+build-challenge: ## Build challenge.v3 from the published catalog over a one-hop dataset (needs SNAPSHOT=YYYYMMDD; ONEHOP=discogs-onehop-v4 by default); --max-paths defaults to 2 x the album count so every album gets its paths; then regenerate evidence registry -> contributor index -> album hop distances (docs/OPERATOR_SETUP.md)
+	@test -n "$(SNAPSHOT)" || (echo "Set SNAPSHOT=YYYYMMDD (a completed expand-onehop under local/processed/$(or $(ONEHOP),discogs-onehop-v4)/)" >&2; exit 1)
 	uv run networked-players-catalog build-challenge-from-dump \
-		--onehop-root local/processed/discogs-onehop/snapshot=$(SNAPSHOT) \
-		--albums data/albums/top-albums-v1.json \
+		--onehop-root local/processed/$(or $(ONEHOP),discogs-onehop-v4)/snapshot=$(SNAPSHOT) \
+		--albums apps/web/public/data/catalog/albums.v1.json \
+		--max-hops 4 --max-frontier-expansion 0 --in-memory-search \
+		--studio-album-exclusions data/albums/studio-album-master-exclusions-v1.json \
 		--output apps/web/public/data/challenge.v3.json $(ARGS)
 
 export-graph-snapshot: ## Export the materialized co-credit graph snapshot from a one-hop dataset (needs SNAPSHOT=YYYYMMDD)

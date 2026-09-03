@@ -149,3 +149,13 @@ statement about connectivity. The 7 albums absent from this artifact's paths
 are *not* disconnected — the union-find analysis above proves all 179 sit in
 `graph.v3.json`'s single connected component. They simply did not come up in
 the first 302 pairs the lazy iterator consumed.
+
+*Resolved 2026-09-02 (graph-expansion Phase 0, slice 0-A):* the cause was the
+candidate-pair order itself — `for i: for j > i` over id-sorted albums meant
+every one of the 300 paths started from the same two albums. `_candidate_album_pairs`
+now hands each album its own turn per round (per-album round-robin, deduplicated
+per artist pair) and `--max-paths` defaults to twice the album count, so the
+regenerated `challenge.v3.json` reaches all 179 albums with 358 paths, every album
+on at least two of them. The contributor index, hop distances, and evidence registry
+were regenerated from it in the documented order; the before/after diff is recorded
+in `local/benchmarks/` (private per ADR 0018).

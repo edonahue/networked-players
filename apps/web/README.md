@@ -39,7 +39,8 @@ versioned static artifacts — no backend, no accounts.
   album-anchor nodes on the pathfinding graph turn the search into a
   single-source/single-sink BFS over every credited contributor on each album
   (not just its primary artist), with real endpoint/evidence cards and optional
-  Behind the Glass / Rhythm Section / Guitar Paths role filters (ADR 0053). An
+  Rhythm Section / Guitar Paths role filters (ADR 0053; the Behind the Glass
+  producer/engineer filter was retired with the performer-only graph, ADR 0068). An
   unfiltered search is ranked, not just the first path found (ADR 0059) —
   evidence quality, hub dependence, and role substance decide among equal-hop
   candidates, shown alongside a genuinely distinct alternate and a "Why this

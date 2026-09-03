@@ -89,3 +89,35 @@ Revisit if the catalog ever regenerates with zero unconnected albums for a susta
 (the honest-state UI becomes permanently inert) or if `/explore/`'s own scope is later
 widened to make disconnected browsing meaningful there too, at which point the "explicitly
 out of scope" list above should be reconsidered explicitly rather than assumed unchanged.
+
+## Addendum (2026-09-02): the revisit trigger fired
+
+Both halves of the revisit trigger fired at once in the graph-expansion phase's first slice
+("every album gets its paths"):
+
+- The reason some albums lacked a documented path was never that they were disconnected. It
+  was the challenge builder's candidate-pair *order*: `_candidate_album_pairs` enumerated
+  `(i, j > i)` over id-sorted albums and the build stopped at `max_paths`, so at 179 albums
+  every one of the 300 committed paths started from the same two albums and seven albums were
+  simply never reached by the iterator. The order is now stratified (every album's first pair
+  before any album's second) and `--max-paths` defaults to twice the album count, so a
+  regenerated `challenge.v3.json` touches every catalog album. The honest-state badge is now
+  expected to be inert on the committed artifact — it stays as a guard, because the set it
+  reports on is still a build property, not a graph property.
+- `/explore/`'s scope is widened to the full catalog, the same as `/albums/`. The original
+  reasoning ("an album with no documented connection isn't a meaningful entry into Explore")
+  rested on treating challenge-path endpoints as "connected albums"; as the first point shows,
+  that set was really "albums the challenge builder happened to reach first." Every catalog
+  album is a real pathfinding-graph node with a real neighborhood, and Explore is about that
+  neighborhood, not about challenge paths. The grid keeps the same badge as the shelf for any
+  album still without a documented path.
+
+The "explicitly out of scope" list above is therefore reconsidered explicitly, as the trigger
+asked: `/explore/`'s grid is no longer connected-only; the homepage's album count is the
+catalog count rather than the path-endpoint count; the sitemap was already the full catalog.
+No page derives its album universe from `challenge.v3.json` paths any more --
+`connectedAlbumIds` only decides which albums get the badge. `apps/web/tests/album-grid-dedup.spec.ts`
+now asserts that `/explore/` renders the full catalog and, when the committed artifact has no
+unconnected albums, that the badge is absent everywhere; its excluded-album cases are
+skip-guarded so they resume being exercised automatically if a future regeneration ever leaves
+an album out again.

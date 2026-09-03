@@ -65,7 +65,7 @@ test("about page's stats paragraph quotes the real, current artifact counts", as
     .first();
   await expect(statsParagraph).toContainText(`${stats.artistCount} artists`);
   await expect(statsParagraph).toContainText(
-    `${stats.documentedConnectionCount} documented connections`,
+    `${stats.documentedConnectionCount} documented performance paths`,
   );
   await expect(
     page.getByText(
@@ -88,7 +88,7 @@ test("llms.txt quotes the real, current catalog counts and never re-states the o
   const body = await res.text();
 
   expect(body).toContain(
-    `${stats.studioAlbumCount} studio albums, ${stats.artistCount} artists, ${stats.documentedConnectionCount} documented connections`,
+    `${stats.studioAlbumCount} studio albums, ${stats.artistCount} artists, ${stats.documentedConnectionCount} documented performance paths`,
   );
   expect(body).toContain(
     `${stats.oneHopRoundCount} one-hop and ${stats.twoHopRoundCount} two-hop rounds`,
@@ -249,9 +249,9 @@ test("an album page renders mode controls and reveals evidence", async ({
 
 // Phase 6 PR 6-02: every album page links directly into the Network
 // Explorer, centered on the album's own artist -- `/explore/<album.id>/`
-// already exists as a static page for every connected album (same
-// connectedCatalogAlbums set backs both routes), so this is a pure
-// cross-link with no new URL-state contract.
+// already exists as a static page for every catalog album (the same
+// challenge.albums set backs both routes), so this is a pure cross-link
+// with no new URL-state contract.
 test("an album page links directly into the Network Explorer", async ({
   page,
   request,
@@ -299,9 +299,11 @@ test("an album page surfaces nearby records via shared contributors", async ({
   await expect(nearbySection.locator(".album-card").first()).toBeVisible();
 });
 
-// The 3 real catalog albums with zero documented challenge.v3 paths
-// (Phase 6 PR 6-07 widened getStaticPaths to cover them) used to be a
-// silent, CTA-less dead end.
+// Catalog albums with zero documented challenge.v3 paths (Phase 6 PR 6-07
+// widened getStaticPaths to cover them) used to be a silent, CTA-less dead
+// end. Since the graph-expansion Phase 0 pair-order fix every catalog album
+// is a path endpoint, so this is skip-guarded rather than deleted: it
+// resumes automatically if a future regeneration ever leaves an album out.
 test("an album with zero documented connections still offers a real way onward", async ({
   page,
   request,
@@ -315,8 +317,11 @@ test("an album with zero documented connections still offers a real way onward",
     paths.flatMap((p) => [p.from_album_id, p.to_album_id]),
   );
   const zeroConnection = albums.find((a) => !connectedIds.has(a.id));
-  if (!zeroConnection)
-    throw new Error("no zero-connection album in the real catalog artifact");
+  test.skip(
+    zeroConnection === undefined,
+    "every catalog album has a documented path in the committed artifact",
+  );
+  if (!zeroConnection) return;
 
   await stubCoverArt(page);
   await page.goto(`/albums/${zeroConnection.id}/`);
