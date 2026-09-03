@@ -391,6 +391,109 @@ def test_v2_and_v3_can_coexist_independently() -> None:
     assert pathfinding_graph_failures(_graph_v3(), _catalog()) == []
 
 
+# --- v4 (graph-expansion Phase 1): role dictionary -------------------------
+# Same CSR/album_virtual_nodes/graph_policy_version shape as v3 -- only
+# edge_role_a/edge_role_b's TYPE (index, not text) and the new `roles`
+# dictionary are new.
+
+
+def _graph_v4() -> dict[str, Any]:
+    graph = deepcopy(_graph_v3())
+    graph["schema_version"] = 4
+    # _graph_v3()/_graph_v2() use the sentinel plus "Guitar"/"Bass" -- three
+    # distinct role texts, first-seen order matching the original
+    # edge_role_a/edge_role_b arrays exactly so the index remap below is
+    # easy to hand-verify.
+    roles = [_SENTINEL, "Guitar", "Bass"]
+    index_of = {text: i for i, text in enumerate(roles)}
+    graph["roles"] = roles
+    graph["edge_role_a"] = [index_of[t] for t in graph["edge_role_a"]]
+    graph["edge_role_b"] = [index_of[t] for t in graph["edge_role_b"]]
+    graph["pathfinding_graph_version"] = pathfinding_graph_version(graph, _SNAPSHOT)
+    return graph
+
+
+def test_clean_v4_graph_has_no_failures() -> None:
+    assert pathfinding_graph_failures(_graph_v4(), _catalog()) == []
+
+
+def test_v4_version_prefix_is_v4() -> None:
+    graph = _graph_v4()
+    assert graph["pathfinding_graph_version"].startswith(f"pathfinding-graph-v4-{_SNAPSHOT}-")
+
+
+def test_v4_missing_roles_key_is_rejected() -> None:
+    graph = deepcopy(_graph_v4())
+    del graph["roles"]
+    failures = pathfinding_graph_failures(graph, _catalog())
+    assert any("unexpected top-level keys" in f for f in failures)
+
+
+def test_v4_edge_role_a_as_strings_is_rejected() -> None:
+    """The whole point of v4: edge_role_a/edge_role_b must be indices, not
+    the role text a v3 payload would carry -- a v3 payload accidentally
+    stamped schema_version=4 must fail, not silently validate."""
+    graph = deepcopy(_graph_v3())
+    graph["schema_version"] = 4
+    graph["roles"] = [_SENTINEL, "Guitar", "Bass"]
+    graph["pathfinding_graph_version"] = pathfinding_graph_version(graph, _SNAPSHOT)
+    failures = pathfinding_graph_failures(graph, _catalog())
+    assert any("edge_role_a must be an array of valid indices into roles" in f for f in failures)
+
+
+def test_v4_out_of_range_role_index_is_rejected() -> None:
+    graph = deepcopy(_graph_v4())
+    graph["edge_role_a"][0] = len(graph["roles"])  # one past the end
+    failures = pathfinding_graph_failures(graph, _catalog())
+    assert any("edge_role_a must be an array of valid indices into roles" in f for f in failures)
+
+
+def test_v4_negative_role_index_is_rejected() -> None:
+    graph = deepcopy(_graph_v4())
+    graph["edge_role_a"][0] = -1
+    failures = pathfinding_graph_failures(graph, _catalog())
+    assert any("edge_role_a must be an array of valid indices into roles" in f for f in failures)
+
+
+def test_v4_non_string_roles_entry_is_rejected() -> None:
+    graph = deepcopy(_graph_v4())
+    graph["roles"][0] = 123
+    failures = pathfinding_graph_failures(graph, _catalog())
+    assert any("roles must be an array of strings" in f for f in failures)
+
+
+def test_v4_still_validates_sentinel_placement_through_the_dictionary() -> None:
+    """The sentinel check resolves v4's index through `roles` before
+    comparing -- swapping which role index a virtual-node slot points to
+    must still be caught, not silently pass because the raw value is now an
+    int instead of the sentinel string."""
+    graph = deepcopy(_graph_v4())
+    # Slot 0's edge_role_a is the sentinel today (virtual anchor side);
+    # repoint it at "Guitar" instead -- a real misplacement.
+    guitar_index = graph["roles"].index("Guitar")
+    graph["edge_role_a"][0] = guitar_index
+    graph["pathfinding_graph_version"] = pathfinding_graph_version(graph, _SNAPSHOT)
+    failures = pathfinding_graph_failures(graph, _catalog())
+    assert any("sentinel placement disagrees" in f for f in failures)
+
+
+def test_v4_still_validates_album_virtual_nodes() -> None:
+    """v4 inherits every v2/v3 album-anchor check -- confirmed with one
+    representative case, not the full suite duplicated."""
+    graph = deepcopy(_graph_v4())
+    graph["album_virtual_nodes"][0]["virtual_artist_id"] = 1
+    failures = pathfinding_graph_failures(graph, _catalog())
+    assert any("must be a" in f and "negative integer" in f for f in failures)
+
+
+def test_v3_and_v4_can_coexist_independently() -> None:
+    """Dual-live, the same way v2/v3 already proved: a v3 payload and a v4
+    payload, differing only in schema_version/edge_role encoding, each
+    validate cleanly on their own."""
+    assert pathfinding_graph_failures(_graph_v3(), _catalog()) == []
+    assert pathfinding_graph_failures(_graph_v4(), _catalog()) == []
+
+
 # --- shared, cross-language fixture set --------------------------------
 # Every file under data/fixtures/pathfinding-graph/ is also loaded by
 # apps/web/tests/pathfinding-bfs*.spec.ts against validatePathfindingGraph

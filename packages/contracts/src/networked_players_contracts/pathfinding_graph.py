@@ -30,6 +30,15 @@ real consumer had cut over, then was retired as an explicit, separate step
 (ADR 0058's own real precedent for the v1 retirement). The validator itself
 never narrowed -- only the published artifact set did.
 
+v4 (graph-expansion Phase 1) keeps v3's shape and edges byte-for-byte
+identical and adds `roles`: a deduplicated array of every distinct role
+text, with `edge_role_a`/`edge_role_b` becoming indices into it instead of
+the text itself -- a real, measured size win with no semantic change
+(role text repeats far more than it varies). This module accepts v4
+payloads; `graph.v3.json` remains the only published artifact until v4 is
+actually built, published as `graph.v4.json`, and every real consumer has
+cut over, per the same dual-live-then-retire precedent as v2 -> v3.
+
 Pure Python (no lxml/pyarrow/duckdb), safe for the Pi fleet and the web build
 to independently verify an already-generated graph against the canonical
 catalog it claims to belong to.
@@ -42,7 +51,7 @@ from typing import Any, TypeGuard
 
 from .canonical import content_hash
 
-PATHFINDING_GRAPH_SCHEMA_VERSIONS = frozenset({1, 2, 3})
+PATHFINDING_GRAPH_SCHEMA_VERSIONS = frozenset({1, 2, 3, 4})
 
 # Dependency-free duplicate of graph-core's own
 # `pathfinding_graph.ALBUM_ANCHOR_SENTINEL` -- this package stays
@@ -54,6 +63,7 @@ _VERSION_PATTERN_BY_SCHEMA = {
     1: re.compile(r"^pathfinding-graph-v1-[0-9A-Za-z]+-[0-9a-f]{12}$"),
     2: re.compile(r"^pathfinding-graph-v2-[0-9A-Za-z]+-[0-9a-f]{12}$"),
     3: re.compile(r"^pathfinding-graph-v3-[0-9A-Za-z]+-[0-9a-f]{12}$"),
+    4: re.compile(r"^pathfinding-graph-v4-[0-9A-Za-z]+-[0-9a-f]{12}$"),
 }
 
 _BASE_TOP_LEVEL_KEYS = frozenset(
@@ -80,6 +90,16 @@ _V2_ONLY_KEYS = frozenset({"album_virtual_nodes"})
 # `graph_policy_version`, recording which `graph.py.GRAPH_POLICY_VERSION`
 # produced this graph's edges.
 _V3_ONLY_KEYS = frozenset({"graph_policy_version"})
+# v4 (graph-expansion Phase 1, ADR 0070's follow-on): keeps every v3 key and
+# adds `roles`, a deduplicated role-text dictionary. `edge_role_a`/
+# `edge_role_b` change TYPE (string -> dictionary index, int) but not key
+# presence -- their string-vs-int shape is schema-version-gated below, not a
+# top-level key difference, so `_V4_ONLY_KEYS` only names the genuinely new
+# key. Real measurement (graph-expansion plan): edge_role_a/edge_role_b are
+# 68% of the v3 payload's raw bytes across only ~11.8K distinct strings over
+# ~76.6K slots -- dictionary encoding is a real, large, no-semantic-change
+# size win, not a style preference.
+_V4_ONLY_KEYS = frozenset({"roles"})
 _ALBUM_VIRTUAL_NODE_KEYS = frozenset({"album_id", "virtual_artist_id", "main_release_id"})
 
 
@@ -105,10 +125,12 @@ def pathfinding_graph_version(payload: dict[str, Any], snapshot_date: str) -> st
         "edge_role_b": payload.get("edge_role_b"),
     }
     schema_version = payload.get("schema_version")
-    if schema_version in (2, 3):
+    if schema_version in (2, 3, 4):
         identity["album_virtual_nodes"] = payload.get("album_virtual_nodes")
-    if schema_version == 3:
+    if schema_version in (3, 4):
         identity["graph_policy_version"] = payload.get("graph_policy_version")
+    if schema_version == 4:
+        identity["roles"] = payload.get("roles")
     digest = content_hash(identity, length=12)
     return f"pathfinding-graph-v{schema_version}-{snapshot_date}-{digest}"
 
@@ -142,10 +164,12 @@ def pathfinding_graph_failures(graph: Any, catalog: Any) -> list[str]:
         )
 
     expected_keys = _BASE_TOP_LEVEL_KEYS
-    if schema_version in (2, 3):
+    if schema_version in (2, 3, 4):
         expected_keys = expected_keys | _V2_ONLY_KEYS
-    if schema_version == 3:
+    if schema_version in (3, 4):
         expected_keys = expected_keys | _V3_ONLY_KEYS
+    if schema_version == 4:
+        expected_keys = expected_keys | _V4_ONLY_KEYS
     if set(graph.keys()) != expected_keys:
         failures.append(f"graph has unexpected top-level keys: {sorted(graph.keys())}")
 
@@ -224,12 +248,34 @@ def pathfinding_graph_failures(graph: Any, catalog: Any) -> list[str]:
     ):
         failures.append("evidence_release_ids must be an array of integers")
         evidence_release_ids = []
-    if not isinstance(edge_role_a, list) or not all(isinstance(x, str) for x in edge_role_a):
-        failures.append("edge_role_a must be an array of strings")
-        edge_role_a = []
-    if not isinstance(edge_role_b, list) or not all(isinstance(x, str) for x in edge_role_b):
-        failures.append("edge_role_b must be an array of strings")
-        edge_role_b = []
+    # v4: edge_role_a/edge_role_b are indices into a `roles` dictionary
+    # (int), not the role text itself (str) -- everything else in this
+    # function keeps treating them the same way (sentinel placement below
+    # resolves through `roles` for v4).
+    roles: list[str] | None = None
+    if schema_version == 4:
+        roles = graph.get("roles")
+        if not isinstance(roles, list) or not all(isinstance(r, str) for r in roles):
+            failures.append("roles must be an array of strings")
+            roles = []
+        role_count = len(roles)
+        if not isinstance(edge_role_a, list) or not all(
+            _is_int_not_bool(x) and 0 <= x < role_count for x in edge_role_a
+        ):
+            failures.append("edge_role_a must be an array of valid indices into roles")
+            edge_role_a = []
+        if not isinstance(edge_role_b, list) or not all(
+            _is_int_not_bool(x) and 0 <= x < role_count for x in edge_role_b
+        ):
+            failures.append("edge_role_b must be an array of valid indices into roles")
+            edge_role_b = []
+    else:
+        if not isinstance(edge_role_a, list) or not all(isinstance(x, str) for x in edge_role_a):
+            failures.append("edge_role_a must be an array of strings")
+            edge_role_a = []
+        if not isinstance(edge_role_b, list) or not all(isinstance(x, str) for x in edge_role_b):
+            failures.append("edge_role_b must be an array of strings")
+            edge_role_b = []
 
     slot_count = len(neighbors)
     for name, array in (
@@ -263,12 +309,12 @@ def pathfinding_graph_failures(graph: Any, catalog: Any) -> list[str]:
                 f"(expected {expected!r})"
             )
 
-    if schema_version == 3:
+    if schema_version in (3, 4):
         graph_policy_version = graph.get("graph_policy_version")
         if not _is_int_not_bool(graph_policy_version) or graph_policy_version < 1:
             failures.append("graph_policy_version must be a positive integer")
 
-    if schema_version not in (2, 3):
+    if schema_version not in (2, 3, 4):
         return failures
 
     # --- v2+: album_virtual_nodes and sentinel-role placement ---------------
@@ -363,6 +409,15 @@ def pathfinding_graph_failures(graph: Any, catalog: Any) -> list[str]:
             f"album_virtual_nodes is missing a virtual node for catalog album {missing_album_id!r}"
         )
 
+    def _role_text(value: Any) -> Any:
+        # v4: resolve a role INDEX through the roles dictionary before
+        # comparing to the sentinel string; v1-3: the value already IS the
+        # role text. An out-of-range index (already reported above) resolves
+        # to None, which never equals the sentinel -- safe, not a crash.
+        if roles is None:
+            return value
+        return roles[value] if _is_int_not_bool(value) and 0 <= value < len(roles) else None
+
     if offsets and neighbors and edge_role_a and edge_role_b:
         for node_index in range(min(node_count, len(offsets) - 1)):
             artist_a_id = node_ids[node_index]
@@ -372,7 +427,7 @@ def pathfinding_graph_failures(graph: Any, catalog: Any) -> list[str]:
                 if not (0 <= neighbor_index < node_count) or slot >= len(edge_role_a):
                     continue  # already reported above
                 artist_b_id = node_ids[neighbor_index]
-                role_a, role_b = edge_role_a[slot], edge_role_b[slot]
+                role_a, role_b = _role_text(edge_role_a[slot]), _role_text(edge_role_b[slot])
                 if (role_a == _ALBUM_ANCHOR_SENTINEL) != (artist_a_id < 0):
                     failures.append(
                         f"edge_role_a[{slot}] sentinel placement disagrees with whether node "

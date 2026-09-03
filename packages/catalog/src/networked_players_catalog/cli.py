@@ -1254,6 +1254,17 @@ def _parser() -> argparse.ArgumentParser:
         required=True,
         help="explicit ISO datetime for this build (never the wall clock)",
     )
+    build_pathfinding_graph.add_argument(
+        "--schema-version",
+        type=int,
+        default=3,
+        choices=(3, 4),
+        help=(
+            "3 (default): today's published graph.v3.json shape. 4 (graph-expansion "
+            "Phase 1): dictionary-encodes edge_role_a/edge_role_b as indices into a new "
+            "roles array -- not yet a published artifact; apps/web does not consume it."
+        ),
+    )
 
     validate_pathfinding_graph = subparsers.add_parser(
         "validate-pathfinding-graph",
@@ -3867,6 +3878,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 album_credit_membership,
                 snapshot_date=snapshot_date,
                 generated_at=args.generated_at,
+                schema_version=args.schema_version,
             )
 
         failures = pathfinding_graph_failures(pathfinding_graph, catalog)
