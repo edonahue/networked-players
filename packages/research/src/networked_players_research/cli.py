@@ -115,8 +115,11 @@ def _parser() -> argparse.ArgumentParser:
     route_quality.add_argument(
         "--graph",
         type=Path,
-        default=Path("apps/web/public/data/pathfinding/graph.v3.json"),
-        help="published pathfinding graph",
+        default=Path("apps/web/public/data/pathfinding/graph.v4.json"),
+        help=(
+            "published pathfinding graph -- v3 or v4 (ADR 0071); "
+            "load_published_graph decodes v4's role dictionary transparently"
+        ),
     )
     route_quality.add_argument(
         "--catalog",
