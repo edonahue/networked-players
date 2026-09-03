@@ -1,4 +1,4 @@
-# Site re-profile method (Phase 7 PR G)
+# Site re-profile method (Phase 7 PR G; extended graph-expansion Phase 0 slice 0-C)
 
 Phase 7's catalog expansion (140 → 179 albums, PR #161) grows every public
 artifact and every page the site renders. The Phase 7 plan's PR G asks for a
@@ -8,6 +8,14 @@ Explorer init, `astro build` duration, and mobile CPU/memory at 390px. Real
 elapsed-time numbers on this machine are never published here (ADR 0018) —
 this document is the reproducible method; real results live in
 `local/benchmarks/` (gitignored).
+
+The graph-expansion plan's Phase 0 slice 0-C (`docs/GRAPH_EXPANSION_DIRECTION.md`)
+extends this method with two additions the plan's own §6 Explore-scaling
+benchmark asks for: **Explorer recenter timing** and a **third, distinct
+CPU-throttled profile** — see "What it measures" and "Profiles" below. Both
+are exercised against the artifact names current since ADR 0068's
+performer-only cutover (`challenge.v3.json`, `pathfinding/graph.v3.json`);
+earlier revisions of this document referenced the retired `.v2.json` names.
 
 ## What has a real 140-album baseline to compare against, and what doesn't
 
@@ -37,14 +45,25 @@ architecture-selection benchmark).
 cd apps/web
 npm run build
 npm run preview -- --host 127.0.0.1 --port 4321 &
-node scripts/reprofile-site.mjs                  # desktop, unthrottled
-node scripts/reprofile-site.mjs --mobile-throttled  # Pixel 5 + 4x CPU throttle
+node scripts/reprofile-site.mjs                     # desktop, unthrottled
+node scripts/reprofile-site.mjs --desktop-throttled  # desktop viewport, 4x CPU throttle
+node scripts/reprofile-site.mjs --mobile-throttled   # Pixel 5 viewport, 4x CPU throttle
 ```
+
+**Profiles** (graph-expansion plan §6 asks for exactly these three): desktop
+unthrottled is the floor; `--desktop-throttled` isolates pure CPU cost
+(same viewport, no device/touch/UA emulation) from `--mobile-throttled`'s
+combined CPU-throttle-plus-mobile-viewport effect. Run each mode 2-3 times
+per the existing guidance below — the two throttled modes are NOT simply
+"slower" versions of the unthrottled run in every metric (a smaller
+viewport can render fewer visible Explorer nodes per recenter, for
+instance), so read all three as their own real data points, not a single
+scaling factor.
 
 **What it measures:**
 
 - **Payload sizes** (raw + gzip): `catalog/albums.v1.json`,
-  `challenge.v2.json`, `pathfinding/graph.v2.json`,
+  `challenge.v3.json`, `pathfinding/graph.v3.json`,
   `contributors/index.v1.json`, `evidence/release-registry.v1.json`.
 - **Sitemap composition**: total URL count, broken down into album /
   explore / contributor / other, fetched from the live `/sitemap.xml` route
@@ -58,7 +77,7 @@ node scripts/reprofile-site.mjs --mobile-throttled  # Pixel 5 + 4x CPU throttle
   graph) → click search → `[data-connect-results]` visible: that's the cold
   number. The same still-open page (catalog, graph, and worker already
   warm) then runs a **second** search against a different real path pulled
-  from the live `challenge.v2.json` (skipping any path sharing an endpoint
+  from the live `challenge.v3.json` (skipping any path sharing an endpoint
   with the cold pair) — that search-to-results time is the warm number.
   `warm.searchToResultsMs` is `null` only if the committed catalog has no
   second path with distinct endpoints, a valid if unlikely state.
@@ -80,7 +99,25 @@ node scripts/reprofile-site.mjs --mobile-throttled  # Pixel 5 + 4x CPU throttle
   measured."
 - **Explorer init**: navigation → page load → first `.explorer-node`
   visible, for a real connected album id resolved from the live
-  `challenge.v2.json` fetch (not hardcoded).
+  `challenge.v3.json` fetch (not hardcoded).
+- **Explorer recenter** (graph-expansion Phase 0 slice 0-C, plan §6):
+  measured on the SAME still-open page right after init (graph/worker
+  already warm, no repeated page-load cost) — click the first non-center
+  neighbor node → wait for `centerOn()`'s own real completion signal
+  (`explorerStage.ts` stamps `data-is-center="true"` onto the newly-
+  centered node) → record elapsed. Repeated `REPROFILE_RECENTER_ITERATIONS`
+  times (default 50), reported as p50/p95/max. Deliberately walks the
+  FIRST rendered non-center neighbor each time, not the plan's originally-
+  stated "10 highest-degree nodes" — no degree ranking is available
+  client-side without extra plumbing this slice doesn't add; note this
+  simplification wherever the numbers are read. Returns `incomplete: true`
+  with a real `iterationsRun` count rather than padding, if the graph ever
+  runs out of a non-center neighbor before the target iteration count.
+  **Not measured**: long-task count / frame time over a scripted pan/zoom
+  drag (the plan's other §6 metric) -- Explore has no pan/zoom interaction
+  to script yet (ADR 0052 still holds: bounded ego view, recenter as the
+  primary interaction; pan/zoom is Phase 1 work). Add that measurement once
+  Phase 1 ships the interaction it would measure, not before.
 - **Album shelf render**: navigation → page load → real `.album-card` count
   on `/albums/` (confirms the full catalog renders, not just a timing
   number).

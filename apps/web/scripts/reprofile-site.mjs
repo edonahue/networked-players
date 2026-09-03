@@ -7,7 +7,9 @@
 //
 // Usage (from apps/web/):
 //   npm run build && npm run preview -- --host 127.0.0.1 --port 4321 &
-//   node scripts/reprofile-site.mjs [--mobile-throttled]
+//   node scripts/reprofile-site.mjs                    # desktop, unthrottled
+//   node scripts/reprofile-site.mjs --desktop-throttled # desktop viewport, 4x CPU
+//   node scripts/reprofile-site.mjs --mobile-throttled  # Pixel 5 viewport, 4x CPU
 //
 // What's compared against a real prior baseline, and what's a new one:
 // - graph.v3.json payload size and sitemap URL counts have a real recorded
@@ -19,6 +21,23 @@
 //   this repo. This run establishes a baseline for FUTURE re-profiles to
 //   diff against, not a before/after for these specific numbers -- report
 //   them as "observed now," never implied as a comparison.
+//
+// Explorer RECENTER timing (graph-expansion Phase 0 slice 0-C, plan section
+// 6's benchmark method): added alongside Explorer INIT above -- recentering
+// (click a neighbor node -> `centerOn()` rebuilds the SVG) is the ring's
+// primary interaction (ADR 0052) and the thing Phase 1's tiles-vs-single-file
+// decision is actually gated on. Measured via the real `data-is-center`
+// attribute `centerOn()` already stamps onto the newly-centered node
+// (`explorerStage.ts`), not a timeout guess. Each iteration recenters onto
+// the FIRST non-center neighbor currently rendered -- a simple, deterministic
+// walk, not the plan's originally-stated "10 highest-degree nodes" (no
+// degree data is available client-side without extra plumbing this slice
+// doesn't add); note this simplification wherever the numbers are read.
+// Deliberately NOT measured here: long-task count / frame time over a
+// scripted pan/zoom drag -- Explore has no pan/zoom interaction to script
+// yet (ADR 0052 still holds: bounded ego view, recenter-as-primary,
+// zoom/pan is Phase 1 work per the graph-expansion plan). Add that
+// measurement once Phase 1 ships the interaction to measure, not before.
 
 import { chromium, devices } from "@playwright/test";
 import { readFileSync, statSync } from "node:fs";
@@ -27,7 +46,12 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 
 const BASE_URL = process.env.REPROFILE_BASE_URL ?? "http://127.0.0.1:4321";
-const THROTTLED = process.argv.includes("--mobile-throttled");
+const MOBILE_THROTTLED = process.argv.includes("--mobile-throttled");
+const DESKTOP_THROTTLED = process.argv.includes("--desktop-throttled");
+const THROTTLED = MOBILE_THROTTLED || DESKTOP_THROTTLED;
+const RECENTER_ITERATIONS = Number(
+  process.env.REPROFILE_RECENTER_ITERATIONS ?? 50,
+);
 const ROOT = path.resolve(fileURLToPath(new URL("..", import.meta.url)));
 
 function payloadSize(relPath) {
@@ -175,6 +199,57 @@ async function measureConnectReadiness(context, challenge, heapSamples) {
   };
 }
 
+function percentile(sortedValues, p) {
+  if (sortedValues.length === 0) return null;
+  const index = Math.min(
+    sortedValues.length - 1,
+    Math.ceil((p / 100) * sortedValues.length) - 1,
+  );
+  return sortedValues[Math.max(0, index)];
+}
+
+// Recenters onto the first non-center neighbor currently rendered,
+// `iterations` times, timing click -> the newly-centered node's real
+// `data-is-center="true"` attribute (centerOn()'s own completion signal,
+// not a guessed timeout). Returns null (not a partial array) if the graph
+// ever runs out of a non-center neighbor to click -- a real dead end, not
+// silently under-counted.
+async function measureExplorerRecenter(page, iterations) {
+  const samplesMs = [];
+  for (let i = 0; i < iterations; i++) {
+    const nextId = await page
+      .locator(
+        "[data-explorer-nodes] .explorer-node[data-artist-id]:not([data-is-center='true'])",
+      )
+      .first()
+      .getAttribute("data-artist-id");
+    if (nextId === null)
+      return { samplesMs, incomplete: true, iterationsRun: i };
+
+    const clickStart = Date.now();
+    await page
+      .locator(
+        `[data-explorer-nodes] .explorer-node[data-artist-id="${nextId}"]`,
+      )
+      .click();
+    await page
+      .locator(
+        `[data-explorer-nodes] .explorer-node[data-artist-id="${nextId}"][data-is-center="true"]`,
+      )
+      .waitFor({ state: "attached", timeout: 5_000 });
+    samplesMs.push(Date.now() - clickStart);
+  }
+  const sorted = [...samplesMs].sort((a, b) => a - b);
+  return {
+    samplesMs,
+    incomplete: false,
+    iterationsRun: iterations,
+    p50Ms: percentile(sorted, 50),
+    p95Ms: percentile(sorted, 95),
+    maxMs: sorted.length ? sorted[sorted.length - 1] : null,
+  };
+}
+
 async function measureExplorerInit(context, albumId, heapSamples) {
   const page = await newPage(context);
   const navStart = Date.now();
@@ -194,8 +269,14 @@ async function measureExplorerInit(context, albumId, heapSamples) {
     () => window.__NP_GRAPH_PARSE_MS__ ?? null,
   );
   heapSamples.push(await measureMemory(page));
+  // Recenter measured on the SAME still-open page (graph/worker already
+  // warm) -- a fresh navigation per recenter would measure page-load cost
+  // 50 times over, not the in-page recenter cost the plan's budget
+  // (p95 <= 100ms) is actually about.
+  const recenter = await measureExplorerRecenter(page, RECENTER_ITERATIONS);
+  heapSamples.push(await measureMemory(page));
   await page.close();
-  return { pageLoadMs, firstNodeVisibleMs, workerParseMs };
+  return { pageLoadMs, firstNodeVisibleMs, workerParseMs, recenter };
 }
 
 async function measureAlbumShelf(context, heapSamples) {
@@ -221,6 +302,11 @@ async function measureMemory(page) {
 async function run() {
   const browser = await chromium.launch();
   const results = {
+    profile: DESKTOP_THROTTLED
+      ? "desktop-4x-throttled"
+      : MOBILE_THROTTLED
+        ? "mobile-pixel5-4x-throttled"
+        : "desktop-unthrottled",
     throttled: THROTTLED,
     payloads: measurePayloads(),
   };
@@ -238,7 +324,12 @@ async function run() {
   // (apps/web/tests/smoke.spec.ts's "mobile layout" describe block), so a
   // re-profile's mobile numbers are actually comparable to every other
   // mobile assertion in this codebase, not a third, unrelated size.
-  const contextOptions = THROTTLED
+  // `--desktop-throttled` (graph-expansion Phase 0 slice 0-C) applies the
+  // same 4x CPU throttle with NO device emulation -- default desktop
+  // viewport -- the plan's third, distinct profile ("desktop, 4x throttled,
+  // and a Pixel 5 device profile"), isolating CPU cost from the mobile
+  // viewport/touch/UA differences the Pixel 5 profile also introduces.
+  const contextOptions = MOBILE_THROTTLED
     ? { ...devices["Pixel 5"], viewport: { width: 390, height: 844 } }
     : {};
   const context = await browser.newContext(contextOptions);
