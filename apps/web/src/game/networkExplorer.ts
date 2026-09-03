@@ -48,16 +48,27 @@ function roleCategoriesFor(
 }
 
 /** The bounded neighborhood of one artist in the pathfinding graph, ranked
- * by the neighbor's own degree (connection_count) so the most-documented,
- * most-navigable contributors surface first when a hub has more real
- * neighbors than the display cap. Returns null if the artist isn't in this
- * graph's scope at all. */
+ * by `rankByArtistId` (graph-expansion Phase 1's prominence sidecar --
+ * `albums_2hop`/`decade_span`-weighted, deliberately not raw degree, so a
+ * hub doesn't drown out a genuinely structural bridge) when supplied, so
+ * the neighbors most worth seeing first surface before the display cap.
+ * Falls back to the contributor index's own `connection_count` when no
+ * prominence data is available (a fetch failure, or a graph the prominence
+ * sidecar hasn't been generated for yet) -- degraded ranking, never a
+ * missing view. Either way, ties break on `neighborArtistId` ascending, a
+ * deterministic total order rather than relying on `Array.prototype.sort`'s
+ * stability alone: `maxNeighbors` grows across repeated calls as a visitor
+ * pages in more of the same neighborhood (`explorerStage.ts`'s "show more"),
+ * and a reshuffled tie order between those calls would make already-shown
+ * neighbors silently change position. Returns null if the artist isn't in
+ * this graph's scope at all. */
 export function buildView(
   graph: PathfindingGraph,
   artistIndex: Map<number, number>,
   contributorByArtistId: Map<number, Contributor>,
   centerArtistId: number,
   maxNeighbors: number = MAX_NEIGHBORS,
+  rankByArtistId: ReadonlyMap<number, number> | null = null,
 ): ExplorerView | null {
   // Defense-in-depth, mirroring the neighbor-side guard below: a v2 graph's
   // node_ids legitimately contains negative virtual album-anchor ids
@@ -99,9 +110,12 @@ export function buildView(
 
   const degreeOf = (artistId: number) =>
     contributorByArtistId.get(artistId)?.connection_count ?? 0;
-  candidates.sort(
-    (a, b) => degreeOf(b.neighborArtistId) - degreeOf(a.neighborArtistId),
-  );
+  const rankOf = (artistId: number) =>
+    rankByArtistId?.get(artistId) ?? degreeOf(artistId);
+  candidates.sort((a, b) => {
+    const byRank = rankOf(b.neighborArtistId) - rankOf(a.neighborArtistId);
+    return byRank !== 0 ? byRank : a.neighborArtistId - b.neighborArtistId;
+  });
 
   const shown = candidates.slice(0, maxNeighbors);
   const center: ExplorerNode = {

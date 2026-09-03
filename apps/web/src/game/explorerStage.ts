@@ -12,6 +12,7 @@ import {
 import {
   buildView,
   isDimmed,
+  MAX_NEIGHBORS,
   type ExplorerNode,
   type ExplorerView,
 } from "./networkExplorer";
@@ -36,6 +37,16 @@ const EVIDENCE_REGISTRY_URL = "/data/evidence/release-registry.v1.json";
 // back into plain strings before returning, so nothing below this line
 // changed to consume it.
 const PATHFINDING_GRAPH_URL = "/data/pathfinding/graph.v4.json";
+// graph-expansion Phase 1 (plan §8): precomputed ranking signals, node-
+// aligned with the pathfinding graph above. A fetch failure (or a graph
+// this sidecar hasn't been generated for) degrades to buildView's own
+// connection_count fallback -- never a blocked or blank Explore.
+const PROMINENCE_URL = "/data/pathfinding/prominence.v1.json";
+
+/** Neighbors added per "show more" click, and the initial per-center cap --
+ * same constant either way, so the first press shows exactly one more full
+ * page rather than an arbitrary different-sized second batch. */
+const NEIGHBOR_PAGE_SIZE = MAX_NEIGHBORS;
 
 const VIEW_SIZE = 320;
 const CENTER = VIEW_SIZE / 2;
@@ -110,6 +121,12 @@ export async function initExplorerStage(): Promise<void> {
   const truncatedEl = stage.querySelector<HTMLElement>(
     "[data-explorer-truncated]",
   );
+  const truncatedCountEl = stage.querySelector<HTMLElement>(
+    "[data-explorer-truncated-count]",
+  );
+  const showMoreEl = stage.querySelector<HTMLButtonElement>(
+    "[data-explorer-show-more]",
+  );
   const evidenceDrawer = stage.querySelector<HTMLElement>(
     "[data-explorer-evidence-drawer]",
   );
@@ -146,6 +163,8 @@ export async function initExplorerStage(): Promise<void> {
     !statusEl ||
     !statusAssertiveEl ||
     !truncatedEl ||
+    !truncatedCountEl ||
+    !showMoreEl ||
     !evidenceDrawer ||
     !evidenceContent ||
     !evidenceClose ||
@@ -217,6 +236,29 @@ export async function initExplorerStage(): Promise<void> {
     // still renders without it.
   }
 
+  // graph-expansion Phase 1 (plan §8): ranks neighbors by explained
+  // structural reach instead of buildView's own connection_count fallback
+  // (which only covers the ~445 indexed contributors and ties at 0 for
+  // most real neighbors). Best-effort, like the contributor index above --
+  // a fetch failure (or a graph this sidecar hasn't been generated for
+  // yet) leaves `rankByArtistId` null, and buildView degrades to its
+  // existing fallback rather than blocking or blanking the view.
+  let rankByArtistId: Map<number, number> | null = null;
+  try {
+    const response = await fetch(PROMINENCE_URL);
+    if (response.ok) {
+      const prominence = (await response.json()) as {
+        node_ids: number[];
+        rank: number[];
+      };
+      rankByArtistId = new Map(
+        prominence.node_ids.map((id, i) => [id, prominence.rank[i]]),
+      );
+    }
+  } catch {
+    // buildView's own connection_count fallback still ranks neighbors.
+  }
+
   // The evidence-release registry (~355 KB gzipped, ADR 0058 Slice 3 --
   // ~57 KB is the *contributor index*'s real size, fetched separately
   // above; this comment named the wrong artifact until the post-Phase-4
@@ -286,9 +328,16 @@ export async function initExplorerStage(): Promise<void> {
   }
 
   function renderView(view: ExplorerView) {
+    // Paging (plan §6), not a one-shot truncation note: `view.truncated`
+    // reflects the CURRENT `neighborLimit` fresh on every render, so once
+    // "show more" has paged in every real neighbor this note (and its
+    // button) disappears on its own -- no separate "fully expanded" state
+    // to track.
     truncatedEl!.hidden = !view.truncated;
     if (view.truncated) {
-      truncatedEl!.textContent = `Showing ${view.neighbors.length} of ${view.totalNeighborCount} documented connections.`;
+      truncatedCountEl!.textContent = `Showing ${view.neighbors.length} of ${view.totalNeighborCount} documented connections.`;
+      showMoreEl!.hidden = false;
+      showMoreEl!.textContent = `Show ${Math.min(NEIGHBOR_PAGE_SIZE, view.totalNeighborCount - view.neighbors.length)} more`;
     }
 
     const nodePositions = new Map<number, { x: number; y: number }>();
@@ -388,6 +437,14 @@ export async function initExplorerStage(): Promise<void> {
 
   let currentView: ExplorerView | null = null;
 
+  // Paging (plan §6: "Showing 24 of 137 · show next 24"), NOT a hidden
+  // truncation -- `neighborLimit` resets to the default cap on every real
+  // recenter (`centerOn`) and grows by `NEIGHBOR_PAGE_SIZE` on "show more"
+  // (`expandNeighbors`), which re-runs `buildView` at the larger limit and
+  // re-renders WITHOUT touching history, the trail, or focus/announcement --
+  // it's more of the SAME center's neighborhood, not a new one.
+  let neighborLimit = NEIGHBOR_PAGE_SIZE;
+
   // Session-only "recently centered on" trail (plan §12.7's continuity
   // pass): a capped, in-memory list, never persisted and never touching
   // history/URL state -- recentering elsewhere in the app (a fresh page
@@ -442,7 +499,15 @@ export async function initExplorerStage(): Promise<void> {
       historyMode?: "push" | "replace" | "skip";
     } = {},
   ) {
-    const view = buildView(graph, artistIndex, contributorByArtistId, artistId);
+    neighborLimit = NEIGHBOR_PAGE_SIZE;
+    const view = buildView(
+      graph,
+      artistIndex,
+      contributorByArtistId,
+      artistId,
+      neighborLimit,
+      rankByArtistId,
+    );
     if (!view) {
       setStatus(
         `${label ?? "This artist"} isn't in the documented network graph yet.`,
@@ -545,6 +610,30 @@ export async function initExplorerStage(): Promise<void> {
         ?.focus();
     }
   }
+
+  // Pages in one more batch of the CURRENT center's neighbors (plan §6's
+  // paging, ranked by prominence) -- deliberately NOT a recenter: no
+  // history entry, no trail step, no status re-announcement, no focus
+  // move. Only `role-filter` categories can genuinely change (a newly-
+  // shown neighbor may introduce one `renderRoleFilter` hasn't seen yet),
+  // so that's re-derived too; nothing else about "what's centered" moved.
+  function expandNeighbors() {
+    if (!currentView) return;
+    neighborLimit += NEIGHBOR_PAGE_SIZE;
+    const view = buildView(
+      graph,
+      artistIndex,
+      contributorByArtistId,
+      currentView.center.artistId,
+      neighborLimit,
+      rankByArtistId,
+    );
+    if (!view) return;
+    currentView = view;
+    renderRoleFilter(view);
+    renderView(view);
+  }
+  showMoreEl.addEventListener("click", expandNeighbors);
 
   // Evidence drawer (ADR 0058 Slice 9): an edge's release/role data is
   // already carried on the DOM element itself (set in renderView above),

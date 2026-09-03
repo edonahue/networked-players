@@ -62,7 +62,8 @@ const { initialArtistId, initialLabel } = Astro.props;
   </svg>
 
   <p class="explorer-truncated-note" data-explorer-truncated hidden>
-    Showing the most-connected neighbors only — not every documented connection.
+    <span data-explorer-truncated-count></span>
+    <button type="button" data-explorer-show-more hidden></button>
   </p>
 
   <div
