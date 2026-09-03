@@ -228,6 +228,13 @@ def test_the_version_identity_pool_includes_caveat_flags() -> None:
         (frozenset({"Repress"}), 1 << 3),
         (frozenset({"Unofficial Release"}), 1 << 5),
         (frozenset({"Compilation", "Unofficial Release"}), 1 | (1 << 5)),
+        # single/ep (graph-expansion Phase 0 slice 0-B, ADR 0069): appended
+        # bits 6/7, sharing one bit each the same way Reissue/Repress do.
+        (frozenset({"Single"}), 1 << 6),
+        (frozenset({"Maxi-Single"}), 1 << 6),
+        (frozenset({"EP"}), 1 << 7),
+        (frozenset({"Mini-Album"}), 1 << 7),
+        (frozenset({"Single", "EP"}), (1 << 6) | (1 << 7)),
     ],
 )
 def test_caveat_flags_for_descriptors(descriptors: frozenset[str], expected: int) -> None:

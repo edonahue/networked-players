@@ -53,6 +53,16 @@ _TITLE_SIGNAL_PATTERN = re.compile(
 )
 _VARIOUS_ARTISTS_MARKERS = frozenset({"various", "various artists"})
 
+# ADR 0069: the public audit's `selection_source` column never says
+# "personal_editorial" -- normalizes both the legacy bucket-label fallback
+# and (defensively) a v2 catalog's own per-album field, should either ever
+# carry the old internal name. This is the fix for the "public audit
+# record's personal_editorial label" drift the graph-expansion plan flagged;
+# `assemble_album_catalog`'s internal Bucket A lane name is left alone (see
+# `analysis.py`'s own `_SELECTION_SOURCE_ALIASES` comment) since nothing
+# outside this audit ever surfaces it.
+_PUBLIC_SELECTION_SOURCE_ALIASES = {"personal_editorial": "editorial"}
+
 
 class AlbumCatalogAuditError(RuntimeError):
     """Raised when a catalog/audit pair fails cross-validation."""
@@ -125,13 +135,29 @@ def build_album_catalog_audit(
         bucket_starts.append((cursor, cursor + count, str(bucket["label"])))
         cursor += count
 
-    def _selection_source(index: int) -> str:
+    def _positional_selection_source(index: int) -> str:
         if index < editorial_count:
             return "editorial"
         for start, end, label in bucket_starts:
             if start <= index < end:
-                return label
-        return "graph_candidate"
+                return _PUBLIC_SELECTION_SOURCE_ALIASES.get(label, label)
+        # ADR 0069's enum calls this "generic_candidate" (renamed from
+        # "graph_candidate" -- never appears in the real committed audit,
+        # since the real catalog's candidate_count_added is 0 today).
+        return "generic_candidate"
+
+    def _selection_source(index: int, album: dict[str, Any]) -> str:
+        # Field-first (ADR 0069 catalog schema v2): a v2 album already
+        # carries its own real selection_source, computed once at catalog-
+        # build time rather than re-derived by position here. A v1 album
+        # (the field absent) falls back to the exact positional
+        # reconstruction this function has always done -- the transition
+        # assertion in test_catalog_audit.py proves the two agree on every
+        # album of the real committed (v1) catalog.
+        declared = album.get("selection_source")
+        if isinstance(declared, str) and declared:
+            return _PUBLIC_SELECTION_SOURCE_ALIASES.get(declared, declared)
+        return _positional_selection_source(index)
 
     rows: list[dict[str, Any]] = []
     for index, album in enumerate(catalog["albums"]):
@@ -157,7 +183,7 @@ def build_album_catalog_audit(
                 "artist": album["artist"],
                 "title": album["title"],
                 "original_year": album["year"],
-                "selection_source": _selection_source(index),
+                "selection_source": _selection_source(index, album),
                 "release_format_policy_result": (
                     "allowed" if album["main_release_id"] in allowed_release_ids else "excluded"
                 ),

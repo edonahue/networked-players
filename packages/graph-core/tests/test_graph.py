@@ -649,6 +649,28 @@ def test_master_returns_none_when_not_attached(dataset_root: Path) -> None:
         assert graph.master(901) is None
 
 
+def test_release_ids_for_master_returns_every_pressing(tmp_path: Path) -> None:
+    from conftest import write_synthetic_dataset
+
+    root = write_synthetic_dataset(
+        tmp_path / "snapshot=20260601",
+        release_rows=[
+            _bare_release(20, "Reissue", master_id=960, master_is_main_release=False),
+            _bare_release(21, "Original", master_id=960, master_is_main_release=True),
+            _bare_release(22, "Unrelated Master", master_id=961, master_is_main_release=True),
+        ],
+        credit_rows=[
+            _bare_credit(20, artist_id=800, name="Dana"),
+            _bare_credit(21, artist_id=800, name="Dana"),
+            _bare_credit(22, artist_id=800, name="Dana"),
+        ],
+    )
+    with CreditGraph.open(root) as graph:
+        assert sorted(graph.release_ids_for_master(960)) == [20, 21]
+        assert graph.release_ids_for_master(961) == [22]
+        assert graph.release_ids_for_master(999_999) == []
+
+
 def test_release_has_no_hive_partition_artifacts(dataset_root: Path) -> None:
     """Regression test: the releases view is built via `SELECT * FROM
     read_parquet('.../table=releases/*.parquet')`. Without
