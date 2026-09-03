@@ -166,3 +166,40 @@ timing and the unit tests, where real corpus data at that scale doesn't exist).
   finding here generalizes to a much larger, differently-shaped graph without re-measuring.
 - Re-run the connection-rounds timing against the real corpus once Phase 2's actual round
   counts are known, not just synthetic fixtures.
+
+## Addendum (2026-09-03): recenter re-measured after `graph.v4` cutover — real improvement, budget still open
+
+Phase 1's role-dictionary encoding (ADR 0071) and full consumer cutover (Connect, Explore,
+the research workbench, the fleet artifact-check default) are now live, and `graph.v3.json`
+is retired. Per this ADR's own revisit trigger above, `measureExplorerRecenter` was re-run
+against the real committed 179-album production build (now serving `graph.v4.json`), 2-3
+runs per profile for stability (raw numbers, real and gitignored, in
+`local/benchmarks/2026-09-03-site-reprofile-179-albums-graphv4-{desktop,desktop-throttled,
+mobile-throttled}(-run2){.json}`).
+
+**Real, substantial improvement, stated qualitatively per ADR 0018:** recenter p95 dropped
+roughly 30% on desktop unthrottled and roughly 35-40% on desktop 4x-throttled, relative to
+this ADR's original `graph.v3` baseline; `firstNodeVisibleMs` and the worker's JSON-parse
+time both dropped by roughly a third to a half across all three profiles, consistent with
+the measured raw/gzip payload reduction (ADR 0071: raw -41.5%, gzip -24.0%). Mobile
+4x-throttled's recenter numbers stayed essentially flat, consistent with this ADR's original
+finding that the mobile profile's smaller viewport (fewer visible nodes per recenter) — not
+CPU/parse cost — dominates there.
+
+**Budget status: desktop and desktop-throttled recenter p95 are now close to, but still
+marginally above, the plan's §6 100ms budget across repeated runs; mobile-throttled's is
+similarly close.** This is a real, measured improvement over the original finding (recenter
+already over budget with no growth at all) but not yet a clean pass. `firstNodeVisibleMs`
+and gzip payload size are both comfortably within their own §6 budgets on all three profiles
+at 179 albums.
+
+**This is a checkpoint, not the tiles-trigger decision.** The plan's §6 trigger is
+explicitly gated on the local 500-tier fixture (`local/analysis/exploration-tier-500/
+albums-500.json`, already built), not the real 179-album production site — Phase 1's
+remaining work (`graphWorker.ts` typed-array transfer, the `prominence.v1.json` sidecar,
+`explorerStage.ts` pan/zoom/pushState/paging, and the search index) still needs to land
+before that real gate is run, per the plan's own Phase 1 sequencing (§11). This addendum
+records that the encoding change alone measurably helped recenter cost, as ADR 0070's
+original finding asked Phase 1 to treat it as a target to *improve* — it does not close the
+open tiles question, which stays gated on the full §6 benchmark against the 500-tier
+fixture once the rest of Phase 1 ships.
