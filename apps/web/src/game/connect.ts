@@ -58,7 +58,12 @@ import {
 } from "./recommendedRoute";
 import { guitarPathsEdgeFilter, rhythmSectionEdgeFilter } from "./roleTaxonomy";
 
-const PATHFINDING_GRAPH_URL = "/data/pathfinding/graph.v3.json";
+// v4 (graph-expansion Phase 1, ADR 0071): role-dictionary-encoded, real
+// measured −41.5% raw / −24.0% gzip vs. v3 with byte-identical edges --
+// pathfindingGraph.ts's validatePathfindingGraph decodes the dictionary
+// back into plain strings before returning, so nothing below this line
+// changed to consume it.
+const PATHFINDING_GRAPH_URL = "/data/pathfinding/graph.v4.json";
 const EVIDENCE_REGISTRY_URL = "/data/evidence/release-registry.v1.json";
 const ALBUM_CATALOG_URL = "/data/catalog/albums.v1.json";
 const CONTRIBUTOR_INDEX_URL = "/data/contributors/index.v1.json";

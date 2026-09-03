@@ -396,7 +396,7 @@ test("picking the same album twice keeps the search disabled", async ({
 test("a fetch failure for the pathfinding graph degrades gracefully", async ({
   page,
 }) => {
-  await page.route("**/data/pathfinding/graph.v3.json", (route) =>
+  await page.route("**/data/pathfinding/graph.v4.json", (route) =>
     route.abort(),
   );
   await page.goto("/play/connect/");
@@ -424,7 +424,7 @@ test("a fetch failure for the pathfinding graph degrades gracefully", async ({
 test("the rest of the page keeps working after a failed search", async ({
   page,
 }) => {
-  await page.route("**/data/pathfinding/graph.v3.json", (route) =>
+  await page.route("**/data/pathfinding/graph.v4.json", (route) =>
     route.abort(),
   );
   await page.goto("/play/connect/");
@@ -445,7 +445,7 @@ test("a multi-search session fetches the pathfinding graph exactly once", async 
   page,
 }) => {
   let fetchCount = 0;
-  await page.route("**/data/pathfinding/graph.v3.json", (route) => {
+  await page.route("**/data/pathfinding/graph.v4.json", (route) => {
     fetchCount++;
     return route.continue();
   });

@@ -52,7 +52,7 @@ test("swap after a search redisplays the reversed route without a new network re
   });
 
   let graphFetches = 0;
-  await page.route("**/data/pathfinding/graph.v3.json", (route) => {
+  await page.route("**/data/pathfinding/graph.v4.json", (route) => {
     graphFetches++;
     return route.continue();
   });

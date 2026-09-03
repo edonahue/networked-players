@@ -30,7 +30,12 @@ import type { Contributor, ContributorIndex } from "../data/contributors";
 import { ROLE_CATEGORY_LABEL } from "../data/contributors";
 
 const EVIDENCE_REGISTRY_URL = "/data/evidence/release-registry.v1.json";
-const PATHFINDING_GRAPH_URL = "/data/pathfinding/graph.v3.json";
+// v4 (graph-expansion Phase 1, ADR 0071): role-dictionary-encoded, real
+// measured −41.5% raw / −24.0% gzip vs. v3 with byte-identical edges --
+// pathfindingGraph.ts's validatePathfindingGraph decodes the dictionary
+// back into plain strings before returning, so nothing below this line
+// changed to consume it.
+const PATHFINDING_GRAPH_URL = "/data/pathfinding/graph.v4.json";
 
 const VIEW_SIZE = 320;
 const CENTER = VIEW_SIZE / 2;
