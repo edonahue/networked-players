@@ -7,7 +7,9 @@ test suite (AGENTS.md: keep fixtures synthetic and reproducible).
 
 from __future__ import annotations
 
+import json
 import statistics
+from pathlib import Path
 
 from networked_players_research.route_quality import (
     ALBUM_ANCHOR_SENTINEL,
@@ -16,6 +18,7 @@ from networked_players_research.route_quality import (
     PublishedGraph,
     bfs_first_route,
     enumerate_routes,
+    load_published_graph,
     measure_pair,
     route_metrics,
     stratified_album_pairs,
@@ -104,6 +107,70 @@ def two_album_graph() -> PublishedGraph:
         ],
         album_anchors={"album-a": -1, "album-b": -2},
     )
+
+
+# --- load_published_graph: schema-version-aware decode (ADR 0071) ---------
+
+
+def _payload_from_graph(graph: PublishedGraph, *, schema_version: int) -> dict:
+    """A minimal, valid pathfinding-graph-shaped JSON payload carrying
+    `graph`'s real content -- v3 shape (edge_role_a/edge_role_b as text) or
+    v4 shape (dictionary-encoded), so both can be round-tripped through
+    `load_published_graph` and compared."""
+    payload: dict = {
+        "schema_version": schema_version,
+        "node_ids": graph.node_ids,
+        "names": graph.names,
+        "offsets": graph.offsets,
+        "neighbors": graph.neighbors,
+        "evidence_release_ids": graph.evidence_release_ids,
+        "album_virtual_nodes": [
+            {"album_id": album_id, "virtual_artist_id": virtual_id, "main_release_id": 1}
+            for album_id, virtual_id in graph.virtual_id_by_album_id.items()
+        ],
+    }
+    if schema_version == 4:
+        roles: list[str] = []
+        index: dict[str, int] = {}
+
+        def role_id(text: str) -> int:
+            if text not in index:
+                index[text] = len(roles)
+                roles.append(text)
+            return index[text]
+
+        payload["roles"] = roles
+        payload["edge_role_a"] = [role_id(t) for t in graph.edge_role_a]
+        payload["edge_role_b"] = [role_id(t) for t in graph.edge_role_b]
+    else:
+        payload["edge_role_a"] = graph.edge_role_a
+        payload["edge_role_b"] = graph.edge_role_b
+    return payload
+
+
+def test_load_published_graph_v3_matches_the_reference_object(tmp_path: Path) -> None:
+    reference = two_album_graph()
+    path = tmp_path / "graph.v3.json"
+    path.write_text(json.dumps(_payload_from_graph(reference, schema_version=3)))
+    assert load_published_graph(path) == reference
+
+
+def test_load_published_graph_v4_decodes_the_role_dictionary(tmp_path: Path) -> None:
+    """The whole point of the decode step: a v4 file's raw edge_role_a/
+    edge_role_b are `roles` indices on disk, but `load_published_graph`
+    must still produce the exact same PublishedGraph a v3 file with
+    identical content would -- proving this isn't just "doesn't crash" but
+    a genuine, lossless re-encoding. Without the decode step, `str(index)`
+    would silently produce "0"/"1"/... instead of real role text."""
+    reference = two_album_graph()
+    path = tmp_path / "graph.v4.json"
+    path.write_text(json.dumps(_payload_from_graph(reference, schema_version=4)))
+    loaded = load_published_graph(path)
+    assert loaded == reference
+    assert all(isinstance(r, str) for r in loaded.edge_role_a)
+    assert all(isinstance(r, str) for r in loaded.edge_role_b)
+    # Never numeric-string garbage -- a real role/sentinel string.
+    assert ALBUM_ANCHOR_SENTINEL in loaded.edge_role_a
 
 
 def test_enumerate_finds_every_route_in_a_tiny_graph() -> None:

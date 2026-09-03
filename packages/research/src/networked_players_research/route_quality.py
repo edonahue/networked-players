@@ -10,9 +10,11 @@ which is what lets ADR 0059 pick a hop allowance and a candidate bound
 from evidence instead of taste.
 
 Deliberately dependency-free of `graph-core`'s builder and of DuckDB: it
-reads only the published artifacts (`pathfinding/graph.v3.json`,
-`evidence/release-registry.v1.json`, `catalog/albums.v1.json`), so any
-checkout can reproduce a measurement without the private one-hop corpus.
+reads only the published artifacts (`pathfinding/graph.v3.json` or
+`graph.v4.json` -- `load_published_graph` is schema-version-aware,
+decoding v4's role dictionary transparently, ADR 0071 -- `evidence/
+release-registry.v1.json`, `catalog/albums.v1.json`), so any checkout can
+reproduce a measurement without the private one-hop corpus.
 The one graph-core import is `role_taxonomy.classify_role`, reused rather
 than reimplemented so role composition here means exactly what it means in
 the product's own role filters.
@@ -81,16 +83,33 @@ class PublishedGraph:
 
 
 def load_published_graph(path: Path) -> PublishedGraph:
+    """Schema-version-aware: a v4 payload (graph-expansion Phase 1, ADR
+    0071) carries `edge_role_a`/`edge_role_b` as indices into a `roles`
+    dictionary, not the role text itself. Decoded back into plain strings
+    here, once, so `PublishedGraph.edge_role_a`/`edge_role_b` are always
+    `list[str]` regardless of which schema version produced the file --
+    the exact same decode-on-load strategy `pathfindingGraph.ts`'s
+    `validatePathfindingGraph` uses on the TypeScript side. Without this,
+    `str(index)` on a v4 payload would silently produce numeric-string
+    "role text" ("0", "1", ...) instead of a loud failure -- a correctness
+    bug, not a crash, so this is not optional plumbing."""
     payload = json.loads(Path(path).read_text())
     node_ids = [int(n) for n in payload["node_ids"]]
+    if payload.get("schema_version") == 4:
+        roles = [str(r) for r in payload["roles"]]
+        edge_role_a = [roles[int(i)] for i in payload["edge_role_a"]]
+        edge_role_b = [roles[int(i)] for i in payload["edge_role_b"]]
+    else:
+        edge_role_a = [str(r) for r in payload["edge_role_a"]]
+        edge_role_b = [str(r) for r in payload["edge_role_b"]]
     return PublishedGraph(
         node_ids=node_ids,
         names=[str(n) for n in payload["names"]],
         offsets=[int(o) for o in payload["offsets"]],
         neighbors=[int(n) for n in payload["neighbors"]],
         evidence_release_ids=[int(r) for r in payload["evidence_release_ids"]],
-        edge_role_a=[str(r) for r in payload["edge_role_a"]],
-        edge_role_b=[str(r) for r in payload["edge_role_b"]],
+        edge_role_a=edge_role_a,
+        edge_role_b=edge_role_b,
         index_by_node_id={node_id: i for i, node_id in enumerate(node_ids)},
         virtual_id_by_album_id={
             str(entry["album_id"]): int(entry["virtual_artist_id"])
