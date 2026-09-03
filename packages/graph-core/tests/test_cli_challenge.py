@@ -32,6 +32,10 @@ def test_build_challenge_from_dump_cli_wiring(dataset_root: Path, tmp_path: Path
     report = json.loads(capsys.readouterr().out)
     assert report["albums_matched"] == 3
     assert report["paths_found"] >= 1
+    # No --max-paths given: the default tracks the album count (2 per album)
+    # instead of a fixed number that stops scaling with the catalog.
+    assert report["max_paths"] == 2 * len(ALBUMS)
+    assert report["albums_in_paths"] == report["albums_matched"]
 
     artifact = json.loads(output_path.read_text())
     assert artifact["schema_version"] == 2

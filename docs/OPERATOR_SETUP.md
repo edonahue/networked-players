@@ -1212,6 +1212,35 @@ regeneration:
 Reproduce the measurement with the script pattern in
 `local/research/phase5-regen/` (git-ignored, per ADR 0018 benchmark results stay local).
 
+### Album-centered challenge regen (`challenge.v3.json`) and its cascade
+
+`make build-challenge` (coordination host only; the one-hop corpus root and the
+studio-album exclusions are wired in the target, pass extra flags via `ARGS=`)
+rebuilds `challenge.v3.json` from the committed public catalog. Since the
+graph-expansion Phase 0 pair-order fix, `_candidate_album_pairs` walks the
+catalog per-album round-robin (every album claims its nearest unused partner
+before any album gets a second) and `--max-paths` defaults to `2 * albums`, so
+a regeneration is expected to touch **every** catalog album — the build report's
+`albums_in_paths` must equal `albums_matched`, and
+`apps/web/tests/album-grid-dedup.spec.ts` asserts the same against the
+committed artifact. If a rebuild leaves an album out, fix the build (an
+undersized `--max-paths`, a family exclusion that isolates an album), do not
+loosen the test.
+
+The challenge is a build-time input to three other artifacts, which must be
+regenerated in this order after it (the `catalog_version` and the pathfinding
+graph are untouched by a challenge-only rebuild):
+
+1. `build-evidence-release-registry` (adds the new paths' release ids),
+2. `build-contributor-index` (the set of `/contributors/` pages *is* "people on
+   challenge and route hops", so it churns with pair selection — diff the
+   `artist_id` set before/after and record it under `local/benchmarks/`),
+3. `build-album-hop-distances` (cross-validated against the new contributor index),
+
+then `validate-public-artifacts`, Prettier (below), and the Pi fan-out
+(`make evidence-release-registry-check-distributed`,
+`make contributor-index-check-distributed`) from a clean, committed checkout.
+
 ### After any artifact build: run Prettier
 
 Every JSON artifact under `apps/web/public/data/` is committed in

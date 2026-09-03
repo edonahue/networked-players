@@ -192,10 +192,42 @@ def _candidate_album_pairs(
     *,
     is_family_excluded: Callable[[int, int], bool] | None = None,
 ) -> list[tuple[MatchedAlbum, MatchedAlbum]]:
-    """Every distinct-artist-pair candidate, in the same `i, i+1:` order the
-    original sequential loop used -- shared by both the sequential and
-    concurrent paths so output ordering/determinism never depends on
-    `max_workers`.
+    """Every distinct-artist-pair candidate, **stratified per album** so
+    coverage spreads across the whole album list before any album is
+    revisited -- shared by both the sequential and concurrent paths so
+    output ordering/determinism never depends on `max_workers`.
+
+    Round-robin: in each round every album, in `ordered` order, claims its
+    next still-unused candidate pair, walking its partners nearest-first
+    (`i + 1, i - 1, i + 2, i - 2, ...`). So round 1 touches every album
+    that has any valid pair at all, round 2 touches each again, and so on;
+    the candidate SET is exactly the same distinct-artist-pair set as a
+    plain `i < j` enumeration, only the order changed.
+
+    Why the order matters enormously: the caller stops at `max_paths`, and
+    the previous `for i: for j > i` order meant the first few hundred
+    candidates were ALL pairs from the first one or two albums. Measured on
+    the real 179-album `challenge.v3.json` built with `--max-paths 300`:
+    every one of the 300 published paths started from the same two albums
+    (170 + 130), and 7 albums never appeared in any path at all -- not
+    because they were disconnected (they are not), but because the
+    iterator never reached a pair containing them. Everything that treats
+    the challenge as "the album universe" (the `/explore/` index, the
+    contributor index, the documented-connection count) inherited that
+    lopsidedness, and it only got worse with every album added.
+
+    Why per ALBUM and not per offset: a first fix stratified by offset
+    (round `d` yields `(ordered[i], ordered[i + d])`), and the real rebuild
+    still left 2 of 179 albums out. Pairs are deduplicated at the ARTIST
+    level (a path is an artist path; two albums by the same artist share
+    every artist pair), and the catalog can hold several albums by one
+    artist that sort adjacently (four Jamiroquai masters). Under offset
+    order the first of those claims the shared artist pairs with its
+    neighbours, the same-artist skip eats the rest of the small offsets,
+    and the middle albums never get a turn before `max_paths`. Giving each
+    album its own turn per round means each one claims a DISTINCT artist
+    pair, so the guarantee is per album, which is the thing the site
+    actually counts.
 
     `is_family_excluded`, when given, drops a pair before any path search is
     attempted (e.g. a band's own album paired with a member's solo album) --
@@ -203,35 +235,54 @@ def _candidate_album_pairs(
     never reach `find_path`, so no evidence toward them can ever surface,
     trivial or not.
     """
+    count = len(ordered)
+
+    def partners(i: int) -> Iterator[int]:
+        # Nearest-first, later index before earlier at equal distance, so a
+        # single-album-per-artist catalog yields exactly the old
+        # `(ordered[i], ordered[i + 1])` first round.
+        for distance in range(1, count):
+            if i + distance < count:
+                yield i + distance
+            if i - distance >= 0:
+                yield i - distance
+
     used_pairs: set[tuple[int, int]] = set()
     candidates: list[tuple[MatchedAlbum, MatchedAlbum]] = []
-    for i, from_album in enumerate(ordered):
-        for to_album in ordered[i + 1 :]:
-            if from_album.artist_id == to_album.artist_id:
-                # Real bug found after Phase 7 introduced multi-album-per-
-                # artist pre-resolved lanes (ADR 0065): `ordered` can now
-                # contain two DIFFERENT albums by the SAME artist (e.g. two
-                # Jamiroquai albums, or a Bucket A pick alongside an
-                # already-published album by the same artist). Without this
-                # skip, `pair = (id, id)` slips past the used_pairs dedup
-                # (it was never seen before) and reaches `find_path`, which
-                # raises `GraphError("from_artist_id and to_artist_id must
-                # differ")` -- there is no meaningful "how is this artist
-                # connected to themselves" question to ask. This was always
-                # possible in principle; every catalog before Phase 7
-                # deduped to one album per artist everywhere, so it was
-                # never actually exercised until now.
-                continue
-            pair = (
-                min(from_album.artist_id, to_album.artist_id),
-                max(from_album.artist_id, to_album.artist_id),
-            )
-            if pair in used_pairs:
-                continue
-            if is_family_excluded is not None and is_family_excluded(*pair):
-                continue
-            used_pairs.add(pair)
-            candidates.append((from_album, to_album))
+    remaining = [partners(i) for i in range(count)]
+    progressed = True
+    while progressed:
+        progressed = False
+        for i, from_album in enumerate(ordered):
+            for j in remaining[i]:
+                to_album = ordered[j]
+                if from_album.artist_id == to_album.artist_id:
+                    # Real bug found after Phase 7 introduced multi-album-per-
+                    # artist pre-resolved lanes (ADR 0065): `ordered` can now
+                    # contain two DIFFERENT albums by the SAME artist (e.g. two
+                    # Jamiroquai albums, or a Bucket A pick alongside an
+                    # already-published album by the same artist). Without this
+                    # skip, `pair = (id, id)` slips past the used_pairs dedup
+                    # (it was never seen before) and reaches `find_path`, which
+                    # raises `GraphError("from_artist_id and to_artist_id must
+                    # differ")` -- there is no meaningful "how is this artist
+                    # connected to themselves" question to ask. This was always
+                    # possible in principle; every catalog before Phase 7
+                    # deduped to one album per artist everywhere, so it was
+                    # never actually exercised until now.
+                    continue
+                pair = (
+                    min(from_album.artist_id, to_album.artist_id),
+                    max(from_album.artist_id, to_album.artist_id),
+                )
+                if pair in used_pairs:
+                    continue
+                if is_family_excluded is not None and is_family_excluded(*pair):
+                    continue
+                used_pairs.add(pair)
+                candidates.append((from_album, to_album))
+                progressed = True
+                break
     return candidates
 
 
@@ -627,6 +678,14 @@ def build_challenge_v2_from_matched(
         "paths_found": len(paths_json),
         "paths_attempted": attempted,
         "paths_capped": capped_count,
+        "max_paths": max_paths,
+        # How many of the matched albums appear in at least one published
+        # path -- the number the stratified pair order exists to keep equal
+        # to `albums_matched`. Reported so a build that quietly leaves albums
+        # without a path is visible in the build output, not just on the site.
+        "albums_in_paths": len(
+            {p["from_album_id"] for p in paths_json} | {p["to_album_id"] for p in paths_json}
+        ),
     }
     return artifact, report
 

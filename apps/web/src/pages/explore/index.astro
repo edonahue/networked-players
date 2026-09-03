@@ -3,10 +3,17 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import AlbumCard from '../../components/AlbumCard.astro';
 import type { ChallengeV2 } from '../../data/challenge';
 import challengeData from '../../../public/data/challenge.v3.json';
-import { connectedCatalogAlbums } from '../../data/connectedAlbums';
+import { connectedAlbumIds } from '../../data/connectedAlbums';
 
 const challenge = challengeData as ChallengeV2;
-const albums = connectedCatalogAlbums(challenge);
+// The full catalog, like /albums/ (ADR 0067 addendum, 2026-09-02): every
+// catalog album is a real pathfinding-graph node with a real neighborhood,
+// so every one is a meaningful place to start exploring -- the
+// "connected-only" grid this page used to show was really "albums the
+// challenge builder happened to reach first." The badge stays honest about
+// which albums still lack a documented challenge path.
+const albums = challenge.albums;
+const connectedIds = connectedAlbumIds(challenge);
 
 const description =
   'Pick an album to open a focused, bounded network view of its documented contributors — click any name to recenter, filter by role to fade the rest.';
@@ -25,7 +32,11 @@ const description =
 
   <section class="shell" aria-label="Album grid" style="padding-bottom:72px">
     <div class="album-grid" data-testid="explore-album-grid">
-      {albums.map((album) => <AlbumCard album={album} hrefBase="/explore/" />)}
+      {
+        albums.map((album) => (
+          <AlbumCard album={album} hrefBase="/explore/" connected={connectedIds.has(album.id)} />
+        ))
+      }
     </div>
   </section>
 </BaseLayout>

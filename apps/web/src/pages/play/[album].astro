@@ -7,15 +7,13 @@ import type { ChallengeV2 } from '../../data/challenge';
 import challengeData from '../../../public/data/challenge.v3.json';
 
 export function getStaticPaths() {
+  // One stub per catalog album (not per challenge-path endpoint): every
+  // /albums/<id>/ page exists, so every old /play/<id>/ URL has a real target.
   const data = challengeData as ChallengeV2;
-  const connectedAlbumIds = new Set<string>();
-  for (const path of data.paths) {
-    connectedAlbumIds.add(path.from_album_id);
-    connectedAlbumIds.add(path.to_album_id);
-  }
-  return data.albums
-    .filter((album) => connectedAlbumIds.has(album.id))
-    .map((album) => ({ params: { album: album.id }, props: { title: album.title } }));
+  return data.albums.map((album) => ({
+    params: { album: album.id },
+    props: { title: album.title },
+  }));
 }
 
 interface Props {

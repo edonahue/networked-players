@@ -57,7 +57,10 @@
   --focus: #b94732;
   --warm: #9d4532; /* rust -- darkened from #a94a36 (4.48:1 against
     --surface-soft, just under WCAG AA) to 5.0:1 against the same */
-  --gold: #9c8248;
+  --gold: #75602f; /* gold -- darkened from #9c8248 (3.16:1 against the
+    .tag--highlight background, 2.92:1 against --surface-soft; the light-
+    theme axe scan caught it once a contributor page rendered a "Different
+    role" tag) to 5.2:1 / 4.8:1 against the same, 5.77:1 against --surface */
   --shadow: 0 16px 40px rgba(41, 39, 34, 0.12);
   --shadow-strong: 0 24px 58px rgba(41, 39, 34, 0.18);
 }

@@ -7,12 +7,15 @@ import type { ChallengeV2 } from '../data/challenge';
 import type { Contributor, ContributorIndex } from '../data/contributors';
 import challengeData from '../../public/data/challenge.v3.json';
 import contributorIndexData from '../../public/data/contributors/index.v1.json';
-import { connectedCatalogAlbums } from '../data/connectedAlbums';
 
 const { hero, focus } = site;
 
 const challenge = challengeData as ChallengeV2;
-const albums = connectedCatalogAlbums(challenge);
+// The album universe is the catalog itself (challenge.albums is resolved
+// from catalog/albums.v1.json and cross-checked by catalog_version), not
+// the subset that happens to be a challenge-path endpoint -- see
+// connectedAlbums.ts for why that subset was never a real universe.
+const albums = challenge.albums;
 const contributorIndex = contributorIndexData as ContributorIndex;
 
 // Deterministic, not random: challenge.paths[0] is a real documented route,
@@ -146,7 +149,7 @@ const featuredNeighbor = featuredContributor
       {featuredTo && <AlbumCard album={featuredTo} />}
     </div>
     <p class="lede">
-      The full shelf of {albums.length} connected albums lives at <a href="/albums/">/albums/</a>.
+      The full shelf of {albums.length} albums lives at <a href="/albums/">/albums/</a>.
     </p>
   </section>
 
@@ -174,19 +177,17 @@ const featuredNeighbor = featuredContributor
       <p class="eyebrow">What's real here</p>
       <h2 id="state-title">Documented, not inferred.</h2>
       <p class="lede">
-        The album grid above and its evidence viewer run on Discogs monthly-dump data (snapshot
-        {challenge.provenance.snapshot_date}): {albums.length} studio albums connected by
-        {challenge.paths.length} documented credit paths. A role taxonomy for credits, path
+        Every album, route, and evidence viewer on this site runs on Discogs monthly-dump data
+        (snapshot {challenge.provenance.snapshot_date}): {albums.length} studio albums, with
+        {challenge.paths.length} documented performance paths between them. Connections are
+        musical performances; the credits are the evidence. A role taxonomy for credits, path
         search between any two records, and an open-ended network explorer have all shipped
         since — see <a href="/about/">the full picture</a> for what's live and what's still
-        ahead. The connections demo below runs on a separate, smaller dataset: a curated subset
-        fetched via the Discogs API, kept from an earlier version of the site before the CC0
-        dump pipeline became the primary source.
+        ahead.
       </p>
     </div>
     <div class="hero-actions" style="margin-top:0">
-      <a class="button primary" href="/demo/">See the connections demo</a>
-      <a class="button" href="/about/">Read the full picture</a>
+      <a class="button primary" href="/about/">Read the full picture</a>
     </div>
   </section>
 </BaseLayout>

@@ -2,20 +2,22 @@
 // page" from the committed challenge.v3 artifact.
 //
 // Specs used to write `albums.find((a) => connectedIds.has(a.id))`, i.e.
-// whichever connected album happens to come FIRST in artifact order. That is
-// currently master-1046042 ("Blonde"), which is the graph hub: 136 of the
-// artifact's 300 paths, ~1MB of HTML and 273 hotlinked cover images -- the
-// single heaviest page on the site. Every Playwright action against that DOM
-// costs ~700-1600ms of trace snapshotting, which put the album smoke test at
-// 27.5s against a 30s cap and made it fail intermittently. Nothing those
-// tests assert requires the hub; they require an album with at least two
-// documented paths, so "Reveal every path" is distinguishable from revealing
-// one. Path counts across the 137 connected albums are min 2, median 2,
-// max 136 -- the first-in-order pick was an extreme outlier.
+// whichever connected album happens to come FIRST in artifact order. Before
+// the graph-expansion Phase 0 pair-order fix that was the graph hub
+// (master-1046042, "Blonde": 136 of the artifact's 300 paths, ~1MB of HTML
+// and 273 hotlinked cover images -- the single heaviest page on the site).
+// Every Playwright action against that DOM cost ~700-1600ms of trace
+// snapshotting, which put the album smoke test at 27.5s against a 30s cap
+// and made it fail intermittently. Nothing those tests assert requires a
+// hub; they require an album with at least two documented paths, so "Reveal
+// every path" is distinguishable from revealing one.
 //
-// Picking the FEWEST-path album (ties broken by id) is both bounded and
-// stable: it no longer silently re-rolls onto an arbitrary page when the
-// artifact is regenerated.
+// The per-album round-robin pair order flattened the distribution (every
+// catalog album is now a path endpoint, path counts per album are a narrow
+// band rather than a 2..136 spread), but the helper stays: picking the
+// FEWEST-path album (ties broken by id) is bounded and stable regardless of
+// what shape a future regeneration produces, and it never silently re-rolls
+// onto an arbitrary page.
 
 import { expect, type APIRequestContext } from "@playwright/test";
 
