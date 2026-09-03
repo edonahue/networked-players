@@ -20,7 +20,7 @@ any working-set pressing, no matching master genre/style.
 > (`networked-players-catalog build-album-catalog-audit`) is the committed,
 > one-row-per-**included**-album machine-readable artifact this document
 > summarizes: every current catalog album's `master_id`, `selection_source`
-> (editorial/graph_candidate), `release_format_policy_result`,
+> (editorial/generic_candidate), `release_format_policy_result`,
 > `master_genre_style_result`, `deny_list_status`, `automated_flags`,
 > `manual_disposition`, and `final_eligibility`, tied to a `catalog_version`.
 >
@@ -122,7 +122,11 @@ against the real committed audit record.
 
 **Scope**: every one of the 39 albums added since the 140-album baseline, pulled
 directly from the committed audit JSON by `selection_source != "already_published"`:
-13 `personal_editorial` (Bucket A, ADR 0065), 18 `graph_rich` (Bucket B), and 8
+13 `editorial` (Bucket A, ADR 0065 -- ADR 0069 decided the public record must
+never name the personal-collection source, so `build_album_catalog_audit`
+now emits `editorial` here; the committed JSON's rows still literally read
+`personal_editorial` until the next real regeneration, which needs the
+masters dataset on the coordination host), 18 `graph_rich` (Bucket B), and 8
 `coverage_gap` (Bucket C) — 13 + 18 + 8 = 39, matching 179 − 140 exactly.
 
 **Method**: identical to the original pass above — every new album's title and

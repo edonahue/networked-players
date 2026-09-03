@@ -275,6 +275,33 @@ def test_a_bootleg_loses_to_a_container(tmp_path: Path) -> None:
     assert _evidence_for_pair(root, EvidenceReleasePreference()) == 900
 
 
+def test_a_full_album_pressing_beats_a_single_or_ep(tmp_path: Path) -> None:
+    """graph-expansion Phase 0 slice 0-B (ADR 0069): a Single/EP is a real,
+    official release, just a narrower one than a full studio album -- when
+    both evidence the same pair, the full album should win."""
+    root = _pair_dataset(
+        tmp_path / "ds",
+        releases=[_release(900, "Record High"), _release(100, "Record Low")],
+        format_rows=[_format_row(900, ["Album"]), _format_row(100, ["Single"])],
+    )
+    assert _evidence_for_pair(root, EvidenceReleasePreference()) == 900
+
+
+def test_a_kind_caveat_beats_a_pressing_caveat(tmp_path: Path) -> None:
+    """Severity ordering, the other direction: "kind" (single/EP) is the
+    MILDEST tier, ranked after pressing (promo/reissue/repress) -- so a
+    release whose only caveat is being an EP outranks one that is a promo
+    pressing, the same "worse tier loses outright" pattern
+    `test_a_container_loses_to_a_pressing_caveat` already proves one tier
+    up."""
+    root = _pair_dataset(
+        tmp_path / "ds",
+        releases=[_release(900, "Record High"), _release(100, "Record Low")],
+        format_rows=[_format_row(900, ["Promo"]), _format_row(100, ["EP"])],
+    )
+    assert _evidence_for_pair(root, EvidenceReleasePreference()) == 100
+
+
 def test_severity_tiers_are_disjoint_and_cover_every_descriptor() -> None:
     """The flattened tuple is derived from the tiers, so a descriptor
     added to one without the other cannot silently go unranked."""

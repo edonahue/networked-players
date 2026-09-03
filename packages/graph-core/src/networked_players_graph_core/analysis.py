@@ -186,6 +186,35 @@ def _catalog_version(albums: list[dict[str, Any]], snapshot_date: str | None) ->
     return f"{prefix}-{digest}"
 
 
+# graph-expansion Phase 0 slice 0-B (ADR 0069): catalog schema v2 adds
+# per-album `selection_source`/`featured`/`expansion_round` -- presentation
+# metadata that must NEVER perturb `catalog_version` (identity stays
+# `artist_id:main_release_id:master_id:year` only, so a `featured` flip or a
+# selection-source correction never cascades the 11 downstream artifact
+# groups that key off `catalog_version`). This sibling hash exists so a
+# consumer that DOES care about presentation (apps/web, the audit) can still
+# prove which presentation state it read, without conflating the two.
+CATALOG_SCHEMA_VERSION_V2 = 2
+VALID_SELECTION_SOURCES = frozenset(
+    {"editorial", "already_published", "graph_rich", "coverage_gap", "generic_candidate"}
+)
+
+
+def _catalog_presentation_version(albums: list[dict[str, Any]], snapshot_date: str | None) -> str:
+    """Sibling to `_catalog_version`, hashing `id:featured:selection_source`
+    instead of the identity fields -- changes only when a v2 catalog's
+    presentation (which albums are featured, why each was selected) changes,
+    never on identity-only rebuilds."""
+    fingerprint = "|".join(
+        sorted(f"{a.get('id')}:{a.get('featured')}:{a.get('selection_source')}" for a in albums)
+    )
+    digest = hashlib.sha256(fingerprint.encode()).hexdigest()[:12]
+    prefix = (
+        f"catalog-presentation-v1-{snapshot_date}" if snapshot_date else "catalog-presentation-v1"
+    )
+    return f"{prefix}-{digest}"
+
+
 def exploration_corpus_version(albums: list[dict[str, Any]], snapshot_date: str | None) -> str:
     """The exploration-tier sibling of `_catalog_version` -- same fingerprint
     shape, deliberately different prefix (`explore-v1-` vs `catalog-v1-`) so
@@ -263,6 +292,28 @@ def _pre_resolved_to_matched_album(graph: CreditGraph, album: dict[str, Any]) ->
     )
 
 
+# ADR 0069: the public per-album `selection_source` field never says
+# "personal_editorial" -- the owner's decision is that a collection-sourced
+# pick and a top-albums-v1.json pick are both just "editorial" to the
+# public. `pre_resolved_buckets`' own lane label is intentionally left
+# alone (see the comment above `pre_resolved_source_labels`).
+_SELECTION_SOURCE_ALIASES = {"personal_editorial": "editorial"}
+
+
+def load_featured_master_ids(path: Path | None) -> frozenset[int]:
+    """Load `data/albums/featured-v1.json` (or an empty set) -- see
+    `data/albums/README.md`. Same shape/precedent as
+    `release_format_policy.load_master_exclusions`: a small, committed,
+    editorial pin list, never derived from the corpus. A blurb is presentation
+    (read only by apps/web), not eligibility -- this loader deliberately
+    returns just the id set `assemble_album_catalog`'s `featured_master_ids`
+    needs, not the blurbs themselves."""
+    if path is None:
+        return frozenset()
+    payload = json.loads(Path(path).read_text())
+    return frozenset(int(entry["master_id"]) for entry in payload.get("entries", []))
+
+
 def assemble_album_catalog(
     graph: CreditGraph,
     editorial_albums: list[dict[str, str]],
@@ -276,6 +327,8 @@ def assemble_album_catalog(
     master_exclusions: frozenset[int] | None = None,
     snapshot_date: str | None = None,
     generated_by: str | None = None,
+    featured_master_ids: frozenset[int] | None = None,
+    expansion_round: int = 0,
 ) -> dict[str, Any]:
     """Combine the editorial backbone, an already-resolved personal bucket,
     and graph-rich candidates up to `target_count` (see ADR 0038, ADR 0065).
@@ -382,6 +435,13 @@ def assemble_album_catalog(
     # its OWN lane -- is dropped and reported in `pre_resolved_missed`,
     # never silently spending a second expansion slot on one artist.
     locked_artist_ids: set[int] = set(editorial_artist_ids)
+    # Public-facing selection_source per kept pre-resolved album, parallel to
+    # `pre_resolved_kept` -- normalizes the internal Bucket A lane name to
+    # the owner's decided public label (ADR 0069: never "personal_editorial"
+    # on a v2 catalog's own per-album field), while `pre_resolved_buckets`
+    # below keeps its raw lane name unchanged (positional-reconstruction
+    # callers, e.g. `catalog_audit.py`'s v1 fallback, are unaffected).
+    pre_resolved_source_labels: list[str] = []
 
     def _process_pre_resolved_group(
         label: str, albums_in_group: list[dict[str, Any]], *, enforce_artist_uniqueness: bool
@@ -429,6 +489,7 @@ def assemble_album_catalog(
             # never rejects its OWN entries for that reason.
             locked_artist_ids.add(artist_id)
             pre_resolved_kept.append(_pre_resolved_to_matched_album(graph, album))
+            pre_resolved_source_labels.append(_SELECTION_SOURCE_ALIASES.get(label, label))
             group_kept_count += 1
         if albums_in_group:
             # Only record a bucket that was actually attempted (a non-empty
@@ -499,10 +560,32 @@ def assemble_album_catalog(
             )
         )
 
+    # v2 fields (ADR 0069) are opt-in via `featured_master_ids`: every
+    # existing caller that never passes it keeps today's exact v1 shape
+    # (no per-album selection_source/featured/expansion_round, no top-level
+    # catalog_schema_version/catalog_presentation_version) -- landing this
+    # capability must not perturb any already-committed catalog or existing
+    # test's exact-shape assertions.
+    is_v2_catalog = featured_master_ids is not None
+    featured_set = featured_master_ids or frozenset()
+
+    def _tagged(album_dict: dict[str, Any], selection_source: str) -> dict[str, Any]:
+        if not is_v2_catalog:
+            return album_dict
+        return {
+            **album_dict,
+            "selection_source": selection_source,
+            "featured": album_dict.get("master_id") in featured_set,
+            "expansion_round": expansion_round,
+        }
+
     albums = [
-        *(m.to_resolved_dict() for m in matched_editorial),
-        *(m.to_resolved_dict() for m in pre_resolved_kept),
-        *(m.to_resolved_dict() for m in candidate_albums),
+        *(_tagged(m.to_resolved_dict(), "editorial") for m in matched_editorial),
+        *(
+            _tagged(m.to_resolved_dict(), source)
+            for m, source in zip(pre_resolved_kept, pre_resolved_source_labels, strict=True)
+        ),
+        *(_tagged(m.to_resolved_dict(), "generic_candidate") for m in candidate_albums),
     ]
 
     source_note = (
@@ -542,7 +625,7 @@ def assemble_album_catalog(
             "(artist_id/main_release_id), not name queries."
         )
 
-    return {
+    result: dict[str, Any] = {
         "version": 1,
         "catalog_version": _catalog_version(albums, snapshot_date),
         "snapshot_date": snapshot_date,
@@ -558,6 +641,12 @@ def assemble_album_catalog(
         "candidate_count_added": len(candidate_albums),
         "albums": albums,
     }
+    if is_v2_catalog:
+        result["catalog_schema_version"] = CATALOG_SCHEMA_VERSION_V2
+        result["catalog_presentation_version"] = _catalog_presentation_version(
+            albums, snapshot_date
+        )
+    return result
 
 
 class AlbumCatalogValidationError(RuntimeError):
@@ -600,6 +689,39 @@ def validate_album_catalog(catalog: dict[str, Any]) -> None:
                 failures.append(f"album {album_id} missing required field {field_name!r}")
         if not isinstance(album.get("main_release_id"), int) or album["main_release_id"] <= 0:
             failures.append(f"album {album_id} has an invalid main_release_id")
+
+    schema_version = catalog.get("catalog_schema_version")
+    if schema_version is not None:
+        if schema_version != CATALOG_SCHEMA_VERSION_V2:
+            failures.append(f"unsupported catalog_schema_version: {schema_version!r}")
+        else:
+            for album in albums:
+                album_id = album.get("id", "<unknown>")
+                selection_source = album.get("selection_source")
+                if selection_source not in VALID_SELECTION_SOURCES:
+                    failures.append(
+                        f"album {album_id} has an invalid selection_source: {selection_source!r}"
+                    )
+                if not isinstance(album.get("featured"), bool):
+                    failures.append(f"album {album_id} missing/invalid boolean 'featured'")
+                expansion_round = album.get("expansion_round")
+                if (
+                    not isinstance(expansion_round, int)
+                    or isinstance(expansion_round, bool)
+                    or expansion_round < 0
+                ):
+                    failures.append(
+                        f"album {album_id} missing/invalid non-negative 'expansion_round'"
+                    )
+            expected_presentation_version = _catalog_presentation_version(
+                albums, catalog.get("snapshot_date")
+            )
+            if catalog.get("catalog_presentation_version") != expected_presentation_version:
+                failures.append(
+                    "catalog_presentation_version "
+                    f"{catalog.get('catalog_presentation_version')!r} does not match its own "
+                    f"content (expected {expected_presentation_version!r})"
+                )
 
     expected_version = _catalog_version(albums, catalog.get("snapshot_date"))
     if catalog.get("catalog_version") != expected_version:

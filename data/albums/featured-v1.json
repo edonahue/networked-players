@@ -1,0 +1,722 @@
+{
+  "schema_version": 1,
+  "source_note": "Editorial featuring pins for the public catalog (ADR 0069). Presence of a master_id here means the corresponding catalog album is featured=true at catalog build (an intentionally selected, prominently placed album, optionally with a one-line blurb); absence means the album is a graph record -- eligible and fully data-forward, just not hand-featured. A missing blurb is the normal case, not an incomplete entry.",
+  "entries": [
+    {
+      "master_id": 302,
+      "blurb": null
+    },
+    {
+      "master_id": 553,
+      "blurb": null
+    },
+    {
+      "master_id": 1561,
+      "blurb": null
+    },
+    {
+      "master_id": 3211,
+      "blurb": null
+    },
+    {
+      "master_id": 3719,
+      "blurb": null
+    },
+    {
+      "master_id": 3762,
+      "blurb": null
+    },
+    {
+      "master_id": 3878,
+      "blurb": null
+    },
+    {
+      "master_id": 4300,
+      "blurb": null
+    },
+    {
+      "master_id": 4424,
+      "blurb": null
+    },
+    {
+      "master_id": 5460,
+      "blurb": null
+    },
+    {
+      "master_id": 5863,
+      "blurb": null
+    },
+    {
+      "master_id": 6495,
+      "blurb": null
+    },
+    {
+      "master_id": 8179,
+      "blurb": null
+    },
+    {
+      "master_id": 8357,
+      "blurb": null
+    },
+    {
+      "master_id": 8883,
+      "blurb": null
+    },
+    {
+      "master_id": 9382,
+      "blurb": null
+    },
+    {
+      "master_id": 10362,
+      "blurb": null
+    },
+    {
+      "master_id": 10363,
+      "blurb": null
+    },
+    {
+      "master_id": 12236,
+      "blurb": null
+    },
+    {
+      "master_id": 13280,
+      "blurb": null
+    },
+    {
+      "master_id": 13814,
+      "blurb": null
+    },
+    {
+      "master_id": 13960,
+      "blurb": null
+    },
+    {
+      "master_id": 15841,
+      "blurb": null
+    },
+    {
+      "master_id": 16158,
+      "blurb": null
+    },
+    {
+      "master_id": 16545,
+      "blurb": null
+    },
+    {
+      "master_id": 16921,
+      "blurb": null
+    },
+    {
+      "master_id": 17217,
+      "blurb": null
+    },
+    {
+      "master_id": 17249,
+      "blurb": null
+    },
+    {
+      "master_id": 18027,
+      "blurb": null
+    },
+    {
+      "master_id": 18080,
+      "blurb": null
+    },
+    {
+      "master_id": 18442,
+      "blurb": null
+    },
+    {
+      "master_id": 19493,
+      "blurb": null
+    },
+    {
+      "master_id": 20135,
+      "blurb": null
+    },
+    {
+      "master_id": 20137,
+      "blurb": null
+    },
+    {
+      "master_id": 20148,
+      "blurb": null
+    },
+    {
+      "master_id": 20387,
+      "blurb": null
+    },
+    {
+      "master_id": 21520,
+      "blurb": null
+    },
+    {
+      "master_id": 23069,
+      "blurb": null
+    },
+    {
+      "master_id": 23684,
+      "blurb": null
+    },
+    {
+      "master_id": 24047,
+      "blurb": null
+    },
+    {
+      "master_id": 24511,
+      "blurb": null
+    },
+    {
+      "master_id": 24535,
+      "blurb": null
+    },
+    {
+      "master_id": 25303,
+      "blurb": null
+    },
+    {
+      "master_id": 25688,
+      "blurb": null
+    },
+    {
+      "master_id": 25893,
+      "blurb": null
+    },
+    {
+      "master_id": 26037,
+      "blurb": null
+    },
+    {
+      "master_id": 26436,
+      "blurb": null
+    },
+    {
+      "master_id": 26647,
+      "blurb": null
+    },
+    {
+      "master_id": 26725,
+      "blurb": null
+    },
+    {
+      "master_id": 27460,
+      "blurb": null
+    },
+    {
+      "master_id": 27765,
+      "blurb": null
+    },
+    {
+      "master_id": 28680,
+      "blurb": null
+    },
+    {
+      "master_id": 30303,
+      "blurb": null
+    },
+    {
+      "master_id": 30577,
+      "blurb": null
+    },
+    {
+      "master_id": 30712,
+      "blurb": null
+    },
+    {
+      "master_id": 30926,
+      "blurb": null
+    },
+    {
+      "master_id": 31337,
+      "blurb": null
+    },
+    {
+      "master_id": 31598,
+      "blurb": null
+    },
+    {
+      "master_id": 31755,
+      "blurb": null
+    },
+    {
+      "master_id": 32208,
+      "blurb": null
+    },
+    {
+      "master_id": 32708,
+      "blurb": null
+    },
+    {
+      "master_id": 34081,
+      "blurb": null
+    },
+    {
+      "master_id": 35006,
+      "blurb": null
+    },
+    {
+      "master_id": 35276,
+      "blurb": null
+    },
+    {
+      "master_id": 35401,
+      "blurb": null
+    },
+    {
+      "master_id": 35706,
+      "blurb": null
+    },
+    {
+      "master_id": 35759,
+      "blurb": null
+    },
+    {
+      "master_id": 35793,
+      "blurb": null
+    },
+    {
+      "master_id": 36227,
+      "blurb": null
+    },
+    {
+      "master_id": 36251,
+      "blurb": null
+    },
+    {
+      "master_id": 37145,
+      "blurb": null
+    },
+    {
+      "master_id": 37401,
+      "blurb": null
+    },
+    {
+      "master_id": 37615,
+      "blurb": null
+    },
+    {
+      "master_id": 38175,
+      "blurb": null
+    },
+    {
+      "master_id": 38712,
+      "blurb": null
+    },
+    {
+      "master_id": 38722,
+      "blurb": null
+    },
+    {
+      "master_id": 39248,
+      "blurb": null
+    },
+    {
+      "master_id": 39341,
+      "blurb": null
+    },
+    {
+      "master_id": 40048,
+      "blurb": null
+    },
+    {
+      "master_id": 41155,
+      "blurb": null
+    },
+    {
+      "master_id": 41722,
+      "blurb": null
+    },
+    {
+      "master_id": 42522,
+      "blurb": null
+    },
+    {
+      "master_id": 43063,
+      "blurb": null
+    },
+    {
+      "master_id": 44278,
+      "blurb": null
+    },
+    {
+      "master_id": 45284,
+      "blurb": null
+    },
+    {
+      "master_id": 45432,
+      "blurb": null
+    },
+    {
+      "master_id": 45720,
+      "blurb": null
+    },
+    {
+      "master_id": 45922,
+      "blurb": null
+    },
+    {
+      "master_id": 47744,
+      "blurb": null
+    },
+    {
+      "master_id": 47868,
+      "blurb": null
+    },
+    {
+      "master_id": 48605,
+      "blurb": null
+    },
+    {
+      "master_id": 49058,
+      "blurb": null
+    },
+    {
+      "master_id": 49227,
+      "blurb": null
+    },
+    {
+      "master_id": 49965,
+      "blurb": null
+    },
+    {
+      "master_id": 51607,
+      "blurb": null
+    },
+    {
+      "master_id": 52497,
+      "blurb": null
+    },
+    {
+      "master_id": 52671,
+      "blurb": null
+    },
+    {
+      "master_id": 52998,
+      "blurb": null
+    },
+    {
+      "master_id": 54449,
+      "blurb": null
+    },
+    {
+      "master_id": 55281,
+      "blurb": null
+    },
+    {
+      "master_id": 55576,
+      "blurb": null
+    },
+    {
+      "master_id": 55658,
+      "blurb": null
+    },
+    {
+      "master_id": 56036,
+      "blurb": null
+    },
+    {
+      "master_id": 57029,
+      "blurb": null
+    },
+    {
+      "master_id": 57279,
+      "blurb": null
+    },
+    {
+      "master_id": 57940,
+      "blurb": null
+    },
+    {
+      "master_id": 57970,
+      "blurb": null
+    },
+    {
+      "master_id": 58313,
+      "blurb": null
+    },
+    {
+      "master_id": 59501,
+      "blurb": null
+    },
+    {
+      "master_id": 59538,
+      "blurb": null
+    },
+    {
+      "master_id": 60680,
+      "blurb": null
+    },
+    {
+      "master_id": 60721,
+      "blurb": null
+    },
+    {
+      "master_id": 64290,
+      "blurb": null
+    },
+    {
+      "master_id": 65826,
+      "blurb": null
+    },
+    {
+      "master_id": 66510,
+      "blurb": null
+    },
+    {
+      "master_id": 66631,
+      "blurb": null
+    },
+    {
+      "master_id": 66782,
+      "blurb": null
+    },
+    {
+      "master_id": 67405,
+      "blurb": null
+    },
+    {
+      "master_id": 67836,
+      "blurb": null
+    },
+    {
+      "master_id": 68209,
+      "blurb": null
+    },
+    {
+      "master_id": 68399,
+      "blurb": null
+    },
+    {
+      "master_id": 68469,
+      "blurb": null
+    },
+    {
+      "master_id": 69156,
+      "blurb": null
+    },
+    {
+      "master_id": 69859,
+      "blurb": null
+    },
+    {
+      "master_id": 69925,
+      "blurb": null
+    },
+    {
+      "master_id": 69938,
+      "blurb": null
+    },
+    {
+      "master_id": 69946,
+      "blurb": null
+    },
+    {
+      "master_id": 69956,
+      "blurb": null
+    },
+    {
+      "master_id": 70584,
+      "blurb": null
+    },
+    {
+      "master_id": 72235,
+      "blurb": null
+    },
+    {
+      "master_id": 72879,
+      "blurb": null
+    },
+    {
+      "master_id": 73013,
+      "blurb": null
+    },
+    {
+      "master_id": 74227,
+      "blurb": null
+    },
+    {
+      "master_id": 75606,
+      "blurb": null
+    },
+    {
+      "master_id": 76678,
+      "blurb": null
+    },
+    {
+      "master_id": 79241,
+      "blurb": null
+    },
+    {
+      "master_id": 79393,
+      "blurb": null
+    },
+    {
+      "master_id": 79666,
+      "blurb": null
+    },
+    {
+      "master_id": 80514,
+      "blurb": null
+    },
+    {
+      "master_id": 81172,
+      "blurb": null
+    },
+    {
+      "master_id": 81575,
+      "blurb": null
+    },
+    {
+      "master_id": 82337,
+      "blurb": null
+    },
+    {
+      "master_id": 87446,
+      "blurb": null
+    },
+    {
+      "master_id": 89665,
+      "blurb": null
+    },
+    {
+      "master_id": 90844,
+      "blurb": null
+    },
+    {
+      "master_id": 91767,
+      "blurb": null
+    },
+    {
+      "master_id": 92517,
+      "blurb": null
+    },
+    {
+      "master_id": 92896,
+      "blurb": null
+    },
+    {
+      "master_id": 92986,
+      "blurb": null
+    },
+    {
+      "master_id": 96362,
+      "blurb": null
+    },
+    {
+      "master_id": 97173,
+      "blurb": null
+    },
+    {
+      "master_id": 99919,
+      "blurb": null
+    },
+    {
+      "master_id": 104115,
+      "blurb": null
+    },
+    {
+      "master_id": 104166,
+      "blurb": null
+    },
+    {
+      "master_id": 104399,
+      "blurb": null
+    },
+    {
+      "master_id": 105802,
+      "blurb": null
+    },
+    {
+      "master_id": 106274,
+      "blurb": null
+    },
+    {
+      "master_id": 106396,
+      "blurb": null
+    },
+    {
+      "master_id": 107325,
+      "blurb": null
+    },
+    {
+      "master_id": 108242,
+      "blurb": null
+    },
+    {
+      "master_id": 110874,
+      "blurb": null
+    },
+    {
+      "master_id": 113224,
+      "blurb": null
+    },
+    {
+      "master_id": 113522,
+      "blurb": null
+    },
+    {
+      "master_id": 122051,
+      "blurb": null
+    },
+    {
+      "master_id": 122261,
+      "blurb": null
+    },
+    {
+      "master_id": 129759,
+      "blurb": null
+    },
+    {
+      "master_id": 133278,
+      "blurb": null
+    },
+    {
+      "master_id": 135633,
+      "blurb": null
+    },
+    {
+      "master_id": 138283,
+      "blurb": null
+    },
+    {
+      "master_id": 151766,
+      "blurb": null
+    },
+    {
+      "master_id": 172407,
+      "blurb": null
+    },
+    {
+      "master_id": 303567,
+      "blurb": null
+    },
+    {
+      "master_id": 338175,
+      "blurb": null
+    },
+    {
+      "master_id": 403952,
+      "blurb": null
+    },
+    {
+      "master_id": 406634,
+      "blurb": null
+    },
+    {
+      "master_id": 750386,
+      "blurb": null
+    },
+    {
+      "master_id": 1046042,
+      "blurb": null
+    },
+    {
+      "master_id": 1164779,
+      "blurb": null
+    },
+    {
+      "master_id": 2452996,
+      "blurb": null
+    }
+  ]
+}

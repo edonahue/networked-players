@@ -46,6 +46,17 @@ _APPROVED_COVER_HOST = "i.discogs.com"
 #:
 #: Order is the BIT ORDER and is therefore load-bearing: `flags & 1` is
 #: always `compilation`. Append only; never reorder or remove.
+#:
+#: `single`/`ep` (graph-expansion Phase 0 slice 0-B, ADR 0069) added at the
+#: end for exactly this reason -- an evidence release tagged with either
+#: descriptor is a real release, just not a studio album in its own right,
+#: so it is presentable with an honest kind caveat rather than silently
+#: treated as clean full-album evidence. `live_title_signal` (also part of
+#: the plan's registry-kinds list) is deliberately NOT added here: it is a
+#: title-text heuristic (`catalog_audit.py`'s `_TITLE_SIGNAL_PATTERN`), not
+#: a `release_formats.descriptions` value, so it needs a different code path
+#: than this descriptor-matching mechanism -- left for a follow-up rather
+#: than forced into a mechanism that doesn't fit it.
 CAVEAT_FLAG_DESCRIPTORS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("compilation", ("Compilation",)),
     ("mixed", ("Mixed",)),
@@ -53,6 +64,8 @@ CAVEAT_FLAG_DESCRIPTORS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("reissue", ("Reissue", "Repress")),
     ("sampler", ("Sampler",)),
     ("unofficial", ("Unofficial Release",)),
+    ("single", ("Single", "Maxi-Single")),
+    ("ep", ("EP", "Mini-Album")),
 )
 CAVEAT_FLAG_NAMES: tuple[str, ...] = tuple(name for name, _ in CAVEAT_FLAG_DESCRIPTORS)
 #: Every bit that can legitimately be set -- anything outside this is a

@@ -375,6 +375,45 @@ def test_a_candidate_sharing_a_pre_resolved_master_id_is_excluded_even_with_a_di
     assert len(master_ids_in_catalog) == 1  # not duplicated
 
 
+def test_load_featured_master_ids_returns_empty_set_for_none(tmp_path: Path) -> None:
+    from networked_players_graph_core.analysis import load_featured_master_ids
+
+    assert load_featured_master_ids(None) == frozenset()
+
+
+def test_load_featured_master_ids_reads_real_shape(tmp_path: Path) -> None:
+    from networked_players_graph_core.analysis import load_featured_master_ids
+
+    path = tmp_path / "featured-v1.json"
+    path.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "entries": [
+                    {"master_id": 10362, "blurb": None},
+                    {"master_id": 10363, "blurb": "A one-line note."},
+                ],
+            }
+        )
+    )
+    assert load_featured_master_ids(path) == frozenset({10362, 10363})
+
+
+def test_real_committed_featured_file_marks_every_current_album_featured() -> None:
+    """The real `data/albums/featured-v1.json` was generated from the real
+    committed catalog's master_ids (ADR 0069: the original 179 are
+    featured -- they were hand-selected) -- prove the file and the catalog
+    agree, so a future catalog change that silently drifts from it is
+    caught here rather than discovered downstream."""
+    from networked_players_graph_core.analysis import load_featured_master_ids
+
+    repo_root = Path(__file__).resolve().parents[3]
+    catalog = json.loads((repo_root / "apps/web/public/data/catalog/albums.v1.json").read_text())
+    featured_master_ids = load_featured_master_ids(repo_root / "data/albums/featured-v1.json")
+    catalog_master_ids = {int(a["master_id"]) for a in catalog["albums"]}
+    assert catalog_master_ids == featured_master_ids
+
+
 def test_no_pre_resolved_albums_is_fully_backward_compatible(dataset_root: Path) -> None:
     editorial = [{"artist": "Alice", "title": "First Light"}]
     with CreditGraph.open(dataset_root) as graph:
@@ -414,6 +453,77 @@ def test_additional_pre_resolved_labels_each_bucket_separately(dataset_root: Pat
     ]
     titles = {a["title"] for a in catalog["albums"]}
     assert titles == {"Bucket A Pick", "Bucket B Pick", "Bucket C Pick"}
+
+
+def test_v2_fields_are_absent_unless_featured_master_ids_is_given(dataset_root: Path) -> None:
+    """Backward compatibility is the whole point of the opt-in gate (ADR
+    0069): a caller that never passes `featured_master_ids` gets today's
+    exact v1 shape, no new keys anywhere."""
+    editorial = [{"artist": "Alice", "title": "First Light"}]
+    with CreditGraph.open(dataset_root) as graph:
+        candidates = rank_album_candidates(dataset_root)
+        catalog = assemble_album_catalog(graph, editorial, candidates, target_count=3)
+    assert "catalog_schema_version" not in catalog
+    assert "catalog_presentation_version" not in catalog
+    for album in catalog["albums"]:
+        assert "selection_source" not in album
+        assert "featured" not in album
+        assert "expansion_round" not in album
+
+
+def test_v2_fields_tag_every_lane_with_its_public_selection_source(dataset_root: Path) -> None:
+    """personal_editorial (Bucket A) is normalized to the public "editorial"
+    label on the per-album field; every other lane keeps its own label
+    verbatim; a generic candidate is "generic_candidate"."""
+    editorial = [{"artist": "Alice", "title": "First Light"}]
+    personal = [_pre_resolved(9001, 9001, 700, "Fictoquai", "Bucket A Pick")]
+    graph_rich = [_pre_resolved(7501, 7501, 750, "Graph Rich Artist", "Bucket B Pick")]
+    with CreditGraph.open(dataset_root) as graph:
+        candidates = rank_album_candidates(dataset_root)
+        catalog = assemble_album_catalog(
+            graph,
+            editorial,
+            candidates,
+            target_count=10,
+            pre_resolved_albums=personal,
+            additional_pre_resolved=[("graph_rich", graph_rich, True)],
+            featured_master_ids=frozenset({9001}),
+            expansion_round=2,
+        )
+    assert catalog["catalog_schema_version"] == 2
+    assert catalog["catalog_presentation_version"]
+    by_title = {a["title"]: a for a in catalog["albums"]}
+    assert by_title["First Light"]["selection_source"] == "editorial"
+    assert by_title["First Light"]["featured"] is False
+    assert by_title["First Light"]["expansion_round"] == 2
+    assert by_title["Bucket A Pick"]["selection_source"] == "editorial"
+    assert by_title["Bucket A Pick"]["featured"] is True  # master_id 9001 is in featured_master_ids
+    assert by_title["Bucket B Pick"]["selection_source"] == "graph_rich"
+    assert by_title["Bucket B Pick"]["featured"] is False
+    for candidate_album in catalog["albums"]:
+        if candidate_album["title"] not in {"First Light", "Bucket A Pick", "Bucket B Pick"}:
+            assert candidate_album["selection_source"] == "generic_candidate"
+
+
+def test_v2_catalog_still_passes_v1_validation_shape(dataset_root: Path) -> None:
+    """A v2 catalog is a strict superset of v1 -- every existing v1-only
+    reader (positional pre_resolved_buckets reconstruction, the identity
+    catalog_version) keeps working unchanged."""
+    from networked_players_graph_core.analysis import validate_album_catalog
+
+    editorial = [{"artist": "Alice", "title": "First Light"}]
+    with CreditGraph.open(dataset_root) as graph:
+        candidates = rank_album_candidates(dataset_root)
+        catalog = assemble_album_catalog(
+            graph,
+            editorial,
+            candidates,
+            target_count=3,
+            snapshot_date="20260601",
+            generated_by="test",
+            featured_master_ids=frozenset(),
+        )
+    validate_album_catalog(catalog)  # must not raise
 
 
 def test_additional_pre_resolved_dedups_against_earlier_groups_by_master_id(

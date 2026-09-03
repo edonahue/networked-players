@@ -354,10 +354,20 @@ def _edge_ineligible_role_sql(role_column: str) -> str:
 #:   disc, which is much weaker than being on one record together.
 #: * pressing -- a promo or a later pressing: the collaboration is real,
 #:   only the artefact is secondary. Mild.
+#: * kind -- a single, maxi-single, EP, or mini-album: a real, official,
+#:   single-artist(s) release, just a narrower one than a full studio album
+#:   (graph-expansion Phase 0 slice 0-B, ADR 0069). Mildest tier: unlike
+#:   promo/reissue/repress it does not describe an unusual PRESSING of an
+#:   otherwise-normal album, but the collaboration and the release are both
+#:   exactly as real -- ranked last so a full-album pressing is preferred
+#:   when one exists, never so a single/EP is treated as worse than a promo.
+#:   Measured present in the same corpus: Single 117,589 · EP 22,034 ·
+#:   Maxi-Single 8,623 · Mini-Album 1,578 rows.
 EVIDENCE_CAVEAT_TIERS: tuple[tuple[str, ...], ...] = (
     ("Unofficial Release",),
     ("Compilation", "Mixed", "Sampler"),
     ("Promo", "Reissue", "Repress"),
+    ("Single", "Maxi-Single", "EP", "Mini-Album"),
 )
 
 #: Every caveat descriptor, flattened. Measured present in the one-hop
@@ -392,8 +402,8 @@ class EvidenceReleasePreference:
        most defensible evidence a route can offer.
     2. Carries no caveat descriptor, one tier at a time from worst to
        mildest (`EVIDENCE_CAVEAT_TIERS`: bootleg, then container, then
-       pressing) so the ranking is monotone within each severity rather
-       than only in aggregate.
+       pressing, then kind) so the ranking is monotone within each severity
+       rather than only in aggregate.
     3. `master_is_main_release` -- the primary version of its master rather
        than a reissue pressing.
     4. `release_id` ascending -- the deterministic final tiebreak, which is
@@ -1726,6 +1736,20 @@ class CreditGraph:
             "genres": list(row[3]) if row[3] is not None else [],
             "styles": list(row[4]) if row[4] is not None else [],
         }
+
+    def release_ids_for_master(self, master_id: int) -> list[int]:
+        """Every release_id under this master in the working set, unordered.
+
+        Unlike `find_release_by_id_hint`, which resolves to a single
+        preferred pressing, this returns the full candidate set --
+        `master_eligibility.py` needs every real pressing to check whether
+        ANY of them is format-allowed, since the master's own
+        `main_release_id` is sometimes a Reissue/Remastered pressing a
+        descriptor-only rule would wrongly reject."""
+        rows = self._connection.execute(
+            "SELECT release_id FROM releases WHERE master_id = ?", [master_id]
+        ).fetchall()
+        return [int(row[0]) for row in rows]
 
     def placeholder_artist_candidates(self) -> list[dict[str, Any]]:
         """Playable identities whose name looks like a placeholder ("Various",

@@ -97,6 +97,97 @@ def test_rejects_forbidden_substring() -> None:
     assert any("forbidden substring" in f for f in failures)
 
 
+def _v2_album(
+    album_id: str, *, artist_id: int, main_release_id: int, featured: bool
+) -> dict[str, Any]:
+    album = _album(album_id, artist_id=artist_id, main_release_id=main_release_id)
+    album["selection_source"] = "editorial"
+    album["featured"] = featured
+    album["expansion_round"] = 0
+    return album
+
+
+def _v2_catalog() -> dict[str, Any]:
+    from networked_players_contracts.catalog import _catalog_presentation_version
+
+    albums = [
+        _v2_album("master-1", artist_id=100, main_release_id=1, featured=True),
+        _v2_album("master-2", artist_id=200, main_release_id=2, featured=False),
+    ]
+    return {
+        "catalog_version": _catalog_version(albums, _SNAPSHOT_DATE),
+        "catalog_schema_version": 2,
+        "catalog_presentation_version": _catalog_presentation_version(albums, _SNAPSHOT_DATE),
+        "snapshot_date": _SNAPSHOT_DATE,
+        "generated_by": "networked-players-catalog build-album-catalog 0.1.0",
+        "albums": albums,
+    }
+
+
+def test_v1_catalog_never_requires_v2_fields() -> None:
+    assert public_album_catalog_failures(_catalog()) == []
+
+
+def test_valid_v2_catalog_has_no_failures() -> None:
+    assert public_album_catalog_failures(_v2_catalog()) == []
+
+
+def test_rejects_unsupported_schema_version() -> None:
+    catalog = _v2_catalog()
+    catalog["catalog_schema_version"] = 3
+    failures = public_album_catalog_failures(catalog)
+    assert any("unsupported catalog_schema_version" in f for f in failures)
+
+
+def test_rejects_invalid_selection_source() -> None:
+    catalog = _v2_catalog()
+    catalog["albums"][0]["selection_source"] = "made_up"
+    failures = public_album_catalog_failures(catalog)
+    assert any("invalid selection_source" in f for f in failures)
+
+
+def test_rejects_non_boolean_featured() -> None:
+    catalog = _v2_catalog()
+    catalog["albums"][0]["featured"] = "true"
+    failures = public_album_catalog_failures(catalog)
+    assert any("invalid boolean 'featured'" in f for f in failures)
+
+
+def test_rejects_negative_expansion_round() -> None:
+    catalog = _v2_catalog()
+    catalog["albums"][0]["expansion_round"] = -1
+    failures = public_album_catalog_failures(catalog)
+    assert any("invalid non-negative 'expansion_round'" in f for f in failures)
+
+
+def test_rejects_tampered_presentation_version() -> None:
+    catalog = _v2_catalog()
+    catalog["catalog_presentation_version"] = "catalog-presentation-v1-20260601-000000000000"
+    failures = public_album_catalog_failures(catalog)
+    assert any("catalog_presentation_version" in f and "does not match" in f for f in failures)
+
+
+def test_v2_cross_check_agrees_with_graph_core_reference() -> None:
+    from networked_players_graph_core.analysis import (
+        AlbumCatalogValidationError,
+        validate_album_catalog,
+    )
+
+    catalog = _v2_catalog()
+    validate_album_catalog(deepcopy(catalog))  # does not raise
+    assert public_album_catalog_failures(catalog) == []
+
+    broken = _v2_catalog()
+    broken["albums"][0]["selection_source"] = "made_up"
+    try:
+        validate_album_catalog(deepcopy(broken))
+        raised = False
+    except AlbumCatalogValidationError:
+        raised = True
+    assert raised
+    assert public_album_catalog_failures(broken) != []
+
+
 def test_cross_check_agrees_with_graph_core_reference() -> None:
     from networked_players_graph_core.analysis import (
         AlbumCatalogValidationError,

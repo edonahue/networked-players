@@ -41,6 +41,17 @@ _FORBIDDEN_PHRASES = ("worked with", "collaborated with", "influenced")
 
 _REQUIRED_ALBUM_FIELDS = ("artist_id", "artist", "main_release_id", "title", "year")
 
+# graph-expansion Phase 0 slice 0-B (ADR 0069): catalog schema v2 adds
+# per-album `selection_source`/`featured`/`expansion_round`, gated behind a
+# top-level `catalog_schema_version` -- absent (v1) requires none of this;
+# present and 2 requires all of it. Must agree byte-for-byte with
+# `networked_players_graph_core.analysis`'s own `CATALOG_SCHEMA_VERSION_V2`/
+# `VALID_SELECTION_SOURCES`.
+CATALOG_SCHEMA_VERSION_V2 = 2
+VALID_SELECTION_SOURCES = frozenset(
+    {"editorial", "already_published", "graph_rich", "coverage_gap", "generic_candidate"}
+)
+
 
 def _catalog_version(albums: list[dict[str, Any]], snapshot_date: str | None) -> str:
     """Must agree byte-for-byte with
@@ -53,6 +64,19 @@ def _catalog_version(albums: list[dict[str, Any]], snapshot_date: str | None) ->
     )
     digest = hashlib.sha256(fingerprint.encode()).hexdigest()[:12]
     prefix = f"catalog-v1-{snapshot_date}" if snapshot_date else "catalog-v1"
+    return f"{prefix}-{digest}"
+
+
+def _catalog_presentation_version(albums: list[dict[str, Any]], snapshot_date: str | None) -> str:
+    """Must agree byte-for-byte with
+    `networked_players_graph_core.analysis::_catalog_presentation_version`."""
+    fingerprint = "|".join(
+        sorted(f"{a.get('id')}:{a.get('featured')}:{a.get('selection_source')}" for a in albums)
+    )
+    digest = hashlib.sha256(fingerprint.encode()).hexdigest()[:12]
+    prefix = (
+        f"catalog-presentation-v1-{snapshot_date}" if snapshot_date else "catalog-presentation-v1"
+    )
     return f"{prefix}-{digest}"
 
 
@@ -91,6 +115,41 @@ def public_album_catalog_failures(catalog: Any) -> list[str]:
                 failures.append(f"album {album_id} missing required field {field_name!r}")
         if not isinstance(album.get("main_release_id"), int) or album["main_release_id"] <= 0:
             failures.append(f"album {album_id} has an invalid main_release_id")
+
+    schema_version = catalog.get("catalog_schema_version")
+    if schema_version is not None:
+        if schema_version != CATALOG_SCHEMA_VERSION_V2:
+            failures.append(f"unsupported catalog_schema_version: {schema_version!r}")
+        else:
+            for album in albums:
+                if not isinstance(album, dict):
+                    continue
+                album_id = album.get("id", "<unknown>")
+                selection_source = album.get("selection_source")
+                if selection_source not in VALID_SELECTION_SOURCES:
+                    failures.append(
+                        f"album {album_id} has an invalid selection_source: {selection_source!r}"
+                    )
+                if not isinstance(album.get("featured"), bool):
+                    failures.append(f"album {album_id} missing/invalid boolean 'featured'")
+                expansion_round = album.get("expansion_round")
+                if (
+                    not isinstance(expansion_round, int)
+                    or isinstance(expansion_round, bool)
+                    or expansion_round < 0
+                ):
+                    failures.append(
+                        f"album {album_id} missing/invalid non-negative 'expansion_round'"
+                    )
+            expected_presentation_version = _catalog_presentation_version(
+                [a for a in albums if isinstance(a, dict)], catalog.get("snapshot_date")
+            )
+            if catalog.get("catalog_presentation_version") != expected_presentation_version:
+                failures.append(
+                    "catalog_presentation_version "
+                    f"{catalog.get('catalog_presentation_version')!r} does not match its own "
+                    f"content (expected {expected_presentation_version!r})"
+                )
 
     expected_version = _catalog_version(
         [a for a in albums if isinstance(a, dict)], catalog.get("snapshot_date")
