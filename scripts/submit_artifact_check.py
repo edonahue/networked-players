@@ -89,7 +89,14 @@ _DEFAULT_ARTIFACTS: dict[str, tuple[str, ...]] = {
         "apps/web/public/data/game/rounds.v1.json",
     ),
     "pathfinding-graph": (
-        "apps/web/public/data/pathfinding/graph.v3.json",
+        # graph-expansion Phase 1 (ADR 0071): the last of the 4 real
+        # consumers to cut over (Connect, Explore, and the research
+        # workbench already migrated) -- v4 is now the default fleet
+        # check, matching what real production actually fetches. v3
+        # stays independently checkable via --artifact override until it
+        # retires (the same override already used to fleet-validate
+        # graph.v4.json ad hoc before this cutover).
+        "apps/web/public/data/pathfinding/graph.v4.json",
         "apps/web/public/data/catalog/albums.v1.json",
     ),
     "record-routes": (
