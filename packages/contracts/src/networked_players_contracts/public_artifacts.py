@@ -57,6 +57,7 @@ PUBLIC_ARTIFACT_GROUPS = (
     "contributor_index",
     "album_hop_distances",
     "pathfinding_graph",
+    "pathfinding_graph_v4",
     "album_credit_membership",
     "evidence_release_registry",
 )
@@ -76,6 +77,7 @@ def public_artifacts_failures(
     contributor_index: Any,
     album_hop_distances: Any,
     pathfinding_graph: Any,
+    pathfinding_graph_v4: Any,
     album_credit_membership: Any,
     evidence_release_registry: Any,
 ) -> dict[str, list[str]]:
@@ -84,16 +86,28 @@ def public_artifacts_failures(
     present, with an empty list when that artifact is clean -- callers can
     report "N/N clean" without special-casing an absent key.
 
-    `challenge` and `pathfinding_graph` are the single live artifacts of
-    their kind: `challenge.v3.json` and `pathfinding/graph.v3.json`, both
-    performer-gated (ADR 0068). Their v2 predecessors went through the same
+    `challenge` is the single live artifact of its kind: `challenge.v3.json`,
+    performer-gated (ADR 0068). Its v2 predecessor went through the same
     dual-live-then-retire sequence ADR 0058 established for `graph.v1.json`
     -- published alongside the old file, validated here from day one so a
     defect was caught by `make check` rather than by a consumer, cut over
-    once, then deleted as an explicit separate step. `pathfinding_graph`
-    still uses the schema-version-aware `pathfinding_graph_failures`, which
-    continues to accept the older schema versions it has always validated;
-    only the published artifact set narrowed, not the validator."""
+    once, then deleted as an explicit separate step.
+
+    `pathfinding_graph` (`pathfinding/graph.v3.json`) and
+    `pathfinding_graph_v4` (`pathfinding/graph.v4.json`, ADR 0071's
+    role-dictionary encoding) are DUAL-LIVE as of graph-expansion Phase 1:
+    v3 remains the only artifact any real consumer fetches; v4 is published
+    and validated here from day one, the same reason challenge's v2/v3
+    transition validated its new file before any consumer cut over, so a
+    defect is caught by `make check` rather than discovered mid-migration.
+    Once every consumer (Connect, Explore, the private research workbench,
+    the fleet artifact-check default) has cut over to v4, `pathfinding_graph`
+    will be repointed at the v4 file and `pathfinding_graph_v4` retired as
+    its own explicit step -- the same collapse-to-one-group precedent v1's
+    retirement set. Both keys use the same schema-version-aware
+    `pathfinding_graph_failures`, which continues to accept every schema
+    version it has always validated; only the published artifact SET
+    changes over time, never the validator."""
     return {
         "catalog": public_album_catalog_failures(catalog),
         "album_art_registry": album_art_failures(album_art, catalog),
@@ -108,6 +122,7 @@ def public_artifacts_failures(
             album_hop_distances, catalog, contributor_index
         ),
         "pathfinding_graph": pathfinding_graph_failures(pathfinding_graph, catalog),
+        "pathfinding_graph_v4": pathfinding_graph_failures(pathfinding_graph_v4, catalog),
         "album_credit_membership": album_credit_membership_failures(
             album_credit_membership, catalog
         ),

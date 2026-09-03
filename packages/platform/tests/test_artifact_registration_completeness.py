@@ -60,6 +60,17 @@ _ARTIFACT_GROUPS_WITHOUT_A_PI_CHECK = frozenset(
     {
         "challenge",
         "album_hop_distances",
+        # graph-expansion Phase 1 (ADR 0071): pathfinding/graph.v4.json is
+        # dual-live alongside graph.v3.json, published and validated by
+        # make check from day one, but with no dedicated Pi-fleet workload
+        # of its own -- no real consumer fetches it yet, so a distributed
+        # re-check has no independent operational need until the consumer
+        # cutover. The existing "pathfinding-graph" Pi validator can already
+        # check it ad hoc via submit_artifact_check.py's --artifact
+        # override if ever wanted before then. Once every consumer cuts
+        # over, pathfinding_graph_v4 collapses back into pathfinding_graph
+        # (the same v1/v2 retirement precedent) and this entry is removed.
+        "pathfinding_graph_v4",
     }
 )
 

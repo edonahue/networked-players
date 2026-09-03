@@ -1431,6 +1431,15 @@ def _parser() -> argparse.ArgumentParser:
         default=Path("apps/web/public/data/pathfinding/graph.v3.json"),
     )
     validate_public_artifacts.add_argument(
+        "--pathfinding-graph-v4",
+        type=Path,
+        default=Path("apps/web/public/data/pathfinding/graph.v4.json"),
+        help=(
+            "graph-expansion Phase 1 (ADR 0071): dual-live alongside --pathfinding-graph "
+            "until every real consumer cuts over, then this becomes the only file"
+        ),
+    )
+    validate_public_artifacts.add_argument(
         "--album-credit-membership",
         type=Path,
         default=Path("apps/web/public/data/albums/credit-membership.v1.json"),
@@ -4071,6 +4080,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             contributor_index=json.loads(args.contributor_index.read_text()),
             album_hop_distances=json.loads(args.album_hop_distances.read_text()),
             pathfinding_graph=json.loads(args.pathfinding_graph.read_text()),
+            pathfinding_graph_v4=json.loads(args.pathfinding_graph_v4.read_text()),
             album_credit_membership=json.loads(args.album_credit_membership.read_text()),
             evidence_release_registry=json.loads(args.evidence_release_registry.read_text()),
         )

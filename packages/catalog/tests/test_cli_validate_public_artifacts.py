@@ -417,6 +417,30 @@ def _pathfinding_graph(catalog: dict[str, Any]) -> dict[str, Any]:
     return payload
 
 
+def _pathfinding_graph_v4(catalog: dict[str, Any]) -> dict[str, Any]:
+    """Same real content as `_pathfinding_graph()` (schema 3), dictionary-
+    encoded (ADR 0071, graph-expansion Phase 1, dual-live alongside v3)."""
+    v3 = _pathfinding_graph(catalog)
+    roles: list[str] = []
+    index: dict[str, int] = {}
+
+    def role_id(text: str) -> int:
+        if text not in index:
+            index[text] = len(roles)
+            roles.append(text)
+        return index[text]
+
+    payload = {
+        **v3,
+        "schema_version": 4,
+        "roles": roles,
+        "edge_role_a": [role_id(t) for t in v3["edge_role_a"]],
+        "edge_role_b": [role_id(t) for t in v3["edge_role_b"]],
+    }
+    payload["pathfinding_graph_version"] = pathfinding_graph_version(payload, _SNAPSHOT)
+    return payload
+
+
 def _album_credit_membership(catalog: dict[str, Any]) -> dict[str, Any]:
     albums = [
         {
@@ -499,6 +523,9 @@ def _write_all(tmp_path: Path) -> dict[str, Path]:
         "pathfinding_graph": _write(
             tmp_path / "pathfinding-graph.v3.json", _pathfinding_graph(catalog)
         ),
+        "pathfinding_graph_v4": _write(
+            tmp_path / "pathfinding-graph.v4.json", _pathfinding_graph_v4(catalog)
+        ),
         "album_credit_membership": _write(
             tmp_path / "album-credit-membership.v1.json", _album_credit_membership(catalog)
         ),
@@ -533,6 +560,8 @@ def _args(paths: dict[str, Path]) -> list[str]:
         str(paths["album_hop_distances"]),
         "--pathfinding-graph",
         str(paths["pathfinding_graph"]),
+        "--pathfinding-graph-v4",
+        str(paths["pathfinding_graph_v4"]),
         "--album-credit-membership",
         str(paths["album_credit_membership"]),
         "--evidence-release-registry",
@@ -556,6 +585,7 @@ def test_clean_set_exits_zero(tmp_path: Path, capsys) -> None:
         "contributor_index": [],
         "album_hop_distances": [],
         "pathfinding_graph": [],
+        "pathfinding_graph_v4": [],
         "album_credit_membership": [],
         "evidence_release_registry": [],
     }
@@ -595,6 +625,7 @@ def test_default_paths_point_at_the_real_repo_layout(tmp_path: Path, capsys, mon
             _album_hop_distances(catalog)
         ),
         "apps/web/public/data/pathfinding/graph.v3.json": _pathfinding_graph(catalog),
+        "apps/web/public/data/pathfinding/graph.v4.json": _pathfinding_graph_v4(catalog),
         "apps/web/public/data/albums/credit-membership.v1.json": _album_credit_membership(catalog),
         "apps/web/public/data/evidence/release-registry.v1.json": _evidence_release_registry(
             catalog
