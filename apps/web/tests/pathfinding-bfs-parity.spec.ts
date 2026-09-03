@@ -44,11 +44,11 @@ function chainGraph(): PathfindingGraph {
     generated_at: "2026-08-03T00:00:00+00:00",
     source: "test",
     license: "test",
-    node_ids: [100, 200, 300, 400],
+    node_ids: new Int32Array([100, 200, 300, 400]),
     names: ["Alice", "Bob", "Cara", "Dan"],
-    offsets: [0, 1, 3, 5, 6],
-    neighbors: [1, 0, 2, 1, 3, 2],
-    evidence_release_ids: [1, 1, 2, 2, 3, 3],
+    offsets: new Int32Array([0, 1, 3, 5, 6]),
+    neighbors: new Int32Array([1, 0, 2, 1, 3, 2]),
+    evidence_release_ids: new Int32Array([1, 1, 2, 2, 3, 3]),
     // Python's bench module carries no role text; placeholders here since
     // pathfindingGraph.ts's shape requires them but this parity test
     // doesn't assert on them.

@@ -41,7 +41,7 @@ function albumAnchorGraph(): PathfindingGraph {
     generated_at: "2026-08-08T00:00:00+00:00",
     source: "test",
     license: "test",
-    node_ids: [-3, -2, -1, 100, 200, 300, 400],
+    node_ids: new Int32Array([-3, -2, -1, 100, 200, 300, 400]),
     names: [
       "Album C (album anchor)",
       "Album B (album anchor)",
@@ -51,9 +51,9 @@ function albumAnchorGraph(): PathfindingGraph {
       "Cara",
       "Dan",
     ],
-    offsets: [0, 0, 1, 2, 4, 6, 8, 10],
-    neighbors: [6, 3, 2, 4, 3, 5, 4, 6, 1, 5],
-    evidence_release_ids: [20, 10, 10, 1, 1, 2, 2, 3, 20, 3],
+    offsets: new Int32Array([0, 0, 1, 2, 4, 6, 8, 10]),
+    neighbors: new Int32Array([6, 3, 2, 4, 3, 5, 4, 6, 1, 5]),
+    evidence_release_ids: new Int32Array([20, 10, 10, 1, 1, 2, 2, 3, 20, 3]),
     edge_role_a: [
       ALBUM_ANCHOR_SENTINEL,
       ALBUM_ANCHOR_SENTINEL,
@@ -393,7 +393,7 @@ function interiorAnchorDetourGraph(): PathfindingGraph {
     generated_at: "2026-08-29T00:00:00+00:00",
     source: "test",
     license: "test",
-    node_ids: [-3, -2, -1, 100, 200],
+    node_ids: new Int32Array([-3, -2, -1, 100, 200]),
     names: [
       "Album Z (album anchor)",
       "Album B (album anchor)",
@@ -401,9 +401,9 @@ function interiorAnchorDetourGraph(): PathfindingGraph {
       "Frank",
       "Grace",
     ],
-    offsets: [0, 2, 3, 4, 6, 8],
-    neighbors: [3, 4, 4, 3, 2, 0, 1, 0],
-    evidence_release_ids: [41, 42, 52, 51, 51, 41, 52, 42],
+    offsets: new Int32Array([0, 2, 3, 4, 6, 8]),
+    neighbors: new Int32Array([3, 4, 4, 3, 2, 0, 1, 0]),
+    evidence_release_ids: new Int32Array([41, 42, 52, 51, 51, 41, 52, 42]),
     edge_role_a: [
       ALBUM_ANCHOR_SENTINEL,
       ALBUM_ANCHOR_SENTINEL,

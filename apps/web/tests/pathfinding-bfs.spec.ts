@@ -38,15 +38,15 @@ function chainGraph(): PathfindingGraph {
     generated_at: "2026-08-03T00:00:00+00:00",
     source: "test",
     license: "test",
-    node_ids: [100, 200, 300, 400],
+    node_ids: new Int32Array([100, 200, 300, 400]),
     names: ["Alice", "Bob", "Cara", "Dan"],
     // node 0 (100): neighbor 200 via release 1
     // node 1 (200): neighbors 100 (release 1), 300 (release 2)
     // node 2 (300): neighbors 200 (release 2), 400 (release 3)
     // node 3 (400): neighbor 300 (release 3)
-    offsets: [0, 1, 3, 5, 6],
-    neighbors: [1, 0, 2, 1, 3, 2],
-    evidence_release_ids: [1, 1, 2, 2, 3, 3],
+    offsets: new Int32Array([0, 1, 3, 5, 6]),
+    neighbors: new Int32Array([1, 0, 2, 1, 3, 2]),
+    evidence_release_ids: new Int32Array([1, 1, 2, 2, 3, 3]),
     edge_role_a: ["Guitar", "Bass", "Bass", "Cello", "Cello", "Drums"],
     edge_role_b: ["Bass", "Guitar", "Cello", "Bass", "Drums", "Cello"],
     pathfinding_graph_version: "pathfinding-graph-v1-20260601-test",

@@ -18,8 +18,19 @@
 // compilation -- both declare conflicting types for `self`/`postMessage`.
 // Casting once here, for exactly the two worker APIs this file uses,
 // avoids a second tsconfig just for one file.
+//
+// graph-expansion Phase 1: a successful response's four large CSR arrays
+// (`node_ids`/`offsets`/`neighbors`/`evidence_release_ids`, now real
+// `Int32Array`s per `validatePathfindingGraph`) are handed to `postMessage`
+// as Transferable `ArrayBuffer`s (`postGraphSuccess` below) instead of
+// letting the structured-clone algorithm copy them -- a real, separate
+// memory/transfer-cost win from the role-dictionary encoding change
+// (ADR 0071), which only shrank the wire payload.
 
-import { validatePathfindingGraph } from "./pathfindingGraph";
+import {
+  validatePathfindingGraph,
+  type PathfindingGraph,
+} from "./pathfindingGraph";
 
 export interface GraphWorkerRequest {
   id: number;
@@ -51,7 +62,7 @@ export type GraphWorkerResponse =
     };
 
 interface WorkerSelf {
-  postMessage(message: GraphWorkerResponse): void;
+  postMessage(message: GraphWorkerResponse, transfer?: Transferable[]): void;
   onmessage: ((event: { data: GraphWorkerRequest }) => void) | null;
 }
 
@@ -60,6 +71,29 @@ const workerSelf = self as unknown as WorkerSelf;
 workerSelf.onmessage = (event) => {
   void handleRequest(event.data);
 };
+
+/** Posts a successful response with `node_ids`/`offsets`/`neighbors`/
+ * `evidence_release_ids` transferred as zero-copy `ArrayBuffer`s (graph-
+ * expansion Phase 1) rather than structured-cloned -- each of the four
+ * `Int32Array`s `validatePathfindingGraph` returns owns its own distinct
+ * buffer (built via separate `Int32Array.from` calls), so listing all four
+ * is safe: no aliasing, no buffer shared with anything the worker still
+ * needs after this call. Transferring detaches these buffers on the
+ * worker's side, which is fine -- `graph` is never reused past this one
+ * response. */
+function postGraphSuccess(
+  id: number,
+  graph: PathfindingGraph,
+  rawText: string,
+  parseMs: number,
+): void {
+  workerSelf.postMessage({ id, ok: true, graph, rawText, parseMs }, [
+    graph.node_ids.buffer,
+    graph.offsets.buffer,
+    graph.neighbors.buffer,
+    graph.evidence_release_ids.buffer,
+  ]);
+}
 
 async function handleRequest(request: GraphWorkerRequest): Promise<void> {
   const { id, url, cachedText } = request;
@@ -70,13 +104,7 @@ async function handleRequest(request: GraphWorkerRequest): Promise<void> {
       const graph = await validatePathfindingGraph(JSON.parse(cachedText));
       const parseMs = performance.now() - parseStart;
       if (graph) {
-        workerSelf.postMessage({
-          id,
-          ok: true,
-          graph,
-          rawText: cachedText,
-          parseMs,
-        });
+        postGraphSuccess(id, graph, cachedText, parseMs);
         return;
       }
     } catch {
@@ -120,5 +148,5 @@ async function handleRequest(request: GraphWorkerRequest): Promise<void> {
     workerSelf.postMessage({ id, ok: false, error: "invalid-graph" });
     return;
   }
-  workerSelf.postMessage({ id, ok: true, graph, rawText: text, parseMs });
+  postGraphSuccess(id, graph, text, parseMs);
 }
