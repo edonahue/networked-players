@@ -55,10 +55,16 @@ const { initialArtistId, initialLabel } = Astro.props;
     data-explorer-svg
     viewBox="0 0 320 320"
     role="group"
-    aria-label="Network explorer graph — select a record's connections to recenter"
+    aria-label="Network explorer graph — select a record's connections to recenter. Drag empty space to pan, scroll or pinch to zoom."
   >
-    <g data-explorer-edges></g>
-    <g data-explorer-nodes></g>
+    <!-- Pan/zoom viewport (graph-expansion Phase 1, plan §6): every real
+         node/edge stays inside this one <g>, which the pan/zoom transform
+         (translate + scale) is applied to as a whole -- neither layer's
+         own rendering logic changes at all. -->
+    <g data-explorer-viewport>
+      <g data-explorer-edges></g>
+      <g data-explorer-nodes></g>
+    </g>
   </svg>
 
   <p class="explorer-truncated-note" data-explorer-truncated hidden>

@@ -742,3 +742,248 @@ test.describe("desktop layout", () => {
     await expect(neighborCircle).toHaveAttribute("r", "8");
   });
 });
+
+// graph-expansion Phase 1 (plan §6: "viewBox pan/zoom on a <g> (pointer/
+// wheel/pinch, no library)").
+// The <svg> shell itself is static markup, visible from first paint --
+// waiting on IT (rather than something `initExplorerStage`'s async graph
+// load actually produces) lets a gesture fire before the pan/zoom
+// listeners below are even attached. A real, reproducible bug caught
+// during development: every test in this describe block waits for a real
+// rendered node instead.
+async function waitForGraphReady(page: import("@playwright/test").Page) {
+  await expect(
+    page.locator("[data-explorer-nodes] .explorer-node").first(),
+  ).toBeVisible({ timeout: 15000 });
+}
+
+function parseViewTransform(raw: string | null): {
+  panX: number;
+  panY: number;
+  zoom: number;
+} {
+  const match = raw?.match(
+    /translate\(([-\d.]+) ([-\d.]+)\) scale\(([-\d.]+)\)/,
+  );
+  if (!match) throw new Error(`unparseable transform: ${raw}`);
+  return {
+    panX: Number(match[1]),
+    panY: Number(match[2]),
+    zoom: Number(match[3]),
+  };
+}
+
+test.describe("pan and zoom", () => {
+  test("scrolling over the graph zooms in on the cursor, not the page", async ({
+    page,
+  }) => {
+    await page.goto("/explore/master-107325/");
+    const viewport = page.locator("[data-explorer-viewport]");
+    const svg = page.locator("[data-explorer-svg]");
+    await waitForGraphReady(page);
+    // The graph renders below several page sections (role filter, status,
+    // info panel) -- real page coordinates from boundingBox() are only
+    // meaningful for a real page.mouse gesture once the element is
+    // actually scrolled into the viewport, exactly like Playwright's own
+    // .click() already does internally before every click.
+    await svg.scrollIntoViewIfNeeded();
+    const box = (await svg.boundingBox())!;
+
+    const before = parseViewTransform(await viewport.getAttribute("transform"));
+    expect(before.zoom).toBe(1);
+    // Captured AFTER scrollIntoViewIfNeeded, not assumed to be 0 -- the
+    // graph renders below several page sections, so bringing it into view
+    // already scrolls the page for a legitimate reason unrelated to the
+    // gesture this test is actually about.
+    const scrollYBefore = await page.evaluate(() => window.scrollY);
+
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.wheel(0, -200); // negative deltaY: zoom in, matching a real scroll-up/pinch-out
+
+    await expect
+      .poll(
+        async () =>
+          parseViewTransform(await viewport.getAttribute("transform")).zoom,
+      )
+      .toBeGreaterThan(1);
+
+    // The graph, not the page, absorbed the gesture -- confirms
+    // preventDefault() actually fired, rather than also scrolling the page
+    // by whatever the wheel's own deltaY was.
+    const scrollYAfter = await page.evaluate(() => window.scrollY);
+    expect(scrollYAfter).toBe(scrollYBefore);
+  });
+
+  test("zooming out never goes below the identity scale", async ({ page }) => {
+    await page.goto("/explore/master-107325/");
+    const viewport = page.locator("[data-explorer-viewport]");
+    const svg = page.locator("[data-explorer-svg]");
+    await waitForGraphReady(page);
+    await svg.scrollIntoViewIfNeeded();
+    const box = (await svg.boundingBox())!;
+
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.wheel(0, 2000); // large positive deltaY: zoom out repeatedly
+
+    const after = parseViewTransform(await viewport.getAttribute("transform"));
+    expect(after.zoom).toBeGreaterThanOrEqual(1);
+  });
+
+  test("dragging empty background space pans the graph", async ({ page }) => {
+    await page.goto("/explore/master-107325/");
+    const viewport = page.locator("[data-explorer-viewport]");
+    const svg = page.locator("[data-explorer-svg]");
+    await waitForGraphReady(page);
+    await svg.scrollIntoViewIfNeeded();
+    const box = (await svg.boundingBox())!;
+    // The circular layout centers everything within roughly radius 120 (+
+    // each node's own radius) of the viewBox's own center, in a 320-unit
+    // square -- picking a point 15% in from a corner clears both that ring
+    // (real math: sqrt(2)*(160-320*0.15) ≈ 122, just outside it) AND the
+    // page's own sticky header, which overlaps the SVG's first few percent
+    // of vertical space (confirmed via a real elementFromPoint check
+    // during development -- 5% in landed on the header, not the graph).
+    const corner = {
+      x: box.x + box.width * 0.15,
+      y: box.y + box.height * 0.15,
+    };
+
+    await page.mouse.move(corner.x, corner.y);
+    await page.mouse.down();
+    await page.mouse.move(corner.x + 40, corner.y + 20, { steps: 5 });
+    await page.mouse.up();
+
+    const after = parseViewTransform(await viewport.getAttribute("transform"));
+    expect(after.panX).not.toBe(0);
+    expect(after.panY).not.toBe(0);
+  });
+
+  test("dragging a node recenters it as a click, never pans the graph", async ({
+    page,
+  }) => {
+    // The exact regression this test exists to prevent: pan must only ever
+    // initiate from empty SVG background, never from a real node/edge --
+    // otherwise a visitor's ordinary click-and-slightly-move on a node
+    // could silently turn into a pan instead of a recenter.
+    await page.goto("/explore/master-107325/");
+    const viewport = page.locator("[data-explorer-viewport]");
+    const centerNode = page.locator(
+      "[data-explorer-nodes] .explorer-node[data-is-center='true']",
+    );
+    await expect(centerNode).toBeVisible({ timeout: 15000 });
+    const originalArtistId = await centerNode.getAttribute("data-artist-id");
+
+    const firstNeighbor = page
+      .locator("[data-explorer-nodes] .explorer-node[data-is-center='false']")
+      .first();
+    const neighborArtistId = await firstNeighbor.getAttribute("data-artist-id");
+    await firstNeighbor.scrollIntoViewIfNeeded();
+    const neighborBox = (await firstNeighbor.locator("circle").boundingBox())!;
+    const neighborCenter = {
+      x: neighborBox.x + neighborBox.width / 2,
+      y: neighborBox.y + neighborBox.height / 2,
+    };
+
+    await page.mouse.move(neighborCenter.x, neighborCenter.y);
+    await page.mouse.down();
+    await page.mouse.move(neighborCenter.x + 3, neighborCenter.y + 2);
+    await page.mouse.up();
+
+    await expect(centerNode).toHaveAttribute(
+      "data-artist-id",
+      neighborArtistId!,
+      { timeout: 15000 },
+    );
+    expect(originalArtistId).not.toBe(neighborArtistId);
+    // A real recenter resets the transform -- confirms the drag never
+    // accumulated a pan alongside the click.
+    const after = parseViewTransform(await viewport.getAttribute("transform"));
+    expect(after.panX).toBe(0);
+    expect(after.panY).toBe(0);
+    expect(after.zoom).toBe(1);
+  });
+
+  test("a real recenter resets pan/zoom back to identity", async ({ page }) => {
+    await page.goto("/explore/master-107325/");
+    const viewport = page.locator("[data-explorer-viewport]");
+    const svg = page.locator("[data-explorer-svg]");
+    await waitForGraphReady(page);
+    await svg.scrollIntoViewIfNeeded();
+    const box = (await svg.boundingBox())!;
+
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.wheel(0, -200);
+    await expect
+      .poll(
+        async () =>
+          parseViewTransform(await viewport.getAttribute("transform")).zoom,
+      )
+      .toBeGreaterThan(1);
+
+    const trailStep = page
+      .locator("[data-explorer-nodes] .explorer-node[data-is-center='false']")
+      .first();
+    await trailStep.click({ force: true });
+
+    await expect
+      .poll(async () =>
+        parseViewTransform(await viewport.getAttribute("transform")),
+      )
+      .toEqual({ panX: 0, panY: 0, zoom: 1 });
+  });
+
+  // Playwright has no first-class multi-touch gesture API; this dispatches
+  // two synthetic PointerEvents directly (real pointerType: "touch",
+  // distinct pointerIds) -- explorerStage.ts only ever reads standard
+  // PointerEvent properties, so this exercises the real pinch code path
+  // exactly as a genuine two-finger gesture would, without needing a real
+  // touchscreen or CDP-level touch injection.
+  test("a synthetic two-finger pinch zooms the graph", async ({ page }) => {
+    await page.goto("/explore/master-107325/");
+    const viewport = page.locator("[data-explorer-viewport]");
+    await waitForGraphReady(page);
+
+    const zoomAfterPinch = await page.evaluate(() => {
+      const svg = document.querySelector(
+        "[data-explorer-svg]",
+      ) as SVGSVGElement;
+      const rect = svg.getBoundingClientRect();
+      const cy = rect.top + rect.height / 2;
+      const cx = rect.left + rect.width / 2;
+
+      function dispatch(
+        type: string,
+        pointerId: number,
+        clientX: number,
+        clientY: number,
+      ) {
+        svg.dispatchEvent(
+          new PointerEvent(type, {
+            pointerId,
+            clientX,
+            clientY,
+            pointerType: "touch",
+            bubbles: true,
+            cancelable: true,
+          }),
+        );
+      }
+
+      // Two fingers start close together, then spread apart -- a pinch-out
+      // (zoom in) gesture.
+      dispatch("pointerdown", 1, cx - 10, cy);
+      dispatch("pointerdown", 2, cx + 10, cy);
+      dispatch("pointermove", 1, cx - 60, cy);
+      dispatch("pointermove", 2, cx + 60, cy);
+      dispatch("pointerup", 1, cx - 60, cy);
+      dispatch("pointerup", 2, cx + 60, cy);
+
+      const transform = document
+        .querySelector("[data-explorer-viewport]")!
+        .getAttribute("transform")!;
+      return Number(transform.match(/scale\(([-\d.]+)\)/)![1]);
+    });
+
+    expect(zoomAfterPinch).toBeGreaterThan(1);
+  });
+});
