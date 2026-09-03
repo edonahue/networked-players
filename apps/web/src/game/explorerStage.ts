@@ -243,15 +243,17 @@ export async function initExplorerStage(): Promise<void> {
   const initialArtistId = Number(stage.dataset.initialArtistId);
   let activeCategories = new Set<string>();
 
-  // Phase 6 PR 6-03: an optional, READ-ONLY `?center=<artist_id>` deep link
-  // overrides which node the view opens on -- used by contributor pages to
-  // land on an arbitrary contributor, not just an album's own primary
-  // artist. Read once at init, matching flagship.ts/routes.ts's existing
-  // read-once convention (this page never calls pushState/replaceState of
-  // its own). Validated against the real loaded graph before use: an
-  // unknown, malformed, or stale id is silently ignored and the page's own
-  // default album-artist center renders instead, never a blank/error state
-  // from a bad deep link.
+  // Phase 6 PR 6-03: an optional `?center=<artist_id>` deep link overrides
+  // which node the view opens on -- used by contributor pages to land on an
+  // arbitrary contributor, not just an album's own primary artist. Read
+  // once here, at init, for the STARTING value only -- `centerOn` below
+  // keeps it in sync with every later recenter via `pushState`/
+  // `replaceState` (graph-expansion Phase 1, plan §6: "the shareable,
+  // back-button-safe URL"), so this is no longer read-once for the page's
+  // whole lifetime, only for this one initial read. Validated against the
+  // real loaded graph before use: an unknown, malformed, or stale id is
+  // silently ignored and the page's own default album-artist center
+  // renders instead, never a blank/error state from a bad deep link.
   let initialCenterArtistId = initialArtistId;
   let initialCenterLabel: string | undefined = stage.dataset.initialLabel;
   const requestedCenter = new URLSearchParams(window.location.search).get(
@@ -425,7 +427,20 @@ export async function initExplorerStage(): Promise<void> {
   function centerOn(
     artistId: number,
     label?: string,
-    options: { moveFocus?: boolean } = {},
+    options: {
+      moveFocus?: boolean;
+      /** `"push"` (default): a real user-driven recenter adds a new
+       * back-stack entry, so Back returns to the PREVIOUS center, not off
+       * the page entirely. `"replace"`: normalizes the URL/history state
+       * in place without adding an entry -- used exactly once, for the
+       * page's own initial center on load, so the very first Back press
+       * still leaves Explore rather than requiring two presses. `"skip"`:
+       * a `popstate`-driven recenter -- the browser already moved the
+       * history position; touching it again here would fight that
+       * navigation (and, for `pushState`, silently re-grow the stack on
+       * every Back/Forward). */
+      historyMode?: "push" | "replace" | "skip";
+    } = {},
   ) {
     const view = buildView(graph, artistIndex, contributorByArtistId, artistId);
     if (!view) {
@@ -509,6 +524,18 @@ export async function initExplorerStage(): Promise<void> {
 
     pushTrail(view.center.artistId, view.center.name);
     renderTrail();
+
+    const historyMode = options.historyMode ?? "push";
+    if (historyMode !== "skip") {
+      const url = new URL(window.location.href);
+      url.searchParams.set("center", String(view.center.artistId));
+      const state = { center: view.center.artistId };
+      if (historyMode === "replace") {
+        history.replaceState(state, "", url);
+      } else {
+        history.pushState(state, "", url);
+      }
+    }
 
     if (options.moveFocus) {
       nodesLayer!
@@ -798,5 +825,32 @@ export async function initExplorerStage(): Promise<void> {
     centerOn(artistId, undefined, { moveFocus: true });
   });
 
-  centerOn(initialCenterArtistId, initialCenterLabel);
+  // Back/Forward-button support for `centerOn`'s pushState calls above
+  // (graph-expansion Phase 1, plan §6: "the shareable, back-button-safe
+  // URL"). Re-derives the target purely from the URL's own `?center=`
+  // (never `event.state`) so a real browser session restore -- which can
+  // hand back a page with history entries but no retained `state` object --
+  // degrades to "read the URL" instead of silently doing nothing. Falls
+  // back to the page's own natural default artist when `?center=` is
+  // absent (Back past the very first recenter, whose `replaceState` below
+  // still carries a `center` param, but a visitor could in principle strip
+  // it by hand). An id absent from THIS graph is silently ignored --
+  // matching the existing deep-link read at init -- rather than showing an
+  // error for a Back press that landed on a since-invalidated id.
+  window.addEventListener("popstate", () => {
+    const requested = new URLSearchParams(window.location.search).get("center");
+    const artistId = requested !== null ? Number(requested) : initialArtistId;
+    if (Number.isInteger(artistId) && artistIndex.has(artistId)) {
+      centerOn(artistId, undefined, { historyMode: "skip" });
+    }
+  });
+
+  // `"replace"`: the page's own initial center is already what the current
+  // URL represents (or becomes, once this normalizes `?center=` onto it) --
+  // it must never consume a back-stack entry of its own, or a single Back
+  // press after the FIRST real recenter would land back on the exact same
+  // view instead of leaving Explore.
+  centerOn(initialCenterArtistId, initialCenterLabel, {
+    historyMode: "replace",
+  });
 }

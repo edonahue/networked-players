@@ -439,6 +439,94 @@ test("recentering builds a session trail, and a trail step re-centers back", asy
   );
 });
 
+// graph-expansion Phase 1 (plan §6: "the shareable, back-button-safe URL").
+test("recentering updates the URL's ?center= param", async ({ page }) => {
+  await page.goto("/explore/master-107325/");
+  const centerNode = page.locator(
+    "[data-explorer-nodes] .explorer-node[data-is-center='true']",
+  );
+  await expect(centerNode).toBeVisible({ timeout: 15000 });
+  // The initial load itself normalizes the URL onto a real ?center= (via
+  // replaceState, so this doesn't consume a back-stack entry) -- confirms
+  // that happened before the click below, not just after it.
+  const initialArtistId = await centerNode.getAttribute("data-artist-id");
+  await expect(page).toHaveURL(new RegExp(`[?&]center=${initialArtistId}\\b`));
+
+  const firstNeighbor = page
+    .locator("[data-explorer-nodes] .explorer-node[data-is-center='false']")
+    .first();
+  const neighborArtistId = await firstNeighbor.getAttribute("data-artist-id");
+  await firstNeighbor.click();
+
+  await expect(centerNode).toHaveAttribute(
+    "data-artist-id",
+    neighborArtistId!,
+    { timeout: 15000 },
+  );
+  await expect(page).toHaveURL(new RegExp(`[?&]center=${neighborArtistId}\\b`));
+});
+
+test("the Back button returns to the previous center, not off the page", async ({
+  page,
+}) => {
+  await page.goto("/explore/master-107325/");
+  const centerNode = page.locator(
+    "[data-explorer-nodes] .explorer-node[data-is-center='true']",
+  );
+  await expect(centerNode).toBeVisible({ timeout: 15000 });
+  const originalArtistId = await centerNode.getAttribute("data-artist-id");
+
+  const firstNeighbor = page
+    .locator("[data-explorer-nodes] .explorer-node[data-is-center='false']")
+    .first();
+  const neighborArtistId = await firstNeighbor.getAttribute("data-artist-id");
+  await firstNeighbor.click();
+  await expect(centerNode).toHaveAttribute(
+    "data-artist-id",
+    neighborArtistId!,
+    { timeout: 15000 },
+  );
+
+  // A single Back press must land on the PREVIOUS real center (the
+  // original artist) -- not a blank/errored view, and not two presses'
+  // worth of navigation, which is exactly what would happen if the
+  // initial load's own URL normalization had consumed a back-stack entry
+  // of its own (replaceState, not pushState, for that one call).
+  await page.goBack();
+  await expect(centerNode).toHaveAttribute(
+    "data-artist-id",
+    originalArtistId!,
+    { timeout: 15000 },
+  );
+  await expect(page).toHaveURL(new RegExp(`[?&]center=${originalArtistId}\\b`));
+
+  // Forward replays the same recenter, confirming this is real browser
+  // history, not a one-shot popstate listener that only fires once.
+  await page.goForward();
+  await expect(centerNode).toHaveAttribute(
+    "data-artist-id",
+    neighborArtistId!,
+    { timeout: 15000 },
+  );
+});
+
+test("a Back press after only the initial load leaves Explore entirely", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.goto("/explore/master-107325/");
+  const centerNode = page.locator(
+    "[data-explorer-nodes] .explorer-node[data-is-center='true']",
+  );
+  await expect(centerNode).toBeVisible({ timeout: 15000 });
+
+  // No recenter has happened yet -- the initial load's own URL
+  // normalization uses replaceState, so it must never itself become a
+  // Back-button stop.
+  await page.goBack();
+  await expect(page).toHaveURL(/\/$/);
+});
+
 test("an unknown artist id shows a graceful message instead of a blank graph", async ({
   page,
 }) => {
