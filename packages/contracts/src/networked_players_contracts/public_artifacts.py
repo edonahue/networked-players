@@ -42,6 +42,7 @@ from .connection_rounds import connection_rounds_failures
 from .contributor_index import contributor_index_failures
 from .evidence_release_registry import evidence_release_registry_failures
 from .pathfinding_graph import pathfinding_graph_failures
+from .prominence import prominence_failures
 from .record_routes import record_routes_failures
 
 # Keys match the checked-in game/routes namespaces, not `packages/contracts`
@@ -57,6 +58,7 @@ PUBLIC_ARTIFACT_GROUPS = (
     "contributor_index",
     "album_hop_distances",
     "pathfinding_graph",
+    "prominence",
     "album_credit_membership",
     "evidence_release_registry",
 )
@@ -76,6 +78,7 @@ def public_artifacts_failures(
     contributor_index: Any,
     album_hop_distances: Any,
     pathfinding_graph: Any,
+    prominence: Any,
     album_credit_membership: Any,
     evidence_release_registry: Any,
 ) -> dict[str, list[str]]:
@@ -101,7 +104,14 @@ def public_artifacts_failures(
     set. `pathfinding_graph_failures` remains schema-version-aware and
     continues to accept every schema version it has always validated (the
     validator never narrows); only the published artifact changes over
-    time."""
+    time.
+
+    `prominence` (`pathfinding/prominence.v1.json`, graph-expansion Phase 1,
+    plan section 8) is a node-aligned companion to `pathfinding_graph`,
+    validated against it directly (`prominence_failures` cross-checks
+    `pathfinding_graph_version`/`node_ids` agreement) rather than against
+    `catalog` -- it belongs to a specific graph generation, not the catalog
+    directly."""
     return {
         "catalog": public_album_catalog_failures(catalog),
         "album_art_registry": album_art_failures(album_art, catalog),
@@ -116,6 +126,7 @@ def public_artifacts_failures(
             album_hop_distances, catalog, contributor_index
         ),
         "pathfinding_graph": pathfinding_graph_failures(pathfinding_graph, catalog),
+        "prominence": prominence_failures(prominence, pathfinding_graph),
         "album_credit_membership": album_credit_membership_failures(
             album_credit_membership, catalog
         ),

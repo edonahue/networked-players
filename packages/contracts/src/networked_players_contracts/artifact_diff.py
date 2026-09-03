@@ -39,6 +39,9 @@ _VERSION_FIELD_NAMES = frozenset(
         # Same recurring gap, caught again (round 7 Codex review, by
         # inspection -- it had never been added here since shipping).
         "album_hop_distances_version",
+        # graph-expansion Phase 1 (plan section 8): added at the same time
+        # as the artifact itself, not caught later this time.
+        "prominence_version",
     }
 )
 

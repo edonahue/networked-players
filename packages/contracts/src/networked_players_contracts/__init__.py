@@ -33,6 +33,7 @@ from .evidence_release_registry import (
     evidence_release_registry_failures,
 )
 from .pathfinding_graph import PATHFINDING_GRAPH_SCHEMA_VERSIONS, pathfinding_graph_failures
+from .prominence import PROMINENCE_SCHEMA_VERSION, prominence_failures
 from .public_artifacts import PUBLIC_ARTIFACT_GROUPS, public_artifacts_failures
 from .record_routes import (
     RECORD_ROUTES_SCHEMA_VERSION,
@@ -52,6 +53,7 @@ __all__ = [
     "EVIDENCE_RELEASE_REGISTRY_SCHEMA_VERSION",
     "PATHFINDING_GRAPH_SCHEMA_VERSIONS",
     "PLAYABLE_COHORT_SCHEMA_VERSION",
+    "PROMINENCE_SCHEMA_VERSION",
     "PUBLIC_ARTIFACT_GROUPS",
     "RECORD_ROUTES_SCHEMA_VERSION",
     "ROUNDS_SCHEMA_VERSION",
@@ -68,6 +70,7 @@ __all__ = [
     "evidence_release_registry_failures",
     "pathfinding_graph_failures",
     "playable_cohort_failures",
+    "prominence_failures",
     "public_album_catalog_failures",
     "public_artifacts_failures",
     "record_routes_failures",

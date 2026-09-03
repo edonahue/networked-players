@@ -1279,6 +1279,49 @@ def _parser() -> argparse.ArgumentParser:
     validate_pathfinding_graph.add_argument("--graph", type=Path, required=True)
     validate_pathfinding_graph.add_argument("--catalog", type=Path, required=True)
 
+    build_prominence = subparsers.add_parser(
+        "build-prominence",
+        help=(
+            "build the public prominence sidecar "
+            "(apps/web/public/data/pathfinding/prominence.v1.json, graph-expansion "
+            "Phase 1, plan section 8) -- node-aligned precomputed ranking signals "
+            "(degree, albums_1hop/2hop, evidence_releases, role_diversity, "
+            "first/last_year, rank) for Explore's neighbor ordering. Built entirely "
+            "from two already-published artifacts (--pathfinding-graph, "
+            "--evidence-release-registry); never a fresh one-hop corpus query, so "
+            "this can run anywhere, including CI"
+        ),
+    )
+    build_prominence.add_argument(
+        "--pathfinding-graph",
+        type=Path,
+        required=True,
+        help="apps/web/public/data/pathfinding/graph.v4.json",
+    )
+    build_prominence.add_argument(
+        "--evidence-release-registry",
+        type=Path,
+        required=True,
+        help="apps/web/public/data/evidence/release-registry.v1.json",
+    )
+    build_prominence.add_argument("--output", type=Path, required=True)
+    build_prominence.add_argument(
+        "--generated-at",
+        required=True,
+        help="explicit ISO datetime for this build (never the wall clock)",
+    )
+
+    validate_prominence = subparsers.add_parser(
+        "validate-prominence",
+        help=(
+            "validate a prominence sidecar against the pathfinding graph it claims "
+            "to belong to (catalog_version/pathfinding_graph_version/node_ids "
+            "agreement, structural invariants, prominence_version recomputation)"
+        ),
+    )
+    validate_prominence.add_argument("--prominence", type=Path, required=True)
+    validate_prominence.add_argument("--pathfinding-graph", type=Path, required=True)
+
     build_album_credit_membership = subparsers.add_parser(
         "build-album-credit-membership",
         help=(
@@ -1433,6 +1476,11 @@ def _parser() -> argparse.ArgumentParser:
         "--pathfinding-graph",
         type=Path,
         default=Path("apps/web/public/data/pathfinding/graph.v4.json"),
+    )
+    validate_public_artifacts.add_argument(
+        "--prominence",
+        type=Path,
+        default=Path("apps/web/public/data/pathfinding/prominence.v1.json"),
     )
     validate_public_artifacts.add_argument(
         "--album-credit-membership",
@@ -3923,6 +3971,56 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
         return 0
 
+    if args.command == "build-prominence":
+        from networked_players_contracts.prominence import prominence_failures
+        from networked_players_graph_core.prominence import build_prominence
+
+        pathfinding_graph = json.loads(args.pathfinding_graph.read_text())
+        evidence_release_registry = json.loads(args.evidence_release_registry.read_text())
+
+        prominence = build_prominence(
+            pathfinding_graph=pathfinding_graph,
+            evidence_release_registry=evidence_release_registry,
+            generated_at=args.generated_at,
+        )
+
+        failures = prominence_failures(prominence, pathfinding_graph)
+        if failures:
+            raise ValueError(
+                "refusing to write an invalid prominence sidecar: " + "; ".join(failures)
+            )
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(json.dumps(prominence, indent=2) + "\n")
+        print(
+            json.dumps(
+                {
+                    "output": str(args.output),
+                    "catalog_version": prominence["catalog_version"],
+                    "pathfinding_graph_version": prominence["pathfinding_graph_version"],
+                    "prominence_version": prominence["prominence_version"],
+                    "nodes": len(prominence["node_ids"]),
+                },
+                indent=2,
+            )
+        )
+        return 0
+
+    if args.command == "validate-prominence":
+        from networked_players_contracts.prominence import prominence_failures
+
+        prominence_payload = json.loads(args.prominence.read_text())
+        pathfinding_graph = json.loads(args.pathfinding_graph.read_text())
+        failures = prominence_failures(prominence_payload, pathfinding_graph)
+        if failures:
+            raise ValueError("; ".join(failures))
+        print(
+            json.dumps(
+                {"ok": True, "nodes": len(prominence_payload["node_ids"])},
+                indent=2,
+            )
+        )
+        return 0
+
     if args.command == "build-album-credit-membership":
         from networked_players_contracts.album_credit_membership import (
             album_credit_membership_failures,
@@ -4075,6 +4173,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             contributor_index=json.loads(args.contributor_index.read_text()),
             album_hop_distances=json.loads(args.album_hop_distances.read_text()),
             pathfinding_graph=json.loads(args.pathfinding_graph.read_text()),
+            prominence=json.loads(args.prominence.read_text()),
             album_credit_membership=json.loads(args.album_credit_membership.read_text()),
             evidence_release_registry=json.loads(args.evidence_release_registry.read_text()),
         )
