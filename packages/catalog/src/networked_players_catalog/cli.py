@@ -1121,6 +1121,28 @@ def _parser() -> argparse.ArgumentParser:
         help="studio-album-master-exclusions-v1.json; REQUIRED curated master-ID deny-list "
         "(the human-curation backstop for non-studio masters with no structured signal)",
     )
+    build_public_album_catalog.add_argument(
+        "--featured-albums",
+        type=Path,
+        default=None,
+        help=(
+            "optional data/albums/featured-v1.json -- when given, activates catalog "
+            "schema v2 (ADR 0069): every album gains featured/selection_source/"
+            "expansion_round fields and the catalog gains catalog_schema_version. "
+            "Omit for a v1-shaped catalog (assemble_album_catalog's own "
+            "featured_master_ids=None default) -- purely additive, never required"
+        ),
+    )
+    build_public_album_catalog.add_argument(
+        "--expansion-round",
+        type=int,
+        default=0,
+        help=(
+            "which round added the NEW albums in this build (0 for the original "
+            "already-published backbone/first-ever build) -- only recorded per album "
+            "when --featured-albums activates schema v2; ignored otherwise"
+        ),
+    )
 
     build_catalog_audit = subparsers.add_parser(
         "build-album-catalog-audit",
@@ -3589,6 +3611,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.command == "build-public-album-catalog":
         from networked_players_graph_core.analysis import (
             assemble_album_catalog,
+            load_featured_master_ids,
             validate_album_catalog,
         )
         from networked_players_graph_core.graph import CreditGraph
@@ -3896,6 +3919,12 @@ def main(argv: Sequence[str] | None = None) -> int:
                 generated_by=(
                     f"networked-players-catalog build-public-album-catalog {__version__}"
                 ),
+                featured_master_ids=(
+                    load_featured_master_ids(args.featured_albums)
+                    if args.featured_albums is not None
+                    else None
+                ),
+                expansion_round=args.expansion_round,
             )
 
         validate_album_catalog(catalog)
@@ -3913,6 +3942,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                     "pre_resolved_buckets": catalog["pre_resolved_buckets"],
                     "candidate_count_added": catalog["candidate_count_added"],
                     "total_albums": len(catalog["albums"]),
+                    "catalog_schema_version": catalog.get("catalog_schema_version"),
                 },
                 indent=2,
             )
