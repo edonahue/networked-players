@@ -167,3 +167,46 @@ def test_all_four_inputs_agreeing_records_the_agreed_snapshot() -> None:
         coverage_gap=_coverage_gap([], snapshot_date="20260701"),
     )
     assert packet["snapshot_date"] == "20260701"
+
+
+def test_already_published_entries_never_inflate_the_addition_counts() -> None:
+    """A candidate that is already in the published catalog adds nothing, so it
+    must not be counted in proposed_addition_count or proposed_total_count --
+    it is reported via a warning and already_published_count instead.
+
+    Regression test for a real Round 1 packet (2026-09-04) whose entire
+    13-album editorial lane had already shipped in an earlier round: the packet
+    claimed 19 additions to a total of 198 when the true figures were 6 and 185.
+    A reviewer reading the headline number would have believed the round grew
+    the catalog three times as much as it actually would."""
+    packet = build_expansion_review_packet(
+        generated_at="2026-08-27T00:00:00+00:00",
+        # master 10 is already published; 20 and 30 are genuinely new.
+        current_catalog=_catalog([1, 10]),
+        personal_seed=_seed([{"master_id": 10, "artist": "A", "title": "Alpha"}]),
+        graph_rich_selection=_graph_rich(
+            [{"master_id": 20, "artist_name": "B", "sample_title": "Beta"}]
+        ),
+        coverage_gap=_coverage_gap(
+            [
+                {
+                    "master_id": 30,
+                    "artist": "C",
+                    "title": "Gamma",
+                    "gap_dimension": "genres",
+                    "gap_bucket": "Reggae",
+                    "gap_rationale": "zero representation",
+                }
+            ]
+        ),
+    )
+
+    assert packet["current_catalog_count"] == 2
+    assert packet["proposed_addition_count"] == 2
+    assert packet["already_published_count"] == 1
+    assert packet["proposed_total_count"] == 4
+
+    # The redundant entry is still surfaced, never silently dropped.
+    assert len(packet["entries"]) == 3
+    assert packet["bucket_counts"] == {"personal": 1, "graph_rich": 1, "coverage_gap": 1}
+    assert any("already in the published catalog" in w for w in packet["warnings"])
