@@ -10,6 +10,8 @@ and verify the experience, plus full provenance.
 
 from __future__ import annotations
 
+import sys
+import time
 from collections.abc import Callable, Iterator
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
@@ -22,6 +24,37 @@ from .album_policy import master_non_studio_reason
 from .graph import GRAPH_POLICY_VERSION, CreditGraph, EvidencePath, FrontierTooLargeError
 
 CHALLENGE_SCHEMA_VERSION = 2
+
+
+# Below this many candidate pairs, a run finishes before anyone could read
+# a progress line anyway (real synthetic-fixture tests build challenges
+# from a handful of albums, a handful of pairs) -- `_progress_interval`
+# returns `None` (never log) rather than a very small interval, so
+# `make check`'s fast test suite stays quiet by construction, not because
+# every caller remembered to pass `quiet=True`.
+_PROGRESS_MIN_TOTAL = 50
+
+
+def _progress_interval(total: int) -> int | None:
+    """How many candidate pairs between progress lines: 500, or ~2% of
+    `total`, whichever is more frequent -- a small catalog logs more often
+    (in absolute pair count) than a large one, so a visitor watching a
+    5-minute run still sees more than one or two lines. `None` below
+    `_PROGRESS_MIN_TOTAL` (see above)."""
+    if total < _PROGRESS_MIN_TOTAL:
+        return None
+    return max(1, min(500, round(total * 0.02)))
+
+
+def _progress(quiet: bool, message: str) -> None:
+    """Coarse periodic progress -- stderr only, never stdout (the real
+    artifact and JSON summary go to stdout/--output). Added after a real,
+    live gap: a 500-album benchmark's build-challenge-from-dump run
+    (graph-expansion Phase 1, plan section 6) sat silent for 30+ minutes
+    with zero way to tell whether it was progressing or stuck
+    (`docs/GRAPH_EXPANSION_DIRECTION.md` plan section 18/slice 2-0b)."""
+    if not quiet:
+        print(message, file=sys.stderr)
 
 
 class ChallengeValidationError(RuntimeError):
@@ -459,6 +492,7 @@ def build_challenge_v2(
     max_frontier_expansion: int | None = 300,
     catalog_version: str | None = None,
     in_memory: bool = False,
+    quiet: bool = False,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     """Match `{artist, title}` name/title queries against the graph, then
     build the artifact. For albums already resolved to a real artist_id
@@ -486,6 +520,7 @@ def build_challenge_v2(
         max_frontier_expansion=max_frontier_expansion,
         catalog_version=catalog_version,
         in_memory=in_memory,
+        quiet=quiet,
     )
 
 
@@ -503,6 +538,7 @@ def build_challenge_v2_from_matched(
     max_frontier_expansion: int | None = 300,
     catalog_version: str | None = None,
     in_memory: bool = False,
+    quiet: bool = False,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     """Build the artifact from an already-resolved album list -- no further
     name-based matching happens here. `missed` is carried through only for
@@ -567,9 +603,23 @@ def build_challenge_v2_from_matched(
         # guard would still have computed one result before noticing).
         path_results = iter(())
 
+    progress_interval = _progress_interval(len(candidate_pairs))
+    progress_start = time.monotonic()
     for from_album, to_album, path, capped in path_results:
         attempted += 1
         capped_count += int(capped)
+        if progress_interval is not None and attempted % progress_interval == 0:
+            elapsed = time.monotonic() - progress_start
+            rate = attempted / elapsed if elapsed > 0 else 0.0
+            remaining_pairs = len(candidate_pairs) - attempted
+            eta_seconds = remaining_pairs / rate if rate > 0 else None
+            eta_text = f"{eta_seconds:.0f}s" if eta_seconds is not None else "unknown"
+            _progress(
+                quiet,
+                f"challenge build: {attempted}/{len(candidate_pairs)} pairs attempted, "
+                f"{len(paths_json)}/{max_paths} paths found, "
+                f"{elapsed:.0f}s elapsed, ~{eta_text} remaining",
+            )
         if path is None:
             continue
 

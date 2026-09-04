@@ -417,3 +417,34 @@ def test_cli_wiring(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     assert exit_code == 0
     printed = json.loads(capsys.readouterr().out)
     assert printed["expansion"]["retained_release_count"] == 2
+
+
+def test_manifest_records_real_non_negative_pass_timings(tmp_path: Path) -> None:
+    """Graph-expansion Phase 1 plan section 17: `expand-one-hop`'s wall-clock
+    cost had never been recorded anywhere, even privately -- these fields
+    are the baseline any future host-split decision must be gated on."""
+    dataset = _write_source_dataset(tmp_path)
+    seed_path = _write_seed(tmp_path, [101])
+
+    manifest = expand_one_hop(seed_path, dataset, tmp_path / "onehop")
+
+    expansion = manifest["expansion"]
+    assert isinstance(expansion["pass1_frontier_elapsed_seconds"], float)
+    assert isinstance(expansion["pass2_retention_elapsed_seconds"], float)
+    assert expansion["pass1_frontier_elapsed_seconds"] >= 0
+    assert expansion["pass2_retention_elapsed_seconds"] >= 0
+
+
+def test_quiet_suppresses_progress_output_default_does_not(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    dataset = _write_source_dataset(tmp_path)
+    seed_path = _write_seed(tmp_path, [101])
+
+    expand_one_hop(seed_path, dataset, tmp_path / "onehop-loud", quiet=False)
+    loud_err = capsys.readouterr().err
+    assert "one-hop pass 1/2" in loud_err
+    assert "one-hop pass 2/2" in loud_err
+
+    expand_one_hop(seed_path, dataset, tmp_path / "onehop-quiet", quiet=True)
+    assert capsys.readouterr().err == ""

@@ -50,6 +50,8 @@ from __future__ import annotations
 import hashlib
 import json
 import shutil
+import sys
+import time
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
@@ -170,6 +172,21 @@ def _copy_options() -> str:
     return "FORMAT PARQUET, COMPRESSION ZSTD, COMPRESSION_LEVEL 6, ROW_GROUP_SIZE 50000"
 
 
+def _progress(quiet: bool, message: str) -> None:
+    """Coarse start/end-of-pass progress -- stderr only, never stdout (the
+    real artifact and any JSON summary go to stdout/--output; a caller
+    capturing stdout must never see this). This is deliberately coarse
+    (which pass, how long has it been running), not intra-pass progress --
+    each pass is a single SQL statement with no natural checkpoint to
+    report from mid-scan. Added after a real, live gap: a 500-album
+    benchmark's `build-challenge-from-dump` run (graph-expansion Phase 1,
+    plan section 6) sat silent for 30+ minutes with zero way to tell
+    whether it was progressing or stuck (`docs/GRAPH_EXPANSION_DIRECTION.md`
+    plan section 18/slice 2-0b)."""
+    if not quiet:
+        print(message, file=sys.stderr)
+
+
 def _rp(glob: str) -> str:
     """`read_parquet(...)` with Hive partitioning disabled.
 
@@ -193,6 +210,7 @@ def expand_one_hop(
     temp_dir: Path | None = None,
     max_retained_releases: int | None = None,
     overwrite: bool = False,
+    quiet: bool = False,
 ) -> dict[str, object]:
     """Expand the seed one hop over a parsed snapshot; returns the manifest.
 
@@ -275,6 +293,8 @@ def expand_one_hop(
         # excluded here so neither drives retention in pass 2 below.
         hub_id_list = ", ".join(str(i) for i in sorted(_NON_PLAYABLE_HUB_ARTIST_IDS))
         performer_sql = _performer_credit_sql("role_text")
+        _progress(quiet, "one-hop pass 1/2 (frontier): scanning credits...")
+        pass1_start = time.monotonic()
         connection.execute(
             f"""
             CREATE TEMP TABLE frontier_artists AS
@@ -287,6 +307,12 @@ def expand_one_hop(
             """
         )
         frontier_count = _scalar(connection, "SELECT count(*) FROM frontier_artists")
+        pass1_elapsed_seconds = time.monotonic() - pass1_start
+        _progress(
+            quiet,
+            f"one-hop pass 1/2 (frontier): done in {pass1_elapsed_seconds:.1f}s, "
+            f"{frontier_count} frontier artists",
+        )
         if frontier_count == 0:
             raise OneHopError(
                 "empty frontier: no seed release has a playable (linked) credited artist "
@@ -298,6 +324,8 @@ def expand_one_hop(
         # performer-credit filter applies here -- a frontier artist's own
         # pure non-performer credit elsewhere should not retain that release
         # either, matching pass 1's standard.
+        _progress(quiet, "one-hop pass 2/2 (retention): scanning credits...")
+        pass2_start = time.monotonic()
         connection.execute(
             f"""
             CREATE TEMP TABLE retained_releases AS
@@ -309,6 +337,12 @@ def expand_one_hop(
             """
         )
         retained_count = _scalar(connection, "SELECT count(*) FROM retained_releases")
+        pass2_elapsed_seconds = time.monotonic() - pass2_start
+        _progress(
+            quiet,
+            f"one-hop pass 2/2 (retention): done in {pass2_elapsed_seconds:.1f}s, "
+            f"{retained_count} retained releases",
+        )
         if max_retained_releases is not None and retained_count > max_retained_releases:
             raise OneHopError(
                 f"retained release count {retained_count} exceeds the "
@@ -410,6 +444,17 @@ def expand_one_hop(
                 "frontier_artist_count": frontier_count,
                 "retained_release_count": retained_count,
                 "seed_releases_missing_from_snapshot": seed_missing,
+                # Real wall-clock timing (graph-expansion Phase 1, plan
+                # section 17): this manifest lives under the git-ignored
+                # `local/` tree, never committed or published, so a real
+                # elapsed-time number here carries none of ADR 0018's
+                # public-artifact restriction -- same private-timing
+                # discipline `local/benchmarks/` already applies. This is
+                # the "never measured, even locally" gap plan section 17
+                # named; the first real run's numbers are the baseline any
+                # future host-split decision must be gated on.
+                "pass1_frontier_elapsed_seconds": round(pass1_elapsed_seconds, 3),
+                "pass2_retention_elapsed_seconds": round(pass2_elapsed_seconds, 3),
             },
         }
         (staging_root / "manifest.json").write_text(

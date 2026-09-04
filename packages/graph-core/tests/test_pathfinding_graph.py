@@ -816,3 +816,32 @@ def test_a_tie_is_broken_by_name_so_builds_are_reproducible(tmp_path: Path) -> N
     )
     names = {_name_of(_build(dataset, _catalog(), _membership()), 200) for _ in range(3)}
     assert names == {"Alpha"}
+
+
+def test_quiet_suppresses_progress_output_default_does_not(
+    onehop_dataset: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Graph-expansion Phase 1 plan section 18/slice 2-0b: stderr-only
+    coarse progress, off when quiet, on by default."""
+    with CreditGraph.open(onehop_dataset) as graph:
+        build_pathfinding_graph(
+            graph,
+            _catalog(),
+            _membership(),
+            snapshot_date=_SNAPSHOT,
+            generated_at="2026-08-03T00:00:00+00:00",
+            quiet=False,
+        )
+    loud_err = capsys.readouterr().err
+    assert "pathfinding graph:" in loud_err
+
+    with CreditGraph.open(onehop_dataset) as graph:
+        build_pathfinding_graph(
+            graph,
+            _catalog(),
+            _membership(),
+            snapshot_date=_SNAPSHOT,
+            generated_at="2026-08-03T00:00:00+00:00",
+            quiet=True,
+        )
+    assert capsys.readouterr().err == ""
