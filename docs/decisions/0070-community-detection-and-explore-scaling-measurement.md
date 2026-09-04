@@ -1,12 +1,22 @@
 # ADR 0070: Community detection is measured and denied; Explore scaling gets a real recenter budget
 
-- **Status:** Accepted
-- **Date:** 2026-09-03
+- **Status:** Accepted (superseded in part — see banner below)
+- **Date:** 2026-09-03, last revised 2026-09-04
 - **Extends:** [ADR 0055](0055-research-graph-library-selection.md) (igraph selection),
   [ADR 0061](0061-scope-tier-corpus-design-deferred.md), [ADR 0063](0063-bridge-contributors-promotion-rejected.md)
   (betweenness/bridge-contributor promotion, rejected) without modifying any of them
 - **Relates to:** [ADR 0052](0052-network-explorer-svg-bounded-radius.md) (recenter as the
   primary Explore interaction, still holds), [ADR 0069](0069-public-universe-model-and-expansion-policy.md)
+
+> **Read this first.** This ADR's own real §6 recenter-timing measurement was reported twice,
+> with the second report reversing the first — a reader stopping after "Decision" /
+> "Consequences" / "Validation" / "Revisit trigger" below (a normal place to stop) will land on
+> the *original*, now-superseded finding. **The current, correct conclusion is the final
+> section, "Addendum (2026-09-04): root-cause investigation and controlled remeasurement":
+> the original "recenter budget missed, tiles likely needed" finding turned out to be
+> substantially a benchmark artifact. Tiles are NOT indicated, and Phase 2 catalog growth is
+> NOT blocked on an Explore rendering-architecture change.** Community detection's own
+> denial (§1 below) is unaffected by any of this and stands as originally decided.
 
 ## Context
 
@@ -135,11 +145,16 @@ rather than measuring for it.
 
 ## Consequences
 
-- No product code changes. `reprofile-site.mjs` and `graph_analysis.py` gain new,
-  independently tested measurement capability; nothing in `apps/web`'s shipped pages or
-  `packages/graph-core`'s builders changes.
+- **As originally written (2026-09-03): no product code changes** — `reprofile-site.mjs` and
+  `graph_analysis.py` gain new, independently tested measurement capability; nothing in
+  `apps/web`'s shipped pages or `packages/graph-core`'s builders changes. **No longer true as
+  of the 2026-09-04 root-cause addendum below**, which did land a real product-code change
+  (`networkExplorer.ts`'s `selectTopK` bounded-heap fix) — kept here for the historical
+  record of what this ADR's original 2026-09-03 decision actually shipped, not as a current
+  claim.
 - Phase 1 planning should explicitly budget for recenter-cost improvement, not just
-  preservation, given the finding in §2.
+  preservation, given the finding in §2 *(superseded — see the banner at the top of this
+  file)*.
 - The community-detection deny (§1) closes that open question for the whole graph-expansion
   phase — Explore's prominence ranking (plan §8's `rank` formula: `albums_2hop`/`decade_span`
   weighted highest) proceeds without a community signal.
