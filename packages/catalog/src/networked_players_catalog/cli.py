@@ -238,6 +238,11 @@ def _parser() -> argparse.ArgumentParser:
             "frontier alongside the private seed's -- see data/contracts/editorial-seed-v1.md"
         ),
     )
+    expand.add_argument(
+        "--quiet",
+        action="store_true",
+        help="suppress the coarse per-pass progress lines this otherwise prints to stderr",
+    )
 
     resolve_editorial = subparsers.add_parser(
         "resolve-editorial-albums",
@@ -365,6 +370,11 @@ def _parser() -> argparse.ArgumentParser:
         type=Path,
         default=None,
         help="optional studio-album-master-exclusions-v1.json; curated non-studio master deny-list",
+    )
+    build_challenge.add_argument(
+        "--quiet",
+        action="store_true",
+        help="suppress the periodic progress lines this otherwise prints to stderr",
     )
     build_challenge.add_argument("--enrich-images", action="store_true")
     build_challenge.add_argument(
@@ -1267,6 +1277,11 @@ def _parser() -> argparse.ArgumentParser:
             "pass it."
         ),
     )
+    build_pathfinding_graph.add_argument(
+        "--quiet",
+        action="store_true",
+        help="suppress the coarse per-phase progress lines this otherwise prints to stderr",
+    )
 
     validate_pathfinding_graph = subparsers.add_parser(
         "validate-pathfinding-graph",
@@ -1387,6 +1402,11 @@ def _parser() -> argparse.ArgumentParser:
         "--generated-at",
         required=True,
         help="explicit ISO datetime for this build (never the wall clock)",
+    )
+    build_album_credit_membership.add_argument(
+        "--quiet",
+        action="store_true",
+        help="suppress the coarse per-phase progress lines this otherwise prints to stderr",
     )
 
     validate_album_credit_membership = subparsers.add_parser(
@@ -2130,6 +2150,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             temp_dir=args.temp_dir,
             max_retained_releases=args.max_retained_releases,
             overwrite=args.overwrite,
+            quiet=args.quiet,
         )
         print(json.dumps(onehop_manifest, indent=2, sort_keys=True))
         return 0
@@ -2372,6 +2393,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                     max_frontier_expansion=max_frontier_expansion,
                     catalog_version=catalog_version,
                     in_memory=args.in_memory_search,
+                    quiet=args.quiet,
                 )
             else:
                 artifact, report = build_challenge_v2(
@@ -2389,6 +2411,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                     master_exclusions=master_exclusions,
                     max_frontier_expansion=max_frontier_expansion,
                     in_memory=args.in_memory_search,
+                    quiet=args.quiet,
                 )
 
         if args.enrich_images:
@@ -3980,6 +4003,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 snapshot_date=snapshot_date,
                 generated_at=args.generated_at,
                 schema_version=args.schema_version,
+                quiet=args.quiet,
             )
 
         failures = pathfinding_graph_failures(pathfinding_graph, catalog)
@@ -4132,7 +4156,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             args.onehop_root, memory_limit=args.memory_limit, threads=args.threads
         ) as graph:
             membership = build_album_credit_membership(
-                graph, catalog, generated_at=args.generated_at
+                graph, catalog, generated_at=args.generated_at, quiet=args.quiet
             )
 
         failures = album_credit_membership_failures(membership, catalog)

@@ -705,3 +705,57 @@ def test_max_paths_zero_runs_no_path_search_at_all(
                 graph, ALBUMS, snapshot_date="20260601", generated_by="test-suite", max_paths=0
             )
     assert calls == []
+
+
+# Progress logging (graph-expansion Phase 1, plan section 18/slice 2-0b): a
+# real, live gap found while running a 500-album benchmark's own
+# build-challenge-from-dump invocation, which sat silent for 30+ minutes
+# with zero way to tell whether it was progressing or stuck.
+def test_progress_interval_is_none_below_the_minimum_total() -> None:
+    import networked_players_graph_core.challenge as challenge_module
+
+    assert challenge_module._progress_interval(0) is None
+    assert challenge_module._progress_interval(49) is None
+
+
+def test_progress_interval_scales_with_total_but_never_exceeds_500() -> None:
+    import networked_players_graph_core.challenge as challenge_module
+
+    assert challenge_module._progress_interval(50) == 1
+    assert challenge_module._progress_interval(100) == 2
+    assert challenge_module._progress_interval(25_000) == 500
+    # Well past the point where 2% would exceed 500 -- capped, not unbounded.
+    assert challenge_module._progress_interval(1_000_000) == 500
+
+
+def test_build_challenge_v2_progress_logging_is_a_pure_side_effect(
+    dataset_root: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Lowers the real 50-pair minimum so this small fixture's own handful
+    of candidate pairs still exercises the logging path (real callers hit
+    it naturally at catalog scale; this proves the cadence logic itself
+    without building a large synthetic dataset just to clear the
+    threshold). `quiet=True` must produce byte-identical output to
+    `quiet=False` -- logging is a pure side effect to stderr, never
+    something that can change what gets built."""
+    import networked_players_graph_core.challenge as challenge_module
+
+    monkeypatch.setattr(challenge_module, "_PROGRESS_MIN_TOTAL", 1)
+
+    with CreditGraph.open(dataset_root) as graph:
+        loud_artifact, loud_report = build_challenge_v2(
+            graph, ALBUMS, snapshot_date="20260601", generated_by="test-suite", quiet=False
+        )
+    loud_err = capsys.readouterr().err
+    assert "challenge build:" in loud_err
+    assert "pairs attempted" in loud_err
+
+    with CreditGraph.open(dataset_root) as graph:
+        quiet_artifact, quiet_report = build_challenge_v2(
+            graph, ALBUMS, snapshot_date="20260601", generated_by="test-suite", quiet=True
+        )
+    quiet_err = capsys.readouterr().err
+    assert quiet_err == ""
+
+    assert loud_artifact == quiet_artifact
+    assert loud_report == quiet_report

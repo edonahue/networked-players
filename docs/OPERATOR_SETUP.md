@@ -191,7 +191,10 @@ ADR with full detail, so this section stays a summary, not the only copy.
 
 **Host: master/coordination only.** Do not run any of this on the x86 worker or a Pi —
 those only ever receive a *replicated* one-hop dataset (see "Replicating datasets to
-worker caches" below), never produce one themselves.
+worker caches" below), never produce one themselves. For a graph-expansion Phase 2
+*round* specifically (not this initial bring-up), see `docs/EXPANSION_PIPELINE.md` for
+the per-round host assignment (coordination host runs this; `zimaworker1` runs that
+round's other concurrent work) and this command's real progress/timing output.
 
 ### Preconditions
 

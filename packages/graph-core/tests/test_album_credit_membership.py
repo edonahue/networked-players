@@ -196,3 +196,22 @@ def test_catalog_version_mismatch_is_not_silently_accepted(onehop_dataset: Path)
             graph, catalog, generated_at="2026-08-07T00:00:00+00:00"
         )
     assert payload["catalog_version"] == "catalog-v1-20260601-deadbeefdead"
+
+
+def test_quiet_suppresses_progress_output_default_does_not(
+    onehop_dataset: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Graph-expansion Phase 1 plan section 18/slice 2-0b: stderr-only
+    coarse progress, off when quiet, on by default."""
+    with CreditGraph.open(onehop_dataset) as graph:
+        build_album_credit_membership(
+            graph, _catalog(), generated_at="2026-08-07T00:00:00+00:00", quiet=False
+        )
+    loud_err = capsys.readouterr().err
+    assert "album-credit-membership:" in loud_err
+
+    with CreditGraph.open(onehop_dataset) as graph:
+        build_album_credit_membership(
+            graph, _catalog(), generated_at="2026-08-07T00:00:00+00:00", quiet=True
+        )
+    assert capsys.readouterr().err == ""

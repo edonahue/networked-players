@@ -21,11 +21,21 @@ these releases" questions -- one batched query across every album's
 
 from __future__ import annotations
 
+import sys
+import time
 from typing import Any
 
 from networked_players_contracts.canonical import content_hash
 
 from .graph import CreditGraph
+
+
+def _progress(quiet: bool, message: str) -> None:
+    """Coarse per-phase progress -- stderr only, never stdout (graph-
+    expansion Phase 1, plan section 18/slice 2-0b)."""
+    if not quiet:
+        print(message, file=sys.stderr)
+
 
 _CREDIT_FIELDS = (
     "artist_id",
@@ -60,6 +70,7 @@ def build_album_credit_membership(
     catalog: dict[str, Any],
     *,
     generated_at: str,
+    quiet: bool = False,
 ) -> dict[str, Any]:
     """Deterministic given a fixed graph snapshot and catalog. Raises
     `ValueError` if the catalog has no albums -- there is nothing to build.
@@ -72,7 +83,16 @@ def build_album_credit_membership(
         raise ValueError("catalog has no albums to build album-credit-membership from")
 
     release_ids = sorted({int(a["main_release_id"]) for a in catalog_albums})
+    _progress(
+        quiet, f"album-credit-membership: querying credits for {len(release_ids)} releases..."
+    )
+    query_start = time.monotonic()
     rows_by_release = graph.credit_rows_for_releases(release_ids)
+    _progress(
+        quiet,
+        f"album-credit-membership: credits query done in "
+        f"{time.monotonic() - query_start:.1f}s, {len(rows_by_release)} releases with rows",
+    )
 
     albums: list[dict[str, Any]] = []
     for album in catalog_albums:

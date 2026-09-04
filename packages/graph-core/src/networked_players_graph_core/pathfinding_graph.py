@@ -54,6 +54,8 @@ small enough to commit and fetch client-side.
 
 from __future__ import annotations
 
+import sys
+import time
 from collections import defaultdict
 from collections.abc import Iterable
 from typing import Any
@@ -63,6 +65,16 @@ from networked_players_contracts.canonical import content_hash
 from .compact_graph_bench import build_csr_adjacency
 from .eligibility import is_performer_role
 from .graph import GRAPH_POLICY_VERSION, CreditGraph, edge_ineligible_role
+
+
+def _progress(quiet: bool, message: str) -> None:
+    """Coarse per-phase progress -- stderr only, never stdout. Real, live
+    gap this closes: no builder in this module logged anything at all,
+    matching `challenge.py`/`onehop.py`'s own fix (graph-expansion Phase 1,
+    plan section 18/slice 2-0b)."""
+    if not quiet:
+        print(message, file=sys.stderr)
+
 
 _MAX_JOINED_ROLE_LEN = 200
 
@@ -227,6 +239,7 @@ def build_pathfinding_graph(
     snapshot_date: str,
     generated_at: str,
     schema_version: int = 4,
+    quiet: bool = False,
 ) -> dict[str, Any]:
     """Deterministic given the same real one-hop dataset, catalog, and
     album-credit-membership artifact: a 1-hop ego network around
@@ -254,10 +267,20 @@ def build_pathfinding_graph(
         raise ValueError("catalog has no albums to seed the pathfinding graph from")
 
     ids_sql = ", ".join(str(i) for i in seed_artist_ids)
+    _progress(
+        quiet,
+        f"pathfinding graph: querying credit_edges for {len(seed_artist_ids)} seed artists...",
+    )
+    query_start = time.monotonic()
     rows = graph._connection.execute(
         f"SELECT artist_a_id, artist_b_id, release_id FROM credit_edges "
         f"WHERE artist_a_id IN ({ids_sql}) OR artist_b_id IN ({ids_sql})"
     ).fetchall()
+    _progress(
+        quiet,
+        f"pathfinding graph: credit_edges query done in "
+        f"{time.monotonic() - query_start:.1f}s, {len(rows)} rows",
+    )
 
     seen_pairs: set[tuple[int, int, int]] = set()
     for a, b, release_id in rows:
