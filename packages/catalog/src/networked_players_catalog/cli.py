@@ -838,6 +838,75 @@ def _parser() -> argparse.ArgumentParser:
     select_graph_rich.add_argument("--threads", type=int, default=2)
     select_graph_rich.add_argument("--output", type=Path, required=True)
 
+    collection_candidates_parser = subparsers.add_parser(
+        "build-collection-candidates",
+        help=(
+            "derive expansion candidates from the private collection seed "
+            "(graph-expansion Phase 2, plan section 4): seed releases -> masters "
+            "-> master-level eligibility -> not already published. This is the "
+            "editorial lane's candidate SUPPLY -- score-expansion-candidates and "
+            "select-graph-rich-candidates only annotate or re-rank a shortlist, "
+            "neither can introduce one. Local-only output: the result is "
+            "collection membership and must never be committed or published"
+        ),
+    )
+    collection_candidates_parser.add_argument("--onehop-root", type=Path, required=True)
+    collection_candidates_parser.add_argument(
+        "--masters-root",
+        type=Path,
+        required=True,
+        help="needed for eligibility's genre/style gate and the candidate's title/year",
+    )
+    collection_candidates_parser.add_argument(
+        "--seed",
+        type=Path,
+        required=True,
+        help=(
+            "data/private/discogs-seed.json -- read through SeedManifest, which by "
+            "contract carries release ids and nothing else (data/contracts/discogs-seed-v1.md)"
+        ),
+    )
+    collection_candidates_parser.add_argument("--release-format-policy", type=Path, required=True)
+    collection_candidates_parser.add_argument(
+        "--studio-album-exclusions",
+        type=Path,
+        default=None,
+        help="optional studio-album-master-exclusions-v1.json; curated master-ID deny-list",
+    )
+    collection_candidates_parser.add_argument(
+        "--already-published-catalog",
+        type=Path,
+        default=None,
+        help=(
+            "apps/web/public/data/catalog/albums.v1.json -- masters already published are "
+            "dropped BEFORE eligibility runs, so every count here is over albums that "
+            "could actually be added (same reasoning as rank-album-candidates')"
+        ),
+    )
+    collection_candidates_parser.add_argument(
+        "--output",
+        type=Path,
+        required=True,
+        help="must resolve under local/ -- never a committed or public path",
+    )
+    collection_candidates_parser.add_argument(
+        "--master-ids-output",
+        type=Path,
+        default=None,
+        help=(
+            'optional sidecar written as {"master_ids": [...]} over the ELIGIBLE rows '
+            "only -- the producer score-expansion-candidates' --private-seed-master-ids "
+            "has never had. Must also resolve under local/"
+        ),
+    )
+    collection_candidates_parser.add_argument("--memory-limit", default="3GB")
+    collection_candidates_parser.add_argument("--threads", type=int, default=2)
+    collection_candidates_parser.add_argument(
+        "--quiet",
+        action="store_true",
+        help="suppress the coarse progress lines this otherwise prints to stderr",
+    )
+
     score_expansion_candidates_parser = subparsers.add_parser(
         "score-expansion-candidates",
         help=(
@@ -3255,6 +3324,80 @@ def main(argv: Sequence[str] | None = None) -> int:
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
         print(json.dumps({"output": str(args.output), "selected_count": len(selected)}, indent=2))
+        return 0
+
+    if args.command == "build-collection-candidates":
+        from networked_players_graph_core.collection_candidates import (
+            derive_collection_candidates,
+        )
+        from networked_players_graph_core.graph import CreditGraph
+
+        from .discogs.release_format_policy import load_master_exclusions
+        from .discogs.seed import SeedManifest
+
+        _require_local_only_output(
+            args.output,
+            command="build-collection-candidates",
+            why=(
+                "this list is private collection membership (graph-expansion Phase 2, "
+                "plan section 4) -- the picks made FROM it are public as 'editorial', "
+                "the list itself never is"
+            ),
+        )
+        if args.master_ids_output is not None:
+            _require_local_only_output(
+                args.master_ids_output,
+                command="build-collection-candidates",
+                why="the master-id sidecar is the same membership data in another shape",
+            )
+
+        # The seed is opened here and reduced to release ids immediately; by
+        # contract it carries nothing else (data/contracts/discogs-seed-v1.md).
+        seed_release_ids = SeedManifest.read(args.seed).release_ids
+
+        published_master_ids: frozenset[int] = frozenset()
+        if args.already_published_catalog is not None:
+            catalog_payload = json.loads(args.already_published_catalog.read_text())
+            published_master_ids = frozenset(
+                int(a["master_id"])
+                for a in catalog_payload.get("albums", [])
+                if a.get("master_id") is not None
+            )
+        allowed_release_ids = frozenset(
+            json.loads(args.release_format_policy.read_text())["allowed_release_ids"]
+        )
+
+        with CreditGraph.open(
+            args.onehop_root, memory_limit=args.memory_limit, threads=args.threads
+        ) as graph:
+            graph.attach_masters(args.masters_root)
+            collection_candidates = derive_collection_candidates(
+                graph,
+                seed_release_ids,
+                allowed_release_ids=allowed_release_ids,
+                master_exclusions=load_master_exclusions(args.studio_album_exclusions),
+                already_published_master_ids=published_master_ids,
+                quiet=args.quiet,
+            )
+
+        eligible = [row for row in collection_candidates if row["eligibility"] == "eligible"]
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(json.dumps(collection_candidates, indent=2) + "\n")
+        if args.master_ids_output is not None:
+            args.master_ids_output.parent.mkdir(parents=True, exist_ok=True)
+            args.master_ids_output.write_text(
+                json.dumps({"master_ids": [row["master_id"] for row in eligible]}, indent=2) + "\n"
+            )
+        print(
+            json.dumps(
+                {
+                    "output": str(args.output),
+                    "candidate_count": len(collection_candidates),
+                    "eligible_count": len(eligible),
+                },
+                indent=2,
+            )
+        )
         return 0
 
     if args.command == "score-expansion-candidates":
