@@ -323,3 +323,105 @@ which this addendum defers to rather than pre-empting.
   per-album `--max-paths` coverage, so a future coverage-sensitive measurement (e.g. sitemap
   composition at true production discipline) has a fixture to match, rather than reusing this
   addendum's deliberately-bounded one.
+
+**Superseded by the 2026-09-04 root-cause addendum below — kept for the historical record,
+not as the current read of the situation.**
+
+## Addendum (2026-09-04): root-cause investigation and controlled remeasurement — the original miss was substantially a benchmark artifact
+
+Before committing to the tiles design this ADR's previous addendum called for, a deep-dive
+investigation traced `centerOn`'s full call graph (`explorerStage.ts`, `networkExplorer.ts`'s
+`buildView`, `NetworkExplorer.astro`'s render shell) to find out *why* recenter cost would
+scale with total graph size at all, since Explore is architecturally a bounded 1-hop ego view
+(ADR 0052) whose recenter cost should depend only on the current node's own capped
+neighborhood.
+
+**Finding: no O(total-graph-size) cost exists anywhere in the recenter path.** The center
+node's own index is found via an O(1) prebuilt `Map` (`buildArtistIndex`, built once at
+page init, never rebuilt per recenter); the candidate loop is bounded by the center node's
+own CSR row; `MAX_NEIGHBORS = 24` is a fixed literal constant unrelated to catalog size.
+Every genuinely O(total-graph-size) operation (graph parse/validation, the artist-index and
+prominence/contributor-index map builds) runs exactly once at page init, never inside
+`centerOn` itself.
+
+**One real, small, unrelated inefficiency found and fixed regardless:** `buildView`'s
+candidate loop was sorting a center node's *full, uncapped* raw degree before slicing to
+`MAX_NEIGHBORS` — an `O(d log d)` cost on the center's own raw degree, not a bounded
+partial-selection. Measured against the real 179-album graph's own worst-case hub (degree
+897): ~0.16ms, real but far too small to explain the original ~50ms regression by itself.
+Replaced with a bounded max-heap top-K selection (`selectTopK` in `networkExplorer.ts`),
+`O(d log k)` instead of `O(d log d)` — verified byte-for-byte identical output to a full sort
+across 20 random rank distributions × 6 cap sizes on a synthetic 300-degree hub fixture
+(`apps/web/tests/network-explorer-state.spec.ts`).
+
+**The dominant real cause: a benchmark methodology confound.**
+`measureExplorerRecenter` always clicked "the first non-center neighbor currently
+rendered" — since neighbors render sorted by prominence rank descending, this is always the
+*highest-ranked* neighbor, so 50 repeats is a deterministic greedy walk toward the graph's
+own most structurally prominent hub nodes, not a representative sample of recenter cost. The
+first several iterations of any such walk (or of the underlying JIT/cache warm-up, or both)
+consistently cost more than the rest, which then settle into a much tighter band — and
+because a 50-sample p95/max statistic is highly sensitive to just 2-3 elevated early samples,
+this transient dominated the originally-reported numbers. Two fix attempts were tried, one
+discarded:
+
+- **Discarded: a `page.goBack()`-based "repeat the exact same edge" control.** Restoring the
+  original center via browser back navigation between each timed sample measured **worse and
+  far noisier** than the plain walk (p95 535ms / max 1502ms vs. the walk's own 213ms / 496ms,
+  both on the real 179-album site) — the extra history round-trip's own overhead was a bigger
+  confound than the one it was meant to remove.
+- **Adopted: a warm-up discard.** `RECENTER_WARMUP_ITERATIONS` (10) untimed recenters now run
+  before the real, timed loop starts. This alone tightened the 179-album desktop-unthrottled
+  distribution from samples ranging up to 496-490ms (with a 213-172ms p95) down to a
+  consistent 88-125ms band (p95 117-121ms across two runs) — a dramatically cleaner signal,
+  with no new confound introduced.
+
+**Real, controlled, two-runs-per-cell comparison (179 vs. the local 500-tier fixture), stated
+qualitatively per ADR 0018 (raw figures in `local/benchmarks/2026-09-04-site-reprofile-{179,
+500-tier}-warmup-fix-*.json`, gitignored):**
+
+| Profile | 179-album p50 / p95 / max | 500-album p50 / p95 / max |
+|---|---|---|
+| Desktop unthrottled (2 runs each) | ~102-103 / 117-121 / 120-125 | ~102-104 / 133-140 / 158-165 |
+| Desktop 4x-throttled | ~105 / 121 / 131 | ~102 / 114 / 118 |
+| Mobile 4x-throttled | ~100 / 113 / 124 | ~100 / 112 / 126 |
+
+**Corrected conclusion, replacing the previous addendum's "misses in all three profiles":**
+
+1. **Median recenter cost (p50) is essentially identical regardless of catalog size, in
+   every profile** — direct, controlled confirmation of the static-analysis finding above:
+   recenter cost genuinely does not scale with total graph size.
+2. **p95/max show a modest, real, and repeatable (confirmed across 2 runs) increase
+   specifically on desktop *unthrottled* at 500 vs. 179 albums** (roughly +15-40ms) — **but
+   not on either throttled profile**, where 500-album numbers are flat or marginally better
+   than 179-album's. This is a real, narrow, profile-specific effect, not a general
+   catalog-size scaling problem, and its own cause is not yet identified (a candidate for
+   future investigation, not blocking).
+3. **The recenter budget (p95 ≤ 100ms) is marginally missed in essentially the SAME way at
+   both catalog sizes, in every profile.** This is a pre-existing condition — present at 179
+   albums, before any Phase 2 growth at all, matching this ADR's own first addendum's "close
+   to, but still marginally above" framing — not a new failure introduced by growing to 500
+   albums.
+
+**Revised decision: tiles are not indicated by this evidence.** Tiles solve a cost that scales
+*with* catalog/payload size; the real, controlled data shows recenter cost is roughly
+constant across a 2.79x catalog-size range, with only a narrow, small, single-profile
+exception. Building a tiles architecture — a genuinely large investment (a second load path,
+the recentering-onto-non-anchor-node complication this ADR already flagged) — would not
+address a scaling problem, because the evidence no longer shows one. **Phase 2 catalog
+growth is not blocked on an Explore rendering-architecture change.** The remaining ~10-40ms
+gap-to-budget is a general, roughly-constant per-recenter cost (plausibly the full `innerHTML`
+DOM rebuild `renderView` does on every recenter, or generic browser style-recalc/layout
+work) worth a future, much smaller optimization pass if desired — not an architecture
+decision, and not a Phase 2 gate.
+
+## Revisit trigger (added 2026-09-04, root-cause addendum)
+
+- If a future measurement at real Phase 2 catalog scale (not this bounded synthetic fixture)
+  shows the desktop-unthrottled-specific p95 gap growing further, investigate that narrow
+  effect specifically (e.g. via a DevTools/Playwright performance trace) rather than
+  reflexively re-opening the tiles question.
+- If a genuinely smaller, low-risk win to close the remaining ~10-40ms gap-to-budget is later
+  identified (e.g. incremental DOM diffing instead of `renderView`'s full `innerHTML`
+  rebuild), it can be pursued on its own merits — not because Phase 2 is blocked on it, since
+  this addendum found it is not.

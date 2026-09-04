@@ -38,6 +38,18 @@
 // yet (ADR 0052 still holds: bounded ego view, recenter-as-primary,
 // zoom/pan is Phase 1 work per the graph-expansion plan). Add that
 // measurement once Phase 1 ships the interaction to measure, not before.
+//
+// Warm-up discard (ADR 0070's 2026-09-04 addendum): the first several
+// recenters in a run consistently cost more than the rest, which then
+// settle into a much tighter band -- `RECENTER_WARMUP_ITERATIONS` untimed
+// recenters run before the timed loop starts, so a JIT/cache warm-up
+// transient (or the walk settling toward a stable small orbit between
+// mutually highly-ranked neighbors) doesn't dominate the reported
+// p95/max. A goBack()-based "repeat the exact same edge" control was
+// tried first and discarded: it measured WORSE and far noisier than the
+// plain walk (p95 535ms/max 1502ms vs. the walk's own 213ms/496ms on the
+// real 179-album site) -- the extra history round-trip's own overhead was
+// a bigger confound than the one it was meant to remove.
 
 import { chromium, devices } from "@playwright/test";
 import { readFileSync, statSync } from "node:fs";
@@ -51,6 +63,13 @@ const DESKTOP_THROTTLED = process.argv.includes("--desktop-throttled");
 const THROTTLED = MOBILE_THROTTLED || DESKTOP_THROTTLED;
 const RECENTER_ITERATIONS = Number(
   process.env.REPROFILE_RECENTER_ITERATIONS ?? 50,
+);
+// ADR 0070's 2026-09-04 addendum: the first several recenters in a run
+// consistently cost more than the rest (JIT/cache warm-up, and/or the
+// walk settling toward a stable small orbit of mutually highly-ranked
+// neighbors) -- discarded, untimed, before the real measurement starts.
+const RECENTER_WARMUP_ITERATIONS = Number(
+  process.env.REPROFILE_RECENTER_WARMUP_ITERATIONS ?? 10,
 );
 const ROOT = path.resolve(fileURLToPath(new URL("..", import.meta.url)));
 
@@ -236,39 +255,71 @@ function percentile(sortedValues, p) {
   return sortedValues[Math.max(0, index)];
 }
 
+// Clicks the first non-center neighbor currently rendered and waits for
+// the real `data-is-center="true"` completion signal (`centerOn()`'s own,
+// not a guessed timeout). Returns the new center's artist id, or `null` if
+// the graph ran out of a non-center neighbor to click.
+async function recenterOnce(page) {
+  const nextId = await page
+    .locator(
+      "[data-explorer-nodes] .explorer-node[data-artist-id]:not([data-is-center='true'])",
+    )
+    .first()
+    .getAttribute("data-artist-id");
+  if (nextId === null) return null;
+  await page
+    .locator(`[data-explorer-nodes] .explorer-node[data-artist-id="${nextId}"]`)
+    .click();
+  await page
+    .locator(
+      `[data-explorer-nodes] .explorer-node[data-artist-id="${nextId}"][data-is-center="true"]`,
+    )
+    .waitFor({ state: "attached", timeout: 5_000 });
+  return nextId;
+}
+
 // Recenters onto the first non-center neighbor currently rendered,
-// `iterations` times, timing click -> the newly-centered node's real
-// `data-is-center="true"` attribute (centerOn()'s own completion signal,
-// not a guessed timeout). Returns null (not a partial array) if the graph
-// ever runs out of a non-center neighbor to click -- a real dead end, not
-// silently under-counted.
-async function measureExplorerRecenter(page, iterations) {
+// `iterations` times (after `warmupIterations` untimed recenters first --
+// ADR 0070's 2026-09-04 addendum found the first several recenters in a
+// run consistently cost more than the rest, which settle into a much
+// tighter band; an early goBack()-based "repeat the exact same edge"
+// control was tried and discarded -- it measured WORSE and far noisier
+// than this walk (p95 535ms/max 1502ms vs. the walk's own 213ms/496ms on
+// the real 179-album site), meaning the extra history round-trip's own
+// overhead was a bigger confound than the one it was trying to remove.
+// Discarding a warm-up prefix is a much smaller, less invasive change that
+// addresses the same "don't let a transient dominate the stats" concern
+// without adding new noise). Returns null (not a partial array) if the
+// graph ever runs out of a non-center neighbor to click, during warm-up or
+// the timed loop.
+async function measureExplorerRecenter(page, iterations, warmupIterations = 0) {
+  for (let i = 0; i < warmupIterations; i++) {
+    if ((await recenterOnce(page)) === null) {
+      return {
+        samplesMs: [],
+        incomplete: true,
+        iterationsRun: 0,
+        warmupIterations,
+      };
+    }
+  }
+
   const samplesMs = [];
   for (let i = 0; i < iterations; i++) {
-    const nextId = await page
-      .locator(
-        "[data-explorer-nodes] .explorer-node[data-artist-id]:not([data-is-center='true'])",
-      )
-      .first()
-      .getAttribute("data-artist-id");
-    if (nextId === null)
-      return { samplesMs, incomplete: true, iterationsRun: i };
-
     const clickStart = Date.now();
-    await page
-      .locator(
-        `[data-explorer-nodes] .explorer-node[data-artist-id="${nextId}"]`,
-      )
-      .click();
-    await page
-      .locator(
-        `[data-explorer-nodes] .explorer-node[data-artist-id="${nextId}"][data-is-center="true"]`,
-      )
-      .waitFor({ state: "attached", timeout: 5_000 });
+    const nextId = await recenterOnce(page);
+    if (nextId === null)
+      return {
+        samplesMs,
+        incomplete: true,
+        iterationsRun: i,
+        warmupIterations,
+      };
     samplesMs.push(Date.now() - clickStart);
   }
   const sorted = [...samplesMs].sort((a, b) => a - b);
   return {
+    warmupIterations,
     samplesMs,
     incomplete: false,
     iterationsRun: iterations,
@@ -300,8 +351,14 @@ async function measureExplorerInit(context, albumId, heapSamples) {
   // Recenter measured on the SAME still-open page (graph/worker already
   // warm) -- a fresh navigation per recenter would measure page-load cost
   // 50 times over, not the in-page recenter cost the plan's budget
-  // (p95 <= 100ms) is actually about.
-  const recenter = await measureExplorerRecenter(page, RECENTER_ITERATIONS);
+  // (p95 <= 100ms) is actually about. `RECENTER_WARMUP_ITERATIONS` untimed
+  // recenters run first (ADR 0070's 2026-09-04 addendum), discarding the
+  // transient the first several recenters in a run consistently show.
+  const recenter = await measureExplorerRecenter(
+    page,
+    RECENTER_ITERATIONS,
+    RECENTER_WARMUP_ITERATIONS,
+  );
   heapSamples.push(await measureMemory(page));
   await page.close();
   return { pageLoadMs, firstNodeVisibleMs, workerParseMs, recenter };

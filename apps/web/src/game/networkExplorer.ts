@@ -40,6 +40,73 @@ export interface ExplorerView {
   totalNeighborCount: number;
 }
 
+/** Rank descending (prominence/degree), tying on `neighborArtistId`
+ * ascending for a deterministic total order -- extracted so `selectTopK`
+ * can reuse the exact same ordering a full sort would produce. */
+function compareCandidates(
+  a: { neighborArtistId: number },
+  b: { neighborArtistId: number },
+  rankOf: (artistId: number) => number,
+): number {
+  const byRank = rankOf(b.neighborArtistId) - rankOf(a.neighborArtistId);
+  return byRank !== 0 ? byRank : a.neighborArtistId - b.neighborArtistId;
+}
+
+/** Sifts `heap[start]` down into a max-heap-of-"worst" (root is always the
+ * single worst-ranked element currently kept), per `worseThan`. */
+function siftDown<T>(
+  heap: T[],
+  start: number,
+  worseThan: (a: T, b: T) => boolean,
+): void {
+  let i = start;
+  for (;;) {
+    const left = 2 * i + 1;
+    const right = 2 * i + 2;
+    let worst = i;
+    if (left < heap.length && worseThan(heap[left], heap[worst])) worst = left;
+    if (right < heap.length && worseThan(heap[right], heap[worst]))
+      worst = right;
+    if (worst === i) return;
+    [heap[i], heap[worst]] = [heap[worst], heap[i]];
+    i = worst;
+  }
+}
+
+/** The top `k` candidates per `compareCandidates`, in that same sorted
+ * order -- without sorting a center node's full raw degree only to discard
+ * everything past the display cap (graph-expansion Phase 1, ADR 0070
+ * addendum's recenter-cost investigation: a real, if small at today's real
+ * hub degrees, `O(d log d)` cost on the center's own uncapped neighbor
+ * count). A bounded max-heap-of-the-worst-kept gets this to `O(d log k)`:
+ * each of the `d` candidates does one O(1) comparison against the current
+ * worst-kept, and only the rare candidate that's actually better pays for
+ * a `log k` sift-down, instead of every candidate paying `log d` in a full
+ * sort. Falls back to a plain full sort when there's nothing to trim
+ * (`candidates.length <= k`), since every candidate is kept either way. */
+function selectTopK<T extends { neighborArtistId: number }>(
+  candidates: T[],
+  k: number,
+  rankOf: (artistId: number) => number,
+): T[] {
+  if (candidates.length <= k) {
+    return [...candidates].sort((a, b) => compareCandidates(a, b, rankOf));
+  }
+  const worseThan = (a: T, b: T) => compareCandidates(a, b, rankOf) > 0;
+  const heap: T[] = candidates.slice(0, k);
+  for (let i = Math.floor(heap.length / 2) - 1; i >= 0; i--) {
+    siftDown(heap, i, worseThan);
+  }
+  for (let i = k; i < candidates.length; i++) {
+    const candidate = candidates[i];
+    if (worseThan(heap[0], candidate)) {
+      heap[0] = candidate;
+      siftDown(heap, 0, worseThan);
+    }
+  }
+  return heap.sort((a, b) => compareCandidates(a, b, rankOf));
+}
+
 function roleCategoriesFor(
   artistId: number,
   contributorByArtistId: Map<number, Contributor>,
@@ -112,12 +179,8 @@ export function buildView(
     contributorByArtistId.get(artistId)?.connection_count ?? 0;
   const rankOf = (artistId: number) =>
     rankByArtistId?.get(artistId) ?? degreeOf(artistId);
-  candidates.sort((a, b) => {
-    const byRank = rankOf(b.neighborArtistId) - rankOf(a.neighborArtistId);
-    return byRank !== 0 ? byRank : a.neighborArtistId - b.neighborArtistId;
-  });
 
-  const shown = candidates.slice(0, maxNeighbors);
+  const shown = selectTopK(candidates, maxNeighbors, rankOf);
   const center: ExplorerNode = {
     artistId: centerArtistId,
     name: graph.names[centerIndex],
