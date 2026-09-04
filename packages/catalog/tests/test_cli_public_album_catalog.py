@@ -1564,3 +1564,68 @@ def test_already_published_catalog_missing_albums_array_refused(tmp_path: Path) 
     with pytest.raises(ValueError, match="'albums' array"):
         main(args)
     assert not output_path.exists()
+
+
+def test_featured_albums_activates_catalog_schema_v2(tmp_path: Path) -> None:
+    """--featured-albums (Round 1 prep, plan section 20.4) is purely
+    additive: given, the catalog gains catalog_schema_version=2 and every
+    album gains featured/selection_source/expansion_round -- pinned "First
+    Light" (master_id 901, the editorial entry) is featured; the graph-rich
+    candidate ("Third Wave") is not."""
+    onehop_root = _write_onehop_dataset(tmp_path / "onehop")
+    masters_root = _write_masters_dataset(tmp_path / "masters")
+    policy_path = _write_release_format_policy(tmp_path / "policy.json")
+    exclusions_path = _write_exclusions(tmp_path / "exclusions.json")
+    featured_path = tmp_path / "featured-v1.json"
+    featured_path.write_text(json.dumps({"entries": [{"master_id": 901}]}))
+    output_path = tmp_path / "albums.v1.json"
+
+    args = _base_args(tmp_path, onehop_root=onehop_root, output=output_path)
+    args += [
+        "--release-format-policy",
+        str(policy_path),
+        "--masters-root",
+        str(masters_root),
+        "--studio-album-exclusions",
+        str(exclusions_path),
+        "--featured-albums",
+        str(featured_path),
+        "--expansion-round",
+        "1",
+    ]
+    assert main(args) == 0
+    catalog = json.loads(output_path.read_text())
+    assert catalog["catalog_schema_version"] == 2
+    by_master = {a["master_id"]: a for a in catalog["albums"]}
+    assert by_master[901]["featured"] is True
+    assert by_master[901]["expansion_round"] == 1
+    assert by_master[901]["selection_source"] == "editorial"
+
+
+def test_omitting_featured_albums_stays_v1_shaped(tmp_path: Path) -> None:
+    """The new flags are opt-in -- a caller that never passes
+    --featured-albums must see byte-for-byte the same v1 shape as before
+    this change (no catalog_schema_version, no per-album featured/
+    selection_source/expansion_round)."""
+    onehop_root = _write_onehop_dataset(tmp_path / "onehop")
+    masters_root = _write_masters_dataset(tmp_path / "masters")
+    policy_path = _write_release_format_policy(tmp_path / "policy.json")
+    exclusions_path = _write_exclusions(tmp_path / "exclusions.json")
+    output_path = tmp_path / "albums.v1.json"
+
+    args = _base_args(tmp_path, onehop_root=onehop_root, output=output_path)
+    args += [
+        "--release-format-policy",
+        str(policy_path),
+        "--masters-root",
+        str(masters_root),
+        "--studio-album-exclusions",
+        str(exclusions_path),
+    ]
+    assert main(args) == 0
+    catalog = json.loads(output_path.read_text())
+    assert "catalog_schema_version" not in catalog
+    for album in catalog["albums"]:
+        assert "featured" not in album
+        assert "selection_source" not in album
+        assert "expansion_round" not in album
