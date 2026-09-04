@@ -224,6 +224,15 @@ catalog. Rebuilding them every round is still required; nothing in CI will force
      --generated-at <explicit ISO datetime> \
      --output data/private/expansion/round-1/review-packet.json
    ```
+   **Check `already_published_count` before reading anything else.**
+   `data/albums/editorial-seed-v1.json` is *cumulative* — it keeps every album ever
+   resolved into it, including ones a previous round already published. In the first
+   live run (2026-09-04) **all 13 of its entries were already in the catalog**, so the
+   editorial lane contributed exactly zero new albums, and the round's real growth came
+   entirely from the graph-value lane. A packet whose `already_published_count` is close
+   to its entry count means the editorial lane is exhausted and needs genuinely new owner
+   picks before the round is worth publishing — the seed file being non-empty proves
+   nothing.
 8. **Owner review and picks — the real, non-automatable decision point this whole
    pipeline exists to inform.** No further step below happens until this is done.
 

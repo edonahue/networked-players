@@ -151,13 +151,21 @@ def build_expansion_review_packet(
         if entry["already_in_catalog"]
     )
 
+    # An entry already in the published catalog adds nothing -- it is reported
+    # (both as a warning above and in already_published_count below) but must
+    # never inflate the counts a reviewer reads as "how much does this round
+    # grow the catalog". Counting them made a real Round 1 packet claim 19
+    # additions to a total of 198 when the true figures were 6 and 185.
+    already_published_count = sum(1 for entry in entries if entry["already_in_catalog"])
+    addition_count = len(entries) - already_published_count
     return {
         "schema_version": EXPANSION_REVIEW_SCHEMA_VERSION,
         "generated_at": generated_at,
         "snapshot_date": agreed_snapshot_date,
         "current_catalog_count": len(current_catalog.get("albums", [])),
-        "proposed_addition_count": len(entries),
-        "proposed_total_count": len(current_catalog.get("albums", [])) + len(entries),
+        "proposed_addition_count": addition_count,
+        "already_published_count": already_published_count,
+        "proposed_total_count": len(current_catalog.get("albums", [])) + addition_count,
         "bucket_counts": {
             "personal": len(personal),
             "graph_rich": len(graph_rich),
