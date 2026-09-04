@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "policy_name": "expansion-policy-v1",
+  "source_note": "Graph-expansion Phase 2 (docs/GRAPH_EXPANSION_DIRECTION.md plan section 5.2/section 15). Quotas and thresholds are public policy; which real candidates fill them each round is a private, per-round editorial decision (local/analysis/expansion/round-<n>/, data/private/ -- never this file).",
+  "automatic_lanes": {
+    "roster_band": { "min": 5, "max": 30 },
+    "overlap_existing_minimum": 2,
+    "enforce_artist_uniqueness": true,
+    "note": "Automatic (non-editorial) lanes: a candidate outside the roster band, or with fewer than overlap_existing_minimum distinct existing graph nodes on its roster, is never auto-selected -- it can still enter via the editorial lane on its own merits (e.g. a large ensemble), never hidden from the scoring packet."
+  },
+  "collection_relaxation": {
+    "overlap_existing_minimum": 1,
+    "roster_band": null,
+    "note": "Collection-sourced editorial candidates (owner's private Discogs collection) score under relaxed thresholds -- no roster band, overlap_existing >= 1 instead of >= 2 -- but still go through the same eligibility gate and the same scoring components as every other candidate. Membership in the collection never buys a slot by itself; the owner approves from the scored packet. Public label for every editorial pick, collection-sourced or not, is 'editorial' -- never 'personal_editorial' (ADR 0065's own correction)."
+  },
+  "rounds": {
+    "round-1": {
+      "target_count": 30,
+      "band": { "min": 25, "max": 40 },
+      "quota": {
+        "editorial": 20,
+        "graph_value": 6,
+        "coverage": 4
+      },
+      "quota_note": "Owner's 2026-09-02 instruction: roughly 2/3 of Round 1's new albums are collection-sourced editorial picks. The editorial lane's 20 slots are expected to be mostly (not necessarily entirely) collection-sourced -- see the owner's own decision record in the plan's section 15."
+    }
+  }
+}
