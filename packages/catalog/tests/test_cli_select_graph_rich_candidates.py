@@ -259,3 +259,114 @@ def test_refuses_to_write_outside_local(tmp_path: Path) -> None:
             ]
         )
     assert not output.exists()
+
+
+def _policy(path: Path, *, minimum_overlap: int = 2) -> Path:
+    return _write_json(
+        path,
+        {
+            "automatic_lanes": {
+                "roster_band": {"min": 5, "max": 30},
+                "overlap_existing_minimum": minimum_overlap,
+            }
+        },
+    )
+
+
+def test_the_expansion_policy_roster_band_gates_finalists(tmp_path: Path) -> None:
+    """Round 1's real failure: this selection optimises purely for marginal
+    edges and never read expansion-policy-v1.json, so four of its six picks
+    had rosters of 34-50 against a committed 5-30 band and had to be filtered
+    out by hand afterwards."""
+    dataset = _write_full_dataset(tmp_path)
+    baseline_catalog = _write_json(
+        tmp_path / "albums.v1.json",
+        {"snapshot_date": SNAPSHOT, "albums": [{"main_release_id": 101, "artist_id": 11}]},
+    )
+    finalists_path = _write_json(
+        tmp_path / "finalists.json",
+        [
+            {"master_id": 1, "main_release_id": 103, "artist_id": 50},
+            {"master_id": 2, "main_release_id": 104, "artist_id": 60},
+        ],
+    )
+    # Master 1 sits inside the band; master 2 has a 50-performer roster.
+    scored = _write_json(
+        tmp_path / "scored.json",
+        {
+            "candidates": [
+                {
+                    "master_id": 1,
+                    "eligibility": "eligible",
+                    "roster_size": 10,
+                    "overlap_existing": 3,
+                },
+                {
+                    "master_id": 2,
+                    "eligibility": "eligible",
+                    "roster_size": 50,
+                    "overlap_existing": 9,
+                },
+            ]
+        },
+    )
+    output = tmp_path / "local" / "out.json"
+
+    exit_code = main(
+        [
+            "select-graph-rich-candidates",
+            "--dataset",
+            str(dataset),
+            "--baseline-catalog",
+            str(baseline_catalog),
+            "--finalists",
+            str(finalists_path),
+            "--scored-candidates",
+            str(scored),
+            "--expansion-policy",
+            str(_policy(tmp_path / "policy.json")),
+            "--count",
+            "2",
+            "--output",
+            str(output),
+        ]
+    )
+    assert exit_code == 0
+    payload = json.loads(output.read_text())
+
+    assert payload["submitted_finalist_count"] == 2
+    assert payload["finalist_count"] == 1
+    assert payload["policy_rejections"] == {"roster_outside_band": 1}
+    assert [s["master_id"] for s in payload["selected"]] == [1]
+
+
+def test_the_policy_flags_must_be_given_together(tmp_path: Path) -> None:
+    """--expansion-policy without --scored-candidates would silently gate
+    nothing, which reads as enforcement in the round log while enforcing
+    nothing -- the exact failure this slice exists to close."""
+    dataset = _write_full_dataset(tmp_path)
+    baseline_catalog = _write_json(
+        tmp_path / "albums.v1.json",
+        {"snapshot_date": SNAPSHOT, "albums": [{"main_release_id": 101, "artist_id": 11}]},
+    )
+    finalists_path = _write_json(
+        tmp_path / "finalists.json", [{"master_id": 1, "main_release_id": 103, "artist_id": 50}]
+    )
+    with pytest.raises(ValueError, match="must be given together"):
+        main(
+            [
+                "select-graph-rich-candidates",
+                "--dataset",
+                str(dataset),
+                "--baseline-catalog",
+                str(baseline_catalog),
+                "--finalists",
+                str(finalists_path),
+                "--expansion-policy",
+                str(_policy(tmp_path / "policy.json")),
+                "--count",
+                "1",
+                "--output",
+                str(tmp_path / "local" / "out.json"),
+            ]
+        )
