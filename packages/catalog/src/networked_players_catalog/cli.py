@@ -907,6 +907,80 @@ def _parser() -> argparse.ArgumentParser:
         help="suppress the coarse progress lines this otherwise prints to stderr",
     )
 
+    relationship_pool_parser = subparsers.add_parser(
+        "build-relationship-pool",
+        help=(
+            "build a candidate pool by RELATIONSHIP to the published catalog "
+            "(graph-expansion Phase 2's 'Pool B'): masters carrying at least "
+            "--minimum-overlap performers who are already on catalog albums. "
+            "Substitutes for rank-album-candidates as the pool source for the "
+            "graph-value and coverage lanes -- that command ranks by corpus "
+            "weight (variant_count * credit_rows) with no notion of the catalog, "
+            "which measurably produced a pool where no in-band candidate added "
+            "any new performer at all"
+        ),
+    )
+    relationship_pool_parser.add_argument("--onehop-root", type=Path, required=True)
+    relationship_pool_parser.add_argument(
+        "--masters-root",
+        type=Path,
+        required=True,
+        help="supplies the candidate's title/year and the genre/style non-studio gate",
+    )
+    relationship_pool_parser.add_argument(
+        "--album-credit-membership",
+        type=Path,
+        required=True,
+        help=(
+            "apps/web/public/data/albums/credit-membership.v1.json -- the published "
+            "catalog's own rosters, gated to performers by the same ADR 0068 rule "
+            "the scorer's roster_size uses"
+        ),
+    )
+    relationship_pool_parser.add_argument("--release-format-policy", type=Path, required=True)
+    relationship_pool_parser.add_argument(
+        "--minimum-overlap",
+        type=int,
+        default=2,
+        help=(
+            "distinct catalog performers a master must carry to enter the pool "
+            "(default 2, expansion-policy-v1.json's automatic-lane "
+            "overlap_existing_minimum -- one shared performer adds a star, not "
+            "structure); pass 1 for the collection-relaxed threshold"
+        ),
+    )
+    relationship_pool_parser.add_argument(
+        "--studio-album-exclusions",
+        type=Path,
+        default=None,
+        help="optional studio-album-master-exclusions-v1.json; curated master-ID deny-list",
+    )
+    relationship_pool_parser.add_argument(
+        "--already-published-catalog",
+        type=Path,
+        default=None,
+        help="apps/web/public/data/catalog/albums.v1.json -- published masters are dropped",
+    )
+    relationship_pool_parser.add_argument(
+        "--limit",
+        type=int,
+        default=None,
+        help="optional cap on pool size, applied after ordering by overlap descending",
+    )
+    relationship_pool_parser.add_argument(
+        "--output",
+        type=Path,
+        required=True,
+        help="must resolve under local/ -- a pre-decision candidate pool, never published",
+    )
+    relationship_pool_parser.add_argument("--memory-limit", default="3GB")
+    relationship_pool_parser.add_argument("--threads", type=int, default=2)
+    relationship_pool_parser.add_argument(
+        "--quiet",
+        action="store_true",
+        help="suppress the coarse progress lines this otherwise prints to stderr",
+    )
+
     score_expansion_candidates_parser = subparsers.add_parser(
         "score-expansion-candidates",
         help=(
@@ -3394,6 +3468,73 @@ def main(argv: Sequence[str] | None = None) -> int:
                     "output": str(args.output),
                     "candidate_count": len(collection_candidates),
                     "eligible_count": len(eligible),
+                },
+                indent=2,
+            )
+        )
+        return 0
+
+    if args.command == "build-relationship-pool":
+        from networked_players_graph_core.pathfinding_graph import (
+            edge_eligible_membership_artist_ids,
+        )
+        from networked_players_graph_core.relationship_pool import build_relationship_pool
+
+        from .discogs.release_format_policy import load_master_exclusions
+
+        _require_local_only_output(
+            args.output,
+            command="build-relationship-pool",
+            why=(
+                "this is a pre-decision candidate pool (graph-expansion Phase 2) -- "
+                "the policy that shapes it is public, the pool itself is not"
+            ),
+        )
+
+        # The catalog's own performers, gated by the SAME ADR 0068 rule the
+        # scorer's roster_size uses -- credit-membership is deliberately
+        # inclusive (sleeve designers, engineers), so using it raw would let a
+        # mastering engineer's whole discography into the pool.
+        membership_payload = json.loads(args.album_credit_membership.read_text())
+        catalog_performer_ids: set[int] = set()
+        for album in membership_payload.get("albums", []):
+            catalog_performer_ids |= edge_eligible_membership_artist_ids(album)
+
+        pool_master_exclusions = load_master_exclusions(args.studio_album_exclusions)
+        pool_published_master_ids: frozenset[int] = frozenset()
+        if args.already_published_catalog is not None:
+            catalog_payload = json.loads(args.already_published_catalog.read_text())
+            pool_published_master_ids = frozenset(
+                int(a["master_id"])
+                for a in catalog_payload.get("albums", [])
+                if a.get("master_id") is not None
+            )
+        pool_allowed_release_ids = frozenset(
+            json.loads(args.release_format_policy.read_text())["allowed_release_ids"]
+        )
+
+        pool = build_relationship_pool(
+            args.onehop_root,
+            catalog_performer_ids=catalog_performer_ids,
+            masters_root=args.masters_root,
+            allowed_release_ids=pool_allowed_release_ids,
+            minimum_overlap=args.minimum_overlap,
+            master_exclusions=pool_master_exclusions,
+            already_published_master_ids=pool_published_master_ids,
+            limit=args.limit,
+            memory_limit=args.memory_limit,
+            threads=args.threads,
+            quiet=args.quiet,
+        )
+
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(json.dumps(pool, indent=2) + "\n")
+        print(
+            json.dumps(
+                {
+                    "output": str(args.output),
+                    "catalog_performer_count": len(catalog_performer_ids),
+                    "pool_size": len(pool),
                 },
                 indent=2,
             )
