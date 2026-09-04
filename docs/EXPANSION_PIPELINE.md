@@ -7,9 +7,9 @@ grows into a full method-plus-round-log doc as later Phase 2 slices land (plan �
 file for that eventual scope; it is deliberately narrow today rather than describing steps that
 don't exist yet).
 
-**Not yet built, so not described below:** `score-expansion-candidates` (plan §5.2), the packet
-review flow (plan §5.3), and the round itself — no Round 1 has run yet. This doc will grow a
-"round log" section once one has.
+**Not yet run, so not described below:** the round itself — `score-expansion-candidates` (plan
+§5.2) is real and built (see below), but no Round 1 has run yet. This doc will grow a "round
+log" section once one has.
 
 ## Host assignment (plan §17, Slice 2-0)
 
@@ -34,7 +34,7 @@ drove the decision:
 | Host | Runs |
 |---|---|
 | Coordination host | `expand-one-hop` (already holds the full parsed dataset — no new replication, no new disk risk) |
-| `zimaworker1` | Whichever of that round's genuinely concurrent jobs it already fits: the pair-sweep, candidate-extraction, and Leiden/prominence-adjacent jobs (plan §9), plus `score-expansion-candidates` once built |
+| `zimaworker1` | Whichever of that round's genuinely concurrent jobs it already fits: the pair-sweep, candidate-extraction, and Leiden/prominence-adjacent jobs (plan §9), plus `score-expansion-candidates` (real and built, `networked-players-catalog score-expansion-candidates`) |
 
 Both run *while* the coordination host is mid-`expand-one-hop`, not sequentially after it — real
 wall-clock overlap within one round, using both boards, with zero new disk pressure and no new
