@@ -42,6 +42,8 @@ _VERSION_FIELD_NAMES = frozenset(
         # graph-expansion Phase 1 (plan section 8): added at the same time
         # as the artifact itself, not caught later this time.
         "prominence_version",
+        # graph-expansion Phase 1 (plan section 7): same discipline.
+        "search_index_version",
     }
 )
 

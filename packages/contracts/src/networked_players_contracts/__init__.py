@@ -40,6 +40,7 @@ from .record_routes import (
     record_routes_failures,
 )
 from .rounds import ROUNDS_SCHEMA_VERSION, rounds_failures
+from .search_index import SEARCH_INDEX_SCHEMA_VERSION, search_index_failures
 
 __all__ = [
     "ALBUM_ART_SCHEMA_VERSION",
@@ -57,6 +58,7 @@ __all__ = [
     "PUBLIC_ARTIFACT_GROUPS",
     "RECORD_ROUTES_SCHEMA_VERSION",
     "ROUNDS_SCHEMA_VERSION",
+    "SEARCH_INDEX_SCHEMA_VERSION",
     "album_art_failures",
     "album_art_version",
     "album_credit_membership_failures",
@@ -75,6 +77,7 @@ __all__ = [
     "public_artifacts_failures",
     "record_routes_failures",
     "rounds_failures",
+    "search_index_failures",
     "stable_id_digest",
 ]
 

@@ -1322,6 +1322,50 @@ def _parser() -> argparse.ArgumentParser:
     validate_prominence.add_argument("--prominence", type=Path, required=True)
     validate_prominence.add_argument("--pathfinding-graph", type=Path, required=True)
 
+    build_search_index = subparsers.add_parser(
+        "build-search-index",
+        help=(
+            "build the public site-search index "
+            "(apps/web/public/data/search/index.v1.json, graph-expansion "
+            "Phase 1, plan section 7) -- a flat list of searchable albums "
+            "and contributors, built entirely from two already-published "
+            "artifacts (--catalog, --contributor-index); never a fresh "
+            "corpus query, so this can run anywhere, including CI. Every "
+            "entry's state is 'present' -- 'candidate' entries need "
+            "catalog/candidates.v1.json, a Phase 3 dependency this doesn't "
+            "have yet"
+        ),
+    )
+    build_search_index.add_argument(
+        "--catalog", type=Path, required=True, help="apps/web/public/data/catalog/albums.v1.json"
+    )
+    build_search_index.add_argument(
+        "--contributor-index",
+        type=Path,
+        required=True,
+        help="apps/web/public/data/contributors/index.v1.json",
+    )
+    build_search_index.add_argument("--output", type=Path, required=True)
+    build_search_index.add_argument(
+        "--generated-at",
+        required=True,
+        help="explicit ISO datetime for this build (never the wall clock)",
+    )
+
+    validate_search_index = subparsers.add_parser(
+        "validate-search-index",
+        help=(
+            "validate a search index against the catalog and contributor "
+            "index it claims to be built from (catalog_version/"
+            "contributor_index_version agreement, every catalog album and "
+            "every contributor indexed exactly once, search_index_version "
+            "recomputation)"
+        ),
+    )
+    validate_search_index.add_argument("--search-index", type=Path, required=True)
+    validate_search_index.add_argument("--catalog", type=Path, required=True)
+    validate_search_index.add_argument("--contributor-index", type=Path, required=True)
+
     build_album_credit_membership = subparsers.add_parser(
         "build-album-credit-membership",
         help=(
@@ -1491,6 +1535,11 @@ def _parser() -> argparse.ArgumentParser:
         "--evidence-release-registry",
         type=Path,
         default=Path("apps/web/public/data/evidence/release-registry.v1.json"),
+    )
+    validate_public_artifacts.add_argument(
+        "--search-index",
+        type=Path,
+        default=Path("apps/web/public/data/search/index.v1.json"),
     )
 
     diff_artifact_version = subparsers.add_parser(
@@ -4021,6 +4070,54 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
         return 0
 
+    if args.command == "build-search-index":
+        from networked_players_contracts.search_index import search_index_failures
+        from networked_players_graph_core.search_index import build_search_index
+
+        catalog = json.loads(args.catalog.read_text())
+        contributor_index = json.loads(args.contributor_index.read_text())
+
+        search_index = build_search_index(
+            catalog=catalog,
+            contributor_index=contributor_index,
+            generated_at=args.generated_at,
+        )
+
+        failures = search_index_failures(search_index, catalog, contributor_index)
+        if failures:
+            raise ValueError("refusing to write an invalid search index: " + "; ".join(failures))
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(json.dumps(search_index, indent=2) + "\n")
+        print(
+            json.dumps(
+                {
+                    "output": str(args.output),
+                    "catalog_version": search_index["catalog_version"],
+                    "search_index_version": search_index["search_index_version"],
+                    "entries": len(search_index["entries"]),
+                },
+                indent=2,
+            )
+        )
+        return 0
+
+    if args.command == "validate-search-index":
+        from networked_players_contracts.search_index import search_index_failures
+
+        search_index_payload = json.loads(args.search_index.read_text())
+        catalog = json.loads(args.catalog.read_text())
+        contributor_index = json.loads(args.contributor_index.read_text())
+        failures = search_index_failures(search_index_payload, catalog, contributor_index)
+        if failures:
+            raise ValueError("; ".join(failures))
+        print(
+            json.dumps(
+                {"ok": True, "entries": len(search_index_payload["entries"])},
+                indent=2,
+            )
+        )
+        return 0
+
     if args.command == "build-album-credit-membership":
         from networked_players_contracts.album_credit_membership import (
             album_credit_membership_failures,
@@ -4176,6 +4273,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             prominence=json.loads(args.prominence.read_text()),
             album_credit_membership=json.loads(args.album_credit_membership.read_text()),
             evidence_release_registry=json.loads(args.evidence_release_registry.read_text()),
+            search_index=json.loads(args.search_index.read_text()),
         )
         ok = all(not failures for failures in report.values())
         print(json.dumps({"ok": ok, "failures": report}, indent=2))

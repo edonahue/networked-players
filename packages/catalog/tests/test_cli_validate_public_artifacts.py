@@ -23,6 +23,7 @@ from networked_players_contracts.evidence_release_registry import (
 )
 from networked_players_contracts.pathfinding_graph import pathfinding_graph_version
 from networked_players_contracts.prominence import prominence_version
+from networked_players_contracts.search_index import search_index_version
 
 _SNAPSHOT = "20260601"
 _CATALOG_VERSION_STR = "catalog-v1-20260601-abc123abc123"
@@ -376,6 +377,39 @@ def _contributor_index(catalog: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _search_index(catalog: dict[str, Any], contributor_index: dict[str, Any]) -> dict[str, Any]:
+    entries = [
+        {
+            "kind": "album",
+            "id": album["id"],
+            "label": album["title"],
+            "sublabel": album["artist"],
+            "state": "present",
+        }
+        for album in catalog["albums"]
+    ] + [
+        {
+            "kind": "contributor",
+            "id": str(contributor["artist_id"]),
+            "label": contributor["name"],
+            "sublabel": None,
+            "state": "present",
+        }
+        for contributor in contributor_index["contributors"]
+    ]
+    payload: dict[str, Any] = {
+        "schema_version": 1,
+        "catalog_version": catalog["catalog_version"],
+        "contributor_index_version": contributor_index["contributor_index_version"],
+        "generated_at": "2026-09-03T00:00:00+00:00",
+        "source": "test",
+        "license": "test",
+        "entries": entries,
+    }
+    payload["search_index_version"] = search_index_version(entries, _SNAPSHOT)
+    return payload
+
+
 def _album_hop_distances(catalog: dict[str, Any]) -> dict[str, Any]:
     entries = [{"artist_id": 100, "album_id": "master-1", "hop_distance": 0}]
     return {
@@ -536,6 +570,7 @@ def _write_all(tmp_path: Path) -> dict[str, Path]:
     catalog = _catalog()
     routes_universe, routes_rounds = _routes_pair()
     pathfinding_graph = _pathfinding_graph(catalog)
+    contributor_index = _contributor_index(catalog)
     return {
         "catalog": _write(tmp_path / "albums.v1.json", catalog),
         "album_art": _write(tmp_path / "album-art.v1.json", _album_art(catalog)),
@@ -547,9 +582,7 @@ def _write_all(tmp_path: Path) -> dict[str, Path]:
         "routes_universe": _write(tmp_path / "routes-universe.v1.json", routes_universe),
         "routes_rounds": _write(tmp_path / "routes-rounds.v1.json", routes_rounds),
         "challenge": _write(tmp_path / "challenge.v3.json", _challenge(catalog)),
-        "contributor_index": _write(
-            tmp_path / "contributor-index.v1.json", _contributor_index(catalog)
-        ),
+        "contributor_index": _write(tmp_path / "contributor-index.v1.json", contributor_index),
         "album_hop_distances": _write(
             tmp_path / "album-hop-distances.v1.json", _album_hop_distances(catalog)
         ),
@@ -560,6 +593,9 @@ def _write_all(tmp_path: Path) -> dict[str, Path]:
         ),
         "evidence_release_registry": _write(
             tmp_path / "evidence-release-registry.v1.json", _evidence_release_registry(catalog)
+        ),
+        "search_index": _write(
+            tmp_path / "search-index.v1.json", _search_index(catalog, contributor_index)
         ),
     }
 
@@ -595,6 +631,8 @@ def _args(paths: dict[str, Path]) -> list[str]:
         str(paths["album_credit_membership"]),
         "--evidence-release-registry",
         str(paths["evidence_release_registry"]),
+        "--search-index",
+        str(paths["search_index"]),
     ]
 
 
@@ -617,6 +655,7 @@ def test_clean_set_exits_zero(tmp_path: Path, capsys) -> None:
         "prominence": [],
         "album_credit_membership": [],
         "evidence_release_registry": [],
+        "search_index": [],
     }
 
 
@@ -641,6 +680,7 @@ def test_default_paths_point_at_the_real_repo_layout(tmp_path: Path, capsys, mon
     catalog = _catalog()
     routes_universe, routes_rounds = _routes_pair()
     pathfinding_graph = _pathfinding_graph(catalog)
+    contributor_index = _contributor_index(catalog)
     layout = {
         "apps/web/public/data/catalog/albums.v1.json": catalog,
         "apps/web/public/data/catalog/album-art.v1.json": _album_art(catalog),
@@ -650,7 +690,7 @@ def test_default_paths_point_at_the_real_repo_layout(tmp_path: Path, capsys, mon
         "apps/web/public/data/routes/universe.v1.json": routes_universe,
         "apps/web/public/data/routes/rounds.v1.json": routes_rounds,
         "apps/web/public/data/challenge.v3.json": _challenge(catalog),
-        "apps/web/public/data/contributors/index.v1.json": _contributor_index(catalog),
+        "apps/web/public/data/contributors/index.v1.json": contributor_index,
         "apps/web/public/data/contributors/album-hop-distances.v1.json": (
             _album_hop_distances(catalog)
         ),
@@ -660,6 +700,7 @@ def test_default_paths_point_at_the_real_repo_layout(tmp_path: Path, capsys, mon
         "apps/web/public/data/evidence/release-registry.v1.json": _evidence_release_registry(
             catalog
         ),
+        "apps/web/public/data/search/index.v1.json": _search_index(catalog, contributor_index),
     }
     for relative_path, payload in layout.items():
         full_path = tmp_path / relative_path

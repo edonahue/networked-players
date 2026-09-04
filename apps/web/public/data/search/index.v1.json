@@ -1,0 +1,4974 @@
+{
+  "schema_version": 1,
+  "catalog_version": "catalog-v1-20260601-7fbbb46b28e6",
+  "contributor_index_version": "contributor-index-v1-20260601-af1327047e9b",
+  "generated_at": "2026-09-03T23:46:02Z",
+  "source": "Derived from apps/web/public/data/catalog/albums.v1.json and apps/web/public/data/contributors/index.v1.json -- no fresh full-corpus query. See docs/DATA_AND_RIGHTS.md.",
+  "license": "Derived from the Discogs monthly CC0 data dumps via the two published artifacts above. See docs/DATA_AND_RIGHTS.md.",
+  "entries": [
+    {
+      "kind": "album",
+      "id": "master-69938",
+      "label": "Emergency On Planet Earth",
+      "sublabel": "Jamiroquai",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-69946",
+      "label": "The Return Of The Space Cowboy",
+      "sublabel": "Jamiroquai",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-69956",
+      "label": "Travelling Without Moving",
+      "sublabel": "Jamiroquai",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-135633",
+      "label": "Synkronized",
+      "sublabel": "Jamiroquai",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-69925",
+      "label": "A Funk Odyssey",
+      "sublabel": "Jamiroquai",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-172407",
+      "label": "Exotica",
+      "sublabel": "Martin Denny",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-110874",
+      "label": "Taboo - The Exotic Sounds Of Arthur Lyman",
+      "sublabel": "Arthur Lyman",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-45284",
+      "label": "Revolver",
+      "sublabel": "The Beatles",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-24511",
+      "label": "Axis: Bold As Love",
+      "sublabel": "The Jimi Hendrix Experience",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-52497",
+      "label": "Sign \"O\" The Times",
+      "sublabel": "Prince",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-21520",
+      "label": "In Rainbows",
+      "sublabel": "Radiohead",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-18080",
+      "label": "Violator",
+      "sublabel": "Depeche Mode",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-42522",
+      "label": "Blood Sugar Sex Magik",
+      "sublabel": "Red Hot Chili Peppers",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-45922",
+      "label": "The Low End Theory",
+      "sublabel": "A Tribe Called Quest",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-59538",
+      "label": "Journey In Satchidananda",
+      "sublabel": "Alice Coltrane",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-20135",
+      "label": "Paul's Boutique",
+      "sublabel": "Beastie Boys",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-92896",
+      "label": "Still Bill",
+      "sublabel": "Bill Withers",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-302",
+      "label": "Paranoid",
+      "sublabel": "Black Sabbath",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-3878",
+      "label": "Blood On The Tracks",
+      "sublabel": "Bob Dylan",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-104166",
+      "label": "Tapestry",
+      "sublabel": "Carole King",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-151766",
+      "label": "Voodoo",
+      "sublabel": "D'Angelo",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-26647",
+      "label": "Discovery",
+      "sublabel": "Daft Punk",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-1561",
+      "label": "The Rise And Fall Of Ziggy Stardust And The Spiders From Mars",
+      "sublabel": "David Bowie",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-8357",
+      "label": "3 Feet High And Rising",
+      "sublabel": "De La Soul",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-38722",
+      "label": "Rumours",
+      "sublabel": "Fleetwood Mac",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-1046042",
+      "label": "Blonde",
+      "sublabel": "Frank Ocean",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-16158",
+      "label": "Maggot Brain",
+      "sublabel": "Funkadelic",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-55576",
+      "label": "Nightclubbing",
+      "sublabel": "Grace Jones",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-19493",
+      "label": "Head Hunters",
+      "sublabel": "Herbie Hancock",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-38175",
+      "label": "Raw Power",
+      "sublabel": "The Stooges",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-47744",
+      "label": "Blue",
+      "sublabel": "Joni Mitchell",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-28680",
+      "label": "Hounds Of Love",
+      "sublabel": "Kate Bush",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-406634",
+      "label": "In The Court Of The Crimson King (An Observation By King Crimson)",
+      "sublabel": "King Crimson",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-57279",
+      "label": "The Miseducation Of Lauryn Hill",
+      "sublabel": "Lauryn Hill",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-4300",
+      "label": "Untitled",
+      "sublabel": "Led Zeppelin",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-6495",
+      "label": "Master Of Puppets",
+      "sublabel": "Metallica",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-5460",
+      "label": "Kind Of Blue",
+      "sublabel": "Miles Davis",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-66510",
+      "label": "Black On Both Sides",
+      "sublabel": "Mos Def",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-20148",
+      "label": "Illmatic",
+      "sublabel": "Nas",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-37615",
+      "label": "Harvest",
+      "sublabel": "Neil Young",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-122261",
+      "label": "Nina Simone Sings The Blues",
+      "sublabel": "Nina Simone",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-13814",
+      "label": "Nevermind",
+      "sublabel": "Nirvana",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-15841",
+      "label": "Mothership Connection",
+      "sublabel": "Parliament",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-10362",
+      "label": "The Dark Side Of The Moon",
+      "sublabel": "Pink Floyd",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-5863",
+      "label": "A Night At The Opera",
+      "sublabel": "Queen",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-39341",
+      "label": "Ramones",
+      "sublabel": "Ramones",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-82337",
+      "label": "First Take",
+      "sublabel": "Roberta Flack",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-37401",
+      "label": "Raising Hell",
+      "sublabel": "Run-DMC",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-9382",
+      "label": "Histoire De Melody Nelson",
+      "sublabel": "Serge Gainsbourg",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-16921",
+      "label": "Aja",
+      "sublabel": "Steely Dan",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-26436",
+      "label": "Spirit Of Eden",
+      "sublabel": "Talk Talk",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-25688",
+      "label": "Remain In Light",
+      "sublabel": "Talking Heads",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-17217",
+      "label": "Pet Sounds",
+      "sublabel": "The Beach Boys",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-24047",
+      "label": "Abbey Road",
+      "sublabel": "The Beatles",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-31755",
+      "label": "Disintegration",
+      "sublabel": "The Cure",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-57970",
+      "label": "Ready To Die",
+      "sublabel": "Notorious B.I.G.",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-30303",
+      "label": "Exile On Main St.",
+      "sublabel": "The Rolling Stones",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-20137",
+      "label": "The Queen Is Dead",
+      "sublabel": "The Smiths",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-35276",
+      "label": "The Velvet Underground & Nico",
+      "sublabel": "The Velvet Underground",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-13960",
+      "label": "Rain Dogs",
+      "sublabel": "Tom Waits",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-105802",
+      "label": "Tracy Chapman",
+      "sublabel": "Tracy Chapman",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-3211",
+      "label": "Vampire Weekend",
+      "sublabel": "Vampire Weekend",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-10363",
+      "label": "Yankee Hotel Foxtrot",
+      "sublabel": "Wilco",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-25303",
+      "label": "Enter The Wu-Tang (36 Chambers)",
+      "sublabel": "Wu-Tang Clan",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-35006",
+      "label": "Close To The Edge",
+      "sublabel": "Yes",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-8883",
+      "label": "Thriller",
+      "sublabel": "Michael Jackson",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-64290",
+      "label": "The Joshua Tree",
+      "sublabel": "U2",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-30577",
+      "label": "Goodbye Yellow Brick Road",
+      "sublabel": "Elton John",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-59501",
+      "label": "Hotel California",
+      "sublabel": "Eagles",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-31598",
+      "label": "Abraxas",
+      "sublabel": "Santana",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-133278",
+      "label": "Let's Talk About Love",
+      "sublabel": "C\u00e9line Dion",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-68469",
+      "label": "Who's Next",
+      "sublabel": "The Who",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-23684",
+      "label": "Brothers In Arms",
+      "sublabel": "Dire Straits",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-76678",
+      "label": "Layla And Other Assorted Love Songs",
+      "sublabel": "Derek & The Dominos",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-69859",
+      "label": "461 Ocean Boulevard",
+      "sublabel": "Eric Clapton",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-66631",
+      "label": "What's Going On",
+      "sublabel": "Marvin Gaye",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-55658",
+      "label": "Graceland",
+      "sublabel": "Paul Simon",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-26725",
+      "label": "Born To Run",
+      "sublabel": "Bruce Springsteen",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-91767",
+      "label": "Private Dancer",
+      "sublabel": "Tina Turner",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-30712",
+      "label": "Toto IV",
+      "sublabel": "Toto",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-72879",
+      "label": "Imagine",
+      "sublabel": "John Lennon",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-35759",
+      "label": "So",
+      "sublabel": "Peter Gabriel",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-553",
+      "label": "Face Value",
+      "sublabel": "Phil Collins",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-39248",
+      "label": "Synchronicity",
+      "sublabel": "The Police",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-38712",
+      "label": "D\u00e9j\u00e0 Vu",
+      "sublabel": "Crosby, Stills, Nash & Young",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-13280",
+      "label": "Reckless",
+      "sublabel": "Bryan Adams",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-67836",
+      "label": "True Blue",
+      "sublabel": "Madonna",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-41722",
+      "label": "Destroyer",
+      "sublabel": "Kiss",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-34081",
+      "label": "Time Out",
+      "sublabel": "The Dave Brubeck Quartet",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-73013",
+      "label": "Double Fantasy",
+      "sublabel": "John Lennon & Yoko Ono",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-27765",
+      "label": "Bridge Over Troubled Water",
+      "sublabel": "Simon & Garfunkel",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-37145",
+      "label": "Pump",
+      "sublabel": "Aerosmith",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-72235",
+      "label": "Pearl",
+      "sublabel": "Janis Joplin",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-51607",
+      "label": "Whitney Houston",
+      "sublabel": "Whitney Houston",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-17249",
+      "label": "Brothers And Sisters",
+      "sublabel": "The Allman Brothers Band",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-49058",
+      "label": "In-A-Gadda-Da-Vida",
+      "sublabel": "Iron Butterfly",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-87446",
+      "label": "Talking Book",
+      "sublabel": "Stevie Wonder",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-113522",
+      "label": "Christopher Cross",
+      "sublabel": "Christopher Cross",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-27460",
+      "label": "Britney",
+      "sublabel": "Britney Spears",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-23069",
+      "label": "Bat Out Of Hell",
+      "sublabel": "Meat Loaf",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-32708",
+      "label": "The Dream Of The Blue Turtles",
+      "sublabel": "Sting",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-12236",
+      "label": "The Marshall Mathers LP",
+      "sublabel": "Eminem",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-40048",
+      "label": "Flowers In The Dirt",
+      "sublabel": "Paul McCartney",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-20387",
+      "label": "Good Girl Gone Bad",
+      "sublabel": "Rihanna",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-26037",
+      "label": "Running On Empty",
+      "sublabel": "Jackson Browne",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-58313",
+      "label": "Avalon",
+      "sublabel": "Roxy Music",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-30926",
+      "label": "The Dude",
+      "sublabel": "Quincy Jones",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-65826",
+      "label": "The Nightfly",
+      "sublabel": "Donald Fagen",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-55281",
+      "label": "Cosmo's Factory",
+      "sublabel": "Creedence Clearwater Revival",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-81575",
+      "label": "Building The Perfect Beast",
+      "sublabel": "Don Henley",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-52671",
+      "label": "Give Me The Night",
+      "sublabel": "George Benson",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-45432",
+      "label": "L.A. Woman",
+      "sublabel": "The Doors",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-43063",
+      "label": "Songs From The Big Chair",
+      "sublabel": "Tears For Fears",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-35706",
+      "label": "Wheels Of Fire",
+      "sublabel": "Cream (2)",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-24535",
+      "label": "Electric Ladyland",
+      "sublabel": "The Jimi Hendrix Experience",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-107325",
+      "label": "Elvis Presley",
+      "sublabel": "Elvis Presley",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-106396",
+      "label": "The Wild Heart",
+      "sublabel": "Stevie Nicks",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-70584",
+      "label": "Second Helping",
+      "sublabel": "Lynyrd Skynyrd",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-113224",
+      "label": "Unforgettable With Love",
+      "sublabel": "Natalie Cole",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-41155",
+      "label": "Blizzard Of Ozz",
+      "sublabel": "Ozzy Osbourne",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-57029",
+      "label": "The Stranger",
+      "sublabel": "Billy Joel",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-108242",
+      "label": "Silk Degrees",
+      "sublabel": "Boz Scaggs",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-750386",
+      "label": "1989",
+      "sublabel": "Taylor Swift",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-67405",
+      "label": "America",
+      "sublabel": "America (2)",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-18442",
+      "label": "American Beauty",
+      "sublabel": "The Grateful Dead",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-44278",
+      "label": "Transformer",
+      "sublabel": "Lou Reed",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-16545",
+      "label": "Faster Than The Speed Of Night",
+      "sublabel": "Bonnie Tyler",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-60721",
+      "label": "With A Little Help From My Friends",
+      "sublabel": "Joe Cocker",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-403952",
+      "label": "Born To Die",
+      "sublabel": "Lana Del Rey",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-32208",
+      "label": "Blue Train",
+      "sublabel": "John Coltrane",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-57940",
+      "label": "The Six Wives Of Henry VIII",
+      "sublabel": "Rick Wakeman",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-74227",
+      "label": "Guilty",
+      "sublabel": "Barbra Streisand",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-4424",
+      "label": "Eye In The Sky",
+      "sublabel": "The Alan Parsons Project",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-56036",
+      "label": "All Things Must Pass",
+      "sublabel": "George Harrison",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-60680",
+      "label": "Nilsson Schmilsson",
+      "sublabel": "Harry Nilsson",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-81172",
+      "label": "Mystery Girl",
+      "sublabel": "Roy Orbison",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-45720",
+      "label": "Lionel Richie",
+      "sublabel": "Lionel Richie",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-49965",
+      "label": "Amused To Death",
+      "sublabel": "Roger Waters",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-68399",
+      "label": "Atlantic Crossing",
+      "sublabel": "Rod Stewart",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-106274",
+      "label": "Genius Loves Company",
+      "sublabel": "Ray Charles",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-92517",
+      "label": "Ram",
+      "sublabel": "Paul & Linda McCartney",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-47868",
+      "label": "Surrealistic Pillow",
+      "sublabel": "Jefferson Airplane",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-80514",
+      "label": "1100 Bel Air Place",
+      "sublabel": "Julio Iglesias",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-3719",
+      "label": "The Downward Spiral",
+      "sublabel": "Nine Inch Nails",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-99919",
+      "label": "No Secrets",
+      "sublabel": "Carly Simon",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-89665",
+      "label": "Reload",
+      "sublabel": "Tom Jones",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-48605",
+      "label": "Eliminator",
+      "sublabel": "ZZ Top",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-79666",
+      "label": "Merry Christmas",
+      "sublabel": "Mariah Carey",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-69156",
+      "label": "Cher",
+      "sublabel": "Cher",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-90844",
+      "label": "Futuresex/Lovesounds",
+      "sublabel": "Justin Timberlake",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-35401",
+      "label": "Blood, Sweat And Tears",
+      "sublabel": "Blood, Sweat And Tears",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-68209",
+      "label": "Mud Slide Slim And The Blue Horizon",
+      "sublabel": "James Taylor (2)",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-35793",
+      "label": "Apostrophe (')",
+      "sublabel": "Frank Zappa",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-122051",
+      "label": "Victory",
+      "sublabel": "The Jacksons",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-92986",
+      "label": "Rise",
+      "sublabel": "Herb Alpert",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-97173",
+      "label": "She's The Boss",
+      "sublabel": "Mick Jagger",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-25893",
+      "label": "Bad Girls",
+      "sublabel": "Donna Summer",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-129759",
+      "label": "Diamonds & Rust",
+      "sublabel": "Joan Baez",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-79241",
+      "label": "Ringo",
+      "sublabel": "Ringo Starr",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-52998",
+      "label": "Hey Stoopid",
+      "sublabel": "Alice Cooper (2)",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-36227",
+      "label": "Really",
+      "sublabel": "J.J. Cale",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-338175",
+      "label": "Born This Way",
+      "sublabel": "Lady Gaga",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-18027",
+      "label": "Mechanical Animals",
+      "sublabel": "Marilyn Manson",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-49227",
+      "label": "Rickie Lee Jones",
+      "sublabel": "Rickie Lee Jones",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-3762",
+      "label": "I'm Your Man",
+      "sublabel": "Leonard Cohen",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-96362",
+      "label": "Wave",
+      "sublabel": "Antonio Carlos Jobim",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-31337",
+      "label": "Fever",
+      "sublabel": "Kylie Minogue",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-104115",
+      "label": "Stephen Stills",
+      "sublabel": "Stephen Stills",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-104399",
+      "label": "Introducing The Hardline According To Terence Trent D'Arby",
+      "sublabel": "Terence Trent D'Arby",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-36251",
+      "label": "Post",
+      "sublabel": "Bj\u00f6rk",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-66782",
+      "label": "Bon Jovi",
+      "sublabel": "Bon Jovi",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-2452996",
+      "label": "Dawn FM",
+      "sublabel": "The Weeknd",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-1164779",
+      "label": "Damn",
+      "sublabel": "Kendrick Lamar",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-303567",
+      "label": "21",
+      "sublabel": "Adele (3)",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-138283",
+      "label": "Ricky Martin",
+      "sublabel": "Ricky Martin",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-75606",
+      "label": "Love Devotion Surrender",
+      "sublabel": "Carlos Santana",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-8179",
+      "label": "Specials",
+      "sublabel": "The Specials",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-79393",
+      "label": "Club Classics Vol. One",
+      "sublabel": "Soul II Soul",
+      "state": "present"
+    },
+    {
+      "kind": "album",
+      "id": "master-54449",
+      "label": "Rei Momo",
+      "sublabel": "David Byrne",
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "634",
+      "label": "Brian Eno",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "661",
+      "label": "Bill Laswell",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "1289",
+      "label": "Daft Punk",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "1373",
+      "label": "Bj\u00f6rk",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "2264",
+      "label": "Jocelyn Brown",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "2265",
+      "label": "Roy Ayers",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "2266",
+      "label": "George Benson",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "2725",
+      "label": "Depeche Mode",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "2769",
+      "label": "Barry Adamson",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "2808",
+      "label": "Talvin Singh",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "3194",
+      "label": "UNKLE",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "3268",
+      "label": "A Tribe Called Quest",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "3750",
+      "label": "Cal Tjader",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "3840",
+      "label": "Radiohead",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "3850",
+      "label": "Horace Andy",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "3857",
+      "label": "Nine Inch Nails",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "3865",
+      "label": "Herbie Hancock",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "3918",
+      "label": "David Byrne",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "3990",
+      "label": "Terry Hall",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "4091",
+      "label": "De La Soul",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "4205",
+      "label": "Giorgio Moroder",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "4778",
+      "label": "Mary J. Blige",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "4800",
+      "label": "James Ingram",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "4848",
+      "label": "Kool G Rap",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "4970",
+      "label": "Soul II Soul",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "5049",
+      "label": "Robert Wyatt",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "5083",
+      "label": "Jon Anderson",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "5492",
+      "label": "Shirley Bassey",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "5648",
+      "label": "Mos Def",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "5951",
+      "label": "Serge Gainsbourg",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "6092",
+      "label": "WestBam",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "6270",
+      "label": "Donna Summer",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "6277",
+      "label": "Dido",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "6378",
+      "label": "Gorillaz",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "6520",
+      "label": "U2",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "6952",
+      "label": "Tom Morello",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "7987",
+      "label": "The Police",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "8024",
+      "label": "Janet Jackson",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "8029",
+      "label": "Jamiroquai",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "8284",
+      "label": "Sarah Vaughan",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "8591",
+      "label": "Roger Joseph Manning Jr.",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "8718",
+      "label": "Madeline Bell",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "8760",
+      "label": "Madonna",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "8887",
+      "label": "Parliament",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "9051",
+      "label": "Wally Badarou",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "9136",
+      "label": "James Dean Bradfield",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "9708",
+      "label": "N'Dea Davenport",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "9746",
+      "label": "Donny Hathaway",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "9838",
+      "label": "Mix Master Mike",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "10079",
+      "label": "Joe Henderson",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "10096",
+      "label": "Frank Wess",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "10263",
+      "label": "David Bowie",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "10463",
+      "label": "Bobby Womack",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "10514",
+      "label": "Archie Shepp",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "10533",
+      "label": "Dean Martin",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "10552",
+      "label": "Linda Lewis",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "10584",
+      "label": "Nina Simone",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "10643",
+      "label": "Seal",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "10664",
+      "label": "Apoptygma Berzerk",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "10783",
+      "label": "Beastie Boys",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "10933",
+      "label": "Bryan Adams",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "10995",
+      "label": "Erykah Badu",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "11012",
+      "label": "Rod Stewart",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "11070",
+      "label": "Chrissie Hynde",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "11073",
+      "label": "Iggy Pop",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "11136",
+      "label": "Peter Gabriel",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "11213",
+      "label": "Wu-Tang Clan",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "11779",
+      "label": "Danny Saber",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "11867",
+      "label": "Steve Anderson",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "11879",
+      "label": "Lou Reed",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "12208",
+      "label": "Marilyn Manson",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "12596",
+      "label": "James Brown",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "12628",
+      "label": "John Scofield",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "12686",
+      "label": "Natalie Cole",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "13151",
+      "label": "Kurtis Blow",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "13392",
+      "label": "Guy Sigsworth",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "13608",
+      "label": "Kylie Minogue",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "13735",
+      "label": "Stevie Nicks",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "13932",
+      "label": "Grace Jones",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "13961",
+      "label": "Sting",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "14068",
+      "label": "Airto Moreira",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "14400",
+      "label": "Bernard Fowler",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "14488",
+      "label": "Queen Latifah",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "14743",
+      "label": "Redman",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "15152",
+      "label": "Dr. John",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "15158",
+      "label": "Taj Mahal",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "15687",
+      "label": "Britney Spears",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "15885",
+      "label": "Michael Jackson",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "17035",
+      "label": "Chaka Khan",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "17212",
+      "label": "Robbie Williams",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "17546",
+      "label": "Quincy Jones",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "17827",
+      "label": "Eric Clapton",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "17961",
+      "label": "Cher",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "18160",
+      "label": "Mel Collins",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "18547",
+      "label": "Simple Minds",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "18837",
+      "label": "Korn",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "18839",
+      "label": "Metallica",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "18956",
+      "label": "Stevie Wonder",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "18984",
+      "label": "Marvin Gaye",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "19298",
+      "label": "C\u00e9line Dion",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "19696",
+      "label": "Vinnie Colaiuta",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "19814",
+      "label": "Tears For Fears",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "20691",
+      "label": "Philip Glass",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "20897",
+      "label": "Teddy Riley",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "20991",
+      "label": "The Rolling Stones",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "21363",
+      "label": "James Poyser",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "21658",
+      "label": "Doug Wimbish",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "21742",
+      "label": "Jay-Z",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "21991",
+      "label": "Sia",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "22757",
+      "label": "Luther Vandross",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "22854",
+      "label": "Talking Heads",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "23755",
+      "label": "Miles Davis",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "24220",
+      "label": "British Electric Foundation",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "24221",
+      "label": "Tina Turner",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "24651",
+      "label": "Clark Gayton",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "25809",
+      "label": "Lalah Hathaway",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "27517",
+      "label": "Arthur Lyman",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "27518",
+      "label": "Elvis Presley",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "27803",
+      "label": "Branford Marsalis",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "27937",
+      "label": "The Specials",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "27991",
+      "label": "Antonio Carlos Jobim",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "28630",
+      "label": "Tata Vega",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "28795",
+      "label": "Prince",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "28889",
+      "label": "John Sebastian",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "28972",
+      "label": "The Cure",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "29262",
+      "label": "George Clinton",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "29735",
+      "label": "Coldplay",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "29807",
+      "label": "Fred Wesley",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "29923",
+      "label": "Funkadelic",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "29979",
+      "label": "Wayne Shorter",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "29981",
+      "label": "Jimmy Smith",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "30092",
+      "label": "Nona Hendryx",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "30344",
+      "label": "Bonnie Tyler",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "30419",
+      "label": "Sly Dunbar",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "30420",
+      "label": "Robbie Shakespeare",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "30542",
+      "label": "Whitney Houston",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "30552",
+      "label": "Ray Charles",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "30721",
+      "label": "Herbie Mann",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "30724",
+      "label": "Santana",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "33534",
+      "label": "Mariah Carey",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "33708",
+      "label": "Bernie Worrell",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "33813",
+      "label": "Bruce Smith",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "34183",
+      "label": "Carmen McRae",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "34278",
+      "label": "Led Zeppelin",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "34316",
+      "label": "Junior Reid",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "35022",
+      "label": "Herb Alpert",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "35125",
+      "label": "Timbaland",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "35197",
+      "label": "Tower Of Power",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "35199",
+      "label": "Billy Cobham",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "35301",
+      "label": "Paul McCartney",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "35646",
+      "label": "Will I Am",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "35848",
+      "label": "Q-Tip",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "36603",
+      "label": "Carly Simon",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "36860",
+      "label": "Martin Denny",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "36862",
+      "label": "King Curtis",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "37120",
+      "label": "Johnny Marr",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "37729",
+      "label": "B.B. King",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "37730",
+      "label": "Dave Grusin",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "37735",
+      "label": "Lee Ritenour",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "37906",
+      "label": "Busta Rhymes",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "37908",
+      "label": "Fabolous",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "38258",
+      "label": "Michael McDonald",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "38661",
+      "label": "Eminem",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "39293",
+      "label": "Tina B",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "39600",
+      "label": "Flea",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "39677",
+      "label": "Bono",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "39766",
+      "label": "The Velvet Underground",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "39770",
+      "label": "The Stooges",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "39776",
+      "label": "Dolly Parton",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "41237",
+      "label": "Cindy Mizelle",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "41266",
+      "label": "Full Force",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "42058",
+      "label": "Alice Coltrane",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "42627",
+      "label": "Lauryn Hill",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "43745",
+      "label": "Siedah Garrett",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "44138",
+      "label": "Bernard Purdie",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "44944",
+      "label": "D'Angelo",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "45102",
+      "label": "Grady Tate",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "45467",
+      "label": "Pink Floyd",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "46163",
+      "label": "Paulinho Da Costa",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "46481",
+      "label": "John Lennon",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "46764",
+      "label": "Terence Trent D'Arby",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "46767",
+      "label": "Billy Preston",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "47333",
+      "label": "Fleetwood Mac",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "47742",
+      "label": "Diana Ross",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "48412",
+      "label": "Iron Butterfly",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "48424",
+      "label": "Aerosmith",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "48512",
+      "label": "Christopher Cross",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "49624",
+      "label": "Jeff Beck",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "49758",
+      "label": "Nile Rodgers",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "50263",
+      "label": "Yes",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "50703",
+      "label": "Babyface",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "50997",
+      "label": "Nas",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "51039",
+      "label": "Tom Jones",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "51849",
+      "label": "Dave Richmond",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "52312",
+      "label": "Michel Colombier",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "52835",
+      "label": "Beyonc\u00e9",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "53248",
+      "label": "Barbra Streisand",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "54212",
+      "label": "Claudia Fontaine",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "55029",
+      "label": "Elvis Costello",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "55069",
+      "label": "Gary Barnacle",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "56621",
+      "label": "Roxy Music",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "56798",
+      "label": "The Doors",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "56838",
+      "label": "Dave Navarro",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "56978",
+      "label": "Ricky Martin",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "57103",
+      "label": "Elton John",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "57477",
+      "label": "Deborah Harry",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "58266",
+      "label": "Niki Haris",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "58687",
+      "label": "Jefferson Airplane",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "59249",
+      "label": "Bill Withers",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "59656",
+      "label": "Hans Zimmer",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "59770",
+      "label": "Ozzy Osbourne",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "59792",
+      "label": "Bob Dylan",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "60450",
+      "label": "The Crusaders",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "60451",
+      "label": "Joe Sample",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "60480",
+      "label": "Talk Talk",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "61337",
+      "label": "Max Martin",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "62947",
+      "label": "DON-E",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "63332",
+      "label": "Lenny Kravitz",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "63771",
+      "label": "Roberta Flack",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "64652",
+      "label": "Harvey Mason",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "65049",
+      "label": "Notorious B.I.G.",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "65787",
+      "label": "Danny Thompson",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "66824",
+      "label": "Justin Timberlake",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "66916",
+      "label": "The Alan Parsons Project",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "67331",
+      "label": "Julio Iglesias",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "67614",
+      "label": "Rick Nowels",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "68693",
+      "label": "Toto",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "69621",
+      "label": "Tom Scott",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "69687",
+      "label": "Yvonne Lewis",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "69722",
+      "label": "Lionel Richie",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "70828",
+      "label": "King Crimson",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "70829",
+      "label": "The Beach Boys",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "72461",
+      "label": "Raphael Saadiq",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "77192",
+      "label": "Mike Watt",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "77223",
+      "label": "Simon Phillips",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "77855",
+      "label": "Christina Aguilera",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "77856",
+      "label": "LeAnn Rimes",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "79100",
+      "label": "Nicki Richards",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "79340",
+      "label": "Carlos Santana",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "79480",
+      "label": "Tessa Niles",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "79751",
+      "label": "David Foster",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "79934",
+      "label": "Katie Kissoon",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "80725",
+      "label": "Fonzi Thornton",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "81013",
+      "label": "Queen",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "82294",
+      "label": "Tom Waits",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "82730",
+      "label": "The Beatles",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "83080",
+      "label": "The Smiths",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "83242",
+      "label": "Billy Bragg",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "84145",
+      "label": "Michael Thompson",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "85929",
+      "label": "Kate Bush",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "87721",
+      "label": "Bryan Ferry",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "90037",
+      "label": "Pharrell Williams",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "90233",
+      "label": "Joni Mitchell",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "90541",
+      "label": "Mick Jagger",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "90595",
+      "label": "Clarence McDonald",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "92471",
+      "label": "Simon Climie",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "92476",
+      "label": "Red Hot Chili Peppers",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "92623",
+      "label": "Frank Zappa",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "95088",
+      "label": "Ron Carter",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "95878",
+      "label": "Andy Summers",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "96036",
+      "label": "Ray Cooper",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "97545",
+      "label": "John Coltrane",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "100702",
+      "label": "Bruce Johnston",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "101028",
+      "label": "Phil Collins",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "101883",
+      "label": "Mike Dean",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "102984",
+      "label": "Wilco",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "103687",
+      "label": "Dire Straits",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "103802",
+      "label": "Trevor Lawrence",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "106474",
+      "label": "Paul Simon",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "106909",
+      "label": "Jack Bruce",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "107102",
+      "label": "Rickie Lee Jones",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "108475",
+      "label": "Greg Phillinganes",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "110252",
+      "label": "Derek & The Dominos",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "110253",
+      "label": "The Allman Brothers Band",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "110570",
+      "label": "k.d. lang",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "110862",
+      "label": "Roger Waters",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "112806",
+      "label": "Oren Waters",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "112847",
+      "label": "Luis Jardim",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "112851",
+      "label": "Steve Sidwell",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "112852",
+      "label": "Graham Broad",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "112875",
+      "label": "Guy Pratt",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "113595",
+      "label": "Uncle Kracker",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "113655",
+      "label": "ZZ Top",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "117225",
+      "label": "Donald Fagen",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "119840",
+      "label": "Sheryl Crow",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "120232",
+      "label": "Janis Joplin",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "120312",
+      "label": "Paul Horn",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "120496",
+      "label": "Maria Vidal",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "124497",
+      "label": "Joe Cocker",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "124535",
+      "label": "Guns N' Roses",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "124541",
+      "label": "Bon Jovi",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "124736",
+      "label": "Paul Johnson (2)",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "125246",
+      "label": "Nirvana",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "126416",
+      "label": "Jools Holland",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "129663",
+      "label": "Alex Brown",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "135478",
+      "label": "Ramones",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "135847",
+      "label": "Michael Brecker",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "135850",
+      "label": "Eric Gale",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "135946",
+      "label": "Johnny Cash",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "136179",
+      "label": "John McLaughlin",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "136888",
+      "label": "Everton Nelson",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "137418",
+      "label": "Billy Joel",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "137880",
+      "label": "Kanye West",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "138556",
+      "label": "Neil Young",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "138572",
+      "label": "Todd Rundgren",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "144589",
+      "label": "Bashiri Johnson",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "144927",
+      "label": "Bill Frisell",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "144998",
+      "label": "Black Sabbath",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "145072",
+      "label": "Roy Orbison",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "146284",
+      "label": "Deniece Williams",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "147878",
+      "label": "Dennis Collins",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "149420",
+      "label": "Rick Wakeman",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "150899",
+      "label": "John Porter",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "152685",
+      "label": "Harry Nilsson",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "153073",
+      "label": "Kiss",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "156019",
+      "label": "Jon Faddis",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "158709",
+      "label": "Chris Braide",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "160906",
+      "label": "Steely Dan",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "161091",
+      "label": "Tracy Chapman",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "162614",
+      "label": "Arnold McCuller",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "162617",
+      "label": "Joe Walsh",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "162670",
+      "label": "Olivia Newton-John",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "166320",
+      "label": "Randy Newman",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "168907",
+      "label": "Blood, Sweat And Tears",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "169154",
+      "label": "The Jacksons",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "169574",
+      "label": "Ray Parker Jr.",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "171879",
+      "label": "Donny Gerrard",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "173865",
+      "label": "Steve Jordan",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "174046",
+      "label": "Tommy Sims",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "175128",
+      "label": "Steven Tyler",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "175132",
+      "label": "Joe Perry",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "181022",
+      "label": "Rick Ross",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "185751",
+      "label": "David Sanborn",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "189718",
+      "label": "Brian Wilson",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "192112",
+      "label": "Leon Ndugu Chancler",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "193421",
+      "label": "Ryan Tedder",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "193582",
+      "label": "David Paich",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "194118",
+      "label": "Jim Keltner",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "196766",
+      "label": "The Who",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "197667",
+      "label": "Plan B (4)",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "200567",
+      "label": "Jackson Browne",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "200762",
+      "label": "Andy Newmark",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "200767",
+      "label": "David Nadien",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "200771",
+      "label": "Gary King",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "200785",
+      "label": "Will Lee",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "201571",
+      "label": "Steve Winwood",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "203732",
+      "label": "Rob One",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "204600",
+      "label": "Nigel Olsson",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "206065",
+      "label": "Nolan Smith",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "208234",
+      "label": "Pino Palladino",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "211643",
+      "label": "James Gadson",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "212726",
+      "label": "London Symphony Orchestra",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "213484",
+      "label": "Indigo Girls",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "215920",
+      "label": "Nathan East",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "219213",
+      "label": "Run-DMC",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "219243",
+      "label": "Ginger Baker",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "219420",
+      "label": "Eddie Martinez",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "219823",
+      "label": "Jim Gilstrap",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "219986",
+      "label": "Bruce Springsteen",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "222746",
+      "label": "Joel Peskin",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "224166",
+      "label": "Claytoven Richardson",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "227848",
+      "label": "Leonard Cohen",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "229176",
+      "label": "Larry Williams",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "229494",
+      "label": "Hal Blaine",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "229621",
+      "label": "Cream (2)",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "229781",
+      "label": "Richard Cottle",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "232157",
+      "label": "Simon & Garfunkel",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "236212",
+      "label": "Grover Washington, Jr.",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "236897",
+      "label": "Mark Knopfler",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "236968",
+      "label": "Stephen Stills",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "243955",
+      "label": "George Harrison",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "246650",
+      "label": "The Grateful Dead",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "249449",
+      "label": "Willie Nelson",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "249597",
+      "label": "Don Henley",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "249829",
+      "label": "America (2)",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "251579",
+      "label": "Liza Strike",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "251689",
+      "label": "The Dave Brubeck Quartet",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "251877",
+      "label": "Carl Perkins",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "251994",
+      "label": "Raphael Ravenscroft",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "252102",
+      "label": "Creedence Clearwater Revival",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "252118",
+      "label": "Ricky Lawson",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "252196",
+      "label": "Lenny Castro",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "252395",
+      "label": "Danny Kortchmar",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "252838",
+      "label": "Curtis Amy",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "252931",
+      "label": "Garth Hudson",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "252993",
+      "label": "Ernie Watts",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "252998",
+      "label": "Ray Brown",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "253111",
+      "label": "Mike Moran",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "253201",
+      "label": "John Guerin",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "253203",
+      "label": "Ian Underwood",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "253217",
+      "label": "Brian May",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "253346",
+      "label": "Corky Hale",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "253431",
+      "label": "Larry Knechtel",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "253433",
+      "label": "Joe Osborn",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "253490",
+      "label": "Dean Parks",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "253545",
+      "label": "Rusty Anderson",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "253592",
+      "label": "Charlie Haden",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "253779",
+      "label": "Robben Ford",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "253974",
+      "label": "Michael Landau",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "254259",
+      "label": "Meat Loaf",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "254878",
+      "label": "Roy Bittan",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "254959",
+      "label": "Ronnie Cuber",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "255177",
+      "label": "Nicky Hopkins",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "255185",
+      "label": "Al Kooper",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "255276",
+      "label": "Richard Tee",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "255372",
+      "label": "Jim Gordon",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "255388",
+      "label": "Paul Franklin",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "255404",
+      "label": "Jim Horn",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "255405",
+      "label": "Wayne Jackson",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "255424",
+      "label": "Michael Rhodes",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "255445",
+      "label": "Bill Cuomo",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "255556",
+      "label": "Roy Haynes",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "255672",
+      "label": "The Jimi Hendrix Experience",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "255680",
+      "label": "Eagles",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "256053",
+      "label": "Pete Townshend",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "256225",
+      "label": "Tony Levin",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "257415",
+      "label": "Henry Spinetti",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "257846",
+      "label": "Audrey Riley",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "258118",
+      "label": "Steve Gadd",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "258154",
+      "label": "Waddy Wachtel",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "259352",
+      "label": "Ringo Starr",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "259384",
+      "label": "Bobbye Hall",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "259392",
+      "label": "Benmont Tench",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "260479",
+      "label": "The Kick Horns",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "260574",
+      "label": "Brandon Fields",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "261760",
+      "label": "Lynyrd Skynyrd",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "261834",
+      "label": "Jennifer Warnes",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "261867",
+      "label": "Joan Baez",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "262270",
+      "label": "Jerry Marotta",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "262770",
+      "label": "Nate Hills",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "262944",
+      "label": "James Taylor (2)",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "265055",
+      "label": "Dennis Chambers",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "265119",
+      "label": "The Waters",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "266352",
+      "label": "Carole King",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "266403",
+      "label": "Paul Jackson Jr.",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "267270",
+      "label": "Glenn Hughes",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "268047",
+      "label": "Antony (3)",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "268297",
+      "label": "Luis Conte",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "268583",
+      "label": "Boz Scaggs",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "270581",
+      "label": "Jesse Ed Davis",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "271387",
+      "label": "Curt Bisquera",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "271409",
+      "label": "Gary Grant",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "272435",
+      "label": "James Genus",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "272796",
+      "label": "Steve Lukather",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "273594",
+      "label": "Brenda White King",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "274132",
+      "label": "Russ Kunkel",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "274253",
+      "label": "John Frigo",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "274255",
+      "label": "Julius Wechter",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "274315",
+      "label": "Tommy Vig",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "274702",
+      "label": "Tim Pierce",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "277160",
+      "label": "Kara DioGuardi",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "277531",
+      "label": "Joe Chemay",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "277686",
+      "label": "Milt Holland",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "279273",
+      "label": "Bucky Pizzarelli",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "279630",
+      "label": "Paul Williams (2)",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "280030",
+      "label": "Gayle Levant",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "282127",
+      "label": "Kim Wilson",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "282895",
+      "label": "Lowell George",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "284906",
+      "label": "Ariel Rechtshaid",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "285408",
+      "label": "Crosby, Stills, Nash & Young",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "289278",
+      "label": "Nick Ingman",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "289513",
+      "label": "Go Home Productions",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "290587",
+      "label": "J.J. Cale",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "291016",
+      "label": "Brice Wassy",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "292813",
+      "label": "Lou Marini",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "292820",
+      "label": "Regis Iandiorio",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "293887",
+      "label": "Joey Waronker",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "293896",
+      "label": "John Barnes",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "294716",
+      "label": "Peter Kent (2)",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "294720",
+      "label": "Sid Page",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "303282",
+      "label": "Matt Chamberlain",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "304254",
+      "label": "Stuart Elliott",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "304307",
+      "label": "Gordon Marron",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "306264",
+      "label": "Gary Mallaber",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "307118",
+      "label": "Abraham Laboriel Jr.",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "308903",
+      "label": "Eric Gorfain",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "310251",
+      "label": "John Robinson (2)",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "311108",
+      "label": "Carol Steele",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "315487",
+      "label": "Jerry Jumonville",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "315828",
+      "label": "Augie Meyers",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "317562",
+      "label": "Kip Blackshire",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "321128",
+      "label": "Rihanna",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "321418",
+      "label": "Warren Cuccurullo",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "324866",
+      "label": "J Dilla",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "325232",
+      "label": "John Parr",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "325321",
+      "label": "Charlie Bisharat",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "325903",
+      "label": "Larry Fast",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "328530",
+      "label": "Sammy Merendino",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "332625",
+      "label": "Jeff Porcaro",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "336325",
+      "label": "Harry Bluestone",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "339048",
+      "label": "Neil Norman",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "340100",
+      "label": "Alan Carvell",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "362932",
+      "label": "Sidney Sharp",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "362935",
+      "label": "Edgar Lustgarten (2)",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "363573",
+      "label": "Tony Concepcion",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "365248",
+      "label": "Flying Lotus",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "379293",
+      "label": "George Fullwood",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "387420",
+      "label": "Paul Warren",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "388494",
+      "label": "Dan Dugmore",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "389572",
+      "label": "John Kricker",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "392307",
+      "label": "Mattias Bylund",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "396655",
+      "label": "Sam Dixon",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "397590",
+      "label": "Roy Hart",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "414957",
+      "label": "Alex Acu\u00f1a",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "447673",
+      "label": "Bill Reichenbach (2)",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "449016",
+      "label": "Randy Jackson (2)",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "451329",
+      "label": "John Lennon & Yoko Ono",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "463597",
+      "label": "Alice Cooper (2)",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "465889",
+      "label": "Jos\u00e9 Feliciano",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "466441",
+      "label": "Nicolas Err\u00e8ra",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "485678",
+      "label": "The Jack Halloran Singers",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "486745",
+      "label": "Gregg Allman",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "600317",
+      "label": "Tracy Nelson",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "628219",
+      "label": "DJ Schmolli",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "661928",
+      "label": "Chris Dave",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "667214",
+      "label": "Micky Dolenz",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "761595",
+      "label": "Dan Deacon",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "819015",
+      "label": "Adele (3)",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "861083",
+      "label": "Vampire Weekend",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "938844",
+      "label": "Paul & Linda McCartney",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "1103159",
+      "label": "Lady Gaga",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "1124645",
+      "label": "Taylor Swift",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "1540146",
+      "label": "James Harman",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "1561067",
+      "label": "Sampha",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "1778977",
+      "label": "Kendrick Lamar",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "2013868",
+      "label": "Frank Ocean",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "2171152",
+      "label": "The Weeknd",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "2445772",
+      "label": "Lana Del Rey",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "5889853",
+      "label": "Barbara Kopple",
+      "sublabel": null,
+      "state": "present"
+    },
+    {
+      "kind": "contributor",
+      "id": "7792226",
+      "label": "Afterdeath Television",
+      "sublabel": null,
+      "state": "present"
+    }
+  ],
+  "search_index_version": "search-index-v1-20260601-9d1888f0bded"
+}

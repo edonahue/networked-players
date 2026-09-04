@@ -117,6 +117,13 @@ _DEFAULT_ARTIFACTS: dict[str, tuple[str, ...]] = {
         "apps/web/public/data/evidence/release-registry.v1.json",
         "apps/web/public/data/catalog/albums.v1.json",
     ),
+    "search-index": (
+        # graph-expansion Phase 1 (plan section 7): validated against BOTH
+        # the catalog and the contributor index it's built from.
+        "apps/web/public/data/search/index.v1.json",
+        "apps/web/public/data/catalog/albums.v1.json",
+        "apps/web/public/data/contributors/index.v1.json",
+    ),
 }
 _AD_HOC_VALIDATORS = ("connectivity", "playable-cohort")
 _ALL_VALIDATORS = sorted({*_DEFAULT_ARTIFACTS, *_AD_HOC_VALIDATORS})

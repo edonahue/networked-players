@@ -24,7 +24,7 @@
 // can never overwrite a newer one's result.
 
 import { fetchAlbumArt, type ResolvedArt } from "./albumArt";
-import { filterAlbums, type PickableAlbum } from "./albumPicker";
+import { type PickableAlbum } from "./albumPicker";
 import {
   buildConnectSearchParams,
   isSameConnectAlbumPair,
@@ -57,6 +57,7 @@ import {
   selectRecommendedRoute,
 } from "./recommendedRoute";
 import { guitarPathsEdgeFilter, rhythmSectionEdgeFilter } from "./roleTaxonomy";
+import { loadSearchIndex, searchIndex, type SearchIndex } from "./siteSearch";
 
 // v4 (graph-expansion Phase 1, ADR 0071): role-dictionary-encoded, real
 // measured −41.5% raw / −24.0% gzip vs. v3 with byte-identical edges --
@@ -189,6 +190,10 @@ function wirePicker(
   // A getter, not a snapshot: the picker is wired before the catalog exists,
   // so it must read whatever is current at event time.
   getAlbums: () => PickableAlbum[],
+  // Same getter shape, for the same reason -- the search index (graph-
+  // expansion Phase 1, plan §7) loads independently of, and typically
+  // slightly after, the album catalog.
+  getSearchIndex: () => SearchIndex,
   onSelect: (album: PickableAlbum | null) => void,
   onInput: () => void,
 ): PickerHandle | null {
@@ -274,7 +279,23 @@ function wirePicker(
     }
   };
 
-  const refresh = () => showResults(filterAlbums(getAlbums(), input.value));
+  // Ranked by siteSearch.ts (graph-expansion Phase 1, plan §7: exact >
+  // token-prefix > substring, present before candidate) rather than
+  // albumPicker.ts's old catalog-order substring match -- resolves each
+  // ranked search-index id back to its full `PickableAlbum` via
+  // `getAlbums()`, since the two artifacts have different shapes. An id
+  // that fails to resolve (index/catalog momentarily out of sync while
+  // both load independently) is silently dropped rather than shown broken.
+  const refresh = () => {
+    const albums = getAlbums();
+    const ranked = searchIndex(getSearchIndex(), input.value, {
+      kinds: ["album"],
+    });
+    const matches = ranked
+      .map((entry) => albums.find((album) => album.id === entry.id))
+      .filter((album): album is PickableAlbum => album !== undefined);
+    showResults(matches);
+  };
 
   input.addEventListener("input", () => {
     applySelection(null, { programmatic: false });
@@ -700,6 +721,18 @@ export async function initConnect(): Promise<void> {
   let pickerA: PickerHandle | null = null;
   let pickerB: PickerHandle | null = null;
 
+  // Loaded independently of, and in parallel with, the album catalog
+  // (graph-expansion Phase 1, plan §7) -- an empty index is a safe default
+  // while it's in flight or if it fails, since `refresh()` above already
+  // treats a search with no matches as a normal, honest empty state. Never
+  // awaited here: pickers must stay usable (falling back to zero results,
+  // not blocking) even if this fetch is slow.
+  let searchIndexCache: SearchIndex = { entries: [] };
+  void loadSearchIndex().then((index) => {
+    searchIndexCache = index;
+    for (const picker of pickers) picker.refresh();
+  });
+
   const setCatalogState = (state: PickerState) => {
     catalogState = state;
     for (const picker of pickers) picker.setState(state);
@@ -758,6 +791,7 @@ export async function initConnect(): Promise<void> {
     const picker = wirePicker(
       pickerRoot,
       () => albums,
+      () => searchIndexCache,
       (album) => {
         if (which === "a") albumA = album;
         else albumB = album;

@@ -54,6 +54,7 @@ _VALIDATOR_NAME_BY_ARTIFACT_GROUP = {
     "contributor_index": "contributor-index",
     "pathfinding_graph": "pathfinding-graph",
     "prominence": "prominence",
+    "search_index": "search-index",
     "album_credit_membership": "album-credit-membership",
     "evidence_release_registry": "evidence-release-registry",
 }

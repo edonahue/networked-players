@@ -44,6 +44,7 @@ from .evidence_release_registry import evidence_release_registry_failures
 from .pathfinding_graph import pathfinding_graph_failures
 from .prominence import prominence_failures
 from .record_routes import record_routes_failures
+from .search_index import search_index_failures
 
 # Keys match the checked-in game/routes namespaces, not `packages/contracts`
 # module names, so a caller reading a failure report never has to guess
@@ -61,6 +62,7 @@ PUBLIC_ARTIFACT_GROUPS = (
     "prominence",
     "album_credit_membership",
     "evidence_release_registry",
+    "search_index",
 )
 
 
@@ -81,6 +83,7 @@ def public_artifacts_failures(
     prominence: Any,
     album_credit_membership: Any,
     evidence_release_registry: Any,
+    search_index: Any,
 ) -> dict[str, list[str]]:
     """Every contract failure across the whole real-artifact publication set,
     grouped by artifact. Every key in `PUBLIC_ARTIFACT_GROUPS` is always
@@ -111,7 +114,16 @@ def public_artifacts_failures(
     validated against it directly (`prominence_failures` cross-checks
     `pathfinding_graph_version`/`node_ids` agreement) rather than against
     `catalog` -- it belongs to a specific graph generation, not the catalog
-    directly."""
+    directly.
+
+    `search_index` (`search/index.v1.json`, graph-expansion Phase 1, plan
+    section 7) is validated against BOTH `catalog` and `contributor_index`
+    -- every catalog album and every indexed contributor must have exactly
+    one entry each. Every entry's `state` is `"present"` for now;
+    `"candidate"` entries need `catalog/candidates.v1.json`, a Phase 3
+    dependency this validator doesn't have yet -- the field itself already
+    accepts either value, so Phase 3 adding candidates needs no schema
+    change here."""
     return {
         "catalog": public_album_catalog_failures(catalog),
         "album_art_registry": album_art_failures(album_art, catalog),
@@ -133,6 +145,7 @@ def public_artifacts_failures(
         "evidence_release_registry": evidence_release_registry_failures(
             evidence_release_registry, catalog
         ),
+        "search_index": search_index_failures(search_index, catalog, contributor_index),
     }
 
 
