@@ -126,10 +126,36 @@ catalog. Rebuilding them every round is still required; nothing in CI will force
      --studio-album-exclusions data/albums/studio-album-master-exclusions-v1.json \
      --exclude-published-catalog apps/web/public/data/catalog/albums.v1.json
    ```
+   **Size `--limit` generously — a real, measured finding from the first live run
+   (2026-09-04).** `rank-album-candidates` scores by raw corpus weight
+   (`variant_count` × `credit_rows`), which strongly favours artists *already* in the
+   catalog. At `--limit 200`, the pool was so dominated by already-represented artists
+   (more Rolling Stones, Santana, U2, Clapton records) that **every in-band coverage-lane
+   candidate scored `new_performers = 0`** — real catalog anchors, but zero performer-network
+   growth, which is the entire point of the graph-value and coverage lanes. Whole thin
+   genres were also nearly unrepresented in the pool: Reggae had exactly **one** candidate
+   in 200, and it was one over the roster cap. Start at `--limit 1000` and check the
+   `new_performers` distribution before treating a lane's picks as final.
 3. **Score the shortlist**, resolving `data/albums/editorial-seed-v1.json` directly via
    `--editorial-seed` (Slice R1-C — no manual transform step needed), and passing
    `measure-coverage-gaps`' own output (run once, ahead of this step, over the *current*
-   catalog) via `--underrepresented-buckets`:
+   catalog) via `--underrepresented-buckets`.
+
+   **Real shape mismatch, hit in the first live run (2026-09-04):**
+   `--underrepresented-buckets` wants a *bare JSON list* of
+   `{dimension, bucket, count}` objects, but `measure-coverage-gaps` writes a dict
+   (`{album_count, catalog_version, composition, masters_resolved, underrepresented}`).
+   Passing its output directly fails with `TypeError: string indices must be integers`.
+   Extract the list first:
+   ```bash
+   python3 -c "
+   import json
+   d = json.load(open('local/analysis/expansion/round-1/coverage-gaps.json'))
+   json.dump(d['underrepresented'],
+             open('local/analysis/expansion/round-1/underrepresented-buckets.json', 'w'), indent=2)
+   "
+   ```
+   Then:
    ```bash
    uv run networked-players-catalog score-expansion-candidates \
      --onehop-root local/processed/discogs-onehop-v4/snapshot=20260601 \
@@ -139,7 +165,7 @@ catalog. Rebuilding them every round is still required; nothing in CI will force
      --release-format-policy <path-to-release-format-scoring-index.json> \
      --studio-album-exclusions data/albums/studio-album-master-exclusions-v1.json \
      --editorial-seed data/albums/editorial-seed-v1.json \
-     --underrepresented-buckets local/analysis/expansion/round-1/coverage-gaps.json \
+     --underrepresented-buckets local/analysis/expansion/round-1/underrepresented-buckets.json \
      --output local/analysis/expansion/round-1/scored-candidates.json
    ```
    (`local-only-output` is enforced by the command itself — it refuses to write outside
@@ -152,11 +178,24 @@ catalog. Rebuilding them every round is still required; nothing in CI will force
      --dataset local/processed/discogs-onehop-v4/snapshot=20260601 \
      --baseline-catalog apps/web/public/data/catalog/albums.v1.json \
      --additional-baseline data/albums/editorial-seed-v1.json \
-     --finalists local/analysis/expansion/round-1/scored-candidates.json \
+     --finalists local/analysis/expansion/round-1/candidates.json \
      --count 6 \
      --output local/analysis/expansion/round-1/graph-rich-selection.json
    ```
    (`--count 6` per `expansion-policy-v1.json`'s Round 1 graph-value quota.)
+
+   **`--finalists` takes `rank-album-candidates`' own raw output** (a flat JSON list whose
+   rows carry `artist_id`/`master_id` at the top level), **not** the
+   `score-expansion-candidates` output — that one is a dict wrapping its rows under
+   `candidates`, and passing it fails with `TypeError: string indices must be integers`
+   inside `greedy_marginal_selection`. An earlier draft of this runbook had it wrong; the
+   first live run (2026-09-04) caught it.
+
+   **Expect fewer picks than `--count` requests.** The first live run asked for 6 and got
+   4: the greedy selection stops when no remaining finalist adds real marginal value.
+   That is a correct result, not a bug — do not force it to the quota number (the same
+   discipline ADR 0065 applied when Phase 7 targeted +40 and shipped +39 rather than
+   manufacture a filler pick).
 5. **Measure coverage gaps** against the current catalog (feeds step 3's
    `--underrepresented-buckets`, and separately drives the human resolution in step 6):
    ```bash
