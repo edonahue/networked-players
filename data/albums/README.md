@@ -62,3 +62,27 @@ fail-closed and both threaded through `build-album-catalog` /
 Add a `{"artist": "...", "title": "..."}` entry to the `albums` array, keeping
 alphabetical order by artist then title. Titles and artist names should match how
 Discogs credits the release (exact string match at build time, case-insensitive).
+
+## Expansion round policy (graph-expansion Phase 2)
+
+`expansion-policy-v1.json` is the committed, public record of each round's quotas and
+thresholds -- roster band, `overlap_existing` minimum for the two automatic lanes
+(graph-value, coverage) and the relaxed thresholds collection-sourced editorial picks
+score under, and the per-round lane quota (e.g. Round 1's 20 editorial / 6 graph-value /
+4 coverage, per the owner's 2026-09-02 instruction that roughly 2/3 of new albums come
+from the private collection). The policy is public; which real candidates fill it each
+round is a private, per-round editorial decision, never recorded in this file.
+
+For Round 1 specifically, no new lane-assembly code consumes this file automatically --
+`build-public-album-catalog` is fed directly through its existing
+`--graph-rich-selection`/`--coverage-gap-candidates`/`--personal-seed` inputs (plan
+section 5.3), with this policy's quotas enforced by the human review pass, not a program.
+A later round may add automated quota enforcement if reviewing three separate input files
+by hand proves clumsy at scale -- not built speculatively ahead of that need.
+
+`networked_players_graph_core.score_expansion_candidates` (plan section 5.2) is the tool
+that scores real candidates against this policy's thresholds (`roster_size`,
+`overlap_existing`, `bridge_span`, `coverage_delta`, `eligibility`, plus
+`marginal_new_edges` from the separate `select-graph-rich-candidates` tool) -- its output
+is round-scoped, private, and lives under `local/analysis/expansion/round-<n>/`, never
+committed.
