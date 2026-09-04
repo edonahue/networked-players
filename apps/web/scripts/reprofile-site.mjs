@@ -135,6 +135,26 @@ async function selectAndSearch(page, fromTitle, toTitle) {
   return Date.now() - searchClickedAt;
 }
 
+// The cold-start pair: the first real, directly-connected pair in
+// `challenge.paths`, resolved to titles -- not a hardcoded literal (an
+// earlier version hardcoded "Discovery"/"The Joshua Tree", the real
+// 179-album catalog's own diagnostic pair, which made this script unusable
+// against any other catalog, including the graph-expansion plan's own
+// local 500-tier benchmark fixture (plan section 6): pointing this script
+// at a different `challenge.v3.json` -- and therefore a different `graph.v4.json`
+// via the same swapped `apps/web/public/data/` tree -- now genuinely works
+// against ANY committed or local catalog, not just the one this script was
+// originally written against.
+function pickColdPair(challenge) {
+  const albumsById = new Map(challenge.albums.map((a) => [a.id, a]));
+  const path = challenge.paths[0];
+  if (!path) return null;
+  const from = albumsById.get(path.from_album_id);
+  const to = albumsById.get(path.to_album_id);
+  if (!from || !to) return null;
+  return { fromTitle: from.title, toTitle: to.title };
+}
+
 // A second, real, directly-connected pair distinct from the cold-start
 // pair below -- reusing that same pair for the "warm" search would make it
 // indistinguishable from "the same search, run twice" rather than a
@@ -171,20 +191,23 @@ async function measureConnectReadiness(context, challenge, heapSamples) {
   await page.waitForSelector('[data-picker="a"][data-picker-state="ready"]');
   const pickerReadyMs = Date.now() - navStart;
 
-  // Discovery/The Joshua Tree: a real, directly-connected pair in the
-  // committed pathfinding graph (see tests/game-connect.spec.ts's own
-  // comment) -- picked from the real artifact, not invented.
+  const coldPair = pickColdPair(challenge);
+  if (!coldPair) {
+    throw new Error(
+      "challenge.v3.json has no paths at all -- cannot measure Connect readiness",
+    );
+  }
   const coldSearchToResultsMs = await selectAndSearch(
     page,
-    "Discovery",
-    "The Joshua Tree",
+    coldPair.fromTitle,
+    coldPair.toTitle,
   );
   const resultsVisibleMs = Date.now() - navStart;
   heapSamples.push(await measureMemory(page));
 
   const warmPair = pickWarmPair(
     challenge,
-    new Set(["Discovery", "The Joshua Tree"]),
+    new Set([coldPair.fromTitle, coldPair.toTitle]),
   );
   const warmSearchToResultsMs = warmPair
     ? await selectAndSearch(page, warmPair.fromTitle, warmPair.toTitle)
@@ -194,6 +217,7 @@ async function measureConnectReadiness(context, challenge, heapSamples) {
   await page.close();
   return {
     cold: {
+      pair: coldPair,
       pageLoadMs,
       pickerReadyMs,
       resultsVisibleMs,

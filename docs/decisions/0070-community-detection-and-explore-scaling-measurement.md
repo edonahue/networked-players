@@ -238,3 +238,88 @@ cutover (reading `rank` to order/page neighbors and choose label visibility) is 
 later Phase 1 work — this addendum does not claim Explore's hub-trap risk is resolved in
 production yet, only that the real ranking signal it needs now exists and is real,
 committed, and fleet-validated.
+
+## Addendum (2026-09-04): the real §6 gate, run against the local 500-tier fixture — recenter budget missed in every profile
+
+Phase 1's full Interaction bundle (pushState/popstate, prominence ranking + paging, mobile
+touch targets, pan/zoom — PRs #226-229) and the search index (PR #230) are now live at 179
+albums. Per this ADR's own revisit trigger and the plan's §6 sequencing, the real gate run
+against the local 500-tier fixture (`local/analysis/exploration-tier-500/albums-500.json`,
+built in slice 0-C) was executed now, not against the real 179-album production site.
+
+**Method, and two real gaps in tooling closed to make this measurement possible:**
+`reprofile-site.mjs` previously hardcoded the real 179-catalog's own diagnostic Connect pair
+("Discovery"/"The Joshua Tree") as a literal string, which made the script unusable against
+any other catalog. Fixed by deriving the cold-search pair from `challenge.v3.json`'s own
+first path (`pickColdPair`, mirroring the existing `pickWarmPair` derivation) — the script
+now genuinely works against any committed or local catalog, not just the one it was
+originally written against. Separately, Connect's combobox (PR #230, shipped the same day)
+now depends on `search/index.v1.json` for ranking, which the 500-tier fixture build did not
+initially include — a minimal stub contributor index (`contributors: []`, matching
+`catalog_version`) was enough to build a real, valid 500-tier search index from
+`build-search-index`, since Connect only ever queries it with `kinds: ["album"]`.
+
+The 500-tier `graph.v4.json`/`prominence.v1.json`/`credit-membership.v1.json`/
+`challenge.v3.json`/`catalog/albums.v1.json`/`search/index.v1.json` were built from the real
+one-hop corpus (never fabricated), temporarily swapping the tracked `apps/web/public/data/`
+files for a real `npm run build`+`npm run preview` run, then restoring the real files
+afterward (confirmed byte-identical to the pre-swap committed state). **One deliberate,
+documented deviation from production discipline:** the 500-tier `challenge.v3.json` was
+built with a bounded `--max-frontier-expansion 300` and `--max-paths 100` rather than
+production's unbounded `--max-frontier-expansion 0` and full per-album coverage target — an
+unbounded, full-coverage attempt against this sparser synthetic fixture ran 30+ minutes
+with zero progress visibility (a real, separate gap now tracked as plan §17/§18's
+progress-logging slice) before being killed. This means the 500-tier fixture's own
+*coverage* numbers (111 of 500 albums appear in a found path) are not comparable to what a
+real production round would produce — only the payload-size and interaction-timing numbers
+below are treated as real signal.
+
+**Real numbers, stated qualitatively per ADR 0018 (raw figures in
+`local/benchmarks/2026-09-04-site-reprofile-500-tier-{desktop,desktop-throttled,
+mobile-throttled}.json`, gitignored), against the plan's §6 budgets:**
+
+| Budget | Desktop | Desktop 4x-throttled | Mobile 4x-throttled |
+|---|---|---|---|
+| `graph.v4.json` gzip ≤ 2.5 MB | **pass** (comfortably under) | same artifact | same artifact |
+| Throttled first-node ≤ 3 s | n/a (well under) | **pass** (close to the line) | **pass** (close to the line) |
+| Recenter p95 ≤ 100 ms | **miss** | **miss** | **miss** |
+| JS heap ≤ 150 MB | **pass** (well under) | same | same |
+
+**Recenter p95 misses budget in all three profiles at 500-album scale** — worse than the
+already-marginal 179-album post-`graph.v4` figures this ADR's first addendum recorded, and
+worse in the *opposite* direction from what a naive read of that addendum's "real,
+substantial improvement" framing might suggest: the encoding change helped, but graph-size
+growth from 179→500 albums (41,414 nodes / 94,680 edges at 500, vs. 20,845 / 76,646 at 179 —
+node/edge growth notably sublinear relative to the 2.79x album-count ratio, as expected from
+overlapping performer neighborhoods) outpaced that improvement. Payload size, first-node
+timing, and heap all stay within budget — this is specifically a **recenter-interaction-cost**
+problem, not a payload or memory one.
+
+**Decision, per the plan's own stated rule ("a miss triggers the tiles ADR before further
+growth"): Phase 1 does not clear its own §6 gate.** This is a measured "not yet," in the same
+spirit as this ADR's §1 community-detection deny and ADR 0063's bridge-contributor deny — a
+real threshold compared against a real number, not a judgment call. Growing the catalog
+toward Phase 2's ~500-album target on the current single-file Explore renderer would ship a
+recenter interaction the plan's own budget already calls too slow, at the very scale Phase 2
+targets.
+
+**What this does NOT decide:** whether tiles are the right fix, or whether a cheaper
+recenter-cost optimization (e.g., trimming per-recenter DOM work, a lower per-recenter
+neighbor cap before paging, or a virtualized render) could close a ~30-70ms gap without the
+tiles architecture's own real costs (a second load path, a recentering-onto-non-anchor-node
+complication the plan's own §6 already flagged). That investigation is real, separate design
+work — the plan names it explicitly as "design tiles under a new ADR before further growth,"
+which this addendum defers to rather than pre-empting.
+
+## Revisit trigger (added 2026-09-04)
+
+- Before Phase 2 catalog growth begins: design the tiles fallback (or a cheaper alternative)
+  under its own ADR, informed by this addendum's real numbers, and re-run this exact §6
+  benchmark against whatever change is made — against the 500-tier fixture again, not just
+  179 albums, since this addendum's whole point is that 179-album numbers were not
+  predictive of 500-album behavior.
+- Once `challenge.py`/`onehop.py` gain progress logging (plan §18/slice 2-0b), rebuild the
+  500-tier fixture with production's real unbounded `--max-frontier-expansion 0` and full
+  per-album `--max-paths` coverage, so a future coverage-sensitive measurement (e.g. sitemap
+  composition at true production discipline) has a fixture to match, rather than reusing this
+  addendum's deliberately-bounded one.
