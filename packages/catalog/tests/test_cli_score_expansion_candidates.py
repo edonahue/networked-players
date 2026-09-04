@@ -251,6 +251,117 @@ def test_scores_candidates_and_writes_a_local_only_artifact(tmp_path: Path) -> N
     assert ineligible["editorial"] == 0
 
 
+def test_editorial_seed_flag_resolves_master_ids_without_manual_transform(
+    tmp_path: Path,
+) -> None:
+    """--editorial-seed accepts an editorial-seed-v1.json-shaped file directly
+    (albums[].master_id) rather than requiring the caller to pre-transform it
+    into --editorial-master-ids' {"master_ids": [...]} shape first."""
+    dataset = _write_onehop_dataset(tmp_path)
+    masters_root = _write_masters_dataset(tmp_path)
+    release_format_policy = _write_release_format_policy(tmp_path / "policy.json")
+    pathfinding_graph = _write_pathfinding_graph(tmp_path / "graph.v4.json", existing_node_ids=[])
+    candidates = tmp_path / "candidates.json"
+    candidates.write_text(
+        json.dumps(
+            [
+                {"master_id": 900, "artist_id": 100, "artist_name": "Alice"},
+                {"master_id": 901, "artist_id": 400, "artist_name": "Dan"},
+            ]
+        )
+    )
+    editorial_seed = tmp_path / "editorial-seed-v1.json"
+    editorial_seed.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "kind": "public-editorial-seed",
+                "albums": [
+                    {"master_id": 900, "title": "First Light"},
+                    # A null master_id (an unresolved-but-recorded entry, per the
+                    # contract's own nullable column) must be skipped, not crash.
+                    {"master_id": None, "title": "Unresolved"},
+                ],
+            }
+        )
+    )
+    output = tmp_path / "local" / "out.json"
+
+    exit_code = main(
+        [
+            "score-expansion-candidates",
+            "--onehop-root",
+            str(dataset),
+            "--masters-root",
+            str(masters_root),
+            "--candidates",
+            str(candidates),
+            "--pathfinding-graph",
+            str(pathfinding_graph),
+            "--release-format-policy",
+            str(release_format_policy),
+            "--editorial-seed",
+            str(editorial_seed),
+            "--output",
+            str(output),
+        ]
+    )
+    assert exit_code == 0
+    by_master = {row["master_id"]: row for row in json.loads(output.read_text())["candidates"]}
+    assert by_master[900]["editorial"] == 1
+    assert by_master[901]["editorial"] == 0
+
+
+def test_editorial_seed_and_editorial_master_ids_union(tmp_path: Path) -> None:
+    """The two editorial inputs are additive, not mutually exclusive -- a
+    round can combine a resolved editorial-seed file with a hand-written
+    supplemental {"master_ids": [...]} list."""
+    dataset = _write_onehop_dataset(tmp_path)
+    masters_root = _write_masters_dataset(tmp_path)
+    release_format_policy = _write_release_format_policy(tmp_path / "policy.json")
+    pathfinding_graph = _write_pathfinding_graph(tmp_path / "graph.v4.json", existing_node_ids=[])
+    candidates = tmp_path / "candidates.json"
+    candidates.write_text(
+        json.dumps(
+            [
+                {"master_id": 900, "artist_id": 100, "artist_name": "Alice"},
+                {"master_id": 901, "artist_id": 400, "artist_name": "Dan"},
+            ]
+        )
+    )
+    editorial_seed = tmp_path / "editorial-seed-v1.json"
+    editorial_seed.write_text(json.dumps({"albums": [{"master_id": 900}]}))
+    editorial_master_ids = tmp_path / "editorial.json"
+    editorial_master_ids.write_text(json.dumps({"master_ids": [901]}))
+    output = tmp_path / "local" / "out.json"
+
+    exit_code = main(
+        [
+            "score-expansion-candidates",
+            "--onehop-root",
+            str(dataset),
+            "--masters-root",
+            str(masters_root),
+            "--candidates",
+            str(candidates),
+            "--pathfinding-graph",
+            str(pathfinding_graph),
+            "--release-format-policy",
+            str(release_format_policy),
+            "--editorial-seed",
+            str(editorial_seed),
+            "--editorial-master-ids",
+            str(editorial_master_ids),
+            "--output",
+            str(output),
+        ]
+    )
+    assert exit_code == 0
+    by_master = {row["master_id"]: row for row in json.loads(output.read_text())["candidates"]}
+    assert by_master[900]["editorial"] == 1
+    assert by_master[901]["editorial"] == 1
+
+
 def test_refuses_to_write_outside_local(tmp_path: Path) -> None:
     dataset = _write_onehop_dataset(tmp_path)
     masters_root = _write_masters_dataset(tmp_path)

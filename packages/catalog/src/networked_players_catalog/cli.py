@@ -884,6 +884,19 @@ def _parser() -> argparse.ArgumentParser:
         help='optional JSON {"master_ids": [...]} -- flagged editorial=1, never interpreted here',
     )
     score_expansion_candidates_parser.add_argument(
+        "--editorial-seed",
+        type=Path,
+        default=None,
+        help=(
+            "optional data/albums/editorial-seed-v1.json (or a per-round sibling of "
+            "the same shape) -- extracts master_id from each albums[] entry itself "
+            "(skipping any with a null master_id) and unions it into the same "
+            "editorial=1 flag as --editorial-master-ids, so a round's editorial seed "
+            'never needs a manual {"master_ids": [...]} transform step first; may be '
+            "combined with --editorial-master-ids, both contribute to the same set"
+        ),
+    )
+    score_expansion_candidates_parser.add_argument(
         "--private-seed-master-ids",
         type=Path,
         default=None,
@@ -3272,8 +3285,15 @@ def main(argv: Sequence[str] | None = None) -> int:
         master_exclusions = load_master_exclusions(args.studio_album_exclusions)
         editorial_master_ids: frozenset[int] = frozenset()
         if args.editorial_master_ids is not None:
-            editorial_master_ids = frozenset(
+            editorial_master_ids |= frozenset(
                 int(m) for m in json.loads(args.editorial_master_ids.read_text())["master_ids"]
+            )
+        if args.editorial_seed is not None:
+            editorial_seed = json.loads(args.editorial_seed.read_text())
+            editorial_master_ids |= frozenset(
+                int(album["master_id"])
+                for album in editorial_seed["albums"]
+                if album.get("master_id") is not None
             )
         private_seed_master_ids: frozenset[int] = frozenset()
         if args.private_seed_master_ids is not None:
