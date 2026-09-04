@@ -260,6 +260,98 @@ test("MAX_NEIGHBORS is the default cap", () => {
   expect(view?.neighbors.length).toBeLessThanOrEqual(MAX_NEIGHBORS);
 });
 
+// A deterministic PRNG (mulberry32), not Math.random(), so a failure is
+// reproducible from the seed alone.
+function mulberry32(seed: number): () => number {
+  let a = seed;
+  return () => {
+    a |= 0;
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+// A single center connected to `degree` neighbors, each real artist ids
+// starting at 1000 -- large enough to exercise selectTopK's bounded-heap
+// path (graph-expansion Phase 1, ADR 0070 addendum's recenter-cost
+// investigation), not just its small-input full-sort fallback.
+function hubGraph(degree: number): PathfindingGraph {
+  const nodeIds = [100, ...Array.from({ length: degree }, (_, i) => 1000 + i)];
+  const names = ["Hub", ...Array.from({ length: degree }, (_, i) => `N${i}`)];
+  const neighbors: number[] = [];
+  const evidenceReleaseIds: number[] = [];
+  const edgeRoleA: string[] = [];
+  const edgeRoleB: string[] = [];
+  // The center's own row: every neighbor, in node_ids order (index 1..degree).
+  for (let i = 0; i < degree; i++) {
+    neighbors.push(i + 1);
+    evidenceReleaseIds.push(i);
+    edgeRoleA.push("Producer");
+    edgeRoleB.push("Guitar");
+  }
+  // Each neighbor's own row: just the center back (index 0) -- irrelevant
+  // to buildView(centered on 100), included only so offsets stay coherent.
+  const offsets = [0, degree];
+  for (let i = 0; i < degree; i++) {
+    neighbors.push(0);
+    evidenceReleaseIds.push(i);
+    edgeRoleA.push("Guitar");
+    edgeRoleB.push("Producer");
+    offsets.push(offsets[offsets.length - 1] + 1);
+  }
+  return {
+    schema_version: 1,
+    catalog_version: "catalog-v1-test",
+    snapshot_date: "20260601",
+    generated_at: "2026-08-03T00:00:00+00:00",
+    source: "test",
+    license: "test",
+    node_ids: new Int32Array(nodeIds),
+    names,
+    offsets: new Int32Array(offsets),
+    neighbors: new Int32Array(neighbors),
+    evidence_release_ids: new Int32Array(evidenceReleaseIds),
+    edge_role_a: edgeRoleA,
+    edge_role_b: edgeRoleB,
+    pathfinding_graph_version: "pathfinding-graph-v1-20260601-test",
+  };
+}
+
+// selectTopK (a bounded max-heap, ADR 0070 addendum's fix for buildView's
+// full-sort-then-slice cost on a real hub's raw degree) must select and
+// order EXACTLY what a naive full-sort-then-slice would, for any rank
+// distribution -- this is the real correctness bar a heap-based rewrite
+// has to clear, not just "looks plausible on one small fixture."
+test("buildView's top-K selection matches a naive full sort, across many random rank distributions and cap sizes", () => {
+  const rng = mulberry32(20260904);
+  const degree = 300;
+  const graph = hubGraph(degree);
+  const index = buildArtistIndex(graph);
+  for (let trial = 0; trial < 20; trial++) {
+    const rankByArtistId = new Map<number, number>();
+    for (let i = 0; i < degree; i++) {
+      rankByArtistId.set(1000 + i, Math.floor(rng() * 1000));
+    }
+    // A naive reference: every real neighbor id, full-sorted the exact way
+    // buildView documents (rank descending, tie-break artistId ascending).
+    const expectedFullOrder = Array.from(
+      { length: degree },
+      (_, i) => 1000 + i,
+    ).sort((a, b) => {
+      const byRank =
+        (rankByArtistId.get(b) ?? 0) - (rankByArtistId.get(a) ?? 0);
+      return byRank !== 0 ? byRank : a - b;
+    });
+    for (const cap of [1, 5, 24, degree - 1, degree, degree + 10]) {
+      const view = buildView(graph, index, new Map(), 100, cap, rankByArtistId);
+      const expected = expectedFullOrder.slice(0, cap);
+      expect(view?.neighbors.map((n) => n.artistId)).toEqual(expected);
+    }
+  }
+});
+
 test("isDimmed never dims the center", () => {
   const center = {
     artistId: 100,
