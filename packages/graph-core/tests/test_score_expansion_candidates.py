@@ -214,3 +214,109 @@ def test_quiet_suppresses_progress_output_default_does_not(
         quiet=True,
     )
     assert capsys.readouterr().err == ""
+
+
+# Slice B: bridge_span and coverage_delta.
+
+
+def _pathfinding_graph_with_anchors() -> dict:
+    """Alice (100) is connected to two distinct virtual album-anchor nodes
+    (-1, -2, ADR 0058) -- Bob (200) has no graph presence at all. Real CSR
+    shape: `neighbors[slot]` is an INDEX into `node_ids`, never the raw
+    (possibly negative) node id itself."""
+    return {
+        "node_ids": [100, 200, -1, -2],
+        "offsets": [0, 2, 2, 2, 2],
+        "neighbors": [2, 3],
+    }
+
+
+def test_bridge_span_counts_distinct_anchors_reachable_from_the_roster(
+    graph: CreditGraph,
+) -> None:
+    rows = score_expansion_candidates(
+        graph,
+        [{"master_id": 900}],
+        existing_node_ids=frozenset({100}),
+        allowed_release_ids=frozenset({10, 11}),
+        pathfinding_graph=_pathfinding_graph_with_anchors(),
+    )
+    assert rows[0]["bridge_span"] == 2
+
+
+def test_bridge_span_ignores_a_roster_member_absent_from_the_graph(
+    graph: CreditGraph,
+) -> None:
+    """Bob (200) has no row in `node_ids` at all in this fixture -- his
+    absence must not raise, and must not silently contribute anchors."""
+    pathfinding_graph = _pathfinding_graph_with_anchors()
+    pathfinding_graph["node_ids"] = [100, -1]  # Bob (200) is not a node here
+    pathfinding_graph["offsets"] = [0, 1, 1]
+    pathfinding_graph["neighbors"] = [1]
+    rows = score_expansion_candidates(
+        graph,
+        [{"master_id": 900}],
+        existing_node_ids=frozenset({100}),
+        allowed_release_ids=frozenset({10, 11}),
+        pathfinding_graph=pathfinding_graph,
+    )
+    assert rows[0]["bridge_span"] == 1
+
+
+def test_bridge_span_and_coverage_delta_default_to_honest_absence_and_zero(
+    graph: CreditGraph,
+) -> None:
+    """Without a pathfinding_graph, bridge_span is genuinely unknown (None,
+    not 0). Without underrepresented_buckets, coverage_delta is really 0
+    (an empty gap set and "closes no gap" are the same real answer)."""
+    rows = score_expansion_candidates(
+        graph,
+        [{"master_id": 900}],
+        existing_node_ids=frozenset({100}),
+        allowed_release_ids=frozenset({10, 11}),
+    )
+    assert rows[0]["bridge_span"] is None
+    assert rows[0]["coverage_delta"] == 0
+
+
+def test_coverage_delta_counts_matching_underrepresented_buckets(graph: CreditGraph) -> None:
+    # Master 900 (from _master_row's defaults): genres=["Rock"],
+    # styles=["Pop Rock"], year=2001 -> decade "2000s".
+    rows = score_expansion_candidates(
+        graph,
+        [{"master_id": 900}],
+        existing_node_ids=frozenset(),
+        allowed_release_ids=frozenset({10, 11}),
+        underrepresented_buckets=frozenset({("genres", "Rock"), ("decades", "1990s")}),
+    )
+    # "Rock" matches; "2000s" (the real decade) does not match "1990s"; the
+    # style "Pop Rock" matches nothing in the set -- exactly one real hit.
+    assert rows[0]["coverage_delta"] == 1
+
+
+def test_coverage_delta_adds_no_extra_master_lookup_beyond_eligibility_s_own(
+    graph: CreditGraph, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`master_studio_eligibility_reason` and `select_master_main_release_id`
+    (existing, reused code) already call `graph.master` once each per
+    candidate for their own checks -- this test's real point is that
+    `coverage_delta` doesn't add a THIRD, wasted lookup when no
+    `underrepresented_buckets` was requested, not that `graph.master` is
+    never called at all."""
+    calls: list[int] = []
+    real_master = graph.master
+
+    def counting_master(master_id: int):  # type: ignore[no-untyped-def]
+        calls.append(master_id)
+        return real_master(master_id)
+
+    monkeypatch.setattr(graph, "master", counting_master)
+    rows = score_expansion_candidates(
+        graph,
+        [{"master_id": 900}],
+        existing_node_ids=frozenset(),
+        allowed_release_ids=frozenset({10, 11}),
+    )
+    assert rows[0]["coverage_delta"] == 0
+    # eligibility + main-release-selection's own two calls; nothing extra.
+    assert calls == [900, 900]
