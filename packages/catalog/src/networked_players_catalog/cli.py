@@ -838,6 +838,69 @@ def _parser() -> argparse.ArgumentParser:
     select_graph_rich.add_argument("--threads", type=int, default=2)
     select_graph_rich.add_argument("--output", type=Path, required=True)
 
+    score_expansion_candidates_parser = subparsers.add_parser(
+        "score-expansion-candidates",
+        help=(
+            "score a rank-album-candidates-shaped shortlist as a transparent data "
+            "product (graph-expansion Phase 2, plan section 5.2) -- one explicit "
+            "component per candidate (eligibility, roster_size, overlap_existing, "
+            "new_performers), never a scalar weighted sum; local-only, never a "
+            "publication step"
+        ),
+    )
+    score_expansion_candidates_parser.add_argument("--onehop-root", type=Path, required=True)
+    score_expansion_candidates_parser.add_argument(
+        "--masters-root",
+        type=Path,
+        required=True,
+        help="needed for eligibility's genre/style gate (master_studio_eligibility_reason)",
+    )
+    score_expansion_candidates_parser.add_argument(
+        "--candidates", type=Path, required=True, help="rank-album-candidates output"
+    )
+    score_expansion_candidates_parser.add_argument(
+        "--pathfinding-graph",
+        type=Path,
+        required=True,
+        help=(
+            "apps/web/public/data/pathfinding/graph.v4.json -- supplies "
+            "existing_node_ids (overlap_existing is judged against what a player can "
+            "already reach, not the whole one-hop corpus)"
+        ),
+    )
+    score_expansion_candidates_parser.add_argument(
+        "--release-format-policy", type=Path, required=True
+    )
+    score_expansion_candidates_parser.add_argument(
+        "--studio-album-exclusions",
+        type=Path,
+        default=None,
+        help="optional studio-album-master-exclusions-v1.json; curated master-ID deny-list",
+    )
+    score_expansion_candidates_parser.add_argument(
+        "--editorial-master-ids",
+        type=Path,
+        default=None,
+        help='optional JSON {"master_ids": [...]} -- flagged editorial=1, never interpreted here',
+    )
+    score_expansion_candidates_parser.add_argument(
+        "--private-seed-master-ids",
+        type=Path,
+        default=None,
+        help=(
+            'optional JSON {"master_ids": [...]} -- flagged in_private_seed=1; this '
+            "input file itself must live under local/ or data/private/, never committed"
+        ),
+    )
+    score_expansion_candidates_parser.add_argument("--output", type=Path, required=True)
+    score_expansion_candidates_parser.add_argument("--memory-limit", default="3GB")
+    score_expansion_candidates_parser.add_argument("--threads", type=int, default=2)
+    score_expansion_candidates_parser.add_argument(
+        "--quiet",
+        action="store_true",
+        help="suppress the coarse progress lines this otherwise prints to stderr",
+    )
+
     build_expansion_packet = subparsers.add_parser(
         "build-expansion-review-packet",
         help=(
@@ -3146,6 +3209,79 @@ def main(argv: Sequence[str] | None = None) -> int:
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
         print(json.dumps({"output": str(args.output), "selected_count": len(selected)}, indent=2))
+        return 0
+
+    if args.command == "score-expansion-candidates":
+        from networked_players_graph_core.graph import CreditGraph
+        from networked_players_graph_core.score_expansion_candidates import (
+            score_expansion_candidates,
+        )
+
+        from .discogs.release_format_policy import load_master_exclusions
+
+        _require_local_only_output(
+            args.output,
+            command="score-expansion-candidates",
+            why=(
+                "this is a private, pre-decision scoring row set (graph-expansion "
+                "Phase 2, plan section 5.2) -- the policy is public, this data is not"
+            ),
+        )
+
+        candidates = json.loads(args.candidates.read_text())
+        pathfinding_graph = json.loads(args.pathfinding_graph.read_text())
+        existing_node_ids = frozenset(
+            int(node_id) for node_id in pathfinding_graph["node_ids"] if int(node_id) > 0
+        )
+        allowed_release_ids = frozenset(
+            json.loads(args.release_format_policy.read_text())["allowed_release_ids"]
+        )
+        master_exclusions = load_master_exclusions(args.studio_album_exclusions)
+        editorial_master_ids: frozenset[int] = frozenset()
+        if args.editorial_master_ids is not None:
+            editorial_master_ids = frozenset(
+                int(m) for m in json.loads(args.editorial_master_ids.read_text())["master_ids"]
+            )
+        private_seed_master_ids: frozenset[int] = frozenset()
+        if args.private_seed_master_ids is not None:
+            private_seed_master_ids = frozenset(
+                int(m) for m in json.loads(args.private_seed_master_ids.read_text())["master_ids"]
+            )
+
+        with CreditGraph.open(
+            args.onehop_root, memory_limit=args.memory_limit, threads=args.threads
+        ) as graph:
+            graph.attach_masters(args.masters_root)
+            scored_candidates = score_expansion_candidates(
+                graph,
+                candidates,
+                existing_node_ids=existing_node_ids,
+                allowed_release_ids=allowed_release_ids,
+                master_exclusions=master_exclusions,
+                editorial_master_ids=editorial_master_ids,
+                private_seed_master_ids=private_seed_master_ids,
+                quiet=args.quiet,
+            )
+
+        payload = {
+            "candidate_count": len(candidates),
+            "eligible_count": sum(
+                1 for row in scored_candidates if row["eligibility"] == "eligible"
+            ),
+            "candidates": scored_candidates,
+        }
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
+        print(
+            json.dumps(
+                {
+                    "output": str(args.output),
+                    "candidate_count": payload["candidate_count"],
+                    "eligible_count": payload["eligible_count"],
+                },
+                indent=2,
+            )
+        )
         return 0
 
     if args.command == "build-expansion-review-packet":
