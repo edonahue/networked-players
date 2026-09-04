@@ -667,6 +667,13 @@ Results are written to `local/jobs/<validator>-check-<timestamp>.json` (never co
 **Host: master/coordination only** — needs the full one-hop dataset, parsed masters, and
 the release-format policy locally.
 
+> **For a real graph-expansion round (adding new albums via the Bucket A/B/C editorial /
+> graph-value / coverage-gap lanes), use `docs/EXPANSION_PIPELINE.md`'s "Round log"
+> runbook instead of this section.** This section predates that pipeline (its own example
+> still references the retired `discogs-onehop-v3` root and covers only a same-size
+> candidate-fill regen, not a catalog-growing round) and is kept here for that narrower
+> case; it is not being rewritten to cover expansion rounds.
+
 ### Preconditions
 
 - Clean tree, latest `main` pulled; `make check` green (optional).
