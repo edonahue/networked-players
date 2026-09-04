@@ -165,8 +165,26 @@ def _write_exclusions(path: Path, *, master_ids: list[int]) -> Path:
     return path
 
 
-def _write_pathfinding_graph(path: Path, *, existing_node_ids: list[int]) -> Path:
-    path.write_text(json.dumps({"node_ids": existing_node_ids}))
+def _write_pathfinding_graph(
+    path: Path,
+    *,
+    existing_node_ids: list[int],
+    offsets: list[int] | None = None,
+    neighbors: list[int] | None = None,
+) -> Path:
+    """A real `graph.v4.json` always has `offsets`/`neighbors` alongside
+    `node_ids` -- defaults to a valid, edge-free CSR (every node's own
+    offset range is empty) rather than omitting them, so this fixture
+    matches the real schema even when a test doesn't care about bridge_span."""
+    path.write_text(
+        json.dumps(
+            {
+                "node_ids": existing_node_ids,
+                "offsets": offsets if offsets is not None else [0] * (len(existing_node_ids) + 1),
+                "neighbors": neighbors if neighbors is not None else [],
+            }
+        )
+    )
     return path
 
 
@@ -301,3 +319,55 @@ def test_existing_node_ids_ignores_negative_virtual_anchor_ids(tmp_path: Path) -
     assert exit_code == 0
     payload = json.loads(output.read_text())
     assert payload["candidates"][0]["overlap_existing"] == 1
+
+
+def test_bridge_span_and_coverage_delta_wire_through_the_cli(tmp_path: Path) -> None:
+    dataset = _write_onehop_dataset(tmp_path)
+    masters_root = _write_masters_dataset(tmp_path)
+    release_format_policy = _write_release_format_policy(tmp_path / "policy.json")
+    # Alice (100, index 0) is connected to two distinct virtual album-anchor
+    # nodes (-1, -2, ADR 0058); Bob (200, index 1) has no graph presence.
+    pathfinding_graph = _write_pathfinding_graph(
+        tmp_path / "graph.v4.json",
+        existing_node_ids=[100, 200, -1, -2],
+        offsets=[0, 2, 2, 2, 2],
+        neighbors=[2, 3],
+    )
+    underrepresented = tmp_path / "underrepresented.json"
+    # Master 900's real genres/styles/year (from _write_masters_dataset) are
+    # [], [], 1995 -- decade "1990s" is the one real match here.
+    underrepresented.write_text(
+        json.dumps(
+            [
+                {"dimension": "decades", "bucket": "1990s", "count": 0},
+                {"dimension": "genres", "bucket": "Jazz", "count": 1},
+            ]
+        )
+    )
+    candidates = tmp_path / "candidates.json"
+    candidates.write_text(json.dumps([{"master_id": 900}]))
+    output = tmp_path / "local" / "out.json"
+
+    exit_code = main(
+        [
+            "score-expansion-candidates",
+            "--onehop-root",
+            str(dataset),
+            "--masters-root",
+            str(masters_root),
+            "--candidates",
+            str(candidates),
+            "--pathfinding-graph",
+            str(pathfinding_graph),
+            "--release-format-policy",
+            str(release_format_policy),
+            "--underrepresented-buckets",
+            str(underrepresented),
+            "--output",
+            str(output),
+        ]
+    )
+    assert exit_code == 0
+    row = json.loads(output.read_text())["candidates"][0]
+    assert row["bridge_span"] == 2
+    assert row["coverage_delta"] == 1

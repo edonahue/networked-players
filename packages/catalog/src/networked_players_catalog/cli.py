@@ -892,6 +892,17 @@ def _parser() -> argparse.ArgumentParser:
             "input file itself must live under local/ or data/private/, never committed"
         ),
     )
+    score_expansion_candidates_parser.add_argument(
+        "--underrepresented-buckets",
+        type=Path,
+        default=None,
+        help=(
+            "optional measure-coverage-gaps-shaped JSON list of "
+            '{"dimension", "bucket", "count"} objects (coverage_gaps.identify_underrepresented\'s '
+            "own output over the CURRENT catalog, computed once by the caller) -- populates "
+            "coverage_delta; omit to leave every row's coverage_delta at 0"
+        ),
+    )
     score_expansion_candidates_parser.add_argument("--output", type=Path, required=True)
     score_expansion_candidates_parser.add_argument("--memory-limit", default="3GB")
     score_expansion_candidates_parser.add_argument("--threads", type=int, default=2)
@@ -3247,6 +3258,12 @@ def main(argv: Sequence[str] | None = None) -> int:
             private_seed_master_ids = frozenset(
                 int(m) for m in json.loads(args.private_seed_master_ids.read_text())["master_ids"]
             )
+        underrepresented_buckets: frozenset[tuple[str, str]] = frozenset()
+        if args.underrepresented_buckets is not None:
+            underrepresented_buckets = frozenset(
+                (str(entry["dimension"]), str(entry["bucket"]))
+                for entry in json.loads(args.underrepresented_buckets.read_text())
+            )
 
         with CreditGraph.open(
             args.onehop_root, memory_limit=args.memory_limit, threads=args.threads
@@ -3260,6 +3277,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                 master_exclusions=master_exclusions,
                 editorial_master_ids=editorial_master_ids,
                 private_seed_master_ids=private_seed_master_ids,
+                pathfinding_graph=pathfinding_graph,
+                underrepresented_buckets=underrepresented_buckets,
                 quiet=args.quiet,
             )
 
