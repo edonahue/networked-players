@@ -21,6 +21,7 @@ from networked_players_contracts.evidence_release_registry import (
 )
 from networked_players_contracts.pathfinding_graph import pathfinding_graph_version
 from networked_players_contracts.prominence import prominence_version
+from networked_players_contracts.search_index import search_index_version
 
 _SNAPSHOT = "20260601"
 _CATALOG_VERSION = "catalog-v1-20260601-abc123abc123"
@@ -635,6 +636,44 @@ def _evidence_release_registry() -> dict[str, Any]:
     return registry
 
 
+# --- search index --------------------------------------------------------------
+
+
+def _search_index() -> dict[str, Any]:
+    catalog = _catalog()
+    contributor_index = _contributor_index()
+    entries = [
+        {
+            "kind": "album",
+            "id": album["id"],
+            "label": album["title"],
+            "sublabel": album["artist"],
+            "state": "present",
+        }
+        for album in catalog["albums"]
+    ] + [
+        {
+            "kind": "contributor",
+            "id": str(contributor["artist_id"]),
+            "label": contributor["name"],
+            "sublabel": None,
+            "state": "present",
+        }
+        for contributor in contributor_index["contributors"]
+    ]
+    payload: dict[str, Any] = {
+        "schema_version": 1,
+        "catalog_version": catalog["catalog_version"],
+        "contributor_index_version": contributor_index["contributor_index_version"],
+        "generated_at": "2026-09-03T00:00:00+00:00",
+        "source": "test",
+        "license": "test",
+        "entries": entries,
+    }
+    payload["search_index_version"] = search_index_version(entries, _SNAPSHOT)
+    return payload
+
+
 # --- the combined check -------------------------------------------------------
 
 
@@ -656,6 +695,7 @@ def _clean_artifacts() -> dict[str, Any]:
         "prominence": _prominence(pathfinding_graph),
         "album_credit_membership": _album_credit_membership(),
         "evidence_release_registry": _evidence_release_registry(),
+        "search_index": _search_index(),
     }
 
 
@@ -674,6 +714,7 @@ def test_clean_publication_set_has_no_failures() -> None:
         "prominence": [],
         "album_credit_membership": [],
         "evidence_release_registry": [],
+        "search_index": [],
     }
 
 
@@ -692,6 +733,7 @@ def test_every_group_key_always_present() -> None:
         "prominence",
         "album_credit_membership",
         "evidence_release_registry",
+        "search_index",
     }
 
 

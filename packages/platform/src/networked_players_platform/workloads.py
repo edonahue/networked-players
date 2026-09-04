@@ -55,6 +55,7 @@ def _artifact_validators() -> dict[str, tuple[Callable[..., list[str]], int]]:
     - record-routes: (universe, rounds)
     - album-credit-membership: (membership, catalog)
     - evidence-release-registry: (registry, catalog)
+    - search-index: (index, catalog, contributor_index)
     """
     from networked_players_contracts import (
         album_art_failures,
@@ -69,6 +70,7 @@ def _artifact_validators() -> dict[str, tuple[Callable[..., list[str]], int]]:
         prominence_failures,
         public_album_catalog_failures,
         record_routes_failures,
+        search_index_failures,
     )
 
     return {
@@ -84,15 +86,16 @@ def _artifact_validators() -> dict[str, tuple[Callable[..., list[str]], int]]:
         "record-routes": (record_routes_failures, 2),
         "album-credit-membership": (album_credit_membership_failures, 2),
         "evidence-release-registry": (evidence_release_registry_failures, 2),
+        "search-index": (search_index_failures, 3),
     }
 
 
 def _artifact_validate_handler(
     request: RunRequest, input_dir: Path, output_dir: Path
 ) -> tuple[ArtifactDescriptor, ...]:
-    """Validate one or two JSON artifacts using the dependency-free public
-    contracts. Generalizes across every real Pi-fleet artifact check this
-    project has (see `_artifact_validators`) -- the ADR-0034 consolidation
+    """Validate one, two, or three JSON artifacts using the dependency-free
+    public contracts. Generalizes across every real Pi-fleet artifact check
+    this project has (see `_artifact_validators`) -- the ADR-0034 consolidation
     of what used to be 8 separate `scripts/enqueue_*_check.py` scripts,
     each with its own pre-deployed job body. Content-addressed staging via
     `request.inputs` replaces the old pre-deployed-artifact pattern
