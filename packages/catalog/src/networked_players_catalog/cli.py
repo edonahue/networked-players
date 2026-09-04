@@ -834,6 +834,32 @@ def _parser() -> argparse.ArgumentParser:
         help="a bounded shortlist, e.g. rank-album-candidates output already policy-filtered",
     )
     select_graph_rich.add_argument("--count", type=int, required=True)
+    select_graph_rich.add_argument(
+        "--expansion-policy",
+        type=Path,
+        default=None,
+        help=(
+            "data/albums/expansion-policy-v1.json -- when given (with "
+            "--scored-candidates), finalists outside the committed automatic-lane "
+            "roster band or below overlap_existing_minimum are dropped BEFORE the "
+            "greedy runs. This selection optimises purely for marginal edge count "
+            "and otherwise ignores the policy entirely: in Round 1 four of its six "
+            "picks had rosters of 34-50 against a 5-30 band and were filtered out "
+            "by hand afterwards. Enforcing the band measurably improved that lane "
+            "(6 of 6 slots filled instead of 4, 36 new performers instead of 34)"
+        ),
+    )
+    select_graph_rich.add_argument(
+        "--scored-candidates",
+        type=Path,
+        default=None,
+        help=(
+            "score-expansion-candidates output -- supplies the roster_size and "
+            "overlap_existing --expansion-policy gates on; never recomputed here, "
+            "so the pool and the score cannot disagree. Required with "
+            "--expansion-policy"
+        ),
+    )
     select_graph_rich.add_argument("--memory-limit", default="2GB")
     select_graph_rich.add_argument("--threads", type=int, default=2)
     select_graph_rich.add_argument("--output", type=Path, required=True)
@@ -3376,6 +3402,27 @@ def main(argv: Sequence[str] | None = None) -> int:
         }
 
         finalists = json.loads(args.finalists.read_text())
+        submitted_count = len(finalists)
+        policy_rejections: dict[str, int] = {}
+        if args.expansion_policy is not None or args.scored_candidates is not None:
+            from networked_players_graph_core.expansion_policy import (
+                filter_to_automatic_lane,
+                load_automatic_lane_policy,
+            )
+
+            if args.expansion_policy is None or args.scored_candidates is None:
+                raise ValueError(
+                    "--expansion-policy and --scored-candidates must be given together: "
+                    "the policy defines the roster band, the scored candidates supply the "
+                    "roster_size it gates on"
+                )
+            scored_payload = json.loads(args.scored_candidates.read_text())
+            finalists, policy_rejections = filter_to_automatic_lane(
+                finalists,
+                scored_payload.get("candidates", []),
+                policy=load_automatic_lane_policy(args.expansion_policy),
+            )
+
         selected = greedy_marginal_selection(
             args.dataset,
             baseline_release_ids=frozenset(baseline_release_ids),
@@ -3390,14 +3437,27 @@ def main(argv: Sequence[str] | None = None) -> int:
             "snapshot_date": dataset_snapshot,
             "baseline_release_count": len(baseline_release_ids),
             "baseline_artist_count": len(baseline_artist_ids),
+            "submitted_finalist_count": submitted_count,
             "finalist_count": len(finalists),
+            "policy_rejections": policy_rejections,
             "requested_count": args.count,
             "selected_count": len(selected),
             "selected": selected,
         }
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
-        print(json.dumps({"output": str(args.output), "selected_count": len(selected)}, indent=2))
+        print(
+            json.dumps(
+                {
+                    "output": str(args.output),
+                    "submitted_finalist_count": submitted_count,
+                    "finalist_count": len(finalists),
+                    "policy_rejections": policy_rejections,
+                    "selected_count": len(selected),
+                },
+                indent=2,
+            )
+        )
         return 0
 
     if args.command == "build-collection-candidates":
