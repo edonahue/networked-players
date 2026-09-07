@@ -305,22 +305,47 @@ catalog. Rebuilding them every round is still required; nothing in CI will force
       --output apps/web/public/data/pathfinding/graph.v4.json \
       --generated-at <explicit ISO datetime>
 
+    # --carry-forward-challenge keeps previously documented artist pairs at the
+    # front of the candidate walk, so paths documented in an earlier round stay
+    # documented and their endpoints keep their /contributors/ pages. It also
+    # raises the default --max-paths so the carried pairs actually fit. Point it
+    # at the PUBLISHED artifact (git show HEAD:... > /tmp/prev-challenge.json).
     uv run networked-players-catalog build-challenge-from-dump \
       --onehop-root local/processed/discogs-onehop-v5/snapshot=20260601 \
       --masters-root <masters-root>/snapshot=20260601 \
       --release-format-policy <path-to-release-format-scoring-index.json> \
       --studio-album-exclusions data/albums/studio-album-master-exclusions-v1.json \
+      --artist-family-exclusions <path-to-artist-family-exclusions-v1.json> \
+      --carry-forward-challenge <the-previously-published-challenge.v3.json> \
       --in-memory-search --max-frontier-expansion 0 \
       --output apps/web/public/data/challenge.v3.json
 
+    # PASS THE ROUND TARGETS EXPLICITLY. The CLI defaults are 150/100, but the
+    # published artifact holds 143 one-hop + 200 two-hop rounds. Round 1's first
+    # cascade relied on the defaults, built 343 -> 250 rounds, and 94 routes-only
+    # contributors lost their pages -- diagnosed only after the fact. Read the
+    # previous artifact's own round counts before choosing these numbers.
     uv run networked-players-catalog build-record-routes \
       --onehop-root local/processed/discogs-onehop-v5/snapshot=20260601 \
       --albums apps/web/public/data/catalog/albums.v1.json \
       --release-format-policy <path-to-release-format-scoring-index.json> \
       --studio-album-exclusions data/albums/studio-album-master-exclusions-v1.json \
       --masters-root <masters-root>/snapshot=20260601 \
+      --artist-family-exclusions <path-to-artist-family-exclusions-v1.json> \
+      --one-hop-target 150 --two-hop-target 200 \
       --output-universe apps/web/public/data/routes/universe.v1.json \
       --output-rounds apps/web/public/data/routes/rounds.v1.json
+
+    # The Connection Guesser (game/{universe,rounds}.v1.json) has NO
+    # catalog_version cross-check, so make check cannot tell you it is stale.
+    # Rebuild it every round. Its own defaults are 300/200 -- check the
+    # published artifact before trusting them.
+    uv run networked-players-catalog build-connection-rounds \
+      --onehop-root local/processed/discogs-onehop-v5/snapshot=20260601 \
+      --albums apps/web/public/data/catalog/albums.v1.json \
+      --artist-family-exclusions <path-to-artist-family-exclusions-v1.json> \
+      --output-universe apps/web/public/data/game/universe.v1.json \
+      --output-rounds apps/web/public/data/game/rounds.v1.json
 
     uv run networked-players-catalog build-album-art-registry \
       --catalog apps/web/public/data/catalog/albums.v1.json \
@@ -376,6 +401,28 @@ catalog. Rebuilding them every round is still required; nothing in CI will force
     - It will **not** catch a stale Record Routes or Connection Guesser (the silent-pass
       trap above) — confirm both were actually rebuilt this round by their own
       `catalog_version` fields, don't rely on `make check` alone.
+
+13b. **Check contributor continuity — nothing else catches a page disappearing.**
+
+```bash
+git show HEAD:apps/web/public/data/challenge.v3.json > /tmp/prev-challenge.json
+git show HEAD:apps/web/public/data/contributors/index.v1.json > /tmp/prev-index.json
+uv run networked-players-catalog check-contributor-continuity \
+  --previous-challenge /tmp/prev-challenge.json \
+  --current-challenge apps/web/public/data/challenge.v3.json \
+  --previous-contributor-index /tmp/prev-index.json \
+  --current-contributor-index apps/web/public/data/contributors/index.v1.json
+```
+
+Exits non-zero when a previously documented **path endpoint** is no longer documented —
+the one continuity guarantee the site makes, and what `--carry-forward-challenge`
+protects. Contributor-index churn is reported but never fails: pages are derived from
+currently documented paths and may legitimately come and go (owner decision 2026-09-05;
+`PHASE7_REPORT.md` had already recorded that "521 is not itself evidence of an error").
+Record the reported `removed`/`added` counts in the round log — Round 1's real numbers
+were 530 → 639, 76 removed, 185 added, **0 endpoints lost**. A large `removed` count with
+no explanation is the signal that a build parameter drifted, which is exactly how the
+`--two-hop-target` mistake was found.
 
 ### Steps 14–15: measure and validate on the fleet
 

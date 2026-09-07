@@ -399,19 +399,51 @@ def test_load_featured_master_ids_reads_real_shape(tmp_path: Path) -> None:
     assert load_featured_master_ids(path) == frozenset({10362, 10363})
 
 
-def test_real_committed_featured_file_marks_every_current_album_featured() -> None:
-    """The real `data/albums/featured-v1.json` was generated from the real
-    committed catalog's master_ids (ADR 0069: the original 179 are
-    featured -- they were hand-selected) -- prove the file and the catalog
-    agree, so a future catalog change that silently drifts from it is
-    caught here rather than discovered downstream."""
+def test_real_committed_featured_file_matches_the_catalogs_own_lanes() -> None:
+    """`data/albums/featured-v1.json` must agree with the real committed
+    catalog, so a silent drift is caught here rather than downstream.
+
+    The rule is ADR 0069's, not "everything is featured": hand-selected albums
+    (the original backbone, and each round's editorial lane) are featured;
+    `graph_rich`/`coverage_gap`/`generic_candidate` albums enter as **graph
+    records** -- first-class, data-forward destinations that simply carry no
+    editorial blurb and never take hero placement.
+
+    This test previously asserted `catalog == featured`, which was true only
+    because every album published before Round 1 was hand-selected. Round 1
+    (2026-09-05) added the first six graph-value albums, and that assertion
+    would have forced them to be featured to stay green -- collapsing the
+    distinction the whole public-universe model is built on."""
     from networked_players_graph_core.analysis import load_featured_master_ids
 
     repo_root = Path(__file__).resolve().parents[3]
     catalog = json.loads((repo_root / "apps/web/public/data/catalog/albums.v1.json").read_text())
     featured_master_ids = load_featured_master_ids(repo_root / "data/albums/featured-v1.json")
-    catalog_master_ids = {int(a["master_id"]) for a in catalog["albums"]}
-    assert catalog_master_ids == featured_master_ids
+    albums = catalog["albums"]
+    catalog_master_ids = {int(a["master_id"]) for a in albums}
+
+    # No pin may reference an album that is not in the catalog at all.
+    assert featured_master_ids <= catalog_master_ids
+
+    hand_selected = {"editorial", "already_published"}
+    graph_record_lanes = {"graph_rich", "coverage_gap", "generic_candidate"}
+    # A v1-shaped catalog carries no per-album selection_source; there, every
+    # album predates the lane distinction and is hand-selected by definition.
+    should_be_featured = {
+        int(a["master_id"])
+        for a in albums
+        if a.get("selection_source", "already_published") in hand_selected
+    }
+    graph_records = {
+        int(a["master_id"]) for a in albums if a.get("selection_source") in graph_record_lanes
+    }
+
+    assert should_be_featured <= featured_master_ids, (
+        "every hand-selected album must be pinned featured"
+    )
+    assert not (graph_records & featured_master_ids), (
+        "graph records must not be featured -- that is what makes them graph records"
+    )
 
 
 def test_no_pre_resolved_albums_is_fully_backward_compatible(dataset_root: Path) -> None:

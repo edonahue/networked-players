@@ -1629,3 +1629,77 @@ def test_omitting_featured_albums_stays_v1_shaped(tmp_path: Path) -> None:
         assert "featured" not in album
         assert "selection_source" not in album
         assert "expansion_round" not in album
+
+
+def test_already_published_albums_keep_their_original_expansion_round(tmp_path: Path) -> None:
+    """`expansion_round` records which round ADDED an album, so an album that
+    was already live keeps the round it originally arrived in.
+
+    Regression test for a real Round 1 build (2026-09-04): --expansion-round 1
+    stamped every album in the catalog, so all 217 claimed to be Round 1
+    additions including the 179 live since Phase 7 -- destroying the only
+    field that says what a round actually changed. The original PR's test
+    asserted the NEW album got round 1 and never checked the existing ones.
+    """
+    dataset = _write_onehop_dataset(tmp_path)
+    masters_root = _write_masters_dataset(tmp_path)
+    release_format_policy = _write_release_format_policy(tmp_path / "policy.json")
+    exclusions = _write_exclusions(tmp_path / "exclusions.json")
+    editorial, candidates = _write_editorial_and_candidates(tmp_path)
+
+    # Master 900 is already live, added in round 0; 901 is new in this build.
+    already_published = tmp_path / "published.json"
+    already_published.write_text(
+        json.dumps(
+            {
+                "albums": [
+                    {
+                        "id": "master-900",
+                        "master_id": 900,
+                        "main_release_id": 1,
+                        "artist_id": 100,
+                        "artist": "Alice",
+                        "title": "First Light",
+                        "year": 1995,
+                        "expansion_round": 0,
+                    }
+                ]
+            }
+        )
+    )
+    featured = tmp_path / "featured.json"
+    featured.write_text(json.dumps({"entries": [{"master_id": 900}, {"master_id": 901}]}))
+    output = tmp_path / "albums.v1.json"
+
+    exit_code = main(
+        [
+            "build-public-album-catalog",
+            "--onehop-root",
+            str(dataset),
+            "--masters-root",
+            str(masters_root),
+            "--release-format-policy",
+            str(release_format_policy),
+            "--studio-album-exclusions",
+            str(exclusions),
+            "--editorial-albums",
+            str(editorial),
+            "--candidates",
+            str(candidates),
+            "--already-published-catalog",
+            str(already_published),
+            "--featured-albums",
+            str(featured),
+            "--expansion-round",
+            "1",
+            "--target-count",
+            "2",
+            "--output",
+            str(output),
+        ]
+    )
+    assert exit_code == 0
+    by_master = {a["master_id"]: a for a in json.loads(output.read_text())["albums"]}
+
+    assert by_master[900]["expansion_round"] == 0, "an already-live album must keep its own round"
+    assert by_master[901]["expansion_round"] == 1, "a genuinely new album gets this build's round"

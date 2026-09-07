@@ -1,0 +1,310 @@
+{
+  "albums": [
+    {
+      "artist": "Phoenix",
+      "artist_id": 2269,
+      "main_release_id": 261718,
+      "master_id": 16906,
+      "query_artist": null,
+      "query_title": null,
+      "title": "Alphabetical",
+      "year": 2004
+    },
+    {
+      "artist": "Bruce Springsteen",
+      "artist_id": 219986,
+      "main_release_id": 1343227,
+      "master_id": 26701,
+      "query_artist": null,
+      "query_title": null,
+      "title": "Born In The U.S.A.",
+      "year": 1984
+    },
+    {
+      "artist": "Santana",
+      "artist_id": 30724,
+      "main_release_id": 1058763,
+      "master_id": 31602,
+      "query_artist": null,
+      "query_title": null,
+      "title": "Amigos",
+      "year": 1976
+    },
+    {
+      "artist": "Jimmy Smith",
+      "artist_id": 29981,
+      "main_release_id": 437567,
+      "master_id": 33174,
+      "query_artist": null,
+      "query_title": null,
+      "title": "Jimmy & Wes (The Dynamic Duo)",
+      "year": 1967
+    },
+    {
+      "artist": "Sting",
+      "artist_id": 13961,
+      "main_release_id": 1066027,
+      "master_id": 33572,
+      "query_artist": null,
+      "query_title": null,
+      "title": "...Nothing Like The Sun",
+      "year": 1987
+    },
+    {
+      "artist": "Aerosmith",
+      "artist_id": 48424,
+      "main_release_id": 1512406,
+      "master_id": 36509,
+      "query_artist": null,
+      "query_title": null,
+      "title": "Get Your Wings",
+      "year": 1974
+    },
+    {
+      "artist": "Talking Heads",
+      "artist_id": 22854,
+      "main_release_id": 224182,
+      "master_id": 39301,
+      "query_artist": null,
+      "query_title": null,
+      "title": "Little Creatures",
+      "year": 1985
+    },
+    {
+      "artist": "Elvis Costello & The Attractions",
+      "artist_id": 254761,
+      "main_release_id": 6258009,
+      "master_id": 42926,
+      "query_artist": null,
+      "query_title": null,
+      "title": "Goodbye Cruel World",
+      "year": 1984
+    },
+    {
+      "artist": "The Attractions",
+      "artist_id": 150898,
+      "main_release_id": 1653458,
+      "master_id": 42965,
+      "query_artist": null,
+      "query_title": null,
+      "title": "King Of America",
+      "year": 1986
+    },
+    {
+      "artist": "Dr. John",
+      "artist_id": 15152,
+      "main_release_id": 554882,
+      "master_id": 49021,
+      "query_artist": null,
+      "query_title": null,
+      "title": "In The Right Place",
+      "year": 1973
+    },
+    {
+      "artist": "David Bowie",
+      "artist_id": 10263,
+      "main_release_id": 470173,
+      "master_id": 49182,
+      "query_artist": null,
+      "query_title": null,
+      "title": "Tonight",
+      "year": 1984
+    },
+    {
+      "artist": "George Benson",
+      "artist_id": 2266,
+      "main_release_id": 1152545,
+      "master_id": 52525,
+      "query_artist": null,
+      "query_title": null,
+      "title": "Breezin'",
+      "year": 1976
+    },
+    {
+      "artist": "The Rolling Stones",
+      "artist_id": 20991,
+      "main_release_id": 5249378,
+      "master_id": 54219,
+      "query_artist": null,
+      "query_title": null,
+      "title": "Some Girls",
+      "year": 1978
+    },
+    {
+      "artist": "U2",
+      "artist_id": 6520,
+      "main_release_id": 204237,
+      "master_id": 62831,
+      "query_artist": null,
+      "query_title": null,
+      "title": "The Unforgettable Fire",
+      "year": 1984
+    },
+    {
+      "artist": "Al Di Meola",
+      "artist_id": 257120,
+      "main_release_id": 2252753,
+      "master_id": 68150,
+      "query_artist": null,
+      "query_title": null,
+      "title": "Elegant Gypsy",
+      "year": 1977
+    },
+    {
+      "artist": "James Taylor (2)",
+      "artist_id": 262944,
+      "main_release_id": 5922317,
+      "master_id": 68202,
+      "query_artist": null,
+      "query_title": null,
+      "title": "Sweet Baby James",
+      "year": 1970
+    },
+    {
+      "artist": "The Pretenders",
+      "artist_id": 197435,
+      "main_release_id": 6176537,
+      "master_id": 69604,
+      "query_artist": null,
+      "query_title": null,
+      "title": "Get Close",
+      "year": 1986
+    },
+    {
+      "artist": "Tom Petty And The Heartbreakers",
+      "artist_id": 269534,
+      "main_release_id": 412419,
+      "master_id": 74338,
+      "query_artist": null,
+      "query_title": null,
+      "title": "Hard Promises",
+      "year": 1981
+    },
+    {
+      "artist": "The Babys",
+      "artist_id": 254407,
+      "main_release_id": 7111529,
+      "master_id": 94932,
+      "query_artist": null,
+      "query_title": null,
+      "title": "Head First",
+      "year": 1979
+    },
+    {
+      "artist": "The Blues Brothers",
+      "artist_id": 254441,
+      "main_release_id": 653009,
+      "master_id": 107122,
+      "query_artist": null,
+      "query_title": null,
+      "title": "Briefcase Full Of Blues",
+      "year": 1978
+    },
+    {
+      "artist": "Jefferson Starship",
+      "artist_id": 131970,
+      "main_release_id": 1132944,
+      "master_id": 108372,
+      "query_artist": null,
+      "query_title": null,
+      "title": "Blows Against The Empire",
+      "year": 1970
+    },
+    {
+      "artist": "Joe Walsh",
+      "artist_id": 162617,
+      "main_release_id": 379910,
+      "master_id": 117293,
+      "query_artist": null,
+      "query_title": null,
+      "title": "\"But Seriously, Folks...\"",
+      "year": 1978
+    },
+    {
+      "artist": "Joe Walsh",
+      "artist_id": 162617,
+      "main_release_id": 1673395,
+      "master_id": 117296,
+      "query_artist": null,
+      "query_title": null,
+      "title": "So What",
+      "year": 1974
+    },
+    {
+      "artist": "Joe Walsh",
+      "artist_id": 162617,
+      "main_release_id": 4920241,
+      "master_id": 117304,
+      "query_artist": null,
+      "query_title": null,
+      "title": "The Smoker You Drink, The Player You Get",
+      "year": 1973
+    },
+    {
+      "artist": "Dave Matthews Band",
+      "artist_id": 30674,
+      "main_release_id": 1816058,
+      "master_id": 149977,
+      "query_artist": null,
+      "query_title": null,
+      "title": "Big Whiskey And The GrooGrux King",
+      "year": 2009
+    },
+    {
+      "artist": "The Thorns",
+      "artist_id": 374683,
+      "main_release_id": 4495339,
+      "master_id": 153739,
+      "query_artist": null,
+      "query_title": null,
+      "title": "The Thorns",
+      "year": 2003
+    },
+    {
+      "artist": "Willie Nelson",
+      "artist_id": 249449,
+      "main_release_id": 7083033,
+      "master_id": 270647,
+      "query_artist": null,
+      "query_title": null,
+      "title": "Shotgun Willie",
+      "year": 1973
+    },
+    {
+      "artist": "Michael Jackson",
+      "artist_id": 15885,
+      "main_release_id": 120096,
+      "master_id": 435524,
+      "query_artist": null,
+      "query_title": null,
+      "title": "Off The Wall",
+      "year": 1979
+    },
+    {
+      "artist": "Glen Phillips",
+      "artist_id": 303986,
+      "main_release_id": 440336,
+      "master_id": 479327,
+      "query_artist": null,
+      "query_title": null,
+      "title": "Winter Pays For Summer",
+      "year": 2005
+    },
+    {
+      "artist": "Beck",
+      "artist_id": 3928,
+      "main_release_id": 11005276,
+      "master_id": 1250570,
+      "query_artist": null,
+      "query_title": null,
+      "title": "Colors",
+      "year": 2017
+    }
+  ],
+  "generated_at": "2026-09-04T00:00:00+00:00",
+  "generated_by": "networked-players-catalog score-expansion-candidates 0.1.0",
+  "kind": "public-editorial-seed",
+  "note": "Graph-expansion Round 1 editorial selections: 30 albums approved by the operator from a scored candidate shortlist, each pinned by master_id and resolved against the 20260601 snapshot. Editorial intent only.",
+  "schema_version": 1,
+  "snapshot_date": "20260601"
+}

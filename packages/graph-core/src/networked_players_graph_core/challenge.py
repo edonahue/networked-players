@@ -224,6 +224,7 @@ def _candidate_album_pairs(
     ordered: list[MatchedAlbum],
     *,
     is_family_excluded: Callable[[int, int], bool] | None = None,
+    carry_forward_artist_pairs: frozenset[tuple[int, int]] = frozenset(),
 ) -> list[tuple[MatchedAlbum, MatchedAlbum]]:
     """Every distinct-artist-pair candidate, **stratified per album** so
     coverage spreads across the whole album list before any album is
@@ -281,11 +282,17 @@ def _candidate_album_pairs(
                 yield i - distance
 
     used_pairs: set[tuple[int, int]] = set()
-    candidates: list[tuple[MatchedAlbum, MatchedAlbum]] = []
+    # One list per round-robin round, so the caller's `max_paths` budget can be
+    # spent in a deliberate priority order rather than whatever order the walk
+    # happens to produce (see the carry-forward reordering below).
+    rounds: list[list[tuple[MatchedAlbum, MatchedAlbum]]] = []
+    round_pairs: list[tuple[int, int]] = []
     remaining = [partners(i) for i in range(count)]
     progressed = True
     while progressed:
         progressed = False
+        candidates: list[tuple[MatchedAlbum, MatchedAlbum]] = []
+        round_pair_keys: list[tuple[int, int]] = []
         for i, from_album in enumerate(ordered):
             for j in remaining[i]:
                 to_album = ordered[j]
@@ -314,9 +321,47 @@ def _candidate_album_pairs(
                     continue
                 used_pairs.add(pair)
                 candidates.append((from_album, to_album))
+                round_pair_keys.append(pair)
                 progressed = True
                 break
-    return candidates
+        if candidates:
+            rounds.append(candidates)
+            round_pairs.extend(round_pair_keys)
+
+    if not rounds:
+        return []
+    if not carry_forward_artist_pairs:
+        return [pair for round_list in rounds for pair in round_list]
+
+    # Carry-forward ordering (plan section 11's Phase 2 "contributor index
+    # monotone" gate). The caller stops at `max_paths`, so which candidates sit
+    # at the FRONT decides which paths get documented -- and therefore which
+    # people get a `/contributors/` page at all. Adding albums reshuffles this
+    # walk, so a previously documented artist pair can fall past the cap and
+    # take its contributors' pages with it: measured on the real Round 1
+    # rebuild (2026-09-04), 112 of 530 contributor pages would have 404'd, the
+    # same churn Phase 7 hit (549 -> 521) and never root-caused.
+    #
+    # Priority, in order:
+    #   1. Round 1 of the walk -- every album's FIRST pair, which is what
+    #      guarantees `albums_missed == 0`. Never displaced, or adding albums
+    #      would leave the new ones undocumented to protect the old ones.
+    #   2. Previously published pairs, so their contributors persist.
+    #   3. Everything else, in the walk's own order.
+    first_round = rounds[0]
+    first_round_keys = set(round_pairs[: len(first_round)])
+    carried: list[tuple[MatchedAlbum, MatchedAlbum]] = []
+    rest: list[tuple[MatchedAlbum, MatchedAlbum]] = []
+    for round_list in rounds[1:]:
+        for from_album, to_album in round_list:
+            key = (
+                min(from_album.artist_id, to_album.artist_id),
+                max(from_album.artist_id, to_album.artist_id),
+            )
+            if key in first_round_keys:
+                continue
+            (carried if key in carry_forward_artist_pairs else rest).append((from_album, to_album))
+    return [*first_round, *carried, *rest]
 
 
 class _PathFinder(Protocol):
@@ -493,6 +538,7 @@ def build_challenge_v2(
     catalog_version: str | None = None,
     in_memory: bool = False,
     quiet: bool = False,
+    carry_forward_artist_pairs: frozenset[tuple[int, int]] = frozenset(),
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     """Match `{artist, title}` name/title queries against the graph, then
     build the artifact. For albums already resolved to a real artist_id
@@ -521,6 +567,13 @@ def build_challenge_v2(
         catalog_version=catalog_version,
         in_memory=in_memory,
         quiet=quiet,
+        # Forwarded, not dropped: this wrapper accepted the argument and then
+        # silently discarded it, so the CLI's name-matching branch (a
+        # hand-written album list, or any catalog without per-album artist_id)
+        # got no carry-forward at all while appearing to ask for it. Round 1
+        # happened to take the already-resolved branch, which is why the
+        # omission stayed invisible.
+        carry_forward_artist_pairs=carry_forward_artist_pairs,
     )
 
 
@@ -539,6 +592,7 @@ def build_challenge_v2_from_matched(
     catalog_version: str | None = None,
     in_memory: bool = False,
     quiet: bool = False,
+    carry_forward_artist_pairs: frozenset[tuple[int, int]] = frozenset(),
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     """Build the artifact from an already-resolved album list -- no further
     name-based matching happens here. `missed` is carried through only for
@@ -571,7 +625,11 @@ def build_challenge_v2_from_matched(
         )
 
     ordered = sorted(matched, key=lambda m: m.album_id)
-    candidate_pairs = _candidate_album_pairs(ordered, is_family_excluded=is_family_excluded)
+    candidate_pairs = _candidate_album_pairs(
+        ordered,
+        is_family_excluded=is_family_excluded,
+        carry_forward_artist_pairs=carry_forward_artist_pairs,
+    )
     capped_count = 0
     attempted = 0
     paths_json: list[dict[str, Any]] = []

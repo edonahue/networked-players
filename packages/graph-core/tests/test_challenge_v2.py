@@ -759,3 +759,131 @@ def test_build_challenge_v2_progress_logging_is_a_pure_side_effect(
 
     assert loud_artifact == quiet_artifact
     assert loud_report == quiet_report
+
+
+def test_carry_forward_pairs_rank_ahead_of_new_ones_without_displacing_round_one() -> None:
+    """Adding albums reshuffles the pair walk, so a previously documented
+    artist pair can fall past `max_paths` and take its contributors'
+    /contributors/ pages with it -- measured on the real Round 1 rebuild
+    (2026-09-04): 112 of 530 contributor pages would have 404'd, the same
+    churn Phase 7 hit (549 -> 521).
+
+    Carried pairs therefore rank ahead of other later-round pairs, but must
+    NEVER displace round 1 -- that is what guarantees `albums_missed == 0`,
+    and protecting old albums by leaving new ones undocumented would trade
+    one regression for another."""
+    from itertools import combinations
+
+    from networked_players_graph_core import challenge as challenge_module
+
+    ordered = [
+        _matched_album(
+            artist_id=100 + n,
+            artist_name=f"Artist {n}",
+            title=f"Album {n}",
+            master_id=900 + n,
+            main_release_id=n + 1,
+        )
+        for n in range(8)
+    ]
+    baseline = challenge_module._candidate_album_pairs(ordered)
+    album_count = len(ordered)
+
+    # Pick two pairs that the plain walk puts late, and carry them forward.
+    late = baseline[-2:]
+    carried_keys = frozenset(
+        (min(a.artist_id, b.artist_id), max(a.artist_id, b.artist_id)) for a, b in late
+    )
+
+    pairs = challenge_module._candidate_album_pairs(
+        ordered, carry_forward_artist_pairs=carried_keys
+    )
+
+    # Round 1 is byte-for-byte unchanged: every album still claims its own
+    # first pair, in order, before anything is carried forward.
+    assert [p[0].album_id for p in pairs[:album_count]] == [
+        p[0].album_id for p in baseline[:album_count]
+    ]
+    assert {a.album_id for p in pairs[:album_count] for a in p} == {a.album_id for a in ordered}
+
+    # The carried pairs now sit immediately after round 1 instead of last.
+    carried_positions = [
+        i
+        for i, (a, b) in enumerate(pairs)
+        if (min(a.artist_id, b.artist_id), max(a.artist_id, b.artist_id)) in carried_keys
+    ]
+    assert carried_positions == [album_count, album_count + 1]
+
+    # Reordering only: the candidate SET is untouched, nothing duplicated or lost.
+    assert sorted(sorted((a.album_id, b.album_id)) for a, b in pairs) == sorted(
+        sorted((a.album_id, b.album_id)) for a, b in combinations(ordered, 2)
+    )
+
+
+def test_carry_forward_is_a_no_op_when_nothing_is_carried() -> None:
+    """The first-ever round has no previous challenge to carry, and every
+    existing caller passes nothing -- both must get the plain walk unchanged."""
+    from networked_players_graph_core import challenge as challenge_module
+
+    ordered = [
+        _matched_album(
+            artist_id=100 + n,
+            artist_name=f"Artist {n}",
+            title=f"Album {n}",
+            master_id=900 + n,
+            main_release_id=n + 1,
+        )
+        for n in range(6)
+    ]
+    assert challenge_module._candidate_album_pairs(
+        ordered, carry_forward_artist_pairs=frozenset()
+    ) == challenge_module._candidate_album_pairs(ordered)
+
+
+def test_carry_forward_ignores_pairs_that_no_longer_exist() -> None:
+    """A carried pair whose album left the catalog, or whose artists are now
+    family-excluded, simply never appears among the candidates -- it must not
+    crash or reserve a slot."""
+    from networked_players_graph_core import challenge as challenge_module
+
+    ordered = [
+        _matched_album(
+            artist_id=100 + n,
+            artist_name=f"Artist {n}",
+            title=f"Album {n}",
+            master_id=900 + n,
+            main_release_id=n + 1,
+        )
+        for n in range(5)
+    ]
+    pairs = challenge_module._candidate_album_pairs(
+        ordered, carry_forward_artist_pairs=frozenset({(9998, 9999)})
+    )
+    assert pairs == challenge_module._candidate_album_pairs(ordered)
+
+
+def test_build_challenge_v2_forwards_carry_forward_to_the_matched_builder(monkeypatch) -> None:
+    """`build_challenge_v2` accepted `carry_forward_artist_pairs` and then never
+    passed it on, so the CLI's name-matching branch asked for carry-forward and
+    silently got none. Round 1 took the already-resolved branch, which is the
+    only reason the omission was invisible."""
+    from networked_players_graph_core import challenge as challenge_module
+
+    seen: dict[str, object] = {}
+
+    def fake_from_matched(graph, matched, missed, **kwargs):
+        seen.update(kwargs)
+        return ({}, {})
+
+    monkeypatch.setattr(challenge_module, "match_albums", lambda *a, **k: ([], []))
+    monkeypatch.setattr(challenge_module, "build_challenge_v2_from_matched", fake_from_matched)
+
+    carried = frozenset({(1, 2), (3, 4)})
+    challenge_module.build_challenge_v2(
+        graph=None,
+        albums=[],
+        snapshot_date="20260601",
+        generated_by="test",
+        carry_forward_artist_pairs=carried,
+    )
+    assert seen.get("carry_forward_artist_pairs") == carried
