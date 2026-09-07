@@ -386,3 +386,65 @@ def test_artifact_validate_rejects_the_wrong_input_count(tmp_path: Path) -> None
 
     with pytest.raises(ValueError, match="requires exactly 2 input"):
         _artifact_validate_handler(request, input_dir, output_dir)
+
+
+def _daily_manifest_fleet_request(
+    tmp_path: Path, filenames: tuple[str, ...]
+) -> tuple[RunRequest, Path, Path]:
+    input_dir = tmp_path / "input"
+    input_dir.mkdir(exist_ok=True)
+    repo_root = Path(__file__).resolve().parents[3]
+    web_public = repo_root / "apps/web/public"
+    descriptors = []
+    for index, source in enumerate(filenames):
+        target = f"artifact-{index}.json"
+        (input_dir / target).write_bytes((web_public / source).read_bytes())
+        descriptors.append(
+            describe_artifact(
+                input_dir, target, name=f"artifact-{index}", contract="synthetic-json-v1"
+            )
+        )
+    request = RunRequest(
+        schema_version=1,
+        run_id="validation-variadic-001",
+        workload_id="artifact.validate",
+        workload_version="1",
+        submitted_at="2026-09-07T00:00:00+00:00",
+        runtime_commit=COMMIT,
+        timeout_seconds=120,
+        max_retries=1,
+        capabilities=CapabilityRequirement(),
+        inputs=tuple(descriptors),
+        expected_outputs=("validation-report",),
+        parameters={"validator": "daily-manifest"},
+    )
+    return request, input_dir, tmp_path / "output"
+
+
+def test_artifact_validate_accepts_one_daily_manifest_input_per_generation(
+    tmp_path: Path,
+) -> None:
+    """A schema-v2 manifest (ADR 0066) spans several frozen pool generations
+    and needs one rounds artifact per generation. Fixed arity 2 could not
+    express that, so the fleet check had been passing the v1 validator a v2
+    manifest and failing ever since ADR 0066 shipped."""
+    request, input_dir, output_dir = _daily_manifest_fleet_request(
+        tmp_path,
+        (
+            "data/game/daily-manifest.v1.json",
+            "data/game/generations/gen-1/rounds.json",
+            "data/game/generations/gen-2/rounds.json",
+            "data/game/rounds.v1.json",
+        ),
+    )
+    _artifact_validate_handler(request, input_dir, output_dir)
+    report = json.loads((output_dir / "validation-report.json").read_text())
+    assert report["valid"] is True, report["failures"][:5]
+
+
+def test_artifact_validate_rejects_too_few_daily_manifest_inputs(tmp_path: Path) -> None:
+    request, input_dir, output_dir = _daily_manifest_fleet_request(
+        tmp_path, ("data/game/daily-manifest.v1.json",)
+    )
+    with pytest.raises(ValueError, match="requires at least 2 input"):
+        _artifact_validate_handler(request, input_dir, output_dir)

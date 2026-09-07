@@ -84,10 +84,9 @@ _DEFAULT_ARTIFACTS: dict[str, tuple[str, ...]] = {
         "apps/web/public/data/contributors/index.v1.json",
         "apps/web/public/data/catalog/albums.v1.json",
     ),
-    "daily-manifest": (
-        "apps/web/public/data/game/daily-manifest.v1.json",
-        "apps/web/public/data/game/rounds.v1.json",
-    ),
+    # Only the manifest is fixed. Its rounds artifacts are DERIVED from its own
+    # generations[] at submit time -- see `_daily_manifest_generation_rounds`.
+    "daily-manifest": ("apps/web/public/data/game/daily-manifest.v1.json",),
     "pathfinding-graph": (
         # graph-expansion Phase 1 (ADR 0071): the last of the 4 real
         # consumers to cut over (Connect, Explore, and the research
@@ -188,6 +187,44 @@ def _target_hosts(
     return hosts
 
 
+_MANIFEST_DERIVED_VALIDATORS = frozenset({"daily-manifest"})
+
+
+def _daily_manifest_generation_rounds(manifest_path: Path) -> tuple[str, ...]:
+    """One rounds artifact per `generations[]` entry, IN generations ORDER,
+    resolved from each generation's own published `rounds_url`.
+
+    Derived from the manifest rather than hard-coded so a new generation's
+    frozen pool is checked automatically at the next cutover, instead of
+    silently going unchecked until someone remembers to edit
+    `_DEFAULT_ARTIFACTS`. That drift is exactly the class
+    `test_artifact_registration_completeness.py` exists to catch and cannot
+    see here. A schema-v1 manifest falls back to the single live pool, so a
+    manifest rollback keeps working.
+    """
+    manifest = json.loads(manifest_path.read_text())
+    if manifest.get("schema_version") != 2:
+        return ("apps/web/public/data/game/rounds.v1.json",)
+
+    web_public_root = Path("apps/web/public")
+    resolved: list[str] = []
+    for generation in manifest.get("generations", []):
+        rounds_url = generation.get("rounds_url") or ""
+        if not rounds_url.startswith("/data/"):
+            print(
+                f"ABORT: generation {generation.get('generation_id')!r} has a rounds_url that "
+                f"is not site-absolute: {rounds_url!r}.",
+                file=sys.stderr,
+            )
+            raise SystemExit(1)
+        relative = web_public_root / rounds_url.lstrip("/")
+        if not (REPO_ROOT / relative).is_file():
+            print(f"ABORT: rounds_url does not resolve: {rounds_url}.", file=sys.stderr)
+            raise SystemExit(1)
+        resolved.append(relative.as_posix())
+    return tuple(resolved)
+
+
 def _resolve_artifact_paths(validator: str, artifact_args: list[str]) -> list[Path]:
     if validator in _AD_HOC_VALIDATORS:
         if len(artifact_args) != 1:
@@ -206,6 +243,9 @@ def _resolve_artifact_paths(validator: str, artifact_args: list[str]) -> list[Pa
         return [path]
 
     defaults = _DEFAULT_ARTIFACTS[validator]
+    if validator in _MANIFEST_DERIVED_VALIDATORS and not artifact_args:
+        manifest_path = REPO_ROOT / defaults[0]
+        defaults = (defaults[0], *_daily_manifest_generation_rounds(manifest_path))
     if artifact_args and len(artifact_args) != len(defaults):
         print(
             f"ABORT: {validator!r} takes exactly {len(defaults)} --artifact override(s).",

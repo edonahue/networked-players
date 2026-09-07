@@ -37,8 +37,9 @@ def _self_test_handler(
     )
 
 
-def _artifact_validators() -> dict[str, tuple[Callable[..., list[str]], int]]:
-    """name -> (validator function, input arity). Every function comes from
+def _artifact_validators() -> dict[str, tuple[Callable[..., list[str]], int, int | None]]:
+    """name -> (validator function, min inputs, max inputs; None = unbounded).
+    Every function comes from
     `networked_players_contracts` (already a hard dependency of this
     package). Input order matters and must match `request.inputs`'
     order exactly -- this is what each of the old, now-migrated
@@ -49,7 +50,14 @@ def _artifact_validators() -> dict[str, tuple[Callable[..., list[str]], int]]:
     - album-art: (registry, catalog)
     - connection-rounds: (universe, rounds)
     - contributor-index: (index, catalog)
-    - daily-manifest: (manifest, rounds)
+    - daily-manifest: (manifest, *rounds) -- a schema-v1 manifest takes one
+      rounds artifact; a schema-v2 manifest (ADR 0066) takes ONE PER
+      GENERATION, in `generations[]` order, because each entry must be
+      verified against its own generation's frozen pool. Hence the only
+      unbounded arity here. Before this, the fleet check passed the v1
+      validator a v2 manifest and had been failing since ADR 0066 shipped --
+      100 failures, 40 of them "no rounds artifact supplied for generation
+      'gen-1'", entirely independent of any catalog expansion.
     - pathfinding-graph: (graph, catalog)
     - prominence: (prominence, pathfinding_graph)
     - record-routes: (universe, rounds)
@@ -60,7 +68,7 @@ def _artifact_validators() -> dict[str, tuple[Callable[..., list[str]], int]]:
     from networked_players_contracts import (
         album_art_failures,
         album_credit_membership_failures,
-        connection_daily_manifest_failures,
+        connection_daily_manifest_failures_from_artifacts,
         connection_rounds_failures,
         connectivity_failures,
         contributor_index_failures,
@@ -74,19 +82,19 @@ def _artifact_validators() -> dict[str, tuple[Callable[..., list[str]], int]]:
     )
 
     return {
-        "connectivity": (connectivity_failures, 1),
-        "playable-cohort": (playable_cohort_failures, 1),
-        "catalog": (public_album_catalog_failures, 1),
-        "album-art": (album_art_failures, 2),
-        "connection-rounds": (connection_rounds_failures, 2),
-        "contributor-index": (contributor_index_failures, 2),
-        "daily-manifest": (connection_daily_manifest_failures, 2),
-        "pathfinding-graph": (pathfinding_graph_failures, 2),
-        "prominence": (prominence_failures, 2),
-        "record-routes": (record_routes_failures, 2),
-        "album-credit-membership": (album_credit_membership_failures, 2),
-        "evidence-release-registry": (evidence_release_registry_failures, 2),
-        "search-index": (search_index_failures, 3),
+        "connectivity": (connectivity_failures, 1, 1),
+        "playable-cohort": (playable_cohort_failures, 1, 1),
+        "catalog": (public_album_catalog_failures, 1, 1),
+        "album-art": (album_art_failures, 2, 2),
+        "connection-rounds": (connection_rounds_failures, 2, 2),
+        "contributor-index": (contributor_index_failures, 2, 2),
+        "daily-manifest": (connection_daily_manifest_failures_from_artifacts, 2, None),
+        "pathfinding-graph": (pathfinding_graph_failures, 2, 2),
+        "prominence": (prominence_failures, 2, 2),
+        "record-routes": (record_routes_failures, 2, 2),
+        "album-credit-membership": (album_credit_membership_failures, 2, 2),
+        "evidence-release-registry": (evidence_release_registry_failures, 2, 2),
+        "search-index": (search_index_failures, 3, 3),
     }
 
 
@@ -104,9 +112,14 @@ def _artifact_validate_handler(
     validator = request.parameters.get("validator")
     if validator not in validators:
         raise ValueError(f"validator must be one of {sorted(validators)}")
-    validate, arity = validators[validator]
-    if len(request.inputs) != arity:
-        raise ValueError(f"validator {validator!r} requires exactly {arity} input(s)")
+    validate, min_inputs, max_inputs = validators[validator]
+    count = len(request.inputs)
+    if count < min_inputs or (max_inputs is not None and count > max_inputs):
+        if min_inputs == max_inputs:
+            raise ValueError(f"validator {validator!r} requires exactly {min_inputs} input(s)")
+        raise ValueError(
+            f"validator {validator!r} requires at least {min_inputs} input(s), got {count}"
+        )
 
     artifacts = []
     for descriptor in request.inputs:
