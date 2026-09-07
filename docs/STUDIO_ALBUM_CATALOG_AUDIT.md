@@ -167,3 +167,43 @@ exclude. `data/albums/studio-album-master-exclusions-v1.json` is unchanged (stil
 its original 6 entries). This addendum satisfies the revisit trigger above for
 Phase 7's specific expansion only; a future catalog expansion still needs its own
 re-audit, per that trigger.
+
+## Addendum: graph-expansion Round 1 (2026-09-07)
+
+Round 1 (179 → 217 albums) triggers this document's revisit clause again. This is
+that manual pass, run against the committed catalog by
+`expansion_round == 1`: 30 `editorial` (the owner's approved collection-sourced
+shortlist), 6 `graph_rich`, and 2 `editorial` from the `top-albums-v1.json`
+backbone that became matchable only once the corpus widened.
+
+**One album flagged, and deliberately kept.**
+
+| Master ID | Title | Artist | Finding | Disposition |
+|---|---|---|---|---|
+| 107122 | Briefcase Full Of Blues | The Blues Brothers | **Live album** — recorded at the Universal Amphitheatre, September 1978 | **Kept** (owner decision, 2026-09-07) |
+
+This is the profile the manual pass exists to catch and the automated checks
+structurally cannot: **0 `Live` descriptors across all 137 pressings** in the
+working set, master genre/style `Blues` / `Chicago Blues`, and no title token a
+regex could key on — the same zero-signal shape as the deny-listed *Eat A Peach*,
+*Rattle And Hum*, and *Friday Night In San Francisco*.
+
+It is recorded here as **reviewed and kept**, not missed. The owner's call was
+explicit, and the point of writing it down is that a later pass finds this entry
+rather than re-deriving the same finding and re-litigating a settled decision. It
+is deliberately **not** added to
+`data/albums/studio-album-master-exclusions-v1.json` — that file means "excluded",
+and this album is not.
+
+**One further observation, no action taken.** *King Of America* (master 1653458's
+release) is attributed to **The Attractions** in the catalog, because that is the
+first billed `release_artist` credit on the master; the album is normally filed
+under Elvis Costello (Discogs bills it "The Attractions **And** The Costello Show
+**Featuring** The Confederates"). The attribution follows the real data and breaks
+no policy, but a reader browsing by artist may find it surprising. Recorded rather
+than silently corrected, since changing it would mean overriding the billed credit.
+
+**No deny-list change resulted from this pass.**
+`data/albums/studio-album-master-exclusions-v1.json` is unchanged (still its
+original 6 entries). This addendum satisfies the revisit trigger for Round 1 only;
+Round 2 needs its own.
