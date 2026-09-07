@@ -311,6 +311,21 @@ def _parser() -> argparse.ArgumentParser:
     )
     build_challenge.add_argument("--output", type=Path, required=True)
     build_challenge.add_argument(
+        "--carry-forward-challenge",
+        type=Path,
+        default=None,
+        help=(
+            "a PREVIOUSLY published challenge.v3.json -- its artist pairs are kept "
+            "at the front of the candidate order (after every album's own first "
+            "pair) so paths documented in an earlier round stay documented, and "
+            "their contributors keep their /contributors/ pages. Without it, adding "
+            "albums reshuffles the pair walk and previously documented pairs fall "
+            "past --max-paths: measured on the real Round 1 rebuild, 112 of 530 "
+            "contributor pages would have 404'd. Also raises the default "
+            "--max-paths so the carried pairs actually fit"
+        ),
+    )
+    build_challenge.add_argument(
         "--max-paths",
         type=int,
         default=None,
@@ -661,6 +676,38 @@ def _parser() -> argparse.ArgumentParser:
     )
     migrate_connection_daily_generation.add_argument("--output", type=Path, required=True)
 
+    freeze_connection_daily_generation = subparsers.add_parser(
+        "freeze-connection-daily-manifest-generation",
+        help=(
+            "freeze one generation's rounds pool to its own immutable path and repoint "
+            "the manifest at it -- run this on the OUTGOING generation BEFORE regenerating "
+            "rounds.v1.json or introducing a new generation. ADR 0066's design points the "
+            "newest generation at the live rounds file, so regenerating that file without "
+            "freezing first makes every one of that generation's already-published dates "
+            "stop resolving (the real Round 1 incident: 90 dates, including that day's)"
+        ),
+    )
+    freeze_connection_daily_generation.add_argument("--manifest", type=Path, required=True)
+    freeze_connection_daily_generation.add_argument("--generation-id", required=True)
+    freeze_connection_daily_generation.add_argument(
+        "--source-rounds",
+        type=Path,
+        required=True,
+        help=(
+            "the exact rounds artifact this generation's dates were scheduled against -- "
+            "its provenance triple must equal the generation's pinned triple AND every one "
+            "of that generation's scheduled rounds must still fingerprint-match in it"
+        ),
+    )
+    freeze_connection_daily_generation.add_argument(
+        "--frozen-output",
+        type=Path,
+        required=True,
+        help="where the BYTE-IDENTICAL copy is published; must end with --rounds-url",
+    )
+    freeze_connection_daily_generation.add_argument("--rounds-url", required=True)
+    freeze_connection_daily_generation.add_argument("--output", type=Path, required=True)
+
     validate_connection_daily_v2 = subparsers.add_parser(
         "validate-connection-daily-manifest-v2",
         help="validate a schema-v2 (multi-generation) Connection Guesser daily manifest",
@@ -931,6 +978,41 @@ def _parser() -> argparse.ArgumentParser:
         "--quiet",
         action="store_true",
         help="suppress the coarse progress lines this otherwise prints to stderr",
+    )
+
+    contributor_continuity = subparsers.add_parser(
+        "check-contributor-continuity",
+        help=(
+            "compare a rebuilt round against the previously published one and "
+            "report what it did to /contributors/ URLs. Exits non-zero when a "
+            "previously documented PATH ENDPOINT is no longer documented -- the "
+            "one continuity guarantee the site makes. Contributor-index churn is "
+            "reported but never fails: pages are derived from current documented "
+            "paths and may legitimately come and go (owner decision 2026-09-05). "
+            "Run it after every round's cascade -- nothing else catches a "
+            "contributor page disappearing"
+        ),
+    )
+    contributor_continuity.add_argument(
+        "--previous-challenge",
+        type=Path,
+        required=True,
+        help="the PUBLISHED challenge.v3.json (e.g. git show HEAD:...)",
+    )
+    contributor_continuity.add_argument(
+        "--current-challenge",
+        type=Path,
+        required=True,
+    )
+    contributor_continuity.add_argument(
+        "--previous-contributor-index",
+        type=Path,
+        required=True,
+    )
+    contributor_continuity.add_argument(
+        "--current-contributor-index",
+        type=Path,
+        required=True,
     )
 
     relationship_pool_parser = subparsers.add_parser(
@@ -2616,7 +2698,31 @@ def main(argv: Sequence[str] | None = None) -> int:
         # than a single path even when a few candidate searches come back
         # empty. A fixed number (the old default was 12) cannot track the
         # catalog as it grows.
-        max_paths = args.max_paths if args.max_paths is not None else 2 * len(albums)
+        # Previously published artist pairs, kept at the front of the candidate
+        # order so their contributors keep their pages (plan section 11's
+        # Phase 2 "contributor index monotone" gate). Measured on the real
+        # Round 1 rebuild before this existed: 112 of 530 contributor pages
+        # would have 404'd.
+        carry_forward_artist_pairs: frozenset[tuple[int, int]] = frozenset()
+        if args.carry_forward_challenge is not None:
+            previous = json.loads(args.carry_forward_challenge.read_text())
+            carry_forward_artist_pairs = frozenset(
+                (
+                    min(int(p["from_artist_id"]), int(p["to_artist_id"])),
+                    max(int(p["from_artist_id"]), int(p["to_artist_id"])),
+                )
+                for p in previous.get("paths", [])
+                if p.get("from_artist_id") is not None and p.get("to_artist_id") is not None
+            )
+
+        # Two paths per album normally. When carrying pairs forward, the budget
+        # must additionally cover them or the carry-forward silently does
+        # nothing: every album's first pair is protected ahead of the carried
+        # set, so the floor is one-per-album PLUS the carried pairs.
+        if args.max_paths is not None:
+            max_paths = args.max_paths
+        else:
+            max_paths = max(2 * len(albums), len(albums) + len(carry_forward_artist_pairs))
 
         is_family_excluded: Callable[[int, int], bool] | None = None
         if args.artist_family_exclusions is not None:
@@ -2665,6 +2771,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                         f"networked-players-catalog build-challenge-from-dump {__version__}"
                     ),
                     max_paths=max_paths,
+                    carry_forward_artist_pairs=carry_forward_artist_pairs,
                     max_hops=args.max_hops,
                     max_workers=args.max_workers,
                     is_family_excluded=is_family_excluded,
@@ -2682,6 +2789,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                         f"networked-players-catalog build-challenge-from-dump {__version__}"
                     ),
                     max_paths=max_paths,
+                    carry_forward_artist_pairs=carry_forward_artist_pairs,
                     max_hops=args.max_hops,
                     max_workers=args.max_workers,
                     is_family_excluded=is_family_excluded,
@@ -3144,6 +3252,80 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
         return 0
 
+    if args.command == "freeze-connection-daily-manifest-generation":
+        import hashlib
+
+        from networked_players_graph_core.connection_daily_manifest import (
+            repoint_connection_daily_manifest_generation,
+        )
+
+        manifest_payload = json.loads(args.manifest.read_text())
+        # Read BYTES, never json.dumps of the parsed value: a frozen pool is
+        # published byte-identically (ADR 0066's own precedent for gen-1), and
+        # apps/web/.prettierignore's generations/**/rounds.json glob exists on
+        # the assumption these files are never re-serialized.
+        source_bytes = args.source_rounds.read_bytes()
+        frozen_rounds = json.loads(source_bytes)
+
+        # The one failure the pure function structurally cannot catch: a copy
+        # published where the manifest does not point is a 404 in the browser
+        # and an unverifiable generation in validate-public-artifacts.
+        url_suffix = args.rounds_url.lstrip("/")
+        if not args.frozen_output.as_posix().endswith(url_suffix):
+            raise ValueError(
+                f"--frozen-output {args.frozen_output} does not end with --rounds-url "
+                f"{args.rounds_url!r}: the frozen pool would be published at a path the "
+                "manifest does not name"
+            )
+
+        # Verify everything before writing anything.
+        repointed = repoint_connection_daily_manifest_generation(
+            manifest_payload,
+            frozen_rounds,
+            generation_id=args.generation_id,
+            rounds_url=args.rounds_url,
+        )
+
+        frozen_written = True
+        if args.frozen_output.exists():
+            if args.frozen_output.read_bytes() != source_bytes:
+                raise ValueError(
+                    f"{args.frozen_output} already exists with DIFFERENT bytes -- a frozen "
+                    "pool is immutable by definition; refusing to overwrite it"
+                )
+            frozen_written = False
+
+        previous_url = next(
+            g["rounds_url"]
+            for g in manifest_payload["generations"]
+            if g["generation_id"] == args.generation_id
+        )
+        verified = sum(
+            1 for e in manifest_payload["schedule"] if e["generation"] == args.generation_id
+        )
+
+        args.frozen_output.parent.mkdir(parents=True, exist_ok=True)
+        args.frozen_output.write_bytes(source_bytes)
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(json.dumps(repointed, indent=2) + "\n")
+        print(
+            json.dumps(
+                {
+                    "output": str(args.output),
+                    "frozen_output": str(args.frozen_output),
+                    "frozen_output_written": frozen_written,
+                    "frozen_output_sha256": hashlib.sha256(source_bytes).hexdigest(),
+                    "generation_id": args.generation_id,
+                    "previous_rounds_url": previous_url,
+                    "rounds_url": args.rounds_url,
+                    "verified_entries": verified,
+                    "generations": [g["generation_id"] for g in repointed["generations"]],
+                },
+                indent=2,
+            )
+        )
+        return 0
+
     if args.command == "migrate-connection-daily-manifest-generation":
         from networked_players_graph_core.connection_daily_manifest import (
             migrate_connection_daily_manifest_generation,
@@ -3533,6 +3715,20 @@ def main(argv: Sequence[str] | None = None) -> int:
             )
         )
         return 0
+
+    if args.command == "check-contributor-continuity":
+        from networked_players_graph_core.contributor_continuity import (
+            contributor_continuity_report,
+        )
+
+        report = contributor_continuity_report(
+            previous_challenge=json.loads(args.previous_challenge.read_text()),
+            current_challenge=json.loads(args.current_challenge.read_text()),
+            previous_index=json.loads(args.previous_contributor_index.read_text()),
+            current_index=json.loads(args.current_contributor_index.read_text()),
+        )
+        print(json.dumps(report, indent=2))
+        return 0 if report["ok"] else 1
 
     if args.command == "build-relationship-pool":
         from networked_players_graph_core.pathfinding_graph import (
@@ -4289,6 +4485,20 @@ def main(argv: Sequence[str] | None = None) -> int:
                     else None
                 ),
                 expansion_round=args.expansion_round,
+                # Albums already live keep the round they originally arrived
+                # in; only genuinely new ones get this build's round number.
+                # A previously-published v1 catalog carries no per-album round,
+                # so its albums map to 0 -- the documented value for the
+                # original backbone.
+                previously_published_rounds={
+                    int(a["master_id"]): int(a.get("expansion_round") or 0)
+                    for a in (
+                        json.loads(args.already_published_catalog.read_text()).get("albums", [])
+                        if args.already_published_catalog is not None
+                        else []
+                    )
+                    if a.get("master_id") is not None
+                },
             )
 
         validate_album_catalog(catalog)

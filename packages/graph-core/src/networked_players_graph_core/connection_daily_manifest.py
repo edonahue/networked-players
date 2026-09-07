@@ -774,6 +774,20 @@ def migrate_connection_daily_manifest_generation(
             "generations are append-only and never reused"
         )
 
+    # The freeze cannot be skipped by forgetting it. An outgoing generation
+    # still pointing at the URL the new one is claiming is exactly how its
+    # already-published dates stop resolving the moment the pool is
+    # regenerated -- the Round 1 incident, in one condition.
+    for existing in manifest["generations"]:
+        if existing["rounds_url"] == new_rounds_url:
+            raise ConnectionDailyManifestError(
+                f"generation {existing['generation_id']!r} still points at "
+                f"{new_rounds_url!r}, which the new generation is also claiming -- freeze and "
+                "repoint it first (freeze-connection-daily-manifest-generation). Leaving the "
+                "outgoing generation pinned to the live rounds URL is exactly how its "
+                "already-published dates stop resolving when the pool is regenerated."
+            )
+
     schedule = manifest["schedule"]
     kept = [e for e in schedule if e["date"] < cutover_date]
 
@@ -1062,3 +1076,104 @@ def validate_connection_daily_manifest_v2(
 
     if failures:
         raise ConnectionDailyManifestError("; ".join(failures))
+
+
+def repoint_connection_daily_manifest_generation(
+    manifest: dict[str, Any],
+    frozen_rounds: dict[str, Any],
+    *,
+    generation_id: str,
+    rounds_url: str,
+) -> dict[str, Any]:
+    """Repoint one generation at a frozen copy of the pool it is already pinned to.
+
+    ADR 0066's design makes this MANDATORY, not merely permitted. The newest
+    generation's `rounds_url` is the LIVE `/data/game/rounds.v1.json` while
+    retired generations point at frozen copies -- so the moment the pool is
+    regenerated, the outgoing generation's URL serves a pool it was never
+    frozen against and every one of its already-published dates stops
+    resolving. That is not hypothetical: the Round 1 catalog expansion
+    (179 -> 217 albums) broke all 90 gen-2 dates including that day's, and
+    `resolveDailyRoundV2` correctly returned `version-mismatch` for every one.
+
+    Only `rounds_url` changes -- never `generated_at` (a URL fix must not
+    perturb the next migration's `_MIN_CUTOVER_LEAD_DAYS` arithmetic), never
+    another generation, never one byte of the schedule. The pinned version
+    triple and every `round_id`/`round_fingerprint` are untouched, which is
+    what makes this compatible with "generations[] is append-only": that rule
+    protects the audit trail, and `rounds_url` is a LOCATOR, not identity.
+
+    **The triple is checked but never trusted alone.** `provenance` is
+    self-declared metadata living inside the very file being authenticated, so
+    a wrong pool carrying a stale or hand-edited provenance block would pass a
+    triple-equality test. Every schedule entry belonging to this generation is
+    therefore re-resolved in the supplied pool and its
+    `round_content_fingerprint` recomputed -- the same paranoia
+    `migrate_connection_daily_manifest_generation` already applies to kept
+    entries, for the same reason.
+    """
+    if manifest.get("schema_version") != CONNECTION_DAILY_MANIFEST_SCHEMA_VERSION_V2:
+        raise ConnectionDailyManifestError(
+            "repointing a generation requires a schema-v2 manifest "
+            f"(got schema_version {manifest.get('schema_version')!r}) -- a v1 manifest has no "
+            "generations[] to repoint; upgrade it first"
+        )
+
+    generations = manifest["generations"]
+    target = next((g for g in generations if g["generation_id"] == generation_id), None)
+    if target is None:
+        known = sorted(g["generation_id"] for g in generations)
+        raise ConnectionDailyManifestError(
+            f"generation_id {generation_id!r} is not in this manifest (known: {known})"
+        )
+
+    for other in generations:
+        if other["generation_id"] != generation_id and other["rounds_url"] == rounds_url:
+            raise ConnectionDailyManifestError(
+                f"rounds_url {rounds_url!r} is already claimed by generation "
+                f"{other['generation_id']!r} -- two generations must never resolve to the "
+                "same URL; each one's frozen pool gets its own path"
+            )
+
+    provenance = frozen_rounds.get("provenance") or {}
+    for field_name in _VERSION_FIELDS:
+        pinned = target.get(field_name)
+        actual = provenance.get(field_name)
+        if pinned != actual:
+            raise ConnectionDailyManifestError(
+                f"generation {generation_id!r} pins {field_name} {pinned!r} but the supplied "
+                f"rounds artifact declares {actual!r} -- you may only freeze the pool a "
+                "generation actually names"
+            )
+
+    # The real authentication: the triple says what this pool CLAIMS to be;
+    # these fingerprints prove it is.
+    eligible_by_id = {r["id"]: r for r in _eligible_one_hop_rounds(frozen_rounds)}
+    verified = 0
+    for entry in manifest["schedule"]:
+        if entry["generation"] != generation_id:
+            continue
+        round_json = eligible_by_id.get(entry["round_id"])
+        if round_json is None:
+            raise ConnectionDailyManifestError(
+                f"generation {generation_id!r}'s date {entry['date']} schedules round "
+                f"{entry['round_id']!r}, which is not an eligible one-hop round in the "
+                "supplied artifact -- this is not the pool that generation was frozen against"
+            )
+        actual_fingerprint = round_content_fingerprint(round_json)
+        if actual_fingerprint != entry["round_fingerprint"]:
+            raise ConnectionDailyManifestError(
+                f"generation {generation_id!r}'s date {entry['date']} (round "
+                f"{entry['round_id']}) has fingerprint {entry['round_fingerprint']!r} in the "
+                f"manifest but {actual_fingerprint!r} in the supplied artifact -- the pool's "
+                "published content changed; refusing to repoint at altered history"
+            )
+        verified += 1
+
+    return {
+        **manifest,
+        "generations": [
+            {**g, "rounds_url": rounds_url} if g["generation_id"] == generation_id else g
+            for g in generations
+        ],
+    }

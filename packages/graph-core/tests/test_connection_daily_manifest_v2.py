@@ -20,6 +20,7 @@ from networked_players_graph_core.connection_daily_manifest import (
     ConnectionDailyManifestError,
     build_connection_daily_manifest,
     migrate_connection_daily_manifest_generation,
+    repoint_connection_daily_manifest_generation,
     upgrade_connection_daily_manifest_to_v2,
     validate_connection_daily_manifest_v2,
 )
@@ -590,3 +591,171 @@ def test_migration_never_reschedules_a_round_id_already_used_by_a_kept_generatio
     )
     # And the whole manifest still validates against both pools.
     validate_connection_daily_manifest_v2(migrated, {"gen-1": gen1_pool, "gen-2": gen2_pool})
+
+
+# --- repoint_connection_daily_manifest_generation ---------------------------
+
+
+def test_repoint_changes_only_the_named_generations_rounds_url() -> None:
+    v2, pool = _v2_manifest(days=5)
+    original_schedule = deepcopy(v2["schedule"])
+    repointed = repoint_connection_daily_manifest_generation(
+        v2, pool, generation_id="gen-1", rounds_url="/data/game/generations/gen-1/frozen.json"
+    )
+
+    assert repointed["schedule"] == original_schedule
+    assert repointed["start_date"] == v2["start_date"]
+    assert repointed["mode"] == v2["mode"]
+    target = repointed["generations"][0]
+    assert target["rounds_url"] == "/data/game/generations/gen-1/frozen.json"
+    # Everything except the locator is untouched -- the pinned triple IS the
+    # generation's identity and must survive a relocation unchanged.
+    assert {k: v for k, v in target.items() if k != "rounds_url"} == {
+        k: v for k, v in v2["generations"][0].items() if k != "rounds_url"
+    }
+
+
+def test_repoint_does_not_bump_generated_at() -> None:
+    """A URL fix must not perturb the next migration's _MIN_CUTOVER_LEAD_DAYS
+    arithmetic, which is measured from generated_at."""
+    v2, pool = _v2_manifest(days=5)
+    repointed = repoint_connection_daily_manifest_generation(
+        v2, pool, generation_id="gen-1", rounds_url="/data/game/generations/gen-1/frozen.json"
+    )
+    assert repointed["generated_at"] == v2["generated_at"]
+
+
+def test_repoint_rejects_a_pool_whose_triple_is_not_the_generations_pinned_triple() -> None:
+    v2, _ = _v2_manifest(days=5)
+    with pytest.raises(ConnectionDailyManifestError, match="may only freeze the pool"):
+        repoint_connection_daily_manifest_generation(
+            v2,
+            _real_pool_gen2(),
+            generation_id="gen-1",
+            rounds_url="/data/game/generations/gen-1/frozen.json",
+        )
+
+
+def test_repoint_rejects_a_pool_with_the_right_triple_but_a_changed_round() -> None:
+    """The test that proves triple-equality alone is not authentication.
+
+    `provenance` is self-declared metadata living inside the very file being
+    authenticated, so a wrong pool carrying a stale or hand-edited provenance
+    block passes a triple check. Only re-fingerprinting the rounds that
+    generation actually schedules can tell the difference."""
+    v2, pool = _v2_manifest(days=5)
+    tampered = deepcopy(pool)
+    scheduled_ids = {e["round_id"] for e in v2["schedule"]}
+    victim = next(r for r in tampered["rounds"] if r["id"] in scheduled_ids)
+    victim["year"] = (victim.get("year") or 2000) + 1
+    assert tampered["provenance"] == pool["provenance"]  # the triple still "matches"
+
+    with pytest.raises(ConnectionDailyManifestError, match="in the supplied artifact"):
+        repoint_connection_daily_manifest_generation(
+            v2, tampered, generation_id="gen-1", rounds_url="/data/game/generations/gen-1/f.json"
+        )
+
+
+def test_repoint_rejects_a_pool_missing_a_round_that_generation_schedules() -> None:
+    v2, pool = _v2_manifest(days=5)
+    thinned = deepcopy(pool)
+    scheduled_ids = {e["round_id"] for e in v2["schedule"]}
+    thinned["rounds"] = [r for r in thinned["rounds"] if r["id"] not in scheduled_ids]
+
+    with pytest.raises(ConnectionDailyManifestError, match="not the pool that generation"):
+        repoint_connection_daily_manifest_generation(
+            v2, thinned, generation_id="gen-1", rounds_url="/data/game/generations/gen-1/f.json"
+        )
+
+
+def test_repoint_rejects_an_unknown_generation_id() -> None:
+    v2, pool = _v2_manifest(days=5)
+    with pytest.raises(ConnectionDailyManifestError, match="not in this manifest"):
+        repoint_connection_daily_manifest_generation(
+            v2, pool, generation_id="gen-9", rounds_url="/data/game/generations/gen-9/f.json"
+        )
+
+
+def test_repoint_rejects_a_rounds_url_already_claimed_by_another_generation() -> None:
+    """Two generations resolving to the same URL is precisely the ambiguity a
+    frozen copy exists to remove."""
+    v2, gen1_pool = _v2_manifest(days=10)
+    migrated = migrate_connection_daily_manifest_generation(
+        v2,
+        _real_pool_gen2(),
+        cutover_date=v2["schedule"][5]["date"],
+        new_generation_id="gen-2",
+        new_rounds_url="/data/game/rounds.v1.json",
+        days=5,
+        generated_at=GENERATED_AT,
+        existing_generation_rounds={"gen-1": gen1_pool},
+    )
+    with pytest.raises(ConnectionDailyManifestError, match="already claimed by generation"):
+        repoint_connection_daily_manifest_generation(
+            migrated, gen1_pool, generation_id="gen-1", rounds_url="/data/game/rounds.v1.json"
+        )
+
+
+def test_repoint_rejects_a_v1_manifest() -> None:
+    with pytest.raises(ConnectionDailyManifestError, match="requires a schema-v2 manifest"):
+        repoint_connection_daily_manifest_generation(
+            _v1_manifest(days=5),
+            _real_pool(),
+            generation_id="gen-1",
+            rounds_url="/data/game/generations/gen-1/f.json",
+        )
+
+
+def test_repoint_is_idempotent() -> None:
+    v2, pool = _v2_manifest(days=5)
+    url = "/data/game/generations/gen-1/frozen.json"
+    once = repoint_connection_daily_manifest_generation(
+        v2, pool, generation_id="gen-1", rounds_url=url
+    )
+    twice = repoint_connection_daily_manifest_generation(
+        once, pool, generation_id="gen-1", rounds_url=url
+    )
+    assert once == twice
+
+
+def test_migration_refuses_while_an_existing_generation_still_claims_the_new_url() -> None:
+    """The freeze cannot be skipped by forgetting it. This is the Round 1
+    incident expressed as a single refusal: an outgoing generation still
+    pointing at the URL the new one claims is exactly how its already-published
+    dates stop resolving once the pool is regenerated."""
+    v2, gen1_pool = _v2_manifest(days=10)
+    with pytest.raises(ConnectionDailyManifestError, match="freeze and repoint it first"):
+        migrate_connection_daily_manifest_generation(
+            v2,
+            _real_pool_gen2(),
+            cutover_date=v2["schedule"][5]["date"],
+            new_generation_id="gen-2",
+            new_rounds_url="/data/game/generations/gen-1/rounds.json",
+            days=5,
+            generated_at=GENERATED_AT,
+            existing_generation_rounds={"gen-1": gen1_pool},
+        )
+
+
+@pytest.mark.skipif(not REAL_DAILY_MANIFEST.is_file(), reason="real manifest not present")
+def test_every_generation_in_the_real_manifest_resolves_to_its_own_pool() -> None:
+    """The permanent guard against the Round 1 incident: every generation's
+    own rounds_url must serve the pool that generation is pinned to.
+
+    This failed with 60 failures while gen-2 still pointed at the live
+    rounds.v1.json after the Round 1 pool regeneration."""
+    from networked_players_contracts.connection_daily_manifest import (
+        connection_daily_manifest_v2_failures,
+    )
+
+    manifest = json.loads(REAL_DAILY_MANIFEST.read_text())
+    web_public_root = REAL_DAILY_MANIFEST.resolve().parents[2]
+    resolved: dict[str, Any] = {}
+    for generation in manifest["generations"]:
+        url = generation["rounds_url"]
+        assert url.startswith("/data/"), f"{generation['generation_id']} url is not site-absolute"
+        path = web_public_root / url.lstrip("/")
+        assert path.is_file(), f"{generation['generation_id']} rounds_url does not resolve: {url}"
+        resolved[generation["generation_id"]] = json.loads(path.read_text())
+
+    assert connection_daily_manifest_v2_failures(manifest, resolved) == []

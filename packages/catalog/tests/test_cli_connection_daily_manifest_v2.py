@@ -271,3 +271,122 @@ def test_validate_v2_rejects_a_tampered_generation(tmp_path: Path) -> None:
                 f"gen-1={tampered_path}",
             ]
         )
+
+
+def _build_v2_manifest(tmp_path: Path) -> tuple[Path, Path]:
+    """A v2 manifest whose only generation points at the LIVE rounds URL --
+    the state every generation is in before it is frozen."""
+    manifest_path, rounds_path = _build_v1_manifest(tmp_path)
+    v2_path = tmp_path / "manifest-v2.json"
+    assert (
+        main(
+            [
+                "upgrade-connection-daily-manifest-to-v2",
+                "--manifest",
+                str(manifest_path),
+                "--generation-id",
+                "gen-1",
+                "--rounds-url",
+                "/data/game/rounds.v1.json",
+                "--output",
+                str(v2_path),
+            ]
+        )
+        == 0
+    )
+    return v2_path, rounds_path
+
+
+def _freeze_args(manifest: Path, source: Path, frozen: Path, output: Path) -> list[str]:
+    return [
+        "freeze-connection-daily-manifest-generation",
+        "--manifest",
+        str(manifest),
+        "--generation-id",
+        "gen-1",
+        "--source-rounds",
+        str(source),
+        "--frozen-output",
+        str(frozen),
+        "--rounds-url",
+        "/data/game/generations/gen-1/rounds.json",
+        "--output",
+        str(output),
+    ]
+
+
+def test_freeze_generation_end_to_end(tmp_path: Path) -> None:
+    manifest, rounds = _build_v2_manifest(tmp_path)
+    frozen = tmp_path / "data" / "game" / "generations" / "gen-1" / "rounds.json"
+    output = tmp_path / "manifest-frozen.json"
+
+    assert main(_freeze_args(manifest, rounds, frozen, output)) == 0
+    assert frozen.is_file()
+    result = json.loads(output.read_text())
+    assert result["generations"][0]["rounds_url"] == "/data/game/generations/gen-1/rounds.json"
+    # Only the locator moved.
+    before = json.loads(manifest.read_text())
+    assert result["schedule"] == before["schedule"]
+    assert result["generated_at"] == before["generated_at"]
+
+
+def test_freeze_writes_the_frozen_copy_byte_identically_not_reserialized(
+    tmp_path: Path,
+) -> None:
+    """A frozen pool is published byte-for-byte (ADR 0066's gen-1 precedent),
+    and apps/web/.prettierignore's generations/**/rounds.json glob exists on
+    the assumption these files are never re-serialized. Deliberately odd but
+    valid source formatting must survive."""
+    manifest, rounds = _build_v2_manifest(tmp_path)
+    odd = tmp_path / "odd-rounds.json"
+    odd.write_text(json.dumps(json.loads(rounds.read_text()), indent=4, sort_keys=True))
+    frozen = tmp_path / "data" / "game" / "generations" / "gen-1" / "rounds.json"
+
+    assert main(_freeze_args(manifest, odd, frozen, tmp_path / "out.json")) == 0
+    assert frozen.read_bytes() == odd.read_bytes()
+
+
+def test_freeze_is_idempotent_when_the_frozen_copy_already_matches(tmp_path: Path) -> None:
+    manifest, rounds = _build_v2_manifest(tmp_path)
+    frozen = tmp_path / "data" / "game" / "generations" / "gen-1" / "rounds.json"
+    output = tmp_path / "out.json"
+
+    assert main(_freeze_args(manifest, rounds, frozen, output)) == 0
+    first = frozen.read_bytes()
+    # Re-running against the already-repointed manifest must be a no-op.
+    assert main(_freeze_args(output, rounds, frozen, output)) == 0
+    assert frozen.read_bytes() == first
+
+
+def test_freeze_refuses_to_overwrite_a_different_frozen_copy(tmp_path: Path) -> None:
+    manifest, rounds = _build_v2_manifest(tmp_path)
+    frozen = tmp_path / "data" / "game" / "generations" / "gen-1" / "rounds.json"
+    frozen.parent.mkdir(parents=True, exist_ok=True)
+    frozen.write_text(json.dumps({"schema_version": 1, "rounds": []}))
+
+    with pytest.raises(ValueError, match="immutable by definition"):
+        main(_freeze_args(manifest, rounds, frozen, tmp_path / "out.json"))
+
+
+def test_freeze_refuses_when_frozen_output_does_not_match_the_rounds_url(
+    tmp_path: Path,
+) -> None:
+    """A copy published where the manifest does not point is a 404 in the
+    browser and an unverifiable generation in validate-public-artifacts."""
+    manifest, rounds = _build_v2_manifest(tmp_path)
+    with pytest.raises(ValueError, match="does not end with --rounds-url"):
+        main(_freeze_args(manifest, rounds, tmp_path / "somewhere-else.json", tmp_path / "o.json"))
+
+
+def test_freeze_writes_nothing_when_verification_fails(tmp_path: Path) -> None:
+    """Verify everything before writing anything -- a refused freeze must not
+    leave a half-published frozen pool behind."""
+    manifest, _rounds = _build_v2_manifest(tmp_path)
+    wrong = _write(tmp_path / "wrong.json", _pool(GEN2_PROVENANCE, offset=50))
+    frozen = tmp_path / "data" / "game" / "generations" / "gen-1" / "rounds.json"
+    output = tmp_path / "out.json"
+
+    with pytest.raises(ConnectionDailyManifestError, match="may only freeze the pool"):
+        main(_freeze_args(manifest, wrong, frozen, output))
+    assert not frozen.exists()
+    assert not output.exists()

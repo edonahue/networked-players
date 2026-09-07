@@ -16,7 +16,7 @@
       "catalog_version": "catalog-v1-20260601-7fbbb46b28e6",
       "pool_version": "connection-v1-20260601-e9c1009ebee0",
       "artifact_version": "connection-artifact-v1-20260601-a95ce5ad9d73",
-      "rounds_url": "/data/game/rounds.v1.json"
+      "rounds_url": "/data/game/generations/gen-2/rounds.json"
     }
   ],
   "schedule": [
