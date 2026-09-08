@@ -1703,3 +1703,148 @@ def test_already_published_albums_keep_their_original_expansion_round(tmp_path: 
 
     assert by_master[900]["expansion_round"] == 0, "an already-live album must keep its own round"
     assert by_master[901]["expansion_round"] == 1, "a genuinely new album gets this build's round"
+
+
+# --- build-parameter comparison (graph-expansion plan Y3 follow-up) ---------
+#
+# build-public-album-catalog deliberately inherits NOTHING. --target-count is
+# required (so it has no silent-default failure mode) and is the round size
+# the owner decides each round; expansion_round must ADVANCE, so inheriting
+# it would make the next round restamp the previous one. Both are compared
+# and reported instead.
+
+
+def _run_catalog_build(
+    tmp_path: Path, previous_build_parameters: dict[str, Any] | None, *extra: str
+) -> tuple[int, str]:
+    """Run build-public-album-catalog against a prior catalog optionally
+    carrying a build_parameters block. Returns (exit_code, stderr)."""
+    import contextlib
+    import io
+
+    onehop_root = _write_onehop_dataset(tmp_path / "onehop")
+    masters_root = _write_masters_dataset(tmp_path / "masters")
+    policy_path = _write_release_format_policy(tmp_path / "policy.json")
+    exclusions_path = _write_exclusions(tmp_path / "exclusions.json")
+    prior_path = _write_already_published_catalog(tmp_path / "prior-catalog.json")
+    if previous_build_parameters is not None:
+        prior = json.loads(prior_path.read_text())
+        prior["build_parameters"] = previous_build_parameters
+        prior_path.write_text(json.dumps(prior))
+
+    empty_editorial = tmp_path / "empty-editorial.json"
+    empty_editorial.write_text(json.dumps({"albums": []}))
+    empty_candidates = tmp_path / "empty-candidates.json"
+    empty_candidates.write_text(json.dumps([]))
+
+    err = io.StringIO()
+    with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(err):
+        code = main(
+            [
+                "build-public-album-catalog",
+                "--onehop-root",
+                str(onehop_root),
+                "--editorial-albums",
+                str(empty_editorial),
+                "--already-published-catalog",
+                str(prior_path),
+                "--candidates",
+                str(empty_candidates),
+                "--output",
+                str(tmp_path / "albums.v1.json"),
+                "--release-format-policy",
+                str(policy_path),
+                "--masters-root",
+                str(masters_root),
+                "--studio-album-exclusions",
+                str(exclusions_path),
+                *extra,
+            ]
+        )
+    return code, err.getvalue()
+
+
+def test_target_count_and_expansion_round_are_reported_against_the_previous_build(
+    tmp_path: Path,
+) -> None:
+    code, stderr = _run_catalog_build(
+        tmp_path,
+        {"target_count": 1, "expansion_round": 1, "editorial_backbone_used": True},
+        "--target-count",
+        "2",
+        "--expansion-round",
+        "2",
+    )
+    assert code == 0
+    assert "target_count     2 (previous 1)" in stderr
+    assert "expansion_round  2 (previous 1)" in stderr
+    assert "WARNING" not in stderr
+
+
+def test_target_count_at_or_below_the_previous_build_warns_about_a_no_op_expansion(
+    tmp_path: Path,
+) -> None:
+    """assemble_album_catalog computes remaining_slots as
+    max(0, target_count - already_kept), so a target at or below the published
+    count silently adds zero candidates and produces a valid-looking no-op."""
+    code, stderr = _run_catalog_build(
+        tmp_path,
+        {"target_count": 5, "expansion_round": 1, "editorial_backbone_used": True},
+        "--target-count",
+        "5",
+        "--expansion-round",
+        "2",
+    )
+    assert code == 0
+    assert "no candidate slots remain" in stderr
+
+
+def test_omitting_expansion_round_after_a_nonzero_round_warns_loudly(tmp_path: Path) -> None:
+    """The PR #238 bug class: new albums silently stamped as part of the
+    original backbone."""
+    code, stderr = _run_catalog_build(
+        tmp_path,
+        {"target_count": 1, "expansion_round": 3, "editorial_backbone_used": True},
+        "--target-count",
+        "2",
+    )
+    assert code == 0
+    assert "--expansion-round was not passed (0)" in stderr
+    assert "PR #238 bug class" in stderr
+
+
+def test_an_expansion_round_going_backwards_warns(tmp_path: Path) -> None:
+    code, stderr = _run_catalog_build(
+        tmp_path,
+        {"target_count": 1, "expansion_round": 4, "editorial_backbone_used": True},
+        "--target-count",
+        "2",
+        "--expansion-round",
+        "2",
+    )
+    assert code == 0
+    assert "is BEHIND the previous build's 4" in stderr
+
+
+def test_the_same_round_is_noted_but_not_warned(tmp_path: Path) -> None:
+    """A same-round rebuild (fixing a downstream bug, no new albums) is
+    legitimate -- note it, never hard-fail it."""
+    code, stderr = _run_catalog_build(
+        tmp_path,
+        {"target_count": 1, "expansion_round": 2, "editorial_backbone_used": True},
+        "--target-count",
+        "2",
+        "--expansion-round",
+        "2",
+    )
+    assert code == 0
+    assert "same round (2) as the previous build" in stderr
+
+
+def test_a_previous_catalog_without_build_parameters_is_reported_not_failed(
+    tmp_path: Path,
+) -> None:
+    """Every committed catalog looked like this before PR #248."""
+    code, stderr = _run_catalog_build(tmp_path, None, "--target-count", "2")
+    assert code == 0
+    assert "no previous build_parameters recorded" in stderr
