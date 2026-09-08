@@ -19,6 +19,8 @@
 	pathfinding-graph-check-distributed \
 	album-credit-membership-check-distributed \
 	evidence-release-registry-check-distributed \
+	prominence-check-distributed \
+	search-index-check-distributed \
 	score-cohort-on-worker \
 	platform-build platform-deploy platform-status curator workbench \
 	dask-up dask-down
@@ -179,6 +181,12 @@ album-credit-membership-check-distributed: ## Independently re-validate the publ
 
 evidence-release-registry-check-distributed: ## Independently re-validate the published evidence-release registry on every targeted worker via the ADR 0034 capability platform (ADR 0058); needs deploy-jobs-broker; writes local/jobs/ only; ARGS="--limit worker-01" to debug one worker
 	./scripts/submit-artifact-check.sh --validator evidence-release-registry $(ARGS)
+
+prominence-check-distributed: ## Independently re-validate the published prominence sidecar on every targeted worker via the ADR 0034 capability platform (ADR 0071); needs deploy-jobs-broker; writes local/jobs/ only; ARGS="--limit worker-01" to debug one worker
+	./scripts/submit-artifact-check.sh --validator prominence $(ARGS)
+
+search-index-check-distributed: ## Independently re-validate the published site search index on every targeted worker via the ADR 0034 capability platform; needs deploy-jobs-broker; writes local/jobs/ only; ARGS="--limit worker-01" to debug one worker
+	./scripts/submit-artifact-check.sh --validator search-index $(ARGS)
 
 score-cohort-on-worker: ## Submit whole-cohort scoring to a matching platform worker; needs platform runtime + verified x86 cache; ARGS="--source-id <id> --snapshot-date <date> [--release-format-policy <path>]"
 	./scripts/score-cohort-on-worker.sh $(ARGS)
