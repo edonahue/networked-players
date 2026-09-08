@@ -10,6 +10,19 @@ from pathlib import Path
 from typing import Any
 
 from . import __version__
+from .build_parameters import (
+    CHALLENGE_DEFAULT_BUILD_PARAMETERS,
+    RECORD_ROUTES_DEFAULT_BUILD_PARAMETERS,
+    format_build_parameters_report,
+    read_previous_build_parameters,
+    resolve_build_parameters,
+)
+from .build_parameters import (
+    summary as build_parameters_summary,
+)
+from .build_parameters import (
+    values as build_parameter_values,
+)
 from .discogs.download import download_file
 from .discogs.manifest import DumpKind, SnapshotManifest, build_manifest
 
@@ -333,13 +346,24 @@ def _parser() -> argparse.ArgumentParser:
         "gets a documented path before any album gets a third (see "
         "networked_players_graph_core.challenge._candidate_album_pairs)",
     )
-    build_challenge.add_argument("--max-hops", type=int, default=4)
+    # default=None so --carry-forward-challenge's own build_parameters block
+    # can supply these; the real fallbacks live in build_parameters.py.
+    build_challenge.add_argument(
+        "--max-hops",
+        type=int,
+        default=None,
+        help=f"default {CHALLENGE_DEFAULT_BUILD_PARAMETERS['max_hops']} when neither this flag "
+        "nor --carry-forward-challenge's recorded build parameters supply a value",
+    )
     build_challenge.add_argument(
         "--max-frontier-expansion",
         type=int,
-        default=300,
+        default=None,
         help="bound each find_path search's per-hop degree (same default as the cohort scorer); "
-        "0 or negative disables the bound",
+        "0 or negative disables the bound. Default "
+        f"{CHALLENGE_DEFAULT_BUILD_PARAMETERS['max_frontier_expansion']} when neither this flag "
+        "nor --carry-forward-challenge's recorded build parameters supply a value. Note a "
+        "recorded null means the bound was deliberately disabled and is inherited as such",
     )
     build_challenge.add_argument("--max-artists-per-release", type=int, default=50)
     build_challenge.add_argument(
@@ -521,10 +545,48 @@ def _parser() -> argparse.ArgumentParser:
     build_record_routes.add_argument("--release-format-policy", type=Path, default=None)
     build_record_routes.add_argument("--studio-album-exclusions", type=Path, default=None)
     build_record_routes.add_argument("--masters-root", type=Path, default=None)
-    build_record_routes.add_argument("--one-hop-target", type=int, default=150)
-    build_record_routes.add_argument("--two-hop-target", type=int, default=100)
-    build_record_routes.add_argument("--max-endpoint-share", type=float, default=0.15)
-    build_record_routes.add_argument("--max-bridge-share", type=float, default=0.2)
+    build_record_routes.add_argument(
+        "--previous-routes-universe",
+        type=Path,
+        default=None,
+        help="a PREVIOUSLY published routes/universe.v1.json. Its own "
+        "provenance.build_parameters supply the defaults for the four targets below, so a "
+        "rebuild reproduces the published pool instead of silently inheriting a changed CLI "
+        "default. Round 1 rebuilt with --two-hop-target's default of 100 against a published "
+        "200, halving the two-hop pool and dropping 94 routes-only contributor pages -- "
+        "diagnosed a round later. Pass it every round.",
+    )
+    # default=None means "not supplied" so the previous artifact can win; the
+    # real fallbacks live in build_parameters.py, interpolated into the help
+    # text below so the constant stays the single source of truth.
+    build_record_routes.add_argument(
+        "--one-hop-target",
+        type=int,
+        default=None,
+        help=f"default {RECORD_ROUTES_DEFAULT_BUILD_PARAMETERS['one_hop_target']} when neither "
+        "this flag nor --previous-routes-universe supplies a value",
+    )
+    build_record_routes.add_argument(
+        "--two-hop-target",
+        type=int,
+        default=None,
+        help=f"default {RECORD_ROUTES_DEFAULT_BUILD_PARAMETERS['two_hop_target']} when neither "
+        "this flag nor --previous-routes-universe supplies a value",
+    )
+    build_record_routes.add_argument(
+        "--max-endpoint-share",
+        type=float,
+        default=None,
+        help=f"default {RECORD_ROUTES_DEFAULT_BUILD_PARAMETERS['max_endpoint_share']} when "
+        "neither this flag nor --previous-routes-universe supplies a value",
+    )
+    build_record_routes.add_argument(
+        "--max-bridge-share",
+        type=float,
+        default=None,
+        help=f"default {RECORD_ROUTES_DEFAULT_BUILD_PARAMETERS['max_bridge_share']} when "
+        "neither this flag nor --previous-routes-universe supplies a value",
+    )
     build_record_routes.add_argument("--max-artists-per-release", type=int, default=50)
     build_record_routes.add_argument("--memory-limit", default="1GB")
     build_record_routes.add_argument("--threads", type=int, default=2)
@@ -2736,6 +2798,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         # churn. Measured on the real Round 1 rebuild before this existed:
         # 112 of 530 contributor pages would have 404'd.
         carry_forward_artist_pairs: frozenset[tuple[int, int]] = frozenset()
+        challenge_previous_block = None
+        challenge_previous_label = None
         if args.carry_forward_challenge is not None:
             previous = json.loads(args.carry_forward_challenge.read_text())
             carry_forward_artist_pairs = frozenset(
@@ -2746,15 +2810,64 @@ def main(argv: Sequence[str] | None = None) -> int:
                 for p in previous.get("paths", [])
                 if p.get("from_artist_id") is not None and p.get("to_artist_id") is not None
             )
+            # The same file already in hand also records what that build ran
+            # with -- no second flag, and therefore no way for two previous
+            # artifacts to disagree.
+            challenge_previous_block = read_previous_build_parameters(
+                previous, flag="--carry-forward-challenge", at="provenance"
+            )
+            challenge_previous_label = str(args.carry_forward_challenge)
+
+        challenge_resolved = resolve_build_parameters(
+            supplied={
+                "max_hops": args.max_hops,
+                "max_frontier_expansion": args.max_frontier_expansion,
+            },
+            previous=challenge_previous_block,
+            defaults=CHALLENGE_DEFAULT_BUILD_PARAMETERS,
+        )
 
         # Two paths per album normally. When carrying pairs forward, the budget
         # must additionally cover them or the carry-forward silently does
         # nothing: every album's first pair is protected ahead of the carried
         # set, so the floor is one-per-album PLUS the carried pairs.
+        derived_max_paths_floor = max(
+            2 * len(albums), len(albums) + len(carry_forward_artist_pairs)
+        )
+        max_paths_source = "derived"
         if args.max_paths is not None:
             max_paths = args.max_paths
+            max_paths_source = "cli"
+            if max_paths < derived_max_paths_floor:
+                print(
+                    f"  WARNING: --max-paths {max_paths} is below this catalog's own floor of "
+                    f"{derived_max_paths_floor} ({len(albums)} albums + "
+                    f"{len(carry_forward_artist_pairs)} carried pairs) -- some albums or "
+                    "carried pairs will go undocumented",
+                    file=sys.stderr,
+                )
+        elif challenge_previous_block is not None and "max_paths" in challenge_previous_block:
+            # A raw inherited value from a SMALLER catalog would silently
+            # under-provision the budget -- a fresh instance of the same
+            # failure class. Treat it as a floor contribution, never a
+            # replacement.
+            inherited_max_paths = int(challenge_previous_block["max_paths"])
+            max_paths = max(derived_max_paths_floor, inherited_max_paths)
+            max_paths_source = (
+                "inherited" if max_paths == inherited_max_paths else "inherited, raised to floor"
+            )
         else:
-            max_paths = max(2 * len(albums), len(albums) + len(carry_forward_artist_pairs))
+            max_paths = derived_max_paths_floor
+
+        print(
+            format_build_parameters_report(
+                challenge_resolved,
+                command="build-challenge-from-dump",
+                previous_label=challenge_previous_label,
+            ),
+            file=sys.stderr,
+        )
+        print(f"  max_paths  {max_paths!r} ({max_paths_source})", file=sys.stderr)
 
         is_family_excluded: Callable[[int, int], bool] | None = None
         if args.artist_family_exclusions is not None:
@@ -2783,9 +2896,18 @@ def main(argv: Sequence[str] | None = None) -> int:
             if args.masters_root is not None:
                 graph.attach_masters(args.masters_root)
 
+            # The resolved value may already be None -- an INHERITED null,
+            # meaning a previous build deliberately disabled the bound (the
+            # runbook passes `--max-frontier-expansion 0`, which stamps null).
+            # Only a real int gets the "0 or negative disables" conversion;
+            # None passes straight through rather than being re-defaulted.
+            resolved_frontier = challenge_resolved["max_frontier_expansion"].value
             max_frontier_expansion = (
-                args.max_frontier_expansion if args.max_frontier_expansion > 0 else None
+                None
+                if resolved_frontier is None or resolved_frontier <= 0
+                else int(resolved_frontier)
             )
+            resolved_max_hops = int(challenge_resolved["max_hops"].value)
             if albums_are_resolved:
                 matched = [resolved_album_from_dict(a) for a in albums]
                 if allowed_release_ids is not None:
@@ -2804,7 +2926,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                     ),
                     max_paths=max_paths,
                     carry_forward_artist_pairs=carry_forward_artist_pairs,
-                    max_hops=args.max_hops,
+                    max_hops=resolved_max_hops,
                     max_workers=args.max_workers,
                     is_family_excluded=is_family_excluded,
                     max_frontier_expansion=max_frontier_expansion,
@@ -2822,7 +2944,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                     ),
                     max_paths=max_paths,
                     carry_forward_artist_pairs=carry_forward_artist_pairs,
-                    max_hops=args.max_hops,
+                    max_hops=resolved_max_hops,
                     max_workers=args.max_workers,
                     is_family_excluded=is_family_excluded,
                     allowed_release_ids=allowed_release_ids,
@@ -2851,6 +2973,10 @@ def main(argv: Sequence[str] | None = None) -> int:
             "known leak patterns, not editorial judgment.",
             file=sys.stderr,
         )
+        report["build_parameters"] = {
+            **build_parameters_summary(challenge_resolved),
+            "max_paths": {"value": max_paths, "source": max_paths_source},
+        }
         print(json.dumps(report, indent=2, sort_keys=True))
         return 0
 
@@ -3049,6 +3175,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 0
 
     if args.command == "build-record-routes":
+        # Local, matching this function's existing convention -- `main()`
+        # already binds `sys` locally in several other branches, which makes
+        # it a function-scoped name throughout, so a module-level import
+        # would raise UnboundLocalError here rather than resolving.
+        import sys
+
         from networked_players_graph_core.challenge import resolved_album_from_dict
         from networked_players_graph_core.graph import CreditGraph
         from networked_players_graph_core.record_routes import (
@@ -3062,6 +3194,49 @@ def main(argv: Sequence[str] | None = None) -> int:
         rr_albums = catalog["albums"]
         rr_snapshot = catalog["snapshot_date"]
         rr_catalog_version = catalog["catalog_version"]
+
+        # Resolve build parameters BEFORE opening the graph, so a malformed
+        # previous artifact fails in a second rather than after a long scan.
+        rr_previous_block = None
+        rr_previous_label = None
+        rr_previous_counts: dict[str, Any] | None = None
+        if args.previous_routes_universe is not None:
+            rr_previous_payload = json.loads(args.previous_routes_universe.read_text())
+            rr_previous_block = read_previous_build_parameters(
+                rr_previous_payload, flag="--previous-routes-universe", at="provenance"
+            )
+            rr_previous_label = str(args.previous_routes_universe)
+            if isinstance(rr_previous_payload.get("counts"), dict):
+                rr_previous_counts = rr_previous_payload["counts"]
+        rr_resolved = resolve_build_parameters(
+            supplied={
+                "one_hop_target": args.one_hop_target,
+                "two_hop_target": args.two_hop_target,
+                "max_endpoint_share": args.max_endpoint_share,
+                "max_bridge_share": args.max_bridge_share,
+            },
+            previous=rr_previous_block,
+            defaults=RECORD_ROUTES_DEFAULT_BUILD_PARAMETERS,
+        )
+        print(
+            format_build_parameters_report(
+                rr_resolved,
+                command="build-record-routes",
+                previous_label=rr_previous_label,
+            ),
+            file=sys.stderr,
+        )
+        if rr_previous_counts is not None:
+            # The line that would have caught Round 1 outright: what the
+            # previous build actually produced, next to what this one targets.
+            print(
+                f"  previous build produced one_hop={rr_previous_counts.get('one_hop')} "
+                f"two_hop={rr_previous_counts.get('two_hop')}; this build targets "
+                f"one_hop={rr_resolved['one_hop_target'].value} "
+                f"two_hop={rr_resolved['two_hop_target'].value}",
+                file=sys.stderr,
+            )
+        rr_parameters = build_parameter_values(rr_resolved)
 
         rr_family_excluded: Callable[[int, int], bool] | None = None
         if args.artist_family_exclusions is not None:
@@ -3098,15 +3273,12 @@ def main(argv: Sequence[str] | None = None) -> int:
             rr_universe, rr_rounds, rr_diag = build_record_routes_pool(
                 graph,
                 rr_matched,
-                one_hop_target=args.one_hop_target,
-                two_hop_target=args.two_hop_target,
                 snapshot_date=rr_snapshot,
                 generated_by=f"networked-players-catalog build-record-routes {__version__}",
                 catalog_version=rr_catalog_version,
                 is_family_excluded=rr_family_excluded,
                 allowed_release_ids=rr_allowed_release_ids,
-                max_endpoint_share=args.max_endpoint_share,
-                max_bridge_share=args.max_bridge_share,
+                **rr_parameters,
             )
 
         validate_record_routes_artifact(rr_universe, rr_rounds)
@@ -3114,6 +3286,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         args.output_rounds.parent.mkdir(parents=True, exist_ok=True)
         args.output_universe.write_text(json.dumps(rr_universe, indent=2) + "\n")
         args.output_rounds.write_text(json.dumps(rr_rounds, indent=2) + "\n")
+        rr_diag["build_parameters"] = build_parameters_summary(rr_resolved)
         print(json.dumps(rr_diag, indent=2))
         return 0
 
@@ -4256,6 +4429,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 0
 
     if args.command == "build-public-album-catalog":
+        import sys
+
         from networked_players_graph_core.analysis import (
             assemble_album_catalog,
             load_featured_master_ids,
@@ -4458,6 +4633,10 @@ def main(argv: Sequence[str] | None = None) -> int:
             }
 
         additional_pre_resolved: list[tuple[str, list[dict[str, Any]], bool]] = []
+        # Parsed once and reused: this file is read for the preservation lane,
+        # for each album's original expansion_round, and for the build-parameter
+        # comparison below. It used to be read from disk twice.
+        already_published_payload: dict[str, Any] | None = None
         if args.already_published_catalog is not None:
             already_published_payload = json.loads(args.already_published_catalog.read_text())
             already_published_albums = already_published_payload.get("albums")
@@ -4546,6 +4725,71 @@ def main(argv: Sequence[str] | None = None) -> int:
                 )
             )
 
+        # Report-and-guard only -- this builder inherits NOTHING, deliberately.
+        # `--target-count` is required (so it has no silent-default failure
+        # mode to prevent) and is the round size the owner decides each round;
+        # `expansion_round` must ADVANCE each round, so inheriting it would
+        # make the next round restamp the previous one. Both are compared and
+        # reported instead. The `editorial_backbone_used` bool is a fact about
+        # whether a lane ran, not a reusable value.
+        catalog_previous_block = None
+        if already_published_payload is not None:
+            catalog_previous_block = read_previous_build_parameters(
+                already_published_payload, flag="--already-published-catalog", at="top_level"
+            )
+        print("build-public-album-catalog: build parameters", file=sys.stderr)
+        if catalog_previous_block is None:
+            print(
+                "  no previous build_parameters recorded -- nothing to compare against; "
+                f"target_count={args.target_count} expansion_round={args.expansion_round}",
+                file=sys.stderr,
+            )
+        else:
+            previous_target = catalog_previous_block.get("target_count")
+            previous_round = catalog_previous_block.get("expansion_round")
+            print(
+                f"  target_count     {args.target_count} (previous {previous_target})",
+                file=sys.stderr,
+            )
+            print(
+                f"  expansion_round  {args.expansion_round} (previous {previous_round})",
+                file=sys.stderr,
+            )
+            if isinstance(previous_target, int) and args.target_count <= previous_target:
+                # assemble_album_catalog computes
+                # `remaining_slots = max(0, target_count - already_kept)`, so a
+                # target at or below the published count adds zero candidates
+                # and produces a valid-looking no-op expansion.
+                print(
+                    f"  WARNING: --target-count {args.target_count} is not above the previous "
+                    f"build's {previous_target}; no candidate slots remain, so this build can "
+                    "only reproduce or shrink the catalog, never expand it",
+                    file=sys.stderr,
+                )
+            if isinstance(previous_round, int):
+                # Most specific first: "the flag was omitted" is also
+                # "the round went backwards", and it is the louder, more
+                # actionable diagnosis of the two.
+                if args.expansion_round == 0 and previous_round > 0:
+                    print(
+                        "  WARNING: --expansion-round was not passed (0) but the previous "
+                        f"build recorded round {previous_round} -- new albums will be stamped "
+                        "as part of the original backbone. This is the PR #238 bug class",
+                        file=sys.stderr,
+                    )
+                elif args.expansion_round < previous_round:
+                    print(
+                        f"  WARNING: --expansion-round {args.expansion_round} is BEHIND the "
+                        f"previous build's {previous_round} -- rounds are meant to advance",
+                        file=sys.stderr,
+                    )
+                elif args.expansion_round == previous_round:
+                    print(
+                        f"  note: same round ({args.expansion_round}) as the previous build -- "
+                        "expected only for a same-round rebuild",
+                        file=sys.stderr,
+                    )
+
         with CreditGraph.open(
             args.onehop_root,
             memory_limit=args.memory_limit,
@@ -4580,8 +4824,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                 previously_published_rounds={
                     int(a["master_id"]): int(a.get("expansion_round") or 0)
                     for a in (
-                        json.loads(args.already_published_catalog.read_text()).get("albums", [])
-                        if args.already_published_catalog is not None
+                        already_published_payload.get("albums", [])
+                        if already_published_payload is not None
                         else []
                     )
                     if a.get("master_id") is not None

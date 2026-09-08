@@ -186,3 +186,136 @@ def test_build_and_validate_record_routes_cli_wiring(tmp_path: Path, capsys) -> 
     )
     assert exit_code == 0
     assert json.loads(capsys.readouterr().out) == {"ok": True}
+
+
+# --- build-parameter read-back (graph-expansion plan Y3 follow-up) ----------
+
+
+def _build(tmp_path: Path, *extra_args: str) -> tuple[int, str, str, Path]:
+    """Run build-record-routes against the synthetic fixture, returning
+    (exit_code, stdout, stderr, universe_path)."""
+    import contextlib
+    import io
+
+    onehop_root = _write_onehop_dataset(tmp_path / "onehop")
+    catalog_path = _write_catalog(tmp_path / "catalog.json")
+    universe_path = tmp_path / "out-universe.v1.json"
+    rounds_path = tmp_path / "out-rounds.v1.json"
+    out, err = io.StringIO(), io.StringIO()
+    with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+        code = main(
+            [
+                "build-record-routes",
+                "--onehop-root",
+                str(onehop_root),
+                "--albums",
+                str(catalog_path),
+                "--max-endpoint-share",
+                "1.0",
+                "--max-bridge-share",
+                "1.0",
+                "--output-universe",
+                str(universe_path),
+                "--output-rounds",
+                str(rounds_path),
+                *extra_args,
+            ]
+        )
+    return code, out.getvalue(), err.getvalue(), universe_path
+
+
+def _previous_universe(path: Path, build_parameters: dict[str, Any] | None) -> Path:
+    """A minimally-shaped previous universe artifact. Only provenance and
+    counts are read by the read-back, so this deliberately does not need to
+    be a full valid artifact."""
+    provenance: dict[str, Any] = {"snapshot_date": SNAPSHOT_DATE}
+    if build_parameters is not None:
+        provenance["build_parameters"] = build_parameters
+    path.write_text(
+        json.dumps(
+            {
+                "provenance": provenance,
+                "counts": {"one_hop": 150, "two_hop": 200, "daily_eligible": 350},
+            }
+        )
+    )
+    return path
+
+
+def test_previous_universe_two_hop_target_is_inherited_instead_of_the_cli_default(
+    tmp_path: Path,
+) -> None:
+    """The real Round 1 regression, reproduced.
+
+    The published artifact held 200 two-hop rounds; `--two-hop-target`'s CLI
+    default is 100. Round 1's rebuild omitted the flag, took the default,
+    halved the two-hop pool, and dropped 94 routes-only contributor pages --
+    diagnosed a round later. With the previous artifact supplied, omitting
+    the flag must now inherit 200, not fall back to 100."""
+    previous = _previous_universe(
+        tmp_path / "previous.json", {"one_hop_target": 150, "two_hop_target": 200}
+    )
+    code, stdout, stderr, universe_path = _build(
+        tmp_path, "--previous-routes-universe", str(previous)
+    )
+    assert code == 0
+
+    stamped = json.loads(universe_path.read_text())["provenance"]["build_parameters"]
+    assert stamped["two_hop_target"] == 200, "inherited value must beat the CLI default of 100"
+    assert stamped["one_hop_target"] == 150
+
+    assert "200 (inherited)" in stderr
+    summary = json.loads(stdout)["build_parameters"]
+    assert summary["two_hop_target"] == {"value": 200, "source": "inherited"}
+    # The cross-check line that would have caught the regression by eye.
+    assert "previous build produced one_hop=150 two_hop=200" in stderr
+
+
+def test_an_explicit_flag_still_beats_the_inherited_value(tmp_path: Path) -> None:
+    """Inheritance must never take the wheel away from an operator who is
+    deliberately changing a target."""
+    previous = _previous_universe(tmp_path / "previous.json", {"two_hop_target": 200})
+    code, stdout, stderr, universe_path = _build(
+        tmp_path, "--previous-routes-universe", str(previous), "--two-hop-target", "7"
+    )
+    assert code == 0
+    stamped = json.loads(universe_path.read_text())["provenance"]["build_parameters"]
+    assert stamped["two_hop_target"] == 7
+    assert "7 (cli)" in stderr
+    assert json.loads(stdout)["build_parameters"]["two_hop_target"]["source"] == "cli"
+
+
+def test_previous_universe_without_build_parameters_falls_back_to_defaults(
+    tmp_path: Path,
+) -> None:
+    """Every committed artifact looked like this before PR #248 landed, so
+    this is the shape a real first read-back actually encounters."""
+    previous = _previous_universe(tmp_path / "previous.json", None)
+    code, _stdout, stderr, universe_path = _build(
+        tmp_path, "--previous-routes-universe", str(previous)
+    )
+    assert code == 0
+    stamped = json.loads(universe_path.read_text())["provenance"]["build_parameters"]
+    assert stamped["two_hop_target"] == 100  # the hard-coded fallback
+    assert "100 (default)" in stderr
+
+
+def test_no_previous_universe_reports_that_nothing_was_inherited(tmp_path: Path) -> None:
+    """Piggybacking inheritance onto an optional flag means forgetting the
+    flag returns you to the original failure mode. That must be stated
+    loudly, not silently skipped."""
+    code, _stdout, stderr, _universe_path = _build(tmp_path)
+    assert code == 0
+    assert "no previous artifact given" in stderr
+    assert "nothing inherited" in stderr
+
+
+def test_malformed_previous_build_parameters_fails_naming_the_flag(tmp_path: Path) -> None:
+    """Silently ignoring a malformed block would reintroduce exactly the
+    silent drift this feature exists to remove."""
+    import pytest
+
+    previous = tmp_path / "previous.json"
+    previous.write_text(json.dumps({"provenance": {"build_parameters": [1, 2, 3]}}))
+    with pytest.raises(Exception, match="--previous-routes-universe"):
+        _build(tmp_path, "--previous-routes-universe", str(previous))
