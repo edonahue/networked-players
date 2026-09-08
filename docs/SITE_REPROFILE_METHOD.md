@@ -14,8 +14,9 @@ extends this method with two additions the plan's own §6 Explore-scaling
 benchmark asks for: **Explorer recenter timing** and a **third, distinct
 CPU-throttled profile** — see "What it measures" and "Profiles" below. Both
 are exercised against the artifact names current since ADR 0068's
-performer-only cutover (`challenge.v3.json`, `pathfinding/graph.v3.json`);
-earlier revisions of this document referenced the retired `.v2.json` names.
+performer-only cutover and ADR 0071's role-dictionary encoding
+(`challenge.v3.json`, `pathfinding/graph.v4.json`); earlier revisions of this
+document referenced the retired `.v2.json`/`.v3.json` graph names.
 
 ## What has a real 140-album baseline to compare against, and what doesn't
 

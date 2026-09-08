@@ -7,8 +7,15 @@ import ContributorsDirectory from '../../components/ContributorsDirectory.astro'
 // zero new backend, reusing the index's already-public connection_count
 // field. Not attempting a betweenness-based "bridge contributors" list
 // here; that needs the private one-hop corpus, not this published index.
+// "every contributor in the credit graph" was false by a factor of ~37: the
+// index covers only people on a documented path or route (639 of ~23,361
+// performers in graph.v4), because it is built from challenge.v3.json,
+// routes/{universe,rounds}.v1.json and the evidence registry -- never the
+// full graph. Contributor pages are derived views that legitimately come and
+// go (ADR 0048's 2026-09-05 addendum), so the copy must not imply exhaustive
+// coverage of the graph.
 const description =
-  'Search and filter every contributor in the Networked Players credit graph, or browse the most connected.';
+  'Search and filter the contributors behind Networked Players’ documented connections, or browse the most connected.';
 ---
 
 <BaseLayout title="Contributors" description={description}>
