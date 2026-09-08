@@ -689,6 +689,157 @@ def upgrade_connection_daily_manifest_to_v2(
     }
 
 
+def _version_mismatches_against_generation(
+    generation: dict[str, Any], rounds_artifact: dict[str, Any]
+) -> list[str]:
+    """`_version_mismatches`'s v1 rule, applied to one `generations[]` entry
+    instead of the manifest's top level -- the v2 equivalent of "this
+    manifest may only be paired with the exact rounds-artifact generation it
+    was built against"."""
+    provenance = rounds_artifact.get("provenance", {})
+    failures: list[str] = []
+    for field_name in _VERSION_FIELDS:
+        generation_value = generation.get(field_name)
+        rounds_value = provenance.get(field_name)
+        if generation_value != rounds_value:
+            failures.append(
+                f"generation {generation.get('generation_id')!r} {field_name} "
+                f"{generation_value!r} does not match the supplied rounds artifact's "
+                f"{field_name} {rounds_value!r} -- rounds_artifact must be THIS "
+                "generation's own pool"
+            )
+    return failures
+
+
+def extend_connection_daily_manifest_v2(
+    manifest: dict[str, Any], rounds_artifact: dict[str, Any], *, days: int, generated_at: str
+) -> dict[str, Any]:
+    """`extend_connection_daily_manifest`'s schema-v2 counterpart: append new
+    dates to the NEWEST generation's pool.
+
+    Schema v2 (ADR 0066) exists so an outgoing generation's already-
+    published dates keep resolving against a frozen copy of their own pool
+    forever; only the newest generation's `rounds_url` is ever the live
+    artifact, and only it ever gains new dates. Introducing a genuinely
+    different pool generation is `migrate_connection_daily_manifest_generation`'s
+    job, not this one -- this function never adds a `generations[]` entry,
+    it only extends the schedule under the one that already exists as
+    `generations[-1]`.
+
+    `rounds_artifact` must be the newest generation's own pool: its
+    provenance triple must match `generations[-1]` exactly
+    (`_version_mismatches_against_generation`), mirroring v1's single-
+    generation rule but scoped to one generation instead of the whole
+    manifest. Every existing schedule entry belonging to that newest
+    generation is then re-verified against `rounds_artifact` before
+    anything is appended, exactly like v1. Entries belonging to an OLDER,
+    already-frozen generation are left completely untouched and are not
+    re-verified here -- they were verified when their own generation was
+    frozen or migrated, and re-verifying them would require that
+    generation's own rounds artifact, which this function does not take
+    (see `migrate_connection_daily_manifest_generation` for the operation
+    that verifies every kept entry across every generation).
+
+    As in v1: only `generated_at` and the appended `schedule` entries
+    change. `generations[]`, `mode`, `schema_version`, and `start_date` are
+    carried over unchanged, and no entry outside the appended ones is ever
+    rewritten."""
+    if manifest.get("schema_version") != CONNECTION_DAILY_MANIFEST_SCHEMA_VERSION_V2:
+        raise ConnectionDailyManifestError(
+            "extend_connection_daily_manifest_v2 requires a schema_version="
+            f"{CONNECTION_DAILY_MANIFEST_SCHEMA_VERSION_V2} manifest, got "
+            f"{manifest.get('schema_version')!r} -- use extend_connection_daily_manifest "
+            "for a schema-v1 manifest"
+        )
+    if days <= 0:
+        raise ValueError("days must be positive")
+    _parse_iso_datetime(generated_at, context="generated_at")
+    schedule = manifest.get("schedule")
+    if not schedule:
+        raise ConnectionDailyManifestError("cannot extend an empty manifest")
+    generations = manifest.get("generations")
+    if not generations:
+        raise ConnectionDailyManifestError("manifest has no generations[] to extend")
+
+    newest_generation = generations[-1]
+    version_failures = _version_mismatches_against_generation(newest_generation, rounds_artifact)
+    if version_failures:
+        raise ConnectionDailyManifestError("; ".join(version_failures))
+
+    newest_generation_id = newest_generation["generation_id"]
+    newest_entries = [e for e in schedule if e["generation"] == newest_generation_id]
+    if not newest_entries:
+        raise ConnectionDailyManifestError(
+            f"newest generation {newest_generation_id!r} has no schedule entries yet -- "
+            "nothing to extend from (adjacency context requires at least one existing entry)"
+        )
+
+    eligible = _eligible_one_hop_rounds(rounds_artifact)
+    eligible_by_id = {r["id"]: r for r in eligible}
+
+    for entry in newest_entries:
+        round_json = eligible_by_id.get(entry["round_id"])
+        if round_json is None:
+            raise ConnectionDailyManifestError(
+                f"existing entry for {entry['date']} (generation {newest_generation_id}) "
+                f"references round {entry['round_id']!r}, which is missing from the current "
+                "rounds artifact (or is no longer a real one-hop round) -- refusing to "
+                "extend on top of a broken history"
+            )
+        current_fingerprint = round_content_fingerprint(round_json)
+        if current_fingerprint != entry["round_fingerprint"]:
+            raise ConnectionDailyManifestError(
+                f"existing entry for {entry['date']} (round {entry['round_id']}, generation "
+                f"{newest_generation_id}) has a content fingerprint mismatch: manifest "
+                f"expects {entry['round_fingerprint']!r}, current artifact has "
+                f"{current_fingerprint!r} -- the round's published content changed "
+                "silently, refusing to extend on top of a broken history"
+            )
+
+    # Round ids are content-derived, so a candidate could collide with a
+    # round already scheduled under an OLDER, frozen generation, not just
+    # the newest one -- draw from every generation's schedule, not just
+    # this one's, mirroring migrate_'s same rule.
+    already_scheduled = {entry["round_id"] for entry in schedule}
+    available = [r for r in eligible if r["id"] not in already_scheduled]
+    if not available:
+        raise ConnectionDailyManifestError(
+            "every eligible one-hop round has already been scheduled once across every "
+            "generation; no repeat policy is implemented yet -- either grow the real round "
+            "pool or make an explicit, documented decision about cycling"
+        )
+
+    # The newest generation's own last entry, not necessarily schedule[-1]
+    # by position -- true today because entries are always appended in
+    # generations[] order, but this makes no such assumption.
+    last_entry = newest_entries[-1]
+    last_date = _parse_iso_date(schedule[-1]["date"], context="schedule[-1].date")
+    next_start = (last_date + timedelta(days=1)).isoformat()
+    last_round_json = eligible_by_id.get(last_entry["round_id"])
+
+    ordered = _quality_scheduled_order(
+        available,
+        seed=str(newest_generation.get("pool_version")),
+        previous_round=last_round_json,
+    )
+    scheduled_count = min(days, len(ordered))
+    new_dates = _dates_from(next_start, scheduled_count)
+    new_entries = [
+        {
+            "date": d,
+            "round_id": r["id"],
+            "round_fingerprint": round_content_fingerprint(r),
+            "generation": newest_generation_id,
+        }
+        for d, r in zip(new_dates, ordered[:scheduled_count], strict=True)
+    ]
+    return {
+        **manifest,
+        "generated_at": generated_at,
+        "schedule": [*schedule, *new_entries],
+    }
+
+
 def migrate_connection_daily_manifest_generation(
     manifest: dict[str, Any],
     new_rounds_artifact: dict[str, Any],

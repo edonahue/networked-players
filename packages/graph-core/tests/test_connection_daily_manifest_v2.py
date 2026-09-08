@@ -19,6 +19,7 @@ from networked_players_graph_core.connection_daily_manifest import (
     CONNECTION_DAILY_MANIFEST_SCHEMA_VERSION_V2,
     ConnectionDailyManifestError,
     build_connection_daily_manifest,
+    extend_connection_daily_manifest_v2,
     migrate_connection_daily_manifest_generation,
     repoint_connection_daily_manifest_generation,
     upgrade_connection_daily_manifest_to_v2,
@@ -759,3 +760,138 @@ def test_every_generation_in_the_real_manifest_resolves_to_its_own_pool() -> Non
         resolved[generation["generation_id"]] = json.loads(path.read_text())
 
     assert connection_daily_manifest_v2_failures(manifest, resolved) == []
+
+
+# --- extend_connection_daily_manifest_v2 ------------------------------------
+
+
+def _two_generation_manifest(
+    days_before_cutover: int = 5, days_after: int = 5
+) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
+    v2, gen1_pool = _v2_manifest(days=10)
+    cutover = v2["schedule"][days_before_cutover]["date"]
+    gen2_pool = _real_pool_gen2()
+    migrated = migrate_connection_daily_manifest_generation(
+        v2,
+        gen2_pool,
+        cutover_date=cutover,
+        new_generation_id="gen-2",
+        new_rounds_url="/data/game/generations/gen-2/rounds.json",
+        days=days_after,
+        generated_at=GENERATED_AT,
+        existing_generation_rounds={"gen-1": gen1_pool},
+    )
+    return migrated, gen1_pool, gen2_pool
+
+
+def test_extend_v2_appends_only_to_the_newest_generation_and_leaves_older_untouched() -> None:
+    manifest, _gen1_pool, gen2_pool = _two_generation_manifest(days_after=1)
+    original_schedule = deepcopy(manifest["schedule"])
+    original_generations = deepcopy(manifest["generations"])
+
+    extended = extend_connection_daily_manifest_v2(
+        manifest, gen2_pool, days=3, generated_at=GENERATED_AT
+    )
+
+    gen1_count = sum(1 for e in original_schedule if e["generation"] == "gen-1")
+    assert extended["schedule"][: len(original_schedule)] == original_schedule
+    assert all(e["generation"] == "gen-1" for e in extended["schedule"][:gen1_count])
+    assert extended["generations"] == original_generations
+    new_entries = extended["schedule"][len(original_schedule) :]
+    assert len(new_entries) == 3
+    assert all(e["generation"] == "gen-2" for e in new_entries)
+
+
+def test_extend_v2_is_deterministic() -> None:
+    manifest, _gen1_pool, gen2_pool = _two_generation_manifest()
+    a = extend_connection_daily_manifest_v2(
+        deepcopy(manifest), gen2_pool, days=3, generated_at=GENERATED_AT
+    )
+    b = extend_connection_daily_manifest_v2(
+        deepcopy(manifest), gen2_pool, days=3, generated_at=GENERATED_AT
+    )
+    assert a["schedule"] == b["schedule"]
+
+
+def test_extend_v2_requires_a_schema_v2_manifest() -> None:
+    v1 = _v1_manifest(days=5)
+    with pytest.raises(ConnectionDailyManifestError, match="requires a schema_version=2"):
+        extend_connection_daily_manifest_v2(v1, _real_pool(), days=3, generated_at=GENERATED_AT)
+
+
+def test_extend_v2_rejects_a_rounds_artifact_that_is_not_the_newest_generations_own_pool() -> None:
+    """Passing the OLDER generation's pool (or any pool whose provenance
+    doesn't match generations[-1]) must be refused, not silently accepted --
+    mirrors v1's single-generation rule, scoped to the newest generation."""
+    manifest, gen1_pool, _gen2_pool = _two_generation_manifest()
+    with pytest.raises(
+        ConnectionDailyManifestError, match="does not match the supplied rounds artifact"
+    ):
+        extend_connection_daily_manifest_v2(manifest, gen1_pool, days=3, generated_at=GENERATED_AT)
+
+
+def test_extend_v2_rejects_a_newest_generation_round_whose_content_silently_changed() -> None:
+    manifest, _gen1_pool, gen2_pool = _two_generation_manifest()
+    tampered = deepcopy(gen2_pool)
+    tampered["rounds"][0]["answer_set"][0]["name"] = "Someone Else"
+    with pytest.raises(ConnectionDailyManifestError, match="fingerprint mismatch"):
+        extend_connection_daily_manifest_v2(manifest, tampered, days=2, generated_at=GENERATED_AT)
+
+
+def test_extend_v2_rejects_a_missing_newest_generation_round() -> None:
+    manifest, _gen1_pool, gen2_pool = _two_generation_manifest()
+    scheduled_id = next(e["round_id"] for e in manifest["schedule"] if e["generation"] == "gen-2")
+    tampered = deepcopy(gen2_pool)
+    tampered["rounds"] = [r for r in tampered["rounds"] if r["id"] != scheduled_id]
+    with pytest.raises(ConnectionDailyManifestError, match="missing from the current rounds"):
+        extend_connection_daily_manifest_v2(manifest, tampered, days=2, generated_at=GENERATED_AT)
+
+
+def test_extend_v2_after_pool_exhaustion_raises_documented_policy_error() -> None:
+    manifest, _gen1_pool, gen2_pool = _two_generation_manifest(days_before_cutover=5, days_after=6)
+    with pytest.raises(ConnectionDailyManifestError, match="already been scheduled once"):
+        extend_connection_daily_manifest_v2(manifest, gen2_pool, days=1, generated_at=GENERATED_AT)
+
+
+def test_extend_v2_never_reschedules_a_round_id_already_used_by_an_older_generation() -> None:
+    """Round ids are content-derived: a regenerated pool can legitimately
+    contain a round byte-identical to one an OLDER, frozen generation
+    already scheduled. Extension must never re-offer it, even though it is
+    absent from THIS generation's own already-scheduled set."""
+    manifest, _gen1_pool, gen2_pool = _two_generation_manifest(days_before_cutover=5, days_after=1)
+    collided_id = next(e["round_id"] for e in manifest["schedule"] if e["generation"] == "gen-1")
+    pool_with_collision = deepcopy(gen2_pool)
+    pool_with_collision["rounds"] = [
+        r for r in pool_with_collision["rounds"] if r["id"] != collided_id
+    ] + [
+        {**deepcopy(pool_with_collision["rounds"][0]), "id": collided_id},
+    ]
+    extended = extend_connection_daily_manifest_v2(
+        manifest, pool_with_collision, days=10, generated_at=GENERATED_AT
+    )
+    new_ids = {e["round_id"] for e in extended["schedule"][len(manifest["schedule"]) :]}
+    assert collided_id not in new_ids
+
+
+def test_extend_v2_refuses_when_the_newest_generation_has_no_entries_yet() -> None:
+    v2, _gen1_pool = _v2_manifest(days=5)
+    v2["generations"].append(
+        {
+            "generation_id": "gen-2",
+            "catalog_version": GEN2_PROVENANCE["catalog_version"],
+            "pool_version": GEN2_PROVENANCE["pool_version"],
+            "artifact_version": GEN2_PROVENANCE["artifact_version"],
+            "rounds_url": "/data/game/generations/gen-2/rounds.json",
+        }
+    )
+    gen2_pool = _real_pool_gen2()
+    with pytest.raises(ConnectionDailyManifestError, match="no schedule entries yet"):
+        extend_connection_daily_manifest_v2(v2, gen2_pool, days=3, generated_at=GENERATED_AT)
+
+
+def test_extend_v2_output_validates_against_the_v2_contract() -> None:
+    manifest, gen1_pool, gen2_pool = _two_generation_manifest()
+    extended = extend_connection_daily_manifest_v2(
+        manifest, gen2_pool, days=3, generated_at=GENERATED_AT
+    )
+    validate_connection_daily_manifest_v2(extended, {"gen-1": gen1_pool, "gen-2": gen2_pool})

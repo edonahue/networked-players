@@ -616,6 +616,37 @@ def _parser() -> argparse.ArgumentParser:
         "(corrective slice 5.1)",
     )
 
+    extend_connection_daily_v2 = subparsers.add_parser(
+        "extend-connection-daily-manifest-v2",
+        help=(
+            "append new dates to a schema-v2 (multi-generation, ADR 0066) Connection "
+            "Guesser daily manifest -- extends only the NEWEST generation's pool; "
+            "introducing a genuinely different pool is "
+            "migrate-connection-daily-manifest-generation's job, not this one"
+        ),
+    )
+    extend_connection_daily_v2.add_argument("--manifest", type=Path, required=True)
+    extend_connection_daily_v2.add_argument(
+        "--rounds", type=Path, required=True, help="the NEWEST generation's own rounds artifact"
+    )
+    extend_connection_daily_v2.add_argument("--days", type=int, default=90)
+    extend_connection_daily_v2.add_argument("--output", type=Path, required=True)
+    extend_connection_daily_v2.add_argument(
+        "--generated-at",
+        required=True,
+        help="explicit ISO datetime for this extension -- never the wall clock",
+    )
+    extend_connection_daily_v2.add_argument(
+        "--existing-rounds",
+        action="append",
+        default=[],
+        metavar="GENERATION_ID=PATH",
+        help="repeat once per OLDER, already-frozen generation referenced by an existing "
+        "schedule entry, e.g. gen-1=apps/web/public/data/game/generations/gen-1/rounds.json "
+        "-- needed only so the post-write validation can re-verify the whole manifest, not "
+        "just the newest generation; omit and only the newest generation will be checked",
+    )
+
     validate_connection_daily = subparsers.add_parser(
         "validate-connection-daily-manifest",
         help="validate a Connection Guesser daily-manifest artifact against its contract",
@@ -3211,6 +3242,61 @@ def main(argv: Sequence[str] | None = None) -> int:
                     "days_after": len(conn_daily_extended["schedule"]),
                     "last_date": conn_daily_extended["schedule"][-1]["date"],
                     "diagnostics": schedule_diagnostics(conn_daily_extended, conn_rounds),
+                },
+                indent=2,
+            )
+        )
+        return 0
+
+    if args.command == "extend-connection-daily-manifest-v2":
+        from networked_players_graph_core.connection_daily_manifest import (
+            extend_connection_daily_manifest_v2,
+            schedule_diagnostics,
+            validate_connection_daily_manifest_v2,
+        )
+
+        v2_manifest = json.loads(args.manifest.read_text())
+        newest_rounds = json.loads(args.rounds.read_text())
+        extend_existing_generation_rounds: dict[str, Any] = {}
+        for pair in args.existing_rounds:
+            if "=" not in pair:
+                raise ValueError(f"--existing-rounds must be GENERATION_ID=PATH, got {pair!r}")
+            generation_id, path_str = pair.split("=", 1)
+            extend_existing_generation_rounds[generation_id] = json.loads(
+                Path(path_str).read_text()
+            )
+
+        days_before = len(v2_manifest["schedule"])
+        extended = extend_connection_daily_manifest_v2(
+            v2_manifest, newest_rounds, days=args.days, generated_at=args.generated_at
+        )
+        newest_generation_id = extended["generations"][-1]["generation_id"]
+        extend_rounds_by_generation = {
+            **extend_existing_generation_rounds,
+            newest_generation_id: newest_rounds,
+        }
+        validate_connection_daily_manifest_v2(extended, extend_rounds_by_generation)
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(json.dumps(extended, indent=2) + "\n")
+        # Diagnostics only cover the newest generation's own entries -- the
+        # only ones this rounds artifact can resolve; an older generation's
+        # entries are unaffected by this extension and are reported by
+        # connection-daily-manifest-diagnostics against their own pool.
+        newest_only = {
+            **extended,
+            "schedule": [
+                e for e in extended["schedule"] if e["generation"] == newest_generation_id
+            ],
+        }
+        print(
+            json.dumps(
+                {
+                    "output": str(args.output),
+                    "days_before": days_before,
+                    "days_after": len(extended["schedule"]),
+                    "last_date": extended["schedule"][-1]["date"],
+                    "generation": newest_generation_id,
+                    "diagnostics": schedule_diagnostics(newest_only, newest_rounds),
                 },
                 indent=2,
             )
