@@ -1,152 +1,753 @@
 {
   "version": 1,
-  "catalog_version": "catalog-v1-20260601-7fbbb46b28e6",
+  "catalog_version": "catalog-v1-20260601-8ef910a1340e",
   "snapshot_date": "20260601",
   "generated_by": "networked-players-catalog build-public-album-catalog 0.1.0",
-  "source_note": "Hybrid catalog: an editorial backbone, 4 pre-resolved lane(s) (personal_editorial, already_published, graph_rich, coverage_gap), and graph-rich additions selected by deterministic candidate scoring (ADR 0038, ADR 0065). The canonical, single source of truth for which albums exist across every real public surface (album browser, Connection Guesser, Record Routes) -- every one derives its album set from this artifact's own catalog_version, never re-deriving or narrowing it independently (see ADR 0043). Combined at build time from data/albums/top-albums-v1.json, one or more pre-resolved lanes, and a rank-album-candidates shortlist. Albums are ID-resolved (artist_id/main_release_id), not name queries.",
-  "target_count": 179,
-  "editorial_count": 0,
-  "editorial_missed": [],
-  "pre_resolved_count": 179,
-  "pre_resolved_missed": [],
+  "source_note": "Hybrid catalog: an editorial backbone, 3 pre-resolved lane(s) (personal_editorial, already_published, graph_rich), and graph-rich additions selected by deterministic candidate scoring (ADR 0038, ADR 0065). The canonical, single source of truth for which albums exist across every real public surface (album browser, Connection Guesser, Record Routes) -- every one derives its album set from this artifact's own catalog_version, never re-deriving or narrowing it independently (see ADR 0043). Combined at build time from data/albums/top-albums-v1.json, one or more pre-resolved lanes, and a rank-album-candidates shortlist. Albums are ID-resolved (artist_id/main_release_id), not name queries.",
+  "target_count": 217,
+  "editorial_count": 54,
+  "editorial_missed": [
+    {
+      "artist": "Aphex Twin",
+      "title": "Selected Ambient Works 85-92"
+    },
+    {
+      "artist": "Aretha Franklin",
+      "title": "I Never Loved a Man the Way I Love You"
+    },
+    {
+      "artist": "Bjork",
+      "title": "Homogenic"
+    },
+    {
+      "artist": "Bob Marley & The Wailers",
+      "title": "Exodus"
+    },
+    {
+      "artist": "Bruce Springsteen",
+      "title": "Born to Run"
+    },
+    {
+      "artist": "Burial",
+      "title": "Untrue"
+    },
+    {
+      "artist": "Can",
+      "title": "Tago Mago"
+    },
+    {
+      "artist": "Captain Beefheart and His Magic Band",
+      "title": "Trout Mask Replica"
+    },
+    {
+      "artist": "Curtis Mayfield",
+      "title": "Super Fly"
+    },
+    {
+      "artist": "Dr. Dre",
+      "title": "The Chronic"
+    },
+    {
+      "artist": "Elliott Smith",
+      "title": "Either/Or"
+    },
+    {
+      "artist": "Erykah Badu",
+      "title": "Baduizm"
+    },
+    {
+      "artist": "Fela Kuti",
+      "title": "Zombie"
+    },
+    {
+      "artist": "Gil Scott-Heron",
+      "title": "Pieces of a Man"
+    },
+    {
+      "artist": "Gnarls Barkley",
+      "title": "St. Elsewhere"
+    },
+    {
+      "artist": "James Brown",
+      "title": "Live at the Apollo"
+    },
+    {
+      "artist": "Jeff Buckley",
+      "title": "Grace"
+    },
+    {
+      "artist": "Joy Division",
+      "title": "Unknown Pleasures"
+    },
+    {
+      "artist": "Kendrick Lamar",
+      "title": "To Pimp a Butterfly"
+    },
+    {
+      "artist": "Kraftwerk",
+      "title": "Trans-Europe Express"
+    },
+    {
+      "artist": "Marvin Gaye",
+      "title": "What's Going On"
+    },
+    {
+      "artist": "Massive Attack",
+      "title": "Blue Lines"
+    },
+    {
+      "artist": "Missy Elliott",
+      "title": "Supa Dupa Fly"
+    },
+    {
+      "artist": "My Bloody Valentine",
+      "title": "Loveless"
+    },
+    {
+      "artist": "OutKast",
+      "title": "Stankonia"
+    },
+    {
+      "artist": "Patti Smith",
+      "title": "Horses"
+    },
+    {
+      "artist": "Portishead",
+      "title": "Dummy"
+    },
+    {
+      "artist": "Prince",
+      "title": "Purple Rain"
+    },
+    {
+      "artist": "Public Enemy",
+      "title": "It Takes a Nation of Millions to Hold Us Back"
+    },
+    {
+      "artist": "Rage Against the Machine",
+      "title": "Rage Against the Machine"
+    },
+    {
+      "artist": "Sam Cooke",
+      "title": "Night Beat"
+    },
+    {
+      "artist": "Sly and The Family Stone",
+      "title": "There's a Riot Goin' On"
+    },
+    {
+      "artist": "Sonic Youth",
+      "title": "Daydream Nation"
+    },
+    {
+      "artist": "Stevie Wonder",
+      "title": "Songs in the Key of Life"
+    },
+    {
+      "artist": "The Clash",
+      "title": "London Calling"
+    },
+    {
+      "artist": "The Who",
+      "title": "Who's Next"
+    },
+    {
+      "artist": "Thelonious Monk",
+      "title": "Brilliant Corners"
+    }
+  ],
+  "pre_resolved_count": 163,
+  "pre_resolved_missed": [
+    {
+      "query_artist": null,
+      "query_title": null,
+      "master_id": 45922,
+      "main_release_id": 542719,
+      "artist_id": 3268,
+      "artist": "A Tribe Called Quest",
+      "title": "The Low End Theory",
+      "year": 1991,
+      "reason": "duplicate master_id already resolved earlier"
+    },
+    {
+      "query_artist": null,
+      "query_title": null,
+      "master_id": 59538,
+      "main_release_id": 549847,
+      "artist_id": 42058,
+      "artist": "Alice Coltrane",
+      "title": "Journey In Satchidananda",
+      "year": 1971,
+      "reason": "duplicate master_id already resolved earlier"
+    },
+    {
+      "query_artist": null,
+      "query_title": null,
+      "master_id": 20135,
+      "main_release_id": 1405831,
+      "artist_id": 10783,
+      "artist": "Beastie Boys",
+      "title": "Paul's Boutique",
+      "year": 1989,
+      "reason": "duplicate master_id already resolved earlier"
+    },
+    {
+      "query_artist": null,
+      "query_title": null,
+      "master_id": 92896,
+      "main_release_id": 574854,
+      "artist_id": 59249,
+      "artist": "Bill Withers",
+      "title": "Still Bill",
+      "year": 1972,
+      "reason": "duplicate master_id already resolved earlier"
+    },
+    {
+      "query_artist": null,
+      "query_title": null,
+      "master_id": 302,
+      "main_release_id": 696772,
+      "artist_id": 144998,
+      "artist": "Black Sabbath",
+      "title": "Paranoid",
+      "year": 1970,
+      "reason": "duplicate master_id already resolved earlier"
+    },
+    {
+      "query_artist": null,
+      "query_title": null,
+      "master_id": 3878,
+      "main_release_id": 2306941,
+      "artist_id": 59792,
+      "artist": "Bob Dylan",
+      "title": "Blood On The Tracks",
+      "year": 1975,
+      "reason": "duplicate master_id already resolved earlier"
+    },
+    {
+      "query_artist": null,
+      "query_title": null,
+      "master_id": 104166,
+      "main_release_id": 1395530,
+      "artist_id": 266352,
+      "artist": "Carole King",
+      "title": "Tapestry",
+      "year": 1971,
+      "reason": "duplicate master_id already resolved earlier"
+    },
+    {
+      "query_artist": null,
+      "query_title": null,
+      "master_id": 151766,
+      "main_release_id": 268430,
+      "artist_id": 44944,
+      "artist": "D'Angelo",
+      "title": "Voodoo",
+      "year": 2000,
+      "reason": "duplicate master_id already resolved earlier"
+    },
+    {
+      "query_artist": null,
+      "query_title": null,
+      "master_id": 26647,
+      "main_release_id": 2879,
+      "artist_id": 1289,
+      "artist": "Daft Punk",
+      "title": "Discovery",
+      "year": 2001,
+      "reason": "duplicate master_id already resolved earlier"
+    },
+    {
+      "query_artist": null,
+      "query_title": null,
+      "master_id": 1561,
+      "main_release_id": 618952,
+      "artist_id": 10263,
+      "artist": "David Bowie",
+      "title": "The Rise And Fall Of Ziggy Stardust And The Spiders From Mars",
+      "year": 1972,
+      "reason": "duplicate master_id already resolved earlier"
+    },
+    {
+      "query_artist": null,
+      "query_title": null,
+      "master_id": 8357,
+      "main_release_id": 1005555,
+      "artist_id": 4091,
+      "artist": "De La Soul",
+      "title": "3 Feet High And Rising",
+      "year": 1989,
+      "reason": "duplicate master_id already resolved earlier"
+    },
+    {
+      "query_artist": null,
+      "query_title": null,
+      "master_id": 38722,
+      "main_release_id": 526351,
+      "artist_id": 47333,
+      "artist": "Fleetwood Mac",
+      "title": "Rumours",
+      "year": 1977,
+      "reason": "duplicate master_id already resolved earlier"
+    },
+    {
+      "query_artist": null,
+      "query_title": null,
+      "master_id": 1046042,
+      "main_release_id": 25500877,
+      "artist_id": 2013868,
+      "artist": "Frank Ocean",
+      "title": "Blonde",
+      "year": 2016,
+      "reason": "duplicate master_id already resolved earlier"
+    },
+    {
+      "query_artist": null,
+      "query_title": null,
+      "master_id": 16158,
+      "main_release_id": 1620735,
+      "artist_id": 29923,
+      "artist": "Funkadelic",
+      "title": "Maggot Brain",
+      "year": 1971,
+      "reason": "duplicate master_id already resolved earlier"
+    },
+    {
+      "query_artist": null,
+      "query_title": null,
+      "master_id": 55576,
+      "main_release_id": 706094,
+      "artist_id": 13932,
+      "artist": "Grace Jones",
+      "title": "Nightclubbing",
+      "year": 1981,
+      "reason": "duplicate master_id already resolved earlier"
+    },
+    {
+      "query_artist": null,
+      "query_title": null,
+      "master_id": 19493,
+      "main_release_id": 31381,
+      "artist_id": 3865,
+      "artist": "Herbie Hancock",
+      "title": "Head Hunters",
+      "year": 1973,
+      "reason": "duplicate master_id already resolved earlier"
+    },
+    {
+      "query_artist": null,
+      "query_title": null,
+      "master_id": 38175,
+      "main_release_id": 489717,
+      "artist_id": 39770,
+      "artist": "The Stooges",
+      "title": "Raw Power",
+      "year": 1973,
+      "reason": "duplicate master_id already resolved earlier"
+    },
+    {
+      "query_artist": null,
+      "query_title": null,
+      "master_id": 47744,
+      "main_release_id": 10028381,
+      "artist_id": 90233,
+      "artist": "Joni Mitchell",
+      "title": "Blue",
+      "year": 1971,
+      "reason": "duplicate master_id already resolved earlier"
+    },
+    {
+      "query_artist": null,
+      "query_title": null,
+      "master_id": 28680,
+      "main_release_id": 197163,
+      "artist_id": 85929,
+      "artist": "Kate Bush",
+      "title": "Hounds Of Love",
+      "year": 1985,
+      "reason": "duplicate master_id already resolved earlier"
+    },
+    {
+      "query_artist": null,
+      "query_title": null,
+      "master_id": 406634,
+      "main_release_id": 415676,
+      "artist_id": 70828,
+      "artist": "King Crimson",
+      "title": "In The Court Of The Crimson King (An Observation By King Crimson)",
+      "year": 1969,
+      "reason": "duplicate master_id already resolved earlier"
+    },
+    {
+      "query_artist": null,
+      "query_title": null,
+      "master_id": 57279,
+      "main_release_id": 19150522,
+      "artist_id": 42627,
+      "artist": "Lauryn Hill",
+      "title": "The Miseducation Of Lauryn Hill",
+      "year": 1998,
+      "reason": "duplicate master_id already resolved earlier"
+    },
+    {
+      "query_artist": null,
+      "query_title": null,
+      "master_id": 4300,
+      "main_release_id": 1015465,
+      "artist_id": 34278,
+      "artist": "Led Zeppelin",
+      "title": "Untitled",
+      "year": 1971,
+      "reason": "duplicate master_id already resolved earlier"
+    },
+    {
+      "query_artist": null,
+      "query_title": null,
+      "master_id": 6495,
+      "main_release_id": 11125196,
+      "artist_id": 18839,
+      "artist": "Metallica",
+      "title": "Master Of Puppets",
+      "year": 1986,
+      "reason": "duplicate master_id already resolved earlier"
+    },
+    {
+      "query_artist": null,
+      "query_title": null,
+      "master_id": 5460,
+      "main_release_id": 6276183,
+      "artist_id": 23755,
+      "artist": "Miles Davis",
+      "title": "Kind Of Blue",
+      "year": 1959,
+      "reason": "duplicate master_id already resolved earlier"
+    },
+    {
+      "query_artist": null,
+      "query_title": null,
+      "master_id": 66510,
+      "main_release_id": 4948161,
+      "artist_id": 5648,
+      "artist": "Mos Def",
+      "title": "Black On Both Sides",
+      "year": 1999,
+      "reason": "duplicate master_id already resolved earlier"
+    },
+    {
+      "query_artist": null,
+      "query_title": null,
+      "master_id": 20148,
+      "main_release_id": 3207332,
+      "artist_id": 50997,
+      "artist": "Nas",
+      "title": "Illmatic",
+      "year": 1994,
+      "reason": "duplicate master_id already resolved earlier"
+    },
+    {
+      "query_artist": null,
+      "query_title": null,
+      "master_id": 37615,
+      "main_release_id": 1044287,
+      "artist_id": 138556,
+      "artist": "Neil Young",
+      "title": "Harvest",
+      "year": 1972,
+      "reason": "duplicate master_id already resolved earlier"
+    },
+    {
+      "query_artist": null,
+      "query_title": null,
+      "master_id": 122261,
+      "main_release_id": 1449440,
+      "artist_id": 10584,
+      "artist": "Nina Simone",
+      "title": "Nina Simone Sings The Blues",
+      "year": 1967,
+      "reason": "duplicate master_id already resolved earlier"
+    },
+    {
+      "query_artist": null,
+      "query_title": null,
+      "master_id": 13814,
+      "main_release_id": 1813006,
+      "artist_id": 125246,
+      "artist": "Nirvana",
+      "title": "Nevermind",
+      "year": 1991,
+      "reason": "duplicate master_id already resolved earlier"
+    },
+    {
+      "query_artist": null,
+      "query_title": null,
+      "master_id": 15841,
+      "main_release_id": 3000728,
+      "artist_id": 8887,
+      "artist": "Parliament",
+      "title": "Mothership Connection",
+      "year": 1975,
+      "reason": "duplicate master_id already resolved earlier"
+    },
+    {
+      "query_artist": null,
+      "query_title": null,
+      "master_id": 10362,
+      "main_release_id": 378824,
+      "artist_id": 45467,
+      "artist": "Pink Floyd",
+      "title": "The Dark Side Of The Moon",
+      "year": 1973,
+      "reason": "duplicate master_id already resolved earlier"
+    },
+    {
+      "query_artist": null,
+      "query_title": null,
+      "master_id": 5863,
+      "main_release_id": 612780,
+      "artist_id": 81013,
+      "artist": "Queen",
+      "title": "A Night At The Opera",
+      "year": 1975,
+      "reason": "duplicate master_id already resolved earlier"
+    },
+    {
+      "query_artist": null,
+      "query_title": null,
+      "master_id": 39341,
+      "main_release_id": 429025,
+      "artist_id": 135478,
+      "artist": "Ramones",
+      "title": "Ramones",
+      "year": 1976,
+      "reason": "duplicate master_id already resolved earlier"
+    },
+    {
+      "query_artist": null,
+      "query_title": null,
+      "master_id": 82337,
+      "main_release_id": 758676,
+      "artist_id": 63771,
+      "artist": "Roberta Flack",
+      "title": "First Take",
+      "year": 1969,
+      "reason": "duplicate master_id already resolved earlier"
+    },
+    {
+      "query_artist": null,
+      "query_title": null,
+      "master_id": 37401,
+      "main_release_id": 718220,
+      "artist_id": 219213,
+      "artist": "Run-DMC",
+      "title": "Raising Hell",
+      "year": 1986,
+      "reason": "duplicate master_id already resolved earlier"
+    },
+    {
+      "query_artist": null,
+      "query_title": null,
+      "master_id": 9382,
+      "main_release_id": 1787389,
+      "artist_id": 5951,
+      "artist": "Serge Gainsbourg",
+      "title": "Histoire De Melody Nelson",
+      "year": 1971,
+      "reason": "duplicate master_id already resolved earlier"
+    },
+    {
+      "query_artist": null,
+      "query_title": null,
+      "master_id": 16921,
+      "main_release_id": 1842334,
+      "artist_id": 160906,
+      "artist": "Steely Dan",
+      "title": "Aja",
+      "year": 1977,
+      "reason": "duplicate master_id already resolved earlier"
+    },
+    {
+      "query_artist": null,
+      "query_title": null,
+      "master_id": 26436,
+      "main_release_id": 675944,
+      "artist_id": 60480,
+      "artist": "Talk Talk",
+      "title": "Spirit Of Eden",
+      "year": 1988,
+      "reason": "duplicate master_id already resolved earlier"
+    },
+    {
+      "query_artist": null,
+      "query_title": null,
+      "master_id": 25688,
+      "main_release_id": 116491,
+      "artist_id": 22854,
+      "artist": "Talking Heads",
+      "title": "Remain In Light",
+      "year": 1980,
+      "reason": "duplicate master_id already resolved earlier"
+    },
+    {
+      "query_artist": null,
+      "query_title": null,
+      "master_id": 17217,
+      "main_release_id": 367644,
+      "artist_id": 70829,
+      "artist": "The Beach Boys",
+      "title": "Pet Sounds",
+      "year": 1966,
+      "reason": "duplicate master_id already resolved earlier"
+    },
+    {
+      "query_artist": null,
+      "query_title": null,
+      "master_id": 24047,
+      "main_release_id": 2607424,
+      "artist_id": 82730,
+      "artist": "The Beatles",
+      "title": "Abbey Road",
+      "year": 1969,
+      "reason": "duplicate master_id already resolved earlier"
+    },
+    {
+      "query_artist": null,
+      "query_title": null,
+      "master_id": 31755,
+      "main_release_id": 3389965,
+      "artist_id": 28972,
+      "artist": "The Cure",
+      "title": "Disintegration",
+      "year": 1989,
+      "reason": "duplicate master_id already resolved earlier"
+    },
+    {
+      "query_artist": null,
+      "query_title": null,
+      "master_id": 57970,
+      "main_release_id": 10844795,
+      "artist_id": 65049,
+      "artist": "Notorious B.I.G.",
+      "title": "Ready To Die",
+      "year": 1994,
+      "reason": "duplicate master_id already resolved earlier"
+    },
+    {
+      "query_artist": null,
+      "query_title": null,
+      "master_id": 30303,
+      "main_release_id": 375854,
+      "artist_id": 20991,
+      "artist": "The Rolling Stones",
+      "title": "Exile On Main St.",
+      "year": 1972,
+      "reason": "duplicate master_id already resolved earlier"
+    },
+    {
+      "query_artist": null,
+      "query_title": null,
+      "master_id": 20137,
+      "main_release_id": 16150589,
+      "artist_id": 83080,
+      "artist": "The Smiths",
+      "title": "The Queen Is Dead",
+      "year": 1986,
+      "reason": "duplicate master_id already resolved earlier"
+    },
+    {
+      "query_artist": null,
+      "query_title": null,
+      "master_id": 35276,
+      "main_release_id": 380814,
+      "artist_id": 39766,
+      "artist": "The Velvet Underground",
+      "title": "The Velvet Underground & Nico",
+      "year": 1967,
+      "reason": "duplicate master_id already resolved earlier"
+    },
+    {
+      "query_artist": null,
+      "query_title": null,
+      "master_id": 13960,
+      "main_release_id": 905265,
+      "artist_id": 82294,
+      "artist": "Tom Waits",
+      "title": "Rain Dogs",
+      "year": 1985,
+      "reason": "duplicate master_id already resolved earlier"
+    },
+    {
+      "query_artist": null,
+      "query_title": null,
+      "master_id": 105802,
+      "main_release_id": 761153,
+      "artist_id": 161091,
+      "artist": "Tracy Chapman",
+      "title": "Tracy Chapman",
+      "year": 1988,
+      "reason": "duplicate master_id already resolved earlier"
+    },
+    {
+      "query_artist": null,
+      "query_title": null,
+      "master_id": 3211,
+      "main_release_id": 1220925,
+      "artist_id": 861083,
+      "artist": "Vampire Weekend",
+      "title": "Vampire Weekend",
+      "year": 2008,
+      "reason": "duplicate master_id already resolved earlier"
+    },
+    {
+      "query_artist": null,
+      "query_title": null,
+      "master_id": 10363,
+      "main_release_id": 6474253,
+      "artist_id": 102984,
+      "artist": "Wilco",
+      "title": "Yankee Hotel Foxtrot",
+      "year": 2002,
+      "reason": "duplicate master_id already resolved earlier"
+    },
+    {
+      "query_artist": null,
+      "query_title": null,
+      "master_id": 25303,
+      "main_release_id": 153749,
+      "artist_id": 11213,
+      "artist": "Wu-Tang Clan",
+      "title": "Enter The Wu-Tang (36 Chambers)",
+      "year": 1993,
+      "reason": "duplicate master_id already resolved earlier"
+    },
+    {
+      "query_artist": null,
+      "query_title": null,
+      "master_id": 35006,
+      "main_release_id": 431005,
+      "artist_id": 50263,
+      "artist": "Yes",
+      "title": "Close To The Edge",
+      "year": 1972,
+      "reason": "duplicate master_id already resolved earlier"
+    }
+  ],
   "pre_resolved_buckets": [
     {
       "label": "personal_editorial",
-      "count": 13
+      "count": 30
     },
     {
       "label": "already_published",
-      "count": 140
+      "count": 127
     },
     {
       "label": "graph_rich",
-      "count": 18
-    },
-    {
-      "label": "coverage_gap",
-      "count": 8
+      "count": 6
     }
   ],
-  "candidate_count_considered": 0,
+  "candidate_count_considered": 1000,
   "candidate_count_added": 0,
   "albums": [
-    {
-      "id": "master-69938",
-      "artist_id": 8029,
-      "artist": "Jamiroquai",
-      "master_id": 69938,
-      "main_release_id": 25379,
-      "title": "Emergency On Planet Earth",
-      "year": 1993
-    },
-    {
-      "id": "master-69946",
-      "artist_id": 8029,
-      "artist": "Jamiroquai",
-      "master_id": 69946,
-      "main_release_id": 10820794,
-      "title": "The Return Of The Space Cowboy",
-      "year": 1994
-    },
-    {
-      "id": "master-69956",
-      "artist_id": 8029,
-      "artist": "Jamiroquai",
-      "master_id": 69956,
-      "main_release_id": 21974,
-      "title": "Travelling Without Moving",
-      "year": 1996
-    },
-    {
-      "id": "master-135633",
-      "artist_id": 8029,
-      "artist": "Jamiroquai",
-      "master_id": 135633,
-      "main_release_id": 21975,
-      "title": "Synkronized",
-      "year": 1999
-    },
-    {
-      "id": "master-69925",
-      "artist_id": 8029,
-      "artist": "Jamiroquai",
-      "master_id": 69925,
-      "main_release_id": 21976,
-      "title": "A Funk Odyssey",
-      "year": 2001
-    },
-    {
-      "id": "master-172407",
-      "artist_id": 36860,
-      "artist": "Martin Denny",
-      "master_id": 172407,
-      "main_release_id": 399417,
-      "title": "Exotica",
-      "year": 1957
-    },
-    {
-      "id": "master-110874",
-      "artist_id": 27517,
-      "artist": "Arthur Lyman",
-      "master_id": 110874,
-      "main_release_id": 374004,
-      "title": "Taboo - The Exotic Sounds Of Arthur Lyman",
-      "year": 1958
-    },
-    {
-      "id": "master-45284",
-      "artist_id": 82730,
-      "artist": "The Beatles",
-      "master_id": 45284,
-      "main_release_id": 2318045,
-      "title": "Revolver",
-      "year": 1966
-    },
-    {
-      "id": "master-24511",
-      "artist_id": 255672,
-      "artist": "The Jimi Hendrix Experience",
-      "master_id": 24511,
-      "main_release_id": 1348423,
-      "title": "Axis: Bold As Love",
-      "year": 1967
-    },
-    {
-      "id": "master-52497",
-      "artist_id": 28795,
-      "artist": "Prince",
-      "master_id": 52497,
-      "main_release_id": 123915,
-      "title": "Sign \"O\" The Times",
-      "year": 1987
-    },
-    {
-      "id": "master-21520",
-      "artist_id": 3840,
-      "artist": "Radiohead",
-      "master_id": 21520,
-      "main_release_id": 1174296,
-      "title": "In Rainbows",
-      "year": 2007
-    },
-    {
-      "id": "master-18080",
-      "artist_id": 2725,
-      "artist": "Depeche Mode",
-      "master_id": 18080,
-      "main_release_id": 46905,
-      "title": "Violator",
-      "year": 1990
-    },
-    {
-      "id": "master-42522",
-      "artist_id": 92476,
-      "artist": "Red Hot Chili Peppers",
-      "master_id": 42522,
-      "main_release_id": 375491,
-      "title": "Blood Sugar Sex Magik",
-      "year": 1991
-    },
     {
       "id": "master-45922",
       "artist_id": 3268,
@@ -154,7 +755,10 @@
       "master_id": 45922,
       "main_release_id": 542719,
       "title": "The Low End Theory",
-      "year": 1991
+      "year": 1991,
+      "selection_source": "editorial",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-59538",
@@ -163,7 +767,10 @@
       "master_id": 59538,
       "main_release_id": 549847,
       "title": "Journey In Satchidananda",
-      "year": 1971
+      "year": 1971,
+      "selection_source": "editorial",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-20135",
@@ -172,7 +779,10 @@
       "master_id": 20135,
       "main_release_id": 1405831,
       "title": "Paul's Boutique",
-      "year": 1989
+      "year": 1989,
+      "selection_source": "editorial",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-92896",
@@ -181,7 +791,10 @@
       "master_id": 92896,
       "main_release_id": 574854,
       "title": "Still Bill",
-      "year": 1972
+      "year": 1972,
+      "selection_source": "editorial",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-302",
@@ -190,7 +803,10 @@
       "master_id": 302,
       "main_release_id": 696772,
       "title": "Paranoid",
-      "year": 1970
+      "year": 1970,
+      "selection_source": "editorial",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-3878",
@@ -199,7 +815,10 @@
       "master_id": 3878,
       "main_release_id": 2306941,
       "title": "Blood On The Tracks",
-      "year": 1975
+      "year": 1975,
+      "selection_source": "editorial",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-104166",
@@ -208,7 +827,10 @@
       "master_id": 104166,
       "main_release_id": 1395530,
       "title": "Tapestry",
-      "year": 1971
+      "year": 1971,
+      "selection_source": "editorial",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-151766",
@@ -217,7 +839,10 @@
       "master_id": 151766,
       "main_release_id": 268430,
       "title": "Voodoo",
-      "year": 2000
+      "year": 2000,
+      "selection_source": "editorial",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-26647",
@@ -226,7 +851,10 @@
       "master_id": 26647,
       "main_release_id": 2879,
       "title": "Discovery",
-      "year": 2001
+      "year": 2001,
+      "selection_source": "editorial",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-1561",
@@ -235,7 +863,10 @@
       "master_id": 1561,
       "main_release_id": 618952,
       "title": "The Rise And Fall Of Ziggy Stardust And The Spiders From Mars",
-      "year": 1972
+      "year": 1972,
+      "selection_source": "editorial",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-8357",
@@ -244,7 +875,10 @@
       "master_id": 8357,
       "main_release_id": 1005555,
       "title": "3 Feet High And Rising",
-      "year": 1989
+      "year": 1989,
+      "selection_source": "editorial",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-38722",
@@ -253,16 +887,22 @@
       "master_id": 38722,
       "main_release_id": 526351,
       "title": "Rumours",
-      "year": 1977
+      "year": 1977,
+      "selection_source": "editorial",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-1046042",
       "artist_id": 2013868,
       "artist": "Frank Ocean",
       "master_id": 1046042,
-      "main_release_id": 25500877,
+      "main_release_id": 8932936,
       "title": "Blonde",
-      "year": 2016
+      "year": 2016,
+      "selection_source": "editorial",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-16158",
@@ -271,7 +911,10 @@
       "master_id": 16158,
       "main_release_id": 1620735,
       "title": "Maggot Brain",
-      "year": 1971
+      "year": 1971,
+      "selection_source": "editorial",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-55576",
@@ -280,7 +923,10 @@
       "master_id": 55576,
       "main_release_id": 706094,
       "title": "Nightclubbing",
-      "year": 1981
+      "year": 1981,
+      "selection_source": "editorial",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-19493",
@@ -289,7 +935,10 @@
       "master_id": 19493,
       "main_release_id": 31381,
       "title": "Head Hunters",
-      "year": 1973
+      "year": 1973,
+      "selection_source": "editorial",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-38175",
@@ -298,7 +947,22 @@
       "master_id": 38175,
       "main_release_id": 489717,
       "title": "Raw Power",
-      "year": 1973
+      "year": 1973,
+      "selection_source": "editorial",
+      "featured": true,
+      "expansion_round": 0
+    },
+    {
+      "id": "master-24497",
+      "artist_id": 255672,
+      "artist": "The Jimi Hendrix Experience",
+      "master_id": 24497,
+      "main_release_id": 3120644,
+      "title": "Are You Experienced",
+      "year": 1967,
+      "selection_source": "editorial",
+      "featured": true,
+      "expansion_round": 1
     },
     {
       "id": "master-47744",
@@ -307,7 +971,10 @@
       "master_id": 47744,
       "main_release_id": 10028381,
       "title": "Blue",
-      "year": 1971
+      "year": 1971,
+      "selection_source": "editorial",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-28680",
@@ -316,7 +983,10 @@
       "master_id": 28680,
       "main_release_id": 197163,
       "title": "Hounds Of Love",
-      "year": 1985
+      "year": 1985,
+      "selection_source": "editorial",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-406634",
@@ -325,7 +995,10 @@
       "master_id": 406634,
       "main_release_id": 415676,
       "title": "In The Court Of The Crimson King (An Observation By King Crimson)",
-      "year": 1969
+      "year": 1969,
+      "selection_source": "editorial",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-57279",
@@ -334,7 +1007,10 @@
       "master_id": 57279,
       "main_release_id": 19150522,
       "title": "The Miseducation Of Lauryn Hill",
-      "year": 1998
+      "year": 1998,
+      "selection_source": "editorial",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-4300",
@@ -343,7 +1019,10 @@
       "master_id": 4300,
       "main_release_id": 1015465,
       "title": "Untitled",
-      "year": 1971
+      "year": 1971,
+      "selection_source": "editorial",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-6495",
@@ -352,7 +1031,10 @@
       "master_id": 6495,
       "main_release_id": 11125196,
       "title": "Master Of Puppets",
-      "year": 1986
+      "year": 1986,
+      "selection_source": "editorial",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-5460",
@@ -361,7 +1043,10 @@
       "master_id": 5460,
       "main_release_id": 6276183,
       "title": "Kind Of Blue",
-      "year": 1959
+      "year": 1959,
+      "selection_source": "editorial",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-66510",
@@ -370,7 +1055,10 @@
       "master_id": 66510,
       "main_release_id": 4948161,
       "title": "Black On Both Sides",
-      "year": 1999
+      "year": 1999,
+      "selection_source": "editorial",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-20148",
@@ -379,7 +1067,10 @@
       "master_id": 20148,
       "main_release_id": 3207332,
       "title": "Illmatic",
-      "year": 1994
+      "year": 1994,
+      "selection_source": "editorial",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-37615",
@@ -388,7 +1079,10 @@
       "master_id": 37615,
       "main_release_id": 1044287,
       "title": "Harvest",
-      "year": 1972
+      "year": 1972,
+      "selection_source": "editorial",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-122261",
@@ -397,7 +1091,10 @@
       "master_id": 122261,
       "main_release_id": 1449440,
       "title": "Nina Simone Sings The Blues",
-      "year": 1967
+      "year": 1967,
+      "selection_source": "editorial",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-13814",
@@ -406,7 +1103,10 @@
       "master_id": 13814,
       "main_release_id": 1813006,
       "title": "Nevermind",
-      "year": 1991
+      "year": 1991,
+      "selection_source": "editorial",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-15841",
@@ -415,7 +1115,10 @@
       "master_id": 15841,
       "main_release_id": 3000728,
       "title": "Mothership Connection",
-      "year": 1975
+      "year": 1975,
+      "selection_source": "editorial",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-10362",
@@ -424,7 +1127,10 @@
       "master_id": 10362,
       "main_release_id": 378824,
       "title": "The Dark Side Of The Moon",
-      "year": 1973
+      "year": 1973,
+      "selection_source": "editorial",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-5863",
@@ -433,7 +1139,22 @@
       "master_id": 5863,
       "main_release_id": 612780,
       "title": "A Night At The Opera",
-      "year": 1975
+      "year": 1975,
+      "selection_source": "editorial",
+      "featured": true,
+      "expansion_round": 0
+    },
+    {
+      "id": "master-21491",
+      "artist_id": 3840,
+      "artist": "Radiohead",
+      "master_id": 21491,
+      "main_release_id": 4950798,
+      "title": "OK Computer",
+      "year": 1997,
+      "selection_source": "editorial",
+      "featured": true,
+      "expansion_round": 1
     },
     {
       "id": "master-39341",
@@ -442,7 +1163,10 @@
       "master_id": 39341,
       "main_release_id": 429025,
       "title": "Ramones",
-      "year": 1976
+      "year": 1976,
+      "selection_source": "editorial",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-82337",
@@ -451,7 +1175,10 @@
       "master_id": 82337,
       "main_release_id": 758676,
       "title": "First Take",
-      "year": 1969
+      "year": 1969,
+      "selection_source": "editorial",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-37401",
@@ -460,7 +1187,10 @@
       "master_id": 37401,
       "main_release_id": 718220,
       "title": "Raising Hell",
-      "year": 1986
+      "year": 1986,
+      "selection_source": "editorial",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-9382",
@@ -469,7 +1199,10 @@
       "master_id": 9382,
       "main_release_id": 1787389,
       "title": "Histoire De Melody Nelson",
-      "year": 1971
+      "year": 1971,
+      "selection_source": "editorial",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-16921",
@@ -478,7 +1211,10 @@
       "master_id": 16921,
       "main_release_id": 1842334,
       "title": "Aja",
-      "year": 1977
+      "year": 1977,
+      "selection_source": "editorial",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-26436",
@@ -487,7 +1223,10 @@
       "master_id": 26436,
       "main_release_id": 675944,
       "title": "Spirit Of Eden",
-      "year": 1988
+      "year": 1988,
+      "selection_source": "editorial",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-25688",
@@ -496,7 +1235,10 @@
       "master_id": 25688,
       "main_release_id": 116491,
       "title": "Remain In Light",
-      "year": 1980
+      "year": 1980,
+      "selection_source": "editorial",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-17217",
@@ -505,7 +1247,10 @@
       "master_id": 17217,
       "main_release_id": 367644,
       "title": "Pet Sounds",
-      "year": 1966
+      "year": 1966,
+      "selection_source": "editorial",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-24047",
@@ -514,7 +1259,10 @@
       "master_id": 24047,
       "main_release_id": 2607424,
       "title": "Abbey Road",
-      "year": 1969
+      "year": 1969,
+      "selection_source": "editorial",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-31755",
@@ -523,7 +1271,10 @@
       "master_id": 31755,
       "main_release_id": 3389965,
       "title": "Disintegration",
-      "year": 1989
+      "year": 1989,
+      "selection_source": "editorial",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-57970",
@@ -532,7 +1283,10 @@
       "master_id": 57970,
       "main_release_id": 10844795,
       "title": "Ready To Die",
-      "year": 1994
+      "year": 1994,
+      "selection_source": "editorial",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-30303",
@@ -541,16 +1295,22 @@
       "master_id": 30303,
       "main_release_id": 375854,
       "title": "Exile On Main St.",
-      "year": 1972
+      "year": 1972,
+      "selection_source": "editorial",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-20137",
       "artist_id": 83080,
       "artist": "The Smiths",
       "master_id": 20137,
-      "main_release_id": 16150589,
+      "main_release_id": 494927,
       "title": "The Queen Is Dead",
-      "year": 1986
+      "year": 1986,
+      "selection_source": "editorial",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-35276",
@@ -559,7 +1319,10 @@
       "master_id": 35276,
       "main_release_id": 380814,
       "title": "The Velvet Underground & Nico",
-      "year": 1967
+      "year": 1967,
+      "selection_source": "editorial",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-13960",
@@ -568,7 +1331,10 @@
       "master_id": 13960,
       "main_release_id": 905265,
       "title": "Rain Dogs",
-      "year": 1985
+      "year": 1985,
+      "selection_source": "editorial",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-105802",
@@ -577,7 +1343,10 @@
       "master_id": 105802,
       "main_release_id": 761153,
       "title": "Tracy Chapman",
-      "year": 1988
+      "year": 1988,
+      "selection_source": "editorial",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-3211",
@@ -586,7 +1355,10 @@
       "master_id": 3211,
       "main_release_id": 1220925,
       "title": "Vampire Weekend",
-      "year": 2008
+      "year": 2008,
+      "selection_source": "editorial",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-10363",
@@ -595,7 +1367,10 @@
       "master_id": 10363,
       "main_release_id": 6474253,
       "title": "Yankee Hotel Foxtrot",
-      "year": 2002
+      "year": 2002,
+      "selection_source": "editorial",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-25303",
@@ -604,7 +1379,10 @@
       "master_id": 25303,
       "main_release_id": 153749,
       "title": "Enter The Wu-Tang (36 Chambers)",
-      "year": 1993
+      "year": 1993,
+      "selection_source": "editorial",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-35006",
@@ -613,7 +1391,526 @@
       "master_id": 35006,
       "main_release_id": 431005,
       "title": "Close To The Edge",
-      "year": 1972
+      "year": 1972,
+      "selection_source": "editorial",
+      "featured": true,
+      "expansion_round": 0
+    },
+    {
+      "id": "master-16906",
+      "artist_id": 2269,
+      "artist": "Phoenix",
+      "master_id": 16906,
+      "main_release_id": 261718,
+      "title": "Alphabetical",
+      "year": 2004,
+      "selection_source": "editorial",
+      "featured": true,
+      "expansion_round": 1
+    },
+    {
+      "id": "master-26701",
+      "artist_id": 219986,
+      "artist": "Bruce Springsteen",
+      "master_id": 26701,
+      "main_release_id": 1343227,
+      "title": "Born In The U.S.A.",
+      "year": 1984,
+      "selection_source": "editorial",
+      "featured": true,
+      "expansion_round": 1
+    },
+    {
+      "id": "master-31602",
+      "artist_id": 30724,
+      "artist": "Santana",
+      "master_id": 31602,
+      "main_release_id": 1058763,
+      "title": "Amigos",
+      "year": 1976,
+      "selection_source": "editorial",
+      "featured": true,
+      "expansion_round": 1
+    },
+    {
+      "id": "master-33174",
+      "artist_id": 29981,
+      "artist": "Jimmy Smith",
+      "master_id": 33174,
+      "main_release_id": 437567,
+      "title": "Jimmy & Wes (The Dynamic Duo)",
+      "year": 1967,
+      "selection_source": "editorial",
+      "featured": true,
+      "expansion_round": 1
+    },
+    {
+      "id": "master-33572",
+      "artist_id": 13961,
+      "artist": "Sting",
+      "master_id": 33572,
+      "main_release_id": 1066027,
+      "title": "...Nothing Like The Sun",
+      "year": 1987,
+      "selection_source": "editorial",
+      "featured": true,
+      "expansion_round": 1
+    },
+    {
+      "id": "master-36509",
+      "artist_id": 48424,
+      "artist": "Aerosmith",
+      "master_id": 36509,
+      "main_release_id": 1512406,
+      "title": "Get Your Wings",
+      "year": 1974,
+      "selection_source": "editorial",
+      "featured": true,
+      "expansion_round": 1
+    },
+    {
+      "id": "master-39301",
+      "artist_id": 22854,
+      "artist": "Talking Heads",
+      "master_id": 39301,
+      "main_release_id": 224182,
+      "title": "Little Creatures",
+      "year": 1985,
+      "selection_source": "editorial",
+      "featured": true,
+      "expansion_round": 1
+    },
+    {
+      "id": "master-42926",
+      "artist_id": 254761,
+      "artist": "Elvis Costello & The Attractions",
+      "master_id": 42926,
+      "main_release_id": 6258009,
+      "title": "Goodbye Cruel World",
+      "year": 1984,
+      "selection_source": "editorial",
+      "featured": true,
+      "expansion_round": 1
+    },
+    {
+      "id": "master-42965",
+      "artist_id": 150898,
+      "artist": "The Attractions",
+      "master_id": 42965,
+      "main_release_id": 1653458,
+      "title": "King Of America",
+      "year": 1986,
+      "selection_source": "editorial",
+      "featured": true,
+      "expansion_round": 1
+    },
+    {
+      "id": "master-49021",
+      "artist_id": 15152,
+      "artist": "Dr. John",
+      "master_id": 49021,
+      "main_release_id": 554882,
+      "title": "In The Right Place",
+      "year": 1973,
+      "selection_source": "editorial",
+      "featured": true,
+      "expansion_round": 1
+    },
+    {
+      "id": "master-49182",
+      "artist_id": 10263,
+      "artist": "David Bowie",
+      "master_id": 49182,
+      "main_release_id": 470173,
+      "title": "Tonight",
+      "year": 1984,
+      "selection_source": "editorial",
+      "featured": true,
+      "expansion_round": 1
+    },
+    {
+      "id": "master-52525",
+      "artist_id": 2266,
+      "artist": "George Benson",
+      "master_id": 52525,
+      "main_release_id": 1152545,
+      "title": "Breezin'",
+      "year": 1976,
+      "selection_source": "editorial",
+      "featured": true,
+      "expansion_round": 1
+    },
+    {
+      "id": "master-54219",
+      "artist_id": 20991,
+      "artist": "The Rolling Stones",
+      "master_id": 54219,
+      "main_release_id": 5249378,
+      "title": "Some Girls",
+      "year": 1978,
+      "selection_source": "editorial",
+      "featured": true,
+      "expansion_round": 1
+    },
+    {
+      "id": "master-62831",
+      "artist_id": 6520,
+      "artist": "U2",
+      "master_id": 62831,
+      "main_release_id": 204237,
+      "title": "The Unforgettable Fire",
+      "year": 1984,
+      "selection_source": "editorial",
+      "featured": true,
+      "expansion_round": 1
+    },
+    {
+      "id": "master-68150",
+      "artist_id": 257120,
+      "artist": "Al Di Meola",
+      "master_id": 68150,
+      "main_release_id": 2252753,
+      "title": "Elegant Gypsy",
+      "year": 1977,
+      "selection_source": "editorial",
+      "featured": true,
+      "expansion_round": 1
+    },
+    {
+      "id": "master-68202",
+      "artist_id": 262944,
+      "artist": "James Taylor (2)",
+      "master_id": 68202,
+      "main_release_id": 5922317,
+      "title": "Sweet Baby James",
+      "year": 1970,
+      "selection_source": "editorial",
+      "featured": true,
+      "expansion_round": 1
+    },
+    {
+      "id": "master-69604",
+      "artist_id": 197435,
+      "artist": "The Pretenders",
+      "master_id": 69604,
+      "main_release_id": 6176537,
+      "title": "Get Close",
+      "year": 1986,
+      "selection_source": "editorial",
+      "featured": true,
+      "expansion_round": 1
+    },
+    {
+      "id": "master-74338",
+      "artist_id": 269534,
+      "artist": "Tom Petty And The Heartbreakers",
+      "master_id": 74338,
+      "main_release_id": 412419,
+      "title": "Hard Promises",
+      "year": 1981,
+      "selection_source": "editorial",
+      "featured": true,
+      "expansion_round": 1
+    },
+    {
+      "id": "master-94932",
+      "artist_id": 254407,
+      "artist": "The Babys",
+      "master_id": 94932,
+      "main_release_id": 7111529,
+      "title": "Head First",
+      "year": 1979,
+      "selection_source": "editorial",
+      "featured": true,
+      "expansion_round": 1
+    },
+    {
+      "id": "master-107122",
+      "artist_id": 254441,
+      "artist": "The Blues Brothers",
+      "master_id": 107122,
+      "main_release_id": 653009,
+      "title": "Briefcase Full Of Blues",
+      "year": 1978,
+      "selection_source": "editorial",
+      "featured": true,
+      "expansion_round": 1
+    },
+    {
+      "id": "master-108372",
+      "artist_id": 131970,
+      "artist": "Jefferson Starship",
+      "master_id": 108372,
+      "main_release_id": 1132944,
+      "title": "Blows Against The Empire",
+      "year": 1970,
+      "selection_source": "editorial",
+      "featured": true,
+      "expansion_round": 1
+    },
+    {
+      "id": "master-117293",
+      "artist_id": 162617,
+      "artist": "Joe Walsh",
+      "master_id": 117293,
+      "main_release_id": 379910,
+      "title": "\"But Seriously, Folks...\"",
+      "year": 1978,
+      "selection_source": "editorial",
+      "featured": true,
+      "expansion_round": 1
+    },
+    {
+      "id": "master-117296",
+      "artist_id": 162617,
+      "artist": "Joe Walsh",
+      "master_id": 117296,
+      "main_release_id": 1673395,
+      "title": "So What",
+      "year": 1974,
+      "selection_source": "editorial",
+      "featured": true,
+      "expansion_round": 1
+    },
+    {
+      "id": "master-117304",
+      "artist_id": 162617,
+      "artist": "Joe Walsh",
+      "master_id": 117304,
+      "main_release_id": 4920241,
+      "title": "The Smoker You Drink, The Player You Get",
+      "year": 1973,
+      "selection_source": "editorial",
+      "featured": true,
+      "expansion_round": 1
+    },
+    {
+      "id": "master-149977",
+      "artist_id": 30674,
+      "artist": "Dave Matthews Band",
+      "master_id": 149977,
+      "main_release_id": 1816058,
+      "title": "Big Whiskey And The GrooGrux King",
+      "year": 2009,
+      "selection_source": "editorial",
+      "featured": true,
+      "expansion_round": 1
+    },
+    {
+      "id": "master-153739",
+      "artist_id": 374683,
+      "artist": "The Thorns",
+      "master_id": 153739,
+      "main_release_id": 4495339,
+      "title": "The Thorns",
+      "year": 2003,
+      "selection_source": "editorial",
+      "featured": true,
+      "expansion_round": 1
+    },
+    {
+      "id": "master-270647",
+      "artist_id": 249449,
+      "artist": "Willie Nelson",
+      "master_id": 270647,
+      "main_release_id": 7083033,
+      "title": "Shotgun Willie",
+      "year": 1973,
+      "selection_source": "editorial",
+      "featured": true,
+      "expansion_round": 1
+    },
+    {
+      "id": "master-435524",
+      "artist_id": 15885,
+      "artist": "Michael Jackson",
+      "master_id": 435524,
+      "main_release_id": 120096,
+      "title": "Off The Wall",
+      "year": 1979,
+      "selection_source": "editorial",
+      "featured": true,
+      "expansion_round": 1
+    },
+    {
+      "id": "master-479327",
+      "artist_id": 303986,
+      "artist": "Glen Phillips",
+      "master_id": 479327,
+      "main_release_id": 440336,
+      "title": "Winter Pays For Summer",
+      "year": 2005,
+      "selection_source": "editorial",
+      "featured": true,
+      "expansion_round": 1
+    },
+    {
+      "id": "master-1250570",
+      "artist_id": 3928,
+      "artist": "Beck",
+      "master_id": 1250570,
+      "main_release_id": 11005276,
+      "title": "Colors",
+      "year": 2017,
+      "selection_source": "editorial",
+      "featured": true,
+      "expansion_round": 1
+    },
+    {
+      "id": "master-69938",
+      "artist_id": 8029,
+      "artist": "Jamiroquai",
+      "master_id": 69938,
+      "main_release_id": 25379,
+      "title": "Emergency On Planet Earth",
+      "year": 1993,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
+    },
+    {
+      "id": "master-69946",
+      "artist_id": 8029,
+      "artist": "Jamiroquai",
+      "master_id": 69946,
+      "main_release_id": 10820794,
+      "title": "The Return Of The Space Cowboy",
+      "year": 1994,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
+    },
+    {
+      "id": "master-69956",
+      "artist_id": 8029,
+      "artist": "Jamiroquai",
+      "master_id": 69956,
+      "main_release_id": 21974,
+      "title": "Travelling Without Moving",
+      "year": 1996,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
+    },
+    {
+      "id": "master-135633",
+      "artist_id": 8029,
+      "artist": "Jamiroquai",
+      "master_id": 135633,
+      "main_release_id": 21975,
+      "title": "Synkronized",
+      "year": 1999,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
+    },
+    {
+      "id": "master-69925",
+      "artist_id": 8029,
+      "artist": "Jamiroquai",
+      "master_id": 69925,
+      "main_release_id": 21976,
+      "title": "A Funk Odyssey",
+      "year": 2001,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
+    },
+    {
+      "id": "master-172407",
+      "artist_id": 36860,
+      "artist": "Martin Denny",
+      "master_id": 172407,
+      "main_release_id": 399417,
+      "title": "Exotica",
+      "year": 1957,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
+    },
+    {
+      "id": "master-110874",
+      "artist_id": 27517,
+      "artist": "Arthur Lyman",
+      "master_id": 110874,
+      "main_release_id": 374004,
+      "title": "Taboo - The Exotic Sounds Of Arthur Lyman",
+      "year": 1958,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
+    },
+    {
+      "id": "master-45284",
+      "artist_id": 82730,
+      "artist": "The Beatles",
+      "master_id": 45284,
+      "main_release_id": 2318045,
+      "title": "Revolver",
+      "year": 1966,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
+    },
+    {
+      "id": "master-24511",
+      "artist_id": 255672,
+      "artist": "The Jimi Hendrix Experience",
+      "master_id": 24511,
+      "main_release_id": 1348423,
+      "title": "Axis: Bold As Love",
+      "year": 1967,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
+    },
+    {
+      "id": "master-52497",
+      "artist_id": 28795,
+      "artist": "Prince",
+      "master_id": 52497,
+      "main_release_id": 123915,
+      "title": "Sign \"O\" The Times",
+      "year": 1987,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
+    },
+    {
+      "id": "master-21520",
+      "artist_id": 3840,
+      "artist": "Radiohead",
+      "master_id": 21520,
+      "main_release_id": 1174296,
+      "title": "In Rainbows",
+      "year": 2007,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
+    },
+    {
+      "id": "master-18080",
+      "artist_id": 2725,
+      "artist": "Depeche Mode",
+      "master_id": 18080,
+      "main_release_id": 46905,
+      "title": "Violator",
+      "year": 1990,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
+    },
+    {
+      "id": "master-42522",
+      "artist_id": 92476,
+      "artist": "Red Hot Chili Peppers",
+      "master_id": 42522,
+      "main_release_id": 375491,
+      "title": "Blood Sugar Sex Magik",
+      "year": 1991,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-8883",
@@ -622,7 +1919,10 @@
       "master_id": 8883,
       "main_release_id": 2911293,
       "title": "Thriller",
-      "year": 1982
+      "year": 1982,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-64290",
@@ -631,7 +1931,10 @@
       "master_id": 64290,
       "main_release_id": 1341431,
       "title": "The Joshua Tree",
-      "year": 1987
+      "year": 1987,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-30577",
@@ -640,7 +1943,10 @@
       "master_id": 30577,
       "main_release_id": 6339359,
       "title": "Goodbye Yellow Brick Road",
-      "year": 1973
+      "year": 1973,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-59501",
@@ -649,7 +1955,10 @@
       "master_id": 59501,
       "main_release_id": 37047876,
       "title": "Hotel California",
-      "year": null
+      "year": null,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-31598",
@@ -658,7 +1967,10 @@
       "master_id": 31598,
       "main_release_id": 6534046,
       "title": "Abraxas",
-      "year": 1970
+      "year": 1970,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-133278",
@@ -667,7 +1979,10 @@
       "master_id": 133278,
       "main_release_id": 530222,
       "title": "Let's Talk About Love",
-      "year": 1997
+      "year": 1997,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-68469",
@@ -676,7 +1991,10 @@
       "master_id": 68469,
       "main_release_id": 14097908,
       "title": "Who's Next",
-      "year": 1971
+      "year": 1971,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-23684",
@@ -685,7 +2003,10 @@
       "master_id": 23684,
       "main_release_id": 382417,
       "title": "Brothers In Arms",
-      "year": 1985
+      "year": 1985,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-76678",
@@ -694,7 +2015,10 @@
       "master_id": 76678,
       "main_release_id": 1306997,
       "title": "Layla And Other Assorted Love Songs",
-      "year": 1970
+      "year": 1970,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-69859",
@@ -703,7 +2027,10 @@
       "master_id": 69859,
       "main_release_id": 585141,
       "title": "461 Ocean Boulevard",
-      "year": 1974
+      "year": 1974,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-66631",
@@ -712,7 +2039,10 @@
       "master_id": 66631,
       "main_release_id": 26197826,
       "title": "What's Going On",
-      "year": 1971
+      "year": 1971,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-55658",
@@ -721,7 +2051,10 @@
       "master_id": 55658,
       "main_release_id": 1031388,
       "title": "Graceland",
-      "year": 1986
+      "year": 1986,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-26725",
@@ -730,7 +2063,10 @@
       "master_id": 26725,
       "main_release_id": 8110043,
       "title": "Born To Run",
-      "year": 1975
+      "year": 1975,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-91767",
@@ -739,7 +2075,10 @@
       "master_id": 91767,
       "main_release_id": 245159,
       "title": "Private Dancer",
-      "year": 1984
+      "year": 1984,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-30712",
@@ -748,7 +2087,10 @@
       "master_id": 30712,
       "main_release_id": 11093530,
       "title": "Toto IV",
-      "year": 1982
+      "year": 1982,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-72879",
@@ -757,7 +2099,10 @@
       "master_id": 72879,
       "main_release_id": 382877,
       "title": "Imagine",
-      "year": 1971
+      "year": 1971,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-35759",
@@ -766,7 +2111,10 @@
       "master_id": 35759,
       "main_release_id": 379036,
       "title": "So",
-      "year": 1986
+      "year": 1986,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-553",
@@ -775,7 +2123,10 @@
       "master_id": 553,
       "main_release_id": 10775348,
       "title": "Face Value",
-      "year": 1981
+      "year": 1981,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-39248",
@@ -784,7 +2135,10 @@
       "master_id": 39248,
       "main_release_id": 367750,
       "title": "Synchronicity",
-      "year": 1983
+      "year": 1983,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-38712",
@@ -793,7 +2147,10 @@
       "master_id": 38712,
       "main_release_id": 1132195,
       "title": "D\u00e9j\u00e0 Vu",
-      "year": 1970
+      "year": 1970,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-13280",
@@ -802,7 +2159,10 @@
       "master_id": 13280,
       "main_release_id": 1451593,
       "title": "Reckless",
-      "year": 1984
+      "year": 1984,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-67836",
@@ -811,7 +2171,10 @@
       "master_id": 67836,
       "main_release_id": 597222,
       "title": "True Blue",
-      "year": 1986
+      "year": 1986,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-41722",
@@ -820,7 +2183,10 @@
       "master_id": 41722,
       "main_release_id": 702504,
       "title": "Destroyer",
-      "year": 1976
+      "year": 1976,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-34081",
@@ -829,7 +2195,10 @@
       "master_id": 34081,
       "main_release_id": 12384502,
       "title": "Time Out",
-      "year": 1959
+      "year": 1959,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-73013",
@@ -838,7 +2207,10 @@
       "master_id": 73013,
       "main_release_id": 515893,
       "title": "Double Fantasy",
-      "year": 1980
+      "year": 1980,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-27765",
@@ -847,7 +2219,10 @@
       "master_id": 27765,
       "main_release_id": 605328,
       "title": "Bridge Over Troubled Water",
-      "year": 1970
+      "year": 1970,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-37145",
@@ -856,7 +2231,10 @@
       "master_id": 37145,
       "main_release_id": 6223561,
       "title": "Pump",
-      "year": 1989
+      "year": 1989,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-72235",
@@ -865,7 +2243,10 @@
       "master_id": 72235,
       "main_release_id": 869077,
       "title": "Pearl",
-      "year": 1971
+      "year": 1971,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-51607",
@@ -874,7 +2255,10 @@
       "master_id": 51607,
       "main_release_id": 12912700,
       "title": "Whitney Houston",
-      "year": 1985
+      "year": 1985,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-17249",
@@ -883,7 +2267,10 @@
       "master_id": 17249,
       "main_release_id": 3020121,
       "title": "Brothers And Sisters",
-      "year": 1973
+      "year": 1973,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-49058",
@@ -892,7 +2279,10 @@
       "master_id": 49058,
       "main_release_id": 2438726,
       "title": "In-A-Gadda-Da-Vida",
-      "year": 1968
+      "year": 1968,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-87446",
@@ -901,7 +2291,10 @@
       "master_id": 87446,
       "main_release_id": 174477,
       "title": "Talking Book",
-      "year": 1972
+      "year": 1972,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-113522",
@@ -910,7 +2303,10 @@
       "master_id": 113522,
       "main_release_id": 604619,
       "title": "Christopher Cross",
-      "year": 1979
+      "year": 1979,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-27460",
@@ -919,7 +2315,10 @@
       "master_id": 27460,
       "main_release_id": 2047108,
       "title": "Britney",
-      "year": 2001
+      "year": 2001,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-23069",
@@ -928,7 +2327,10 @@
       "master_id": 23069,
       "main_release_id": 11858130,
       "title": "Bat Out Of Hell",
-      "year": 1977
+      "year": 1977,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-32708",
@@ -937,7 +2339,10 @@
       "master_id": 32708,
       "main_release_id": 586972,
       "title": "The Dream Of The Blue Turtles",
-      "year": 1985
+      "year": 1985,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-12236",
@@ -946,7 +2351,10 @@
       "master_id": 12236,
       "main_release_id": 223754,
       "title": "The Marshall Mathers LP",
-      "year": 2000
+      "year": 2000,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-40048",
@@ -955,7 +2363,10 @@
       "master_id": 40048,
       "main_release_id": 1138123,
       "title": "Flowers In The Dirt",
-      "year": 1989
+      "year": 1989,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-20387",
@@ -964,7 +2375,10 @@
       "master_id": 20387,
       "main_release_id": 1022835,
       "title": "Good Girl Gone Bad",
-      "year": 2007
+      "year": 2007,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-26037",
@@ -973,7 +2387,10 @@
       "master_id": 26037,
       "main_release_id": 1542309,
       "title": "Running On Empty",
-      "year": 1977
+      "year": 1977,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-58313",
@@ -982,7 +2399,10 @@
       "master_id": 58313,
       "main_release_id": 667414,
       "title": "Avalon",
-      "year": 1982
+      "year": 1982,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-30926",
@@ -991,7 +2411,10 @@
       "master_id": 30926,
       "main_release_id": 2761237,
       "title": "The Dude",
-      "year": 1981
+      "year": 1981,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-65826",
@@ -1000,7 +2423,10 @@
       "master_id": 65826,
       "main_release_id": 1178973,
       "title": "The Nightfly",
-      "year": 1982
+      "year": 1982,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-55281",
@@ -1009,7 +2435,10 @@
       "master_id": 55281,
       "main_release_id": 1018597,
       "title": "Cosmo's Factory",
-      "year": 1970
+      "year": 1970,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-81575",
@@ -1018,7 +2447,10 @@
       "master_id": 81575,
       "main_release_id": 1917375,
       "title": "Building The Perfect Beast",
-      "year": 1984
+      "year": 1984,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-52671",
@@ -1027,7 +2459,10 @@
       "master_id": 52671,
       "main_release_id": 6891706,
       "title": "Give Me The Night",
-      "year": 1980
+      "year": 1980,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-45432",
@@ -1036,7 +2471,10 @@
       "master_id": 45432,
       "main_release_id": 4622918,
       "title": "L.A. Woman",
-      "year": 1971
+      "year": 1971,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-43063",
@@ -1045,7 +2483,10 @@
       "master_id": 43063,
       "main_release_id": 124187,
       "title": "Songs From The Big Chair",
-      "year": 1985
+      "year": 1985,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-35706",
@@ -1054,7 +2495,10 @@
       "master_id": 35706,
       "main_release_id": 2906892,
       "title": "Wheels Of Fire",
-      "year": 1968
+      "year": 1968,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-24535",
@@ -1063,7 +2507,10 @@
       "master_id": 24535,
       "main_release_id": 538440,
       "title": "Electric Ladyland",
-      "year": 1968
+      "year": 1968,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-107325",
@@ -1072,7 +2519,10 @@
       "master_id": 107325,
       "main_release_id": 4814324,
       "title": "Elvis Presley",
-      "year": 1956
+      "year": 1956,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-106396",
@@ -1081,7 +2531,10 @@
       "master_id": 106396,
       "main_release_id": 24069521,
       "title": "The Wild Heart",
-      "year": 1983
+      "year": 1983,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-70584",
@@ -1090,7 +2543,10 @@
       "master_id": 70584,
       "main_release_id": 1634156,
       "title": "Second Helping",
-      "year": 1974
+      "year": 1974,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-113224",
@@ -1099,7 +2555,10 @@
       "master_id": 113224,
       "main_release_id": 13679780,
       "title": "Unforgettable With Love",
-      "year": 1991
+      "year": 1991,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-41155",
@@ -1108,7 +2567,10 @@
       "master_id": 41155,
       "main_release_id": 19452658,
       "title": "Blizzard Of Ozz",
-      "year": 1980
+      "year": 1980,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-57029",
@@ -1117,7 +2579,10 @@
       "master_id": 57029,
       "main_release_id": 13114025,
       "title": "The Stranger",
-      "year": 1977
+      "year": 1977,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-108242",
@@ -1126,7 +2591,10 @@
       "master_id": 108242,
       "main_release_id": 713519,
       "title": "Silk Degrees",
-      "year": 1976
+      "year": 1976,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-750386",
@@ -1135,7 +2603,10 @@
       "master_id": 750386,
       "main_release_id": 7089669,
       "title": "1989",
-      "year": 2014
+      "year": 2014,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-67405",
@@ -1144,7 +2615,10 @@
       "master_id": 67405,
       "main_release_id": 5675046,
       "title": "America",
-      "year": 1971
+      "year": 1971,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-18442",
@@ -1153,7 +2627,10 @@
       "master_id": 18442,
       "main_release_id": 681945,
       "title": "American Beauty",
-      "year": 1970
+      "year": 1970,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-44278",
@@ -1162,7 +2639,10 @@
       "master_id": 44278,
       "main_release_id": 727363,
       "title": "Transformer",
-      "year": 1972
+      "year": 1972,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-16545",
@@ -1171,7 +2651,10 @@
       "master_id": 16545,
       "main_release_id": 1646616,
       "title": "Faster Than The Speed Of Night",
-      "year": 1983
+      "year": 1983,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-60721",
@@ -1180,7 +2663,10 @@
       "master_id": 60721,
       "main_release_id": 30066736,
       "title": "With A Little Help From My Friends",
-      "year": 1969
+      "year": 1969,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-403952",
@@ -1189,7 +2675,10 @@
       "master_id": 403952,
       "main_release_id": 3365117,
       "title": "Born To Die",
-      "year": 2012
+      "year": 2012,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-32208",
@@ -1198,7 +2687,10 @@
       "master_id": 32208,
       "main_release_id": 11786823,
       "title": "Blue Train",
-      "year": 1958
+      "year": 1958,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-57940",
@@ -1207,7 +2699,10 @@
       "master_id": 57940,
       "main_release_id": 449189,
       "title": "The Six Wives Of Henry VIII",
-      "year": 1973
+      "year": 1973,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-74227",
@@ -1216,7 +2711,10 @@
       "master_id": 74227,
       "main_release_id": 1078681,
       "title": "Guilty",
-      "year": 1980
+      "year": 1980,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-4424",
@@ -1225,7 +2723,10 @@
       "master_id": 4424,
       "main_release_id": 1700889,
       "title": "Eye In The Sky",
-      "year": 1982
+      "year": 1982,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-56036",
@@ -1234,7 +2735,10 @@
       "master_id": 56036,
       "main_release_id": 14406326,
       "title": "All Things Must Pass",
-      "year": 1970
+      "year": 1970,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-60680",
@@ -1243,7 +2747,10 @@
       "master_id": 60680,
       "main_release_id": 11255474,
       "title": "Nilsson Schmilsson",
-      "year": 1971
+      "year": 1971,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-81172",
@@ -1252,7 +2759,10 @@
       "master_id": 81172,
       "main_release_id": 689570,
       "title": "Mystery Girl",
-      "year": 1989
+      "year": 1989,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-45720",
@@ -1261,7 +2771,10 @@
       "master_id": 45720,
       "main_release_id": 926898,
       "title": "Lionel Richie",
-      "year": 1982
+      "year": 1982,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-49965",
@@ -1270,7 +2783,10 @@
       "master_id": 49965,
       "main_release_id": 5376969,
       "title": "Amused To Death",
-      "year": 1992
+      "year": 1992,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-68399",
@@ -1279,7 +2795,10 @@
       "master_id": 68399,
       "main_release_id": 864428,
       "title": "Atlantic Crossing",
-      "year": 1975
+      "year": 1975,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-106274",
@@ -1288,7 +2807,10 @@
       "master_id": 106274,
       "main_release_id": 757539,
       "title": "Genius Loves Company",
-      "year": 2004
+      "year": 2004,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-92517",
@@ -1297,7 +2819,10 @@
       "master_id": 92517,
       "main_release_id": 404855,
       "title": "Ram",
-      "year": 1971
+      "year": 1971,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-47868",
@@ -1306,7 +2831,10 @@
       "master_id": 47868,
       "main_release_id": 23055056,
       "title": "Surrealistic Pillow",
-      "year": 1967
+      "year": 1967,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-80514",
@@ -1315,7 +2843,10 @@
       "master_id": 80514,
       "main_release_id": 3091874,
       "title": "1100 Bel Air Place",
-      "year": 1984
+      "year": 1984,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-3719",
@@ -1324,7 +2855,10 @@
       "master_id": 3719,
       "main_release_id": 847868,
       "title": "The Downward Spiral",
-      "year": 1994
+      "year": 1994,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-99919",
@@ -1333,7 +2867,10 @@
       "master_id": 99919,
       "main_release_id": 4271203,
       "title": "No Secrets",
-      "year": 1972
+      "year": 1972,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-89665",
@@ -1342,7 +2879,10 @@
       "master_id": 89665,
       "main_release_id": 507814,
       "title": "Reload",
-      "year": 1999
+      "year": 1999,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-48605",
@@ -1351,7 +2891,10 @@
       "master_id": 48605,
       "main_release_id": 8608241,
       "title": "Eliminator",
-      "year": 1983
+      "year": 1983,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-79666",
@@ -1360,7 +2903,10 @@
       "master_id": 79666,
       "main_release_id": 1247196,
       "title": "Merry Christmas",
-      "year": 1994
+      "year": 1994,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-69156",
@@ -1369,7 +2915,10 @@
       "master_id": 69156,
       "main_release_id": 1136855,
       "title": "Cher",
-      "year": 1987
+      "year": 1987,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-90844",
@@ -1378,7 +2927,10 @@
       "master_id": 90844,
       "main_release_id": 794285,
       "title": "Futuresex/Lovesounds",
-      "year": 2006
+      "year": 2006,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-35401",
@@ -1387,7 +2939,10 @@
       "master_id": 35401,
       "main_release_id": 1456515,
       "title": "Blood, Sweat And Tears",
-      "year": 1969
+      "year": 1969,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-68209",
@@ -1396,7 +2951,10 @@
       "master_id": 68209,
       "main_release_id": 7166456,
       "title": "Mud Slide Slim And The Blue Horizon",
-      "year": 1971
+      "year": 1971,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-35793",
@@ -1405,7 +2963,10 @@
       "master_id": 35793,
       "main_release_id": 4951944,
       "title": "Apostrophe (')",
-      "year": 1974
+      "year": 1974,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-122051",
@@ -1414,7 +2975,10 @@
       "master_id": 122051,
       "main_release_id": 647349,
       "title": "Victory",
-      "year": 1984
+      "year": 1984,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-92986",
@@ -1423,7 +2987,10 @@
       "master_id": 92986,
       "main_release_id": 10886668,
       "title": "Rise",
-      "year": 1979
+      "year": 1979,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-97173",
@@ -1432,7 +2999,10 @@
       "master_id": 97173,
       "main_release_id": 2112799,
       "title": "She's The Boss",
-      "year": 1985
+      "year": 1985,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-25893",
@@ -1441,7 +3011,10 @@
       "master_id": 25893,
       "main_release_id": 3465422,
       "title": "Bad Girls",
-      "year": 1979
+      "year": 1979,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-129759",
@@ -1450,7 +3023,10 @@
       "master_id": 129759,
       "main_release_id": 865681,
       "title": "Diamonds & Rust",
-      "year": 1975
+      "year": 1975,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-79241",
@@ -1459,7 +3035,10 @@
       "master_id": 79241,
       "main_release_id": 874397,
       "title": "Ringo",
-      "year": 1973
+      "year": 1973,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-52998",
@@ -1468,7 +3047,10 @@
       "master_id": 52998,
       "main_release_id": 618687,
       "title": "Hey Stoopid",
-      "year": 1991
+      "year": 1991,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-36227",
@@ -1477,7 +3059,10 @@
       "master_id": 36227,
       "main_release_id": 1420621,
       "title": "Really",
-      "year": 1972
+      "year": 1972,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-338175",
@@ -1486,7 +3071,10 @@
       "master_id": 338175,
       "main_release_id": 3108078,
       "title": "Born This Way",
-      "year": 2011
+      "year": 2011,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-18027",
@@ -1495,7 +3083,10 @@
       "master_id": 18027,
       "main_release_id": 219129,
       "title": "Mechanical Animals",
-      "year": 1998
+      "year": 1998,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-49227",
@@ -1504,7 +3095,10 @@
       "master_id": 49227,
       "main_release_id": 1305473,
       "title": "Rickie Lee Jones",
-      "year": 1979
+      "year": 1979,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-3762",
@@ -1513,7 +3107,10 @@
       "master_id": 3762,
       "main_release_id": 2159182,
       "title": "I'm Your Man",
-      "year": 1988
+      "year": 1988,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-96362",
@@ -1522,7 +3119,10 @@
       "master_id": 96362,
       "main_release_id": 9811916,
       "title": "Wave",
-      "year": 1967
+      "year": 1967,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-31337",
@@ -1531,7 +3131,10 @@
       "master_id": 31337,
       "main_release_id": 16187739,
       "title": "Fever",
-      "year": 2001
+      "year": 2001,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-104115",
@@ -1540,7 +3143,10 @@
       "master_id": 104115,
       "main_release_id": 5150469,
       "title": "Stephen Stills",
-      "year": 1970
+      "year": 1970,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-104399",
@@ -1549,7 +3155,10 @@
       "master_id": 104399,
       "main_release_id": 3348540,
       "title": "Introducing The Hardline According To Terence Trent D'Arby",
-      "year": null
+      "year": null,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-36251",
@@ -1558,7 +3167,10 @@
       "master_id": 36251,
       "main_release_id": 102481,
       "title": "Post",
-      "year": 1995
+      "year": 1995,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-66782",
@@ -1567,7 +3179,10 @@
       "master_id": 66782,
       "main_release_id": 2079831,
       "title": "Bon Jovi",
-      "year": 1984
+      "year": 1984,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-2452996",
@@ -1576,7 +3191,10 @@
       "master_id": 2452996,
       "main_release_id": 21588934,
       "title": "Dawn FM",
-      "year": 2022
+      "year": 2022,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-1164779",
@@ -1585,7 +3203,10 @@
       "master_id": 1164779,
       "main_release_id": 10133538,
       "title": "Damn",
-      "year": 2017
+      "year": 2017,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-303567",
@@ -1594,7 +3215,10 @@
       "master_id": 303567,
       "main_release_id": 2664589,
       "title": "21",
-      "year": 2011
+      "year": 2011,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-138283",
@@ -1603,7 +3227,10 @@
       "master_id": 138283,
       "main_release_id": 443980,
       "title": "Ricky Martin",
-      "year": 1999
+      "year": 1999,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-75606",
@@ -1612,7 +3239,10 @@
       "master_id": 75606,
       "main_release_id": 737957,
       "title": "Love Devotion Surrender",
-      "year": 1973
+      "year": 1973,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-8179",
@@ -1621,7 +3251,10 @@
       "master_id": 8179,
       "main_release_id": 382556,
       "title": "Specials",
-      "year": 1979
+      "year": 1979,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-79393",
@@ -1630,7 +3263,10 @@
       "master_id": 79393,
       "main_release_id": 108131,
       "title": "Club Classics Vol. One",
-      "year": 1989
+      "year": 1989,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
     },
     {
       "id": "master-54449",
@@ -1639,7 +3275,84 @@
       "master_id": 54449,
       "main_release_id": 704406,
       "title": "Rei Momo",
-      "year": 1989
+      "year": 1989,
+      "selection_source": "already_published",
+      "featured": true,
+      "expansion_round": 0
+    },
+    {
+      "id": "master-111010",
+      "artist_id": 8699,
+      "artist": "Astrud Gilberto",
+      "master_id": 111010,
+      "main_release_id": 2956375,
+      "title": "Gilberto With Turrentine",
+      "year": 1971,
+      "selection_source": "graph_rich",
+      "featured": false,
+      "expansion_round": 1
+    },
+    {
+      "id": "master-14721",
+      "artist_id": 39776,
+      "artist": "Dolly Parton",
+      "master_id": 14721,
+      "main_release_id": 3013962,
+      "title": "Trio",
+      "year": 1987,
+      "selection_source": "graph_rich",
+      "featured": false,
+      "expansion_round": 1
+    },
+    {
+      "id": "master-144095",
+      "artist_id": 52833,
+      "artist": "Frank Sinatra",
+      "master_id": 144095,
+      "main_release_id": 4125827,
+      "title": "Sinatra - Basie: An Historic Musical First",
+      "year": 1962,
+      "selection_source": "graph_rich",
+      "featured": false,
+      "expansion_round": 1
+    },
+    {
+      "id": "master-478823",
+      "artist_id": 1626845,
+      "artist": "Ellie Goulding",
+      "master_id": 478823,
+      "main_release_id": 3933948,
+      "title": "Halcyon",
+      "year": 2012,
+      "selection_source": "graph_rich",
+      "featured": false,
+      "expansion_round": 1
+    },
+    {
+      "id": "master-108346",
+      "artist_id": 108483,
+      "artist": "The Corrs",
+      "master_id": 108346,
+      "main_release_id": 7026078,
+      "title": "Talk On Corners",
+      "year": 1997,
+      "selection_source": "graph_rich",
+      "featured": false,
+      "expansion_round": 1
+    },
+    {
+      "id": "master-97212",
+      "artist_id": 49605,
+      "artist": "The Manhattan Transfer",
+      "master_id": 97212,
+      "main_release_id": 2352845,
+      "title": "Coming Out",
+      "year": 1976,
+      "selection_source": "graph_rich",
+      "featured": false,
+      "expansion_round": 1
     }
-  ]
+  ],
+  "catalog_schema_version": 2,
+  "catalog_presentation_version": "catalog-presentation-v1-20260601-4dd05842c0cd"
 }

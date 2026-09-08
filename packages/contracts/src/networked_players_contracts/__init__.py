@@ -22,6 +22,7 @@ from .connection_daily_manifest import (
     CONNECTION_DAILY_MANIFEST_MODE,
     CONNECTION_DAILY_MANIFEST_SCHEMA_VERSION,
     connection_daily_manifest_failures,
+    connection_daily_manifest_failures_from_artifacts,
 )
 from .connection_rounds import (
     CONNECTION_ROUNDS_SCHEMA_VERSION,
@@ -65,6 +66,7 @@ __all__ = [
     "canonical_json",
     "challenge_failures",
     "connection_daily_manifest_failures",
+    "connection_daily_manifest_failures_from_artifacts",
     "connection_rounds_failures",
     "connectivity_failures",
     "content_hash",

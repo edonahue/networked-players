@@ -12,10 +12,19 @@ const PINNED_DATE_A = "2026-08-01";
 interface DailyManifestEntry {
   date: string;
   round_id: string;
+  /** schema v2 only: which frozen generation this date resolves against. */
+  generation?: string;
+}
+
+interface DailyManifestGeneration {
+  generation_id: string;
+  rounds_url: string;
 }
 
 interface DailyManifest {
   schedule: DailyManifestEntry[];
+  /** schema v2 only (ADR 0066); absent on a v1 manifest. */
+  generations?: DailyManifestGeneration[];
 }
 
 interface RoundLite {
@@ -29,8 +38,22 @@ async function fetchManifest(page: Page): Promise<DailyManifest> {
   return (await res.json()) as DailyManifest;
 }
 
-async function fetchRounds(page: Page): Promise<RoundLite[]> {
-  const res = await page.request.get("/data/game/rounds.v1.json");
+/** The pool THIS date resolves against -- its own generation's under
+ * schema v2, where a retired generation's dates live in a frozen copy and
+ * are NOT guaranteed to also appear in the live pool. Reading the live
+ * artifact unconditionally would hand back `undefined` for any archive date
+ * from a retired generation. */
+async function roundsForEntry(
+  page: Page,
+  manifest: DailyManifest,
+  entry: DailyManifestEntry,
+): Promise<RoundLite[]> {
+  const generation = manifest.generations?.find(
+    (g) => g.generation_id === entry.generation,
+  );
+  const res = await page.request.get(
+    generation?.rounds_url ?? "/data/game/rounds.v1.json",
+  );
   const { rounds } = (await res.json()) as { rounds: RoundLite[] };
   return rounds;
 }
@@ -40,8 +63,12 @@ test("a played date shows its rating and a future scheduled date leaks nothing",
 }) => {
   const manifest = await fetchManifest(page);
   const entry = manifest.schedule.find((e) => e.date === PINNED_DATE_A)!;
-  const rounds = await fetchRounds(page);
-  const round = rounds.find((r) => r.id === entry.round_id)!;
+  const rounds = await roundsForEntry(page, manifest, entry);
+  const round = rounds.find((r) => r.id === entry.round_id);
+  if (!round)
+    throw new Error(
+      `round ${entry.round_id} for ${PINNED_DATE_A} is not in generation ${entry.generation ?? "(v1)"}'s pool`,
+    );
 
   // Play the pinned past date via the one allowed ?date= override.
   await page.addInitScript(() => {
@@ -71,9 +98,9 @@ test("a played date shows its rating and a future scheduled date leaks nothing",
     /played/i,
   );
 
-  // A real scheduled date after today (schedule extends to 2026-10-19,
-  // well past the fixed "today" this test suite assumes) must render as
-  // future, with no round content anywhere on the page.
+  // The LAST scheduled date -- read from the manifest rather than hardcoded,
+  // since the horizon moves every time the schedule is extended -- must
+  // render as future, with no round content anywhere on the page.
   const futureEntry = manifest.schedule[manifest.schedule.length - 1];
   const futureRow = archive.locator(
     `.archive-day:has(.archive-day__date:text-is("${futureEntry.date}"))`,

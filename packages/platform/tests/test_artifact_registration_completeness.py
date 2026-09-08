@@ -21,6 +21,7 @@ item instead (see the PR that added this test).
 from __future__ import annotations
 
 import importlib.util
+import json
 import sys
 from pathlib import Path
 from types import ModuleType
@@ -108,3 +109,43 @@ def test_every_pi_checked_artifact_group_has_a_submit_check_default() -> None:
         name for name in _VALIDATOR_NAME_BY_ARTIFACT_GROUP.values() if name not in default_artifacts
     )
     assert missing == []
+
+
+def test_daily_manifest_fleet_inputs_are_derived_from_the_real_manifests_generations() -> None:
+    """The daily-manifest fleet check supplies one rounds artifact per
+    generation, resolved from each generation's own `rounds_url`.
+
+    Deriving them beats listing them: a static tuple would go stale at every
+    future pool-generation cutover, and a new generation's frozen pool would
+    silently go unchecked until someone remembered to edit
+    `_DEFAULT_ARTIFACTS` -- exactly the multi-registry drift this module
+    exists to catch, in the one place it cannot see."""
+    module = _load_submit_artifact_check()
+    manifest_path = REPO_ROOT / "apps/web/public/data/game/daily-manifest.v1.json"
+    manifest = json.loads(manifest_path.read_text())
+    generations = [g["generation_id"] for g in manifest["generations"]]
+
+    paths = module._resolve_artifact_paths("daily-manifest", [])
+    assert len(paths) == 1 + len(generations)
+    assert paths[0] == manifest_path
+    for path in paths[1:]:
+        assert path.is_file(), path
+
+    # In generations[] order, and each one really is that generation's pool.
+    for generation, path in zip(manifest["generations"], paths[1:], strict=True):
+        expected = REPO_ROOT / "apps/web/public" / generation["rounds_url"].lstrip("/")
+        assert path == expected, f"{generation['generation_id']} resolved to the wrong file"
+
+
+def test_the_real_committed_manifest_passes_the_fleet_validator_path() -> None:
+    """Fail-then-pass regression for the fleet fix. Before it, this path
+    handed a schema-v2 manifest to the v1 validator and returned 100
+    failures -- 40 of them `no rounds artifact supplied for generation
+    'gen-1'`, which predate any catalog expansion. `make
+    daily-manifest-check-distributed` had been red since ADR 0066 shipped."""
+    from networked_players_contracts import connection_daily_manifest_failures_from_artifacts
+
+    module = _load_submit_artifact_check()
+    paths = module._resolve_artifact_paths("daily-manifest", [])
+    payloads = [json.loads(p.read_text()) for p in paths]
+    assert connection_daily_manifest_failures_from_artifacts(*payloads) == []

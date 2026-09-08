@@ -472,18 +472,27 @@ test("a round whose content silently changed is an integrity error, not a spoofe
   page,
 }) => {
   const entry = await entryFor(page, PINNED_DATE_A);
+  let tamperedPools = 0;
   await page.route(ANY_ROUNDS_ARTIFACT, async (route) => {
     const response = await route.fetch();
     const body = await response.json();
     const round = body.rounds.find(
       (r: { id: string }) => r.id === entry.round_id,
     );
-    // Tamper with a real published field without changing the id -- exactly
-    // the case round_content_fingerprint exists to catch.
-    round.distractors = [
-      { id: 999999999, name: "Tampered Name", role_category: "guitar" },
-      ...round.distractors,
-    ];
+    // Under schema v2 the resolver holds the LIVE pool and additionally
+    // fetches this date's own generation's frozen pool, so this handler runs
+    // for artifacts that legitimately do not carry this round -- pool
+    // membership across generations is not guaranteed and changes whenever
+    // the live pool is rebuilt. Tamper only where the round actually lives.
+    if (round) {
+      // Tamper with a real published field without changing the id -- exactly
+      // the case round_content_fingerprint exists to catch.
+      round.distractors = [
+        { id: 999999999, name: "Tampered Name", role_category: "guitar" },
+        ...round.distractors,
+      ];
+      tamperedPools += 1;
+    }
     await route.fulfill({ response, json: body });
   });
   await gotoDaily(page, PINNED_DATE_A);
@@ -494,6 +503,10 @@ test("a round whose content silently changed is an integrity error, not a spoofe
   await expect(page.getByTestId("question")).toContainText(
     "changed unexpectedly",
   );
+  // Without this the test could pass for the wrong reason: if the pool this
+  // date resolves against were never intercepted, the error would come from
+  // something other than the tampering it claims to prove.
+  expect(tamperedPools).toBeGreaterThan(0);
 });
 
 test("pre-existing daily results in storage survive the manifest migration untouched", async ({

@@ -444,3 +444,52 @@ def connection_daily_manifest_v2_failures(manifest: Any, rounds_by_generation: A
             )
 
     return failures
+
+
+def connection_daily_manifest_failures_from_artifacts(
+    manifest: Any, *rounds_artifacts: Any
+) -> list[str]:
+    """Positional entry point for callers that can only pass artifacts, not a
+    generation-keyed mapping -- the Pi fleet's `artifact.validate` workload,
+    which stages inputs as an ordered list.
+
+    A schema-v2 manifest spans multiple frozen pool generations, so it cannot
+    be verified against a single rounds artifact: each entry must be checked
+    against ITS OWN generation's pool. Artifacts are therefore paired with
+    `generations[]` **in order** -- the same "input order matters" convention
+    every other fleet validator documents.
+
+    Pairing positionally rather than by matching provenance triples is
+    deliberate. Matching on the triple would make
+    `connection_daily_manifest_v2_failures`' own per-generation cross-check
+    tautological (an artifact would only ever be assigned to a generation
+    whose triple it already equals), deleting the exact failure that catches a
+    generation being served the wrong pool. Positional pairing keeps that
+    check doing real work: a mis-ordered or wrong-file submission is reported,
+    not silently accepted.
+    """
+    if not isinstance(manifest, dict):
+        return ["manifest must be an object"]
+
+    if manifest.get("schema_version") == CONNECTION_DAILY_MANIFEST_SCHEMA_VERSION_V2:
+        generations = manifest.get("generations")
+        if not isinstance(generations, list):
+            return ["generations must be an array"]
+        if len(rounds_artifacts) != len(generations):
+            return [
+                f"a schema-v2 manifest needs one rounds artifact per generation: "
+                f"{len(generations)} generation(s) declared, {len(rounds_artifacts)} supplied"
+            ]
+        rounds_by_generation = {
+            generation.get("generation_id"): artifact
+            for generation, artifact in zip(generations, rounds_artifacts, strict=True)
+            if isinstance(generation, dict)
+        }
+        return connection_daily_manifest_v2_failures(manifest, rounds_by_generation)
+
+    if len(rounds_artifacts) != 1:
+        return [
+            "a schema-v1 manifest takes exactly one rounds artifact, "
+            f"{len(rounds_artifacts)} supplied"
+        ]
+    return connection_daily_manifest_failures(manifest, rounds_artifacts[0])

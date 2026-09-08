@@ -329,6 +329,7 @@ def assemble_album_catalog(
     generated_by: str | None = None,
     featured_master_ids: frozenset[int] | None = None,
     expansion_round: int = 0,
+    previously_published_rounds: dict[int, int] | None = None,
 ) -> dict[str, Any]:
     """Combine the editorial backbone, an already-resolved personal bucket,
     and graph-rich candidates up to `target_count` (see ADR 0038, ADR 0065).
@@ -568,15 +569,29 @@ def assemble_album_catalog(
     # test's exact-shape assertions.
     is_v2_catalog = featured_master_ids is not None
     featured_set = featured_master_ids or frozenset()
+    # `expansion_round` records which round added an album, so an album that
+    # was ALREADY published keeps the round it originally arrived in -- never
+    # the round currently being built. Stamping the current round on every
+    # album (the first cut of this, PR #238) made a real Round 1 catalog claim
+    # all 217 of its albums were Round 1 additions, including the 179 that had
+    # been live since Phase 7, which destroys the only field that says what a
+    # round actually changed. Albums absent from this map are new in this
+    # build; a previously-published album whose prior catalog was v1 (no
+    # per-album round) maps to 0, the documented value for the original
+    # backbone.
+    prior_rounds = previously_published_rounds or {}
 
     def _tagged(album_dict: dict[str, Any], selection_source: str) -> dict[str, Any]:
         if not is_v2_catalog:
             return album_dict
+        master_id = album_dict.get("master_id")
         return {
             **album_dict,
             "selection_source": selection_source,
-            "featured": album_dict.get("master_id") in featured_set,
-            "expansion_round": expansion_round,
+            "featured": master_id in featured_set,
+            "expansion_round": prior_rounds.get(master_id, expansion_round)
+            if master_id is not None
+            else expansion_round,
         }
 
     albums = [

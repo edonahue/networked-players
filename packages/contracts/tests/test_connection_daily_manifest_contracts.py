@@ -7,6 +7,7 @@ from networked_players_contracts.connection_daily_manifest import (
     CONNECTION_DAILY_MANIFEST_MODE,
     CONNECTION_DAILY_MANIFEST_SCHEMA_VERSION,
     connection_daily_manifest_failures,
+    connection_daily_manifest_failures_from_artifacts,
     connection_daily_manifest_v2_failures,
 )
 from networked_players_contracts.connection_rounds import round_content_fingerprint
@@ -330,3 +331,45 @@ def test_v2_rejects_a_stale_fingerprint_in_a_retired_generation() -> None:
 def test_v2_rejects_a_v1_shaped_manifest() -> None:
     failures = connection_daily_manifest_v2_failures(_manifest(), _v2_pools())
     assert failures  # a v1 manifest is not a valid v2 one
+
+
+# --- connection_daily_manifest_failures_from_artifacts (fleet entry point) ---
+
+
+def test_from_artifacts_pairs_rounds_with_generations_in_order() -> None:
+    assert (
+        connection_daily_manifest_failures_from_artifacts(
+            _manifest_v2(), _rounds_artifact(), _gen2_rounds_artifact()
+        )
+        == []
+    )
+
+
+def test_from_artifacts_reports_a_swapped_pair_rather_than_accepting_it() -> None:
+    """What makes positional pairing safe. Matching on the provenance triple
+    instead would make the per-generation cross-check tautological -- an
+    artifact would only ever be paired with a generation whose triple it
+    already equals -- deleting the exact failure that catches a generation
+    being served the wrong pool, which is the incident this entry point was
+    written after."""
+    failures = connection_daily_manifest_failures_from_artifacts(
+        _manifest_v2(), _gen2_rounds_artifact(), _rounds_artifact()
+    )
+    assert failures
+    assert any("does not match the supplied rounds artifact" in f for f in failures)
+
+
+def test_from_artifacts_reports_a_generation_count_mismatch_rather_than_pairing_blindly() -> None:
+    assert connection_daily_manifest_failures_from_artifacts(
+        _manifest_v2(), _rounds_artifact()
+    ) == [
+        "a schema-v2 manifest needs one rounds artifact per generation: "
+        "2 generation(s) declared, 1 supplied"
+    ]
+
+
+def test_from_artifacts_keeps_the_v1_single_artifact_path() -> None:
+    assert connection_daily_manifest_failures_from_artifacts(_manifest(), _rounds_artifact()) == []
+    assert connection_daily_manifest_failures_from_artifacts(
+        _manifest(), _rounds_artifact(), _rounds_artifact()
+    ) == ["a schema-v1 manifest takes exactly one rounds artifact, 2 supplied"]
