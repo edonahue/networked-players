@@ -761,6 +761,17 @@ def build_challenge_v2_from_matched(
             "graph_core_version": __version__,
             "catalog_version": catalog_version,
             "graph_policy_version": GRAPH_POLICY_VERSION,
+            # Records the parameters this build actually ran with -- the
+            # systemic fix for silent-default drift (graph-expansion plan
+            # Y3), so a future rebuild can read the PREVIOUS artifact's own
+            # block and reproduce it instead of inheriting a changed
+            # default.
+            "build_parameters": {
+                "max_paths": max_paths,
+                "max_hops": max_hops,
+                "max_frontier_expansion": max_frontier_expansion,
+                "carried_forward_pairs_used": bool(carry_forward_artist_pairs),
+            },
             "note": (
                 "Derived from a bounded one-hop working set; the private "
                 "collection seed used to build that working set is never "

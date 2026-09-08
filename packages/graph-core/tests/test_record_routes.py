@@ -317,3 +317,23 @@ def test_no_eligible_routes_raises(routes_dataset_root: Path) -> None:
                 snapshot_date=SNAPSHOT_DATE,
                 generated_by="test",
             )
+
+
+def test_build_record_routes_pool_stamps_the_build_parameters_it_ran_with(
+    routes_dataset_root: Path,
+) -> None:
+    """Graph-expansion plan Y3: the systemic fix for silent-default drift.
+    Round 1's rebuild silently used --two-hop-target's default of 100
+    instead of the published 200, halving two-hop rounds and quietly
+    dropping 94 routes-only contributor pages a round later -- a future
+    rebuild should be able to read this block back rather than reverting."""
+    universe, rounds, _diagnostics = _build(routes_dataset_root)
+    expected = {
+        "one_hop_target": 10,
+        "two_hop_target": 10,
+        "max_endpoint_share": 1.0,
+        "max_bridge_share": 1.0,
+    }
+    assert universe["provenance"]["build_parameters"] == expected
+    assert rounds["provenance"]["build_parameters"] == expected
+    validate_record_routes_artifact(universe, rounds)  # does not raise

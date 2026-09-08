@@ -225,3 +225,69 @@ def test_bool_graph_policy_version_is_rejected() -> None:
     artifact["provenance"]["graph_policy_version"] = True
     failures = challenge_failures(artifact)
     assert any("graph_policy_version must be a positive integer" in f for f in failures)
+
+
+# --- provenance.build_parameters (graph-expansion plan Y3, optional) -------
+
+
+def test_missing_build_parameters_still_passes() -> None:
+    assert "build_parameters" not in _artifact()["provenance"]
+    assert challenge_failures(_artifact()) == []
+
+
+def test_valid_build_parameters_passes() -> None:
+    artifact = _artifact()
+    artifact["provenance"] = deepcopy(artifact["provenance"])
+    artifact["provenance"]["build_parameters"] = {
+        "max_paths": 400,
+        "max_hops": 4,
+        "max_frontier_expansion": 300,
+        "carried_forward_pairs_used": True,
+    }
+    assert challenge_failures(artifact) == []
+
+
+def test_valid_build_parameters_with_null_max_frontier_expansion_passes() -> None:
+    artifact = _artifact()
+    artifact["provenance"] = deepcopy(artifact["provenance"])
+    artifact["provenance"]["build_parameters"] = {
+        "max_paths": 400,
+        "max_hops": 4,
+        "max_frontier_expansion": None,
+        "carried_forward_pairs_used": False,
+    }
+    assert challenge_failures(artifact) == []
+
+
+def test_non_integer_max_paths_is_rejected() -> None:
+    artifact = _artifact()
+    artifact["provenance"] = deepcopy(artifact["provenance"])
+    artifact["provenance"]["build_parameters"] = {
+        "max_paths": "400",
+        "max_hops": 4,
+        "max_frontier_expansion": 300,
+        "carried_forward_pairs_used": True,
+    }
+    failures = challenge_failures(artifact)
+    assert any("build_parameters.max_paths must be" in f for f in failures)
+
+
+def test_non_bool_carried_forward_pairs_used_is_rejected() -> None:
+    artifact = _artifact()
+    artifact["provenance"] = deepcopy(artifact["provenance"])
+    artifact["provenance"]["build_parameters"] = {
+        "max_paths": 400,
+        "max_hops": 4,
+        "max_frontier_expansion": 300,
+        "carried_forward_pairs_used": 1,
+    }
+    failures = challenge_failures(artifact)
+    assert any("carried_forward_pairs_used must be a boolean" in f for f in failures)
+
+
+def test_non_object_build_parameters_is_rejected() -> None:
+    artifact = _artifact()
+    artifact["provenance"] = deepcopy(artifact["provenance"])
+    artifact["provenance"]["build_parameters"] = "not an object"
+    failures = challenge_failures(artifact)
+    assert any("build_parameters must be an object" in f for f in failures)

@@ -173,6 +173,25 @@ def record_routes_failures(universe: Any, rounds: Any) -> list[str]:
         if not provenance.get(field_name):
             failures.append(f"provenance.{field_name} is required")
 
+    # Optional (graph-expansion plan Y3): the parameters this build actually
+    # ran with. Never required -- an artifact built before this landed has
+    # no such block and must stay valid.
+    if "build_parameters" in provenance:
+        build_parameters = provenance.get("build_parameters")
+        if not isinstance(build_parameters, dict):
+            failures.append("provenance.build_parameters must be an object")
+        else:
+            for int_field in ("one_hop_target", "two_hop_target"):
+                value = build_parameters.get(int_field)
+                if not isinstance(value, int) or isinstance(value, bool) or value < 0:
+                    failures.append(
+                        f"provenance.build_parameters.{int_field} must be a non-negative integer"
+                    )
+            for share_field in ("max_endpoint_share", "max_bridge_share"):
+                value = build_parameters.get(share_field)
+                if not isinstance(value, (int, float)) or isinstance(value, bool):
+                    failures.append(f"provenance.build_parameters.{share_field} must be a number")
+
     album_ids: set[Any] = set()
     seen_album_ids: set[Any] = set()
     albums = universe.get("albums", [])

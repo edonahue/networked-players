@@ -887,3 +887,40 @@ def test_build_challenge_v2_forwards_carry_forward_to_the_matched_builder(monkey
         carry_forward_artist_pairs=carried,
     )
     assert seen.get("carry_forward_artist_pairs") == carried
+
+
+def test_build_challenge_v2_stamps_the_build_parameters_it_ran_with(dataset_root: Path) -> None:
+    """Graph-expansion plan Y3: the systemic fix for silent-default drift.
+    Round 1 was built with a carried-forward pair set and non-default
+    max_paths/max_hops; a future rebuild should be able to read this block
+    back rather than silently reverting to a changed default."""
+    with CreditGraph.open(dataset_root) as graph:
+        matched, missed = match_albums(graph, ALBUMS)
+        artifact, _report = build_challenge_v2_from_matched(
+            graph,
+            matched,
+            missed,
+            snapshot_date="20260601",
+            generated_by="test-suite",
+            max_paths=7,
+            max_hops=3,
+            max_frontier_expansion=42,
+            carry_forward_artist_pairs=frozenset({(100, 300)}),
+        )
+    validate_challenge(artifact)
+    assert artifact["provenance"]["build_parameters"] == {
+        "max_paths": 7,
+        "max_hops": 3,
+        "max_frontier_expansion": 42,
+        "carried_forward_pairs_used": True,
+    }
+
+
+def test_build_challenge_v2_records_no_carried_forward_pairs_when_none_given(
+    dataset_root: Path,
+) -> None:
+    with CreditGraph.open(dataset_root) as graph:
+        artifact, _report = build_challenge_v2(
+            graph, ALBUMS, snapshot_date="20260601", generated_by="test-suite"
+        )
+    assert artifact["provenance"]["build_parameters"]["carried_forward_pairs_used"] is False

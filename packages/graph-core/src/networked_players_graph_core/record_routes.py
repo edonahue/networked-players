@@ -179,10 +179,24 @@ def build_record_routes_pool(
         artists=rounds["artists"],
         snapshot_date=snapshot_date,
     )
+    # Records the parameters this build actually ran with -- the systemic
+    # fix for silent-default drift (graph-expansion plan Y3): Round 1's
+    # rebuild silently used --two-hop-target's default of 100 instead of
+    # the published 200, halving two-hop rounds and quietly dropping 94
+    # routes-only contributor pages a round later. Stamping these here
+    # means a future rebuild can read the PREVIOUS artifact's own block and
+    # reproduce it instead of inheriting a changed default.
+    build_parameters = {
+        "one_hop_target": one_hop_target,
+        "two_hop_target": two_hop_target,
+        "max_endpoint_share": max_endpoint_share,
+        "max_bridge_share": max_bridge_share,
+    }
     for artifact in (universe, rounds):
         artifact["mode"] = RECORD_ROUTES_MODE
         artifact["provenance"]["catalog_version"] = catalog_version
         artifact["provenance"]["artifact_version"] = artifact_version
+        artifact["provenance"]["build_parameters"] = build_parameters
 
     return universe, rounds, diagnostics
 
