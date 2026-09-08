@@ -925,11 +925,21 @@ pool without extending or re-anchoring the daily manifest in the same change.
 
 **Host: anywhere** — pure Python, JSON-in/JSON-out, no dataset needed.
 
+The real committed manifest is **schema v2** (ADR 0066, multi-generation) since the
+Round 1 catalog expansion. Check `"schema_version"` in the manifest before picking a
+path below — v1 (`extend-connection-daily-manifest`) only works on a manifest that has
+never been through `upgrade-connection-daily-manifest-to-v2`; once it has, only the v2
+form below can extend it (it reads a top-level `catalog_version` a v2 manifest doesn't
+have, and fails closed with a clear error rather than silently misreading the file).
+
 ### Preconditions
 
-- The currently published `apps/web/public/data/game/daily-manifest.v1.json` and its
-  paired `rounds.v1.json` (same generation — extension fails closed on any version
-  mismatch).
+- v1: the currently published manifest and its paired `rounds.v1.json` (same
+  generation — extension fails closed on any version mismatch).
+- v2: the currently published manifest and the **newest** generation's own rounds
+  artifact (`generations[-1].rounds_url`, normally the live `rounds.v1.json`) — older,
+  already-frozen generations are untouched by extension and need no rounds artifact to
+  extend, only to validate (see step 3).
 
 ### 1. Check remaining runway (read-only, safe to run any time)
 
@@ -939,6 +949,7 @@ uv run networked-players-catalog connection-daily-manifest-status \
   --warn-within-days 14
 ```
 
+Schema-agnostic — reads only `schedule` dates, so this works unchanged on v1 or v2.
 Exits 1 only if the schedule has already run out (`already_expired`); exits 0 while
 merely inside the warning window, so this is safe to run as a periodic check without
 treating "getting close" as a hard failure.
@@ -951,6 +962,30 @@ already too late. It never extends anything itself.
 
 ### 2. Extend
 
+**v2 (the real committed manifest today):**
+
+```bash
+uv run networked-players-catalog extend-connection-daily-manifest-v2 \
+  --manifest apps/web/public/data/game/daily-manifest.v1.json \
+  --rounds apps/web/public/data/game/rounds.v1.json \
+  --existing-rounds gen-1=apps/web/public/data/game/generations/gen-1/rounds.json \
+  --existing-rounds gen-2=apps/web/public/data/game/generations/gen-2/rounds.json \
+  --days 90 \
+  --output apps/web/public/data/game/daily-manifest.v1.json \
+  --generated-at 2026-09-07T00:00:00+00:00
+```
+
+Extends only the **newest** generation (`--rounds` must be exactly that generation's own
+pool, verified by provenance triple before anything is written). Every existing entry
+belonging to the newest generation is re-verified against `--rounds` first — a silently
+changed round is caught, not propagated. Older, frozen generations are never touched or
+rewritten. `--existing-rounds` (repeat once per older generation, `GENERATION_ID=PATH`)
+is only needed for the post-write validation in step 3 to cover the whole manifest, not
+just the newest generation's new entries — omit it and only the newest generation gets
+checked. `--generated-at` is explicit, never the wall clock.
+
+**v1 (only if the manifest has never been upgraded to v2):**
+
 ```bash
 uv run networked-players-catalog extend-connection-daily-manifest \
   --manifest apps/web/public/data/game/daily-manifest.v1.json \
@@ -960,11 +995,21 @@ uv run networked-players-catalog extend-connection-daily-manifest \
   --generated-at 2026-07-22T00:00:00+00:00
 ```
 
-Re-verifies every already-published entry's `round_fingerprint` before appending anything
-— a silently changed round is caught, not propagated. Never touches an already-published
-date. `--generated-at` is explicit, never the wall clock.
-
 ### 3. Validate
+
+**v2:**
+
+```bash
+uv run networked-players-catalog validate-connection-daily-manifest-v2 \
+  --manifest apps/web/public/data/game/daily-manifest.v1.json \
+  --rounds gen-1=apps/web/public/data/game/generations/gen-1/rounds.json \
+  --rounds gen-2=apps/web/public/data/game/generations/gen-2/rounds.json
+```
+
+Repeat `--rounds` once per generation actually named in `generations[]`; a generation
+with no supplied artifact is *reported*, not silently skipped.
+
+**v1:**
 
 ```bash
 uv run networked-players-catalog validate-connection-daily-manifest \
@@ -974,24 +1019,29 @@ uv run networked-players-catalog validate-connection-daily-manifest \
 
 ### Stop conditions
 
-- Extension raises on a version mismatch — the paired `rounds.v1.json` is a different
-  generation than the manifest was built against; regenerate the Connection Guesser pool
-  is not the fix here, reconcile which generation is actually live first.
+- Extension raises on a version mismatch — the paired rounds artifact is a different
+  generation than the manifest (v1: the whole manifest; v2: the newest generation) was
+  built against; regenerate the Connection Guesser pool is not the fix here, reconcile
+  which generation is actually live first (v2: freeze and repoint the outgoing
+  generation with `freeze-connection-daily-manifest-generation` before regenerating
+  `rounds.v1.json` — see "Connection Guesser regen" above; skipping this is the Round 1
+  incident).
 - Extension raises on pool exhaustion ("no repeat policy is implemented yet") — the
   eligible one-hop pool needs to grow (regenerate the Connection Guesser pool with a
   higher `--one-hop-target`) before more dates can be scheduled.
-- `validate-connection-daily-manifest` reports any failure.
+- The validator reports any failure.
 
 ### Safe-to-stop checkpoints
 
 - Step 1 is always safe, any time.
-- After step 3 validates clean — safe to stop; the extension only appended new dates,
-  every prior date is byte-for-byte unchanged (confirm with a diff before committing).
+- After step 3 validates clean — safe to stop; the extension only appended new dates
+  under the newest generation, every prior date is byte-for-byte unchanged (confirm with
+  a diff before committing).
 
 ### Expected outputs
 
-- An updated `daily-manifest.v1.json`: prior entries unchanged, new entries appended,
-  new `generated_at`.
+- An updated `daily-manifest.v1.json`: prior entries unchanged, new entries appended
+  under the newest generation, new `generated_at`.
 
 ### Recovery guidance
 
@@ -1003,6 +1053,9 @@ as a stop condition, not something to force through.
 
 Never reassign an already-published date. Never rebuild the manifest from scratch to
 "fix" it — extension is the only supported append path once the first daily is live.
+Introducing a genuinely different pool generation (as opposed to more dates on the
+current one) is `migrate-connection-daily-manifest-generation`'s job, not extension's —
+see "Connection Guesser regen" above.
 
 ## Record Routes regen
 
