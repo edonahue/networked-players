@@ -2730,10 +2730,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         # empty. A fixed number (the old default was 12) cannot track the
         # catalog as it grows.
         # Previously published artist pairs, kept at the front of the candidate
-        # order so their contributors keep their pages (plan section 11's
-        # Phase 2 "contributor index monotone" gate). Measured on the real
-        # Round 1 rebuild before this existed: 112 of 530 contributor pages
-        # would have 404'd.
+        # order so the paths they document stay documented -- the ADR 0048
+        # addendum's real guarantee (a published path ENDPOINT persists), not
+        # total contributor-index membership, which is explicitly allowed to
+        # churn. Measured on the real Round 1 rebuild before this existed:
+        # 112 of 530 contributor pages would have 404'd.
         carry_forward_artist_pairs: frozenset[tuple[int, int]] = frozenset()
         if args.carry_forward_challenge is not None:
             previous = json.loads(args.carry_forward_challenge.read_text())

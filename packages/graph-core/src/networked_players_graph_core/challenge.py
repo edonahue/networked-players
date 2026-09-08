@@ -333,14 +333,18 @@ def _candidate_album_pairs(
     if not carry_forward_artist_pairs:
         return [pair for round_list in rounds for pair in round_list]
 
-    # Carry-forward ordering (plan section 11's Phase 2 "contributor index
-    # monotone" gate). The caller stops at `max_paths`, so which candidates sit
-    # at the FRONT decides which paths get documented -- and therefore which
-    # people get a `/contributors/` page at all. Adding albums reshuffles this
-    # walk, so a previously documented artist pair can fall past the cap and
-    # take its contributors' pages with it: measured on the real Round 1
-    # rebuild (2026-09-04), 112 of 530 contributor pages would have 404'd, the
-    # same churn Phase 7 hit (549 -> 521) and never root-caused.
+    # Carry-forward ordering. What this protects is the ADR 0048 addendum's
+    # guarantee -- a previously documented path ENDPOINT stays documented --
+    # NOT total contributor-index membership, which is explicitly allowed to
+    # churn (pages are derived views, not durable records; see
+    # `contributor_continuity.py`). The caller stops at `max_paths`, so which
+    # candidates sit at the FRONT decides which paths get documented -- and
+    # therefore which people get a `/contributors/` page at all. Adding albums
+    # reshuffles this walk, so a previously documented artist pair can fall
+    # past the cap and take its contributors' pages with it: measured on the
+    # real Round 1 rebuild (2026-09-04), 112 of 530 contributor pages would
+    # have 404'd, the same churn Phase 7 hit (549 -> 521) and never
+    # root-caused.
     #
     # Priority, in order:
     #   1. Round 1 of the walk -- every album's FIRST pair, which is what

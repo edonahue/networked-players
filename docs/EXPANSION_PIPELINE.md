@@ -7,9 +7,8 @@ grows into a full method-plus-round-log doc as later Phase 2 slices land (plan �
 file for that eventual scope; it is deliberately narrow today rather than describing steps that
 don't exist yet).
 
-**Not yet run:** Round 1 itself. Every tool it needs is real and built (`score-expansion-candidates`,
-plan §5.2, among others — see below); the "Round log" section below documents the real, corrected
-command sequence to run it, ready to execute once the owner has completed candidate review.
+**Round 1 has run** (2026-09-04 to 2026-09-07, published in PR #246): 179 → 217 albums. The
+"Round log" section below carries both the reusable runbook and Round 1's own dated entry.
 
 ## Host assignment (plan §17, Slice 2-0)
 
@@ -73,13 +72,17 @@ more; smaller runs finish before a progress line would matter).
 
 ## Round log
 
-_(No round has run yet.)_ What follows is the real, corrected Round 1 runbook — every
-required argument, the corrected builder order, and the manual/human-judgment steps —
-written down so a future round (or a future session with no memory of this one) can
-execute it without re-deriving it from the CLI source. It replaces reliance on any one
-planning session's own memory (plan §20.5 Slice R1-D). Once Round 1 actually runs, a
-short dated entry recording the real command history, wall-clock numbers, and any
-deviation from this runbook goes below this section.
+What follows is the real, corrected round runbook — every required argument, the corrected
+builder order, and the manual/human-judgment steps — written down so a future round (or a
+future session with no memory of this one) can execute it without re-deriving it from the
+CLI source. It replaces reliance on any one planning session's own memory (plan §20.5 Slice
+R1-D). **Round 1's own dated entry is at the end of this section**; each future round appends
+one below it.
+
+A round entry records the real command history and any deviation from this runbook. It does
+**not** record wall-clock numbers: ADR 0018 keeps every real elapsed time measured on this
+machine out of the public repository. Timings go to `local/benchmarks/` (gitignored) and the
+entry points at the file rather than reproducing the numbers.
 
 ### Real correction this runbook fixes
 
@@ -321,10 +324,11 @@ catalog. Rebuilding them every round is still required; nothing in CI will force
       --output apps/web/public/data/challenge.v3.json
 
     # PASS THE ROUND TARGETS EXPLICITLY. The CLI defaults are 150/100, but the
-    # published artifact holds 143 one-hop + 200 two-hop rounds. Round 1's first
-    # cascade relied on the defaults, built 343 -> 250 rounds, and 94 routes-only
-    # contributors lost their pages -- diagnosed only after the fact. Read the
-    # previous artifact's own round counts before choosing these numbers.
+    # published artifact holds 150 one-hop + 200 two-hop rounds (read its own
+    # universe.v1.json "counts" block -- do not trust this comment's numbers
+    # over the artifact's). Round 1's first cascade relied on the defaults,
+    # built 343 -> 250 rounds, and 94 routes-only contributors lost their
+    # pages -- diagnosed only after the fact.
     uv run networked-players-catalog build-record-routes \
       --onehop-root local/processed/discogs-onehop-v5/snapshot=20260601 \
       --albums apps/web/public/data/catalog/albums.v1.json \
@@ -431,3 +435,53 @@ no explanation is the signal that a build parameter drifted, which is exactly ho
     `local/benchmarks/` (private) per plan §6's budgets.
 15. **Pi fleet validation fan-out** on every regenerated artifact; `zimaworker1` runs its
     own concurrent piece of this round's work per the host-assignment table above.
+
+---
+
+## Round entries
+
+### Round 1 — 179 → 217 albums (2026-09-04 → 2026-09-07, PR #246)
+
+**Outcome.** 38 albums added. Catalog schema v2 (`expansion_round` 0 for the original 179,
+1 for the 38 new; 211 featured). Every album documented: `albums_missed: 0`, 575 challenge
+paths. Contributor index 530 → 639 (185 added, 76 removed), **0 of 173 published path
+endpoints lost**. Album art 217/217. Record Routes 350 rounds (150 one-hop + 200 two-hop).
+Connection Guesser 343 → 500 rounds, 145 → 190 albums. `graph.v4` gzip grew 1.15× (gate
+≤1.6×, absolute ≤2.5 MB). Lane composition as published: 54 editorial, 163 pre-resolved,
+0 generic candidates.
+
+**Deviations from the runbook above, and what caused them.** All four were found and fixed
+during the round; they are why the runbook now reads as it does.
+
+1. **The candidate-supply stage did not exist.** The first attempt delivered **6 albums
+   against a target of 30** and was misdiagnosed as "blocked on owner picks". Root cause: the
+   pipeline had a scoring stage and a selection stage and no *supply* stage — all three
+   candidate pools this doc specifies were absent, and `rank-album-candidates` (a popularity
+   proxy with zero catalog or collection awareness) had been substituted. Fixed by building
+   `build-collection-candidates` (PR #243) and `build-relationship-pool` (PR #244).
+   Measured: 216 seed releases → 213 masters → 147 eligible, against a 20-slot lane.
+2. **`select-graph-rich-candidates` ignored the committed roster band.** 4 of its 6 picks
+   violated the 5–30 band and needed a manual pre-filter. Fixed in PR #245; enforcing the band
+   *improved* the lane (6/6 slots in band, 36 new performers vs 34).
+3. **Three silent-default drifts**, the round's most consequential pattern:
+   `--editorial-albums` fell back to `top-albums-v1.json` and added 2 unapproved albums;
+   `--expansion-round` stamped all 217 albums as Round 1 additions (fixed with
+   `previously_published_rounds`); and `--two-hop-target` used its default 100 instead of the
+   published 200, halving two-hop rounds and dropping 94 routes-only contributor pages. The
+   systemic fix is build-parameter provenance (PR #248).
+4. **Regenerating the Connection Guesser pool broke the daily manifest.** gen-2 still pointed
+   at the live `rounds.v1.json`, so all 90 of its scheduled dates — including that day's —
+   rendered "could not be verified". Fixed by the ADR 0066 freeze-and-repoint, which is now a
+   real tool (`freeze-connection-daily-manifest-generation`) rather than a hand edit, plus a
+   gen-3 cutover. `validate-public-artifacts` went from 60 failures to zero.
+
+**Audit.** The manual title-by-title pass over all 38 new albums (per
+`docs/STUDIO_ALBUM_CATALOG_AUDIT.md`) flagged exactly one: *The Blues Brothers — Briefcase
+Full Of Blues*, a live album carrying 0 `Live` descriptors across 137 pressings. **Owner
+decision: kept**, recorded in that document so a later pass does not re-litigate it.
+
+**Timings.** Not reproduced here — ADR 0018. See `local/benchmarks/` (gitignored).
+
+**Follow-ups this round generated:** `extend_connection_daily_manifest` had no schema-v2 form,
+so the live manifest could not be extended at all (fixed, PR #247); build-parameter provenance
+stamping (PR #248); and the ADR 0048 addendum recording that contributor pages are derived.

@@ -1,8 +1,18 @@
 # ADR 0048: Contributor index and pages
 
-- **Status:** Accepted
-- **Date:** 2026-08-03
+- **Status:** Accepted (one question answered later — see the banner below)
+- **Date:** 2026-08-03, last revised 2026-09-08
 - **Depends on:** [ADR 0047](0047-role-taxonomy-as-a-third-orthogonal-classification-layer.md)
+
+> **Read this first.** This ADR decided *how* the contributor index is built and *who* gets a
+> page. It never decided whether a page, once published, is permanent — and for a year that
+> gap was filled by an informal assumption that index membership only ever grows. It does not,
+> and it was never supposed to. See
+> [Addendum (2026-09-05): contributor pages are derived, not permanent](#addendum-2026-09-05-contributor-pages-are-derived-not-permanent),
+> which records the owner's decision and the guarantee that replaced the assumption.
+>
+> The scale figures in the Decision and Consequences below ("549 contributors") were real when
+> written and are now historical; the index is 639 as of the Round 1 expansion.
 
 ## Context
 
@@ -240,3 +250,72 @@ credit is still fully published in `album-credit-membership.v1.json` and
 still rendered on album pages as an additional documented credit. Only
 its ability to form a traversable public edge (and therefore its need for
 muting) is gone.
+
+## Addendum (2026-09-05): contributor pages are derived, not permanent
+
+**Owner decision, prompted by the Round 1 catalog expansion (179 → 217 albums).** A
+contributor page is a *derived view* of the documented paths, not a durable public record.
+Pages may legitimately appear and disappear as the curated path set changes. What is
+guaranteed instead is narrower and actually enforceable:
+
+> **A previously documented path *endpoint* stays documented.** Total index membership is
+> explicitly **not** guaranteed monotone.
+
+### Why this is a ratification, not a reversal
+
+Nothing in the repository ever promised permanence. `docs/PRODUCT.md` does not mention
+contributor pages at all, and neither does `docs/GRAPH_EXPANSION_DIRECTION.md`. This ADR — the
+only one that had considered who gets a page — settled the *inclusion rule* (a resolvable name
+plus at least one album association) and said nothing about durability.
+
+The documented record already ran the other way. `docs/PERFORMER_GRAPH_MIGRATION_REPORT.md`
+lists a contributor-page 404 as a *verified success*. `docs/PHASE7_REPORT.md` states plainly
+that "521 is not itself evidence of an error — a curated-path-driven index legitimately
+changes membership when the curated paths themselves change." The "monotone" expectation
+existed only as an engineering gate in a planning document plus a pair of code comments
+quoting it. This addendum makes the repository agree with itself.
+
+### What enforces the real guarantee
+
+`contributor_continuity_report`
+(`packages/graph-core/src/networked_players_graph_core/contributor_continuity.py`) is
+deliberately asymmetric: losing a documented path endpoint **fails**; losing an interior
+contributor is **reported, never enforced**. The CLI wrapper is
+`networked-players-catalog check-contributor-continuity`, which takes the previously published
+and freshly rebuilt `challenge.v3.json` and `contributors/index.v1.json` and exits non-zero
+only on lost endpoints.
+
+The mechanism that keeps endpoints stable is `--carry-forward-challenge`: previously published
+artist pairs are held at the front of the candidate walk, so paths documented in an earlier
+round stay documented even though the walk stops at `max_paths`.
+
+### Round 1's real numbers
+
+| | |
+|---|---|
+| Contributor index | 530 → **639** (185 added, 76 removed) |
+| Published path endpoints lost | **0 of 173** |
+
+The 76 removals are exactly the churn this addendum declares acceptable: interior contributors
+whose paths were reshuffled by the expansion. The zero is the guarantee being met.
+
+Two measured incidents from the same round are worth keeping, because they are what the gate
+is really for. Before `--carry-forward-challenge` existed, the Round 1 rebuild would have
+404'd **112 of 530** pages — the same churn class Phase 7 hit (549 → 521) and never
+root-caused. Separately, 94 routes-only contributors vanished because
+`build-record-routes` ran with the default `--two-hop-target 100` instead of the published
+200; that was a build-parameter mistake, not a property of expansion, and it is the reason the
+continuity check *reports* total churn even though it does not fail on it — a large unexplained
+`removed` count is the signal that something upstream went wrong.
+
+### Consequences
+
+- The engineering gate is now "path endpoints monotone; total contributor churn reported and
+  explained", replacing "contributor index monotone".
+- A contributor page 404 is not by itself a bug. An unexplained *jump* in `removed` is worth
+  investigating; a lost endpoint is a hard failure.
+- No redirects are introduced for removed pages. Adding them would imply a permanence promise
+  this decision explicitly declines to make.
+
+See `packages/graph-core/tests/test_contributor_continuity.py`, whose
+`test_it_would_have_caught_this_rounds_regression` pins the 94-page routes-only case.
