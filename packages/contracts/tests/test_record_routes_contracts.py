@@ -308,3 +308,54 @@ def test_rejects_two_hop_route_with_an_ambiguous_bridge() -> None:
         "does not include from_artist_id" in f or "does not include to_artist_id" in f
         for f in failures
     )
+
+
+# --- provenance.build_parameters (graph-expansion plan Y3, optional) -------
+
+
+def test_missing_build_parameters_still_passes() -> None:
+    universe, rounds = _pair()
+    assert "build_parameters" not in universe["provenance"]
+    assert record_routes_failures(universe, rounds) == []
+
+
+def test_valid_build_parameters_passes() -> None:
+    universe, rounds = _pair()
+    universe["provenance"]["build_parameters"] = {
+        "one_hop_target": 150,
+        "two_hop_target": 200,
+        "max_endpoint_share": 0.15,
+        "max_bridge_share": 0.2,
+    }
+    assert record_routes_failures(universe, rounds) == []
+
+
+def test_non_integer_one_hop_target_is_rejected() -> None:
+    universe, rounds = _pair()
+    universe["provenance"]["build_parameters"] = {
+        "one_hop_target": "150",
+        "two_hop_target": 200,
+        "max_endpoint_share": 0.15,
+        "max_bridge_share": 0.2,
+    }
+    failures = record_routes_failures(universe, rounds)
+    assert any("build_parameters.one_hop_target must be" in f for f in failures)
+
+
+def test_non_numeric_max_endpoint_share_is_rejected() -> None:
+    universe, rounds = _pair()
+    universe["provenance"]["build_parameters"] = {
+        "one_hop_target": 150,
+        "two_hop_target": 200,
+        "max_endpoint_share": "0.15",
+        "max_bridge_share": 0.2,
+    }
+    failures = record_routes_failures(universe, rounds)
+    assert any("build_parameters.max_endpoint_share must be" in f for f in failures)
+
+
+def test_non_object_build_parameters_is_rejected() -> None:
+    universe, rounds = _pair()
+    universe["provenance"]["build_parameters"] = "not an object"
+    failures = record_routes_failures(universe, rounds)
+    assert any("build_parameters must be an object" in f for f in failures)

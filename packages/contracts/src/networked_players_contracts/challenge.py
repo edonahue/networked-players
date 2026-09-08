@@ -103,6 +103,35 @@ def challenge_failures(artifact: Any, catalog: Any | None = None) -> list[str]:
             ):
                 failures.append("provenance.graph_policy_version must be a positive integer")
 
+        # Optional (graph-expansion plan Y3): the parameters this build
+        # actually ran with. Never required -- an artifact built before this
+        # landed has no such block and must stay valid.
+        if "build_parameters" in provenance:
+            build_parameters = provenance.get("build_parameters")
+            if not isinstance(build_parameters, dict):
+                failures.append("provenance.build_parameters must be an object")
+            else:
+                for int_field in ("max_paths", "max_hops"):
+                    value = build_parameters.get(int_field)
+                    if not isinstance(value, int) or isinstance(value, bool) or value < 0:
+                        failures.append(
+                            f"provenance.build_parameters.{int_field} must be a "
+                            "non-negative integer"
+                        )
+                if "max_frontier_expansion" in build_parameters:
+                    value = build_parameters["max_frontier_expansion"]
+                    if value is not None and (
+                        not isinstance(value, int) or isinstance(value, bool) or value < 0
+                    ):
+                        failures.append(
+                            "provenance.build_parameters.max_frontier_expansion must be a "
+                            "non-negative integer or null"
+                        )
+                if not isinstance(build_parameters.get("carried_forward_pairs_used"), bool):
+                    failures.append(
+                        "provenance.build_parameters.carried_forward_pairs_used must be a boolean"
+                    )
+
     if isinstance(catalog, dict):
         catalog_version = provenance.get("catalog_version")
         if catalog_version is not None and catalog_version != catalog.get("catalog_version"):

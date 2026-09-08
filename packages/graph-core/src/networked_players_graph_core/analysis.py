@@ -654,6 +654,20 @@ def assemble_album_catalog(
         "pre_resolved_buckets": pre_resolved_buckets,
         "candidate_count_considered": len(candidates),
         "candidate_count_added": len(candidate_albums),
+        # Records the parameters this build actually ran with -- the
+        # systemic fix for silent-default drift (graph-expansion plan Y3):
+        # Round 1 stamped every album as an expansion_round=1 addition (PR
+        # #238's bug) and separately let --editorial-albums silently fall
+        # back to top-albums-v1.json, adding 2 unapproved albums. Stamping
+        # here means a future rebuild can read the PREVIOUS artifact's own
+        # block and reproduce it instead of inheriting a changed default.
+        # Orthogonal to catalog_schema_version -- recorded regardless of
+        # whether the v2 opt-in fields are present.
+        "build_parameters": {
+            "target_count": target_count,
+            "expansion_round": expansion_round,
+            "editorial_backbone_used": bool(editorial_albums),
+        },
         "albums": albums,
     }
     if is_v2_catalog:

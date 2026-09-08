@@ -207,3 +207,51 @@ def test_cross_check_agrees_with_graph_core_reference() -> None:
         raised = True
     assert raised
     assert public_album_catalog_failures(broken) != []
+
+
+# --- build_parameters (graph-expansion plan Y3, optional) -------------------
+
+
+def test_missing_build_parameters_still_passes() -> None:
+    catalog = _catalog()
+    assert "build_parameters" not in catalog
+    assert public_album_catalog_failures(catalog) == []
+
+
+def test_valid_build_parameters_passes() -> None:
+    catalog = _catalog()
+    catalog["build_parameters"] = {
+        "target_count": 217,
+        "expansion_round": 1,
+        "editorial_backbone_used": True,
+    }
+    assert public_album_catalog_failures(catalog) == []
+
+
+def test_non_integer_target_count_is_rejected() -> None:
+    catalog = _catalog()
+    catalog["build_parameters"] = {
+        "target_count": "217",
+        "expansion_round": 1,
+        "editorial_backbone_used": True,
+    }
+    failures = public_album_catalog_failures(catalog)
+    assert any("build_parameters.target_count must be" in f for f in failures)
+
+
+def test_non_boolean_editorial_backbone_used_is_rejected() -> None:
+    catalog = _catalog()
+    catalog["build_parameters"] = {
+        "target_count": 217,
+        "expansion_round": 1,
+        "editorial_backbone_used": 1,
+    }
+    failures = public_album_catalog_failures(catalog)
+    assert any("editorial_backbone_used must be a boolean" in f for f in failures)
+
+
+def test_non_object_build_parameters_is_rejected() -> None:
+    catalog = _catalog()
+    catalog["build_parameters"] = "not an object"
+    failures = public_album_catalog_failures(catalog)
+    assert any("build_parameters must be an object" in f for f in failures)

@@ -1012,3 +1012,34 @@ def test_exploration_corpus_version_is_deterministic() -> None:
     assert exploration_corpus_version(albums, "20260601") == exploration_corpus_version(
         list(reversed(albums)), "20260601"
     )
+
+
+def test_assemble_album_catalog_stamps_the_build_parameters_it_ran_with(
+    dataset_root: Path,
+) -> None:
+    """Graph-expansion plan Y3: the systemic fix for silent-default drift.
+    PR #238's own bug stamped every album with the CURRENT build's
+    expansion_round, including the 179 that had been live since Phase 7;
+    a --editorial-albums default separately added 2 unapproved albums.
+    Recording the build's own parameters lets a future rebuild read this
+    block back rather than reproducing the ambiguity from scratch."""
+    editorial = [{"artist": "Alice", "title": "First Light"}]
+    with CreditGraph.open(dataset_root) as graph:
+        candidates = rank_album_candidates(dataset_root)
+        catalog = assemble_album_catalog(
+            graph, editorial, candidates, target_count=3, expansion_round=2
+        )
+    assert catalog["build_parameters"] == {
+        "target_count": 3,
+        "expansion_round": 2,
+        "editorial_backbone_used": True,
+    }
+
+
+def test_assemble_album_catalog_records_no_editorial_backbone_when_none_given(
+    dataset_root: Path,
+) -> None:
+    with CreditGraph.open(dataset_root) as graph:
+        candidates = rank_album_candidates(dataset_root)
+        catalog = assemble_album_catalog(graph, [], candidates, target_count=2)
+    assert catalog["build_parameters"]["editorial_backbone_used"] is False

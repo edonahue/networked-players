@@ -116,6 +116,31 @@ def public_album_catalog_failures(catalog: Any) -> list[str]:
         if not isinstance(album.get("main_release_id"), int) or album["main_release_id"] <= 0:
             failures.append(f"album {album_id} has an invalid main_release_id")
 
+    # Optional (graph-expansion plan Y3): the parameters this build actually
+    # ran with. Never required -- an artifact built before this landed has
+    # no such block and must stay valid.
+    if "build_parameters" in catalog:
+        build_parameters = catalog.get("build_parameters")
+        if not isinstance(build_parameters, dict):
+            failures.append("build_parameters must be an object")
+        else:
+            target_count = build_parameters.get("target_count")
+            if (
+                not isinstance(target_count, int)
+                or isinstance(target_count, bool)
+                or (target_count < 0)
+            ):
+                failures.append("build_parameters.target_count must be a non-negative integer")
+            expansion_round = build_parameters.get("expansion_round")
+            if (
+                not isinstance(expansion_round, int)
+                or isinstance(expansion_round, bool)
+                or (expansion_round < 0)
+            ):
+                failures.append("build_parameters.expansion_round must be a non-negative integer")
+            if not isinstance(build_parameters.get("editorial_backbone_used"), bool):
+                failures.append("build_parameters.editorial_backbone_used must be a boolean")
+
     schema_version = catalog.get("catalog_schema_version")
     if schema_version is not None:
         if schema_version != CATALOG_SCHEMA_VERSION_V2:
