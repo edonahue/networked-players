@@ -14,9 +14,6 @@ from pathlib import Path
 
 import pytest
 
-pytest.importorskip("pyarrow")
-pytest.importorskip("duckdb")
-
 from networked_players_catalog.cli import main
 from networked_players_catalog.discogs.parquet import write_release_dataset
 from networked_players_catalog.discogs.releases import iter_releases

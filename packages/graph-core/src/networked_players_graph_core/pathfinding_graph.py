@@ -389,16 +389,10 @@ def build_pathfinding_graph(
         # The source string is never TRANSFORMED, only selected. Generic
         # title-casing would corrupt `will.i.am`, `deadmau5`, `k.d. lang`,
         # `P!nk` and `blink-182`, and no hand-maintained correction list is
-        # introduced.
-        name_rows = graph._connection.execute(
-            "SELECT artist_id, name FROM linked_credits "
-            f"WHERE artist_id IN ({', '.join(str(i) for i in real_ids_for_name_query)}) "
-            "GROUP BY artist_id, name "
-            "QUALIFY row_number() OVER "
-            "(PARTITION BY artist_id ORDER BY count(*) DESC, name) = 1"
-        ).fetchall()
-        for artist_id, name in name_rows:
-            name_by_id[int(artist_id)] = str(name)
+        # introduced. `CreditGraph.artist_names` is that same selection,
+        # batched through a scratch-table join rather than a ~37k-literal
+        # `IN (...)` list.
+        name_by_id = graph.artist_names(real_ids_for_name_query)
     names = [
         virtual_names[node_id] if node_id < 0 else name_by_id.get(node_id, f"Artist {node_id}")
         for node_id in compact.node_ids

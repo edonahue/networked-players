@@ -33,8 +33,8 @@ help: ## List available targets
 setup: ## Install Python deps with dev + jobs + graph extras across every workspace member (uv sync --all-packages --extra dev --extra jobs --extra graph); matches CI exactly so `make check` doesn't silently skip the graph-benchmark tests
 	uv sync --all-packages --extra dev --extra jobs --extra graph
 
-test: ## Run the test suite (needs the jobs extra -- see setup)
-	uv run pytest
+test: ## Run the test suite in parallel across cores (pytest-xdist; needs the jobs extra -- see setup)
+	uv run pytest -n auto
 
 lint: ## Lint with Ruff
 	uv run ruff check .

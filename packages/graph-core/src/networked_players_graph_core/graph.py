@@ -1146,11 +1146,17 @@ class CreditGraph:
         coercion below keeps the inlining injection-safe."""
         table = f"scratch_ids_{uuid.uuid4().hex}"
         self._connection.execute(f"CREATE TEMP TABLE {table} (artist_id BIGINT)")
-        for start in range(0, len(artist_ids), self._SCRATCH_INSERT_CHUNK):
-            chunk = artist_ids[start : start + self._SCRATCH_INSERT_CHUNK]
+        self._insert_ids(table, artist_ids)
+        return table
+
+    def _insert_ids(self, table: str, ids: Sequence[int]) -> None:
+        """Append `ids` to a single-BIGINT-column table via chunked inline
+        `unnest` literals -- the fast path measured in `_scratch_id_table`'s
+        docstring, shared so no caller falls back to per-row `executemany`."""
+        for start in range(0, len(ids), self._SCRATCH_INSERT_CHUNK):
+            chunk = ids[start : start + self._SCRATCH_INSERT_CHUNK]
             literals = ",".join(str(int(a)) for a in chunk)
             self._connection.execute(f"INSERT INTO {table} SELECT unnest([{literals}]::BIGINT[])")
-        return table
 
     def degrees(self, artist_ids: Sequence[int]) -> dict[int, int]:
         """Batched `degree`: one query for the whole list instead of one per
@@ -1316,14 +1322,8 @@ class CreditGraph:
                         return self._reconstruct_path(from_artist_id, to_artist_id, parent)
 
                 self._connection.execute(f"DELETE FROM {frontier_table}")
-                self._connection.executemany(
-                    f"INSERT INTO {frontier_table} VALUES (?)",
-                    [[a] for a in next_frontier],
-                )
-                self._connection.executemany(
-                    f"INSERT INTO {visited_table} VALUES (?)",
-                    [[a] for a in next_frontier],
-                )
+                self._insert_ids(frontier_table, next_frontier)
+                self._insert_ids(visited_table, next_frontier)
 
             if capped_artist_ids:
                 raise FrontierTooLargeError(frozenset(capped_artist_ids))
@@ -1788,6 +1788,26 @@ class CreditGraph:
             [artist_id],
         ).fetchone()
         return None if row is None else str(row[0])
+
+    def artist_names(self, artist_ids: Sequence[int]) -> dict[int, str]:
+        """Batched `artist_name`: one query instead of one per artist, with the
+        same choice per artist (most frequent linked-credit name, ties broken
+        by name). An artist with no linked credit is absent from the result,
+        mirroring `artist_name` returning None."""
+        if not artist_ids:
+            return {}
+        table = self._scratch_id_table(sorted(set(artist_ids)))
+        try:
+            rows = self._connection.execute(
+                "SELECT artist_id, name FROM ("
+                "  SELECT c.artist_id, c.name, count(*) AS n FROM linked_credits c "
+                f"  JOIN {table} t ON t.artist_id = c.artist_id "
+                "  GROUP BY c.artist_id, c.name"
+                ") QUALIFY row_number() OVER (PARTITION BY artist_id ORDER BY n DESC, name) = 1"
+            ).fetchall()
+        finally:
+            self._connection.execute(f"DROP TABLE {table}")
+        return {int(artist_id): str(name) for artist_id, name in rows}
 
     def stats(self) -> dict[str, int]:
         """Corpus size (`linked_credits`) alongside traversable graph size

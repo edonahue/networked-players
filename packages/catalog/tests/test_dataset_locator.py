@@ -6,9 +6,6 @@ from pathlib import Path
 
 import pytest
 
-pytest.importorskip("pyarrow")
-pytest.importorskip("duckdb")
-
 from networked_players_catalog.discogs.dataset_locator import (
     DatasetLocatorError,
     dataset_file_urls,

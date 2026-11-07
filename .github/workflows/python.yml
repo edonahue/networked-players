@@ -37,7 +37,7 @@ jobs:
       - name: Type check
         run: uv run mypy
       - name: Test
-        run: uv run pytest
+        run: uv run pytest -n auto
       - name: Validate real public artifacts
         run: uv run networked-players-catalog validate-public-artifacts
       # `make check` has always run this too, but CI did not -- so the

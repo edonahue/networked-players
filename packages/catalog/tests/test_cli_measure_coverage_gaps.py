@@ -9,13 +9,9 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import pytest
-
-pytest.importorskip("pyarrow")
-pytest.importorskip("duckdb")
-
 import pyarrow as pa
 import pyarrow.parquet as pq
+import pytest
 
 from networked_players_catalog.cli import main
 

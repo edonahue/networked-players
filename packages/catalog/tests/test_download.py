@@ -10,9 +10,20 @@ from typing import ClassVar
 
 import pytest
 
+from networked_players_catalog.discogs import download as download_module
 from networked_players_catalog.discogs.download import download_file
 
 PAYLOAD = b"networked-players-discogs-fixture\n" * 200_000
+
+
+@pytest.fixture(autouse=True)
+def _no_retry_backoff(monkeypatch: pytest.MonkeyPatch) -> list[float]:
+    """The retry loop's exponential backoff is real wall-clock sleep (1s, 2s,
+    ...); the retry *behavior* is what these tests check, so record the
+    requested delays instead of waiting them out."""
+    delays: list[float] = []
+    monkeypatch.setattr(download_module.time, "sleep", delays.append)
+    return delays
 
 
 class RangeHandler(BaseHTTPRequestHandler):

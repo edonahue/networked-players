@@ -517,6 +517,40 @@ def test_artist_name_returns_canonical_name(dataset_root: Path) -> None:
         assert graph.artist_name(999_999) is None
 
 
+def test_artist_names_batch_matches_artist_name(dataset_root: Path) -> None:
+    with CreditGraph.open(dataset_root) as graph:
+        ids = [100, 200, 300, 400, 500, 999_999]
+        expected = {aid: name for aid in ids if (name := graph.artist_name(aid)) is not None}
+        assert graph.artist_names(ids) == expected
+        assert 999_999 not in graph.artist_names(ids)
+        assert graph.artist_names([]) == {}
+
+
+def test_artist_names_batch_keeps_the_most_frequent_then_alphabetical_name(
+    tmp_path: Path,
+) -> None:
+    from conftest import _credit, _release, write_synthetic_dataset
+
+    # Artist 7 is credited as "Zed" twice and "Abe" twice (a tie, broken by
+    # name); artist 8 as "Moe" twice and "Ann" once (frequency wins).
+    root = write_synthetic_dataset(
+        tmp_path / "snapshot=20260601",
+        release_rows=[_release(r, f"Release {r}") for r in (1, 2, 3, 4)],
+        credit_rows=[
+            _credit(1, artist_id=7, name="Zed"),
+            _credit(2, artist_id=7, name="Zed"),
+            _credit(3, artist_id=7, name="Abe"),
+            _credit(4, artist_id=7, name="Abe"),
+            _credit(1, artist_id=8, name="Moe"),
+            _credit(2, artist_id=8, name="Moe"),
+            _credit(3, artist_id=8, name="Ann"),
+        ],
+    )
+    with CreditGraph.open(root) as graph:
+        assert graph.artist_names([7, 8]) == {7: "Abe", 8: "Moe"}
+        assert graph.artist_names([7, 8]) == {7: graph.artist_name(7), 8: graph.artist_name(8)}
+
+
 def test_stats_counts_artists_and_traversable_graph(dataset_root: Path) -> None:
     with CreditGraph.open(dataset_root) as graph:
         stats = graph.stats()
