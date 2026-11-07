@@ -98,7 +98,7 @@ methodology and catalog-quality facts are public.
 - A manual accessibility pass (also issue #53).
 - `diff-artifact-version` tooling for the publication train's "semantic
   diff" stage — still a manual byte-for-byte diff against the prior
-  publish, as documented in `docs/PHASE2_PLAN.md`'s spine table.
+  publish, as documented in `docs/archive/PHASE2_PLAN.md`'s spine table.
 - A cross-language BFS parity test between `compact_graph_bench.py` and
   `pathfindingGraph.ts` — both ADR 0050 and ADR 0051 flagged this as a real,
   open gap, revisit-triggered by any future BFS bug found in only one

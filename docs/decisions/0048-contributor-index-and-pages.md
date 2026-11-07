@@ -268,8 +268,8 @@ contributor pages at all, and neither does `docs/GRAPH_EXPANSION_DIRECTION.md`. 
 only one that had considered who gets a page — settled the *inclusion rule* (a resolvable name
 plus at least one album association) and said nothing about durability.
 
-The documented record already ran the other way. `docs/PERFORMER_GRAPH_MIGRATION_REPORT.md`
-lists a contributor-page 404 as a *verified success*. `docs/PHASE7_REPORT.md` states plainly
+The documented record already ran the other way. `docs/archive/PERFORMER_GRAPH_MIGRATION_REPORT.md`
+lists a contributor-page 404 as a *verified success*. `docs/archive/PHASE7_REPORT.md` states plainly
 that "521 is not itself evidence of an error — a curated-path-driven index legitimately
 changes membership when the curated paths themselves change." The "monotone" expectation
 existed only as an engineering gate in a planning document plus a pair of code comments

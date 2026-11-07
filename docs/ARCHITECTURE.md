@@ -68,6 +68,27 @@ The parser itself is initially single-process. The optional workstation is prefe
 
 The source graph preserves artist → release → artist evidence. An artist-only projection may support selected analysis, but it must not replace the source evidence model. A linked Discogs artist ID identifies a playable artist node; a non-linked credited name remains evidence but does not become a synthetic identity automatically. NetworkX or similarly readable fixtures should validate correctness before optimized representations are trusted.
 
+## Public graph and static artifact layer
+
+- **Performer-only edges.** A public connection means two artists performed on the same
+  recording ([ADR 0068](decisions/0068-performer-only-public-graph.md), building on the
+  track-scoped edge rule of [ADR 0035](decisions/0035-track-scoped-credit-edges.md)).
+  Non-performance credits stay visible as evidence but never create a connection on their own.
+- **Python builds, the browser reads.** `packages/catalog` CLI builders run DuckDB queries over
+  the private one-hop corpus and write versioned JSON artifacts under
+  `apps/web/public/data/` (catalog, album-art registry, round pools, daily manifest,
+  contributor index, search index, and the `graph.v4` pathfinding graph,
+  [ADR 0071](decisions/0071-pathfinding-graph-v4-role-dictionary.md)). Each artifact has a
+  contract in `data/contracts/` and a dependency-free validator in `packages/contracts`;
+  `validate-public-artifacts` checks them all in CI.
+- **No server in the request path.** Astro renders static pages at build time; Connect and
+  Explore run pathfinding in the browser over `graph.v4`
+  ([ADR 0050](decisions/0050-browser-pathfinding-architecture-selection.md)). Deploys go to
+  Cloudflare Workers static assets.
+- **Artifacts are rewritten in place** under stable `*.v1.json`-style names, so they are
+  served with revalidation rather than long-lived caching; only fingerprinted `_astro/`
+  bundles are immutable.
+
 ## Failure posture
 
 - The public static experience remains useful when the cluster or live API is unavailable.

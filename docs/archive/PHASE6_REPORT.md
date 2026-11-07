@@ -11,7 +11,7 @@ left.
 
 | PR | # | What it is |
 |---|---|---|
-| 6-00 | [#122](https://github.com/edonahue/networked-players/pull/122) | Corrected `docs/NEXT_PATH_BRIEF.md`'s title/date and two real overstatements (Phase 4/5 having shipped without the brief being updated; a wrong claim about what `contributor_network` actually consumes) before building anything new on top of it. |
+| 6-00 | [#122](https://github.com/edonahue/networked-players/pull/122) | Corrected `docs/archive/NEXT_PATH_BRIEF.md`'s title/date and two real overstatements (Phase 4/5 having shipped without the brief being updated; a wrong claim about what `contributor_network` actually consumes) before building anything new on top of it. |
 | 6-01 | [#123](https://github.com/edonahue/networked-players/pull/123) | Album pages' documented connections link directly into Connect Two Records, pre-filled. |
 | 6-02 | [#125](https://github.com/edonahue/networked-players/pull/125) | Album pages link directly into the Network Explorer. |
 | 6-03 | [#126](https://github.com/edonahue/networked-players/pull/126) | Explorer gained read-only `?center=` deep-link support. |
@@ -31,7 +31,7 @@ other — closing gaps where a page *referenced* related content without a
 real `<a href>` to it. **6-09 through 6-12** added one new, real discovery
 signal on top of the now-connected graph, and resolved (by deferring,
 with reasoning) the standing corpus-scope design question from
-`docs/NEXT_PATH_BRIEF.md`.
+`docs/archive/NEXT_PATH_BRIEF.md`.
 
 ## What was measured before being built
 
@@ -125,7 +125,7 @@ with reasoning) the standing corpus-scope design question from
 - Tier D ("studio albums only") scope-tier automation — stays a manual,
   per-artist follow-up; not built (see above).
 - Any promotion of `contributor_network`/`community_detection`/
-  `bridge_analysis` to a public surface — `docs/NEXT_PATH_BRIEF.md`'s
+  `bridge_analysis` to a public surface — `docs/archive/NEXT_PATH_BRIEF.md`'s
   "Most-connected-contributors view" entry remains open; this phase did
   not touch it beyond correcting its own prior overstatement (6-00).
 - The scope-tier corpus contract redesign itself — deliberately deferred
@@ -144,7 +144,7 @@ with reasoning) the standing corpus-scope design question from
 2. **The scope-tier corpus contract question** — ADR 0061's two revisit
    triggers (a real promotion candidate, or a caching need the on-demand
    filter can't satisfy) are the honest condition for reopening it.
-3. **`docs/NEXT_PATH_BRIEF.md`'s remaining open candidates** — Compute/
+3. **`docs/archive/NEXT_PATH_BRIEF.md`'s remaining open candidates** — Compute/
    platform and Publication/data-operations sections were untouched by
    this phase and remain exactly as they were at the 2026-08-16
    correction pass.

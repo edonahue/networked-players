@@ -6,7 +6,7 @@
 
 ## Context
 
-`docs/NEXT_PATH_BRIEF.md`'s "Most-connected-contributors view" entry has
+`docs/archive/NEXT_PATH_BRIEF.md`'s "Most-connected-contributors view" entry has
 stood open since the post-Phase-3 cleanup pass, naming two things: a raw
 co-credit-degree view, and a richer signal beyond raw degree ("a second,
 simpler, complementary lens on contributor connectivity alongside the
@@ -107,7 +107,7 @@ multi-node separation — that the cut-vertex finding above does not test
 and does not settle. It remains exactly as open as it was before this
 pass; nothing here should be read as a finding against it.
 
-**Close `docs/NEXT_PATH_BRIEF.md`'s "Most-connected-contributors view"
+**Close `docs/archive/NEXT_PATH_BRIEF.md`'s "Most-connected-contributors view"
 entry as resolved**, not left open indefinitely: raw degree already
 shipped (no gap), and the richer signal was investigated on real data and
 found not to deliver value. A genuine close, not another deferral.
@@ -117,7 +117,7 @@ found not to deliver value. A genuine close, not another deferral.
 - No code, dependency, artifact, contract, or UI change. `packages/research`'s
   `graph_analysis.py` is untouched; ADR 0055's scoping of igraph to the
   research lane's optional `graph` extra stands unchanged.
-- `docs/NEXT_PATH_BRIEF.md`'s "Most-connected-contributors view" entry is
+- `docs/archive/NEXT_PATH_BRIEF.md`'s "Most-connected-contributors view" entry is
   marked resolved with a pointer to this ADR; `community_detection`'s
   promotion question is named separately so it isn't silently swept into
   this closure.

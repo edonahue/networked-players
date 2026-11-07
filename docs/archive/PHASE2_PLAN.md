@@ -2,7 +2,7 @@
 
 Status: **complete**. All nine slices (A–I) shipped, plus a follow-up round
 (Slices J–N) closing most of the report's original "remaining risk" items;
-see `docs/PHASE2_REPORT.md` for the closing report (what shipped, what was
+see `docs/archive/PHASE2_REPORT.md` for the closing report (what shipped, what was
 measured, rejected approaches, and what's still genuinely left). Companion to
 `docs/BUILD_PLAN.md` (pipeline/infra track) and
 `docs/WEB_PRODUCT_PLAN.md` (the Phase 1 game-launch plan, now shipped). This document

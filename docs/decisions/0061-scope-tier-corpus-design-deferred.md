@@ -6,7 +6,7 @@
 
 ## Context
 
-`docs/NEXT_PATH_BRIEF.md`'s "Core-discography vs. exploration-neighborhood
+`docs/archive/NEXT_PATH_BRIEF.md`'s "Core-discography vs. exploration-neighborhood
 corpus split" section has carried an open question since 2026-08-04: the
 Topic Corpus Builder's single 1-hop scope serves personnel/role analysis
 and network/community analysis with opposite needs. Real measurement
@@ -82,7 +82,7 @@ updated with a link to this ADR and PR 6-11's tooling.
 
 - No code change beyond this document. `corpus.py`, the Topic Corpus
   contract, and every existing analysis stay exactly as they are.
-- `docs/NEXT_PATH_BRIEF.md`'s scope-tier section gets a pointer to this
+- `docs/archive/NEXT_PATH_BRIEF.md`'s scope-tier section gets a pointer to this
   ADR, replacing "not yet designed" with "deliberately deferred, see ADR
   0061" — an honest state change, not a resolution.
 - Phase 6 closes this investigation thread without a redesign, per the
@@ -92,7 +92,7 @@ updated with a link to this ADR and PR 6-11's tooling.
 ## Validation
 
 No new code to validate — this ADR only records a decision and updates
-`docs/NEXT_PATH_BRIEF.md`'s prose. `research-scope-tier` itself (the
+`docs/archive/NEXT_PATH_BRIEF.md`'s prose. `research-scope-tier` itself (the
 measurement tool this decision relies on) was validated in PR 6-11: 11
 tests over a synthetic fixture, fail-then-pass verified, plus a real run
 against the already-built local Jamiroquai corpus.

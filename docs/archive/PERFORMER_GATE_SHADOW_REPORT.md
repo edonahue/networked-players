@@ -11,7 +11,7 @@ process; this report exists to measure the real shape of the change before
 PR 3 regenerates any artifact from it.
 
 > **Machine-readable companion:**
-> [`docs/data/performer-gate-shadow-report-v1.json`](data/performer-gate-shadow-report-v1.json)
+> [`docs/data/performer-gate-shadow-report-v1.json`](../data/performer-gate-shadow-report-v1.json)
 > is the full committed output of
 > `networked-players-catalog performer-gate-shadow-report`
 > (`packages/graph-core/.../shadow_report.py`), run 2026-09-01 against the

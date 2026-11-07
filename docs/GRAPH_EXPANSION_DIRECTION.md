@@ -32,7 +32,7 @@ The product should reward wandering and curiosity. The graph itself is the centr
 
 ## Near-term scale target
 
-The current catalog contains 179 albums. The next major milestone should target approximately **500 public studio albums in total**.
+The catalog contained 179 albums when this direction was set and 217 after expansion Round 1 (PR #246). The next major milestone should target approximately **500 public studio albums in total**.
 
 This is not an eventual ceiling. A much larger repository could be compelling, but the immediate goal is to become large enough that the site no longer feels like a toy while remaining bounded enough to audit musical quality, visual legibility, build performance, and evidence correctness.
 

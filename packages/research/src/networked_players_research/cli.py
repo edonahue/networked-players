@@ -155,7 +155,7 @@ def _parser() -> argparse.ArgumentParser:
         "research-scope-tier",
         help=(
             "measure the core-discography-vs-exploration-neighborhood corpus-scope "
-            "tradeoff (docs/NEXT_PATH_BRIEF.md) over an already-built topic corpus "
+            "tradeoff (docs/archive/NEXT_PATH_BRIEF.md) over an already-built topic corpus "
             "-- reusable, tested replacement for the hand-run five-artist measurement"
         ),
     )

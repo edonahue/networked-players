@@ -685,7 +685,7 @@ the release-format policy locally.
   most visibly — then comes back empty for structural reasons that look exactly like a
   clean result. The 2026-08-17 readiness run (PR #143) hit this and recorded "zero
   caveats across 200 candidates" as a finding; see the correction in
-  `docs/NEXT_PATH_BRIEF.md`. A run against v1 is not wrong so much as blind, and nothing
+  `docs/archive/NEXT_PATH_BRIEF.md`. A run against v1 is not wrong so much as blind, and nothing
   in the output says so.
 - Parsed masters at `<masters-root>/snapshot=<date>` (see "Masters parse" in
   `docs/DATA_SIZING.md`).
