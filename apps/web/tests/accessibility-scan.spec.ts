@@ -156,10 +156,18 @@ test("contributors directory has no automated accessibility violations", async (
   await expectNoViolations(page);
 });
 
+// The index-derived pick is currently Brian Eno (/contributors/634/: ~3,100
+// elements, ~400 evidence-table rows). Profiled 2026-11-07, a full axe
+// analyze() there takes ~27s on its own (color-contrast ~19s and region
+// ~9s, both per-element elementsFromPoint/geometry work over the table) --
+// inside the default 30s budget in isolation, but over it under full-suite
+// CPU load. A heavy page for the scanner, not a page regression, so give
+// both contributor-page scans the 3x `test.slow()` budget.
 test("a contributor page has no automated accessibility violations", async ({
   page,
   request,
 }) => {
+  test.slow();
   const res = await request.get("/data/contributors/index.v1.json");
   const { contributors } = (await res.json()) as {
     contributors: { artist_id: number; albums: string[] }[];
@@ -185,6 +193,7 @@ test("a contributor page has no automated accessibility violations in light them
   page,
   request,
 }) => {
+  test.slow(); // see the dark-theme scan above for the measured reason
   const res = await request.get("/data/contributors/index.v1.json");
   const { contributors } = (await res.json()) as {
     contributors: { artist_id: number; albums: string[] }[];

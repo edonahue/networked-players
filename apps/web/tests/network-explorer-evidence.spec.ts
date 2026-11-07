@@ -69,25 +69,50 @@ test("evidence drawer hop names link to their own contributor page when one is p
 
   await page.goto("/explore/master-107325/");
   await waitForGraph(page);
-  await firstEdge(page).click();
+  // Root cause of this test's long-running intermittent CI failure
+  // ("Expected: 0, Received: 1" on a hop-name link), found 2026-11-07: the
+  // first edge renders below the fold, and click()'s own scroll-into-view
+  // moves the graph under the cursor, so Chromium's hover handling could
+  // open a DIFFERENT edge (instrumented: neighbor 293221 instead of the
+  // clicked 52833 in 5 of 8 runs) and swap the drawer content between the
+  // per-name reads below. Never a dead link: every rendered link was on a
+  // real contributor. Scroll first, wait for the settled drawer, prove it
+  // shows the edge that was clicked, and read names + links in one
+  // atomic snapshot.
+  const edge = firstEdge(page);
+  await edge.scrollIntoViewIfNeeded();
+  const neighborId = await edge.getAttribute("data-neighbor-id");
+  await edge.click();
 
+  const drawer = page.locator("[data-explorer-evidence-drawer]");
+  await expect(drawer).toHaveAttribute("data-evidence-state", "ready", {
+    timeout: 15000,
+  });
   const content = page.locator("[data-explorer-evidence-content]");
   await expect(content).toContainText(
     /documented performing on the same release/i,
   );
-  const nameEls = content.locator("[data-hop-artist-id]");
-  await expect(nameEls).toHaveCount(2);
+  await expect(
+    content.locator(`[data-hop-artist-id="${neighborId}"]`),
+  ).toHaveCount(1);
+
+  const names = await content
+    .locator("[data-hop-artist-id]")
+    .evaluateAll((els) =>
+      els.map((el) => ({
+        artistId: Number(el.getAttribute("data-hop-artist-id")),
+        hrefs: [...el.querySelectorAll("a")].map((a) => a.getAttribute("href")),
+      })),
+    );
+  expect(names).toHaveLength(2);
 
   let linkedAtLeastOne = false;
-  for (let i = 0; i < 2; i++) {
-    const el = nameEls.nth(i);
-    const artistId = Number(await el.getAttribute("data-hop-artist-id"));
-    const link = el.locator("a");
+  for (const { artistId, hrefs } of names) {
     if (contributorIds.has(artistId)) {
-      await expect(link).toHaveAttribute("href", `/contributors/${artistId}/`);
+      expect(hrefs).toEqual([`/contributors/${artistId}/`]);
       linkedAtLeastOne = true;
     } else {
-      await expect(link).toHaveCount(0);
+      expect(hrefs).toEqual([]);
     }
   }
   // Elvis (the center, artist_id 27518) is always one of the two names on
@@ -95,6 +120,113 @@ test("evidence drawer hop names link to their own contributor page when one is p
   // -- this pair genuinely exercises the linking behavior, not a vacuous
   // "nothing had a page" pass.
   expect(linkedAtLeastOne).toBe(true);
+});
+
+async function hopArtistIds(page: import("@playwright/test").Page) {
+  return page
+    .locator("[data-explorer-evidence-content] [data-hop-artist-id]")
+    .evaluateAll((els) =>
+      els.map((el) => el.getAttribute("data-hop-artist-id")),
+    );
+}
+
+// Regression for the root cause above: after a click, focus moving into the
+// drawer scrolls the page, and whatever edge then slides under the UNMOVED
+// cursor must not replace the evidence that was explicitly chosen. Made
+// deterministic by scrolling until a different edge sits exactly under the
+// click point, instead of relying on the focus scroll happening to land one
+// there.
+test("an edge scrolled under a stationary cursor never replaces clicked evidence", async ({
+  page,
+}) => {
+  await page.goto("/explore/master-107325/");
+  await waitForGraph(page);
+  const edge = firstEdge(page);
+  await edge.scrollIntoViewIfNeeded();
+  const clickedId = await edge.getAttribute("data-neighbor-id");
+  const box = (await edge.boundingBox())!;
+  const x = box.x + box.width / 2;
+  const y = box.y + box.height / 2;
+  await page.mouse.click(x, y);
+  const drawer = page.locator("[data-explorer-evidence-drawer]");
+  await expect(drawer).toHaveAttribute("data-evidence-state", "ready", {
+    timeout: 15000,
+  });
+  expect(await hopArtistIds(page)).toContain(clickedId);
+
+  // Find a scroll offset that puts some OTHER edge directly under (x, y).
+  const dy = await page.evaluate(
+    ([px, py, clicked]) => {
+      for (let d = -600; d <= 600; d += 4) {
+        const yy = py + d;
+        if (yy < 0 || yy >= window.innerHeight) continue;
+        const g = document
+          .elementFromPoint(px, yy)
+          ?.closest<HTMLElement>(".explorer-edge-group");
+        if (g && g.dataset.neighborId !== clicked) return d;
+      }
+      return null;
+    },
+    [x, y, clickedId] as const,
+  );
+  expect(dy, "some other edge must be reachable by scrolling").not.toBeNull();
+  await page.evaluate((d) => window.scrollBy(0, d), dy!);
+  await expect
+    .poll(() =>
+      page.evaluate(
+        ([px, py]) =>
+          document
+            .elementFromPoint(px, py)
+            ?.closest<HTMLElement>(".explorer-edge-group")?.dataset.neighborId,
+        [x, y] as const,
+      ),
+    )
+    .not.toBe(clickedId);
+  // Chromium's hover update for the scroll lands asynchronously; give it
+  // real time to (wrongly) fire before asserting it was ignored.
+  await page.waitForTimeout(500);
+  expect(await hopArtistIds(page)).toContain(clickedId);
+});
+
+// The fix above must not cost real hover-to-preview: after a click, actually
+// moving the pointer onto a different edge still previews that edge.
+test("hovering a different edge after a click still previews it", async ({
+  page,
+}) => {
+  await page.goto("/explore/master-107325/");
+  await waitForGraph(page);
+  const edges = page.locator("[data-explorer-edges] .explorer-edge-group");
+  const first = edges.first();
+  await first.scrollIntoViewIfNeeded();
+  await first.click();
+  const drawer = page.locator("[data-explorer-evidence-drawer]");
+  await expect(drawer).toHaveAttribute("data-evidence-state", "ready", {
+    timeout: 15000,
+  });
+
+  const firstId = await first.getAttribute("data-neighbor-id");
+  // Pick another edge whose hit-area centre really is that edge (not hidden
+  // under an overlapping neighbour), then genuinely move the pointer to it.
+  await first.scrollIntoViewIfNeeded();
+  const target = await edges.evaluateAll((els, skip) => {
+    for (const el of els as HTMLElement[]) {
+      if (el.dataset.neighborId === skip) continue;
+      const r = el.getBoundingClientRect();
+      const cx = r.x + r.width / 2;
+      const cy = r.y + r.height / 2;
+      if (cy < 0 || cy >= window.innerHeight) continue;
+      const hit = document
+        .elementFromPoint(cx, cy)
+        ?.closest<HTMLElement>(".explorer-edge-group");
+      if (hit === el) return { id: el.dataset.neighborId!, cx, cy };
+    }
+    return null;
+  }, firstId);
+  expect(target, "another directly hoverable edge must exist").not.toBeNull();
+  await page.mouse.move(target!.cx, target!.cy, { steps: 5 });
+  await expect
+    .poll(() => hopArtistIds(page), { timeout: 15000 })
+    .toContain(target!.id);
 });
 
 // The drawer's advertised state must distinguish "open but still fetching"

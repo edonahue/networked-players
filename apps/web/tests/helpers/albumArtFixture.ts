@@ -3,7 +3,7 @@
 // /albums/[album].astro into its TRUE placeholder branch -- both
 // coverFor() and album.cover_image falsy at once.
 //
-// No committed album currently lacks a registry entry (all 140 have one),
+// No committed album currently lacks a registry entry (all 217 have one),
 // so no real page can reach that branch through the normal build. This
 // helper does NOT derive its fixture from the real committed
 // album-art.v1.json (repository guidance: "keep fixtures synthetic and
@@ -18,7 +18,7 @@
 // pickConnectedAlbumWithArt) navigates to a real id rather than a
 // fabricated one. That real challenge.v3.json read is used only to find a
 // real, connected album whose own cover_image field is also already null
-// (true for all 140 today) -- never to shape the registry itself.
+// (true for all 217 today) -- never to shape the registry itself.
 
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
