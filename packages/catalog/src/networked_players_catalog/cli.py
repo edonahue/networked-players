@@ -179,43 +179,12 @@ def _parser() -> argparse.ArgumentParser:
     )
     classify_roles.add_argument("--top-unknown", type=int, default=50)
 
-    shadow_report = subparsers.add_parser(
-        "performer-gate-shadow-report",
-        help=(
-            "ADR 0068 PR 2 diagnostic: compare the current performer-gated "
-            "credit_edges_sql against a frozen pre-ADR-0068 (broad) "
-            "reconstruction on the same real corpus -- structural metrics "
-            "only, no production cutover"
-        ),
-    )
-    shadow_report.add_argument("--dataset", type=Path, required=True)
-    shadow_report.add_argument(
-        "--catalog",
-        type=Path,
-        required=True,
-        help="apps/web/public/data/catalog/albums.v1.json (or equivalent)",
-    )
-    shadow_report.add_argument("--output", type=Path, default=None, help="optional report path")
-    shadow_report.add_argument("--max-artists-per-release", type=int, default=50)
-
     format_index = subparsers.add_parser(
         "build-release-format-scoring-index",
         help="write a compact allowed-release index from a review policy",
     )
     format_index.add_argument("--policy", type=Path, required=True)
     format_index.add_argument("--output", type=Path, required=True)
-
-    format_migration = subparsers.add_parser(
-        "migrate-release-formats",
-        help="copy a dataset and add structured release formats from a local dump",
-    )
-    format_migration.add_argument("--input-dataset", type=Path, required=True)
-    format_migration.add_argument("--raw-dump", type=Path, required=True)
-    format_migration.add_argument("--snapshot", required=True)
-    format_migration.add_argument("--source-url", required=True)
-    format_migration.add_argument("--output-root", type=Path, required=True)
-    format_migration.add_argument("--chunk-rows", type=int, default=50_000)
-    format_migration.add_argument("--overwrite", action="store_true")
 
     import_seed = subparsers.add_parser(
         "import-seed", help="reduce a local Discogs collection export to a release-ID seed"
@@ -311,7 +280,8 @@ def _parser() -> argparse.ArgumentParser:
 
     build_challenge = subparsers.add_parser(
         "build-challenge-from-dump",
-        help="build a real, album-centered challenge.v2 artifact from a one-hop dataset",
+        help="build the real, album-centered challenge artifact (schema v2, published as "
+        "challenge.v3.json) from a one-hop dataset",
     )
     build_challenge.add_argument(
         "--onehop-root", type=Path, required=True, help="one-hop snapshot root"
@@ -2502,51 +2472,6 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(json.dumps(report, indent=2, sort_keys=True))
         return 0
 
-    if args.command == "performer-gate-shadow-report":
-        from networked_players_graph_core.shadow_report import (
-            build_shadow_comparison_report_from_dataset,
-        )
-
-        catalog = json.loads(args.catalog.read_text())
-        # One entry per real album, duplicates preserved -- a set would
-        # collapse an artist with multiple catalog albums (e.g. Jamiroquai,
-        # 5 of the real 179) to one, under-reporting catalog_album_count and
-        # catalog_albums_in_largest_component (round-1 Codex review finding
-        # on PR #204).
-        catalog_album_artist_ids = [int(a["artist_id"]) for a in catalog["albums"]]
-        catalog_names = {int(a["artist_id"]): str(a["artist"]) for a in catalog["albums"]}
-        shadow_comparison = build_shadow_comparison_report_from_dataset(
-            args.dataset,
-            catalog_album_artist_ids=catalog_album_artist_ids,
-            catalog_names=catalog_names,
-            max_artists_per_release=args.max_artists_per_release,
-        )
-        payload = shadow_comparison.as_dict()
-        if args.output is not None:
-            args.output.parent.mkdir(parents=True, exist_ok=True)
-            args.output.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
-        print(
-            json.dumps(
-                {
-                    "broad_undirected_edge_count": payload["broad_pre_adr0068"][
-                        "undirected_edge_count"
-                    ],
-                    "gated_undirected_edge_count": payload["gated_adr0068"][
-                        "undirected_edge_count"
-                    ],
-                    "broad_largest_component_size": payload["broad_pre_adr0068"][
-                        "largest_component_size"
-                    ],
-                    "gated_largest_component_size": payload["gated_adr0068"][
-                        "largest_component_size"
-                    ],
-                    "output": str(args.output) if args.output is not None else None,
-                },
-                indent=2,
-            )
-        )
-        return 0
-
     if args.command == "build-release-format-scoring-index":
         from .discogs.release_format_policy import (
             build_release_format_scoring_index,
@@ -2564,21 +2489,6 @@ def main(argv: Sequence[str] | None = None) -> int:
                 indent=2,
             )
         )
-        return 0
-
-    if args.command == "migrate-release-formats":
-        from .discogs.format_migration import migrate_dataset_with_formats
-
-        migration_manifest = migrate_dataset_with_formats(
-            args.input_dataset,
-            args.raw_dump,
-            args.output_root,
-            snapshot_date=args.snapshot,
-            source_url=args.source_url,
-            chunk_rows=args.chunk_rows,
-            overwrite=args.overwrite,
-        )
-        print(json.dumps(migration_manifest, indent=2, sort_keys=True))
         return 0
 
     if args.command == "import-seed":

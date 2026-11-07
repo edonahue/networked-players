@@ -356,35 +356,3 @@ def iter_releases(
                 source_url=source_url,
                 max_releases=max_releases,
             )
-
-
-def iter_release_formats(
-    path: Path,
-    *,
-    snapshot_date: str,
-    release_ids: set[int] | None = None,
-) -> Iterator[dict[str, object]]:
-    """Stream only structured format rows, optionally for a bounded ID set."""
-    if path.name.endswith(".gz"):
-        handle_context: BinaryIO = cast(BinaryIO, gzip.open(path, "rb"))
-    else:
-        handle_context = path.open("rb")
-    with handle_context as handle:
-        context = etree.iterparse(
-            handle,
-            events=("end",),
-            tag="release",
-            huge_tree=True,
-            recover=False,
-            resolve_entities=False,
-            no_network=True,
-        )
-        for _, element in context:
-            release_id = int(element.attrib["id"])
-            if release_ids is None or release_id in release_ids:
-                yield from _format_rows(element, snapshot_date=snapshot_date, release_id=release_id)
-            element.clear()
-            parent = element.getparent()
-            if parent is not None:
-                while element.getprevious() is not None:
-                    del parent[0]

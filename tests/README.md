@@ -1,16 +1,10 @@
 # Tests
 
-Cross-project acceptance and integration tests will live here when implementation begins.
+There is no cross-project suite in this directory. Tests live next to the code they cover:
 
-The testing strategy should eventually include:
-
-- manually inspectable graph fixtures;
-- catalog normalization and provenance tests;
-- snapshot-version compatibility tests;
-- worker resource and retry tests;
-- static challenge schema validation;
-- browser accessibility and smoke checks;
-- API bounds and degradation tests;
-- recovery exercises for infrastructure changes.
-
-No test suite is implemented yet.
+- `packages/*/tests/` — pytest suites for each Python package (run by `make check`, in
+  parallel via `pytest -n auto`), using synthetic fixtures only;
+- `apps/web/tests/` — Playwright smoke, accessibility, and pure-node specs for the site
+  (`npm run test:smoke` in `apps/web/`);
+- `validate-public-artifacts` and `validate-album-catalog-audit` — contract validation of
+  the real committed artifacts, also part of `make check`.
