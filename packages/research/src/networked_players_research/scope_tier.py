@@ -1,6 +1,6 @@
 """Scope-tier measurement (Phase 6 PR 6-11): turns the hand-run, one-off
 "core discography vs. exploration neighborhood" measurement already
-recorded for five real artists (`docs/NEXT_PATH_BRIEF.md`'s "Core-
+recorded for five real artists (`docs/archive/NEXT_PATH_BRIEF.md`'s "Core-
 discography vs. exploration-neighborhood corpus split" section;
 `local/research/{jamiroquai,wu-tang-clan,d-angelo,nirvana,miles-davis}/
 scope-tier-analysis.md`, gitignored) into reusable, tested code, so the

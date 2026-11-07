@@ -75,7 +75,7 @@ committed catalog audit
 (`docs/data/studio-album-catalog-inclusion-audit-v1.json`) shows **18**
 `graph_rich`-sourced albums against the 19-slot target this ADR set, one
 short — confirmed directly, not a counting error (also independently
-documented in `docs/NEXT_PATH_BRIEF.md`'s own 2026-08-30 post-Phase-7-audit
+documented in `docs/archive/NEXT_PATH_BRIEF.md`'s own 2026-08-30 post-Phase-7-audit
 correction). Final composition: **13 personal + 18 graph-rich + 8
 coverage-gap = 39** published albums (140 pre-Phase-7 + 39 = 179 total),
 not the 40 this ADR originally allocated for.

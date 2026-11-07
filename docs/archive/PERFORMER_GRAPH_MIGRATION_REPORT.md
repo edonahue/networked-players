@@ -59,7 +59,7 @@ kept each PR reviewable, since the v2 retirement alone touched ~40 files.
 ### Full public one-hop corpus (PR 2 shadow diagnostic)
 
 Measured against the real corpus, not hypothesized —
-`docs/PERFORMER_GATE_SHADOW_REPORT.md`:
+`docs/archive/PERFORMER_GATE_SHADOW_REPORT.md`:
 
 | Metric | Broad (pre-0068) | Gated (0068) | Change |
 |---|---:|---:|---:|

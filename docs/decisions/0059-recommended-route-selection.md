@@ -951,7 +951,7 @@ filters); it now also names the ranked recommendation, the shortest/
 alternate distinction, the "Why this route?" disclosure, the shareable
 link, Swap, and endpoint cover art, all real and live.
 
-**`docs/ROADMAP.md` and `docs/NEXT_PATH_BRIEF.md`** checked and left
+**`docs/ROADMAP.md` and `docs/archive/NEXT_PATH_BRIEF.md`** checked and left
 unchanged -- neither references Connect, pathfinding, or route quality;
 both track a different, unrelated set of milestones and next-direction
 candidates that this phase doesn't touch or invalidate.

@@ -4,7 +4,7 @@
 
 The project begins with a private collection-derived seed, expands through adjacent catalog credits, and produces documented paths between artists and releases. The first public experience will be static-first so it remains useful even when the home lab is offline.
 
-> **Status:** live and playable. A real 179-album Discogs catalog with
+> **Status:** live and playable. A real 217-album Discogs catalog with
 > hotlinked cover art backs four playable game modes at
 > `networked-players.com/play/`: the flagship Connection Guesser (one-hop
 > and two-hop shared-credit rounds), Connection of the Day (a frozen daily

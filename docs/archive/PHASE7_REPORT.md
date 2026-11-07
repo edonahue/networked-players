@@ -41,7 +41,7 @@ PR numbers are chronological, not lane-ordered.
 | PR | What it is |
 |---|---|
 | [#145](https://github.com/edonahue/networked-players/pull/145) | Public editorial seed contract — a working-set expansion path independent of the private-seed collection. |
-| [#146](https://github.com/edonahue/networked-players/pull/146) | Bucket A resolved: 13 personal/editorial anchors ([ADR 0065](decisions/0065-phase7-bucket-a-personal-lane-allocation.md) — 13, not the mission brief's original 16). |
+| [#146](https://github.com/edonahue/networked-players/pull/146) | Bucket A resolved: 13 personal/editorial anchors ([ADR 0065](../decisions/0065-phase7-bucket-a-personal-lane-allocation.md) — 13, not the mission brief's original 16). |
 | [#147](https://github.com/edonahue/networked-players/pull/147) | `rank-album-candidates` excludes already-published masters. |
 | [#148](https://github.com/edonahue/networked-players/pull/148) | Release-format quantity parsing bounded to int32 — a real malformed value from the actual dump would otherwise crash the build. |
 | [#149](https://github.com/edonahue/networked-players/pull/149) | Bucket C coverage-gap measurement (decade/genre/style composition). |
@@ -91,7 +91,7 @@ Explore, remains deferred; see "Remaining.")*
 | [#158](https://github.com/edonahue/networked-players/pull/158) | Generation-suffixed dataset names allowed in x86 fleet replication. |
 | [#159](https://github.com/edonahue/networked-players/pull/159) | A round id already used by a kept generation is never rescheduled. |
 | [#160](https://github.com/edonahue/networked-players/pull/160) | The browser resolves schema-v2 multi-generation daily manifests. |
-| [#161](https://github.com/edonahue/networked-players/pull/161) | **Publish the Phase 7 catalog expansion: 140 → 179 albums, gen-2 daily cutover** ([ADR 0066](decisions/0066-phase7-daily-manifest-schedule-rewrite-exception.md) — the bounded, audited exception to the never-rewrite daily-manifest rule this cutover needed). The publication boundary this whole phase built toward. |
+| [#161](https://github.com/edonahue/networked-players/pull/161) | **Publish the Phase 7 catalog expansion: 140 → 179 albums, gen-2 daily cutover** ([ADR 0066](../decisions/0066-phase7-daily-manifest-schedule-rewrite-exception.md) — the bounded, audited exception to the never-rewrite daily-manifest rule this cutover needed). The publication boundary this whole phase built toward. |
 
 ### PR G — Public browsing, performance, copy, closeout
 
@@ -99,10 +99,10 @@ Explore, remains deferred; see "Remaining.")*
 |---|---|
 | [#162](https://github.com/edonahue/networked-players/pull/162) | `about.json`/`llms.txt` catalog stats derived from real artifacts, replacing hardcoded/stale numbers. |
 | [#163](https://github.com/edonahue/networked-players/pull/163) | Album shelf gains search (title/artist substring) and sort (title/artist/year), with result count and an honest empty state. |
-| [#170](https://github.com/edonahue/networked-players/pull/170) | Album shelf shows the **full** catalog, marking the handful of not-yet-connected albums honestly instead of silently hiding them ([ADR 0067](decisions/0067-album-shelf-shows-the-full-catalog.md) — reverses a prior deliberate, tested decision as the catalog outgrew it). |
+| [#170](https://github.com/edonahue/networked-players/pull/170) | Album shelf shows the **full** catalog, marking the handful of not-yet-connected albums honestly instead of silently hiding them ([ADR 0067](../decisions/0067-album-shelf-shows-the-full-catalog.md) — reverses a prior deliberate, tested decision as the catalog outgrew it). |
 | [#171](https://github.com/edonahue/networked-players/pull/171) | Album shelf decade filter, plus URL-addressable search/sort/decade state. |
 | [#172](https://github.com/edonahue/networked-players/pull/172) | The homepage's last hardcoded example (a fixed "Behind the Glass" album pair) replaced with a deterministically-computed real one, reusing the same predicate Connect Two Records' own mode uses. |
-| [#173](https://github.com/edonahue/networked-players/pull/173) | Site re-profiled at 179 albums — method committed publicly ([ADR 0018](decisions/0018-benchmark-results-local-only.md) discipline), real numbers local-only. |
+| [#173](https://github.com/edonahue/networked-players/pull/173) | Site re-profiled at 179 albums — method committed publicly ([ADR 0018](../decisions/0018-benchmark-results-local-only.md) discipline), real numbers local-only. |
 | [#174](https://github.com/edonahue/networked-players/pull/174) | This report's first version. |
 | [#194](https://github.com/edonahue/networked-players/pull/194) | **Closeout recovery pass.** Fixed #163's own real, still-open Codex finding: a filtered-out album-shelf card's `hidden` attribute alone did nothing (a class selector in `motif.css` outranks the bare `[hidden]` UA rule), and sorting only ever set CSS `order`, never real DOM order — both silently ignored by keyboard/screen-reader navigation. Bundled with the remaining `astro check` hint cleanup. |
 
@@ -267,7 +267,7 @@ ADR 0065 originally allocated 13 personal + 19 graph-rich + 8 coverage-gap
 (140 → 179, not → 180) — Bucket B landed one short of its own 19-slot
 target, confirmed directly against
 `docs/data/studio-album-catalog-inclusion-audit-v1.json` and independently
-documented in `docs/NEXT_PATH_BRIEF.md`'s 2026-08-30 correction. ADR 0065's
+documented in `docs/archive/NEXT_PATH_BRIEF.md`'s 2026-08-30 correction. ADR 0065's
 own 2026-08-30 addendum records this and makes the closeout's decision
 explicit: **179 stands as final.** No 19th graph-rich candidate is
 manufactured after the fact, and no filler album is added anywhere to round
@@ -340,7 +340,7 @@ legitimately changes membership when the curated paths themselves change.
 1. **PR C's curator expansion-review UI** — build when a real next
    expansion round is actually queued, so it can be measured against real
    candidate data from day one rather than a synthetic stand-in.
-2. **`docs/NEXT_PATH_BRIEF.md`'s remaining open candidates** — Compute/
+2. **`docs/archive/NEXT_PATH_BRIEF.md`'s remaining open candidates** — Compute/
    platform and Publication/data-operations sections were untouched by
    this phase and remain exactly as they were before it started.
 3. **Re-check Codex's automated PR review once its usage quota resets** —

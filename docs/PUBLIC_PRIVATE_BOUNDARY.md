@@ -39,6 +39,15 @@ Pi 3B") is fine in public docs; "this Pi measured 4,630 releases/sec on
 
 Public files use placeholders such as `worker-01.example.internal`. A local ignored directory or external secret store supplies real values. Public code should fail clearly when required local configuration is absent; it should never include a convenient insecure default.
 
+### Accepted exceptions
+
+- **The node name `zimaworker1`** (the dedicated x86 heavy worker) appears in tracked
+  scripts and docs. The owner reviewed this on 2026-11-07 and accepted it as public: it
+  is a bare node label, not an address, domain, or access path, and renaming it would
+  break the operator scripts that target it for no privacy gain. This exception covers
+  that one label only — its address, the coordination host's name, and every other real
+  hostname stay local under the rules above.
+
 Measured benchmark output (cluster or single-node) is written under
 `local/benchmarks/`, never committed and never transcribed into a public doc
 — see `infra/ansible/README.md`'s Benchmarking section for how to reproduce a

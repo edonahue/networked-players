@@ -6,7 +6,7 @@
 
 ## Context
 
-`docs/NEXT_PATH_BRIEF.md`'s "Full RQ-based Pi fleet maturity" entry has
+`docs/archive/NEXT_PATH_BRIEF.md`'s "Full RQ-based Pi fleet maturity" entry has
 named this as open since the post-Phase-3 cleanup pass: two scripts remain
 outside the ADR 0034 capability platform that absorbed the other 8 fleet
 checks (ADR 0056) — `scripts/enqueue_verify_challenge.py` and the legacy
@@ -64,7 +64,7 @@ excluded from the live fleet, and ADR 0056 explicitly scoped it out of the
 would mean building a genuinely new primitive** — "shard input N ways,
 select and dispatch to N specific workers in parallel, collect N results
 together" — that doesn't exist on `packages/platform` today.
-`docs/NEXT_PATH_BRIEF.md` itself only ever named the value of this
+`docs/archive/NEXT_PATH_BRIEF.md` itself only ever named the value of this
 migration as *"operator confidence, not end-player-visible."* That is a
 weak justification for rearchitecting a live, correctly-working production
 dispatch path, especially with no live-fleet access in this working
@@ -78,7 +78,7 @@ ADR-0034-*adjacent* production infrastructure, not ADR-0034-*integrated*.
 It is not broken, not blocking any real feature, and rewriting it onto a
 not-yet-existing platform primitive for a single consumer repeats the
 exact anti-pattern this repo's own convention already names: *"extract a
-shared helper only once a third surface needs it"* (`docs/PHASE3_REPORT.md`,
+shared helper only once a third surface needs it"* (`docs/archive/PHASE3_REPORT.md`,
 on why a generic `research promote` command was deferred the same way).
 
 **`rounds_check_job.py` is a deletion candidate, not a migration
@@ -89,7 +89,7 @@ doesn't have to re-derive the same investigation.
 
 **What this is not**: not a claim that the capability platform is the
 wrong long-term home for `enqueue_verify_challenge.py`'s pattern, and not
-a closure of `docs/NEXT_PATH_BRIEF.md`'s "Full RQ-based Pi fleet maturity"
+a closure of `docs/archive/NEXT_PATH_BRIEF.md`'s "Full RQ-based Pi fleet maturity"
 entry — it stays open, updated with a link to this ADR.
 
 ## Consequences
@@ -97,7 +97,7 @@ entry — it stays open, updated with a link to this ADR.
 - No code or infrastructure change beyond this document and the companion
   test-coverage PR (`scripts/enqueue_verify_challenge.py`'s dispatch logic
   is now tested, but its runtime behavior and deployment are unchanged).
-- `docs/NEXT_PATH_BRIEF.md`'s "Full RQ-based Pi fleet maturity" entry gets
+- `docs/archive/NEXT_PATH_BRIEF.md`'s "Full RQ-based Pi fleet maturity" entry gets
   a pointer to this ADR, replacing the open "whether... needs its own new
   primitive" uncertainty with the resolved answer.
 - A future contributor investigating this same question again can start
@@ -108,7 +108,7 @@ entry — it stays open, updated with a link to this ADR.
 No new runtime code to validate beyond the companion PR's 15 tests
 (dispatch-logic coverage for `enqueue_verify_challenge.py`, verified
 fail-then-pass and via `make check`). This ADR itself only records a
-decision and updates `docs/NEXT_PATH_BRIEF.md`'s prose.
+decision and updates `docs/archive/NEXT_PATH_BRIEF.md`'s prose.
 
 ## Revisit trigger
 

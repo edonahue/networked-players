@@ -1,6 +1,6 @@
 """Structurally diff two artifact JSON payloads -- the publication train's
 "semantic diff" stage (docs/PUBLIC_PRIVATE_BOUNDARY.md's pre-publication
-checklist, docs/PHASE2_PLAN.md's spine table), which today is a manual
+checklist, docs/archive/PHASE2_PLAN.md's spine table), which today is a manual
 byte-for-byte diff against the prior committed file (ADR 0043's actual
 practice). This formalizes that as a real, reusable command rather than
 full CI automation -- still a manual step a publisher runs, just no longer

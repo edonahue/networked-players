@@ -111,6 +111,12 @@ catalog. Rebuilding them every round is still required; nothing in CI will force
 
 ### Steps 1–8: candidate discovery through owner review (no publication yet)
 
+> **Stale — rewrite pending (ROADMAP "Stage 0").** These steps predate Round 1's
+> corrections: the candidate-supply stage (`build-collection-candidates`,
+> `build-relationship-pool`) now comes first, and the real `--masters-root` and
+> `--previous-routes-universe` usage is not yet written in. Use the Round 1 entry below as
+> the record of what actually ran until this section is rewritten.
+
 1. **Refresh the private seed** from the real collection export (path confirmed with the
    owner, never fabricated or guessed):
    ```bash

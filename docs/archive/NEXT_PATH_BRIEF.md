@@ -1,7 +1,7 @@
 # Next-path decision brief (originally post-Phase-3 cleanup, 2026-08-04; last corrected 2026-08-17)
 
 A factual decision-support document, not a plan for a next phase. The
-repository is now internally coherent (see `docs/PHASE3_REPORT.md`'s
+repository is now internally coherent (see `docs/archive/PHASE3_REPORT.md`'s
 follow-up section and ADR 0056) — this names the strongest real next
 directions the current, clean architecture supports, with the evidence
 behind each, and does not select one. None of the items below were
@@ -29,7 +29,7 @@ measured, anti-hub-bias discovery signal on the contributor index,
 surfaced on `/contributors/` and in the Explorer; and (3)
 `research-scope-tier` tooling plus ADR 0061, which deliberately defers
 (rather than answers) the "Core-discography vs. exploration-neighborhood
-corpus split" entry below. Full detail in `docs/PHASE6_REPORT.md`
+corpus split" entry below. Full detail in `docs/archive/PHASE6_REPORT.md`
 (PRs #122–134). The "Most-connected-contributors view" entry below is
 now partially addressed — see the note added there — and every other
 entry in this document is untouched by Phase 6 and remains open.
@@ -44,7 +44,7 @@ readiness" entry below, which Phase 7 directly used (in a different form
 than that entry itself proposed) and which now carries a dated
 correction of its own — see that entry. Every other entry, and Phase 7
 as a whole, neither started nor closed any candidate below.
-Full detail in `docs/PHASE7_REPORT.md` (PRs #143–195, including the
+Full detail in `docs/archive/PHASE7_REPORT.md` (PRs #143–195, including the
 2026-08-30 closeout recovery pass, PRs #193–195).
 
 ## Research quality / data model
@@ -330,7 +330,7 @@ gitignored) — only aggregate counts and method are recorded here, per
   decision `candidate_review.py`'s own `method_note` already states.
 - **Correction (2026-08-30, post-Phase-7 audit):** the entry above and its
   "not acted on" heading are now stale in one specific way — Phase 7 (PRs
-  #143–161, `docs/PHASE7_REPORT.md`) *did* expand the catalog, 140 → 179
+  #143–161, `docs/archive/PHASE7_REPORT.md`) *did* expand the catalog, 140 → 179
   albums, but not via a "+20/+40 pilot from this 200-ranked-candidate
   list." The mechanism this measurement evaluated (`rank-album-candidates`
   → `review-album-candidates`, ranked purely by marginal new-contributor

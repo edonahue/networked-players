@@ -1,5 +1,9 @@
 # Build plan
 
+> **Historical.** This breakdown was last maintained through Phase 7 (2026-08). For current
+> status and what's next, see [ROADMAP.md](ROADMAP.md). Source comments still cite its
+> milestone numbers, so it stays here rather than in `archive/`.
+
 ## Purpose and relationship to the roadmap
 
 `docs/ROADMAP.md` is the high-level, undated index of phases and direction. This
@@ -30,12 +34,12 @@ archive/calendar, a Python/TypeScript BFS parity test, `diff-artifact-version`
 tooling, an automated accessibility scan (with two real fixes: a contrast bug
 and an invalid nested-interactive ARIA role), and Pi-fleet canary dispatch
 *code* for the two newest artifacts (not yet run against real hardware) — is
-recorded in `docs/PHASE2_PLAN.md` and `docs/PHASE2_REPORT.md`, not
+recorded in `docs/archive/PHASE2_PLAN.md` and `docs/archive/PHASE2_REPORT.md`, not
 re-narrated here. `apps/web`'s row in the status table below and the
 `game-rules`/`workers`/`apps/api` placeholder rows are otherwise still
 accurate as of this update. Phase 3 (the research-platform pivot: topic
 corpora, graph analytics, heterogeneous compute) tracks in
-`docs/PHASE3_REPORT.md` once it ships, following the same pattern.
+`docs/archive/PHASE3_REPORT.md` once it ships, following the same pattern.
 
 **Catalog ingestion (`packages/catalog`).** Working and tested, and — as of
 2026-07-01 — proven against real data on real hardware. The `manifest`, `download`,
