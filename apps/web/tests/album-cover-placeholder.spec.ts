@@ -1,7 +1,7 @@
 // Proves /albums/[album].astro's TRUE placeholder branch -- both the
 // registry (coverFor()) and the album.cover_image fallback falsy at once --
 // actually renders .play-header__placeholder with no <img> at all. Not
-// achievable against the real dist/: 0 of 140 committed albums currently
+// achievable against the real dist/: 0 of 217 committed albums currently
 // lack a registry entry, so no real navigable page can reach that branch
 // through the normal build (game-albumart-buildtime.spec.ts already proves
 // coverFor() itself can return null, but never navigates a real page, so it
@@ -50,7 +50,7 @@ async function waitForServer(url: string, timeoutMs: number): Promise<void> {
 
 test.beforeAll(async () => {
   // This is the only spec in the suite that runs its own full, isolated
-  // `astro build` (1067 pages, ~15s alone) inside a hook instead of reusing
+  // `astro build` (~1300 pages at 217 albums) inside a hook instead of reusing
   // the shared global webServer -- the default 30s per-test timeout
   // (playwright.config.mjs) has no headroom left for the preview-server
   // startup and first navigation that follow, once other workers are

@@ -961,6 +961,42 @@ export async function initExplorerStage(): Promise<void> {
   // hover-after-recenter regression test, not just the original flake.
   let suppressPassiveTriggersUntilRealMouseMove = false;
 
+  // A THIRD synthetic-hover scenario, distinct from both above: an explicit
+  // activation (click / Enter / Space) moves focus into the drawer, which
+  // scrolls the page, which slides a DIFFERENT edge under the cursor's
+  // unmoved position -- and Chromium's hover update then fires `mouseover`
+  // on that edge, replacing the evidence the visitor explicitly chose with
+  // a neighbor they never pointed at. Root-caused 2026-11-07 by
+  // instrumenting real event order (`click:52833 focusin:DIV
+  // mouseover:293221`) behind network-explorer-evidence.spec.ts's long-
+  // standing intermittent hop-link failure; it reproduced in ~1 of 4 runs.
+  //
+  // Neither existing flag fits: the scroll can land well after the current
+  // macrotask (so the setTimeout(0) window is too short), and
+  // `evidenceDismissed` would kill hover until the next click. The signal
+  // that actually separates the two cases is the pointer's viewport
+  // position: content scrolled under a stationary cursor reports the SAME
+  // clientX/clientY as the activation, while a genuine hover onto another
+  // edge requires the pointer to have moved. So an explicit activation pins
+  // the pointer position, a mouseover at exactly that position is ignored,
+  // and any mouse event at a different position releases the pin.
+  let lastPointer: { x: number; y: number } | null = null;
+  let activationPointer: { x: number; y: number } | null = null;
+  document.addEventListener(
+    "mousemove",
+    (event) => {
+      lastPointer = { x: event.clientX, y: event.clientY };
+      if (
+        activationPointer &&
+        (event.clientX !== activationPointer.x ||
+          event.clientY !== activationPointer.y)
+      ) {
+        activationPointer = null;
+      }
+    },
+    { passive: true },
+  );
+
   // The drawer opens synchronously but its evidence arrives over the network,
   // so "visible" and "showing real evidence" are two different things. These
   // states make that difference observable instead of implicit:
@@ -1063,6 +1099,7 @@ export async function initExplorerStage(): Promise<void> {
       "[data-release-id]",
     );
     if (!target) return;
+    activationPointer = { x: event.clientX, y: event.clientY };
     void showEdgeEvidence(target, { moveFocus: true });
   });
   edgesLayer.addEventListener("keydown", (event) => {
@@ -1072,6 +1109,9 @@ export async function initExplorerStage(): Promise<void> {
       );
       if (!target) return;
       event.preventDefault();
+      // Wherever the (unmoved) mouse cursor currently rests is exactly where
+      // the focus-driven scroll could slide another edge under it.
+      activationPointer = lastPointer;
       void showEdgeEvidence(target, { moveFocus: true });
       return;
     }
@@ -1092,6 +1132,14 @@ export async function initExplorerStage(): Promise<void> {
   // which already gives a screen reader the right announcement on its own.
   edgesLayer.addEventListener("mouseover", (event) => {
     if (evidenceDismissed || suppressPassiveTriggersUntilRealMouseMove) return;
+    if (
+      activationPointer &&
+      event.clientX === activationPointer.x &&
+      event.clientY === activationPointer.y
+    ) {
+      return; // content moved under a stationary cursor -- not a hover
+    }
+    activationPointer = null;
     const target = (event.target as Element).closest<SVGGElement>(
       "[data-release-id]",
     );
