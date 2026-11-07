@@ -714,3 +714,27 @@ test.describe("mobile layout", () => {
     expect(overflow).toBeLessThanOrEqual(0);
   });
 });
+
+// Facebook, X, LinkedIn and Slack do not render SVG link previews, so the
+// social image must be a raster at the 1200x630 size the meta tags declare.
+test("the social preview image is a served 1200x630 PNG", async ({
+  page,
+  request,
+}) => {
+  await page.goto("/");
+  const ogImage = await page
+    .locator('meta[property="og:image"]')
+    .getAttribute("content");
+  expect(ogImage).toMatch(/\.png$/);
+  await expect(page.locator('meta[name="twitter:image"]')).toHaveAttribute(
+    "content",
+    ogImage!,
+  );
+  const res = await request.get(new URL(ogImage!).pathname);
+  expect(res.ok()).toBe(true);
+  const bytes = await res.body();
+  // PNG signature, then the IHDR width/height (big-endian u32 at 16/20).
+  expect(bytes.subarray(1, 4).toString("ascii")).toBe("PNG");
+  expect(bytes.readUInt32BE(16)).toBe(1200);
+  expect(bytes.readUInt32BE(20)).toBe(630);
+});

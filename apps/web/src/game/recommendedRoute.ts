@@ -92,7 +92,8 @@ export interface RouteFacts {
    * nodes. Lower is less hub-dependent. */
   maxInteriorDegree: number;
   /** Hops with a documented performer on at least one side. Since the ADR
-   * 0068 cutover to `graph.v3.json` this is ALWAYS equal to `hopCount` --
+   * 0068 cutover to `graph.v3.json` (and in `graph.v4.json`, whose edge set ADR
+   * 0071 keeps identical) this is ALWAYS equal to `hopCount` --
    * a non-performer hop cannot exist in the graph -- so it is retained as
    * a real, cheap invariant check (`explainRoute` states the guarantee
    * rather than a ratio, and `test_no_route_contains_a_zero_performer_hop`
@@ -679,8 +680,8 @@ export function explainRoute(
     );
   }
 
-  // A guarantee, not a measurement: graph.v3.json contains no non-performer
-  // edge, so this states the property rather than reporting a ratio that
+  // A guarantee, not a measurement: the performer-gated graph (graph.v3.json,
+  // and graph.v4.json since ADR 0071) contains no non-performer edge, so this states the property rather than reporting a ratio that
   // could only ever read "N of N". The ternary is kept as a real fail-loud:
   // if a future graph regression ever reintroduced such an edge, the copy
   // would immediately stop claiming the guarantee instead of asserting

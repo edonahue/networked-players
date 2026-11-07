@@ -276,7 +276,7 @@ export async function initExplorerStage(): Promise<void> {
 
   // graph-expansion Phase 1 (plan §8): ranks neighbors by explained
   // structural reach instead of buildView's own connection_count fallback
-  // (which only covers the ~445 indexed contributors and ties at 0 for
+  // (which only covers the ~640 indexed contributors and ties at 0 for
   // most real neighbors). Best-effort, like the contributor index above --
   // a fetch failure (or a graph this sidecar hasn't been generated for
   // yet) leaves `rankByArtistId` null, and buildView degrades to its
@@ -297,8 +297,8 @@ export async function initExplorerStage(): Promise<void> {
     // buildView's own connection_count fallback still ranks neighbors.
   }
 
-  // The evidence-release registry (~355 KB gzipped, ADR 0058 Slice 3 --
-  // ~57 KB is the *contributor index*'s real size, fetched separately
+  // The evidence-release registry (~250 KB gzipped at 217 albums, ADR 0058 Slice 3 --
+  // ~90 KB brotli / ~770 KB raw is the *contributor index*'s real size, fetched separately
   // above; this comment named the wrong artifact until the post-Phase-4
   // cleanup audit caught it) is fetched lazily on first edge interaction,
   // not on page load -- most visits to Explore never open the drawer at
