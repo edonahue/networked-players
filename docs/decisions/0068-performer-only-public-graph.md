@@ -252,7 +252,8 @@ not treated as a contradiction of this ADR.
 
 ## Addendum (2026-09-01, PR 2): "Horns" added, found by the shadow diagnostic
 
-PR 2's shadow-build diagnostic (`shadow_report.py`, run against the real
+PR 2's shadow-build diagnostic (`shadow_report.py` and the `performer-gate-shadow-report`
+command, both retired 2026-11 after the cutover -- recover them from git history to rerun; run against the real
 one-hop corpus, `local/processed/discogs-onehop-v4`) surfaced a real,
 currently-excluded token with real volume that this ADR's own PR 1 audit
 missed: **"Horns" (124,760 rows)** -- a real collective brass-section

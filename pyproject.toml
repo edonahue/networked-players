@@ -24,10 +24,10 @@ dev = [
   "pytest-xdist>=3.6,<4",
   "ruff>=0.12,<1",
 ]
-# For the coordination-host side of RQ-based fleet scripts: cluster_benchmark_distributed.py
-# (ADR 0019) and the scripts/enqueue_*_check.py family (+ scripts/tests/test_fleet_check.py,
-# which imports scripts/_fleet_check.py but never touches a real broker). Version bounds
-# match what infra/ansible/playbooks/equip-workers.yml installs into the worker venv.
+# For the coordination-host side of RQ-based fleet work: the ADR 0034 platform broker
+# (packages/platform), scripts/_platform_client.py and the scripts/submit_*.py submitters,
+# plus cluster_benchmark_distributed.py (ADR 0019). Version bounds match what
+# infra/ansible/playbooks/equip-workers.yml installs into the worker venv.
 jobs = [
   "redis>=5,<9",
   "rq>=2,<3",
