@@ -31,7 +31,7 @@ from collections.abc import Mapping
 from typing import Any
 
 from . import __version__
-from .challenge import MatchedAlbum
+from .challenge import MatchedAlbum, evidence_release_and_artist_records
 from .cohort_connectivity import classify_hop_quality
 from .eligibility import is_performer_role
 from .graph import CreditGraph, EvidencePath, Hop
@@ -345,26 +345,9 @@ def build_rounds_v1(
         for distractor in round_json["distractors"]:
             used_album_ids.add(distractor["album_id"])
 
-    releases_json = []
-    for release_id in sorted(used_release_ids):
-        release = graph.release(release_id)
-        if release is None:
-            continue
-        hop_artist_ids = {
-            a
-            for r in rounds_json
-            for h in r["hops"]
-            if h["release_id"] == release_id
-            for a in (h["artist_a_id"], h["artist_b_id"])
-        }
-        release_json = dict(release)
-        release_json["credits"] = graph.credit_rows(release_id, hop_artist_ids)
-        releases_json.append(release_json)
-
-    artist_names = {aid: graph.artist_name(aid) or f"Artist {aid}" for aid in used_artist_ids}
-    artists_json = [
-        {"artist_id": aid, "name": artist_names[aid]} for aid in sorted(used_artist_ids)
-    ]
+    releases_json, artists_json = evidence_release_and_artist_records(
+        graph, rounds_json, used_release_ids, used_artist_ids
+    )
     albums_json = [
         {
             "id": album.album_id,

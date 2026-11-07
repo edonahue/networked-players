@@ -3,8 +3,6 @@ from pathlib import Path
 
 import pytest
 
-pytest.importorskip("duckdb")
-
 from networked_players_catalog.cli import main
 from networked_players_catalog.discogs.artist_family import (
     build_artist_family_exclusions,

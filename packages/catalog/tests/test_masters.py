@@ -3,10 +3,6 @@ import json
 from pathlib import Path
 
 import pytest
-
-pytest.importorskip("pyarrow")
-pytest.importorskip("duckdb")
-
 from lxml import etree
 
 from networked_players_catalog.cli import main

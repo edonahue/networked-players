@@ -526,6 +526,52 @@ def _iter_path_results(
                 yield from_album, to_album, path, capped
 
 
+def evidence_release_and_artist_records(
+    graph: CreditGraph,
+    entries: list[dict[str, Any]],
+    used_release_ids: set[int],
+    used_artist_ids: set[int],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """The `releases` and `artists` arrays shared by the challenge and rounds
+    artifacts: every used release (sorted, skipping ids absent from the
+    working set) with the credit rows of the artists it links in some entry's
+    `hops`, and every used artist with its display name.
+
+    Three batched queries total. This replaced one `release` + one
+    `credit_rows` query per release and one `artist_name` query per artist,
+    plus an O(releases x entries) rescan of every hop per release; output is
+    unchanged (`credit_rows` and `credit_rows_for_release_batch` share the
+    same unfiltered WHERE semantics and `ORDER BY ALL` row order)."""
+    hop_artist_ids: dict[int, set[int]] = {}
+    for entry in entries:
+        for hop in entry["hops"]:
+            hop_artist_ids.setdefault(hop["release_id"], set()).update(
+                (hop["artist_a_id"], hop["artist_b_id"])
+            )
+
+    ordered_release_ids = sorted(used_release_ids)
+    releases = graph.releases_for_ids(ordered_release_ids)
+    credits_by_release = graph.credit_rows_for_release_batch(ordered_release_ids)
+    releases_json = []
+    for release_id in ordered_release_ids:
+        release = releases.get(release_id)
+        if release is None:
+            continue
+        artists = hop_artist_ids.get(release_id, set())
+        release_json = dict(release)
+        release_json["credits"] = [
+            row for row in credits_by_release.get(release_id, []) if row["artist_id"] in artists
+        ]
+        releases_json.append(release_json)
+
+    names = graph.artist_names(sorted(used_artist_ids))
+    artists_json = [
+        {"artist_id": aid, "name": names.get(aid) or f"Artist {aid}"}
+        for aid in sorted(used_artist_ids)
+    ]
+    return releases_json, artists_json
+
+
 def build_challenge_v2(
     graph: CreditGraph,
     albums: list[dict[str, str]],
@@ -719,26 +765,9 @@ def build_challenge_v2_from_matched(
     if not paths_json:
         raise ValueError("no evidence paths found between any matched albums")
 
-    releases_json = []
-    for release_id in sorted(used_release_ids):
-        release = graph.release(release_id)
-        if release is None:
-            continue
-        hop_artist_ids = {
-            a
-            for p in paths_json
-            for h in p["hops"]
-            if h["release_id"] == release_id
-            for a in (h["artist_a_id"], h["artist_b_id"])
-        }
-        release_json = dict(release)
-        release_json["credits"] = graph.credit_rows(release_id, hop_artist_ids)
-        releases_json.append(release_json)
-
-    artist_names = {aid: graph.artist_name(aid) or f"Artist {aid}" for aid in used_artist_ids}
-    artists_json = [
-        {"artist_id": aid, "name": artist_names[aid]} for aid in sorted(used_artist_ids)
-    ]
+    releases_json, artists_json = evidence_release_and_artist_records(
+        graph, paths_json, used_release_ids, used_artist_ids
+    )
     albums_json = [
         {
             "id": album.album_id,

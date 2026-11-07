@@ -1,12 +1,8 @@
 import json
 from pathlib import Path
 
-import pytest
-
-pytest.importorskip("pyarrow")
-pytest.importorskip("duckdb")
-
 import duckdb
+import pytest
 
 from networked_players_catalog.cli import main
 from networked_players_catalog.discogs.onehop import OneHopError, expand_one_hop

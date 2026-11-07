@@ -3,9 +3,6 @@ from pathlib import Path
 
 import pytest
 
-pytest.importorskip("pyarrow")
-pytest.importorskip("duckdb")
-
 from networked_players_catalog.discogs.parquet import write_release_dataset
 from networked_players_catalog.discogs.releases import iter_releases
 from networked_players_catalog.discogs.validation import ValidationError, validate_dataset
