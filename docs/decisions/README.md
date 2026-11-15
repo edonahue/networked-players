@@ -34,7 +34,7 @@ amendments and addenda. Regenerate this table when adding a record.
 | [0015](0015-fleet-onboarding.md) | Fleet onboarding tooling for Pi workers and a second ZimaBoard | Accepted | 2026-07-01 |
 | [0016](0016-state-backup-and-recovery.md) | State backup and recovery for the coordination host | Accepted | 2026-07-02 |
 | [0017](0017-guarded-swarm-worker-join-automation.md) | Guarded, repeatable Swarm worker join automation | Accepted | 2026-07-02 |
-| [0018](0018-benchmark-results-local-only.md) | Benchmark results are local-only; the method stays public | Accepted | 2026-07-03 |
+| [0018](0018-benchmark-results-local-only.md) | Benchmark results are local-only; the method stays public | Accepted (amended 2026-11-15) | 2026-07-03 |
 | [0019](0019-cluster-benchmark-rq-job-broker.md) | Cluster-vs-single-node RQ benchmark, and its LAN-reachable job broker | Amended by ADR 0034 | 2026-07-03 |
 | [0020](0020-dask-jupyter-interactive-cluster-compute.md) | Adopt Dask + Jupyter for interactive cluster compute | Amended by ADR 0034 | 2026-07-03 |
 | [0021](0021-canonical-benchmarks-and-dask-rq-isolation.md) | Canonical Pi benchmarks, and automated Dask/RQ contention isolation | Accepted | 2026-07-03 |
@@ -88,3 +88,4 @@ amendments and addenda. Regenerate this table when adding a record.
 | [0069](0069-public-universe-model-and-expansion-policy.md) | Public universe model and expansion policy (graph-expansion Phase 0) | Accepted (domain model and eligibility foundation) | — |
 | [0070](0070-community-detection-and-explore-scaling-measurement.md) | Community detection is measured and denied; Explore scaling gets a real recenter budget | Accepted (superseded in part) | 2026-09-03 |
 | [0071](0071-pathfinding-graph-v4-role-dictionary.md) | Pathfinding graph v4 — role-text dictionary encoding | Accepted and fully rolled out | — |
+| [0072](0072-campaign-atlas-lineage-approved-pool-collections.md) | Campaign "Atlas" — lineage by content version, a checked approval boundary, and Collections over the catalog | Accepted (direction; contracts to build) | 2026-11-15 |

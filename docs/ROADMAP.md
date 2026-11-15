@@ -1,7 +1,8 @@
 # Roadmap
 
 This is the canonical "where we are / what's next" page. Other planning docs are either
-direction ([GRAPH_EXPANSION_DIRECTION.md](GRAPH_EXPANSION_DIRECTION.md)), runbook
+direction ([GRAPH_EXPANSION_DIRECTION.md](GRAPH_EXPANSION_DIRECTION.md)), campaign status
+([CAMPAIGN.md](CAMPAIGN.md)), runbook
 ([EXPANSION_PIPELINE.md](EXPANSION_PIPELINE.md)), historical breakdown
 ([BUILD_PLAN.md](BUILD_PLAN.md)), or closed reports under [archive/](archive/).
 
@@ -20,29 +21,36 @@ direction ([GRAPH_EXPANSION_DIRECTION.md](GRAPH_EXPANSION_DIRECTION.md)), runboo
 
 ## What's next
 
-In order; each step lands before the next starts.
+The next phase is Campaign "Atlas"
+([ADR 0072](decisions/0072-campaign-atlas-lineage-approved-pool-collections.md)). Work-package
+status, acceptance tests and owner decisions live in [CAMPAIGN.md](CAMPAIGN.md); this list is
+the order only.
 
-1. **Stage 0 — runbook and inputs** (no owner input needed): rewrite
-   [EXPANSION_PIPELINE.md](EXPANSION_PIPELINE.md) steps 1–8 to match how Round 1 actually ran
-   (supply stage first), document the daily-manifest freeze → migrate → extend sequence,
-   record real `--masters-root` usage and `--previous-routes-universe`, re-measure the
-   relationship pool without `--limit` and coverage gaps against 217, and add rounds 2–5 to
-   `data/albums/expansion-policy-v1.json`.
-2. **Stage 1 — one owner review** of an approved candidate pool, recorded as
-   `data/albums/approved-pool-v1.json`.
-3. **Round 2** — 217 → ~277 albums.
-4. **Phase 3 product work** — `catalog/candidates.v1.json` (candidate albums in search), a
-   build manifest, the `featured` badge and roster, Explore as the hero entry point, and
-   retiring `/demo/`.
-5. **Round 3** — ~277 → ~357, plus a final community-detection decision
-   ([ADR 0070](decisions/0070-community-detection-and-explore-scaling-measurement.md)).
-6. **Graph artifact compaction** — must land before the catalog passes ~500 albums;
-   `graph.v4` is already close to its gzip budget.
-7. **Rounds 4–5** — to ~500+.
+1. **Tranche 1 — safe to rebuild, worth arriving at.** No catalog growth. Catalog-aware
+   artifact checks and declared lineage, a committed approved-album pool with a two-way check,
+   an operator-run round runner (which replaces the stale steps 1–8 of
+   [EXPANSION_PIPELINE.md](EXPANSION_PIPELINE.md)), required checks on `main`, the album page
+   rebuilt as a record, site-wide search, a simpler navigation led by Explore, and a study of
+   whether album clusters read as musical scenes.
+2. **First real Collection** — a reviewed, owner-approved set of records from today's catalog,
+   replacing the synthetic cohort example.
+3. **Round 2** — 217 → ~277 albums, seeded by three owner-chosen themes; the first rebuild to
+   carry lineage and build parameters.
+4. **Fleet work that earns its place** — sharded candidate supply and scoring on the x86
+   worker, and the existing sharded hop re-check extended and moved onto the capability
+   platform.
+5. **Round 3** — ~277 → ~357, with the graph size re-measured against its format-change
+   triggers.
+6. **Rounds 4–5** — to ~500.
+
+Superseded by this list: the earlier "Stage 0 / Stage 1 / Phase 3" sequence. Its contents are
+carried into tranche 1 (runbook, policy rounds 2–5, approved pool) and later work packages
+(candidate albums in search, the `featured` marker, retiring `/demo/`).
 
 Deliberately deferred: a Discogs snapshot refresh (snapshot 20260601 is kept through
-Round 2), [ADR 0061](decisions/0061-scope-tier-corpus-design-deferred.md) and
-[ADR 0062](decisions/0062-pi-fleet-verify-challenge-migration-deferred.md).
+Round 2) and [ADR 0061](decisions/0061-scope-tier-corpus-design-deferred.md).
+[ADR 0062](decisions/0062-pi-fleet-verify-challenge-migration-deferred.md) is expected to be
+superseded once multi-worker dispatch exists (CAMPAIGN.md, work package I3).
 
 ## Phase gates (original checklist)
 

@@ -1,6 +1,6 @@
 # ADR 0018: Benchmark results are local-only; the method stays public
 
-- **Status:** Accepted
+- **Status:** Accepted (amended 2026-11-15 — see addendum)
 - **Date:** 2026-07-03
 
 ## Context
@@ -76,3 +76,24 @@ Revisit if the project later wants to publish an anonymized or aggregate
 figure (e.g. "roughly 3x throughput difference between node classes")
 without disclosing exact numbers — that would be a narrower, deliberate
 carve-out, not a reversal of this ADR.
+
+## Addendum (2026-11-15): figures already published are grandfathered
+
+A review on 2026-11-15 found that `docs/DATA_SIZING.md`, `docs/BUILD_PLAN.md` and
+[ADR 0033](0033-memory-bounded-cohort-scoring.md) contain elapsed-time, throughput and
+memory figures measured in this lab, several of them committed after this ADR was accepted.
+The original decision removed the figures in `docs/HARDWARE.md` but did not sweep those files.
+
+**Owner decision:** the figures already committed in those three documents stay. They are
+historical record, they are in git history regardless, and several of them are the stated
+evidence for accepted decisions (ADR 0033's memory-bounded redesign in particular).
+
+The rule is otherwise unchanged and applies to everything measured from this date:
+
+- New elapsed-time, throughput and peak-memory results go to `local/benchmarks/` and are
+  described qualitatively in committed documents.
+- Byte counts and row counts of published artifacts are not performance data and remain
+  publishable, as [ADR 0070](0070-community-detection-and-explore-scaling-measurement.md)'s
+  prominence addendum already established.
+- The grandfathered figures are not to be quoted on the public website. A public account of
+  how the graph is built uses published-artifact facts and hardware classes only.
