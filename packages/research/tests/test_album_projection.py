@@ -261,3 +261,11 @@ def test_cli_writes_json_and_markdown_and_refuses_public_tree(
     assert main(["research-album-projection", *common, "--output", str(refused)]) == 2
     assert not refused.exists()
     assert "refusing" in capsys.readouterr().err
+
+    # An output path that would collide with the Markdown sidecar is rejected
+    # before anything is written.
+    for bad in ("study.md", "study", "study.txt"):
+        collide = tmp_path / "out2" / bad
+        assert main(["research-album-projection", *common, "--output", str(collide)]) == 2
+        assert not collide.exists()
+    assert ".json" in capsys.readouterr().err

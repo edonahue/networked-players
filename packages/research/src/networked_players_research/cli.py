@@ -510,6 +510,16 @@ def main(argv: list[str] | None = None) -> int:
                     file=sys.stderr,
                 )
                 return 2
+            if args.output.suffix.lower() != ".json":
+                # The Markdown rendering is written beside the JSON with the
+                # suffix swapped; any other suffix (".md" above all) would make
+                # the second write clobber the first.
+                print(
+                    f"--output must end in .json (got {args.output.name!r}): the Markdown "
+                    "rendering is written beside it as .md",
+                    file=sys.stderr,
+                )
+                return 2
             try:
                 seeds = tuple(range(args.seeds))
                 if args.command == "research-album-projection":
