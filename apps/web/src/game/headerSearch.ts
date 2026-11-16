@@ -242,7 +242,13 @@ function init(root: HTMLElement) {
     if (refocus) trigger?.focus();
   }
 
-  input.addEventListener("focus", ensureLoaded);
+  input.addEventListener("focus", () => {
+    // Coming back to the field is a fresh request for results: a load that
+    // finished (or failed) while the field was dismissed shows up now.
+    dismissed = false;
+    ensureLoaded();
+    if (!loading) render();
+  });
   input.addEventListener("input", () => {
     failed = false; // a new keystroke retries a failed load
     dismissed = false;

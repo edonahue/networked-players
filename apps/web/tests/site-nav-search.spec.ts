@@ -182,6 +182,32 @@ test("a slow index load does not reopen results the visitor dismissed", async ({
   await expect(page.locator("[data-search-panel]")).toBeVisible();
 });
 
+test("returning to the field after a dismissed slow load shows the results", async ({
+  page,
+  request,
+}) => {
+  const album = uniqueEntry(await loadEntries(request), "album");
+  let release: () => void = () => {};
+  const held = new Promise<void>((resolve) => (release = resolve));
+  await page.route("**/data/search/index.v1.json", async (route) => {
+    await held;
+    await route.continue();
+  });
+  await page.goto("/");
+  await focusSearchWithSlash(page);
+  await input(page).fill(album.label);
+  await page.locator("h1").click(); // focus leaves search while loading
+  const settled = page.waitForResponse("**/data/search/index.v1.json");
+  release();
+  await settled;
+  await page.waitForTimeout(300);
+  await expect(page.locator("[data-search-panel]")).toBeHidden();
+  await input(page).focus();
+  await expect(page.locator("[role=option]").first()).toContainText(
+    album.label,
+  );
+});
+
 test("Escape closes the results", async ({ page, request }) => {
   const album = uniqueEntry(await loadEntries(request), "album");
   await page.goto("/");
