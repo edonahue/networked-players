@@ -1276,6 +1276,38 @@ def _parser() -> argparse.ArgumentParser:
         help="suppress the coarse progress lines this otherwise prints to stderr",
     )
 
+    review_packet_parser = subparsers.add_parser(
+        "build-review-packet",
+        help=(
+            "render a self-contained offline HTML review page (round or collection mode); "
+            "approves and publishes nothing; writes under data/private/ or local/ only"
+        ),
+    )
+    review_packet_parser.add_argument("--mode", choices=("round", "collection"), required=True)
+    review_packet_parser.add_argument("--output", type=Path, required=True)
+    review_packet_parser.add_argument("--generated-at", default="", help="label only")
+    review_packet_parser.add_argument(
+        "--scored-candidates", type=Path, help="round: score-expansion-candidates output"
+    )
+    review_packet_parser.add_argument(
+        "--round", type=int, dest="round_number", help="round: number"
+    )
+    review_packet_parser.add_argument("--catalog", type=Path, help="round: albums.v1.json")
+    review_packet_parser.add_argument(
+        "--review-packet", type=Path, help="round: build-expansion-review-packet JSON (optional)"
+    )
+    review_packet_parser.add_argument(
+        "--approved-pool", type=Path, help="round: approved-pool-v1.json (optional)"
+    )
+    review_packet_parser.add_argument(
+        "--guidance",
+        type=Path,
+        help='round: optional JSON {"<lane>": <target count>} shown against approved counts',
+    )
+    review_packet_parser.add_argument(
+        "--study", type=Path, help="collection: research-album-projection JSON"
+    )
+
     build_expansion_packet = subparsers.add_parser(
         "build-expansion-review-packet",
         help=(
@@ -2369,11 +2401,18 @@ def _parser() -> argparse.ArgumentParser:
     preflight.add_argument(
         "--json", action="store_true", help="print the machine-readable report instead of text"
     )
+    from .round_runner import register_round_parser
+
+    register_round_parser(subparsers)
     return parser
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = _parser().parse_args(argv)
+    if args.command == "round":
+        from .round_runner import round_main
+
+        return round_main(args)
     if args.command == "manifest":
         kwargs = {}
         if args.base_url:
@@ -4172,6 +4211,40 @@ def main(argv: Sequence[str] | None = None) -> int:
                 indent=2,
             )
         )
+        return 0
+
+    if args.command == "build-review-packet":
+        import sys
+
+        from . import review_packet as rp
+
+        def _load(path: Path | None) -> Any:
+            return json.loads(path.read_text()) if path is not None else None
+
+        try:
+            rp.require_review_output(args.output)
+            if args.mode == "round":
+                if args.scored_candidates is None or args.round_number is None:
+                    raise rp.ReviewPacketError("round mode needs --scored-candidates and --round")
+                data = rp.build_round_data(
+                    _load(args.scored_candidates),
+                    round_number=args.round_number,
+                    catalog=_load(args.catalog),
+                    review_packet=_load(args.review_packet),
+                    approved_pool=_load(args.approved_pool),
+                    guidance=_load(args.guidance),
+                    generated_at=args.generated_at,
+                )
+            else:
+                if args.study is None:
+                    raise rp.ReviewPacketError("collection mode needs --study")
+                data = rp.build_collection_data(_load(args.study), generated_at=args.generated_at)
+        except rp.ReviewPacketError as error:
+            print(f"build-review-packet: {error}", file=sys.stderr)
+            return 2
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(rp.render_html(data))
+        print(json.dumps({"output": str(args.output), "mode": args.mode}, indent=2))
         return 0
 
     if args.command == "build-expansion-review-packet":

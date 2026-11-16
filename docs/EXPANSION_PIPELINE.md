@@ -7,6 +7,10 @@ grows into a full method-plus-round-log doc as later Phase 2 slices land (plan �
 file for that eventual scope; it is deliberately narrow today rather than describing steps that
 don't exist yet).
 
+**The rebuild cascade is executable.** `networked-players-catalog round <plan|run|verify>`
+(ADR 0072 section 3) sequences every builder, with the order and preconditions the Round 1
+incidents showed were needed; see "The runner" below. No real round has been run through it yet.
+
 **Round 1 has run** (2026-09-04 to 2026-09-07, published in PR #246): 179 → 217 albums. The
 "Round log" section below carries both the reusable runbook and Round 1's own dated entry.
 
@@ -126,11 +130,20 @@ artifact after any upstream one.
 
 ### Steps 1–8: candidate discovery through owner review (no publication yet)
 
-> **Stale — rewrite pending (ROADMAP "Stage 0").** These steps predate Round 1's
-> corrections: the candidate-supply stage (`build-collection-candidates`,
-> `build-relationship-pool`) now comes first, and the real `--masters-root` and
-> `--previous-routes-universe` usage is not yet written in. Use the Round 1 entry below as
-> the record of what actually ran until this section is rewritten.
+These steps produce *proposals*. Nothing here authorises publication: the approved pool does
+(ADR 0072 section 2), and the runner publishes exactly the pool. All outputs stay under
+`local/` or `data/private/`.
+
+0. **Supply candidates first.** Scorers and re-rankers are consumers, not producers (Round 1
+   delivered 6 albums against a target of 30 because no supply stage existed). Run the
+   supply commands before anything below, and check the pool sizes against the lane quotas:
+   - `build-collection-candidates` (candidates derived from the private release-ID seed;
+     the output stays local) and
+   - `build-relationship-pool` (performers who already connect to the catalog; local-only
+     output).
+
+   Both are documented by `--help`. Themes named in the round spec are labels only; naming a
+   theme approves no album (ADR 0072 section 7).
 
 1. **Refresh the private seed** from the real collection export (path confirmed with the
    owner, never fabricated or guessed):
@@ -139,318 +152,170 @@ artifact after any upstream one.
      --input <the real collection-export CSV path> \
      --output data/private/discogs-seed.json
    ```
-2. **Rank candidates** against the *current* one-hop corpus — this does **not** need the
-   widened corpus a new seed might require (confirmed not circular):
+2. **Rank candidates** against the *current* one-hop corpus (this does not need a widened
+   corpus):
    ```bash
    uv run networked-players-catalog rank-album-candidates \
      --dataset local/processed/discogs-onehop-v4/snapshot=20260601 \
-     --output local/analysis/expansion/round-1/candidates.json \
+     --output local/analysis/expansion/round-<n>/candidates.json \
      --release-format-policy <path-to-release-format-scoring-index.json> \
      --masters-root <masters-root>/snapshot=20260601 \
      --studio-album-exclusions data/albums/studio-album-master-exclusions-v1.json \
      --exclude-published-catalog apps/web/public/data/catalog/albums.v1.json
    ```
-   **Size `--limit` generously — a real, measured finding from the first live run
-   (2026-09-04).** `rank-album-candidates` scores by raw corpus weight
-   (`variant_count` × `credit_rows`), which strongly favours artists *already* in the
-   catalog. At `--limit 200`, the pool was so dominated by already-represented artists
-   (more Rolling Stones, Santana, U2, Clapton records) that **every in-band coverage-lane
-   candidate scored `new_performers = 0`** — real catalog anchors, but zero performer-network
-   growth, which is the entire point of the graph-value and coverage lanes. Whole thin
-   genres were also nearly unrepresented in the pool: Reggae had exactly **one** candidate
-   in 200, and it was one over the roster cap. Start at `--limit 1000` and check the
+   **Size `--limit` generously (measured 2026-09-04).** The ranking scores raw corpus weight,
+   which favours artists already in the catalog; at `--limit 200` every in-band coverage
+   candidate had `new_performers = 0`. Start at `--limit 1000` and check the
    `new_performers` distribution before treating a lane's picks as final.
-3. **Score the shortlist**, resolving `data/albums/editorial-seed-v1.json` directly via
-   `--editorial-seed` (Slice R1-C — no manual transform step needed), and passing
-   `measure-coverage-gaps`' own output (run once, ahead of this step, over the *current*
-   catalog) via `--underrepresented-buckets`.
-
-   `--underrepresented-buckets` accepts `measure-coverage-gaps`' output directly (its dict
-   with an `underrepresented` list) as well as a bare `{dimension, bucket, count}` list.
-   (Before the Campaign Atlas F2 fix it accepted only the bare list and failed with
-   `TypeError: string indices must be integers`; the runbook worked around it with a
-   `python3 -c` snippet, now removed.)
-
+3. **Score the shortlist** (`score-expansion-candidates`), resolving
+   `data/albums/editorial-seed-v1.json` via `--editorial-seed` and passing
+   `measure-coverage-gaps`' output via `--underrepresented-buckets` (it accepts the command's
+   dict directly):
    ```bash
    uv run networked-players-catalog score-expansion-candidates \
      --onehop-root local/processed/discogs-onehop-v4/snapshot=20260601 \
      --masters-root <masters-root>/snapshot=20260601 \
-     --candidates local/analysis/expansion/round-1/candidates.json \
+     --candidates local/analysis/expansion/round-<n>/candidates.json \
      --pathfinding-graph apps/web/public/data/pathfinding/graph.v4.json \
      --release-format-policy <path-to-release-format-scoring-index.json> \
      --studio-album-exclusions data/albums/studio-album-master-exclusions-v1.json \
      --editorial-seed data/albums/editorial-seed-v1.json \
-     --underrepresented-buckets local/analysis/expansion/round-1/coverage-gaps.json \
-     --output local/analysis/expansion/round-1/scored-candidates.json
+     --underrepresented-buckets local/analysis/expansion/round-<n>/coverage-gaps.json \
+     --output local/analysis/expansion/round-<n>/scored-candidates.json
    ```
-   (`local-only-output` is enforced by the command itself — it refuses to write outside
-   `local/`.)
-4. **Select the graph-value lane** (a pool-level greedy marginal selection, a materially
-   different computation than the per-candidate scorer above — its output is merged with
-   the scorer's by `master_id`, not a replacement for it):
+   (`local-only-output` is enforced by the command.)
+4. **Select the graph-value lane** (`select-graph-rich-candidates`; merged with the scorer's
+   output by `master_id`). `--finalists` takes `rank-album-candidates`' own raw output (a flat
+   list), not the scorer's dict. Expect fewer picks than `--count`: the greedy selection stops
+   when nothing adds marginal value, and that is correct.
    ```bash
    uv run networked-players-catalog select-graph-rich-candidates \
      --dataset local/processed/discogs-onehop-v4/snapshot=20260601 \
      --baseline-catalog apps/web/public/data/catalog/albums.v1.json \
      --additional-baseline data/albums/editorial-seed-v1.json \
-     --finalists local/analysis/expansion/round-1/candidates.json \
-     --count 6 \
-     --output local/analysis/expansion/round-1/graph-rich-selection.json
+     --finalists local/analysis/expansion/round-<n>/candidates.json \
+     --count <quota> \
+     --output local/analysis/expansion/round-<n>/graph-rich-selection.json
    ```
-   (`--count 6` per `expansion-policy-v1.json`'s Round 1 graph-value quota.)
+5. **Measure coverage gaps** (`measure-coverage-gaps`; feeds step 3 and the human step 6).
+6. **Resolve coverage gaps into real picks, by hand.** `measure-coverage-gaps` measures; it
+   does not select. Write `coverage-gap-candidates.json`
+   (`{"snapshot_date": "...", "candidates": [...]}` with a gap rationale per pick) under
+   `local/analysis/expansion/round-<n>/`.
+7. **Build the review packet** (`build-expansion-review-packet`) combining the three lanes.
+   Check `already_published_count` first: `editorial-seed-v1.json` is cumulative, and a packet
+   whose entries are nearly all already published means the editorial lane is exhausted.
+8. **Owner review and picks.** The non-automatable decision point. Nothing below happens
+   until it is done.
 
-   **`--finalists` takes `rank-album-candidates`' own raw output** (a flat JSON list whose
-   rows carry `artist_id`/`master_id` at the top level), **not** the
-   `score-expansion-candidates` output — that one is a dict wrapping its rows under
-   `candidates`, and passing it fails with `TypeError: string indices must be integers`
-   inside `greedy_marginal_selection`. An earlier draft of this runbook had it wrong; the
-   first live run (2026-09-04) caught it.
+### Steps 9–11: before the runner
 
-   **Expect fewer picks than `--count` requests.** The first live run asked for 6 and got
-   4: the greedy selection stops when no remaining finalist adds real marginal value.
-   That is a correct result, not a bug — do not force it to the quota number (the same
-   discipline ADR 0065 applied when Phase 7 targeted +40 and shipped +39 rather than
-   manufacture a filler pick).
-5. **Measure coverage gaps** against the current catalog (feeds step 3's
-   `--underrepresented-buckets`, and separately drives the human resolution in step 6):
-   ```bash
-   uv run networked-players-catalog measure-coverage-gaps \
-     --catalog apps/web/public/data/catalog/albums.v1.json \
-     --masters-root <masters-root>/snapshot=20260601 \
-     --output local/analysis/expansion/round-1/coverage-gaps.json
-   ```
-6. **Resolve coverage gaps into real Bucket C album picks — a real human/editorial
-   judgment call, not automatable.** `measure-coverage-gaps`'s own module docstring says
-   it outright: *"This module measures; it does not select."* Its raw
-   `{dimension, bucket, count}` findings are not the shape `build-expansion-review-packet`
-   expects for `--coverage-gap-candidates`
-   (`{"snapshot_date": "...", "candidates": [...]}` with gap rationale per pick) — turning
-   a measured deficit into an actual album requires the same editorial judgment as any
-   other pick, just informed by this measurement. Write the result by hand to
-   `local/analysis/expansion/round-1/coverage-gap-candidates.json` (per
-   `expansion-policy-v1.json`'s Round 1 quota, 4 picks).
-7. **Build the review packet** combining all three buckets:
-   ```bash
-   uv run networked-players-catalog build-expansion-review-packet \
-     --catalog apps/web/public/data/catalog/albums.v1.json \
-     --personal-seed data/albums/editorial-seed-v1.json \
-     --graph-rich-selection local/analysis/expansion/round-1/graph-rich-selection.json \
-     --coverage-gap-candidates local/analysis/expansion/round-1/coverage-gap-candidates.json \
-     --generated-at <explicit ISO datetime> \
-     --output data/private/expansion/round-1/review-packet.json
-   ```
-   **Check `already_published_count` before reading anything else.**
-   `data/albums/editorial-seed-v1.json` is *cumulative* — it keeps every album ever
-   resolved into it, including ones a previous round already published. In the first
-   live run (2026-09-04) **all 13 of its entries were already in the catalog**, so the
-   editorial lane contributed exactly zero new albums, and the round's real growth came
-   entirely from the graph-value lane. A packet whose `already_published_count` is close
-   to its entry count means the editorial lane is exhausted and needs genuinely new owner
-   picks before the round is worth publishing — the seed file being non-empty proves
-   nothing.
-8. **Owner review and picks — the real, non-automatable decision point this whole
-   pipeline exists to inform.** No further step below happens until this is done.
+9. **Approve into the pool.** Add the owner-approved albums to
+   `data/albums/approved-pool-v1.json` (public `selection_source` labels only; ADR 0072
+   section 2). With a pool, the catalog build fails naming any album it would publish outside
+   the pool or any pool album it would drop (including one dropped for eligibility), shortlist
+   auto-fill is off, and the `--editorial-albums` default fallback does not apply.
+10. **Widen the one-hop corpus** only if the picks introduced release ids the current root
+    lacks (`expand-one-hop --additional-seed ...`). Coordination host only; never replicate
+    the full snapshot to `zimaworker1` (plan §17, ADR 0057 disk floor).
+11. **Write the round spec** (`data/albums/rounds/round-<n>.json`, contract
+    `data/contracts/round-spec-v1.md`; synthetic template:
+    `data/albums/rounds/example-synthetic-round.json`). Every policy input is stated
+    explicitly, as a path or `null` plus a reason. After the catalog build, audit it
+    (`build-album-catalog-audit` to `docs/data/studio-album-catalog-inclusion-audit-v1.json`,
+    then the manual pass in `docs/STUDIO_ALBUM_CATALOG_AUDIT.md`).
 
-### Steps 9–13: publish the catalog and rebuild every downstream artifact
+### The runner: steps 12–13 are now `networked-players-catalog round`
 
-9. **Build the public catalog**, always passing `--already-published-catalog` explicitly
-   (its own help text: omitting it on an expansion "risks silently dropping or replacing
-   already-published albums" — re-matching against a possibly-widened corpus does not
-   reproduce the same result set even from identical inputs), and now also
-   `--featured-albums`/`--expansion-round` to activate catalog schema v2 (Slice R1-B):
-   ```bash
-   uv run networked-players-catalog build-public-album-catalog \
-     --onehop-root local/processed/discogs-onehop-v5/snapshot=20260601 \
-     --already-published-catalog apps/web/public/data/catalog/albums.v1.json \
-     --personal-seed data/albums/editorial-seed-v1.json \
-     --graph-rich-selection local/analysis/expansion/round-1/graph-rich-selection.json \
-     --coverage-gap-candidates local/analysis/expansion/round-1/coverage-gap-candidates.json \
-     --candidates local/analysis/expansion/round-1/candidates.json \
-     --target-count <owner-approved new total> \
-     --release-format-policy <path-to-release-format-scoring-index.json> \
-     --masters-root <masters-root>/snapshot=20260601 \
-     --studio-album-exclusions data/albums/studio-album-master-exclusions-v1.json \
-     --featured-albums data/albums/featured-v1.json \
-     --expansion-round 1 \
-     --output apps/web/public/data/catalog/albums.v1.json
-   ```
-   **Approval boundary (ADR 0072 section 2).** Add the owner-approved albums to
-   `data/albums/approved-pool-v1.json` first, then pass `--approved-pool
-   data/albums/approved-pool-v1.json` and `--editorial-albums data/albums/top-albums-v1.json`
-   explicitly. With a pool the build fails, naming the albums, if it would publish anything
-   outside the pool or omit a pool album (including one dropped for eligibility); `--candidates`
-   auto-fill is off; and the `--editorial-albums` default fallback does not apply (without the
-   explicit flag the ~52 top-albums albums would be labelled `already_published` and the build
-   fails on the label mismatch). Without `--approved-pool` the build runs as before and prints
-   an `UNCHECKED` warning.
-   (Uses the `discogs-onehop-v5` root from step 11 below if new seed releases were added
-   this round; otherwise the still-current `v4` root is fine — order shown here assumes
-   the widened corpus already exists, adjust if this round adds no new seed releases.)
-10. **Audit the catalog** (automated pass, then the standing manual title pass):
-    ```bash
-    uv run networked-players-catalog build-album-catalog-audit \
-      --catalog apps/web/public/data/catalog/albums.v1.json \
-      --onehop-root local/processed/discogs-onehop-v5/snapshot=20260601 \
-      --masters-root <masters-root>/snapshot=20260601 \
-      --release-format-policy <path-to-release-format-scoring-index.json> \
-      --studio-album-exclusions data/albums/studio-album-master-exclusions-v1.json \
-      --output docs/data/studio-album-catalog-inclusion-audit-v1.json
-    ```
-    Then the manual `docs/STUDIO_ALBUM_CATALOG_AUDIT.md` title-by-title pass — the
-    pacing variable for round size, per this whole plan's own discipline.
-11. **Widen the one-hop corpus** — only if this round's picks introduced release ids the
-    current `discogs-onehop-v4` doesn't already contain (a mostly-collection-sourced round
-    usually doesn't, since the collection was already the private seed's frontier):
-    ```bash
-    uv run networked-players-catalog expand-one-hop \
-      --dataset <parsed-discogs-snapshot-root>/snapshot=20260601 \
-      --output-root local/processed/discogs-onehop-v5 \
-      --additional-seed data/albums/editorial-seed-v1.json
-    ```
-    Runs on the coordination host only (plan §17) — it already holds the full parsed
-    dataset; never replicate the full 6.6 GB snapshot to `zimaworker1` to run this there
-    (real, live-checked disk-floor blocker, plan §17). `zimaworker1` instead runs
-    whichever of this round's genuinely concurrent jobs it already fits — the pair-sweep,
-    candidate-extraction, or Leiden/prominence-adjacent work, plus `score-expansion-candidates`
-    (step 3 above) — *while* this step runs on the coordination host, not after it.
-12. **The full builder cascade, in the corrected order** (every `--generated-at` is an
-    explicit ISO datetime, never the wall clock):
-    ```bash
-    uv run networked-players-catalog build-album-credit-membership \
-      --onehop-root local/processed/discogs-onehop-v5/snapshot=20260601 \
-      --catalog apps/web/public/data/catalog/albums.v1.json \
-      --output apps/web/public/data/albums/credit-membership.v1.json \
-      --generated-at <explicit ISO datetime>
-
-    uv run networked-players-catalog build-pathfinding-graph \
-      --onehop-root local/processed/discogs-onehop-v5/snapshot=20260601 \
-      --catalog apps/web/public/data/catalog/albums.v1.json \
-      --album-credit-membership apps/web/public/data/albums/credit-membership.v1.json \
-      --output apps/web/public/data/pathfinding/graph.v4.json \
-      --generated-at <explicit ISO datetime>
-
-    # --carry-forward-challenge keeps previously documented artist pairs at the
-    # front of the candidate walk, so paths documented in an earlier round stay
-    # documented and their endpoints keep their /contributors/ pages. It also
-    # raises the default --max-paths so the carried pairs actually fit. Point it
-    # at the PUBLISHED artifact (git show HEAD:... > /tmp/prev-challenge.json).
-    uv run networked-players-catalog build-challenge-from-dump \
-      --onehop-root local/processed/discogs-onehop-v5/snapshot=20260601 \
-      --masters-root <masters-root>/snapshot=20260601 \
-      --release-format-policy <path-to-release-format-scoring-index.json> \
-      --studio-album-exclusions data/albums/studio-album-master-exclusions-v1.json \
-      --artist-family-exclusions <path-to-artist-family-exclusions-v1.json> \
-      --carry-forward-challenge <the-previously-published-challenge.v3.json> \
-      --in-memory-search --max-frontier-expansion 0 \
-      --output apps/web/public/data/challenge.v3.json
-
-    # PASS THE ROUND TARGETS EXPLICITLY. The CLI defaults are 150/100, but the
-    # published artifact holds 150 one-hop + 200 two-hop rounds (read its own
-    # universe.v1.json "counts" block -- do not trust this comment's numbers
-    # over the artifact's). Round 1's first cascade relied on the defaults,
-    # built 343 -> 250 rounds, and 94 routes-only contributors lost their
-    # pages -- diagnosed only after the fact.
-    uv run networked-players-catalog build-record-routes \
-      --onehop-root local/processed/discogs-onehop-v5/snapshot=20260601 \
-      --albums apps/web/public/data/catalog/albums.v1.json \
-      --release-format-policy <path-to-release-format-scoring-index.json> \
-      --studio-album-exclusions data/albums/studio-album-master-exclusions-v1.json \
-      --masters-root <masters-root>/snapshot=20260601 \
-      --artist-family-exclusions <path-to-artist-family-exclusions-v1.json> \
-      --one-hop-target 150 --two-hop-target 200 \
-      --output-universe apps/web/public/data/routes/universe.v1.json \
-      --output-rounds apps/web/public/data/routes/rounds.v1.json
-
-    # The Connection Guesser (game/{universe,rounds}.v1.json): make check now
-    # fails if it is stale against the catalog. Rebuild it every round. Its code defaults are
-    # 300/200, but pass --previous-connection-universe (the published game/universe.v1.json) so a
-    # rebuild inherits the published targets instead; it stamps provenance.build_parameters once
-    # it has been rebuilt with this version of the builder (older artifacts carry none, in which
-    # case the defaults apply and stderr says so).
-    uv run networked-players-catalog build-connection-rounds \
-      --onehop-root local/processed/discogs-onehop-v5/snapshot=20260601 \
-      --albums apps/web/public/data/catalog/albums.v1.json \
-      --previous-connection-universe apps/web/public/data/game/universe.v1.json \
-      --artist-family-exclusions <path-to-artist-family-exclusions-v1.json> \
-      --output-universe apps/web/public/data/game/universe.v1.json \
-      --output-rounds apps/web/public/data/game/rounds.v1.json
-
-    uv run networked-players-catalog build-album-art-registry \
-      --catalog apps/web/public/data/catalog/albums.v1.json \
-      --output apps/web/public/data/catalog/album-art.v1.json \
-      --cache-dir data/private/discogs-api-cache \
-      --generated-at <explicit ISO datetime>
-
-    uv run networked-players-catalog build-evidence-release-registry \
-      --onehop-root local/processed/discogs-onehop-v5/snapshot=20260601 \
-      --challenge apps/web/public/data/challenge.v3.json \
-      --routes-rounds apps/web/public/data/routes/rounds.v1.json \
-      --pathfinding-graph apps/web/public/data/pathfinding/graph.v4.json \
-      --album-art apps/web/public/data/catalog/album-art.v1.json \
-      --catalog apps/web/public/data/catalog/albums.v1.json \
-      --output apps/web/public/data/evidence/release-registry.v1.json \
-      --generated-at <explicit ISO datetime>
-
-    uv run networked-players-catalog build-prominence \
-      --pathfinding-graph apps/web/public/data/pathfinding/graph.v4.json \
-      --evidence-release-registry apps/web/public/data/evidence/release-registry.v1.json \
-      --output apps/web/public/data/pathfinding/prominence.v1.json \
-      --generated-at <explicit ISO datetime>
-
-    uv run networked-players-catalog build-contributor-index \
-      --challenge apps/web/public/data/challenge.v3.json \
-      --routes-universe apps/web/public/data/routes/universe.v1.json \
-      --routes-rounds apps/web/public/data/routes/rounds.v1.json \
-      --catalog apps/web/public/data/catalog/albums.v1.json \
-      --evidence-release-registry apps/web/public/data/evidence/release-registry.v1.json \
-      --output apps/web/public/data/contributors/index.v1.json \
-      --generated-at <explicit ISO datetime>
-
-    uv run networked-players-catalog build-search-index \
-      --catalog apps/web/public/data/catalog/albums.v1.json \
-      --contributor-index apps/web/public/data/contributors/index.v1.json \
-      --output apps/web/public/data/search/index.v1.json \
-      --generated-at <explicit ISO datetime>
-
-    uv run networked-players-catalog build-album-hop-distances \
-      --challenge apps/web/public/data/challenge.v3.json \
-      --routes-rounds apps/web/public/data/routes/rounds.v1.json \
-      --catalog apps/web/public/data/catalog/albums.v1.json \
-      --contributor-index apps/web/public/data/contributors/index.v1.json \
-      --output apps/web/public/data/contributors/album-hop-distances.v1.json \
-      --generated-at <explicit ISO datetime>
-    ```
-    Each JSON artifact then needs `npx prettier --write <path>` (from `apps/web/`) before
-    committing — the builders' own `json.dumps(indent=2)` output is not byte-identical to
-    the Prettier formatting `npm run format:check` requires.
-13. **`make check`.** Watch for two things it will and will not catch:
-    - It **will** hard-fail if `build-album-art-registry` (step 12) was skipped — the
-      registry's `catalog_version` is cross-checked against the new catalog.
-    - It **will** also hard-fail a Record Routes, Connection Guesser or challenge built
-      against an older catalog, or a registry missing a cited release id (the formerly
-      silent-pass trap above, closed by F1a).
-
-13b. **Check contributor continuity — nothing else catches a page disappearing.**
+The hand-run cascade is replaced by the runner (`packages/catalog/src/networked_players_catalog/round_runner.py`,
+ADR 0072 section 3). Export the published artifacts to a separate directory first, because the
+runner needs an immutable baseline for carry-forward, inherited parameters and the continuity
+check, and refuses to run when the baseline and the output directory are the same:
 
 ```bash
-git show HEAD:apps/web/public/data/challenge.v3.json > /tmp/prev-challenge.json
-git show HEAD:apps/web/public/data/contributors/index.v1.json > /tmp/prev-index.json
-uv run networked-players-catalog check-contributor-continuity \
-  --previous-challenge /tmp/prev-challenge.json \
-  --current-challenge apps/web/public/data/challenge.v3.json \
-  --previous-contributor-index /tmp/prev-index.json \
-  --current-contributor-index apps/web/public/data/contributors/index.v1.json
+mkdir -p local/rounds/round-<n>/previous
+git archive HEAD apps/web/public/data | tar -x -C local/rounds/round-<n>/previous --strip-components=3
+# spec paths.previous_artifacts_dir = local/rounds/round-<n>/previous/data
+# spec paths.output_dir = apps/web/public/data (must be a directory named "data")
+
+uv run networked-players-catalog round plan   --spec data/albums/rounds/round-<n>.json
+uv run networked-players-catalog round run    --spec data/albums/rounds/round-<n>.json
+uv run networked-players-catalog round verify --spec data/albums/rounds/round-<n>.json
+# restart after a failure, naming the stage the run reported:
+uv run networked-players-catalog round run --spec ... --from-stage <stage>
 ```
 
-Exits non-zero when a previously documented **path endpoint** is no longer documented —
-the one continuity guarantee the site makes, and what `--carry-forward-challenge`
-protects. Contributor-index churn is reported but never fails: pages are derived from
-currently documented paths and may legitimately come and go (owner decision 2026-09-05;
-`PHASE7_REPORT.md` had already recorded that "521 is not itself evidence of an error").
-Record the reported `removed`/`added` counts in the round log — Round 1's real numbers
-were 530 → 639, 76 removed, 185 added, **0 endpoints lost**. A large `removed` count with
-no explanation is the signal that a build parameter drifted, which is exactly how the
-`--two-hop-target` mistake was found.
+`--today` defaults to the real UTC date; pass it explicitly to reproduce a plan. The runner
+writes artifacts to the spec's `output_dir` (`apps/web/public/data` in a real round),
+`stage-results.json` and `report.md` to `work_dir`. Stage progress goes to stderr; no elapsed
+time or memory figure is ever printed or recorded (ADR 0018).
+
+| # | Stage | Command (existing builder) | Notes |
+| --- | --- | --- | --- |
+| 1 | `prepare-output` | internal | take the daily-manifest baseline and frozen generations from the previous dir when the output lacks them |
+| 2 | `catalog` | `build-public-album-catalog` | always `--approved-pool`, `--already-published-catalog`, `--expansion-round`, `--candidates`; explicit lanes from the spec |
+| 3 | `album-credit-membership` | `build-album-credit-membership` | |
+| 4 | `pathfinding-graph` | `build-pathfinding-graph` | |
+| 5 | `challenge` | `build-challenge-from-dump` | always `--albums <new catalog>` and `--carry-forward-challenge <previous>` |
+| 6 | `record-routes` | `build-record-routes` | always `--previous-routes-universe`; targets inherited unless the spec states them |
+| 7 | `freeze-daily-generation` | `freeze-connection-daily-manifest-generation` | freezes the generation pointing at the live rounds file; a no-op when none does |
+| 8 | `connection-rounds` | `build-connection-rounds` | refused while any generation points at the live file; always `--previous-connection-universe` |
+| 9 | `album-art-registry` | `build-album-art-registry` | needs `DISCOGS_TOKEN` and the private cache; the one stage a test replaces |
+| 10 | `evidence-release-registry` | `build-evidence-release-registry` | |
+| 11 | `prominence` | `build-prominence` | |
+| 12 | `contributor-index` | `build-contributor-index` | |
+| 13 | `search-index` | `build-search-index` | |
+| 14 | `album-hop-distances` | `build-album-hop-distances` | |
+| 15 | `daily-manifest-migrate` | `migrate-connection-daily-manifest-generation` | cutover = planned merge date + lead; never cached or skipped |
+| 16 | `format` | Prettier | only files not matched by `apps/web/.prettierignore`; fails if Node or Prettier is missing |
+| 17 | `verify` | `validate-public-artifacts`, `check-contributor-continuity`, daily-manifest checks | writes `report.md`; `round verify` runs it alone |
+
+**Hard preconditions** (`round plan` evaluates all of them and exits non-zero; `round run`
+refuses to start, and re-checks each stage's guard immediately before executing it):
+
+1. Every policy input is present in the spec, as a path or `null` plus a reason. A `null` for
+   an input a builder requires fails planning naming the builder.
+2. Freeze guard: `connection-rounds` refuses while any daily-manifest generation's
+   `rounds_url` is the live rounds file; run `freeze-daily-generation` first.
+3. Calendar: the cutover is after the planned merge date, at least two days
+   (`_MIN_CUTOVER_LEAD_DAYS`) after both `generated_at` and `--today`, and the schedule stays
+   contiguous.
+4. The carry-forward challenge, previous Routes universe, previous Guesser universe and
+   previous catalog exist; no build parameter would resolve to a code default.
+5. `format` honours `apps/web/.prettierignore`.
+
+A round PR also runs the CI-safe pure check against the committed manifest:
+`uv run networked-players-catalog round check-cutover --manifest apps/web/public/data/game/daily-manifest.v1.json --today <date>`
+(fails when the newest generation's cutover date is not after `--today`). It is not part of
+`validate-public-artifacts` because a long-merged round legitimately has its cutover in the
+past, and it is not wired into any workflow.
+
+After `round verify` passes: `make check`, read `report.md`, record the real
+`removed`/`added` contributor counts in the round entry (Round 1 was 530 → 639, 76 removed,
+185 added, **0 endpoints lost**), then Prettier-format nothing by hand.
+
+### Rollback (ADR 0072 section 4)
+
+Rollback of a round is **not** a plain revert. Never revert the daily manifest or the
+generation files past a cutover date that has already passed: that rewrites dates players have
+already seen (ADR 0041/0066). Revert the round's other artifacts, keep the new generation
+frozen in place (freeze it with `freeze-connection-daily-manifest-generation` if it still
+points at the live file), and schedule forward with `extend-connection-daily-manifest-v2` or a
+new generation whose cutover is still in the future. Before the cutover has passed, a full
+revert of the round PR is safe.
+
+### What the runner does not do
+
+- **Album art needs the operator's API cache.** The stage is the existing
+  `build-album-art-registry`; it needs `DISCOGS_TOKEN` and the private cache. Only tests
+  replace it.
+- **Nothing runs in CI.** It is operator-run and is wired into neither a workflow nor
+  `make check`; only `round check-cutover` is CI-suitable, and it is not wired in.
+- **No real round has been run through it yet.** It is exercised end to end only over a
+  synthetic corpus (`packages/catalog/tests/test_round_runner.py`). Its first real use is
+  Round 2.
+- No stage cache (ADR 0072 section 3), no candidate supply or scoring, no owner approval,
+  no fleet validation (steps 14–15 below), no audit.
 
 ### Steps 14–15: measure and validate on the fleet
 

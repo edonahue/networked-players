@@ -74,7 +74,7 @@ expand-onehop: ## One-hop expansion from the private seed over a parsed snapshot
 		--dataset local/processed/discogs/snapshot=$(SNAPSHOT) \
 		--output-root local/processed/discogs-onehop $(ARGS)
 
-build-challenge: ## Build challenge.v3 from the published catalog over a one-hop dataset (needs SNAPSHOT=YYYYMMDD; ONEHOP=discogs-onehop-v4 by default); --max-paths defaults to 2 x the album count so every album gets its paths; then regenerate evidence registry -> contributor index -> album hop distances (docs/OPERATOR_SETUP.md)
+build-challenge: ## Build challenge.v3 ONLY, ad hoc (needs SNAPSHOT=YYYYMMDD; ONEHOP defaults to discogs-onehop-v4 -- pass ONEHOP=<current root>). Does NOT carry the previous challenge forward and hard-codes --max-hops 4 --max-frontier-expansion 0; for a catalog round use 'networked-players-catalog round' (docs/EXPANSION_PIPELINE.md), then rebuild every downstream artifact
 	@test -n "$(SNAPSHOT)" || (echo "Set SNAPSHOT=YYYYMMDD (a completed expand-onehop under local/processed/$(or $(ONEHOP),discogs-onehop-v4)/)" >&2; exit 1)
 	uv run networked-players-catalog build-challenge-from-dump \
 		--onehop-root local/processed/$(or $(ONEHOP),discogs-onehop-v4)/snapshot=$(SNAPSHOT) \
