@@ -102,12 +102,16 @@ cross-checks):
   `catalog_version` is **hard-checked** by `album_art_failures` — skip this rebuild after
   a catalog expansion and `make check` fails, it does not silently pass.
 
-**A real silent-pass trap, worth remembering every round regardless of the fix above:**
-`record_routes_failures` and `connection_rounds_failures` (Record Routes and Connection
-Guesser) take **no `catalog` argument at all** — `validate-public-artifacts` cannot and
-does not cross-check either against `catalog_version`. `make check` will pass green even
-if Record Routes or the Connection Guesser are stale relative to a newly-expanded
-catalog. Rebuilding them every round is still required; nothing in CI will force it.
+**Formerly a silent-pass trap (closed by Campaign Atlas F1a):** `record_routes_failures` and
+`connection_rounds_failures` used to take no `catalog` argument, so `make check` passed green
+with a stale Record Routes or Connection Guesser. `validate-public-artifacts` now cross-checks
+both (and the challenge) against the catalog: `provenance.catalog_version` must equal the
+catalog's, every album must exist in the catalog with the same title and artist (a subset is
+fine; the pools apply their own eligibility), and the evidence release registry must contain
+every release id the challenge, routes rounds and graph cite. A stale pool now fails
+`make check` with a "rebuild it" message. The frozen daily generations and the daily
+manifest are deliberately exempt (ADR 0041, ADR 0066). Rebuilding them every round is still
+the operator's job; CI now enforces it.
 
 ### Steps 1–8: candidate discovery through owner review (no publication yet)
 
@@ -346,9 +350,8 @@ catalog. Rebuilding them every round is still required; nothing in CI will force
       --output-universe apps/web/public/data/routes/universe.v1.json \
       --output-rounds apps/web/public/data/routes/rounds.v1.json
 
-    # The Connection Guesser (game/{universe,rounds}.v1.json) has NO
-    # catalog_version cross-check, so make check cannot tell you it is stale.
-    # Rebuild it every round. Its own defaults are 300/200 -- check the
+    # The Connection Guesser (game/{universe,rounds}.v1.json): make check now
+    # fails if it is stale against the catalog. Rebuild it every round. Its own defaults are 300/200 -- check the
     # published artifact before trusting them.
     uv run networked-players-catalog build-connection-rounds \
       --onehop-root local/processed/discogs-onehop-v5/snapshot=20260601 \
@@ -408,9 +411,9 @@ catalog. Rebuilding them every round is still required; nothing in CI will force
 13. **`make check`.** Watch for two things it will and will not catch:
     - It **will** hard-fail if `build-album-art-registry` (step 12) was skipped — the
       registry's `catalog_version` is cross-checked against the new catalog.
-    - It will **not** catch a stale Record Routes or Connection Guesser (the silent-pass
-      trap above) — confirm both were actually rebuilt this round by their own
-      `catalog_version` fields, don't rely on `make check` alone.
+    - It **will** also hard-fail a Record Routes, Connection Guesser or challenge built
+      against an older catalog, or a registry missing a cited release id (the formerly
+      silent-pass trap above, closed by F1a).
 
 13b. **Check contributor continuity — nothing else catches a page disappearing.**
 

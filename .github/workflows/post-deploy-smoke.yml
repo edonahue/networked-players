@@ -1,0 +1,99 @@
+name: Post-deploy smoke
+
+# Cloudflare Workers Builds deploys every push to main through its own Git
+# integration, outside GitHub Actions. This workflow is the only thing that
+# looks at the result: it waits for that build's check run on the pushed
+# commit, then confirms the live site is serving this commit's data artifacts
+# and that a handful of routes answer.
+#
+# It only reads the public site. It never deploys, retries a deploy, or rolls
+# anything back -- a failure here is a red check for a person to act on (see
+# the Rollback section of docs/OPERATOR_SETUP.md).
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  checks: read
+
+concurrency:
+  group: post-deploy-smoke
+  cancel-in-progress: true
+
+env:
+  SITE: https://networked-players.com
+
+jobs:
+  smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Wait for the Cloudflare build of this commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          # Up to ~12 minutes. A build that never reports is a failure: the
+          # comparison below would otherwise run against the previous deploy.
+          for attempt in $(seq 1 48); do
+            result="$(gh api "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/check-runs" \
+              --jq '[.check_runs[] | select(.name | startswith("Workers Builds"))][0] | "\(.status) \(.conclusion)"')"
+            echo "attempt ${attempt}: ${result:-no check run yet}"
+            case "$result" in
+              "completed success") exit 0 ;;
+              completed*) echo "::error::Cloudflare build finished as: ${result}"; exit 1 ;;
+            esac
+            sleep 15
+          done
+          echo "::error::No completed Cloudflare build check run for ${GITHUB_SHA} after 12 minutes."
+          exit 1
+
+      - name: Live data artifacts match this commit
+        run: |
+          set -euo pipefail
+          # Data artifacts are served byte-for-byte from apps/web/public/data
+          # with must-revalidate, so a plain digest comparison is exact.
+          # Retries cover edge propagation after the build reports success.
+          fail=0
+          while IFS= read -r file; do
+            rel="${file#apps/web/public/}"
+            want="$(sha256sum "$file" | cut -d' ' -f1)"
+            got=""
+            for attempt in 1 2 3 4 5 6; do
+              got="$(curl --fail --silent --show-error --location --max-time 60 \
+                "${SITE}/${rel}" | sha256sum | cut -d' ' -f1 || true)"
+              [ "$got" = "$want" ] && break
+              sleep 10
+            done
+            if [ "$got" = "$want" ]; then
+              echo "ok       ${rel}"
+            else
+              echo "::error::Live ${rel} does not match this commit."
+              fail=1
+            fi
+          done < <(find apps/web/public/data -name '*.json' | sort)
+          exit "$fail"
+
+      - name: Representative routes answer
+        run: |
+          set -euo pipefail
+          # One album id read from the committed catalog, so this never pins a
+          # particular record.
+          album_id="$(python3 -c "import json; print(json.load(open('apps/web/public/data/catalog/albums.v1.json'))['albums'][0]['id'])")"
+          fail=0
+          for path in / /explore/ /albums/ "/albums/${album_id}/" "/explore/${album_id}/" \
+                      /contributors/ /play/ /play/daily/ /play/connect/ /about/ /sitemap.xml /llms.txt; do
+            code="$(curl --silent --output /dev/null --write-out '%{http_code}' --location --max-time 60 "${SITE}${path}" || true)"
+            if [ "$code" = "200" ]; then
+              echo "200      ${path}"
+            else
+              echo "::error::${path} answered ${code}."
+              fail=1
+            fi
+          done
+          exit "$fail"

@@ -19,6 +19,7 @@ import re
 from typing import Any
 
 from .canonical import content_hash
+from .catalog_lineage import search_index_text_failures
 
 SEARCH_INDEX_SCHEMA_VERSION = 1
 
@@ -195,4 +196,5 @@ def search_index_failures(artifact: Any, catalog: Any, contributor_index: Any) -
             f"has {len(contributor_artist_ids)} contributors -- every contributor must be indexed"
         )
 
+    failures.extend(search_index_text_failures(artifact, catalog))
     return failures

@@ -32,6 +32,7 @@ from .album_art import album_art_failures
 from .album_credit_membership import album_credit_membership_failures
 from .album_hop_distances import album_hop_distances_failures
 from .catalog import public_album_catalog_failures
+from .catalog_lineage import challenge_catalog_failures, registry_citation_failures
 from .challenge import challenge_failures
 from .connection_daily_manifest import (
     CONNECTION_DAILY_MANIFEST_SCHEMA_VERSION_V2,
@@ -123,16 +124,28 @@ def public_artifacts_failures(
     `"candidate"` entries need `catalog/candidates.v1.json`, a Phase 3
     dependency this validator doesn't have yet -- the field itself already
     accepts either value, so Phase 3 adding candidates needs no schema
-    change here."""
+    change here.
+
+    Catalog-aware lineage checks (`catalog_lineage.py`, ADR 0072 section 1):
+    the Connection Guesser, Record Routes and challenge artifacts must record
+    and match the live `catalog_version`, contain only catalog albums with
+    matching titles/artists, the search index labels must match the catalog,
+    and the evidence release registry must contain every release id the
+    challenge, routes rounds and pathfinding graph cite. The frozen daily
+    generations and the daily manifest are excluded on purpose (ADR 0041,
+    ADR 0066)."""
     return {
         "catalog": public_album_catalog_failures(catalog),
         "album_art_registry": album_art_failures(album_art, catalog),
-        "connection_guesser": connection_rounds_failures(connection_universe, connection_rounds),
+        "connection_guesser": connection_rounds_failures(
+            connection_universe, connection_rounds, catalog
+        ),
         "connection_daily_manifest": _daily_manifest_failures(
             daily_manifest, connection_rounds, daily_manifest_rounds_by_generation
         ),
-        "record_routes": record_routes_failures(routes_universe, routes_rounds),
-        "challenge": challenge_failures(challenge, catalog),
+        "record_routes": record_routes_failures(routes_universe, routes_rounds, catalog),
+        "challenge": challenge_failures(challenge, catalog)
+        + challenge_catalog_failures(challenge, catalog),
         "contributor_index": contributor_index_failures(contributor_index, catalog),
         "album_hop_distances": album_hop_distances_failures(
             album_hop_distances, catalog, contributor_index
@@ -144,6 +157,12 @@ def public_artifacts_failures(
         ),
         "evidence_release_registry": evidence_release_registry_failures(
             evidence_release_registry, catalog
+        )
+        + registry_citation_failures(
+            evidence_release_registry,
+            challenge=challenge,
+            routes_rounds=routes_rounds,
+            pathfinding_graph=pathfinding_graph,
         ),
         "search_index": search_index_failures(search_index, catalog, contributor_index),
     }
