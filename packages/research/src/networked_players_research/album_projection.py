@@ -91,14 +91,14 @@ def album_performer_sets(
             anchor_indices.add(index)
     result: dict[str, frozenset[int]] = {}
     for album_id in album_ids:
-        virtual_id = published.virtual_id_by_album_id.get(album_id)
-        index = published.index_by_node_id.get(virtual_id) if virtual_id is not None else None
-        if index is None:
+        anchor_id = published.virtual_id_by_album_id.get(album_id)
+        anchor_index = published.index_by_node_id.get(anchor_id) if anchor_id is not None else None
+        if anchor_index is None:
             result[album_id] = frozenset()
             continue
         result[album_id] = frozenset(
             published.neighbors[slot]
-            for slot in published.slots(index)
+            for slot in published.slots(anchor_index)
             if published.neighbors[slot] not in anchor_indices
         )
     return result
