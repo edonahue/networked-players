@@ -640,6 +640,7 @@ def build_connection_universe_and_rounds(
     snapshot_date: str,
     generated_by: str,
     catalog_version: str | None = None,
+    build_parameters: dict[str, Any] | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     """Assemble the final `GameUniverse`/`GameRounds` artifact pair. Only
     albums actually referenced by a round (endpoint or middle/choice) are
@@ -733,6 +734,7 @@ def build_connection_universe_and_rounds(
         "catalog_version": catalog_version,
         "pool_version": pool_version,
         "artifact_version": artifact_version(rounds_json, snapshot_date),
+        "inputs": {"catalog": catalog_version},
         "note": (
             "Real records, not synthetic. A round's answer is a performer with "
             "an explicit, displayable instrument or vocal credit on both "
@@ -754,6 +756,11 @@ def build_connection_universe_and_rounds(
             "value; see ADR 0043's corrective-slice-4.6 and -5.1 addenda."
         ),
     }
+
+    if build_parameters is not None:
+        # The parameters this build ran with (graph-expansion plan Y3), so a
+        # rebuild can inherit them instead of a changed CLI default.
+        provenance["build_parameters"] = build_parameters
 
     universe = {
         "schema_version": GAME_SCHEMA_VERSION,

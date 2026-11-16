@@ -12,6 +12,7 @@ from typing import Any
 from . import __version__
 from .build_parameters import (
     CHALLENGE_DEFAULT_BUILD_PARAMETERS,
+    CONNECTION_ROUNDS_DEFAULT_BUILD_PARAMETERS,
     RECORD_ROUTES_DEFAULT_BUILD_PARAMETERS,
     format_build_parameters_report,
     read_previous_build_parameters,
@@ -479,10 +480,45 @@ def _parser() -> argparse.ArgumentParser:
         default=None,
         help="optional artist-family-exclusions-v1.json; drops trivial group/frontperson pairs",
     )
-    build_connection_rounds.add_argument("--one-hop-target", type=int, default=300)
-    build_connection_rounds.add_argument("--two-hop-target", type=int, default=200)
-    build_connection_rounds.add_argument("--max-endpoint-share", type=float, default=0.15)
-    build_connection_rounds.add_argument("--max-bridge-share", type=float, default=0.2)
+    build_connection_rounds.add_argument(
+        "--previous-connection-universe",
+        type=Path,
+        default=None,
+        help="a PREVIOUSLY published game/universe.v1.json. Its own "
+        "provenance.build_parameters supply the defaults for the four targets below, so a "
+        "rebuild reproduces the published pool instead of silently inheriting a changed CLI "
+        "default (the same failure class as --previous-routes-universe). Pass it every round.",
+    )
+    # default=None means "not supplied" so the previous artifact can win; the
+    # real fallbacks live in build_parameters.py.
+    build_connection_rounds.add_argument(
+        "--one-hop-target",
+        type=int,
+        default=None,
+        help=f"default {CONNECTION_ROUNDS_DEFAULT_BUILD_PARAMETERS['one_hop_target']} when "
+        "neither this flag nor --previous-connection-universe supplies a value",
+    )
+    build_connection_rounds.add_argument(
+        "--two-hop-target",
+        type=int,
+        default=None,
+        help=f"default {CONNECTION_ROUNDS_DEFAULT_BUILD_PARAMETERS['two_hop_target']} when "
+        "neither this flag nor --previous-connection-universe supplies a value",
+    )
+    build_connection_rounds.add_argument(
+        "--max-endpoint-share",
+        type=float,
+        default=None,
+        help=f"default {CONNECTION_ROUNDS_DEFAULT_BUILD_PARAMETERS['max_endpoint_share']} when "
+        "neither this flag nor --previous-connection-universe supplies a value",
+    )
+    build_connection_rounds.add_argument(
+        "--max-bridge-share",
+        type=float,
+        default=None,
+        help=f"default {CONNECTION_ROUNDS_DEFAULT_BUILD_PARAMETERS['max_bridge_share']} when "
+        "neither this flag nor --previous-connection-universe supplies a value",
+    )
     build_connection_rounds.add_argument("--memory-limit", default="1GB")
     build_connection_rounds.add_argument("--threads", type=int, default=2)
     build_connection_rounds.add_argument("--output-universe", type=Path, required=True)
@@ -2701,6 +2737,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             build_challenge_v2,
             build_challenge_v2_from_matched,
             resolved_album_from_dict,
+            stamp_challenge_version,
             validate_challenge,
         )
         from networked_players_graph_core.graph import CreditGraph
@@ -2900,6 +2937,9 @@ def main(argv: Sequence[str] | None = None) -> int:
             report["albums_enriched"] = enrich_challenge_albums(
                 artifact, client=client, cache=cache
             )
+            # Enrichment edits published content (`cover_image`), so the
+            # content version must be recomputed after it, not before.
+            stamp_challenge_version(artifact)
 
         validate_challenge(artifact)
         args.output.parent.mkdir(parents=True, exist_ok=True)
@@ -3044,6 +3084,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 0
 
     if args.command == "build-connection-rounds":
+        import sys
+
         from networked_players_graph_core.connection_rounds import (
             build_connection_universe_and_rounds,
             generate_connection_round_pool,
@@ -3055,6 +3097,47 @@ def main(argv: Sequence[str] | None = None) -> int:
         albums = catalog["albums"]
         snapshot_date = catalog["snapshot_date"]
         catalog_version = catalog["catalog_version"]
+
+        # Resolve build parameters BEFORE opening the graph (same ordering
+        # and semantics as build-record-routes), so a malformed previous
+        # artifact fails in a second rather than after a long scan.
+        cr_previous_block = None
+        cr_previous_label = None
+        if args.previous_connection_universe is not None:
+            cr_previous_block = read_previous_build_parameters(
+                json.loads(args.previous_connection_universe.read_text()),
+                flag="--previous-connection-universe",
+                at="provenance",
+            )
+            cr_previous_label = str(args.previous_connection_universe)
+            if cr_previous_block is None:
+                # An artifact built before parameters were stamped has nothing
+                # to inherit; say so, or "(default)" below reads as inherited.
+                print(
+                    f"build-connection-rounds: {cr_previous_label} carries no "
+                    "build_parameters block; nothing inherited, code defaults apply to "
+                    "every parameter not given on the command line",
+                    file=sys.stderr,
+                )
+        cr_resolved = resolve_build_parameters(
+            supplied={
+                "one_hop_target": args.one_hop_target,
+                "two_hop_target": args.two_hop_target,
+                "max_endpoint_share": args.max_endpoint_share,
+                "max_bridge_share": args.max_bridge_share,
+            },
+            previous=cr_previous_block,
+            defaults=CONNECTION_ROUNDS_DEFAULT_BUILD_PARAMETERS,
+        )
+        print(
+            format_build_parameters_report(
+                cr_resolved,
+                command="build-connection-rounds",
+                previous_label=cr_previous_label,
+            ),
+            file=sys.stderr,
+        )
+        cr_parameters = build_parameter_values(cr_resolved)
 
         connection_is_family_excluded: Callable[[int, int], bool] | None = None
         if args.artist_family_exclusions is not None:
@@ -3074,11 +3157,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             rounds_json, diagnostics, performer_index = generate_connection_round_pool(
                 graph,
                 albums,
-                one_hop_target=args.one_hop_target,
-                two_hop_target=args.two_hop_target,
                 is_family_excluded=connection_is_family_excluded,
-                max_endpoint_share=args.max_endpoint_share,
-                max_bridge_share=args.max_bridge_share,
+                **cr_parameters,
             )
             if not rounds_json:
                 raise ValueError("no eligible connection rounds were found between any album pair")
@@ -3090,6 +3170,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 snapshot_date=snapshot_date,
                 generated_by=f"networked-players-catalog build-connection-rounds {__version__}",
                 catalog_version=catalog_version,
+                build_parameters=cr_parameters,
             )
 
         validate_connection_rounds_artifact(universe, rounds)
@@ -3097,6 +3178,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         args.output_rounds.parent.mkdir(parents=True, exist_ok=True)
         args.output_universe.write_text(json.dumps(universe, indent=2) + "\n")
         args.output_rounds.write_text(json.dumps(rounds, indent=2) + "\n")
+        diagnostics["build_parameters"] = build_parameters_summary(cr_resolved)
         print(json.dumps(diagnostics, indent=2))
         return 0
 
@@ -5000,6 +5082,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             routes_rounds=routes_rounds,
             catalog=catalog,
             generated_at=args.generated_at,
+            contributor_index=contributor_index,
         )
         failures = album_hop_distances_failures(artifact, catalog, contributor_index)
         if failures:
@@ -5329,7 +5412,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 0
 
     if args.command == "validate-public-artifacts":
-        from networked_players_contracts import public_artifacts_failures
+        from networked_players_contracts import (
+            public_artifacts_failures,
+            public_artifacts_lineage_partially_declared,
+            public_artifacts_lineage_undeclared,
+        )
 
         daily_manifest_payload = json.loads(args.daily_manifest.read_text())
         # A schema-v2 manifest (ADR 0066) spans multiple frozen generations;
@@ -5352,7 +5439,9 @@ def main(argv: Sequence[str] | None = None) -> int:
                 if candidate.is_file():
                     manifest_rounds_by_generation[generation_id] = json.loads(candidate.read_text())
 
-        report = public_artifacts_failures(
+        # Loaded once so the lineage report below sees exactly what the
+        # failure check saw.
+        public_artifacts = dict(
             catalog=json.loads(args.catalog.read_text()),
             album_art=json.loads(args.album_art.read_text()),
             connection_universe=json.loads(args.connection_universe.read_text()),
@@ -5371,8 +5460,28 @@ def main(argv: Sequence[str] | None = None) -> int:
             search_index=json.loads(args.search_index.read_text()),
             approved_pool=json.loads(args.approved_pool.read_text()),
         )
+        report = public_artifacts_failures(**public_artifacts)
         ok = all(not failures for failures in report.values())
-        print(json.dumps({"ok": ok, "failures": report}, indent=2))
+        print(
+            json.dumps(
+                {
+                    "ok": ok,
+                    "failures": report,
+                    # Data, not a failure (ADR 0072 section 1, "Stated limit"):
+                    # live artifacts built before declared lineage existed pass
+                    # but are listed until their next rebuild stamps inputs.
+                    "lineage": {
+                        "undeclared_inputs": public_artifacts_lineage_undeclared(
+                            **public_artifacts
+                        ),
+                        "partially_declared_inputs": public_artifacts_lineage_partially_declared(
+                            **public_artifacts
+                        ),
+                    },
+                },
+                indent=2,
+            )
+        )
         return 0 if ok else 1
 
     if args.command == "diff-artifact-version":

@@ -845,3 +845,21 @@ def test_quiet_suppresses_progress_output_default_does_not(
             quiet=True,
         )
     assert capsys.readouterr().err == ""
+
+
+def test_declares_catalog_and_membership_versions(onehop_dataset: Path) -> None:
+    catalog = _catalog()
+    membership = _membership()
+    membership["album_credit_membership_version"] = "membership-x-eee"
+    with CreditGraph.open(onehop_dataset) as graph:
+        payload = build_pathfinding_graph(
+            graph,
+            catalog,
+            membership,
+            snapshot_date=_SNAPSHOT,
+            generated_at="2026-08-03T00:00:00+00:00",
+        )
+    assert payload["provenance"]["inputs"] == {
+        "catalog": catalog["catalog_version"],
+        "album_credit_membership": "membership-x-eee",
+    }

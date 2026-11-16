@@ -91,7 +91,7 @@ def album_art_failures(registry: Any, catalog: Any) -> list[str]:
     if not isinstance(catalog, dict):
         return ["catalog must be an object"]
 
-    if set(registry.keys()) != _TOP_LEVEL_KEYS:
+    if set(registry.keys()) - {"provenance"} != _TOP_LEVEL_KEYS:
         failures.append(f"registry has unexpected top-level keys: {sorted(registry.keys())}")
     if registry.get("schema_version") != ALBUM_ART_SCHEMA_VERSION:
         failures.append(f"schema_version must be {ALBUM_ART_SCHEMA_VERSION}")

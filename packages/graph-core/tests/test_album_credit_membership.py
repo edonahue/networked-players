@@ -215,3 +215,12 @@ def test_quiet_suppresses_progress_output_default_does_not(
             graph, _catalog(), generated_at="2026-08-07T00:00:00+00:00", quiet=True
         )
     assert capsys.readouterr().err == ""
+
+
+def test_declares_the_catalog_version(onehop_dataset: Path) -> None:
+    catalog = _catalog()
+    with CreditGraph.open(onehop_dataset) as graph:
+        payload = build_album_credit_membership(
+            graph, catalog, generated_at="2026-08-07T00:00:00+00:00"
+        )
+    assert payload["provenance"]["inputs"] == {"catalog": catalog["catalog_version"]}

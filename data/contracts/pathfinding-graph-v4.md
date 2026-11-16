@@ -103,3 +103,12 @@ time than it saves in transfer time, consider keeping indices live in the
 worker instead and threading `roles` through every consumer — a real,
 measured tradeoff to make when that Phase 1 slice is implemented, not
 guessed at here.
+
+
+## Declared lineage (optional `provenance.inputs`)
+
+Builders from Campaign Atlas F1b on emit an optional top-level `provenance`
+object holding only `inputs` -- `{artifact_name: content_version}` of the
+upstream artifacts consumed (`catalog`, `album_credit_membership`). The key is optional: an artifact
+without it is valid and passes the lineage rule (it is listed as undeclared).
+`provenance` does not enter `pathfinding_graph_version`. See `artifact-lineage-v1.md`.

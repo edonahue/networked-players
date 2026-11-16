@@ -98,3 +98,12 @@ and extend `search_index_failures`'s coverage check accordingly (a
 candidate entry has no catalog/contributor-index cross-check to run --
 its own validator, once that artifact exists, is where its own `id`
 gets checked). No schema-version bump needed for that addition alone.
+
+
+## Declared lineage (optional `provenance.inputs`)
+
+Builders from Campaign Atlas F1b on emit an optional top-level `provenance`
+object holding only `inputs` -- `{artifact_name: content_version}` of the
+upstream artifacts consumed (`catalog`, `contributor_index`). The key is optional: an artifact
+without it is valid and passes the lineage rule (it is listed as undeclared).
+`provenance` does not enter `search_index_version`. See `artifact-lineage-v1.md`.

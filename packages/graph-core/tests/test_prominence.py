@@ -211,3 +211,18 @@ def test_no_known_evidence_years_leaves_first_last_year_null() -> None:
     # decade_span falls back to 0 when no year is known -- rank still
     # reflects the other real signals, never crashes on missing years.
     assert rank[100] == 50 * 1 + 50 * 0 + 10 * 1 + 1 * 2 + 1 * 2
+
+
+def test_declares_graph_and_registry_versions() -> None:
+    graph = _graph(schema_version=3)
+    registry = _registry()
+    registry["evidence_release_registry_version"] = "registry-x-ccc"
+    payload = build_prominence(
+        pathfinding_graph=graph,
+        evidence_release_registry=registry,
+        generated_at="2026-09-03T00:00:00+00:00",
+    )
+    assert payload["provenance"]["inputs"] == {
+        "pathfinding_graph": graph["pathfinding_graph_version"],
+        "evidence_release_registry": "registry-x-ccc",
+    }

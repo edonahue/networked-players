@@ -68,3 +68,12 @@ depend on the private one-hop corpus. This is the same discipline that
 produced `data/contracts/album-hop-distances-v1.md` (ADR 0048 addendum): a
 new field's data belongs in a new companion artifact, never grafted onto
 this exact-key-set contract in place.
+
+
+## Declared lineage (optional `provenance.inputs`)
+
+Builders from Campaign Atlas F1b on emit an optional top-level `provenance`
+object holding only `inputs` -- `{artifact_name: content_version}` of the
+upstream artifacts consumed (`catalog`, `challenge`, `record_routes`, `evidence_release_registry`). The key is optional: an artifact
+without it is valid and passes the lineage rule (it is listed as undeclared).
+`provenance` does not enter `contributor_index_version`. See `artifact-lineage-v1.md`.

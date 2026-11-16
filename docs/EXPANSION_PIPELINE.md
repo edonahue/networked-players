@@ -113,6 +113,17 @@ every release id the challenge, routes rounds and graph cite. A stale pool now f
 manifest are deliberately exempt (ADR 0041, ADR 0066). Rebuilding them every round is still
 the operator's job; CI now enforces it.
 
+**Declared lineage (Campaign Atlas F1b; `data/contracts/artifact-lineage-v1.md`).** Version
+equality with the catalog does not see a *challenge-only* rebuild: the evidence registry,
+contributor index and hop distances stay green although their input changed. Builders now stamp
+`provenance.inputs` (`{artifact: content_version}`), the challenge gains
+`provenance.challenge_version`, and `validate-public-artifacts` fails a live artifact whose
+declared input version no longer matches the current upstream artifact, naming both. This only
+bites for artifacts rebuilt with this version of the builders: everything committed before it
+declares no inputs, passes, and is listed under `lineage.undeclared_inputs` in the command's
+JSON output until its next rebuild. Rebuild in the order above and rebuild every downstream
+artifact after any upstream one.
+
 ### Steps 1–8: candidate discovery through owner review (no publication yet)
 
 > **Stale — rewrite pending (ROADMAP "Stage 0").** These steps predate Round 1's
@@ -351,11 +362,15 @@ the operator's job; CI now enforces it.
       --output-rounds apps/web/public/data/routes/rounds.v1.json
 
     # The Connection Guesser (game/{universe,rounds}.v1.json): make check now
-    # fails if it is stale against the catalog. Rebuild it every round. Its own defaults are 300/200 -- check the
-    # published artifact before trusting them.
+    # fails if it is stale against the catalog. Rebuild it every round. Its code defaults are
+    # 300/200, but pass --previous-connection-universe (the published game/universe.v1.json) so a
+    # rebuild inherits the published targets instead; it stamps provenance.build_parameters once
+    # it has been rebuilt with this version of the builder (older artifacts carry none, in which
+    # case the defaults apply and stderr says so).
     uv run networked-players-catalog build-connection-rounds \
       --onehop-root local/processed/discogs-onehop-v5/snapshot=20260601 \
       --albums apps/web/public/data/catalog/albums.v1.json \
+      --previous-connection-universe apps/web/public/data/game/universe.v1.json \
       --artist-family-exclusions <path-to-artist-family-exclusions-v1.json> \
       --output-universe apps/web/public/data/game/universe.v1.json \
       --output-rounds apps/web/public/data/game/rounds.v1.json

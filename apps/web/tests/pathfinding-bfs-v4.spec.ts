@@ -116,6 +116,21 @@ test("v3 and v4 fixtures both validate independently -- dual-live coexistence", 
   expect(v4?.schema_version).toBe(4);
 });
 
+test("validatePathfindingGraph accepts a graph that declares provenance.inputs (ADR 0072)", async () => {
+  // A graph built after declared lineage landed carries a top-level
+  // `provenance` object; one built before it does not. Both must load.
+  const fixture = loadFixture("well-formed-v4") as Record<string, unknown>;
+  const withInputs = {
+    ...fixture,
+    provenance: {
+      inputs: { catalog: "catalog-x", album_credit_membership: null },
+    },
+  };
+  const result = await validatePathfindingGraph(withInputs);
+  expect(result).not.toBeNull();
+  expect(result?.schema_version).toBe(4);
+});
+
 test("pathfinding_graph_version prefix distinguishes v4 from v3", async () => {
   const graph = loadFixture("well-formed-v4") as PathfindingGraph;
   expect(graph.pathfinding_graph_version).toMatch(/^pathfinding-graph-v4-/);

@@ -17,11 +17,12 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from typing import Any, Protocol
 
-from networked_players_contracts.challenge import challenge_failures
+from networked_players_contracts.challenge import challenge_content_version, challenge_failures
 
 from . import __version__
 from .album_policy import master_non_studio_reason
 from .graph import GRAPH_POLICY_VERSION, CreditGraph, EvidencePath, FrontierTooLargeError
+from .lineage_inputs import stamp_inputs
 
 CHALLENGE_SCHEMA_VERSION = 2
 
@@ -823,6 +824,8 @@ def build_challenge_v2_from_matched(
         "paths": paths_json,
         "releases": releases_json,
     }
+    stamp_inputs(artifact, {"catalog": catalog_version})
+    stamp_challenge_version(artifact)
     report = {
         "albums_matched": len(matched),
         "albums_missed": len(missed),
@@ -840,6 +843,16 @@ def build_challenge_v2_from_matched(
         ),
     }
     return artifact, report
+
+
+def stamp_challenge_version(artifact: dict[str, Any]) -> str:
+    """Set `provenance.challenge_version` from the artifact's current content.
+    Call it again after anything that edits published content post-build
+    (e.g. `enrich_challenge_albums` writing `cover_image`), or the contract's
+    recomputation check rejects the artifact."""
+    version = challenge_content_version(artifact)
+    artifact["provenance"]["challenge_version"] = version
+    return version
 
 
 def validate_challenge(artifact: dict[str, Any], catalog: dict[str, Any] | None = None) -> None:

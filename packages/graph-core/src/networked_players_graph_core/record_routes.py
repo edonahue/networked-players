@@ -33,6 +33,7 @@ from networked_players_contracts.record_routes import record_routes_failures
 
 from .challenge import MatchedAlbum
 from .graph import CreditGraph
+from .lineage_inputs import stamp_inputs
 from .rounds import ROUNDS_SCHEMA_VERSION, build_rounds_v1
 from .rounds_generator import generate_round_pool
 
@@ -197,6 +198,7 @@ def build_record_routes_pool(
         artifact["provenance"]["catalog_version"] = catalog_version
         artifact["provenance"]["artifact_version"] = artifact_version
         artifact["provenance"]["build_parameters"] = build_parameters
+        stamp_inputs(artifact, {"catalog": catalog_version})
 
     return universe, rounds, diagnostics
 

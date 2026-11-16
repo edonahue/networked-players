@@ -906,3 +906,44 @@ def test_validator_rejects_two_hop_round_whose_endpoints_share_a_direct_performe
     universe["contributors"].append({"id": 999999, "name": "Ringer", "role_category": "guitar"})
     with pytest.raises(ConnectionRoundsValidationError, match="premise violated"):
         validate_connection_rounds_artifact(universe, rounds)
+
+
+def test_declares_catalog_input_and_stamps_build_parameters(dataset_root: Path) -> None:
+    with CreditGraph.open(dataset_root, build_edges=False) as graph:
+        rounds_json, _, performer_index = generate_connection_round_pool(
+            graph, ALBUMS, one_hop_target=10, two_hop_target=10
+        )
+    parameters = {
+        "one_hop_target": 10,
+        "two_hop_target": 10,
+        "max_endpoint_share": 0.15,
+        "max_bridge_share": 0.2,
+    }
+    universe, rounds = build_connection_universe_and_rounds(
+        ALBUMS,
+        rounds_json,
+        performer_index,
+        snapshot_date=SNAPSHOT_DATE,
+        generated_by="test",
+        catalog_version="test-catalog-v1",
+        build_parameters=parameters,
+    )
+    validate_connection_rounds_artifact(universe, rounds)
+    assert universe["provenance"]["inputs"] == {"catalog": "test-catalog-v1"}
+    assert universe["provenance"]["build_parameters"] == parameters
+    # universe and rounds provenance must stay identical.
+    assert universe["provenance"] == rounds["provenance"]
+    # Neither field enters the published identity.
+    bare_universe, _ = build_connection_universe_and_rounds(
+        ALBUMS,
+        rounds_json,
+        performer_index,
+        snapshot_date=SNAPSHOT_DATE,
+        generated_by="test",
+        catalog_version="test-catalog-v1",
+    )
+    assert "build_parameters" not in bare_universe["provenance"]
+    assert (
+        bare_universe["provenance"]["artifact_version"]
+        == universe["provenance"]["artifact_version"]
+    )
