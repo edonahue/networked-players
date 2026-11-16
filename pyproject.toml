@@ -92,6 +92,11 @@ src = [
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "RUF"]
 
+[tool.ruff.lint.per-file-ignores]
+# Embedded HTML/CSS/JS template text, not Python code.
+"packages/catalog/src/networked_players_catalog/review_packet.py" = ["E501"]
+"packages/catalog/tests/test_review_packet.py" = ["E501"]  # embedded Node driver script
+
 [tool.ruff.format]
 quote-style = "double"
 
