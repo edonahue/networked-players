@@ -169,14 +169,13 @@ test("a search with no real matches shows an empty results grid and an honest me
   await expect(status).toHaveText(/^Showing \d+ of \d+ contributors\.$/);
 });
 
-test("the contributors directory is reachable from the site footer", async ({
+test("the contributors directory is reachable from the primary nav", async ({
   page,
 }) => {
   await page.goto("/");
-  // Contributors is also in the primary nav now -- scope to the footer
-  // specifically, since that's this test's own claim (the nav path has
-  // its own coverage in smoke.spec.ts).
-  await page.locator(".site-footer a", { hasText: "Contributors" }).click();
+  await page
+    .locator("nav[aria-label='Primary'] a", { hasText: "Players" })
+    .click();
   await expect(page).toHaveURL(/\/contributors\/$/);
   await expect(page.getByRole("heading", { level: 1 })).toContainText(
     "people behind",
