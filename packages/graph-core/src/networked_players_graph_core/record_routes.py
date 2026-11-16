@@ -33,7 +33,7 @@ from networked_players_contracts.record_routes import record_routes_failures
 
 from .challenge import MatchedAlbum
 from .graph import CreditGraph
-from .lineage_inputs import lineage_inputs, stamp_inputs
+from .lineage_inputs import stamp_inputs
 from .rounds import ROUNDS_SCHEMA_VERSION, build_rounds_v1
 from .rounds_generator import generate_round_pool
 

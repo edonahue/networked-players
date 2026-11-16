@@ -31,8 +31,8 @@ from typing import Any
 from .album_art import album_art_failures
 from .album_credit_membership import album_credit_membership_failures
 from .album_hop_distances import album_hop_distances_failures
-from .artifact_lineage import artifact_lineage_report
 from .approved_pool import approved_pool_catalog_failures, approved_pool_failures
+from .artifact_lineage import artifact_lineage_report
 from .catalog import public_album_catalog_failures
 from .catalog_lineage import challenge_catalog_failures, registry_citation_failures
 from .challenge import challenge_failures

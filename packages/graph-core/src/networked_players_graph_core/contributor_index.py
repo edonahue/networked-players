@@ -381,7 +381,7 @@ def build_contributor_index(
     _annotate_interesting_next_step(contributors)
     index_version = contributor_index_version(contributors, snapshot_date)
 
-    artifact: dict[str, Any] = {
+    index_artifact: dict[str, Any] = {
         "schema_version": 1,
         "catalog_version": catalog_version,
         "contributor_index_version": index_version,
@@ -399,7 +399,7 @@ def build_contributor_index(
         "contributors": contributors,
     }
     stamp_inputs(
-        artifact,
+        index_artifact,
         lineage_inputs(
             catalog=catalog,
             challenge=challenge,
@@ -407,7 +407,7 @@ def build_contributor_index(
             evidence_release_registry=evidence_release_registry,
         ),
     )
-    return artifact
+    return index_artifact
 
 
 def build_album_hop_distances(
@@ -464,7 +464,7 @@ def build_album_hop_distances(
 
     version = album_hop_distances_version(entries, snapshot_date)
 
-    artifact: dict[str, Any] = {
+    hop_artifact: dict[str, Any] = {
         "schema_version": 1,
         "catalog_version": catalog_version,
         "album_hop_distances_version": version,
@@ -490,5 +490,5 @@ def build_album_hop_distances(
     }
     if contributor_index is not None:
         upstream["contributor_index"] = contributor_index
-    stamp_inputs(artifact, lineage_inputs(**upstream))
-    return artifact
+    stamp_inputs(hop_artifact, lineage_inputs(**upstream))
+    return hop_artifact

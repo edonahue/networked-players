@@ -11,9 +11,9 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from test_cli_record_routes import _write_catalog, _write_onehop_dataset
 
 from networked_players_catalog.cli import main
+from test_cli_record_routes import _write_catalog, _write_onehop_dataset
 
 
 def _build(tmp_path: Path, *extra_args: str) -> tuple[int, str, str, Path]:
