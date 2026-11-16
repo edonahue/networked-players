@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 jobs:
-  test:
+  web:
     # Pinned: ubuntu-latest moved to 26.04 (2026-11), which Playwright 1.55's
     # `install --with-deps chromium` refuses ("does not support chromium on
     # ubuntu26.04-x64"). Unpin together with a Playwright upgrade that supports it.

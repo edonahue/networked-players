@@ -45,12 +45,12 @@ No catalog growth, no real collection published, no public data regenerated.
 
 | ID | Deliverable | Depends on | Acceptance | Status |
 |---|---|---|---|---|
-| F0 | ADR 0072, ADR 0018 addendum, this page, roadmap update | — | merged | in progress |
+| F0 | ADR 0072, ADR 0018 addendum, this page, roadmap update | — | merged | done (#260) |
 | F1 | Catalog-aware checks for the Guesser, Routes and challenge album sets; registry covers every cited release; `provenance.inputs` and `build_parameters` stamped by builders; generic input-version rule with `live` / `frozen` / `appended` classes; `challenge_version` | F0 | a test that stales each of Guesser, Routes, challenge and registry turns validation red; committed artifacts unchanged and still valid | todo |
 | F2 | `data/albums/approved-pool-v1.json` (cumulative, public labels only); two-way catalog check; builder fails on a dropped approved album; `--underrepresented-buckets` shape fix; unread policy keys enforced or removed; rounds 2–5 in the expansion policy | F0 | unapproved album and dropped approved album both fail in tests; committed catalog equals committed pool | todo |
 | F3 | `round plan / run / verify` runner: required inputs, inherited parameters, freeze guard, calendar check, restart from a stage, progress output; `EXPANSION_PIPELINE.md` rewritten as the runner's stages | F1, F2 | a synthetic round run twice gives identical content versions; a rebuild with an unfrozen live daily generation is refused | todo |
 | F4 | Digest pin for already-played daily dates; payload budgets as a CI test; determinism tests for the catalog and challenge builders | F1 | fail-then-pass shown for each | todo |
-| F5 | Required checks on `main`; post-deploy smoke workflow; pin remaining runner images | — | a failing pull request cannot merge; smoke runs after a deploy | todo |
+| F5 | Required checks on `main`; post-deploy smoke workflow; pin remaining runner images | — | a failing pull request cannot merge; smoke runs after a deploy | in progress |
 | F6 | Tests no longer pinned to specific real albums or pairs | — | no test names a real album except through an artifact lookup | todo |
 | P1 | Album page as a record: performer roster in static HTML, "where these players lead", evidence readable without JavaScript, guessing as an opt-in | — | a JavaScript-disabled test reads roster and evidence; axe clean in both themes | todo |
 | P2 | Site-wide search over records and players with an honest empty state | — | keyboard only: search to Explore centred on the result | todo |
