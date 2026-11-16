@@ -69,6 +69,10 @@ export function titleQuery(album: CatalogAlbum): string {
   return album.title;
 }
 
+export function escapeRegExp(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 export interface AlbumPair {
   a: CatalogAlbum;
   b: CatalogAlbum;
@@ -180,7 +184,9 @@ async function computeFacts(): Promise<Facts> {
         evidence,
         4,
       );
-      if (rec.ok) {
+      // At least one documented hop: albums sharing a credited contributor
+      // directly have a zero-hop "route" with no hop evidence to render.
+      if (rec.ok && rec.recommended.hops.length >= 1) {
         const alternate = findAlbumRoute(
           graph,
           artistIndex,
@@ -237,14 +243,14 @@ async function computeFacts(): Promise<Facts> {
     // fact is still unresolved.
     const rhythmRoute: AlbumRouteResult | null =
       !rhythm || !negative ? route(p, rhythmSectionEdgeFilter) : null;
-    if (!rhythm && rhythmRoute?.ok) {
+    if (!rhythm && rhythmRoute?.ok && rhythmRoute.hops.length >= 1) {
       rhythm = { ...p, hops: rhythmRoute.hops.length };
     }
     const guitarRoute: AlbumRouteResult | null =
       !guitar || (!negative && rhythmRoute && !rhythmRoute.ok)
         ? route(p, guitarPathsEdgeFilter)
         : null;
-    if (!guitar && guitarRoute?.ok) guitar = p;
+    if (!guitar && guitarRoute?.ok && guitarRoute.hops.length >= 1) guitar = p;
     if (
       !negative &&
       rhythmRoute &&

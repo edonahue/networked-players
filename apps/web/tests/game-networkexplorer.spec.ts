@@ -9,13 +9,9 @@
 
 import { expect, test } from "@playwright/test";
 import { pathfindingGraphVersion } from "../src/game/pathfindingGraph";
-import { catalogFacts } from "./helpers/catalogFacts";
+import { catalogFacts, escapeRegExp } from "./helpers/catalogFacts";
 
 const EXPLORER = (await catalogFacts()).explorer;
-
-function escapeRegExp(text: string): string {
-  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
 
 interface ContributorLite {
   artist_id: number;
@@ -71,7 +67,7 @@ test("the explorer centers on the album's artist and shows a bounded neighborhoo
 }) => {
   await page.goto(`/explore/${EXPLORER.album.id}/`);
   await expect(page.getByRole("heading", { level: 1 })).toContainText(
-    EXPLORER.artistName,
+    EXPLORER.album.title,
   );
 
   const nodes = page.locator("[data-explorer-nodes] .explorer-node");
@@ -315,7 +311,7 @@ test("an unknown ?center= id is silently ignored and the default center still re
     page.locator("[data-explorer-nodes] .explorer-node[data-is-center='true']"),
   ).toBeVisible({ timeout: 15000 });
   await expect(page.getByRole("heading", { level: 1 })).toContainText(
-    EXPLORER.artistName,
+    EXPLORER.album.title,
   );
   await expect(page.locator("[data-explorer-status]")).toContainText(
     new RegExp(`Centered on ${escapeRegExp(EXPLORER.artistName)}`, "i"),

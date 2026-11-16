@@ -10,7 +10,7 @@ import {
   selectAlbumById,
   selectRouteFilter,
 } from "./helpers/connectPicker";
-import { catalogFacts } from "./helpers/catalogFacts";
+import { catalogFacts, escapeRegExp } from "./helpers/catalogFacts";
 
 // Albums are derived from the committed artifacts by rule (see
 // helpers/catalogFacts.ts), never named here.
@@ -100,7 +100,7 @@ test("swap announces the new order and keeps focus on the swap control", async (
   await swap.click();
 
   await expect(page.locator("[data-connect-announce]")).toContainText(
-    /joshua tree.*first/i,
+    new RegExp(`${escapeRegExp(CONNECTED.b.title)}.*first`, "i"),
   );
   await expect(swap).toBeFocused();
 });

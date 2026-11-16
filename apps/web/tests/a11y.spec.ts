@@ -28,6 +28,11 @@ for (const path of PAGES) {
   test(`${path} has no automatically-detectable accessibility violations`, async ({
     page,
   }) => {
+    // Large contributor/explore pages make axe's per-element work exceed the
+    // default budget under suite load (a heavy page, not a regression).
+    if (path.startsWith("/contributors/") || path.startsWith("/explore/")) {
+      test.slow();
+    }
     await page.goto(path);
     // Let each page's async data fetch (pathfinding graph, contributor
     // index, etc) finish rendering before scanning -- a mid-fetch DOM
