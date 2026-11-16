@@ -1,0 +1,63 @@
+<script is:inline>
+  // Opt-in guessing for the album page's documented connections. Without
+  // JavaScript the toggle never appears and every title and piece of
+  // evidence stays readable. Nothing is persisted (the previous page did not
+  // persist guess state either).
+  (() => {
+    const toggle = document.querySelector('[data-guess-toggle]');
+    const items = Array.from(document.querySelectorAll('[data-connection]'));
+    if (!toggle || !items.length) return;
+    toggle.hidden = false;
+
+    const wasOpen = new Map();
+
+    const setRevealed = (item, revealed) => {
+      const title = item.querySelector('[data-guess-title]');
+      const mask = item.querySelector('[data-guess-mask]');
+      const body = item.querySelector('[data-guess-body]');
+      const button = item.querySelector('[data-guess-reveal]');
+      if (title) title.hidden = !revealed;
+      if (mask) mask.hidden = revealed;
+      if (body) {
+        body.hidden = !revealed;
+        if (revealed) body.open = true;
+      }
+      if (button) {
+        button.setAttribute('aria-expanded', String(revealed));
+        button.textContent = revealed ? 'Hide' : 'Reveal';
+      }
+    };
+
+    toggle.addEventListener('click', () => {
+      const on = toggle.getAttribute('aria-pressed') !== 'true';
+      toggle.setAttribute('aria-pressed', String(on));
+      toggle.textContent = on ? 'Show everything' : 'Guess the connections first';
+      items.forEach((item) => {
+        const body = item.querySelector('[data-guess-body]');
+        const button = item.querySelector('[data-guess-reveal]');
+        if (button) button.hidden = !on;
+        if (on) {
+          if (body) wasOpen.set(item, body.open);
+          setRevealed(item, false);
+        } else {
+          const title = item.querySelector('[data-guess-title]');
+          const mask = item.querySelector('[data-guess-mask]');
+          if (title) title.hidden = false;
+          if (mask) mask.hidden = true;
+          if (body) {
+            body.hidden = false;
+            body.open = wasOpen.get(item) ?? false;
+          }
+        }
+      });
+    });
+
+    items.forEach((item) => {
+      const button = item.querySelector('[data-guess-reveal]');
+      if (!button) return;
+      button.addEventListener('click', () => {
+        setRevealed(item, button.getAttribute('aria-expanded') !== 'true');
+      });
+    });
+  })();
+</script>

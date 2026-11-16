@@ -1,0 +1,37 @@
+---
+import type { RosterPerson } from '../data/albumRecord';
+
+interface Props {
+  person: RosterPerson;
+  /** Contributor ids that have a /contributors/<id>/ page. */
+  linkable: Set<number>;
+}
+
+const { person, linkable } = Astro.props;
+const roleLine = [
+  ...person.roles,
+  ...(person.trackCount > 0
+    ? [`${person.trackCount} track${person.trackCount === 1 ? '' : 's'}`]
+    : []),
+].join(' · ');
+---
+
+<li>
+  {
+    linkable.has(person.artistId) ? (
+      <a class="roster-person__name" href={`/contributors/${person.artistId}/`}>
+        {person.name}
+      </a>
+    ) : (
+      <span class="roster-person__name">{person.name}</span>
+    )
+  }
+  {
+    roleLine && (
+      <span class="roster-person__role">
+        {roleLine}
+        {person.anv ? ` (credited as ${person.anv})` : ''}
+      </span>
+    )
+  }
+</li>
