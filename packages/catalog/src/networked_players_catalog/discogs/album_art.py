@@ -18,6 +18,7 @@ from __future__ import annotations
 from typing import Any
 
 from networked_players_contracts.album_art import album_art_version
+from networked_players_graph_core.lineage_inputs import lineage_inputs, stamp_inputs
 
 from .api_client import ApiClient, ReleaseCache, fetch_releases
 
@@ -100,7 +101,7 @@ def build_album_art_registry(
         )
 
     snapshot_date = str(catalog["snapshot_date"])
-    return {
+    registry: dict[str, Any] = {
         "schema_version": 1,
         "catalog_version": catalog["catalog_version"],
         "art_version": album_art_version(entries, snapshot_date),
@@ -109,3 +110,5 @@ def build_album_art_registry(
         "license": license_note,
         "albums": entries,
     }
+    stamp_inputs(registry, lineage_inputs(catalog=catalog))
+    return registry

@@ -337,3 +337,11 @@ def test_build_record_routes_pool_stamps_the_build_parameters_it_ran_with(
     assert universe["provenance"]["build_parameters"] == expected
     assert rounds["provenance"]["build_parameters"] == expected
     validate_record_routes_artifact(universe, rounds)  # does not raise
+
+
+def test_declares_the_catalog_version_it_was_built_from(routes_dataset_root: Path) -> None:
+    universe, rounds, _ = _build(routes_dataset_root)
+    assert universe["provenance"]["inputs"] == {"catalog": "test-catalog-v1"}
+    assert rounds["provenance"]["inputs"] == {"catalog": "test-catalog-v1"}
+    # `inputs` is provenance, not content: it does not enter artifact_version.
+    assert universe["provenance"]["artifact_version"].startswith("routes-artifact-v1-")

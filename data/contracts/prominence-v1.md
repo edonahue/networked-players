@@ -127,3 +127,12 @@ genuinely structural bridge), retune the weights in
 shape, not specific weight values) -- regenerate the real artifact; no
 schema-version bump needed unless a FIELD is added or removed, not just a
 weight retune.
+
+
+## Declared lineage (optional `provenance.inputs`)
+
+Builders from Campaign Atlas F1b on emit an optional top-level `provenance`
+object holding only `inputs` -- `{artifact_name: content_version}` of the
+upstream artifacts consumed (`pathfinding_graph`, `evidence_release_registry`). The key is optional: an artifact
+without it is valid and passes the lineage rule (it is listed as undeclared).
+`provenance` does not enter `prominence_version`. See `artifact-lineage-v1.md`.

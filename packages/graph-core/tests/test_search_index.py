@@ -162,3 +162,16 @@ def test_catalog_version_mismatch_raises() -> None:
             contributor_index=contributor_index,
             generated_at="2026-09-03T00:00:00+00:00",
         )
+
+
+def test_declares_catalog_and_contributor_index_versions() -> None:
+    contributor_index = _contributor_index()
+    payload = build_search_index(
+        catalog=_catalog(),
+        contributor_index=contributor_index,
+        generated_at="2026-09-03T00:00:00+00:00",
+    )
+    assert payload["provenance"]["inputs"] == {
+        "catalog": _CATALOG_VERSION,
+        "contributor_index": _CONTRIBUTOR_INDEX_VERSION,
+    }

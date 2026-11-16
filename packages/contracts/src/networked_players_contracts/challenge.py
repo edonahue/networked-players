@@ -32,6 +32,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from .canonical import content_hash
 from .rounds import _privacy_failures, _seed_key_paths
 
 CHALLENGE_SCHEMA_VERSION = 2
@@ -58,6 +59,29 @@ _RELEASE_KEYS = frozenset(
     }
 )
 _PROVENANCE_REQUIRED = ("source", "license", "snapshot_date", "generated_by", "graph_core_version")
+
+
+def challenge_content_version(artifact: dict[str, Any]) -> str:
+    """Complete-content hash of everything the challenge publishes and a
+    player sees: albums, artists, paths and the evidence releases, in
+    published order -- the same "hash everything actually published" rule as
+    `record_routes_artifact_version` (ADR 0046 slice-9 addendum). `provenance`
+    is deliberately excluded: it holds `generated_by`, notes, the catalog
+    version and build parameters, which are not content (a catalog change
+    that leaves every path identical must not rename the challenge).
+
+    Computed here so the generator and this dependency-free validator share
+    one formula and cannot drift."""
+    payload = {
+        "albums": artifact.get("albums"),
+        "artists": artifact.get("artists"),
+        "paths": artifact.get("paths"),
+        "releases": artifact.get("releases"),
+    }
+    snapshot_date = (artifact.get("provenance") or {}).get("snapshot_date")
+    return (
+        f"challenge-v{CHALLENGE_SCHEMA_VERSION}-{snapshot_date}-{content_hash(payload, length=12)}"
+    )
 
 
 def challenge_failures(artifact: Any, catalog: Any | None = None) -> list[str]:
@@ -102,6 +126,17 @@ def challenge_failures(artifact: Any, catalog: Any | None = None) -> list[str]:
                 or graph_policy_version < 1
             ):
                 failures.append("provenance.graph_policy_version must be a positive integer")
+
+        # Optional (ADR 0072 section 1): absent on a challenge built before it
+        # existed. When present it must equal the recomputed content hash, so
+        # a hand edit or a post-build mutation that skipped re-stamping fails.
+        if "challenge_version" in provenance:
+            expected_version = challenge_content_version(artifact)
+            if provenance.get("challenge_version") != expected_version:
+                failures.append(
+                    f"provenance.challenge_version {provenance.get('challenge_version')!r} "
+                    f"does not match the artifact's recomputed content ({expected_version!r})"
+                )
 
         # Optional (graph-expansion plan Y3): the parameters this build
         # actually ran with. Never required -- an artifact built before this

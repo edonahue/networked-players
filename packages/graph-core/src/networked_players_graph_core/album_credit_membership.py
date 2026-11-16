@@ -28,6 +28,7 @@ from typing import Any
 from networked_players_contracts.canonical import content_hash
 
 from .graph import CreditGraph
+from .lineage_inputs import lineage_inputs, stamp_inputs
 
 
 def _progress(quiet: bool, message: str) -> None:
@@ -120,7 +121,7 @@ def build_album_credit_membership(
     snapshot_date = catalog["snapshot_date"]
     version = album_credit_membership_version(albums, snapshot_date)
 
-    return {
+    artifact: dict[str, Any] = {
         "schema_version": 1,
         "catalog_version": catalog_version,
         "album_credit_membership_version": version,
@@ -135,3 +136,5 @@ def build_album_credit_membership(
         ),
         "albums": albums,
     }
+    stamp_inputs(artifact, lineage_inputs(catalog=catalog))
+    return artifact

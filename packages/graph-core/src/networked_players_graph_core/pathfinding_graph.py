@@ -65,6 +65,7 @@ from networked_players_contracts.canonical import content_hash
 from .compact_graph_bench import build_csr_adjacency
 from .eligibility import is_performer_role
 from .graph import GRAPH_POLICY_VERSION, CreditGraph, edge_ineligible_role
+from .lineage_inputs import lineage_inputs, stamp_inputs
 
 
 def _progress(quiet: bool, message: str) -> None:
@@ -437,4 +438,8 @@ def build_pathfinding_graph(
         payload["edge_role_a"] = edge_role_a
         payload["edge_role_b"] = edge_role_b
     payload["pathfinding_graph_version"] = pathfinding_graph_version(payload, snapshot_date)
+    stamp_inputs(
+        payload,
+        lineage_inputs(catalog=catalog, album_credit_membership=album_credit_membership),
+    )
     return payload

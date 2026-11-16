@@ -172,7 +172,7 @@ def pathfinding_graph_failures(graph: Any, catalog: Any) -> list[str]:
         expected_keys = expected_keys | _V3_ONLY_KEYS
     if schema_version == 4:
         expected_keys = expected_keys | _V4_ONLY_KEYS
-    if set(graph.keys()) != expected_keys:
+    if set(graph.keys()) - {"provenance"} != expected_keys:
         failures.append(f"graph has unexpected top-level keys: {sorted(graph.keys())}")
 
     for field_name in (

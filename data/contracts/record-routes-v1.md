@@ -92,3 +92,11 @@ ordinal ids, an operator-supplied `pool_version`, no `mode`, and embedded
 replaces the ids and adds the missing identity/versioning/art-free guarantees.
 `build-rounds-from-dump` remains available but is explicitly legacy/
 exploratory — `build-record-routes` is the correct production path.
+
+
+## Declared lineage (optional `provenance.inputs`, `provenance.build_parameters`)
+
+`provenance.inputs` = `{"catalog": <catalog_version>}` on both files (`build_parameters` already existed, ADR 0046 follow-up).
+
+See `artifact-lineage-v1.md`. Neither key enters the artifact's version
+hash, and an artifact without them is valid.

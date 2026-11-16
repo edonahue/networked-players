@@ -81,3 +81,12 @@ Images are hotlinked from `i.discogs.com` over https. The site CSP
 tightened it must include `img-src 'self' https://i.discogs.com data:`. The
 `Referrer-Policy` (`strict-origin-when-cross-origin`) is compatible with
 Discogs hotlinking.
+
+
+## Declared lineage (optional `provenance.inputs`)
+
+Builders from Campaign Atlas F1b on emit an optional top-level `provenance`
+object holding only `inputs` -- `{artifact_name: content_version}` of the
+upstream artifacts consumed (`catalog`). The key is optional: an artifact
+without it is valid and passes the lineage rule (it is listed as undeclared).
+`provenance` does not enter `art_version`. See `artifact-lineage-v1.md`.

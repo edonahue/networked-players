@@ -102,3 +102,11 @@ never played, never mixed into real data. Its shape is otherwise similar
 synthetic/fictional in every field). It exists purely so pure-engine unit
 tests have deterministic, hand-authored content independent of the real data
 pipeline. Do not confuse it with this contract.
+
+
+## Declared lineage (optional `provenance.inputs`, `provenance.build_parameters`)
+
+`provenance.inputs` = `{"catalog": <catalog_version>}`; `provenance.build_parameters` = `{one_hop_target, two_hop_target, max_endpoint_share, max_bridge_share}` (non-negative integers and numbers), inherited by `build-connection-rounds --previous-connection-universe`. `universe` and `rounds` provenance still match exactly.
+
+See `artifact-lineage-v1.md`. Neither key enters the artifact's version
+hash, and an artifact without them is valid.

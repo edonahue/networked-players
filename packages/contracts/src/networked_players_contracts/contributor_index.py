@@ -114,7 +114,7 @@ def contributor_index_failures(index: Any, catalog: Any) -> list[str]:
     if not isinstance(catalog, dict):
         return ["catalog must be an object"]
 
-    if set(index.keys()) != _TOP_LEVEL_KEYS:
+    if set(index.keys()) - {"provenance"} != _TOP_LEVEL_KEYS:
         failures.append(f"index has unexpected top-level keys: {sorted(index.keys())}")
     if index.get("schema_version") != CONTRIBUTOR_INDEX_SCHEMA_VERSION:
         failures.append(f"schema_version must be {CONTRIBUTOR_INDEX_SCHEMA_VERSION}")

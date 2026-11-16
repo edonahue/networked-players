@@ -81,3 +81,11 @@ tests. Do not confuse it with this contract.
 Record Routes (a real published artifact under a distinct path once slice 6
 ships) plugs in as a peer mode with its own contract (`rounds-v1.md`), never
 this one.
+
+
+## Declared lineage (optional `provenance.inputs`, `provenance.build_parameters`)
+
+`provenance.inputs` and `provenance.build_parameters` are identical to the paired universe's (the exact-match rule applies).
+
+See `artifact-lineage-v1.md`. Neither key enters the artifact's version
+hash, and an artifact without them is valid.

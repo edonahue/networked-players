@@ -82,7 +82,7 @@ def album_credit_membership_failures(membership: Any, catalog: Any) -> list[str]
     if not isinstance(catalog, dict):
         return ["catalog must be an object"]
 
-    if set(membership.keys()) != _TOP_LEVEL_KEYS:
+    if set(membership.keys()) - {"provenance"} != _TOP_LEVEL_KEYS:
         failures.append(
             f"album-credit-membership has unexpected top-level keys: {sorted(membership.keys())}"
         )

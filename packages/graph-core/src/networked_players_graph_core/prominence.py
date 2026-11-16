@@ -72,6 +72,7 @@ from typing import Any
 
 from networked_players_contracts.canonical import content_hash
 
+from .lineage_inputs import lineage_inputs, stamp_inputs
 from .role_taxonomy import classify_role
 
 # Dependency-free duplicate of `pathfinding_graph.ALBUM_ANCHOR_SENTINEL` --
@@ -244,4 +245,11 @@ def build_prominence(
         "rank": rank,
     }
     payload["prominence_version"] = prominence_version(payload, pathfinding_graph["snapshot_date"])
+    stamp_inputs(
+        payload,
+        lineage_inputs(
+            pathfinding_graph=pathfinding_graph,
+            evidence_release_registry=evidence_release_registry,
+        ),
+    )
     return payload

@@ -76,3 +76,12 @@ that is a real, separate design decision — extend this artifact
 explicitly with a new field, or add a clearly-named `v2`, never silently
 widen `main_release_id` into a list without updating every consumer that
 currently assumes exactly one.
+
+
+## Declared lineage (optional `provenance.inputs`)
+
+Builders from Campaign Atlas F1b on emit an optional top-level `provenance`
+object holding only `inputs` -- `{artifact_name: content_version}` of the
+upstream artifacts consumed (`catalog`). The key is optional: an artifact
+without it is valid and passes the lineage rule (it is listed as undeclared).
+`provenance` does not enter `album_credit_membership_version`. See `artifact-lineage-v1.md`.

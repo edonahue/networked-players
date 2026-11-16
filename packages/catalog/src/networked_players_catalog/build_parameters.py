@@ -49,6 +49,13 @@ RECORD_ROUTES_DEFAULT_BUILD_PARAMETERS: dict[str, Any] = {
     "max_bridge_share": 0.2,
 }
 
+CONNECTION_ROUNDS_DEFAULT_BUILD_PARAMETERS: dict[str, Any] = {
+    "one_hop_target": 300,
+    "two_hop_target": 200,
+    "max_endpoint_share": 0.15,
+    "max_bridge_share": 0.2,
+}
+
 CHALLENGE_DEFAULT_BUILD_PARAMETERS: dict[str, Any] = {
     "max_hops": 4,
     "max_frontier_expansion": 300,

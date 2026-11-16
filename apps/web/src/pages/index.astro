@@ -4,42 +4,29 @@ import SpinningRecord from '../components/SpinningRecord.astro';
 import AlbumCard from '../components/AlbumCard.astro';
 import site from '../data/site.json';
 import type { ChallengeV2 } from '../data/challenge';
-import type { Contributor, ContributorIndex } from '../data/contributors';
+import type { ContributorIndex } from '../data/contributors';
+import type { Membership } from '../data/albumRecord';
+import { homeFeatures } from '../data/homeFeatures';
 import challengeData from '../../public/data/challenge.v3.json';
+import membershipData from '../../public/data/albums/credit-membership.v1.json';
 import contributorIndexData from '../../public/data/contributors/index.v1.json';
 
-const { hero, focus } = site;
+const { hero } = site;
 
 const challenge = challengeData as ChallengeV2;
-// The album universe is the catalog itself (challenge.albums is resolved
-// from catalog/albums.v1.json and cross-checked by catalog_version), not
-// the subset that happens to be a challenge-path endpoint -- see
-// connectedAlbums.ts for why that subset was never a real universe.
 const albums = challenge.albums;
-const contributorIndex = contributorIndexData as ContributorIndex;
-
-// Deterministic, not random: challenge.paths[0] is a real documented route,
-// content-hash versioned along with the rest of challenge.v3.json (ADR
-// 0043) -- its position in the array is the artifact's own stable order,
-// not a pick made at render time.
-const featuredPath = challenge.paths[0];
-const albumsById = new Map(challenge.albums.map((album) => [album.id, album]));
-const featuredFrom = albumsById.get(featuredPath.from_album_id);
-const featuredTo = albumsById.get(featuredPath.to_album_id);
-
-// Same "deterministic, not random" discipline as featuredPath above: the
-// first contributor (the index's own artist_id-sorted order) that has both
-// a real ADR 0060 interesting_next_step and a connected album to launch
-// Explore from. Content-hash versioned along with the rest of
-// contributor-index-v1, not a pick made at render time.
-const featuredContributor = contributorIndex.contributors.find(
-  (c): c is Contributor => c.interesting_next_step !== null && c.albums.length > 0,
+const contributorIdsWithPages = new Set(
+  (contributorIndexData as ContributorIndex).contributors.map((c) => c.artist_id),
 );
-const contributorById = new Map(contributorIndex.contributors.map((c) => [c.artist_id, c]));
-const featuredNeighbor = featuredContributor
-  ? contributorById.get(featuredContributor.interesting_next_step!.artist_id)
-  : undefined;
 
+// Both picks are deterministic functions of the credit-membership artifact
+// (see data/homeFeatures.ts): the landing record is the one with the most
+// documented connections onward; the example is the cross-artist pair of
+// records that share the most documented performers.
+const { landing, pair } = homeFeatures(membershipData as Membership, albums);
+const SHOWN_PLAYERS = 6;
+const sharedShown = pair ? pair.shared.slice(0, SHOWN_PLAYERS) : [];
+const sharedMore = pair ? pair.shared.length - sharedShown.length : 0;
 ---
 
 <BaseLayout>
@@ -49,145 +36,91 @@ const featuredNeighbor = featuredContributor
       <h1>{hero.headline}</h1>
       <p class="lede">{hero.lede}</p>
       <div class="hero-actions">
-        <a class="button primary" href={hero.ctaPrimary.href}>{hero.ctaPrimary.label}</a>
-        <a class="button" href={hero.ctaSecondary.href}>{hero.ctaSecondary.label}</a>
+        <a class="button primary" href={`/explore/${landing.album.id}/`} data-testid="home-explore-cta">
+          Explore {landing.album.title}<span class="button__by">, {landing.album.artist}</span>
+        </a>
+        <a class="button" href="/play/daily/">Today's connection</a>
       </div>
+      <p class="callout home-rule" data-testid="home-rule">
+        A connection means two people are documented performing on the same recording. Producers
+        and engineers appear in the credits, but don't make a connection.
+      </p>
     </div>
     <SpinningRecord />
   </section>
 
-  <section class="section shell" id="ways-to-explore" aria-labelledby="ways-title">
+  <section class="section shell" id="start" aria-labelledby="start-title">
     <div class="section-heading">
       <p class="eyebrow">Start here</p>
-      <h2 id="ways-title">Four ways into the graph.</h2>
-      <p class="lede">
-        Every mode below runs on the same credit data. Pick the one that matches what you're
-        curious about.
+      <h2 id="start-title">Pick a way in.</h2>
+    </div>
+    <a class="feature-card home-explore" data-tone="teal" href="/explore/">
+      <span class="kicker">The main way in</span>
+      <h3>Explore</h3>
+      <p>
+        Open any record and follow the players on it to the next record they played on. Every
+        step shows its credits.
       </p>
-    </div>
-    <div class="feature-grid">
-      <a class="feature-card" data-tone="teal" href="/play/daily/">
-        <span class="kicker">One a day</span>
-        <h3>Today's Connection</h3>
-        <p>A frozen, shared daily route between two records — the same one for everyone.</p>
+    </a>
+    <div class="feature-grid home-secondary">
+      <a class="feature-card" data-tone="gold" href="/albums/">
+        <span class="kicker">The shelf</span>
+        <h3>Records</h3>
+        <p>All {albums.length} records, with who played on each and where they lead.</p>
       </a>
-      <a class="feature-card" data-tone="gold" href="/play/connect/">
-        <span class="kicker">Pick any two</span>
-        <h3>Connect Two Records</h3>
-        <p>Choose any two albums and search for a documented route between them.</p>
-      </a>
-      <a class="feature-card" data-tone="rust" href="/play/routes/">
-        <span class="kicker">Guided</span>
-        <h3>Record Routes</h3>
-        <p>Curated multi-hop routes between records, with the evidence for every step.</p>
-      </a>
-      <a class="feature-card" data-tone="teal" href="/explore/">
-        <span class="kicker">Open-ended</span>
-        <h3>Explore</h3>
-        <p>Step into one album's bounded credit network and follow it wherever it leads.</p>
+      <a class="feature-card" data-tone="rust" href="/contributors/">
+        <span class="kicker">The people</span>
+        <h3>Players</h3>
+        <p>Everyone documented, with the records they connect.</p>
       </a>
     </div>
-    <p class="lede" style="margin-top:20px">
-      Want the full shelf? <a href="/play/">See every way to play</a>.
-    </p>
+    <div class="home-play" data-testid="home-play">
+      <h3 class="home-play__title"><a href="/play/">Play</a></h3>
+      <ul class="home-play__list">
+        <li><a href="/play/daily/">Today's Connection</a></li>
+        <li><a href="/play/connect/">Connect Two Records</a></li>
+        <li><a href="/play/routes/">Record Routes</a></li>
+        <li><a href="/play/connection/">Connection Guesser</a></li>
+      </ul>
+    </div>
   </section>
 
   {
-    featuredContributor && (
-      <section class="section shell" id="people" aria-labelledby="people-title">
+    pair && (
+      <section class="section shell" id="example" aria-labelledby="example-title" data-testid="home-example">
         <div class="section-heading">
-          <p class="eyebrow">Follow the credits</p>
-          <h2 id="people-title">Every record has people behind it.</h2>
-          <p class="lede">
-            Each album page lists who's documented on it. Open any name to land on their own
-            page: role categories, connected records, and sometimes a nudge toward someone
-            credited in a different kind of role. Just follow the names.
-          </p>
+          <p class="eyebrow">One connection</p>
+          <h2 id="example-title">Two records, linked by the people who played on both.</h2>
         </div>
-        <div class="contributor-grid">
-          <a class="contributor-card" href={`/contributors/${featuredContributor.artist_id}/`}>
-            <span class="contributor-card__name">{featuredContributor.name}</span>
-            <span class="lede" style="font-size:0.9rem">
-              {featuredContributor.role_categories.length} documented role
-              {featuredContributor.role_categories.length === 1 ? '' : 's'} · appears on{' '}
-              {featuredContributor.albums.length} connected album
-              {featuredContributor.albums.length === 1 ? '' : 's'}
-            </span>
-          </a>
-          {featuredNeighbor && (
-            <a class="contributor-card" href={`/contributors/${featuredNeighbor.artist_id}/`}>
-              <span class="contributor-card__name">
-                {featuredNeighbor.name}
-                <span class="tag tag--highlight" style="margin-left:6px">Different role</span>
-              </span>
-              <span class="lede" style="font-size:0.9rem">
-                Worth a look from {featuredContributor.name}'s page — credited in a different kind
-                of role.
-              </span>
-            </a>
-          )}
+        <div class="album-grid">
+          <AlbumCard album={pair.a} />
+          <AlbumCard album={pair.b} />
         </div>
-        <p class="lede" style="margin-top:20px">
-          Browse everyone documented in the graph at <a href="/contributors/">/contributors/</a>.
+        <p class="lede home-shared" data-testid="home-shared">
+          Documented performing on both:{' '}
+          {sharedShown.map((p, i) => (
+            <span>{contributorIdsWithPages.has(p.artistId) ? <a href={`/contributors/${p.artistId}/`}>{p.name}</a> : p.name}{i < sharedShown.length - 1 ? ', ' : ''}</span>
+          ))}
+          {sharedMore > 0 && ` and ${sharedMore} more`}.
         </p>
+        <div class="hero-actions" style="margin-top:0">
+          <a class="button primary" href={`/play/connect/?a=${pair.a.id}&b=${pair.b.id}`}>
+            See the route in Connect
+          </a>
+        </div>
       </section>
     )
   }
-
-  <section class="section shell" id="albums" aria-labelledby="albums-title">
-    <div class="section-heading">
-      <p class="eyebrow">A real connection</p>
-      <h2 id="albums-title">{featuredPath.label}</h2>
-      <p class="lede">
-        {featuredPath.description} This is the first route in the current, versioned challenge
-        dataset. Search it yourself, or any other pair, at
-        <a href="/play/connect/">Connect Two Records</a>.
-      </p>
-    </div>
-    <div class="album-grid">
-      {featuredFrom && <AlbumCard album={featuredFrom} />}
-      {featuredTo && <AlbumCard album={featuredTo} />}
-    </div>
-    <p class="lede">
-      The full shelf of {albums.length} albums lives at <a href="/albums/">/albums/</a>.
-    </p>
-  </section>
-
-  <section class="section shell" aria-labelledby="how-title">
-    <div class="section-heading">
-      <p class="eyebrow">{focus.eyebrow}</p>
-      <h2 id="how-title">{focus.heading}</h2>
-      <p class="lede">{focus.lede}</p>
-    </div>
-    <div class="feature-grid">
-      {
-        focus.cards.map((card) => (
-          <article class="feature-card" data-tone={card.tone}>
-            <span class="kicker">{card.kicker}</span>
-            <h3>{card.title}</h3>
-            <p>{card.body}</p>
-          </article>
-        ))
-      }
-    </div>
-  </section>
 
   <section class="section shell" aria-labelledby="state-title">
     <div class="section-heading">
       <p class="eyebrow">What's real here</p>
       <h2 id="state-title">Documented, not inferred.</h2>
       <p class="lede">
-        Every album, route, and evidence viewer on this site runs on Discogs monthly-dump data
-        (snapshot {challenge.provenance.snapshot_date}): {albums.length} studio albums, with
-        {challenge.paths.length} documented performance paths between them. Connections are
-        musical performances; the credits are the evidence. A role taxonomy for credits, path
-        search between any two records, and an open-ended network explorer have all shipped
-        since — see <a href="/about/">the full picture</a> for what's live and what's still
-        ahead.
+        {albums.length} records and the credits behind them, from Discogs' monthly CC0 data
+        (snapshot {challenge.provenance.snapshot_date}). We don't infer influence or
+        relationships from a shared credit. <a href="/about/">Read the full picture</a>.
       </p>
-    </div>
-    <div class="hero-actions" style="margin-top:0">
-      <a class="button primary" href="/about/">Read the full picture</a>
     </div>
   </section>
 </BaseLayout>

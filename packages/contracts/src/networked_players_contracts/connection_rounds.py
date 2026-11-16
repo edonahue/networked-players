@@ -367,6 +367,25 @@ def _connection_rounds_pair_failures(universe: Any, rounds: Any) -> list[str]:
         if not universe.get("provenance", {}).get(field_name):
             failures.append(f"universe.provenance.{field_name} is required")
 
+    # Optional: the parameters this build ran with (never required -- every
+    # pool built before this landed has none and must stay valid).
+    connection_provenance = universe.get("provenance", {})
+    if isinstance(connection_provenance, dict) and "build_parameters" in connection_provenance:
+        build_parameters = connection_provenance.get("build_parameters")
+        if not isinstance(build_parameters, dict):
+            failures.append("provenance.build_parameters must be an object")
+        else:
+            for int_field in ("one_hop_target", "two_hop_target"):
+                value = build_parameters.get(int_field)
+                if not isinstance(value, int) or isinstance(value, bool) or value < 0:
+                    failures.append(
+                        f"provenance.build_parameters.{int_field} must be a non-negative integer"
+                    )
+            for share_field in ("max_endpoint_share", "max_bridge_share"):
+                value = build_parameters.get(share_field)
+                if not isinstance(value, (int, float)) or isinstance(value, bool):
+                    failures.append(f"provenance.build_parameters.{share_field} must be a number")
+
     # Recomputable from the published pair alone -- no source-graph
     # dependency, so this validator can (and must) prove it, unlike a check
     # that would require rediscovering ground truth (see the module

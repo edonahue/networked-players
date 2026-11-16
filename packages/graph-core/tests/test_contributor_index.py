@@ -496,3 +496,65 @@ def test_mismatched_catalog_version_raises() -> None:
             evidence_release_registry=_evidence_release_registry(),
             generated_at="2026-08-03T00:00:00+00:00",
         )
+
+
+def test_declares_the_exact_upstream_versions_it_consumed() -> None:
+    from networked_players_contracts.artifact_lineage import artifact_content_version
+
+    catalog = _catalog()
+    challenge = _challenge()
+    registry = _evidence_release_registry()
+    routes_universe = _routes_universe()
+    # Give the synthetic upstreams real content versions to declare.
+    challenge["provenance"]["challenge_version"] = "challenge-v2-x-aaa"
+    routes_universe["provenance"]["artifact_version"] = "routes-artifact-v1-x-bbb"
+    registry["evidence_release_registry_version"] = "registry-x-ccc"
+    index = build_contributor_index(
+        challenge=challenge,
+        routes_universe=routes_universe,
+        routes_rounds=_routes_rounds(),
+        catalog=catalog,
+        evidence_release_registry=registry,
+        generated_at="2026-08-03T00:00:00+00:00",
+    )
+    assert index["provenance"]["inputs"] == {
+        "catalog": artifact_content_version("catalog", catalog),
+        "challenge": "challenge-v2-x-aaa",
+        "record_routes": "routes-artifact-v1-x-bbb",
+        "evidence_release_registry": "registry-x-ccc",
+    }
+    # Existing identity is untouched by the new key.
+    assert index["contributor_index_version"] == _build()["contributor_index_version"]
+
+
+def test_an_upstream_without_a_version_is_declared_null_not_invented() -> None:
+    index = _build()
+    # The fixture challenge predates challenge_version.
+    assert index["provenance"]["inputs"]["challenge"] is None
+
+
+def test_hop_distances_declare_inputs_and_include_contributor_index_when_given() -> None:
+    catalog, challenge, routes_rounds = _hop_distance_fixture()
+    routes_rounds["provenance"]["artifact_version"] = "routes-artifact-v1-x-bbb"
+    contributor_index = {"contributor_index_version": "contributor-index-v1-x-ddd"}
+    artifact = build_album_hop_distances(
+        challenge=challenge,
+        routes_rounds=routes_rounds,
+        catalog=catalog,
+        generated_at="2026-08-03T00:00:00+00:00",
+        contributor_index=contributor_index,
+    )
+    assert artifact["provenance"]["inputs"] == {
+        "catalog": catalog["catalog_version"],
+        "challenge": None,
+        "record_routes": "routes-artifact-v1-x-bbb",
+        "contributor_index": "contributor-index-v1-x-ddd",
+    }
+    without = build_album_hop_distances(
+        challenge=challenge,
+        routes_rounds=routes_rounds,
+        catalog=catalog,
+        generated_at="2026-08-03T00:00:00+00:00",
+    )
+    assert "contributor_index" not in without["provenance"]["inputs"]
+    assert artifact["album_hop_distances_version"] == without["album_hop_distances_version"]
