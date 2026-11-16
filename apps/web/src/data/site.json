@@ -8,39 +8,6 @@
   "hero": {
     "eyebrow": "Evidence-first · a real credit graph",
     "headline": "Explore the hidden network behind recorded music.",
-    "lede": "Every album, contributor, and connection here is real, sourced, and versioned. Play today's connection, guess who links two records, or step straight into the credit graph — the evidence for every hop is one click away.",
-    "ctaPrimary": {
-      "label": "Play today's connection",
-      "href": "/play/daily/"
-    },
-    "ctaSecondary": {
-      "label": "Browse the albums",
-      "href": "/albums/"
-    }
-  },
-  "focus": {
-    "eyebrow": "How it works",
-    "heading": "Every connection carries its evidence.",
-    "lede": "An edge between two artists means they are documented performing on the same recording or release. The path keeps that proof attached at every hop, with provenance back to the source.",
-    "cards": [
-      {
-        "kicker": "Evidence, not influence",
-        "tone": "teal",
-        "title": "Documented credits only",
-        "body": "A documented performance credit means two artists are credited as performing on the same recording or release — nothing about how they got along."
-      },
-      {
-        "kicker": "Provenance",
-        "tone": "gold",
-        "title": "Sourced and versioned",
-        "body": "Publishable facts derive from CC0 Discogs monthly dumps, carried with snapshot date, source, parser and schema versions, and original role text."
-      },
-      {
-        "kicker": "Static-first",
-        "tone": "rust",
-        "title": "Works with no backend",
-        "body": "The experience loads a small, versioned static artifact and runs entirely in your browser. No live API is required for the core experience."
-      }
-    ]
+    "lede": "Every record here is real, sourced and versioned. Pick one, follow the players on it to the next record they played on, and see the credits for every step."
   }
 }

@@ -34,9 +34,7 @@ test("home renders hero, nav, and the album grid", async ({ page }) => {
   await expect(page.getByRole("heading", { level: 1 })).toContainText(
     "Explore the hidden network",
   );
-  await expect(
-    page.getByRole("link", { name: "Browse the albums" }).first(),
-  ).toBeVisible();
+  await expect(page.getByTestId("home-explore-cta")).toBeVisible();
   await expect(page.locator(".album-card").first()).toBeVisible();
 });
 
@@ -636,37 +634,6 @@ test("the play hub lists Contributors as a real, live mode card", async ({
   );
   await expect(contributorsCard).toBeVisible();
   await expect(contributorsCard).toHaveAttribute("data-mode-status", "live");
-});
-
-test("the homepage features a real contributor, deterministically picked from the published index", async ({
-  page,
-  request,
-}) => {
-  const res = await request.get("/data/contributors/index.v1.json");
-  const { contributors } = (await res.json()) as {
-    contributors: Array<{
-      artist_id: number;
-      name: string;
-      albums: string[];
-      interesting_next_step: { artist_id: number } | null;
-    }>;
-  };
-  const expected = contributors.find(
-    (c) => c.interesting_next_step !== null && c.albums.length > 0,
-  );
-  test.skip(!expected, "no contributor in the real index qualifies today");
-
-  await page.goto("/");
-  const featuredLink = page.locator(
-    `a.contributor-card[href='/contributors/${expected!.artist_id}/']`,
-  );
-  await expect(featuredLink).toBeVisible();
-  await expect(featuredLink).toContainText(expected!.name);
-  await featuredLink.click();
-  await page.waitForURL(`**/contributors/${expected!.artist_id}/`);
-  await expect(page.getByRole("heading", { level: 1 })).toContainText(
-    expected!.name,
-  );
 });
 
 test("sitemap includes every play mode, including record routes", async ({
