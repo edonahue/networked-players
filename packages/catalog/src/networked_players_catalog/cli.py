@@ -1224,9 +1224,10 @@ def _parser() -> argparse.ArgumentParser:
         type=Path,
         default=None,
         help=(
-            "optional measure-coverage-gaps-shaped JSON list of "
-            '{"dimension", "bucket", "count"} objects (coverage_gaps.identify_underrepresented\'s '
-            "own output over the CURRENT catalog, computed once by the caller) -- populates "
+            "optional measure-coverage-gaps output (its dict with an 'underrepresented' "
+            'list) or the bare list of {"dimension", "bucket", "count"} objects '
+            "(coverage_gaps.identify_underrepresented's output over the CURRENT catalog, "
+            "computed once by the caller) -- populates "
             "coverage_delta; omit to leave every row's coverage_delta at 0"
         ),
     )
@@ -1369,7 +1370,27 @@ def _parser() -> argparse.ArgumentParser:
     )
     build_public_album_catalog.add_argument("--onehop-root", type=Path, required=True)
     build_public_album_catalog.add_argument(
-        "--editorial-albums", type=Path, default=Path("data/albums/top-albums-v1.json")
+        "--editorial-albums",
+        type=Path,
+        default=None,
+        help=(
+            "editorial {artist, title} list. Without --approved-pool, omitting this falls "
+            "back to data/albums/top-albums-v1.json (historical default, unchanged). With "
+            "--approved-pool there is NO fallback: pass it explicitly to keep the "
+            "'editorial' label of the top-albums albums; its matches must be in the pool"
+        ),
+    )
+    build_public_album_catalog.add_argument(
+        "--approved-pool",
+        type=Path,
+        default=None,
+        help=(
+            "data/albums/approved-pool-v1.json (ADR 0072). When given, the build FAILS "
+            "if it would publish an album outside the pool or omit a pool album; "
+            "--candidates auto-fill toward --target-count is disabled and the "
+            "--editorial-albums default fallback does not apply. Without it the build is "
+            "UNCHECKED and a warning is printed"
+        ),
     )
     build_public_album_catalog.add_argument(
         "--already-published-catalog",
@@ -1983,6 +2004,12 @@ def _parser() -> argparse.ArgumentParser:
         "--search-index",
         type=Path,
         default=Path("apps/web/public/data/search/index.v1.json"),
+    )
+    validate_public_artifacts.add_argument(
+        "--approved-pool",
+        type=Path,
+        default=Path("data/albums/approved-pool-v1.json"),
+        help="the owner-approved album pool; the catalog's master set must equal it",
     )
 
     diff_artifact_version = subparsers.add_parser(
@@ -4012,9 +4039,19 @@ def main(argv: Sequence[str] | None = None) -> int:
             )
         underrepresented_buckets: frozenset[tuple[str, str]] = frozenset()
         if args.underrepresented_buckets is not None:
+            buckets_payload = json.loads(args.underrepresented_buckets.read_text())
+            # Accept measure-coverage-gaps' real output (a dict whose
+            # `underrepresented` key holds the list) as well as the bare list.
+            if isinstance(buckets_payload, dict):
+                buckets_payload = buckets_payload.get("underrepresented")
+            if not isinstance(buckets_payload, list):
+                raise ValueError(
+                    "--underrepresented-buckets must be a JSON list of {dimension, bucket, "
+                    "count} objects or a measure-coverage-gaps output with an "
+                    "'underrepresented' list"
+                )
             underrepresented_buckets = frozenset(
-                (str(entry["dimension"]), str(entry["bucket"]))
-                for entry in json.loads(args.underrepresented_buckets.read_text())
+                (str(entry["dimension"]), str(entry["bucket"])) for entry in buckets_payload
             )
 
         with CreditGraph.open(
@@ -4472,7 +4509,24 @@ def main(argv: Sequence[str] | None = None) -> int:
                 )
         master_exclusions = load_master_exclusions(args.studio_album_exclusions)
 
-        editorial_albums = json.loads(args.editorial_albums.read_text())["albums"]
+        approved_pool_payload: dict[str, Any] | None = None
+        editorial_albums_path = args.editorial_albums
+        if args.approved_pool is not None:
+            approved_pool_payload = json.loads(args.approved_pool.read_text())
+        else:
+            print(
+                "build-public-album-catalog: UNCHECKED BUILD, no --approved-pool given; this "
+                "build is UNCHECKED against the owner-approved album pool (ADR 0072) and may "
+                "publish unapproved albums or silently drop approved ones",
+                file=sys.stderr,
+            )
+            if editorial_albums_path is None:
+                editorial_albums_path = Path("data/albums/top-albums-v1.json")
+        editorial_albums = (
+            json.loads(editorial_albums_path.read_text())["albums"]
+            if editorial_albums_path is not None
+            else []
+        )
         candidates = json.loads(args.candidates.read_text())
 
         pre_resolved_albums: list[dict[str, Any]] = []
@@ -4726,6 +4780,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                     else None
                 ),
                 expansion_round=args.expansion_round,
+                approved_pool=approved_pool_payload,
                 # Albums already live keep the round they originally arrived
                 # in; only genuinely new ones get this build's round number.
                 # A previously-published v1 catalog carries no per-album round,
@@ -5298,6 +5353,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             album_credit_membership=json.loads(args.album_credit_membership.read_text()),
             evidence_release_registry=json.loads(args.evidence_release_registry.read_text()),
             search_index=json.loads(args.search_index.read_text()),
+            approved_pool=json.loads(args.approved_pool.read_text()),
         )
         ok = all(not failures for failures in report.values())
         print(json.dumps({"ok": ok, "failures": report}, indent=2))

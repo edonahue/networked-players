@@ -35,12 +35,25 @@ _FIXTURE_ARTISTS = {"master-1": "Alice", "master-2": "Cara"}
 def _catalog_album(album_id: str, *, artist_id: int, main_release_id: int) -> dict[str, Any]:
     return {
         "id": album_id,
-        "master_id": None,
+        "master_id": int(album_id.split("-")[1]),
         "main_release_id": main_release_id,
         "title": _FIXTURE_TITLES.get(album_id, album_id.title()),
         "artist_id": artist_id,
         "artist": _FIXTURE_ARTISTS.get(album_id, "Alice"),
         "year": 1995,
+    }
+
+
+def _synthetic_pool(catalog: dict[str, Any]) -> dict[str, Any]:
+    """A pool covering exactly the synthetic catalog's masters (these v1-shaped
+    fixtures carry no round/label fields, so only the master set is compared)."""
+    return {
+        "schema_version": 1,
+        "note": "synthetic",
+        "albums": [
+            {"master_id": a["master_id"], "round": 0, "selection_source": "editorial"}
+            for a in sorted(catalog["albums"], key=lambda a: a["master_id"])
+        ],
     }
 
 
@@ -633,6 +646,10 @@ def _write_all(tmp_path: Path) -> dict[str, Path]:
         "search_index": _write(
             tmp_path / "search-index.v1.json", _search_index(catalog, contributor_index)
         ),
+        "approved_pool": _write(
+            tmp_path / "approved-pool-v1.json",
+            _synthetic_pool(catalog),
+        ),
     }
 
 
@@ -669,6 +686,8 @@ def _args(paths: dict[str, Path]) -> list[str]:
         str(paths["evidence_release_registry"]),
         "--search-index",
         str(paths["search_index"]),
+        "--approved-pool",
+        str(paths["approved_pool"]),
     ]
 
 
@@ -692,6 +711,7 @@ def test_clean_set_exits_zero(tmp_path: Path, capsys) -> None:
         "album_credit_membership": [],
         "evidence_release_registry": [],
         "search_index": [],
+        "approved_pool": [],
     }
 
 
@@ -737,6 +757,7 @@ def test_default_paths_point_at_the_real_repo_layout(tmp_path: Path, capsys, mon
             catalog
         ),
         "apps/web/public/data/search/index.v1.json": _search_index(catalog, contributor_index),
+        "data/albums/approved-pool-v1.json": _synthetic_pool(catalog),
     }
     for relative_path, payload in layout.items():
         full_path = tmp_path / relative_path

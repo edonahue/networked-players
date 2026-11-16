@@ -432,7 +432,8 @@ def test_existing_node_ids_ignores_negative_virtual_anchor_ids(tmp_path: Path) -
     assert payload["candidates"][0]["overlap_existing"] == 1
 
 
-def test_bridge_span_and_coverage_delta_wire_through_the_cli(tmp_path: Path) -> None:
+@pytest.mark.parametrize("shape", ["bare_list", "measure_coverage_gaps_dict"])
+def test_bridge_span_and_coverage_delta_wire_through_the_cli(tmp_path: Path, shape: str) -> None:
     dataset = _write_onehop_dataset(tmp_path)
     masters_root = _write_masters_dataset(tmp_path)
     release_format_policy = _write_release_format_policy(tmp_path / "policy.json")
@@ -447,12 +448,16 @@ def test_bridge_span_and_coverage_delta_wire_through_the_cli(tmp_path: Path) -> 
     underrepresented = tmp_path / "underrepresented.json"
     # Master 900's real genres/styles/year (from _write_masters_dataset) are
     # [], [], 1995 -- decade "1990s" is the one real match here.
+    buckets = [
+        {"dimension": "decades", "bucket": "1990s", "count": 0},
+        {"dimension": "genres", "bucket": "Jazz", "count": 1},
+    ]
+    # `measure-coverage-gaps` writes a dict; the scorer must accept it as-is.
     underrepresented.write_text(
         json.dumps(
-            [
-                {"dimension": "decades", "bucket": "1990s", "count": 0},
-                {"dimension": "genres", "bucket": "Jazz", "count": 1},
-            ]
+            buckets
+            if shape == "bare_list"
+            else {"album_count": 1, "composition": {}, "underrepresented": buckets}
         )
     )
     candidates = tmp_path / "candidates.json"

@@ -314,6 +314,61 @@ def load_featured_master_ids(path: Path | None) -> frozenset[int]:
     return frozenset(int(entry["master_id"]) for entry in payload.get("entries", []))
 
 
+class ApprovedPoolError(ValueError):
+    """The assembled catalog does not match the owner-approved pool."""
+
+
+def _enforce_approved_pool(
+    approved_pool: dict[str, Any],
+    albums: list[dict[str, Any]],
+    *,
+    pre_resolved_missed: list[dict[str, Any]],
+    editorial_missed: list[dict[str, Any]],
+) -> None:
+    """Raise `ApprovedPoolError` unless published masters == pool masters (with
+    round/label agreement where the albums carry them). Pure check over the
+    already-assembled albums; it never alters which albums are published."""
+    from networked_players_contracts.approved_pool import approved_pool_diff, approved_pool_failures
+
+    shape_failures = approved_pool_failures(approved_pool)
+    if shape_failures:
+        raise ApprovedPoolError(f"approved pool is malformed: {shape_failures}")
+    unapproved, missing, disagreements = approved_pool_diff(approved_pool, albums)
+    problems: list[str] = []
+    if unapproved:
+        by_master = {a.get("master_id"): a for a in albums}
+        named = [
+            f"{m} ({by_master[m].get('artist')} - {by_master[m].get('title')})"
+            if m in by_master
+            else "an album with no master_id"
+            for m in unapproved
+        ]
+        problems.append(
+            f"{len(unapproved)} album(s) would be published but are not approved: {named}"
+        )
+    if missing:
+        reasons: dict[int, str] = {}
+        for entry in pre_resolved_missed:
+            if entry.get("master_id") is not None:
+                reasons.setdefault(int(entry["master_id"]), str(entry.get("reason")))
+        described = [
+            f"{m} (dropped: {reasons[m]})"
+            if m in reasons
+            else f"{m} (not supplied by any lane, or unresolved in the editorial list; "
+            f"{len(editorial_missed)} editorial entr(ies) were unmatched)"
+            for m in missing
+        ]
+        problems.append(f"{len(missing)} approved album(s) are absent from the result: {described}")
+    if disagreements:
+        problems.append(
+            "round/selection_source disagree with the pool (if only the editorial albums "
+            "differ, pass --editorial-albums explicitly: the default fallback is disabled "
+            f"with a pool): {disagreements}"
+        )
+    if problems:
+        raise ApprovedPoolError("approved-pool check failed: " + "; ".join(problems))
+
+
 def assemble_album_catalog(
     graph: CreditGraph,
     editorial_albums: list[dict[str, str]],
@@ -330,6 +385,7 @@ def assemble_album_catalog(
     featured_master_ids: frozenset[int] | None = None,
     expansion_round: int = 0,
     previously_published_rounds: dict[int, int] | None = None,
+    approved_pool: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Combine the editorial backbone, an already-resolved personal bucket,
     and graph-rich candidates up to `target_count` (see ADR 0038, ADR 0065).
@@ -409,6 +465,18 @@ def assemble_album_catalog(
     collision risk `match_albums` already resolved once -- a common display
     name, or a placeholder identity, could resolve to the wrong artist on a
     second, blind pass.
+
+    `approved_pool` (ADR 0072 section 2, `data/albums/approved-pool-v1.json`),
+    when given, turns the owner's approval list into a checked boundary
+    WITHOUT changing any lane: every lane runs exactly as without a pool (so
+    every album keeps the `selection_source` it would otherwise get -- the
+    `editorial` lane, which runs before `already_published`, still labels its
+    matches first), then the assembled result is checked. The shortlist
+    auto-fill from `candidates` toward `target_count` is disabled, and the
+    build raises `ApprovedPoolError` rather than return a catalog that
+    publishes an album outside the pool, omits a pool album (naming the
+    recorded reason, e.g. an eligibility drop into `pre_resolved_missed`), or
+    labels an album differently from the pool. `None` keeps today's behavior.
     """
     if target_count <= 0:
         raise ValueError("target_count must be positive")
@@ -534,6 +602,10 @@ def assemble_album_catalog(
     # not the raw input counts -- an entry that misses the snapshot or fails
     # policy shouldn't silently shrink how many candidates fill out the target.
     remaining_slots = max(0, target_count - len(matched_editorial) - len(pre_resolved_kept))
+    if approved_pool is not None:
+        # With a pool, nothing is auto-filled: publication is authorised by
+        # the pool alone, never by a ranking.
+        remaining_slots = 0
     added_candidate_ids: set[int] = set()
     candidate_albums: list[MatchedAlbum] = []
     for candidate in ranked_candidates:
@@ -602,6 +674,14 @@ def assemble_album_catalog(
         ),
         *(_tagged(m.to_resolved_dict(), "generic_candidate") for m in candidate_albums),
     ]
+
+    if approved_pool is not None:
+        _enforce_approved_pool(
+            approved_pool,
+            albums,
+            pre_resolved_missed=pre_resolved_missed,
+            editorial_missed=missed_editorial,
+        )
 
     source_note = (
         "Hybrid catalog: an editorial backbone plus graph-rich additions selected by "

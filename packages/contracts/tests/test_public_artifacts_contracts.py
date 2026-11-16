@@ -36,12 +36,25 @@ _FIXTURE_ARTISTS = {"master-1": "Alice", "master-2": "Cara"}
 def _catalog_album(album_id: str, *, artist_id: int, main_release_id: int) -> dict[str, Any]:
     return {
         "id": album_id,
-        "master_id": None,
+        "master_id": int(album_id.split("-")[1]),
         "main_release_id": main_release_id,
         "title": _FIXTURE_TITLES.get(album_id, album_id.title()),
         "artist_id": artist_id,
         "artist": _FIXTURE_ARTISTS.get(album_id, "Alice"),
         "year": 1995,
+    }
+
+
+def _synthetic_pool(catalog: dict[str, Any]) -> dict[str, Any]:
+    """A pool covering exactly the synthetic catalog's masters (these v1-shaped
+    fixtures carry no round/label fields, so only the master set is compared)."""
+    return {
+        "schema_version": 1,
+        "note": "synthetic",
+        "albums": [
+            {"master_id": a["master_id"], "round": 0, "selection_source": "editorial"}
+            for a in sorted(catalog["albums"], key=lambda a: a["master_id"])
+        ],
     }
 
 
@@ -699,6 +712,7 @@ def _clean_artifacts() -> dict[str, Any]:
         "album_credit_membership": _album_credit_membership(),
         "evidence_release_registry": _evidence_release_registry(),
         "search_index": _search_index(),
+        "approved_pool": _synthetic_pool(_catalog()),
     }
 
 
@@ -718,6 +732,7 @@ def test_clean_publication_set_has_no_failures() -> None:
         "album_credit_membership": [],
         "evidence_release_registry": [],
         "search_index": [],
+        "approved_pool": [],
     }
 
 
@@ -737,7 +752,18 @@ def test_every_group_key_always_present() -> None:
         "album_credit_membership",
         "evidence_release_registry",
         "search_index",
+        "approved_pool",
     }
+
+
+def test_approved_pool_group_catches_a_missing_pool_and_an_unapproved_album() -> None:
+    artifacts = _clean_artifacts()
+    shrunk = deepcopy(artifacts["approved_pool"])
+    shrunk["albums"] = shrunk["albums"][:1]
+    report = public_artifacts_failures(**{**artifacts, "approved_pool": shrunk})
+    assert any("not in the approved pool" in f for f in report["approved_pool"])
+    without = public_artifacts_failures(**{**artifacts, "approved_pool": None})
+    assert any("not supplied" in f for f in without["approved_pool"])
 
 
 def test_deleted_mode_on_record_routes_is_caught() -> None:

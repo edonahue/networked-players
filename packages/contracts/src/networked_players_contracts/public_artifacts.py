@@ -31,6 +31,7 @@ from typing import Any
 from .album_art import album_art_failures
 from .album_credit_membership import album_credit_membership_failures
 from .album_hop_distances import album_hop_distances_failures
+from .approved_pool import approved_pool_catalog_failures, approved_pool_failures
 from .catalog import public_album_catalog_failures
 from .catalog_lineage import challenge_catalog_failures, registry_citation_failures
 from .challenge import challenge_failures
@@ -64,6 +65,7 @@ PUBLIC_ARTIFACT_GROUPS = (
     "album_credit_membership",
     "evidence_release_registry",
     "search_index",
+    "approved_pool",
 )
 
 
@@ -85,6 +87,7 @@ def public_artifacts_failures(
     album_credit_membership: Any,
     evidence_release_registry: Any,
     search_index: Any,
+    approved_pool: Any = None,
 ) -> dict[str, list[str]]:
     """Every contract failure across the whole real-artifact publication set,
     grouped by artifact. Every key in `PUBLIC_ARTIFACT_GROUPS` is always
@@ -165,6 +168,17 @@ def public_artifacts_failures(
             pathfinding_graph=pathfinding_graph,
         ),
         "search_index": search_index_failures(search_index, catalog, contributor_index),
+        # `data/albums/approved-pool-v1.json` (ADR 0072 section 2): the
+        # catalog's master set must equal the pool's. Not a web artifact, but
+        # the check that ties the published catalog to the owner's approvals.
+        # `None` (a caller that did not load the pool) reports a failure
+        # rather than silently skipping the check.
+        "approved_pool": (
+            ["approved pool was not supplied; the catalog approval boundary is unchecked"]
+            if approved_pool is None
+            else approved_pool_failures(approved_pool)
+            + approved_pool_catalog_failures(approved_pool, catalog)
+        ),
     }
 
 
