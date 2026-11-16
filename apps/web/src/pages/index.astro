@@ -99,14 +99,7 @@ const sharedMore = pair ? pair.shared.length - sharedShown.length : 0;
         <p class="lede home-shared" data-testid="home-shared">
           Documented performing on both:{' '}
           {sharedShown.map((p, i) => (
-            <>
-              {i > 0 && ', '}
-              {contributorIdsWithPages.has(p.artistId) ? (
-                <a href={`/contributors/${p.artistId}/`}>{p.name}</a>
-              ) : (
-                p.name
-              )}
-            </>
+            <span>{contributorIdsWithPages.has(p.artistId) ? <a href={`/contributors/${p.artistId}/`}>{p.name}</a> : p.name}{i < sharedShown.length - 1 ? ', ' : ''}</span>
           ))}
           {sharedMore > 0 && ` and ${sharedMore} more`}.
         </p>

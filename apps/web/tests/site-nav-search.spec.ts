@@ -159,6 +159,29 @@ test("a failed index fetch says so instead of returning nothing", async ({
   );
 });
 
+test("a slow index load does not reopen results the visitor dismissed", async ({
+  page,
+}) => {
+  let release: () => void = () => {};
+  const held = new Promise<void>((resolve) => (release = resolve));
+  await page.route("**/data/search/index.v1.json", async (route) => {
+    await held;
+    await route.continue();
+  });
+  await page.goto("/");
+  await focusSearchWithSlash(page);
+  await input(page).pressSequentially("abc");
+  await page.keyboard.press("Escape");
+  const settled = page.waitForResponse("**/data/search/index.v1.json");
+  release();
+  await settled;
+  await page.waitForTimeout(300);
+  await expect(page.locator("[data-search-panel]")).toBeHidden();
+  // Typing again is a fresh request for results.
+  await input(page).pressSequentially("d");
+  await expect(page.locator("[data-search-panel]")).toBeVisible();
+});
+
 test("Escape closes the results", async ({ page, request }) => {
   const album = uniqueEntry(await loadEntries(request), "album");
   await page.goto("/");
@@ -242,6 +265,27 @@ test.describe("390px", () => {
       () => document.documentElement.scrollWidth - window.innerWidth,
     );
     expect(overflow).toBeLessThanOrEqual(0);
+  });
+
+  test("opening the menu closes the search layer, and the reverse", async ({
+    page,
+  }) => {
+    // Both disclosures occupy the strip under the header bar; left open
+    // together the search field covers the first navigation link.
+    await page.goto("/");
+    await expect(page.locator("[data-site-search].is-ready")).toHaveCount(1);
+    await page.locator("[data-search-trigger]").click();
+    await expect(page.locator("[data-site-search]")).toHaveClass(/is-open/);
+    await page.locator("[data-menu-toggle]").click();
+    await expect(page.locator("[data-site-search]")).not.toHaveClass(/is-open/);
+    const nav = page.locator("nav[aria-label='Primary']");
+    await expect(nav.locator("a").first()).toBeVisible();
+    await nav.locator("a").first().click({ trial: true }); // not covered
+    await page.locator("[data-search-trigger]").click();
+    await expect(page.locator("[data-menu-toggle]")).toHaveAttribute(
+      "aria-expanded",
+      "false",
+    );
   });
 });
 

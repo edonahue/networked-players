@@ -212,6 +212,7 @@ const isCurrent = (href: string) =>
         const nav = document.querySelector('[data-site-nav]');
         if (!button || !nav) return;
         const set = (open, refocus) => {
+          if (open) document.dispatchEvent(new CustomEvent('np:menu-open'));
           nav.classList.toggle('is-open', open);
           button.setAttribute('aria-expanded', String(open));
           if (!open && refocus) button.focus();
@@ -223,6 +224,8 @@ const isCurrent = (href: string) =>
         document.addEventListener('click', (event) => {
           if (!event.target.closest('[data-site-nav], [data-menu-toggle]')) set(false, false);
         });
+        // The search layer shares the strip under the header bar.
+        document.addEventListener('np:search-open', () => set(false, false));
         nav.addEventListener('focusout', (event) => {
           if (event.relatedTarget && !nav.contains(event.relatedTarget) && event.relatedTarget !== button) set(false, false);
         });
