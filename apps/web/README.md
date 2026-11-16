@@ -31,8 +31,12 @@ versioned static artifacts — no backend, no accounts.
   deriving a substitute. `?date=` only works in local dev or under
   Playwright (`dateOverride.ts`) — production ignores it.
 - **Albums** (`/albums/`, `/albums/<album-id>/`) — browse grid and per-album
-  connection pages: **find the connection** / **reveal every path**, evidence at
-  every hop, minimal contributor cards, and cross-links into play. (Old
+  record pages that read without JavaScript: a performer roster ("Who played on
+  this record", from `credit-membership.v1.json`, with non-performance credits
+  in a secondary "Also credited" group), "Where these players lead" (other
+  records sharing performers), documented connections with native
+  `<details>` credit evidence, and cross-links into play. Guessing the
+  connections is an opt-in toggle that only appears when JavaScript runs. (Old
   `/play/<album-id>/` URLs redirect here.)
 - **Connect Two Records** (`/play/connect/`, ADR 0058) — pick any two catalog
   albums and search a real record-to-record route between them: virtual
