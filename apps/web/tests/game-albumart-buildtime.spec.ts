@@ -16,13 +16,19 @@
 // than mocking one.
 
 import { expect, test } from "@playwright/test";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { coverFor } from "../src/data/albumArt";
+import { DATA_DIR } from "./helpers/catalogFacts";
 
 test("coverFor resolves real registry art for a real connected album", async () => {
-  // master-106274 ("Genius Loves Company") is real, committed data with a
-  // valid registry entry (verified against the current
-  // public/data/catalog/album-art.v1.json).
-  const cover = coverFor("master-106274");
+  // Invariant: every album the registry carries resolves to real https
+  // Discogs art. The album is the first registry entry (artifact lookup),
+  // not a named record.
+  const registry = JSON.parse(
+    readFileSync(join(DATA_DIR, "catalog/album-art.v1.json"), "utf8"),
+  ) as { albums: { album_id: string }[] };
+  const cover = coverFor(registry.albums[0].album_id);
   expect(cover).not.toBeNull();
   expect(cover?.uri150).toMatch(/^https:\/\/i\.discogs\.com\//);
   expect(cover?.uri).toMatch(/^https:\/\/i\.discogs\.com\//);

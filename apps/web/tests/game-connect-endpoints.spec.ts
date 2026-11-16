@@ -3,26 +3,24 @@
 // for both endpoints, real evidence (title/year/cover/source) per hop, and
 // must never leak the internal ALBUM_ANCHOR_SENTINEL string into the DOM
 // -- verified against the real committed
-// apps/web/public/data/pathfinding/graph.v3.json artifact, same real
-// Discovery <-> Joshua Tree pair game-connect.spec.ts already uses.
-//
-// The endpoint-A role text changed with ADR 0059 (Phase 5 PR 3): the
-// recommended-route engine ranks the Discovery side's art-director bridge
-// (Alex And Martin, "Design Concept, Art Direction") above the old plain-
-// BFS pick through Daft Punk, because that bridge's only evidence is the
-// diagnostic pair's own bootleg mashup release. Still a real, documented
-// co-credit endpoint -- packaging/business credits are not performer
-// credits, but they are exactly as real as a producer credit.
+// pathfinding graph, using the computed connected pair
+// (helpers/catalogFacts.ts) the other Connect specs share.
 
 import { expect, test } from "@playwright/test";
-import { selectAlbum } from "./helpers/connectPicker";
+import { selectAlbumById } from "./helpers/connectPicker";
+import { catalogFacts } from "./helpers/catalogFacts";
+
+// Albums are derived from the committed artifacts by rule (see
+// helpers/catalogFacts.ts), never named here.
+const facts = await catalogFacts();
+const CONNECTED = facts.connected;
 
 test("a real search renders real endpoint cards for both albums", async ({
   page,
 }) => {
   await page.goto("/play/connect/");
-  await selectAlbum(page, "a", "Discovery");
-  await selectAlbum(page, "b", "Joshua Tree");
+  await selectAlbumById(page, "a", CONNECTED.a);
+  await selectAlbumById(page, "b", CONNECTED.b);
   await page.locator("[data-connect-search]").click();
 
   await expect(page.locator("[data-connect-results]")).toBeVisible({
@@ -36,19 +34,19 @@ test("a real search renders real endpoint cards for both albums", async ({
   // own release, as <real role text>." -- rather than one specific
   // contributor's role. Which contributor bridges a pair depends on which
   // equally-valid route the ranker picks, and that legitimately changes as
-  // the graph grows (it did on the 140 -> 179 expansion: this pair now
-  // routes via George Duke's "Written-By, Performer" instead). Pinning the
+  // the graph grows (it has changed across catalog expansions: a pair can
+  // gain a new bridge contributor and role). Pinning the
   // role made a real, correct route look like a regression. The `, as .+\.`
   // clause still fails loudly on a missing or empty role, which is the
   // property this test actually exists to protect.
   const first = endpoints.first();
   await expect(first).toContainText(/is credited on/i);
-  await expect(first).toContainText("Discovery");
+  await expect(first).toContainText(CONNECTED.a.title);
   await expect(first).toContainText(/, as .+\./i);
 
   const last = endpoints.last();
   await expect(last).toContainText(/is credited on/i);
-  await expect(last).toContainText("The Joshua Tree");
+  await expect(last).toContainText(CONNECTED.b.title);
   await expect(last).toContainText(/, as .+\./i);
 });
 
@@ -56,8 +54,8 @@ test("a real search never leaks the album-anchor sentinel into the DOM", async (
   page,
 }) => {
   await page.goto("/play/connect/");
-  await selectAlbum(page, "a", "Discovery");
-  await selectAlbum(page, "b", "Joshua Tree");
+  await selectAlbumById(page, "a", CONNECTED.a);
+  await selectAlbumById(page, "b", CONNECTED.b);
   await page.locator("[data-connect-search]").click();
 
   await expect(page.locator("[data-connect-results]")).toBeVisible({
@@ -72,8 +70,8 @@ test("a real search renders real evidence cards with title, source link, and no 
   page,
 }) => {
   await page.goto("/play/connect/");
-  await selectAlbum(page, "a", "Discovery");
-  await selectAlbum(page, "b", "Joshua Tree");
+  await selectAlbumById(page, "a", CONNECTED.a);
+  await selectAlbumById(page, "b", CONNECTED.b);
   await page.locator("[data-connect-search]").click();
 
   await expect(page.locator("[data-connect-results]")).toBeVisible({

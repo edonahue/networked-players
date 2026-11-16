@@ -10,28 +10,28 @@ function index(): SearchIndex {
       {
         kind: "album",
         id: "master-1",
-        label: "Dark Side Of The Moon",
-        sublabel: "Pink Floyd",
+        label: "Fixture Side Of The Sun",
+        sublabel: "Imaginary Ensemble",
         state: "present",
       },
       {
         kind: "album",
         id: "master-2",
-        label: "The Wall",
-        sublabel: "Pink Floyd",
+        label: "The Barrier",
+        sublabel: "Imaginary Ensemble",
         state: "present",
       },
       {
         kind: "contributor",
         id: "100",
-        label: "David Gilmour",
+        label: "Dana Quillfeather",
         sublabel: null,
         state: "present",
       },
       {
         kind: "contributor",
         id: "200",
-        label: "Café Tacvba",
+        label: "Café Fictional",
         sublabel: null,
         state: "present",
       },
@@ -45,7 +45,7 @@ test("empty or whitespace-only query returns no results", () => {
 });
 
 test("exact match ranks above a prefix match on a different entry", () => {
-  const results = searchIndex(index(), "the wall");
+  const results = searchIndex(index(), "the barrier");
   expect(results[0].id).toBe("master-2");
 });
 
@@ -55,12 +55,12 @@ test("a prefix match on any token, not just the first word, matches", () => {
 });
 
 test("substring match still finds a result with no token boundary at the query", () => {
-  const results = searchIndex(index(), "ilmou");
+  const results = searchIndex(index(), "illfeat");
   expect(results.map((r) => r.id)).toContain("100");
 });
 
 test("matches the sublabel (artist name), not just the label", () => {
-  const results = searchIndex(index(), "pink floyd");
+  const results = searchIndex(index(), "imaginary ensemble");
   expect(results.map((r) => r.id).sort()).toEqual(["master-1", "master-2"]);
 });
 
@@ -89,25 +89,25 @@ test("present ranks before candidate at the same match quality", () => {
       {
         kind: "album",
         id: "master-candidate",
-        label: "Wish You Were Here",
-        sublabel: "Pink Floyd",
+        label: "Synthetic Candidate Album",
+        sublabel: "Imaginary Ensemble",
         state: "candidate",
       },
       {
         kind: "album",
         id: "master-present",
-        label: "Animals",
-        sublabel: "Pink Floyd",
+        label: "Synthetic Present Album",
+        sublabel: "Imaginary Ensemble",
         state: "present",
       },
     ],
   };
-  const results = searchIndex(mixed, "pink floyd");
+  const results = searchIndex(mixed, "imaginary ensemble");
   expect(results[0].id).toBe("master-present");
 });
 
 test("ranking is stable and deterministic across repeated calls", () => {
-  const first = searchIndex(index(), "pink floyd").map((r) => r.id);
-  const second = searchIndex(index(), "pink floyd").map((r) => r.id);
+  const first = searchIndex(index(), "imaginary ensemble").map((r) => r.id);
+  const second = searchIndex(index(), "imaginary ensemble").map((r) => r.id);
   expect(first).toEqual(second);
 });

@@ -1,10 +1,8 @@
 // Connect Two Records (ADR 0051) integration tests against the real
-// committed pathfinding graph. "Discovery" (Daft Punk) and "The Joshua
-// Tree" (U2) are a real, directly-connected pair in the committed artifact
-// (verified against apps/web/public/data/pathfinding/graph.v3.json) --
-// picked from the artifact itself, not hardcoded blindly, so this survives
-// a future regeneration only if that specific edge remains; if it doesn't,
-// this test's failure is itself a useful signal to pick a new real pair.
+// committed pathfinding graph. No album is named here: every pair is derived
+// by rule from the committed artifacts in helpers/catalogFacts.ts (first
+// catalog-order pair satisfying a predicate evaluated with the app's own
+// search code), so adding albums cannot silently invalidate a premise.
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -12,9 +10,20 @@ import { expect, test } from "@playwright/test";
 import {
   picker,
   pickerResults,
-  selectAlbum,
+  selectAlbumById,
   selectRouteFilter,
 } from "./helpers/connectPicker";
+import { catalogFacts } from "./helpers/catalogFacts";
+
+// Albums are derived from the committed artifacts by rule (see
+// helpers/catalogFacts.ts), never named here.
+const facts = await catalogFacts();
+const CONNECTED = facts.connected;
+const RHYTHM = facts.rhythm;
+const NEGATIVE = facts.negative;
+const GUITAR = facts.guitar;
+const SECOND = facts.secondConnected;
+const REPLACEMENT_B = facts.replacementB;
 
 /** Flushes the page's task queue past every pending promise continuation
  * spawned by a network response that just resolved -- NOT an arbitrary
@@ -88,7 +97,7 @@ test("a query typed before the catalog arrives is evaluated when it lands", asyn
   await expect(input).toHaveAttribute("aria-busy", "true");
 
   // Type while the catalog is still in flight.
-  await input.fill("Discovery");
+  await input.fill(CONNECTED.a.title);
   await expect(pickerResults(page, "a")).toHaveCount(0);
 
   releaseCatalog();
@@ -98,7 +107,7 @@ test("a query typed before the catalog arrives is evaluated when it lands", asyn
   await expect(pickerA).toHaveAttribute("data-picker-state", "ready");
   await expect(input).toHaveAttribute("aria-busy", "false");
   await expect(pickerResults(page, "a").first()).toBeVisible();
-  await expect(input).toHaveValue("Discovery");
+  await expect(input).toHaveValue(CONNECTED.a.title);
 
   // The picker is fully usable by keyboard from that recovered state --
   // the real WAI-ARIA combobox pattern (ADR 0059 Phase 5 PR 4): focus
@@ -111,7 +120,7 @@ test("a query typed before the catalog arrives is evaluated when it lands", asyn
   );
   await input.press("Enter");
   await expect(pickerA.locator("[data-picker-selected]")).toContainText(
-    "Discovery",
+    CONNECTED.a.title,
   );
 });
 
@@ -153,7 +162,7 @@ test("a failed catalog load is announced and recovers on the next keystroke", as
   // both the structural data-phase attribute AND the assertive region's
   // own text (a real Codex-review finding: clearing data-phase alone left
   // the previous failure's text sitting in the assertive region).
-  await pickerA.locator("input").fill("Discovery");
+  await pickerA.locator("input").fill(CONNECTED.a.title);
   await expect(pickerA).toHaveAttribute("data-picker-state", "ready");
   await expect(pickerResults(page, "a").first()).toBeVisible();
   expect(attempts).toBe(2);
@@ -170,8 +179,8 @@ test("a real connected pair finds a documented route with evidence", async ({
   page,
 }) => {
   await page.goto("/play/connect/");
-  await selectAlbum(page, "a", "Discovery");
-  await selectAlbum(page, "b", "Joshua Tree");
+  await selectAlbumById(page, "a", CONNECTED.a);
+  await selectAlbumById(page, "b", CONNECTED.b);
 
   const searchButton = page.locator("[data-connect-search]");
   await expect(searchButton).toBeEnabled();
@@ -197,8 +206,8 @@ test("a successful search announces the result and moves focus, like Guesser/Rou
   // announce AND move focus (verdictHeading.focus()); Connect's equivalent
   // moment did neither.
   await page.goto("/play/connect/");
-  await selectAlbum(page, "a", "Discovery");
-  await selectAlbum(page, "b", "Joshua Tree");
+  await selectAlbumById(page, "a", CONNECTED.a);
+  await selectAlbumById(page, "b", CONNECTED.b);
   await page.locator("[data-connect-search]").click();
 
   const eyebrow = page.locator("[data-connect-eyebrow]");
@@ -222,8 +231,8 @@ test("endpoint cards link back to their own album page", async ({
   const { albums } = (await res.json()) as {
     albums: { id: string; title: string }[];
   };
-  const discovery = albums.find((a) => a.title === "Discovery");
-  const joshuaTree = albums.find((a) => a.title === "The Joshua Tree");
+  const discovery = albums.find((a) => a.title === CONNECTED.a.title);
+  const joshuaTree = albums.find((a) => a.title === CONNECTED.b.title);
   if (!discovery || !joshuaTree) {
     throw new Error(
       "Discovery / The Joshua Tree missing from the real catalog",
@@ -231,8 +240,8 @@ test("endpoint cards link back to their own album page", async ({
   }
 
   await page.goto("/play/connect/");
-  await selectAlbum(page, "a", "Discovery");
-  await selectAlbum(page, "b", "Joshua Tree");
+  await selectAlbumById(page, "a", CONNECTED.a);
+  await selectAlbumById(page, "b", CONNECTED.b);
   await page.locator("[data-connect-search]").click();
 
   await expect(page.locator("[data-connect-results]")).toBeVisible({
@@ -252,7 +261,7 @@ test("endpoint cards link back to their own album page", async ({
   // (and so, before this PR, no /albums/<id>/ page at all).
   await endpoints.first().locator(`a[href='/albums/${discovery.id}/']`).click();
   await expect(page.getByRole("heading", { level: 1 })).toContainText(
-    "Discovery",
+    CONNECTED.a.title,
   );
 });
 
@@ -271,8 +280,8 @@ test("hop names link to their own contributor page when one is published", async
   const contributorIds = new Set(contributors.map((c) => c.artist_id));
 
   await page.goto("/play/connect/");
-  await selectAlbum(page, "a", "Discovery");
-  await selectAlbum(page, "b", "Joshua Tree");
+  await selectAlbumById(page, "a", CONNECTED.a);
+  await selectAlbumById(page, "b", CONNECTED.b);
   await page.locator("[data-connect-search]").click();
 
   await expect(page.locator("[data-connect-results]")).toBeVisible({
@@ -301,20 +310,21 @@ test("hop names link to their own contributor page when one is published", async
   expect(linkedAtLeastOne).toBe(true);
 });
 
-// The recommended-route engine (ADR 0059, Phase 5 PR 3): Discovery ->
-// Joshua Tree is the ADR's own diagnostic pair -- production's plain BFS
-// used to surface a route through "u2", evidenced by a 1998 Italian
-// mashup 12" (release #200783, now published with the `unofficial` caveat
-// flag). Verified against the real committed artifacts: an equal-hop,
-// uncaveated alternative exists (Alex And Martin <-> U2), so the ranked
-// engine should pick it and label the result accordingly -- this is a
-// real, live behavior change this PR ships, not just an internal refactor.
-test("the diagnostic pair (Discovery / Joshua Tree) is ranked away from its caveated evidence", async ({
+// The recommended-route engine (ADR 0059, Phase 5 PR 3). Invariant: when a
+// plain shortest route is evidenced by a release carrying a published caveat
+// flag (mashup, promo, reissue, ...) and an equal-hop uncaveated alternative
+// exists, the ranked engine recommends the uncaveated one and labels it, and
+// the caveated release is never the recommended route's own evidence. The
+// pair is derived by rule in helpers/catalogFacts.ts (first catalog-order
+// pair whose plain BFS route uses a caveated release while the engine
+// ranks it away), not named here.
+test("a pair whose plain route uses caveated evidence is ranked away from it", async ({
   page,
 }) => {
+  const DIAGNOSTIC = facts.diagnostic;
   await page.goto("/play/connect/");
-  await selectAlbum(page, "a", "Discovery");
-  await selectAlbum(page, "b", "Joshua Tree");
+  await selectAlbumById(page, "a", DIAGNOSTIC.a);
+  await selectAlbumById(page, "b", DIAGNOSTIC.b);
   await page.locator("[data-connect-search]").click();
 
   await expect(page.locator("[data-connect-results]")).toBeVisible({
@@ -333,12 +343,14 @@ test("the diagnostic pair (Discovery / Joshua Tree) is ranked away from its cave
   await expect(explanation).toContainText(
     "no hop's evidence carries a published caveat",
   );
-  // The bootleg release must never appear as the recommended route's own
-  // evidence -- it may still appear elsewhere (the distinct alternate,
-  // an evidence card) since it is never hidden, only de-prioritized.
-  await expect(
-    page.locator("[data-connect-hops] a[href*='/release/200783']"),
-  ).toHaveCount(0);
+  // The caveated releases must never appear as the recommended route's own
+  // evidence -- they may still appear elsewhere (the distinct alternate,
+  // an evidence card) since they are never hidden, only de-prioritized.
+  for (const releaseId of DIAGNOSTIC.caveatedReleaseIds) {
+    await expect(
+      page.locator(`[data-connect-hops] a[href*='/release/${releaseId}']`),
+    ).toHaveCount(0);
+  }
 });
 
 // Distinct alternate route (ADR 0058 Slice 7, renamed post-Phase-4 cleanup
@@ -354,8 +366,8 @@ test("the distinct alternate route section renders content genuinely distinct fr
   page,
 }) => {
   await page.goto("/play/connect/");
-  await selectAlbum(page, "a", "Discovery");
-  await selectAlbum(page, "b", "Joshua Tree");
+  await selectAlbumById(page, "a", CONNECTED.a);
+  await selectAlbumById(page, "b", CONNECTED.b);
   await page.locator("[data-connect-search]").click();
 
   await expect(page.locator("[data-connect-results]")).toBeVisible({
@@ -380,7 +392,7 @@ test("search button stays disabled until two different albums are picked", async
 }) => {
   await page.goto("/play/connect/");
   await expect(page.locator("[data-connect-search]")).toBeDisabled();
-  await selectAlbum(page, "a", "Discovery");
+  await selectAlbumById(page, "a", CONNECTED.a);
   await expect(page.locator("[data-connect-search]")).toBeDisabled();
 });
 
@@ -388,8 +400,8 @@ test("picking the same album twice keeps the search disabled", async ({
   page,
 }) => {
   await page.goto("/play/connect/");
-  await selectAlbum(page, "a", "Discovery");
-  await selectAlbum(page, "b", "Discovery");
+  await selectAlbumById(page, "a", CONNECTED.a);
+  await selectAlbumById(page, "b", CONNECTED.a);
   await expect(page.locator("[data-connect-search]")).toBeDisabled();
 });
 
@@ -400,8 +412,8 @@ test("a fetch failure for the pathfinding graph degrades gracefully", async ({
     route.abort(),
   );
   await page.goto("/play/connect/");
-  await selectAlbum(page, "a", "Discovery");
-  await selectAlbum(page, "b", "Joshua Tree");
+  await selectAlbumById(page, "a", CONNECTED.a);
+  await selectAlbumById(page, "b", CONNECTED.b);
   await page.locator("[data-connect-search]").click();
 
   await expect(page.locator("[data-connect-status]")).toBeVisible();
@@ -428,8 +440,8 @@ test("the rest of the page keeps working after a failed search", async ({
     route.abort(),
   );
   await page.goto("/play/connect/");
-  await selectAlbum(page, "a", "Discovery");
-  await selectAlbum(page, "b", "Joshua Tree");
+  await selectAlbumById(page, "a", CONNECTED.a);
+  await selectAlbumById(page, "b", CONNECTED.b);
   await page.locator("[data-connect-search]").click();
   await expect(page.locator("[data-connect-status]")).toBeVisible();
 
@@ -451,15 +463,15 @@ test("a multi-search session fetches the pathfinding graph exactly once", async 
   });
   await page.goto("/play/connect/");
 
-  await selectAlbum(page, "a", "Discovery");
-  await selectAlbum(page, "b", "Joshua Tree");
+  await selectAlbumById(page, "a", CONNECTED.a);
+  await selectAlbumById(page, "b", CONNECTED.b);
   await page.locator("[data-connect-search]").click();
   await expect(page.locator("[data-connect-results]")).toBeVisible({
     timeout: 15000,
   });
 
-  await selectAlbum(page, "a", "Ziggy Stardust");
-  await selectAlbum(page, "b", "A Night At The Opera");
+  await selectAlbumById(page, "a", SECOND.a);
+  await selectAlbumById(page, "b", REPLACEMENT_B);
   await page.locator("[data-connect-search]").click();
   await expect(page.locator("[data-connect-results]")).toBeVisible({
     timeout: 15000,
@@ -489,7 +501,7 @@ test("an old Behind the Glass URL degrades to a real, correctly-labeled default 
   // default, so this is a genuinely fresh unfiltered search -- not an
   // error, and not a stale result carried over from the retired mode.
   await page.goto(
-    "/play/connect/?a=master-9313&b=master-19194&mode=behind-the-glass",
+    `/play/connect/?a=${CONNECTED.a.id}&b=${CONNECTED.b.id}&mode=behind-the-glass`,
   );
   const stage = page.locator("[data-testid='connect-stage']");
   await expect(stage).toBeVisible();
@@ -507,18 +519,16 @@ test("an old Behind the Glass URL degrades to a real, correctly-labeled default 
 });
 
 // Rhythm Section: restricts the search to drums/bass-only credits.
-// "Face Value" (Phil Collins) <-> "Talking Book" (Stevie Wonder) is a
-// real, two-hop path bridged by Nathan East (Bass/Drums both hops) --
-// verified against the committed pathfinding graph artifact. No direct
-// one-hop rhythm-section pair exists among the 140-album catalog's main
-// artists, so this is a genuine multi-hop case, unlike Behind the Glass's
-// one-hop pair.
+// Invariant: for a pair with a drums/bass-only route (the first such pair in
+// catalog order, computed by running the app's own filtered search over the
+// committed graph -- see helpers/catalogFacts.ts), the UI renders exactly the
+// engine's hop count and every shown hop is a drums/bass credit.
 test("Rhythm Section finds a real drums/bass-only connection", async ({
   page,
 }) => {
   await page.goto("/play/connect/");
-  await selectAlbum(page, "a", "Face Value");
-  await selectAlbum(page, "b", "Talking Book");
+  await selectAlbumById(page, "a", RHYTHM.a);
+  await selectAlbumById(page, "b", RHYTHM.b);
   await selectRouteFilter(page, "rhythm-section");
   await page.locator("[data-connect-search]").click();
 
@@ -526,19 +536,19 @@ test("Rhythm Section finds a real drums/bass-only connection", async ({
     timeout: 15000,
   });
   const hops = page.locator("[data-connect-hops] .connect-hop");
-  await expect(hops).toHaveCount(2);
+  await expect(hops).toHaveCount(RHYTHM.hops);
   await expect(hops.first()).toContainText(/drums|bass/i);
   await expect(page.locator("[data-connect-result='alternate']")).toBeHidden();
 });
 
-// Guitar Paths: restricts the search to guitar-only credits. "Blood On
-// The Tracks" (Bob Dylan) <-> "Harvest" (Neil Young) is a real, directly-
-// connected pair bridged by a shared "Guitar, Vocals" credit -- verified
-// against the committed artifact.
+// Guitar Paths: restricts the search to guitar-only credits. Invariant: for
+// the first catalog-order pair with a guitar-only route (computed with the
+// app's own filtered search), the UI finds it and the first hop is a guitar
+// credit.
 test("Guitar Paths finds a real guitar-only connection", async ({ page }) => {
   await page.goto("/play/connect/");
-  await selectAlbum(page, "a", "Blood On The Tracks");
-  await selectAlbum(page, "b", "Harvest");
+  await selectAlbumById(page, "a", GUITAR.a);
+  await selectAlbumById(page, "b", GUITAR.b);
   await selectRouteFilter(page, "guitar-paths");
   await page.locator("[data-connect-search]").click();
 
@@ -550,16 +560,17 @@ test("Guitar Paths finds a real guitar-only connection", async ({ page }) => {
   await expect(hop).toContainText(/guitar/i);
 });
 
-// Time Out <-> Rumours has no rhythm-section- or guitar-only bridge within
-// 4 hops either (verified against the committed artifact, from any
-// credited contributor on either album) -- the same real negative case
-// reused across every filtered mode.
+// Invariant: a pair with NO rhythm-section and NO guitar-only route within 4
+// hops reports "no connection" in each filtered mode. The pair is computed,
+// not named: the first catalog-order pair for which the app's own filtered
+// searches both fail with "no-path" (helpers/catalogFacts.ts), so a new album
+// that creates a bridge changes the pair, never the behaviour under test.
 test("Rhythm Section and Guitar Paths report no connection for the same real non-matching pair", async ({
   page,
 }) => {
   await page.goto("/play/connect/");
-  await selectAlbum(page, "a", "Time Out");
-  await selectAlbum(page, "b", "Rumours");
+  await selectAlbumById(page, "a", NEGATIVE.a);
+  await selectAlbumById(page, "b", NEGATIVE.b);
 
   await selectRouteFilter(page, "rhythm-section");
   await page.locator("[data-connect-search]").click();
@@ -591,11 +602,10 @@ test("a role-filtered search that finds no connection never fetches the evidence
     return route.continue();
   });
   await page.goto("/play/connect/");
-  await selectAlbum(page, "a", "Time Out");
-  await selectAlbum(page, "b", "Rumours");
-  // Rhythm Section since Behind the Glass was retired (ADR 0068). Time Out
-  // <-> Rumours is the same real, verified negative pair the filtered-mode
-  // tests above already reuse.
+  await selectAlbumById(page, "a", NEGATIVE.a);
+  await selectAlbumById(page, "b", NEGATIVE.b);
+  // Rhythm Section since Behind the Glass was retired (ADR 0068); the
+  // computed negative pair is the one the filtered-mode tests above reuse.
   await selectRouteFilter(page, "rhythm-section");
   await page.locator("[data-connect-search]").click();
 
@@ -617,11 +627,10 @@ test("a role-filtered search that finds a connection fetches evidence only after
     return route.continue();
   });
   await page.goto("/play/connect/");
-  // Face Value <-> Talking Book, bridged by Nathan East (Bass/Drums) --
-  // the same real, verified positive pair the Rhythm Section test above
+  // The computed rhythm-section positive pair the Rhythm Section test above
   // uses, substituted for the retired Behind the Glass mode (ADR 0068).
-  await selectAlbum(page, "a", "Face Value");
-  await selectAlbum(page, "b", "Talking Book");
+  await selectAlbumById(page, "a", RHYTHM.a);
+  await selectAlbumById(page, "b", RHYTHM.b);
   await selectRouteFilter(page, "rhythm-section");
   await page.locator("[data-connect-search]").click();
 
@@ -742,8 +751,8 @@ test("an older, still-in-flight search's late completion never overwrites a newe
 
   // Older search: unfiltered, needs the (gated) evidence registry to rank
   // at all -- stalls after its graph fetch, before it can ever finish.
-  await selectAlbum(page, "a", "Discovery");
-  await selectAlbum(page, "b", "Joshua Tree");
+  await selectAlbumById(page, "a", CONNECTED.a);
+  await selectAlbumById(page, "b", CONNECTED.b);
   await page.locator("[data-connect-search]").click();
   // Honest staged status (ADR 0059 Phase 5 PR 5b): the graph resolves fast
   // (only the evidence registry is gated in these tests), so by the time
@@ -756,8 +765,8 @@ test("an older, still-in-flight search's late completion never overwrites a newe
   // Newer search: role-filtered, a real pair with NO drums/bass-only
   // connection -- finishes after just the graph fetch (already resolved,
   // real and unblocked), never touching the gated evidence endpoint.
-  await selectAlbum(page, "a", "Time Out");
-  await selectAlbum(page, "b", "Rumours");
+  await selectAlbumById(page, "a", NEGATIVE.a);
+  await selectAlbumById(page, "b", NEGATIVE.b);
   await selectRouteFilter(page, "rhythm-section");
   await page.locator("[data-connect-search]").click();
   await expect(page.locator("[data-connect-status]")).toContainText(
@@ -818,10 +827,10 @@ test("a URL-restored search superseded by a faster manual search loses honestly"
 
   // The URL-restored search is unfiltered -- Discovery / Joshua Tree --
   // and stalls the same way, waiting on the gated evidence registry.
-  await page.goto("/play/connect/?a=master-26647&b=master-64290");
+  await page.goto(`/play/connect/?a=${CONNECTED.a.id}&b=${CONNECTED.b.id}`);
   await expect(
     picker(page, "a").locator("[data-picker-selected]"),
-  ).toContainText("Discovery");
+  ).toContainText(CONNECTED.a.title);
   // Honest staged status (ADR 0059 Phase 5 PR 5b): the graph resolves fast
   // (only the evidence registry is gated in these tests), so by the time
   // this check runs, status has already advanced past the initial
@@ -830,8 +839,8 @@ test("a URL-restored search superseded by a faster manual search loses honestly"
     /ranking documented routes/i,
   );
 
-  await selectAlbum(page, "a", "Time Out");
-  await selectAlbum(page, "b", "Rumours");
+  await selectAlbumById(page, "a", NEGATIVE.a);
+  await selectAlbumById(page, "b", NEGATIVE.b);
   await selectRouteFilter(page, "rhythm-section");
   await page.locator("[data-connect-search]").click();
   await expect(page.locator("[data-connect-status]")).toContainText(
@@ -881,8 +890,8 @@ test("editing a picker selection while a search is pending invalidates it -- no 
   );
 
   await page.goto("/play/connect/");
-  await selectAlbum(page, "a", "Discovery");
-  await selectAlbum(page, "b", "Joshua Tree");
+  await selectAlbumById(page, "a", CONNECTED.a);
+  await selectAlbumById(page, "b", CONNECTED.b);
   await page.locator("[data-connect-search]").click();
   // Honest staged status (ADR 0059 Phase 5 PR 5b): the graph resolves fast
   // (only the evidence registry is gated in these tests), so by the time
@@ -893,7 +902,7 @@ test("editing a picker selection while a search is pending invalidates it -- no 
   );
 
   // Edit picker A mid-flight without ever clicking Search again.
-  await selectAlbum(page, "a", "Time Out");
+  await selectAlbumById(page, "a", NEGATIVE.a);
 
   const evidenceResponse2 = page.waitForResponse(
     "**/data/evidence/release-registry.v1.json",
@@ -935,8 +944,8 @@ test("changing the role filter while a search is pending invalidates it -- no st
   );
 
   await page.goto("/play/connect/");
-  await selectAlbum(page, "a", "Discovery");
-  await selectAlbum(page, "b", "Joshua Tree");
+  await selectAlbumById(page, "a", CONNECTED.a);
+  await selectAlbumById(page, "b", CONNECTED.b);
   await page.locator("[data-connect-search]").click();
   // Honest staged status (ADR 0059 Phase 5 PR 5b): the graph resolves fast
   // (only the evidence registry is gated in these tests), so by the time
@@ -971,15 +980,15 @@ test("a real pick after a completed search hides the stale result and Copy Link,
   page,
 }) => {
   await page.goto("/play/connect/");
-  await selectAlbum(page, "a", "Discovery");
-  await selectAlbum(page, "b", "Joshua Tree");
+  await selectAlbumById(page, "a", CONNECTED.a);
+  await selectAlbumById(page, "b", CONNECTED.b);
   await page.locator("[data-connect-search]").click();
   await expect(page.locator("[data-connect-results]")).toBeVisible({
     timeout: 15000,
   });
   await expect(page.locator("[data-connect-copy-link]")).toBeVisible();
 
-  await selectAlbum(page, "a", "Time Out");
+  await selectAlbumById(page, "a", NEGATIVE.a);
 
   await expect(page.locator("[data-connect-results]")).toBeHidden();
   await expect(page.locator("[data-connect-copy-link]")).toBeHidden();
@@ -991,8 +1000,8 @@ test("a real pick after a completed search hides the stale result and Copy Link,
   await expect(page.locator("[data-connect-copy-link]")).toBeHidden();
   await expect(
     picker(page, "a").locator("[data-picker-selected]"),
-  ).toContainText("Joshua Tree");
+  ).toContainText(CONNECTED.b.title);
   await expect(
     picker(page, "b").locator("[data-picker-selected]"),
-  ).toContainText("Time Out");
+  ).toContainText(NEGATIVE.a.title);
 });

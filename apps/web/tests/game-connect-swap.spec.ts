@@ -1,23 +1,31 @@
 // Swap Records (ADR 0059 Phase 5 PR 4): exchanges both album identities,
 // updates the URL, preserves the active role filter, reuses an
 // already-found route reversed (no second search) when one is on screen,
-// and works both before and after a search. Same real Discovery <-> Joshua
-// Tree pair `game-connect.spec.ts`/`game-connect-endpoints.spec.ts` use.
+// and works both before and after a search. Same computed connected pair
+// (helpers/catalogFacts.ts) the other Connect specs use.
 
 import { expect, test } from "@playwright/test";
 import {
   picker,
-  selectAlbum,
+  selectAlbumById,
   selectRouteFilter,
 } from "./helpers/connectPicker";
+import { catalogFacts } from "./helpers/catalogFacts";
+
+// Albums are derived from the committed artifacts by rule (see
+// helpers/catalogFacts.ts), never named here.
+const facts = await catalogFacts();
+const CONNECTED = facts.connected;
+const RHYTHM = facts.rhythm;
+const SECOND = facts.secondConnected;
 
 test("swap is disabled until both records are picked", async ({ page }) => {
   await page.goto("/play/connect/");
   const swap = page.locator("[data-connect-swap]");
   await expect(swap).toBeDisabled();
-  await selectAlbum(page, "a", "Discovery");
+  await selectAlbumById(page, "a", CONNECTED.a);
   await expect(swap).toBeDisabled();
-  await selectAlbum(page, "b", "Joshua Tree");
+  await selectAlbumById(page, "b", CONNECTED.b);
   await expect(swap).toBeEnabled();
 });
 
@@ -25,17 +33,17 @@ test("swap before a search just exchanges the two picker selections", async ({
   page,
 }) => {
   await page.goto("/play/connect/");
-  await selectAlbum(page, "a", "Discovery");
-  await selectAlbum(page, "b", "Joshua Tree");
+  await selectAlbumById(page, "a", CONNECTED.a);
+  await selectAlbumById(page, "b", CONNECTED.b);
 
   await page.locator("[data-connect-swap]").click();
 
   await expect(
     picker(page, "a").locator("[data-picker-selected]"),
-  ).toContainText("Joshua Tree");
+  ).toContainText(CONNECTED.b.title);
   await expect(
     picker(page, "b").locator("[data-picker-selected]"),
-  ).toContainText("Discovery");
+  ).toContainText(CONNECTED.a.title);
   // No search ran -- swapping alone never triggers one.
   await expect(page.locator("[data-connect-results]")).toBeHidden();
 });
@@ -44,8 +52,8 @@ test("swap after a search redisplays the reversed route without a new network re
   page,
 }) => {
   await page.goto("/play/connect/");
-  await selectAlbum(page, "a", "Discovery");
-  await selectAlbum(page, "b", "Joshua Tree");
+  await selectAlbumById(page, "a", CONNECTED.a);
+  await selectAlbumById(page, "b", CONNECTED.b);
   await page.locator("[data-connect-search]").click();
   await expect(page.locator("[data-connect-results]")).toBeVisible({
     timeout: 15000,
@@ -71,18 +79,18 @@ test("swap after a search redisplays the reversed route without a new network re
 
   await expect(
     picker(page, "a").locator("[data-picker-selected]"),
-  ).toContainText("Joshua Tree");
+  ).toContainText(CONNECTED.b.title);
   await expect(
     picker(page, "b").locator("[data-picker-selected]"),
-  ).toContainText("Discovery");
+  ).toContainText(CONNECTED.a.title);
 });
 
 test("swap announces the new order and keeps focus on the swap control", async ({
   page,
 }) => {
   await page.goto("/play/connect/");
-  await selectAlbum(page, "a", "Discovery");
-  await selectAlbum(page, "b", "Joshua Tree");
+  await selectAlbumById(page, "a", CONNECTED.a);
+  await selectAlbumById(page, "b", CONNECTED.b);
   await page.locator("[data-connect-search]").click();
   await expect(page.locator("[data-connect-results]")).toBeVisible({
     timeout: 15000,
@@ -99,8 +107,8 @@ test("swap announces the new order and keeps focus on the swap control", async (
 
 test("swap updates the URL to the new order", async ({ page }) => {
   await page.goto("/play/connect/");
-  await selectAlbum(page, "a", "Discovery");
-  await selectAlbum(page, "b", "Joshua Tree");
+  await selectAlbumById(page, "a", CONNECTED.a);
+  await selectAlbumById(page, "b", CONNECTED.b);
   await page.locator("[data-connect-search]").click();
   await expect(page.locator("[data-connect-results]")).toBeVisible({
     timeout: 15000,
@@ -108,20 +116,21 @@ test("swap updates the URL to the new order", async ({ page }) => {
 
   await page.locator("[data-connect-swap]").click();
   await page.waitForFunction(
-    () =>
-      new URL(window.location.href).searchParams.get("a") === "master-64290",
+    (expectedA) =>
+      new URL(window.location.href).searchParams.get("a") === expectedA,
+    CONNECTED.b.id,
   );
   const params = new URL(page.url()).searchParams;
-  expect(params.get("a")).toBe("master-64290"); // Joshua Tree
-  expect(params.get("b")).toBe("master-26647"); // Discovery
+  expect(params.get("a")).toBe(CONNECTED.b.id);
+  expect(params.get("b")).toBe(CONNECTED.a.id);
 });
 
 test("a real pick after a swap invalidates the reusable route -- the next swap re-derives from the new state", async ({
   page,
 }) => {
   await page.goto("/play/connect/");
-  await selectAlbum(page, "a", "Discovery");
-  await selectAlbum(page, "b", "Joshua Tree");
+  await selectAlbumById(page, "a", CONNECTED.a);
+  await selectAlbumById(page, "b", CONNECTED.b);
   await page.locator("[data-connect-search]").click();
   await expect(page.locator("[data-connect-results]")).toBeVisible({
     timeout: 15000,
@@ -129,7 +138,7 @@ test("a real pick after a swap invalidates the reusable route -- the next swap r
   await page.locator("[data-connect-swap]").click();
 
   // A genuine new pick on side B, replacing Discovery.
-  await selectAlbum(page, "b", "Ziggy Stardust");
+  await selectAlbumById(page, "b", SECOND.a);
   // The stale result from before this pick must not linger uncorrected --
   // the search button re-enables for the new pair, distinct records.
   await expect(page.locator("[data-connect-search]")).toBeEnabled();
@@ -139,12 +148,11 @@ test("swap preserves the active role filter across the reversed redisplay", asyn
   page,
 }) => {
   await page.goto("/play/connect/");
-  // Face Value <-> Talking Book, bridged by Nathan East (Bass/Drums) --
-  // the real, verified Rhythm Section pair. The original Ziggy Stardust
-  // <-> A Night At The Opera pair was chosen for Behind the Glass's
-  // producer bridge, which ADR 0068 retired.
-  await selectAlbum(page, "a", "Face Value");
-  await selectAlbum(page, "b", "Talking Book");
+  // The computed Rhythm Section pair (helpers/catalogFacts.ts): a pair with a
+  // drums/bass-only route. Behind the Glass's producer-bridge pair was
+  // retired with that mode (ADR 0068).
+  await selectAlbumById(page, "a", RHYTHM.a);
+  await selectAlbumById(page, "b", RHYTHM.b);
   await selectRouteFilter(page, "rhythm-section");
   await page.locator("[data-connect-search]").click();
   await expect(page.locator("[data-connect-results]")).toBeVisible({

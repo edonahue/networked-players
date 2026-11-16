@@ -7,7 +7,15 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { expect, test } from "@playwright/test";
-import { selectAlbum, selectRouteFilter } from "./helpers/connectPicker";
+import { selectAlbumById, selectRouteFilter } from "./helpers/connectPicker";
+import { catalogFacts } from "./helpers/catalogFacts";
+
+// Albums are derived from the committed artifacts by rule (see
+// helpers/catalogFacts.ts), never named here.
+const facts = await catalogFacts();
+const CONNECTED = facts.connected;
+const RHYTHM = facts.rhythm;
+const NEGATIVE = facts.negative;
 
 test("the pathfinding graph is requested as soon as the FIRST album is picked, before a second pick or the search click", async ({
   page,
@@ -21,12 +29,12 @@ test("the pathfinding graph is requested as soon as the FIRST album is picked, b
   await page.goto("/play/connect/");
   expect(graphFetches).toBe(0);
 
-  await selectAlbum(page, "a", "Discovery");
+  await selectAlbumById(page, "a", CONNECTED.a);
   await expect.poll(() => graphFetches).toBe(1);
 
   // A second pick and the search click still work normally and don't
   // re-fetch -- loadPreparedGraph's own memoized cache absorbs both.
-  await selectAlbum(page, "b", "Joshua Tree");
+  await selectAlbumById(page, "b", CONNECTED.b);
   await page.locator("[data-connect-search]").click();
   await expect(page.locator("[data-connect-results]")).toBeVisible({
     timeout: 15000,
@@ -46,7 +54,7 @@ test("the album-art registry is requested as soon as the FIRST album is picked, 
   await page.goto("/play/connect/");
   expect(artFetches).toBe(0);
 
-  await selectAlbum(page, "a", "Discovery");
+  await selectAlbumById(page, "a", CONNECTED.a);
   await expect.poll(() => artFetches).toBe(1);
 });
 
@@ -68,8 +76,8 @@ test("picking both albums does not eagerly fetch the evidence registry, even bef
   });
 
   await page.goto("/play/connect/");
-  await selectAlbum(page, "a", "Time Out");
-  await selectAlbum(page, "b", "Rumours");
+  await selectAlbumById(page, "a", NEGATIVE.a);
+  await selectAlbumById(page, "b", NEGATIVE.b);
   expect(evidenceFetches).toBe(0);
 
   await selectRouteFilter(page, "rhythm-section");
@@ -115,8 +123,8 @@ test("status is staged honestly: loading the graph, then ranking, for an unfilte
   );
 
   await page.goto("/play/connect/");
-  await selectAlbum(page, "a", "Discovery");
-  await selectAlbum(page, "b", "Joshua Tree");
+  await selectAlbumById(page, "a", CONNECTED.a);
+  await selectAlbumById(page, "b", CONNECTED.b);
   await page.locator("[data-connect-search]").click();
 
   await expect(page.locator("[data-connect-status]")).toHaveText(
@@ -174,12 +182,11 @@ test("status is staged honestly: loading the graph, then searching, for a role-f
   );
 
   await page.goto("/play/connect/");
-  // Face Value <-> Talking Book, bridged by Nathan East (Bass/Drums) --
-  // the real, verified Rhythm Section pair. The original Ziggy Stardust
-  // <-> A Night At The Opera pair was chosen for Behind the Glass's
-  // producer bridge, which ADR 0068 retired.
-  await selectAlbum(page, "a", "Face Value");
-  await selectAlbum(page, "b", "Talking Book");
+  // The computed Rhythm Section pair (helpers/catalogFacts.ts): a pair with a
+  // drums/bass-only route. Behind the Glass's producer-bridge pair was
+  // retired with that mode (ADR 0068).
+  await selectAlbumById(page, "a", RHYTHM.a);
+  await selectAlbumById(page, "b", RHYTHM.b);
   await selectRouteFilter(page, "rhythm-section");
   await page.locator("[data-connect-search]").click();
 
@@ -226,12 +233,11 @@ test("a role-filtered search's structural route survives an evidence-registry fa
   );
 
   await page.goto("/play/connect/");
-  // Face Value <-> Talking Book, bridged by Nathan East (Bass/Drums) --
-  // the real, verified Rhythm Section pair. The original Ziggy Stardust
-  // <-> A Night At The Opera pair was chosen for Behind the Glass's
-  // producer bridge, which ADR 0068 retired.
-  await selectAlbum(page, "a", "Face Value");
-  await selectAlbum(page, "b", "Talking Book");
+  // The computed Rhythm Section pair (helpers/catalogFacts.ts): a pair with a
+  // drums/bass-only route. Behind the Glass's producer-bridge pair was
+  // retired with that mode (ADR 0068).
+  await selectAlbumById(page, "a", RHYTHM.a);
+  await selectAlbumById(page, "b", RHYTHM.b);
   await selectRouteFilter(page, "rhythm-section");
   await page.locator("[data-connect-search]").click();
 

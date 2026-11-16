@@ -6,7 +6,17 @@
 // connect-picker-b-*), so nothing here ever collides between them.
 
 import { expect, test } from "@playwright/test";
-import { picker, pickerResults, selectAlbum } from "./helpers/connectPicker";
+import {
+  picker,
+  pickerResults,
+  selectAlbumById,
+} from "./helpers/connectPicker";
+import { catalogFacts } from "./helpers/catalogFacts";
+
+// Albums are derived from the committed artifacts by rule (see
+// helpers/catalogFacts.ts), never named here.
+const facts = await catalogFacts();
+const CONNECTED = facts.connected;
 
 test("the input carries real combobox ARIA wired to its own listbox", async ({
   page,
@@ -30,7 +40,7 @@ test("typing expands the listbox and each result is a real option with a stable 
   await page.goto("/play/connect/");
   const input = picker(page, "a").locator("input");
   await expect(picker(page, "a")).toHaveAttribute("data-picker-state", "ready");
-  await input.fill("Discovery");
+  await input.fill(CONNECTED.a.title);
 
   await expect(input).toHaveAttribute("aria-expanded", "true");
   const first = pickerResults(page, "a").first();
@@ -92,13 +102,13 @@ test("Escape closes the listbox without clearing the typed text or an existing s
   await page.goto("/play/connect/");
   const input = picker(page, "a").locator("input");
   await expect(picker(page, "a")).toHaveAttribute("data-picker-state", "ready");
-  await input.fill("Discovery");
+  await input.fill(CONNECTED.a.title);
   await expect(pickerResults(page, "a")).toBeVisible();
 
   await input.press("Escape");
   await expect(pickerResults(page, "a")).toBeHidden();
   await expect(input).toHaveAttribute("aria-expanded", "false");
-  await expect(input).toHaveValue("Discovery"); // text survives
+  await expect(input).toHaveValue(CONNECTED.a.title); // text survives
 });
 
 test("a query with zero real matches announces 'no results', distinct from the empty-query state", async ({
@@ -122,7 +132,7 @@ test("a query with real matches announces a result count", async ({ page }) => {
   const pickerA = picker(page, "a");
   const input = pickerA.locator("input");
   await expect(pickerA).toHaveAttribute("data-picker-state", "ready");
-  await input.fill("Discovery");
+  await input.fill(CONNECTED.a.title);
   await expect(pickerA.locator("[data-picker-count]")).toContainText(
     /result.*available/i,
   );
@@ -132,7 +142,7 @@ test("typing again after a selection clears it -- selection clearing on edit", a
   page,
 }) => {
   await page.goto("/play/connect/");
-  await selectAlbum(page, "a", "Discovery");
+  await selectAlbumById(page, "a", CONNECTED.a);
   await expect(
     picker(page, "a").locator("[data-picker-selected]"),
   ).toBeVisible();
@@ -155,14 +165,14 @@ test("two independent pickers share zero id or aria-activedescendant collision",
   // own focusout handler, so activating A first and reading its state
   // before ever touching B is what isolates the id/state each picker
   // holds, rather than an artifact of which one currently has focus.
-  await picker(page, "a").locator("input").fill("Discovery");
+  await picker(page, "a").locator("input").fill(CONNECTED.a.title);
   await picker(page, "a").locator("input").press("ArrowDown");
   const activeA = await picker(page, "a")
     .locator("input")
     .getAttribute("aria-activedescendant");
   expect(activeA).toBe("connect-picker-a-option-0");
 
-  await picker(page, "b").locator("input").fill("Discovery");
+  await picker(page, "b").locator("input").fill(CONNECTED.a.title);
   await picker(page, "b").locator("input").press("ArrowDown");
   const activeB = await picker(page, "b")
     .locator("input")
@@ -187,7 +197,7 @@ test("clicking a result keeps focus on the input rather than blurring it away", 
   await page.goto("/play/connect/");
   const input = picker(page, "a").locator("input");
   await expect(picker(page, "a")).toHaveAttribute("data-picker-state", "ready");
-  await input.fill("Discovery");
+  await input.fill(CONNECTED.a.title);
   await pickerResults(page, "a").first().click();
   await expect(input).toBeFocused();
 });

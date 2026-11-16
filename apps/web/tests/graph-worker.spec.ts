@@ -5,7 +5,13 @@
 // not a mocked Worker global.
 
 import { expect, test } from "@playwright/test";
-import { selectAlbum } from "./helpers/connectPicker";
+import { selectAlbumById } from "./helpers/connectPicker";
+import { catalogFacts } from "./helpers/catalogFacts";
+
+// Albums are derived from the committed artifacts by rule (see
+// helpers/catalogFacts.ts), never named here.
+const facts = await catalogFacts();
+const CONNECTED = facts.connected;
 
 test("the pathfinding graph is loaded via a dedicated Worker script, not only inline on the main thread", async ({
   page,
@@ -18,8 +24,8 @@ test("the pathfinding graph is loaded via a dedicated Worker script, not only in
   });
 
   await page.goto("/play/connect/");
-  await selectAlbum(page, "a", "Discovery");
-  await selectAlbum(page, "b", "Joshua Tree");
+  await selectAlbumById(page, "a", CONNECTED.a);
+  await selectAlbumById(page, "b", CONNECTED.b);
   await page.locator("[data-connect-search]").click();
   await expect(page.locator("[data-connect-results]")).toBeVisible({
     timeout: 15000,
@@ -44,8 +50,8 @@ test("a search still finds a real, correct route when Worker construction fails 
   });
 
   await page.goto("/play/connect/");
-  await selectAlbum(page, "a", "Discovery");
-  await selectAlbum(page, "b", "Joshua Tree");
+  await selectAlbumById(page, "a", CONNECTED.a);
+  await selectAlbumById(page, "b", CONNECTED.b);
   await page.locator("[data-connect-search]").click();
 
   await expect(page.locator("[data-connect-results]")).toBeVisible({
@@ -76,8 +82,8 @@ test("a Worker that crashes on load falls back to the main thread for that searc
   );
 
   await page.goto("/play/connect/");
-  await selectAlbum(page, "a", "Discovery");
-  await selectAlbum(page, "b", "Joshua Tree");
+  await selectAlbumById(page, "a", CONNECTED.a);
+  await selectAlbumById(page, "b", CONNECTED.b);
   await page.locator("[data-connect-search]").click();
 
   await expect(page.locator("[data-connect-results]")).toBeVisible({
@@ -118,8 +124,8 @@ test("a crashed worker is retired so a later retry doesn't hang waiting on a dea
   });
 
   await page.goto("/play/connect/");
-  await selectAlbum(page, "a", "Discovery");
-  await selectAlbum(page, "b", "Joshua Tree");
+  await selectAlbumById(page, "a", CONNECTED.a);
+  await selectAlbumById(page, "b", CONNECTED.b);
   await page.locator("[data-connect-search]").click();
 
   // Must resolve, never hang -- proof the worker constructed for the
@@ -141,8 +147,8 @@ test("a fetch failure still degrades gracefully when going through the Worker", 
     route.abort(),
   );
   await page.goto("/play/connect/");
-  await selectAlbum(page, "a", "Discovery");
-  await selectAlbum(page, "b", "Joshua Tree");
+  await selectAlbumById(page, "a", CONNECTED.a);
+  await selectAlbumById(page, "b", CONNECTED.b);
   await page.locator("[data-connect-search]").click();
 
   await expect(page.locator("[data-connect-status]")).toContainText(

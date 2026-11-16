@@ -7,15 +7,21 @@
 
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
+import { catalogFacts, pickScanContributorId } from "./helpers/catalogFacts";
+
+// Invariant: key surfaces have no WCAG 2 A/AA violations. The album and
+// contributor pages are chosen by rule from the committed artifacts
+// (helpers/catalogFacts.ts), never named here.
+const facts = await catalogFacts();
 
 const PAGES = [
   "/",
-  "/albums/master-45922/",
+  `/albums/${facts.connected.a.id}/`,
   "/play/connection/",
   "/play/daily/",
   "/play/routes/",
-  "/explore/master-45922/",
-  "/contributors/634/",
+  `/explore/${facts.explorer.album.id}/`,
+  `/contributors/${pickScanContributorId()}/`,
 ];
 
 for (const path of PAGES) {
