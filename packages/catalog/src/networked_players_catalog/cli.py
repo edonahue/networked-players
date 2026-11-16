@@ -2369,11 +2369,18 @@ def _parser() -> argparse.ArgumentParser:
     preflight.add_argument(
         "--json", action="store_true", help="print the machine-readable report instead of text"
     )
+    from .round_runner import register_round_parser
+
+    register_round_parser(subparsers)
     return parser
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = _parser().parse_args(argv)
+    if args.command == "round":
+        from .round_runner import round_main
+
+        return round_main(args)
     if args.command == "manifest":
         kwargs = {}
         if args.base_url:
