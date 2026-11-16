@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "round": 2,
+  "target_count": 4,
+  "themes": ["synthetic example theme"],
+  "generated_at": "2026-12-01T00:00:00+00:00",
+  "planned_merge_date": "2026-12-05",
+  "daily": { "cutover_lead_days": 3, "new_generation_id": "gen-2", "days": 5 },
+  "paths": {
+    "previous_artifacts_dir": "local/rounds/example/previous/data",
+    "output_dir": "local/rounds/example/public/data",
+    "work_dir": "local/rounds/example/work"
+  },
+  "inputs": {
+    "onehop_root": "local/example/onehop/snapshot=00000000",
+    "masters_root": "local/example/masters/snapshot=00000000",
+    "release_format_policy": "local/example/release-format-scoring-index.json",
+    "studio_album_exclusions": "data/albums/studio-album-master-exclusions-v1.json",
+    "candidates": "local/example/candidates.json",
+    "approved_pool": "data/albums/approved-pool-v1.json",
+    "editorial_albums": "local/example/editorial-albums.json",
+    "artist_family_exclusions": { "path": null, "reason": "example round does not use it" },
+    "featured_albums": { "path": null, "reason": "example round does not use it" },
+    "personal_seed": { "path": null, "reason": "example round does not use it" },
+    "graph_rich_selection": { "path": null, "reason": "example round does not use it" },
+    "coverage_gap_candidates": { "path": null, "reason": "example round does not use it" },
+    "album_art_cache_dir": "data/private/discogs-api-cache"
+  },
+  "parameters": {
+    "challenge": { "max_hops": 4, "max_frontier_expansion": 0 }
+  }
+}

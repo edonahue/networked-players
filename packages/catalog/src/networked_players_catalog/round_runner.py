@@ -398,7 +398,8 @@ class Ctx:
 
     def inp(self, name: str) -> Path:
         value = self.inputs[name]
-        assert value is not None, name  # guarded by the input precondition
+        if value is None:
+            raise RoundError(f"inputs.{name} is null but this stage needs it")
         return value
 
     def manifest_path(self) -> Path:
@@ -928,7 +929,7 @@ def _argv_none(ctx: Ctx) -> list[list[str]]:
 def _freeze_guard(ctx: Ctx, planning: bool, *, freeze_pending: bool) -> list[str]:
     """The Round 1 incident as one condition: the connection-rounds stage would
     overwrite the file a daily-manifest generation still points at."""
-    if planning and freeze_pending:
+    if freeze_pending:
         return []  # the freeze stage runs first and is checked on its own
     live = live_generation_ids(ctx.manifest())
     if not live:
@@ -1009,7 +1010,7 @@ def _pre_migrate(ctx: Ctx, planning: bool) -> list[str]:
     failures = calendar_failures(ctx.spec, today=ctx.today)
     manifest = ctx.manifest()
     failures += manifest_calendar_failures(manifest, ctx.spec)
-    if not (planning and _FREEZE_PENDING.get(id(ctx), False)):
+    if not _FREEZE_PENDING.get(id(ctx), False):
         live = live_generation_ids(manifest)
         if live:
             failures.append(
@@ -1107,7 +1108,7 @@ STAGES: tuple[Stage, ...] = (
     Stage("freeze-daily-generation", "freeze-connection-daily-manifest-generation",
           "freeze the generation pointing at the live rounds file BEFORE the pool is regenerated",
           "daily manifest, previous live rounds file",
-          (DAILY_MANIFEST, "game/generations/<id>/rounds.json"), _argv_none,
+          (DAILY_MANIFEST, "game/generations/<id>/rounds.json"), _argv_freeze,
           _exec_freeze, _pre_freeze),
     Stage("connection-rounds", "build-connection-rounds",
           "Connection Guesser pool; ALWAYS inherits the previous universe's targets; "
@@ -1187,6 +1188,12 @@ def baseline_failures(ctx: Ctx) -> list[str]:
             "stage. Export the published artifacts to a separate directory first (e.g. "
             "`git archive HEAD apps/web/public/data | tar -x -C <scratch>`)"
         )
+    if ctx.out.name != "data":
+        failures.append(
+            f"paths.output_dir {ctx.out} must be a directory named 'data' (the real target is "
+            "apps/web/public/data): the freeze stage and validate-public-artifacts map the "
+            "manifest's '/data/...' rounds URLs onto '<parent>/data/...'"
+        )
     if not ctx.prev.is_dir():
         failures.append(f"paths.previous_artifacts_dir {ctx.prev} does not exist")
     for rel in (CATALOG, CHALLENGE, ROUTES_UNIVERSE, GAME_UNIVERSE, GAME_ROUNDS, CONTRIBUTORS,
@@ -1259,9 +1266,8 @@ def plan_round(ctx: Ctx, stages: Sequence[Stage]) -> tuple[str, list[str]]:
         lines.append(f"      command: {stage.command}")
         lines.append(f"      reads:   {stage.reads}")
         lines.append(f"      writes:  {', '.join(stage.writes)}")
-        if stage.name in ("freeze-daily-generation", "daily-manifest-migrate") or True:
-            for text in _stage_argv_text(ctx, stage):
-                lines.append(f"      args:    {text}")
+        for text in _stage_argv_text(ctx, stage):
+            lines.append(f"      args:    {text}")
     try:
         resolved, _ = resolve_parameters(ctx)
     except OSError:
@@ -1348,7 +1354,6 @@ def run_round(ctx: Ctx, *, from_stage: str | None = None, to_stage: str | None =
             else:
                 for argv in stage.argv(ctx):
                     _run_cli(ctx, stage.name, argv)
-            ctx.results.pop(stage.name, None) if False else None
             _save_results(ctx)
         except (RoundError, ValueError, KeyError, OSError, RuntimeError) as error:
             message = (
@@ -1394,6 +1399,8 @@ def _capture_cli(argv: list[str]) -> tuple[int, Any]:
             code = main(argv)
     except SystemExit as error:
         code = error.code if isinstance(error.code, int) else 2
+    except Exception as error:  # a builder/validator refusing is a verification result
+        return 1, {"error": f"{type(error).__name__}: {error}"}
     try:
         return code, json.loads(buffer.getvalue())
     except json.JSONDecodeError:
@@ -1435,6 +1442,8 @@ def verify_round(ctx: Ctx) -> tuple[bool, dict[str, Any]]:
 
     code, validation = _capture_cli(_validate_argv(ctx))
     validation = validation or {"ok": False, "failures": {"cli": [f"exit {code}"]}, "lineage": {}}
+    if "error" in validation:
+        validation = {"ok": False, "failures": {"cli": [validation["error"]]}, "lineage": {}}
     if not validation.get("ok"):
         for group, items in (validation.get("failures") or {}).items():
             problems += [f"validate-public-artifacts [{group}]: {item}" for item in items]
@@ -1469,7 +1478,7 @@ def verify_round(ctx: Ctx) -> tuple[bool, dict[str, Any]]:
     for generation in manifest.get("generations", []):
         rel = generation["rounds_url"].removeprefix("/data/")
         rounds_args += ["--rounds", f"{generation['generation_id']}={ctx.o(rel)}"]
-    manifest_code, _ = _capture_cli(
+    manifest_code, manifest_result = _capture_cli(
         [
             "validate-connection-daily-manifest-v2",
             "--manifest",
@@ -1478,7 +1487,10 @@ def verify_round(ctx: Ctx) -> tuple[bool, dict[str, Any]]:
         ]
     )
     if manifest_code != 0:
-        problems.append("daily manifest: not every scheduled date resolves against its generation")
+        detail = (manifest_result or {}).get("error", "")
+        problems.append(
+            f"daily manifest: not every scheduled date resolves against its generation {detail}"
+        )
 
     report = {
         "problems": problems,
