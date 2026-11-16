@@ -28,6 +28,8 @@ from typing import Any, Literal
 
 from networked_players_contracts.canonical import content_hash
 
+from .lineage_inputs import lineage_inputs, stamp_inputs
+
 EntryKind = Literal["album", "contributor"]
 
 
@@ -116,4 +118,5 @@ def build_search_index(
         "entries": entries,
     }
     payload["search_index_version"] = search_index_version(entries, snapshot_date)
+    stamp_inputs(payload, lineage_inputs(catalog=catalog, contributor_index=contributor_index))
     return payload

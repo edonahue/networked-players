@@ -63,3 +63,12 @@ If a future surface needs hop-distance data scoped beyond
 first, or add a clearly-named `v2` artifact with its own version namespace —
 never silently widen `album-hop-distances-v1`, and never fold this data back
 onto `contributor-index-v1` itself.
+
+
+## Declared lineage (optional `provenance.inputs`)
+
+Builders from Campaign Atlas F1b on emit an optional top-level `provenance`
+object holding only `inputs` -- `{artifact_name: content_version}` of the
+upstream artifacts consumed (`catalog`, `challenge`, `record_routes`, `contributor_index`). The key is optional: an artifact
+without it is valid and passes the lineage rule (it is listed as undeclared).
+`provenance` does not enter `album_hop_distances_version`. See `artifact-lineage-v1.md`.

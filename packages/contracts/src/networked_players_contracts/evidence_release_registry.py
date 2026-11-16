@@ -158,7 +158,7 @@ def evidence_release_registry_failures(registry: Any, catalog: Any) -> list[str]
             f"schema_version must be one of {sorted(EVIDENCE_RELEASE_REGISTRY_SCHEMA_VERSIONS)}"
         )
     expected_keys = _BASE_TOP_LEVEL_KEYS | (_V2_ONLY_KEYS if schema_version == 2 else frozenset())
-    if set(registry.keys()) != expected_keys:
+    if set(registry.keys()) - {"provenance"} != expected_keys:
         failures.append(
             f"evidence-release-registry has unexpected top-level keys: {sorted(registry.keys())}"
         )

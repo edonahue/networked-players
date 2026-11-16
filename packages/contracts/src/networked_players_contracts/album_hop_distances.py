@@ -79,7 +79,7 @@ def album_hop_distances_failures(artifact: Any, catalog: Any, contributor_index:
     if not isinstance(contributor_index, dict):
         return ["contributor_index must be an object"]
 
-    if set(artifact.keys()) != _TOP_LEVEL_KEYS:
+    if set(artifact.keys()) - {"provenance"} != _TOP_LEVEL_KEYS:
         failures.append(f"artifact has unexpected top-level keys: {sorted(artifact.keys())}")
     if artifact.get("schema_version") != ALBUM_HOP_DISTANCES_SCHEMA_VERSION:
         failures.append(f"schema_version must be {ALBUM_HOP_DISTANCES_SCHEMA_VERSION}")

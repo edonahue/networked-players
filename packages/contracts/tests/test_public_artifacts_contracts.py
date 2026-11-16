@@ -1077,3 +1077,134 @@ def test_optional_catalog_argument_extends_the_per_artifact_validators() -> None
     assert connection_rounds_failures(*connection, catalog)
     assert record_routes_failures(*routes) == []
     assert record_routes_failures(*routes, catalog)
+
+
+# --- declared lineage (ADR 0072 section 1) ------------------------------------
+
+
+def _stamp_declared_inputs(artifacts: dict[str, Any]) -> dict[str, Any]:
+    """Make every artifact that has upstream edges declare the versions it
+    would have recorded had it been built from the rest of the set."""
+    from networked_players_contracts.artifact_lineage import (
+        EXPECTED_INPUTS,
+        artifact_content_version,
+    )
+    from networked_players_contracts.public_artifacts import _lineage_payloads
+
+    payloads = _lineage_payloads(
+        catalog=artifacts["catalog"],
+        album_art=artifacts["album_art"],
+        connection_universe=artifacts["connection_universe"],
+        routes_universe=artifacts["routes_universe"],
+        challenge=artifacts["challenge"],
+        contributor_index=artifacts["contributor_index"],
+        album_hop_distances=artifacts["album_hop_distances"],
+        pathfinding_graph=artifacts["pathfinding_graph"],
+        prominence=artifacts["prominence"],
+        album_credit_membership=artifacts["album_credit_membership"],
+        evidence_release_registry=artifacts["evidence_release_registry"],
+        search_index=artifacts["search_index"],
+    )
+    for name, upstream_names in EXPECTED_INPUTS.items():
+        payload = payloads[name]
+        provenance = payload.setdefault("provenance", {})
+        provenance["inputs"] = {
+            upstream: artifact_content_version(upstream, payloads[upstream])
+            for upstream in upstream_names
+        }
+    # The two-file artifacts carry the same provenance in their rounds file.
+    artifacts["connection_rounds"]["provenance"] = artifacts["connection_universe"]["provenance"]
+    artifacts["routes_rounds"]["provenance"] = artifacts["routes_universe"]["provenance"]
+    return artifacts
+
+
+def _failures_text(report: dict[str, list[str]], group: str) -> str:
+    return " | ".join(report[group])
+
+
+def test_lineage_consistent_set_passes_with_every_validator_accepting_provenance() -> None:
+    artifacts = _stamp_declared_inputs(_clean_artifacts())
+    report = public_artifacts_failures(**artifacts)
+    assert all(not failures for failures in report.values()), report
+
+
+def test_lineage_stale_downstream_fails_naming_both_artifacts() -> None:
+    artifacts = _stamp_declared_inputs(_clean_artifacts())
+    # An upstream artifact's content changes (its version moves) and the
+    # declared downstream is not rebuilt.
+    artifacts["contributor_index"]["contributor_index_version"] = "contributor-index-v1-new"
+    report = public_artifacts_failures(**artifacts)
+    for group in ("search_index", "album_hop_distances"):
+        text = _failures_text(report, group)
+        assert group in text and "contributor_index" in text, (group, report[group])
+        assert "contributor-index-v1-new" in text
+
+
+def test_lineage_challenge_only_rebuild_is_caught_downstream() -> None:
+    artifacts = _clean_artifacts()
+    artifacts["challenge"]["provenance"]["challenge_version"] = "challenge-v2-original"
+    artifacts = _stamp_declared_inputs(artifacts)
+    artifacts["challenge"]["provenance"]["challenge_version"] = "challenge-v2-rebuilt"
+    report = public_artifacts_failures(**artifacts)
+    for group in ("evidence_release_registry", "contributor_index", "album_hop_distances"):
+        assert "challenge" in _failures_text(report, group), group
+
+
+def test_lineage_undeclared_artifacts_pass_and_are_listed() -> None:
+    artifacts = _clean_artifacts()
+    assert all(not f for f in public_artifacts_failures(**artifacts).values())
+    from networked_players_contracts import public_artifacts_lineage_undeclared
+
+    undeclared = public_artifacts_lineage_undeclared(**artifacts)
+    assert "search_index" in undeclared and "challenge" in undeclared
+    assert "catalog" not in undeclared  # reads no upstream public artifact
+    stamped = _stamp_declared_inputs(_clean_artifacts())
+    assert public_artifacts_lineage_undeclared(**stamped) == []
+
+
+def test_lineage_null_declared_input_passes() -> None:
+    artifacts = _stamp_declared_inputs(_clean_artifacts())
+    artifacts["search_index"]["provenance"]["inputs"]["contributor_index"] = None
+    report = public_artifacts_failures(**artifacts)
+    assert report["search_index"] == []
+
+
+def test_lineage_unknown_artifact_name_and_bad_shape_fail() -> None:
+    artifacts = _stamp_declared_inputs(_clean_artifacts())
+    artifacts["search_index"]["provenance"]["inputs"]["not_an_artifact"] = "v1"
+    report = public_artifacts_failures(**artifacts)
+    assert "not_an_artifact" in _failures_text(report, "search_index")
+    artifacts = _stamp_declared_inputs(_clean_artifacts())
+    artifacts["search_index"]["provenance"]["inputs"] = ["catalog"]
+    report = public_artifacts_failures(**artifacts)
+    assert "provenance.inputs must be an object" in _failures_text(report, "search_index")
+
+
+def test_lineage_frozen_and_appended_classes_are_skipped() -> None:
+    from networked_players_contracts.artifact_lineage import (
+        ARTIFACT_CLASSES,
+        FROZEN_PATH_PATTERNS,
+        artifact_lineage_report,
+    )
+
+    assert FROZEN_PATH_PATTERNS == ("game/generations/*",)
+    assert ARTIFACT_CLASSES["connection_daily_manifest"] == "appended"
+    stale = {"provenance": {"inputs": {"catalog": "long-gone"}}}
+    report = artifact_lineage_report(
+        {"catalog": {"catalog_version": "now"}, "connection_daily_manifest": stale}
+    )
+    assert report == {"failures": {}, "undeclared": []}
+
+
+def test_lineage_every_public_group_has_a_class_and_edges_reference_known_artifacts() -> None:
+    from networked_players_contracts import PUBLIC_ARTIFACT_GROUPS
+    from networked_players_contracts.artifact_lineage import (
+        ARTIFACT_CLASSES,
+        EXPECTED_INPUTS,
+        VERSION_FIELD_PATHS,
+    )
+
+    assert set(ARTIFACT_CLASSES) == set(PUBLIC_ARTIFACT_GROUPS)
+    for name, upstreams in EXPECTED_INPUTS.items():
+        assert ARTIFACT_CLASSES[name] == "live"
+        assert set(upstreams) <= set(VERSION_FIELD_PATHS)

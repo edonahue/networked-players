@@ -31,6 +31,7 @@ from typing import Any
 from .album_art import album_art_failures
 from .album_credit_membership import album_credit_membership_failures
 from .album_hop_distances import album_hop_distances_failures
+from .artifact_lineage import artifact_lineage_report
 from .approved_pool import approved_pool_catalog_failures, approved_pool_failures
 from .catalog import public_album_catalog_failures
 from .catalog_lineage import challenge_catalog_failures, registry_citation_failures
@@ -136,8 +137,14 @@ def public_artifacts_failures(
     and the evidence release registry must contain every release id the
     challenge, routes rounds and pathfinding graph cite. The frozen daily
     generations and the daily manifest are excluded on purpose (ADR 0041,
-    ADR 0066)."""
-    return {
+    ADR 0066).
+
+    Declared lineage (`artifact_lineage.py`): every live artifact that
+    declares `provenance.inputs` has each declared version checked against
+    the upstream artifact's current version; the failure is attributed to the
+    downstream group and names both. Artifacts that declare nothing pass --
+    see `public_artifacts_lineage_undeclared` for that list."""
+    report = {
         "catalog": public_album_catalog_failures(catalog),
         "album_art_registry": album_art_failures(album_art, catalog),
         "connection_guesser": connection_rounds_failures(
@@ -180,6 +187,85 @@ def public_artifacts_failures(
             + approved_pool_catalog_failures(approved_pool, catalog)
         ),
     }
+    lineage = artifact_lineage_report(
+        _lineage_payloads(
+            catalog=catalog,
+            album_art=album_art,
+            connection_universe=connection_universe,
+            routes_universe=routes_universe,
+            challenge=challenge,
+            contributor_index=contributor_index,
+            album_hop_distances=album_hop_distances,
+            pathfinding_graph=pathfinding_graph,
+            prominence=prominence,
+            album_credit_membership=album_credit_membership,
+            evidence_release_registry=evidence_release_registry,
+            search_index=search_index,
+        )
+    )
+    for name, lineage_failures in lineage["failures"].items():
+        report[name].extend(lineage_failures)
+    return report
+
+
+def _lineage_payloads(
+    *,
+    catalog: Any,
+    album_art: Any,
+    connection_universe: Any,
+    routes_universe: Any,
+    challenge: Any,
+    contributor_index: Any,
+    album_hop_distances: Any,
+    pathfinding_graph: Any,
+    prominence: Any,
+    album_credit_membership: Any,
+    evidence_release_registry: Any,
+    search_index: Any,
+) -> dict[str, Any]:
+    """Loaded payloads keyed by `PUBLIC_ARTIFACT_GROUPS` name. The two-file
+    artifacts are represented by their universe, which carries the shared
+    provenance."""
+    return {
+        "catalog": catalog,
+        "album_art_registry": album_art,
+        "connection_guesser": connection_universe,
+        "record_routes": routes_universe,
+        "challenge": challenge,
+        "contributor_index": contributor_index,
+        "album_hop_distances": album_hop_distances,
+        "pathfinding_graph": pathfinding_graph,
+        "prominence": prominence,
+        "album_credit_membership": album_credit_membership,
+        "evidence_release_registry": evidence_release_registry,
+        "search_index": search_index,
+    }
+
+
+_LINEAGE_KWARGS = (
+    "catalog",
+    "album_art",
+    "connection_universe",
+    "routes_universe",
+    "challenge",
+    "contributor_index",
+    "album_hop_distances",
+    "pathfinding_graph",
+    "prominence",
+    "album_credit_membership",
+    "evidence_release_registry",
+    "search_index",
+)
+
+
+def public_artifacts_lineage_undeclared(**artifacts: Any) -> list[str]:
+    """Live artifacts that have upstream edges but declare no
+    `provenance.inputs` (ADR 0072 section 1, "Stated limit"). Data for the
+    CLI's JSON output, never a failure. Accepts the same keyword arguments as
+    `public_artifacts_failures`; the ones lineage does not use are ignored."""
+    used = {key: artifacts.get(key) for key in _LINEAGE_KWARGS}
+    undeclared: list[str] = artifact_lineage_report(_lineage_payloads(**used))["undeclared"]
+    return undeclared
 
 
 def _daily_manifest_failures(

@@ -35,6 +35,7 @@ from networked_players_contracts.evidence_release_registry import (
 )
 
 from .graph import CreditGraph
+from .lineage_inputs import lineage_inputs, stamp_inputs
 
 _YEAR_PATTERN = re.compile(r"(\d{4})")
 
@@ -175,5 +176,15 @@ def build_evidence_release_registry(
     }
     payload["evidence_release_registry_version"] = evidence_release_registry_version(
         payload, snapshot_date
+    )
+    stamp_inputs(
+        payload,
+        lineage_inputs(
+            catalog=catalog,
+            challenge=challenge,
+            record_routes=routes_rounds,
+            pathfinding_graph=pathfinding_graph,
+            album_art_registry=album_art,
+        ),
     )
     return payload

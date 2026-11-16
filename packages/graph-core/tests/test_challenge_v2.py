@@ -924,3 +924,40 @@ def test_build_challenge_v2_records_no_carried_forward_pairs_when_none_given(
             graph, ALBUMS, snapshot_date="20260601", generated_by="test-suite"
         )
     assert artifact["provenance"]["build_parameters"]["carried_forward_pairs_used"] is False
+
+
+def test_challenge_version_is_stamped_stable_and_ignores_provenance(dataset_root: Path) -> None:
+    from networked_players_graph_core.challenge import stamp_challenge_version
+
+    def build() -> dict:
+        with CreditGraph.open(dataset_root) as graph:
+            artifact, _ = build_challenge_v2(
+                graph,
+                ALBUMS,
+                snapshot_date="20260601",
+                generated_by="test-suite",
+                catalog_version="catalog-v1-x",
+            )
+        return artifact
+
+    first, second = build(), build()
+    version = first["provenance"]["challenge_version"]
+    assert version.startswith("challenge-v2-20260601-")
+    assert version == second["provenance"]["challenge_version"]
+    assert first["provenance"]["inputs"] == {"catalog": "catalog-v1-x"}
+    validate_challenge(first)
+
+    # Provenance (generated_by, notes, catalog version, even a volatile
+    # generated_at) is not content.
+    first["provenance"]["generated_by"] = "somebody-else"
+    first["provenance"]["generated_at"] = "2099-01-01T00:00:00+00:00"
+    first["provenance"]["catalog_version"] = "catalog-v1-other"
+    assert stamp_challenge_version(first) == version
+
+    # Content is: an edit changes the version, and a stale stamp is rejected.
+    first["albums"][0]["cover_image"] = {"uri": "x", "uri150": "x", "width": 1, "height": 1}
+    assert stamp_challenge_version(first) != version
+    stale = second
+    stale["albums"][0]["title"] = "Edited after build"
+    with pytest.raises(ChallengeValidationError, match="challenge_version"):
+        validate_challenge(stale)

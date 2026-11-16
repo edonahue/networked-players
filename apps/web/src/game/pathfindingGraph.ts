@@ -301,7 +301,11 @@ export async function validatePathfindingGraph(
   if (value.schema_version === 4) {
     for (const key of V4_ONLY_KEYS) expectedKeys.add(key);
   }
-  const actualKeys = Object.keys(value);
+  // `provenance` is the one optional extra (ADR 0072 section 1: declared
+  // lineage, `provenance.inputs`). Builders from that change on emit it;
+  // older committed graphs lack it. It carries no runtime data this module
+  // reads, so it is ignored rather than required or rejected.
+  const actualKeys = Object.keys(value).filter((key) => key !== "provenance");
   if (
     actualKeys.length !== expectedKeys.size ||
     actualKeys.some((key) => !expectedKeys.has(key))

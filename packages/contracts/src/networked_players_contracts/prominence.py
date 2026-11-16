@@ -100,7 +100,7 @@ def prominence_failures(artifact: Any, pathfinding_graph: Any) -> list[str]:
     if not isinstance(pathfinding_graph, dict):
         return ["pathfinding_graph must be an object"]
 
-    actual_keys = set(artifact.keys())
+    actual_keys = set(artifact.keys()) - {"provenance"}
     if actual_keys != _TOP_LEVEL_KEYS:
         failures.append(f"artifact has unexpected top-level keys: {sorted(actual_keys)}")
 

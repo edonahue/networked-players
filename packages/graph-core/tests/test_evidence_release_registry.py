@@ -349,3 +349,37 @@ def test_caveat_flags_come_from_the_dataset_not_from_a_default(tmp_path: Path) -
     # A release tagged only `Album` carries no caveat -- and that is the
     # ONLY thing it means. It is not a positive studio-album claim.
     assert flags[1] == 0
+
+
+def test_declares_every_upstream_artifact_version() -> None:
+    catalog = _catalog()
+    album_art = _album_art()
+    album_art["art_version"] = "art-x-fff"
+    challenge = {
+        "releases": [_challenge_release(1, "Challenge Release")],
+        "provenance": {"challenge_version": "challenge-v2-x-aaa"},
+    }
+    routes_rounds = {
+        "releases": [_challenge_release(2, "Routes Release")],
+        "provenance": {"artifact_version": "routes-artifact-v1-x-bbb"},
+    }
+    pathfinding_graph = {
+        "evidence_release_ids": [1, 2],
+        "pathfinding_graph_version": "pathfinding-graph-v4-x-ggg",
+    }
+    payload = build_evidence_release_registry(
+        None,
+        challenge=challenge,
+        routes_rounds=routes_rounds,
+        pathfinding_graph=pathfinding_graph,
+        album_art=album_art,
+        catalog=catalog,
+        generated_at="2026-08-07T00:00:00+00:00",
+    )
+    assert payload["provenance"]["inputs"] == {
+        "catalog": catalog["catalog_version"],
+        "challenge": "challenge-v2-x-aaa",
+        "record_routes": "routes-artifact-v1-x-bbb",
+        "pathfinding_graph": "pathfinding-graph-v4-x-ggg",
+        "album_art_registry": "art-x-fff",
+    }
