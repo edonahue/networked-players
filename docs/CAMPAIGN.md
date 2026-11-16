@@ -46,18 +46,18 @@ No catalog growth, no real collection published, no public data regenerated.
 | ID | Deliverable | Depends on | Acceptance | Status |
 |---|---|---|---|---|
 | F0 | ADR 0072, ADR 0018 addendum, this page, roadmap update | — | merged | done (#260) |
-| F1 | Catalog-aware checks for the Guesser, Routes and challenge album sets; registry covers every cited release; `provenance.inputs` and `build_parameters` stamped by builders; generic input-version rule with `live` / `frozen` / `appended` classes; `challenge_version` | F0 | a test that stales each of Guesser, Routes, challenge and registry turns validation red; committed artifacts unchanged and still valid | in progress — cross-checks done (#262); declared inputs, `challenge_version` and the generic rule still open |
+| F1 | Catalog-aware checks for the Guesser, Routes and challenge album sets; registry covers every cited release; `provenance.inputs` and `build_parameters` stamped by builders; generic input-version rule with `live` / `frozen` / `appended` classes; `challenge_version` | F0 | a test that stales each of Guesser, Routes, challenge and registry turns validation red; committed artifacts unchanged and still valid | done (#262 cross-checks, #267 declared inputs, `challenge_version`, generic rule). Committed artifacts declare no inputs until their next rebuild; `validate-public-artifacts` lists them under `lineage.undeclared_inputs` |
 | F2 | `data/albums/approved-pool-v1.json` (cumulative, public labels only); two-way catalog check; builder fails on a dropped approved album; `--underrepresented-buckets` shape fix; unread policy keys enforced or removed; rounds 2–5 in the expansion policy | F0 | unapproved album and dropped approved album both fail in tests; committed catalog equals committed pool | done (#264) |
 | F3 | `round plan / run / verify` runner: required inputs, inherited parameters, freeze guard, calendar check, restart from a stage, progress output; `EXPANSION_PIPELINE.md` rewritten as the runner's stages | F1, F2 | a synthetic round run twice gives identical content versions; a rebuild with an unfrozen live daily generation is refused | todo |
 | F4 | Digest pin for already-played daily dates; payload budgets as a CI test; determinism tests for the catalog and challenge builders | F1 | fail-then-pass shown for each | todo |
 | F5 | Required checks on `main`; post-deploy smoke workflow; pin remaining runner images | — | a failing pull request cannot merge; smoke runs after a deploy | done (#261); required checks `python` and `web` enabled on `main` 2026-11-16 |
 | F6 | Tests no longer pinned to specific real albums or pairs | — | no test names a real album except through an artifact lookup | todo |
 | P1 | Album page as a record: performer roster in static HTML, "where these players lead", evidence readable without JavaScript, guessing as an opt-in | — | a JavaScript-disabled test reads roster and evidence; axe clean in both themes | done (#263) |
-| P2 | Site-wide search over records and players with an honest empty state | — | keyboard only: search to Explore centred on the result | in progress |
-| P3 | Navigation in four groups plus search, homepage led by Explore, mobile menu | — | at 390 px the header is one row; the primary action lands in Explore | in progress |
+| P2 | Site-wide search over records and players with an honest empty state | — | keyboard only: search to Explore centred on the result | done (#266, follow-up fixes in #268) |
+| P3 | Navigation in four groups plus search, homepage led by Explore, mobile menu | — | at 390 px the header is one row; the primary action lands in Explore | done (#266 navigation, #268 homepage) |
 | I0 | Read-only verification of every node's model, memory and disk; correct topology docs | — | public docs consistent with verified facts; instance-specific numbers stay local | in progress — partial: health check ran; the x86 worker failed its disk floor before reporting hardware facts, so its model is still unverified |
 | RP | Local review-packet generator shared by rounds and collections | F2 | opens offline; exports only public fields | todo |
-| S1 | Album-projection study (ADR 0072 §6 gate) and a private candidate packet for a first collection | RP | gate result recorded as an ADR 0072 addendum | in progress — exploratory run only (local); committed, tested module and owner legibility read still open |
+| S1 | Album-projection study (ADR 0072 §6 gate) and a private candidate packet for a first collection | RP | gate result recorded as an ADR 0072 addendum | in progress — study module merged (#269); numeric gate criteria hold at default parameters; owner legibility review pending; candidate packet waits on RP |
 
 ### Tranche 2 and later
 
@@ -118,3 +118,10 @@ detection on the performer graph and tiles (ADR 0070).
   the default artifact check now passes the catalog as a third input for the Guesser and Routes
   pools, so workers need the platform runtime redeployed and contracts reinstalled before that
   check is run again; the x86 worker's root disk must be brought back above its floor first.
+- 2026-11-16 (later) — F1 completed (#267), navigation, site-wide search and the homepage
+  shipped (#266, #268), and the album-projection study merged (#269). The study's numeric
+  criteria hold at its default parameters and fail when a link requires three or more shared
+  performers; the legibility criterion is the owner's and is still open, so no gate decision
+  is recorded yet. Before a lineage-stamped rebuild is validated on the fleet, contracts must
+  be reinstalled on every worker (`data/contracts/artifact-lineage-v1.md`, "Fleet ordering");
+  recording the contracts version in the worker's validation report is added to I1's scope.
