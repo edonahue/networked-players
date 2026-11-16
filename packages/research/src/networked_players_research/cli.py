@@ -252,6 +252,44 @@ def _parser() -> argparse.ArgumentParser:
     compare.add_argument("--research-root", type=Path, default=RESEARCH_ROOT)
     compare.add_argument("--run-id")
 
+    for name, help_text in (
+        (
+            "research-album-projection",
+            "album-projection clustering study (Campaign Atlas S1/E1, ADR 0072 section 6) over "
+            "the PUBLISHED graph + catalog -- measures the gate criteria, decides nothing; "
+            "requires the 'graph' extra",
+        ),
+        (
+            "research-album-projection-sweep",
+            "the same study over min_shared x resolution (sensitivity table)",
+        ),
+    ):
+        study = subparsers.add_parser(name, help=help_text)
+        study.add_argument(
+            "--graph",
+            type=Path,
+            default=Path("apps/web/public/data/pathfinding/graph.v4.json"),
+        )
+        study.add_argument(
+            "--catalog",
+            type=Path,
+            default=Path("apps/web/public/data/catalog/albums.v1.json"),
+        )
+        study.add_argument(
+            "--output",
+            type=Path,
+            required=True,
+            help="JSON output path (local-only; refused under apps/web/public/); a "
+            "Markdown rendering is written beside it with a .md suffix",
+        )
+        study.add_argument("--seeds", type=int, default=10, help="number of Leiden seeds (0..n-1)")
+        study.add_argument("--null-count", type=int, default=20)
+        study.add_argument("--perturbation-repeats", type=int, default=10)
+        study.add_argument("--include-same-artist", action="store_true")
+        if name == "research-album-projection":
+            study.add_argument("--min-shared", type=int, default=2)
+            study.add_argument("--resolution", type=float, default=2.0)
+
     return parser
 
 
@@ -460,6 +498,53 @@ def main(argv: list[str] | None = None) -> int:
                 args.output.parent.mkdir(parents=True, exist_ok=True)
                 args.output.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n")
             print(json.dumps(report, indent=2, sort_keys=True))
+            return 0
+
+        if args.command in ("research-album-projection", "research-album-projection-sweep"):
+            from . import album_projection as ap
+
+            if ap.is_under_public_artifacts(args.output):
+                print(
+                    "refusing to write under apps/web/public/: research outputs are not "
+                    "publication artifacts (ADR 0054)",
+                    file=sys.stderr,
+                )
+                return 2
+            try:
+                seeds = tuple(range(args.seeds))
+                if args.command == "research-album-projection":
+                    study = ap.run_study(
+                        args.graph,
+                        args.catalog,
+                        min_shared=args.min_shared,
+                        include_same_artist=args.include_same_artist,
+                        resolution=args.resolution,
+                        seeds=seeds,
+                        null_count=args.null_count,
+                        perturbation_repeats=args.perturbation_repeats,
+                    )
+                    markdown = ap.render_markdown(study)
+                else:
+                    study = ap.run_sweep(
+                        args.graph,
+                        args.catalog,
+                        include_same_artist=args.include_same_artist,
+                        seeds=seeds,
+                        null_count=args.null_count,
+                        perturbation_repeats=args.perturbation_repeats,
+                    )
+                    markdown = ap.render_sweep_markdown(study)
+            except ap.AlbumProjectionError as exc:
+                print(f"ERROR: {exc}", file=sys.stderr)
+                return 1
+            args.output.parent.mkdir(parents=True, exist_ok=True)
+            args.output.write_text(ap.dumps(study))
+            args.output.with_suffix(".md").write_text(markdown)
+            print(
+                json.dumps(
+                    {"json": str(args.output), "markdown": str(args.output.with_suffix(".md"))}
+                )
+            )
             return 0
 
         if args.command == "research-route-quality":
