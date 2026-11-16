@@ -48,7 +48,10 @@ def _artifact_validators() -> dict[str, tuple[Callable[..., list[str]], int, int
     guessed:
 
     - album-art: (registry, catalog)
-    - connection-rounds: (universe, rounds)
+    - connection-rounds: (universe, rounds[, catalog]) -- the optional catalog
+      adds the catalog-lineage checks (`networked_players_contracts.
+      catalog_lineage`); the default fleet submission supplies it
+    - record-routes: (universe, rounds[, catalog]) -- same
     - contributor-index: (index, catalog)
     - daily-manifest: (manifest, *rounds) -- a schema-v1 manifest takes one
       rounds artifact; a schema-v2 manifest (ADR 0066) takes ONE PER
@@ -60,7 +63,6 @@ def _artifact_validators() -> dict[str, tuple[Callable[..., list[str]], int, int
       'gen-1'", entirely independent of any catalog expansion.
     - pathfinding-graph: (graph, catalog)
     - prominence: (prominence, pathfinding_graph)
-    - record-routes: (universe, rounds)
     - album-credit-membership: (membership, catalog)
     - evidence-release-registry: (registry, catalog)
     - search-index: (index, catalog, contributor_index)
@@ -86,12 +88,12 @@ def _artifact_validators() -> dict[str, tuple[Callable[..., list[str]], int, int
         "playable-cohort": (playable_cohort_failures, 1, 1),
         "catalog": (public_album_catalog_failures, 1, 1),
         "album-art": (album_art_failures, 2, 2),
-        "connection-rounds": (connection_rounds_failures, 2, 2),
+        "connection-rounds": (connection_rounds_failures, 2, 3),
         "contributor-index": (contributor_index_failures, 2, 2),
         "daily-manifest": (connection_daily_manifest_failures_from_artifacts, 2, None),
         "pathfinding-graph": (pathfinding_graph_failures, 2, 2),
         "prominence": (prominence_failures, 2, 2),
-        "record-routes": (record_routes_failures, 2, 2),
+        "record-routes": (record_routes_failures, 2, 3),
         "album-credit-membership": (album_credit_membership_failures, 2, 2),
         "evidence-release-registry": (evidence_release_registry_failures, 2, 2),
         "search-index": (search_index_failures, 3, 3),

@@ -62,6 +62,7 @@ import re
 from typing import Any, cast
 
 from .canonical import content_hash, stable_id_digest
+from .catalog_lineage import connection_catalog_failures
 
 CONNECTION_ROUNDS_SCHEMA_VERSION = 1
 
@@ -224,9 +225,21 @@ def _privacy_failures(artifact: dict[str, Any], *, name: str) -> list[str]:
     return failures
 
 
-def connection_rounds_failures(universe: Any, rounds: Any) -> list[str]:
+def connection_rounds_failures(
+    universe: Any, rounds: Any, catalog: Any | None = None
+) -> list[str]:
     """Return every contract failure in a Connection Guesser universe.v1/
-    rounds.v1 pair."""
+    rounds.v1 pair. With `catalog`, also verify the pool is current against it
+    (catalog_version, album subset, title/artist agreement -- see
+    `catalog_lineage`). The argument is optional so a Pi worker still on the
+    older two-argument call keeps working."""
+    failures = _connection_rounds_pair_failures(universe, rounds)
+    if catalog is not None:
+        failures.extend(connection_catalog_failures(universe, catalog))
+    return failures
+
+
+def _connection_rounds_pair_failures(universe: Any, rounds: Any) -> list[str]:
     failures: list[str] = []
     if not isinstance(universe, dict):
         return ["universe artifact must be an object"]

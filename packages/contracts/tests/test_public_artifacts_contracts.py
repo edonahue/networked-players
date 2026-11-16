@@ -767,7 +767,10 @@ def test_deleted_mode_on_record_routes_is_caught() -> None:
 def test_catalog_defect_is_caught_independently() -> None:
     artifacts = _clean_artifacts()
     broken_catalog = deepcopy(artifacts["catalog"])
-    del broken_catalog["albums"][0]["title"]
+    # `year` is not compared by any downstream catalog-aware check, so this
+    # defect stays isolated to the catalog group (a missing title would now,
+    # correctly, also surface as a title mismatch in every dependent pool).
+    del broken_catalog["albums"][0]["year"]
     artifacts["catalog"] = broken_catalog
 
     report = public_artifacts_failures(**artifacts)
