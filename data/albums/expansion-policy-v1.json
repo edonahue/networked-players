@@ -2,8 +2,28 @@
   "schema_version": 1,
   "policy_name": "expansion-policy-v1",
   "source_note": "Graph-expansion Phase 2 (docs/GRAPH_EXPANSION_DIRECTION.md plan section 5.2/section 15). Quotas and thresholds are public policy; which real candidates fill them each round is a private, per-round editorial decision (local/analysis/expansion/round-<n>/, data/private/ -- never this file).",
+  "enforcement": {
+    "enforced_by_code": [
+      "automatic_lanes.roster_band",
+      "automatic_lanes.overlap_existing_minimum"
+    ],
+    "enforced_by_code_note": "Read by networked_players_graph_core.expansion_policy.load_automatic_lane_policy (select-graph-rich-candidates --expansion-policy). Nothing else in this file is read by any program.",
+    "human_review_guidance_only": [
+      "automatic_lanes.enforce_artist_uniqueness",
+      "collection_relaxation",
+      "rounds.*.band",
+      "rounds.*.quota",
+      "rounds.*.lanes_percent_of_new_albums",
+      "rounds.*.themes",
+      "rounds.*.target_count"
+    ],
+    "human_review_guidance_note": "No program enforces these keys. One-album-per-artist for the graph-value and coverage lanes is hard-coded in assemble_album_catalog, not driven by enforce_artist_uniqueness. The only enforced boundary on what is published is data/albums/approved-pool-v1.json (ADR 0072 section 2)."
+  },
   "automatic_lanes": {
-    "roster_band": { "min": 5, "max": 30 },
+    "roster_band": {
+      "min": 5,
+      "max": 30
+    },
     "overlap_existing_minimum": 2,
     "enforce_artist_uniqueness": true,
     "note": "Automatic (non-editorial) lanes: a candidate outside the roster band, or with fewer than overlap_existing_minimum distinct existing graph nodes on its roster, is never auto-selected -- it can still enter via the editorial lane on its own merits (e.g. a large ensemble), never hidden from the scoring packet."
@@ -16,13 +36,62 @@
   "rounds": {
     "round-1": {
       "target_count": 30,
-      "band": { "min": 25, "max": 40 },
+      "band": {
+        "min": 25,
+        "max": 40
+      },
       "quota": {
         "editorial": 20,
         "graph_value": 6,
         "coverage": 4
       },
-      "quota_note": "Owner's 2026-09-02 instruction: roughly 2/3 of Round 1's new albums are collection-sourced editorial picks. The editorial lane's 20 slots are expected to be mostly (not necessarily entirely) collection-sourced -- see the owner's own decision record in the plan's section 15."
+      "quota_note": "Owner's 2026-09-02 instruction: roughly 2/3 of Round 1's new albums are collection-sourced editorial picks. The editorial lane's 20 slots are expected to be mostly (not necessarily entirely) collection-sourced -- see the owner's own decision record in the plan's section 15.",
+      "status": "historical_guidance"
+    },
+    "round-2": {
+      "status": "planning_guidance",
+      "target_count": 277,
+      "lanes_percent_of_new_albums": {
+        "theme": 60,
+        "graph_value": 25,
+        "coverage_repair": 15
+      },
+      "themes": [
+        "acid jazz / Jamiroquai orbit",
+        "desert rock",
+        "jazz fusion"
+      ],
+      "note": "Planning guidance only (ADR 0072 section 7, docs/CAMPAIGN.md). Naming a theme or a target approves no album; approval is a pool entry. No program reads this block."
+    },
+    "round-3": {
+      "status": "planning_guidance",
+      "target_count": 357,
+      "lanes_percent_of_new_albums": {
+        "theme": 50,
+        "graph_value": 30,
+        "coverage_repair": 20
+      },
+      "note": "Planning guidance only (ADR 0072 section 7, docs/CAMPAIGN.md). Naming a theme or a target approves no album; approval is a pool entry. No program reads this block."
+    },
+    "round-4": {
+      "status": "planning_guidance",
+      "target_count": 430,
+      "lanes_percent_of_new_albums": {
+        "theme": 40,
+        "graph_value": 30,
+        "coverage_repair": 30
+      },
+      "note": "Planning guidance only (ADR 0072 section 7, docs/CAMPAIGN.md). Naming a theme or a target approves no album; approval is a pool entry. No program reads this block."
+    },
+    "round-5": {
+      "status": "planning_guidance",
+      "target_count": 500,
+      "lanes_percent_of_new_albums": {
+        "theme": 40,
+        "graph_value": 30,
+        "coverage_repair": 30
+      },
+      "note": "Planning guidance only (ADR 0072 section 7, docs/CAMPAIGN.md). Naming a theme or a target approves no album; approval is a pool entry. No program reads this block."
     }
   }
 }

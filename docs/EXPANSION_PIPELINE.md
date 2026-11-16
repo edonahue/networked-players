@@ -154,21 +154,12 @@ the operator's job; CI now enforces it.
    `measure-coverage-gaps`' own output (run once, ahead of this step, over the *current*
    catalog) via `--underrepresented-buckets`.
 
-   **Real shape mismatch, hit in the first live run (2026-09-04):**
-   `--underrepresented-buckets` wants a *bare JSON list* of
-   `{dimension, bucket, count}` objects, but `measure-coverage-gaps` writes a dict
-   (`{album_count, catalog_version, composition, masters_resolved, underrepresented}`).
-   Passing its output directly fails with `TypeError: string indices must be integers`.
-   Extract the list first:
-   ```bash
-   python3 -c "
-   import json
-   d = json.load(open('local/analysis/expansion/round-1/coverage-gaps.json'))
-   json.dump(d['underrepresented'],
-             open('local/analysis/expansion/round-1/underrepresented-buckets.json', 'w'), indent=2)
-   "
-   ```
-   Then:
+   `--underrepresented-buckets` accepts `measure-coverage-gaps`' output directly (its dict
+   with an `underrepresented` list) as well as a bare `{dimension, bucket, count}` list.
+   (Before the Campaign Atlas F2 fix it accepted only the bare list and failed with
+   `TypeError: string indices must be integers`; the runbook worked around it with a
+   `python3 -c` snippet, now removed.)
+
    ```bash
    uv run networked-players-catalog score-expansion-candidates \
      --onehop-root local/processed/discogs-onehop-v4/snapshot=20260601 \
@@ -178,7 +169,7 @@ the operator's job; CI now enforces it.
      --release-format-policy <path-to-release-format-scoring-index.json> \
      --studio-album-exclusions data/albums/studio-album-master-exclusions-v1.json \
      --editorial-seed data/albums/editorial-seed-v1.json \
-     --underrepresented-buckets local/analysis/expansion/round-1/underrepresented-buckets.json \
+     --underrepresented-buckets local/analysis/expansion/round-1/coverage-gaps.json \
      --output local/analysis/expansion/round-1/scored-candidates.json
    ```
    (`local-only-output` is enforced by the command itself — it refuses to write outside
@@ -272,6 +263,15 @@ the operator's job; CI now enforces it.
      --expansion-round 1 \
      --output apps/web/public/data/catalog/albums.v1.json
    ```
+   **Approval boundary (ADR 0072 section 2).** Add the owner-approved albums to
+   `data/albums/approved-pool-v1.json` first, then pass `--approved-pool
+   data/albums/approved-pool-v1.json` and `--editorial-albums data/albums/top-albums-v1.json`
+   explicitly. With a pool the build fails, naming the albums, if it would publish anything
+   outside the pool or omit a pool album (including one dropped for eligibility); `--candidates`
+   auto-fill is off; and the `--editorial-albums` default fallback does not apply (without the
+   explicit flag the ~52 top-albums albums would be labelled `already_published` and the build
+   fails on the label mismatch). Without `--approved-pool` the build runs as before and prints
+   an `UNCHECKED` warning.
    (Uses the `discogs-onehop-v5` root from step 11 below if new seed releases were added
    this round; otherwise the still-current `v4` root is fine — order shown here assumes
    the widened corpus already exists, adjust if this round adds no new seed releases.)

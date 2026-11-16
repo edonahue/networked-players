@@ -86,3 +86,15 @@ that scores real candidates against this policy's thresholds (`roster_size`,
 `marginal_new_edges` from the separate `select-graph-rich-candidates` tool) -- its output
 is round-scoped, private, and lives under `local/analysis/expansion/round-<n>/`, never
 committed.
+
+## Approved pool
+
+`approved-pool-v1.json` is the cumulative list of every album approved for publication (`master_id`,
+`round`, public `selection_source` -- nothing else; contract: `data/contracts/approved-pool-v1.md`).
+The published catalog must equal it (`validate-public-artifacts`), and
+`build-public-album-catalog --approved-pool` fails on any unapproved or dropped album. Seeded once
+from the published catalog by `scripts/seed_approved_pool.py`; extended by owner-approved entries.
+
+In `expansion-policy-v1.json`, only `automatic_lanes.roster_band` and
+`automatic_lanes.overlap_existing_minimum` are read by code; every other key is human-review
+guidance (see its `enforcement` block), and rounds 2-5 are planning guidance that approves no album.

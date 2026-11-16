@@ -1,0 +1,1091 @@
+{
+  "schema_version": 1,
+  "note": "Cumulative list of every album approved for publication (ADR 0072 section 2). Public labels only: master_id, the round that added it, and ADR 0069's selection_source. The published catalog must contain exactly these albums.",
+  "albums": [
+    {
+      "master_id": 302,
+      "round": 0,
+      "selection_source": "editorial"
+    },
+    {
+      "master_id": 553,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 1561,
+      "round": 0,
+      "selection_source": "editorial"
+    },
+    {
+      "master_id": 3211,
+      "round": 0,
+      "selection_source": "editorial"
+    },
+    {
+      "master_id": 3719,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 3762,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 3878,
+      "round": 0,
+      "selection_source": "editorial"
+    },
+    {
+      "master_id": 4300,
+      "round": 0,
+      "selection_source": "editorial"
+    },
+    {
+      "master_id": 4424,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 5460,
+      "round": 0,
+      "selection_source": "editorial"
+    },
+    {
+      "master_id": 5863,
+      "round": 0,
+      "selection_source": "editorial"
+    },
+    {
+      "master_id": 6495,
+      "round": 0,
+      "selection_source": "editorial"
+    },
+    {
+      "master_id": 8179,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 8357,
+      "round": 0,
+      "selection_source": "editorial"
+    },
+    {
+      "master_id": 8883,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 9382,
+      "round": 0,
+      "selection_source": "editorial"
+    },
+    {
+      "master_id": 10362,
+      "round": 0,
+      "selection_source": "editorial"
+    },
+    {
+      "master_id": 10363,
+      "round": 0,
+      "selection_source": "editorial"
+    },
+    {
+      "master_id": 12236,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 13280,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 13814,
+      "round": 0,
+      "selection_source": "editorial"
+    },
+    {
+      "master_id": 13960,
+      "round": 0,
+      "selection_source": "editorial"
+    },
+    {
+      "master_id": 14721,
+      "round": 1,
+      "selection_source": "graph_rich"
+    },
+    {
+      "master_id": 15841,
+      "round": 0,
+      "selection_source": "editorial"
+    },
+    {
+      "master_id": 16158,
+      "round": 0,
+      "selection_source": "editorial"
+    },
+    {
+      "master_id": 16545,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 16906,
+      "round": 1,
+      "selection_source": "editorial"
+    },
+    {
+      "master_id": 16921,
+      "round": 0,
+      "selection_source": "editorial"
+    },
+    {
+      "master_id": 17217,
+      "round": 0,
+      "selection_source": "editorial"
+    },
+    {
+      "master_id": 17249,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 18027,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 18080,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 18442,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 19493,
+      "round": 0,
+      "selection_source": "editorial"
+    },
+    {
+      "master_id": 20135,
+      "round": 0,
+      "selection_source": "editorial"
+    },
+    {
+      "master_id": 20137,
+      "round": 0,
+      "selection_source": "editorial"
+    },
+    {
+      "master_id": 20148,
+      "round": 0,
+      "selection_source": "editorial"
+    },
+    {
+      "master_id": 20387,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 21491,
+      "round": 1,
+      "selection_source": "editorial"
+    },
+    {
+      "master_id": 21520,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 23069,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 23684,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 24047,
+      "round": 0,
+      "selection_source": "editorial"
+    },
+    {
+      "master_id": 24497,
+      "round": 1,
+      "selection_source": "editorial"
+    },
+    {
+      "master_id": 24511,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 24535,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 25303,
+      "round": 0,
+      "selection_source": "editorial"
+    },
+    {
+      "master_id": 25688,
+      "round": 0,
+      "selection_source": "editorial"
+    },
+    {
+      "master_id": 25893,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 26037,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 26436,
+      "round": 0,
+      "selection_source": "editorial"
+    },
+    {
+      "master_id": 26647,
+      "round": 0,
+      "selection_source": "editorial"
+    },
+    {
+      "master_id": 26701,
+      "round": 1,
+      "selection_source": "editorial"
+    },
+    {
+      "master_id": 26725,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 27460,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 27765,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 28680,
+      "round": 0,
+      "selection_source": "editorial"
+    },
+    {
+      "master_id": 30303,
+      "round": 0,
+      "selection_source": "editorial"
+    },
+    {
+      "master_id": 30577,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 30712,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 30926,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 31337,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 31598,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 31602,
+      "round": 1,
+      "selection_source": "editorial"
+    },
+    {
+      "master_id": 31755,
+      "round": 0,
+      "selection_source": "editorial"
+    },
+    {
+      "master_id": 32208,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 32708,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 33174,
+      "round": 1,
+      "selection_source": "editorial"
+    },
+    {
+      "master_id": 33572,
+      "round": 1,
+      "selection_source": "editorial"
+    },
+    {
+      "master_id": 34081,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 35006,
+      "round": 0,
+      "selection_source": "editorial"
+    },
+    {
+      "master_id": 35276,
+      "round": 0,
+      "selection_source": "editorial"
+    },
+    {
+      "master_id": 35401,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 35706,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 35759,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 35793,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 36227,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 36251,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 36509,
+      "round": 1,
+      "selection_source": "editorial"
+    },
+    {
+      "master_id": 37145,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 37401,
+      "round": 0,
+      "selection_source": "editorial"
+    },
+    {
+      "master_id": 37615,
+      "round": 0,
+      "selection_source": "editorial"
+    },
+    {
+      "master_id": 38175,
+      "round": 0,
+      "selection_source": "editorial"
+    },
+    {
+      "master_id": 38712,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 38722,
+      "round": 0,
+      "selection_source": "editorial"
+    },
+    {
+      "master_id": 39248,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 39301,
+      "round": 1,
+      "selection_source": "editorial"
+    },
+    {
+      "master_id": 39341,
+      "round": 0,
+      "selection_source": "editorial"
+    },
+    {
+      "master_id": 40048,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 41155,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 41722,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 42522,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 42926,
+      "round": 1,
+      "selection_source": "editorial"
+    },
+    {
+      "master_id": 42965,
+      "round": 1,
+      "selection_source": "editorial"
+    },
+    {
+      "master_id": 43063,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 44278,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 45284,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 45432,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 45720,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 45922,
+      "round": 0,
+      "selection_source": "editorial"
+    },
+    {
+      "master_id": 47744,
+      "round": 0,
+      "selection_source": "editorial"
+    },
+    {
+      "master_id": 47868,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 48605,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 49021,
+      "round": 1,
+      "selection_source": "editorial"
+    },
+    {
+      "master_id": 49058,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 49182,
+      "round": 1,
+      "selection_source": "editorial"
+    },
+    {
+      "master_id": 49227,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 49965,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 51607,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 52497,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 52525,
+      "round": 1,
+      "selection_source": "editorial"
+    },
+    {
+      "master_id": 52671,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 52998,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 54219,
+      "round": 1,
+      "selection_source": "editorial"
+    },
+    {
+      "master_id": 54449,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 55281,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 55576,
+      "round": 0,
+      "selection_source": "editorial"
+    },
+    {
+      "master_id": 55658,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 56036,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 57029,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 57279,
+      "round": 0,
+      "selection_source": "editorial"
+    },
+    {
+      "master_id": 57940,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 57970,
+      "round": 0,
+      "selection_source": "editorial"
+    },
+    {
+      "master_id": 58313,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 59501,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 59538,
+      "round": 0,
+      "selection_source": "editorial"
+    },
+    {
+      "master_id": 60680,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 60721,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 62831,
+      "round": 1,
+      "selection_source": "editorial"
+    },
+    {
+      "master_id": 64290,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 65826,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 66510,
+      "round": 0,
+      "selection_source": "editorial"
+    },
+    {
+      "master_id": 66631,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 66782,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 67405,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 67836,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 68150,
+      "round": 1,
+      "selection_source": "editorial"
+    },
+    {
+      "master_id": 68202,
+      "round": 1,
+      "selection_source": "editorial"
+    },
+    {
+      "master_id": 68209,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 68399,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 68469,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 69156,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 69604,
+      "round": 1,
+      "selection_source": "editorial"
+    },
+    {
+      "master_id": 69859,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 69925,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 69938,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 69946,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 69956,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 70584,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 72235,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 72879,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 73013,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 74227,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 74338,
+      "round": 1,
+      "selection_source": "editorial"
+    },
+    {
+      "master_id": 75606,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 76678,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 79241,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 79393,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 79666,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 80514,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 81172,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 81575,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 82337,
+      "round": 0,
+      "selection_source": "editorial"
+    },
+    {
+      "master_id": 87446,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 89665,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 90844,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 91767,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 92517,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 92896,
+      "round": 0,
+      "selection_source": "editorial"
+    },
+    {
+      "master_id": 92986,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 94932,
+      "round": 1,
+      "selection_source": "editorial"
+    },
+    {
+      "master_id": 96362,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 97173,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 97212,
+      "round": 1,
+      "selection_source": "graph_rich"
+    },
+    {
+      "master_id": 99919,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 104115,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 104166,
+      "round": 0,
+      "selection_source": "editorial"
+    },
+    {
+      "master_id": 104399,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 105802,
+      "round": 0,
+      "selection_source": "editorial"
+    },
+    {
+      "master_id": 106274,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 106396,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 107122,
+      "round": 1,
+      "selection_source": "editorial"
+    },
+    {
+      "master_id": 107325,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 108242,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 108346,
+      "round": 1,
+      "selection_source": "graph_rich"
+    },
+    {
+      "master_id": 108372,
+      "round": 1,
+      "selection_source": "editorial"
+    },
+    {
+      "master_id": 110874,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 111010,
+      "round": 1,
+      "selection_source": "graph_rich"
+    },
+    {
+      "master_id": 113224,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 113522,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 117293,
+      "round": 1,
+      "selection_source": "editorial"
+    },
+    {
+      "master_id": 117296,
+      "round": 1,
+      "selection_source": "editorial"
+    },
+    {
+      "master_id": 117304,
+      "round": 1,
+      "selection_source": "editorial"
+    },
+    {
+      "master_id": 122051,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 122261,
+      "round": 0,
+      "selection_source": "editorial"
+    },
+    {
+      "master_id": 129759,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 133278,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 135633,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 138283,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 144095,
+      "round": 1,
+      "selection_source": "graph_rich"
+    },
+    {
+      "master_id": 149977,
+      "round": 1,
+      "selection_source": "editorial"
+    },
+    {
+      "master_id": 151766,
+      "round": 0,
+      "selection_source": "editorial"
+    },
+    {
+      "master_id": 153739,
+      "round": 1,
+      "selection_source": "editorial"
+    },
+    {
+      "master_id": 172407,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 270647,
+      "round": 1,
+      "selection_source": "editorial"
+    },
+    {
+      "master_id": 303567,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 338175,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 403952,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 406634,
+      "round": 0,
+      "selection_source": "editorial"
+    },
+    {
+      "master_id": 435524,
+      "round": 1,
+      "selection_source": "editorial"
+    },
+    {
+      "master_id": 478823,
+      "round": 1,
+      "selection_source": "graph_rich"
+    },
+    {
+      "master_id": 479327,
+      "round": 1,
+      "selection_source": "editorial"
+    },
+    {
+      "master_id": 750386,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 1046042,
+      "round": 0,
+      "selection_source": "editorial"
+    },
+    {
+      "master_id": 1164779,
+      "round": 0,
+      "selection_source": "already_published"
+    },
+    {
+      "master_id": 1250570,
+      "round": 1,
+      "selection_source": "editorial"
+    },
+    {
+      "master_id": 2452996,
+      "round": 0,
+      "selection_source": "already_published"
+    }
+  ]
+}
