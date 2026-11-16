@@ -564,27 +564,34 @@ test("old /play/<album>/ URLs redirect to /albums/<album>/", async ({
 test("primary nav marks the current section with aria-current", async ({
   page,
 }) => {
+  const current = page.locator(
+    "nav[aria-label='Primary'] a[aria-current='page']",
+  );
   await page.goto("/albums/");
-  await expect(
-    page.locator("nav[aria-label='Primary'] a[aria-current='page']"),
-  ).toHaveText("Browse");
+  await expect(current).toHaveText("Records");
   await page.goto("/play/daily/");
-  await expect(
-    page.locator("nav[aria-label='Primary'] a[aria-current='page']"),
-  ).toHaveText("Today's Connection");
+  await expect(current).toHaveText("Play");
   await page.goto("/play/connection/");
-  await expect(
-    page.locator("nav[aria-label='Primary'] a[aria-current='page']"),
-  ).toHaveText("Connection Guesser");
+  await expect(current).toHaveText("Play");
   await page.goto("/contributors/");
-  await expect(
-    page.locator("nav[aria-label='Primary'] a[aria-current='page']"),
-  ).toHaveText("Contributors");
+  await expect(current).toHaveText("Players");
+  await page.goto("/explore/");
+  await expect(current).toHaveText("Explore");
 });
 
-test("primary nav includes a real, working Contributors link", async ({
+test("primary nav is four destinations; About and Source live in the footer", async ({
   page,
 }) => {
+  await page.goto("/");
+  const links = page.locator("nav[aria-label='Primary'] a");
+  await expect(links).toHaveText(["Explore", "Records", "Players", "Play"]);
+  await expect(page.locator(".site-footer a[href='/about/']")).toBeVisible();
+  await expect(
+    page.locator(".site-footer a[href*='github.com']"),
+  ).toBeVisible();
+});
+
+test("primary nav includes a real, working Players link", async ({ page }) => {
   await page.goto("/");
   const navLink = page.locator(
     "nav[aria-label='Primary'] a[href='/contributors/']",
@@ -593,6 +600,18 @@ test("primary nav includes a real, working Contributors link", async ({
   await navLink.click();
   await page.waitForURL("**/contributors/");
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+});
+
+test("the play hub links all four games", async ({ page }) => {
+  await page.goto("/play/");
+  for (const href of [
+    "/play/daily/",
+    "/play/connect/",
+    "/play/routes/",
+    "/play/connection/",
+  ]) {
+    await expect(page.locator(`main a[href='${href}']`)).toHaveCount(1);
+  }
 });
 
 test("the play hub is reachable from the homepage, not just by URL", async ({
