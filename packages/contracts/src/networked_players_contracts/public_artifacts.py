@@ -315,3 +315,14 @@ def _infer_newest_generation_rounds(daily_manifest: Any, connection_rounds: Any)
     if not isinstance(generation_id, str) or not generation_id:
         return {}
     return {generation_id: connection_rounds}
+
+
+def public_artifacts_lineage_partially_declared(**artifacts: Any) -> dict[str, list[str]]:
+    """Live artifacts that declare `provenance.inputs` but omit one or more of
+    their expected upstream edges, mapped to the omitted names. Data, never a
+    failure: an omitted edge is simply not being checked."""
+    used = {key: artifacts.get(key) for key in _LINEAGE_KWARGS}
+    partial: dict[str, list[str]] = artifact_lineage_report(_lineage_payloads(**used))[
+        "partially_declared"
+    ]
+    return partial

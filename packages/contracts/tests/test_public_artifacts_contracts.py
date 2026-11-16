@@ -8,6 +8,8 @@ from __future__ import annotations
 from copy import deepcopy
 from typing import Any
 
+import pytest
+
 from networked_players_contracts import public_artifacts_failures
 from networked_players_contracts.album_art import album_art_version
 from networked_players_contracts.album_credit_membership import album_credit_membership_version
@@ -1150,6 +1152,53 @@ def test_lineage_challenge_only_rebuild_is_caught_downstream() -> None:
         assert "challenge" in _failures_text(report, group), group
 
 
+def test_lineage_consistent_set_with_a_versioned_challenge_passes() -> None:
+    """The plain consistent-set fixture's challenge has no `challenge_version`,
+    so its downstream inputs are declared null and never compared. This one
+    gives the challenge a version so that edge is checked for equality too."""
+    artifacts = _clean_artifacts()
+    artifacts["challenge"]["provenance"]["challenge_version"] = "challenge-v2-original"
+    artifacts = _stamp_declared_inputs(artifacts)
+    assert (
+        artifacts["contributor_index"]["provenance"]["inputs"]["challenge"]
+        == "challenge-v2-original"
+    )
+    lineage_groups = ("evidence_release_registry", "contributor_index", "album_hop_distances")
+    report = public_artifacts_failures(**artifacts)
+    for group in lineage_groups:
+        assert not any("was built from challenge" in f for f in report[group]), report[group]
+
+
+@pytest.mark.parametrize(
+    "provenance", ["x", [], 7, {"inputs": {}, "anything": 1}, {"notes": "hand edit"}]
+)
+def test_lineage_malformed_provenance_fails_instead_of_reading_as_undeclared(
+    provenance: Any,
+) -> None:
+    from networked_players_contracts import public_artifacts_lineage_undeclared
+
+    artifacts = _clean_artifacts()
+    artifacts["search_index"]["provenance"] = provenance
+    report = public_artifacts_failures(**artifacts)
+    assert "provenance" in _failures_text(report, "search_index")
+    assert "search_index" not in public_artifacts_lineage_undeclared(**artifacts)
+
+
+def test_lineage_partial_declarations_pass_but_are_reported() -> None:
+    from networked_players_contracts import public_artifacts_lineage_partially_declared
+
+    artifacts = _stamp_declared_inputs(_clean_artifacts())
+    assert public_artifacts_lineage_partially_declared(**artifacts) == {}
+    del artifacts["album_hop_distances"]["provenance"]["inputs"]["contributor_index"]
+    artifacts["search_index"]["provenance"]["inputs"] = {}
+    report = public_artifacts_failures(**artifacts)
+    assert report["album_hop_distances"] == [] and report["search_index"] == []
+    assert public_artifacts_lineage_partially_declared(**artifacts) == {
+        "album_hop_distances": ["contributor_index"],
+        "search_index": ["catalog", "contributor_index"],
+    }
+
+
 def test_lineage_undeclared_artifacts_pass_and_are_listed() -> None:
     artifacts = _clean_artifacts()
     assert all(not f for f in public_artifacts_failures(**artifacts).values())
@@ -1193,7 +1242,7 @@ def test_lineage_frozen_and_appended_classes_are_skipped() -> None:
     report = artifact_lineage_report(
         {"catalog": {"catalog_version": "now"}, "connection_daily_manifest": stale}
     )
-    assert report == {"failures": {}, "undeclared": []}
+    assert report == {"failures": {}, "undeclared": [], "partially_declared": {}}
 
 
 def test_lineage_every_public_group_has_a_class_and_edges_reference_known_artifacts() -> None:

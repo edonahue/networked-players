@@ -36,6 +36,8 @@ _VERSION_FIELD_NAMES = frozenset(
         # album-credit-membership artifact.
         "evidence_release_registry_version",
         "album_credit_membership_version",
+        "challenge_version",
+        "art_version",
         # Same recurring gap, caught again (round 7 Codex review, by
         # inspection -- it had never been added here since shipping).
         "album_hop_distances_version",

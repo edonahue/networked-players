@@ -3110,6 +3110,15 @@ def main(argv: Sequence[str] | None = None) -> int:
                 at="provenance",
             )
             cr_previous_label = str(args.previous_connection_universe)
+            if cr_previous_block is None:
+                # An artifact built before parameters were stamped has nothing
+                # to inherit; say so, or "(default)" below reads as inherited.
+                print(
+                    f"build-connection-rounds: {cr_previous_label} carries no "
+                    "build_parameters block; nothing inherited, code defaults apply to "
+                    "every parameter not given on the command line",
+                    file=sys.stderr,
+                )
         cr_resolved = resolve_build_parameters(
             supplied={
                 "one_hop_target": args.one_hop_target,
@@ -5405,6 +5414,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.command == "validate-public-artifacts":
         from networked_players_contracts import (
             public_artifacts_failures,
+            public_artifacts_lineage_partially_declared,
             public_artifacts_lineage_undeclared,
         )
 
@@ -5461,7 +5471,12 @@ def main(argv: Sequence[str] | None = None) -> int:
                     # live artifacts built before declared lineage existed pass
                     # but are listed until their next rebuild stamps inputs.
                     "lineage": {
-                        "undeclared_inputs": public_artifacts_lineage_undeclared(**public_artifacts)
+                        "undeclared_inputs": public_artifacts_lineage_undeclared(
+                            **public_artifacts
+                        ),
+                        "partially_declared_inputs": public_artifacts_lineage_partially_declared(
+                            **public_artifacts
+                        ),
                     },
                 },
                 indent=2,

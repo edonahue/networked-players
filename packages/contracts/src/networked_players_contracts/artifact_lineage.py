@@ -104,6 +104,31 @@ EXPECTED_INPUTS: dict[str, tuple[str, ...]] = {
 }
 
 
+# Artifacts whose top-level `provenance` object exists only to carry
+# `inputs` (they had no provenance before lineage). Anything else inside it is
+# a malformed artifact, not something to ignore.
+INPUTS_ONLY_PROVENANCE: frozenset[str] = frozenset(
+    name
+    for name, path in VERSION_FIELD_PATHS.items()
+    if name != "catalog" and path[0] != "provenance"
+)
+
+
+def provenance_shape_failures(name: str, payload: Any) -> list[str]:
+    """A present `provenance` must be an object; for the inputs-only artifacts
+    it may hold nothing but `inputs`. Absent is fine."""
+    if not isinstance(payload, dict) or "provenance" not in payload:
+        return []
+    provenance = payload["provenance"]
+    if not isinstance(provenance, dict):
+        return [f"{name} provenance must be an object"]
+    if name in INPUTS_ONLY_PROVENANCE:
+        extra = sorted(set(provenance) - {"inputs"})
+        if extra:
+            return [f"{name} provenance may only contain 'inputs'; unexpected keys: {extra}"]
+    return []
+
+
 def artifact_content_version(name: str, payload: Any) -> str | None:
     """The artifact's own content version, or `None` when it carries none
     (e.g. a challenge built before `challenge_version` existed)."""
@@ -142,14 +167,20 @@ def artifact_lineage_report(artifacts: dict[str, Any]) -> dict[str, Any]:
     """Apply the generic lineage rule.
 
     `artifacts` maps artifact name -> loaded payload (absent names are simply
-    not checked). Returns `{"failures": {name: [...]}, "undeclared": [...]}`;
+    not checked). Returns `{"failures": {name: [...]}, "undeclared": [...],
+    "partially_declared": {name: [missing upstream names]}}`;
     `failures` is attributed to the DOWNSTREAM artifact and names both ends.
     `undeclared` lists live artifacts that have upstream edges but declare no
     `provenance.inputs` -- data, not a failure."""
     failures: dict[str, list[str]] = {}
     undeclared: list[str] = []
+    partial: dict[str, list[str]] = {}
     for name, payload in artifacts.items():
         if ARTIFACT_CLASSES.get(name) != LIVE or payload is None:
+            continue
+        malformed = provenance_shape_failures(name, payload)
+        if malformed:
+            failures.setdefault(name, []).extend(malformed)
             continue
         inputs = declared_inputs(payload)
         if inputs is None:
@@ -160,6 +191,12 @@ def artifact_lineage_report(artifacts: dict[str, Any]) -> dict[str, Any]:
         if shape:
             failures.setdefault(name, []).extend(shape)
             continue
+        # Declaring some inputs but not every expected edge is allowed (a
+        # caller may legitimately omit an optional input) but it is a gap in
+        # what is being checked, so it is reported as data like `undeclared`.
+        missing = [u for u in EXPECTED_INPUTS.get(name, ()) if u not in inputs]
+        if missing:
+            partial[name] = missing
         for upstream, declared in inputs.items():
             if upstream not in VERSION_FIELD_PATHS:
                 failures.setdefault(name, []).append(
@@ -175,4 +212,8 @@ def artifact_lineage_report(artifacts: dict[str, Any]) -> dict[str, Any]:
                     f"{upstream} is {current!r} -- rebuild {name} (and everything downstream "
                     "of it)"
                 )
-    return {"failures": failures, "undeclared": sorted(undeclared)}
+    return {
+        "failures": failures,
+        "undeclared": sorted(undeclared),
+        "partially_declared": {name: partial[name] for name in sorted(partial)},
+    }

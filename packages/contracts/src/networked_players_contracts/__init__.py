@@ -38,6 +38,7 @@ from .prominence import PROMINENCE_SCHEMA_VERSION, prominence_failures
 from .public_artifacts import (
     PUBLIC_ARTIFACT_GROUPS,
     public_artifacts_failures,
+    public_artifacts_lineage_partially_declared,
     public_artifacts_lineage_undeclared,
 )
 from .record_routes import (
@@ -81,6 +82,7 @@ __all__ = [
     "prominence_failures",
     "public_album_catalog_failures",
     "public_artifacts_failures",
+    "public_artifacts_lineage_partially_declared",
     "public_artifacts_lineage_undeclared",
     "record_routes_failures",
     "rounds_failures",

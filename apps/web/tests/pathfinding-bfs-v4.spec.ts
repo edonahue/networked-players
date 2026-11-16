@@ -122,7 +122,9 @@ test("validatePathfindingGraph accepts a graph that declares provenance.inputs (
   const fixture = loadFixture("well-formed-v4") as Record<string, unknown>;
   const withInputs = {
     ...fixture,
-    provenance: { inputs: { catalog: "catalog-x", album_credit_membership: null } },
+    provenance: {
+      inputs: { catalog: "catalog-x", album_credit_membership: null },
+    },
   };
   const result = await validatePathfindingGraph(withInputs);
   expect(result).not.toBeNull();

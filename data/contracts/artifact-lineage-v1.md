@@ -133,3 +133,28 @@ using the same `build_parameters.py` mechanism and precedence as
 `build-record-routes` (explicit flag, then previous artifact, then the
 defaults 300/200/0.15/0.2). It prints the resolved values and their source to
 stderr and in its JSON summary. The block is optional in the validator.
+
+## What the rule reports besides failures
+
+`validate-public-artifacts` prints two lists as data under `lineage`, neither of which fails
+the run:
+
+- `undeclared_inputs` — live artifacts with upstream edges that declare no `provenance.inputs`
+  at all (every artifact built before this contract).
+- `partially_declared_inputs` — artifacts that declare inputs but omit one or more of the
+  expected edges above, with the omitted names. An omitted edge is not being checked.
+
+A `provenance` that is present but malformed is a failure, never "undeclared": it must be an
+object, and for the artifacts that gained a top-level `provenance` only to carry lineage
+(album art, credit membership, pathfinding graph, evidence registry, prominence, contributor
+index, hop distances, search index) it may contain nothing but `inputs`.
+
+## Fleet ordering
+
+Per-artifact validators on fleet workers come from the `networked_players_contracts` install
+on each worker. A worker still on a contracts version from before this contract rejects a
+rebuilt artifact that carries `provenance` ("unexpected top-level keys"), and the validation
+report does not say which contracts version produced it, so a stale worker is
+indistinguishable from a bad artifact. **Reinstall contracts on every worker before the first
+rebuild that stamps lineage is validated on the fleet.** Recording the contracts version in
+the worker's validation report is tracked as part of Campaign Atlas work package I1.
