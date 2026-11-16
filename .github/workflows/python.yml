@@ -9,8 +9,13 @@ permissions:
   contents: read
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
+  # Job ids are unique across workflows (python / web) so each can be named as
+  # a required status check on main; two jobs both called `test` cannot be
+  # told apart there.
+  python:
+    # Pinned like web.yml: an unannounced ubuntu-latest image move already broke
+    # the web workflow once (2026-11). Bump deliberately.
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7

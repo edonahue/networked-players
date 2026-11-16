@@ -1121,7 +1121,26 @@ Fully reproducible from the same inputs. Re-run rather than hand-editing.
 Record Routes has no daily schedule of its own today (see ADR 0046's revisit trigger) —
 this runbook does not touch `daily-manifest.v1.json`.
 
+## After a merge to `main`: the post-deploy smoke check
+
+Cloudflare Workers Builds deploys every push to `main` through its own Git integration.
+`.github/workflows/post-deploy-smoke.yml` runs on the same push: it waits for that commit's
+"Workers Builds" check run to succeed, then confirms every JSON artifact under
+`apps/web/public/data/` is being served byte-for-byte by the live site and that a handful of
+routes answer 200. It only reads the public site — it never deploys, retries or rolls back.
+A red run means the live site is not serving the commit that was merged; act on it with the
+rollback procedure below, not by re-running the check until it passes.
+
+Required status checks on `main` are the `python` and `web` jobs (unique job ids, so each can
+be named as a required check). The smoke check runs after the merge and cannot gate it.
+
 ## Rollback
+
+A round rollback has one extra rule, recorded in
+[ADR 0072](decisions/0072-campaign-atlas-lineage-approved-pool-collections.md) §4: never
+revert the daily manifest past a cutover date that has already passed — that would rewrite
+dates players have already seen. Revert the round's other artifacts, keep the new daily
+generation frozen in place, and schedule forward.
 
 There is no scripted revert command for any real artifact in this project — rollback is
 git-history-based. **Drilled for real on 2026-08-08** (ADR 0058 Slice 11, owner-approved):
