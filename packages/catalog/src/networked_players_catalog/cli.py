@@ -4512,7 +4512,23 @@ def main(argv: Sequence[str] | None = None) -> int:
         approved_pool_payload: dict[str, Any] | None = None
         editorial_albums_path = args.editorial_albums
         if args.approved_pool is not None:
-            approved_pool_payload = json.loads(args.approved_pool.read_text())
+            from networked_players_contracts.approved_pool import approved_pool_failures
+
+            loaded_pool = json.loads(args.approved_pool.read_text())
+            # A file holding `null` (or any non-object) must never be read as
+            # "no pool": `assemble_album_catalog` treats None as unchecked, which
+            # would re-enable auto-fill while this branch had already skipped the
+            # UNCHECKED warning.
+            pool_shape_failures = (
+                approved_pool_failures(loaded_pool)
+                if isinstance(loaded_pool, dict)
+                else ["approved pool must be a JSON object"]
+            )
+            if pool_shape_failures:
+                raise ValueError(
+                    f"--approved-pool {args.approved_pool} is malformed: {pool_shape_failures}"
+                )
+            approved_pool_payload = loaded_pool
         else:
             print(
                 "build-public-album-catalog: UNCHECKED BUILD, no --approved-pool given; this "

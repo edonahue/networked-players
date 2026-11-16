@@ -163,15 +163,24 @@ def approved_pool_diff(
 def approved_pool_catalog_failures(pool: Any, catalog: Any) -> list[str]:
     """Two-way check: catalog master set == pool master set, with per-album
     round / selection_source agreement."""
-    if not isinstance(pool, dict) or not isinstance(catalog, dict):
-        return []
-    albums = catalog.get("albums")
-    if not isinstance(albums, list):
-        return []
+    if not isinstance(pool, dict):
+        return []  # shape failure already reported by approved_pool_failures
+    # A catalog this check cannot read is a failure of this check too, never a
+    # pass: the catalog group reports the malformation, but "the pool agrees
+    # with the catalog" must not be reported as true on its strength.
+    if not isinstance(catalog, dict) or not isinstance(catalog.get("albums"), list):
+        return ["catalog is missing or malformed; cannot compare it with the approved pool"]
+    albums = catalog["albums"]
+    catalog_masters = [a.get("master_id") for a in albums if isinstance(a, dict)]
+    repeated = sorted(
+        {m for m in catalog_masters if m is not None and catalog_masters.count(m) > 1}
+    )
     unapproved, missing, disagreements = approved_pool_diff(
         pool, [a for a in albums if isinstance(a, dict)]
     )
     failures: list[str] = []
+    if repeated:
+        failures.append(f"catalog lists the same master more than once: {repeated}")
     if unapproved:
         failures.append(
             f"catalog publishes {len(unapproved)} album(s) not in the approved pool: {unapproved}"

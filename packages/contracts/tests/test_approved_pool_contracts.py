@@ -93,5 +93,27 @@ def test_the_real_committed_pool_matches_the_real_committed_catalog() -> None:
     catalog = json.loads((REPO_ROOT / "apps/web/public/data/catalog/albums.v1.json").read_text())
     assert approved_pool_failures(pool) == []
     assert approved_pool_catalog_failures(pool, catalog) == []
-    assert len(pool["albums"]) == len(catalog["albums"]) == 217
+    assert len(pool["albums"]) == len(catalog["albums"])
     assert seed_approved_pool_from_catalog(catalog, note=pool["note"]) == pool
+
+
+def test_a_malformed_catalog_is_a_failure_not_a_pass() -> None:
+    pool = {
+        "schema_version": 1,
+        "note": "synthetic",
+        "albums": [{"master_id": 7, "round": 0, "selection_source": "editorial"}],
+    }
+    assert approved_pool_failures(pool) == []
+    for broken in (None, [], {"albums": "nope"}):
+        assert approved_pool_catalog_failures(pool, broken) != []
+
+
+def test_a_master_listed_twice_in_the_catalog_fails() -> None:
+    pool = {
+        "schema_version": 1,
+        "note": "synthetic",
+        "albums": [{"master_id": 7, "round": 0, "selection_source": "editorial"}],
+    }
+    catalog = {"albums": [{"master_id": 7}, {"master_id": 7}]}
+    failures = approved_pool_catalog_failures(pool, catalog)
+    assert any("more than once" in f for f in failures)

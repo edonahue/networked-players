@@ -42,3 +42,14 @@ could indicate where a candidate came from.
 The initial pool was seeded from the published catalog (the pool follows the catalog once, never
 afterwards): `uv run python scripts/seed_approved_pool.py --write`. `--check` re-derives the seed
 and diffs it. After the seed, rounds append owner-approved entries; the file is not regenerated.
+
+## Limits of the builder check
+
+- Round and `selection_source` agreement is only checked for albums that carry those fields,
+  which the builder emits only for a schema-v2 catalog (`--featured-albums` supplied). A
+  v1-shaped build with `--approved-pool` checks the master set alone. The committed catalog is
+  v2, and `validate-public-artifacts` checks rounds and labels against it on every run.
+- The `--approved-pool` file must be a well-formed pool. A file that is not (including one
+  containing `null`) fails the build; it is never treated as "no pool supplied".
+- Keys in `data/albums/expansion-policy-v1.json` that no program reads are labelled there as
+  human-review guidance. They are neither enforced nor removed.
