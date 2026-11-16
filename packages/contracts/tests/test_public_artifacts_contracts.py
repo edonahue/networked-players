@@ -616,14 +616,14 @@ def _album_credit_membership() -> dict[str, Any]:
 def _evidence_release_registry() -> dict[str, Any]:
     catalog_version = _catalog()["catalog_version"]
     fields = {
-        "release_ids": [1, 2],
-        "titles": ["First Light", "Second Wave"],
-        "years": [1995, 1998],
-        "countries": ["US", "US"],
-        "master_ids": [None, None],
-        "source_urls": ["https://data.discogs.com/?download=fake"] * 2,
-        "cover_uri150s": [None, None],
-        "relation_to_catalog_album_ids": ["master-1", "master-2"],
+        "release_ids": [1, 2, 500],
+        "titles": ["First Light", "Second Wave", "Third Wave"],
+        "years": [1995, 1998, 1999],
+        "countries": ["US", "US", "US"],
+        "master_ids": [None, None, None],
+        "source_urls": ["https://data.discogs.com/?download=fake"] * 3,
+        "cover_uri150s": [None, None, None],
+        "relation_to_catalog_album_ids": ["master-1", "master-2", "master-2"],
     }
     registry = {
         "schema_version": 1,
@@ -834,3 +834,217 @@ def test_pathfinding_graph_defect_is_caught_independently() -> None:
     assert report["catalog"] == []
     assert report["challenge"] == []
     assert report["contributor_index"] == []
+
+
+# --- catalog lineage: cross-artifact checks that need the catalog -------------
+#
+# Each test makes exactly ONE artifact stale or inconsistent against an
+# otherwise-clean set and asserts the specific group reports a clear message.
+
+
+def _with_regenerated_catalog(artifacts: dict[str, Any]) -> dict[str, Any]:
+    """The 'operator regenerated the catalog and forgot to rebuild the pools'
+    scenario: a valid catalog with one more album, so its catalog_version
+    changes, while every pool artifact keeps the old version."""
+    catalog = deepcopy(artifacts["catalog"])
+    catalog["albums"].append(_catalog_album("master-3", artist_id=300, main_release_id=3))
+    catalog["catalog_version"] = _catalog_version(catalog["albums"], _SNAPSHOT)
+    artifacts = dict(artifacts)
+    artifacts["catalog"] = catalog
+    return artifacts
+
+
+def test_unmodified_fixtures_pass_the_lineage_checks() -> None:
+    report = public_artifacts_failures(**_clean_artifacts())
+    for group in (
+        "connection_guesser",
+        "record_routes",
+        "challenge",
+        "evidence_release_registry",
+        "search_index",
+    ):
+        assert report[group] == [], group
+
+
+def test_connection_pool_built_against_an_older_catalog_is_caught() -> None:
+    artifacts = _with_regenerated_catalog(_clean_artifacts())
+    report = public_artifacts_failures(**artifacts)
+    assert any("catalog_version" in f for f in report["connection_guesser"])
+
+
+def test_connection_universe_album_missing_from_catalog_is_caught() -> None:
+    artifacts = _clean_artifacts()
+    universe = deepcopy(artifacts["connection_universe"])
+    universe["albums"][0]["id"] = "master-99"
+    artifacts["connection_universe"] = universe
+    report = public_artifacts_failures(**artifacts)
+    assert any("master-99" in f and "catalog" in f for f in report["connection_guesser"])
+
+
+def test_connection_universe_retitled_album_is_caught() -> None:
+    artifacts = _clean_artifacts()
+    universe = deepcopy(artifacts["connection_universe"])
+    universe["albums"][0]["title"] = "Renamed Elsewhere"
+    artifacts["connection_universe"] = universe
+    report = public_artifacts_failures(**artifacts)
+    assert any("title" in f and "master-1" in f for f in report["connection_guesser"])
+
+
+def test_connection_universe_artist_rename_is_caught() -> None:
+    artifacts = _clean_artifacts()
+    universe = deepcopy(artifacts["connection_universe"])
+    universe["albums"][1]["act"] = "Someone Else"
+    artifacts["connection_universe"] = universe
+    report = public_artifacts_failures(**artifacts)
+    assert any("artist" in f and "master-2" in f for f in report["connection_guesser"])
+
+
+def test_routes_pool_built_against_an_older_catalog_is_caught() -> None:
+    artifacts = _with_regenerated_catalog(_clean_artifacts())
+    report = public_artifacts_failures(**artifacts)
+    assert any("catalog_version" in f for f in report["record_routes"])
+
+
+def test_routes_universe_album_missing_from_catalog_is_caught() -> None:
+    artifacts = _clean_artifacts()
+    universe = deepcopy(artifacts["routes_universe"])
+    universe["albums"][0]["id"] = "master-99"
+    artifacts["routes_universe"] = universe
+    report = public_artifacts_failures(**artifacts)
+    assert any("master-99" in f and "catalog" in f for f in report["record_routes"])
+
+
+def test_routes_universe_retitled_album_is_caught() -> None:
+    artifacts = _clean_artifacts()
+    universe = deepcopy(artifacts["routes_universe"])
+    universe["albums"][1]["title"] = "Renamed Elsewhere"
+    artifacts["routes_universe"] = universe
+    report = public_artifacts_failures(**artifacts)
+    assert any("title" in f and "master-2" in f for f in report["record_routes"])
+
+
+def test_challenge_built_against_an_older_catalog_is_caught() -> None:
+    artifacts = _with_regenerated_catalog(_clean_artifacts())
+    report = public_artifacts_failures(**artifacts)
+    assert any("catalog_version" in f for f in report["challenge"])
+
+
+def test_challenge_without_a_catalog_version_is_caught() -> None:
+    """challenge_failures tolerates a missing catalog_version (a hand-written
+    query list has no catalog), but the live, catalog-derived challenge.v3 must
+    carry one -- otherwise it can never be proven current."""
+    artifacts = _clean_artifacts()
+    challenge = deepcopy(artifacts["challenge"])
+    challenge["provenance"]["catalog_version"] = None
+    artifacts["challenge"] = challenge
+    report = public_artifacts_failures(**artifacts)
+    assert any("catalog_version" in f for f in report["challenge"])
+
+
+def test_challenge_album_missing_from_catalog_is_caught() -> None:
+    artifacts = _clean_artifacts()
+    challenge = deepcopy(artifacts["challenge"])
+    challenge["albums"][0]["id"] = "master-99"
+    artifacts["challenge"] = challenge
+    report = public_artifacts_failures(**artifacts)
+    assert any("master-99" in f and "catalog" in f for f in report["challenge"])
+
+
+def test_challenge_covering_fewer_albums_than_the_catalog_is_allowed() -> None:
+    """ADR 0067: the album shelf shows the whole catalog; the challenge may
+    legitimately cover fewer albums (matching can miss one), so a subset is
+    clean. Staleness is caught by catalog_version, not by set equality."""
+    artifacts = _clean_artifacts()
+    challenge = deepcopy(artifacts["challenge"])
+    challenge["albums"] = challenge["albums"][:1]
+    artifacts["challenge"] = challenge
+    report = public_artifacts_failures(**artifacts)
+    assert not any("not in the canonical catalog" in f for f in report["challenge"])
+
+
+def test_challenge_retitled_album_is_caught() -> None:
+    artifacts = _clean_artifacts()
+    challenge = deepcopy(artifacts["challenge"])
+    challenge["albums"][0]["title"] = "Renamed Elsewhere"
+    artifacts["challenge"] = challenge
+    report = public_artifacts_failures(**artifacts)
+    assert any("title" in f and "master-1" in f for f in report["challenge"])
+
+
+def test_challenge_artist_rename_is_caught() -> None:
+    artifacts = _clean_artifacts()
+    challenge = deepcopy(artifacts["challenge"])
+    challenge["albums"][1]["artist"] = "Someone Else"
+    artifacts["challenge"] = challenge
+    report = public_artifacts_failures(**artifacts)
+    assert any("artist" in f and "master-2" in f for f in report["challenge"])
+
+
+def _registry_without_release(artifacts: dict[str, Any], release_id: int) -> dict[str, Any]:
+    registry = deepcopy(artifacts["evidence_release_registry"])
+    index = registry["release_ids"].index(release_id)
+    for key in (
+        "release_ids",
+        "titles",
+        "years",
+        "countries",
+        "master_ids",
+        "source_urls",
+        "cover_uri150s",
+        "relation_to_catalog_album_ids",
+    ):
+        del registry[key][index]
+    registry["evidence_release_registry_version"] = evidence_release_registry_version(
+        registry, _SNAPSHOT
+    )
+    artifacts = dict(artifacts)
+    artifacts["evidence_release_registry"] = registry
+    return artifacts
+
+
+def test_registry_missing_a_release_cited_by_the_challenge_is_caught() -> None:
+    artifacts = _registry_without_release(_clean_artifacts(), 1)
+    report = public_artifacts_failures(**artifacts)
+    assert any("challenge" in f and "1" in f for f in report["evidence_release_registry"])
+
+
+def test_registry_missing_a_release_cited_by_routes_is_caught() -> None:
+    artifacts = _registry_without_release(_clean_artifacts(), 500)
+    report = public_artifacts_failures(**artifacts)
+    assert any("routes" in f and "500" in f for f in report["evidence_release_registry"])
+
+
+def test_registry_missing_a_release_cited_by_the_graph_is_caught() -> None:
+    artifacts = _clean_artifacts()
+    graph = deepcopy(artifacts["pathfinding_graph"])
+    graph["evidence_release_ids"][0] = 777
+    graph["pathfinding_graph_version"] = pathfinding_graph_version(graph, _SNAPSHOT)
+    artifacts["pathfinding_graph"] = graph
+    report = public_artifacts_failures(**artifacts)
+    assert any("graph" in f and "777" in f for f in report["evidence_release_registry"])
+
+
+def test_search_index_stale_label_is_caught() -> None:
+    artifacts = _clean_artifacts()
+    index = deepcopy(artifacts["search_index"])
+    entry = next(e for e in index["entries"] if e["id"] == "master-1")
+    entry["label"] = "Renamed Elsewhere"
+    index["search_index_version"] = search_index_version(index["entries"], _SNAPSHOT)
+    artifacts["search_index"] = index
+    report = public_artifacts_failures(**artifacts)
+    assert any("label" in f and "master-1" in f for f in report["search_index"])
+
+
+def test_optional_catalog_argument_extends_the_per_artifact_validators() -> None:
+    """The fleet's `connection-rounds` / `record-routes` validators call these
+    with (universe, rounds) or, now, (universe, rounds, catalog)."""
+    from networked_players_contracts import connection_rounds_failures, record_routes_failures
+
+    artifacts = _with_regenerated_catalog(_clean_artifacts())
+    catalog = artifacts["catalog"]
+    connection = (artifacts["connection_universe"], artifacts["connection_rounds"])
+    routes = (artifacts["routes_universe"], artifacts["routes_rounds"])
+    assert connection_rounds_failures(*connection) == []
+    assert connection_rounds_failures(*connection, catalog)
+    assert record_routes_failures(*routes) == []
+    assert record_routes_failures(*routes, catalog)

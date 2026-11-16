@@ -574,14 +574,14 @@ def _album_credit_membership(catalog: dict[str, Any]) -> dict[str, Any]:
 
 def _evidence_release_registry(catalog: dict[str, Any]) -> dict[str, Any]:
     fields = {
-        "release_ids": [1],
-        "titles": ["First Light"],
-        "years": [1995],
-        "countries": ["US"],
-        "master_ids": [1],
-        "source_urls": ["https://data.discogs.com/?download=fake"],
-        "cover_uri150s": [None],
-        "relation_to_catalog_album_ids": ["master-1"],
+        "release_ids": [1, 2, 500],
+        "titles": ["First Light", "Third Wave", "Third Wave"],
+        "years": [1995, 1995, 1995],
+        "countries": ["US", "US", "US"],
+        "master_ids": [1, 2, 2],
+        "source_urls": ["https://data.discogs.com/?download=fake"] * 3,
+        "cover_uri150s": [None, None, None],
+        "relation_to_catalog_album_ids": ["master-1", "master-2", "master-2"],
     }
     registry = {
         "schema_version": 1,
