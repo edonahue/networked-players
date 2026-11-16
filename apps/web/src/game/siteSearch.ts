@@ -118,26 +118,31 @@ export function searchIndex(
 
 /** Fetched and cached once per page load (module-level promise, matching
  * `loadPreparedGraph`'s own load-once-reuse shape) -- repeated searches
- * within one session never re-fetch. A fetch failure resolves to an empty
- * index rather than rejecting: every real caller already renders an honest
- * "no results" state for zero matches, so degrading search silently is
- * preferable to breaking the page it's embedded in (the same "losing a
- * nice-to-have beats breaking play" philosophy `store.ts` documents for
- * its own storage failures). */
+ * within one session never re-fetch. This strict form REJECTS on a network
+ * or HTTP failure so the header search can say so plainly; the rejected
+ * promise is dropped so a later attempt retries. */
 let indexPromise: Promise<SearchIndex> | null = null;
 
-export function loadSearchIndex(): Promise<SearchIndex> {
+export function fetchSearchIndex(): Promise<SearchIndex> {
   if (!indexPromise) {
-    indexPromise = (async () => {
-      try {
-        const response = await fetch(SEARCH_INDEX_URL);
-        if (!response.ok) return { entries: [] };
-        const payload = (await response.json()) as SearchIndex;
-        return { entries: payload.entries ?? [] };
-      } catch {
-        return { entries: [] };
-      }
+    const attempt = (async () => {
+      const response = await fetch(SEARCH_INDEX_URL);
+      if (!response.ok) throw new Error(`search index HTTP ${response.status}`);
+      const payload = (await response.json()) as SearchIndex;
+      return { entries: payload.entries ?? [] };
     })();
+    indexPromise = attempt;
+    attempt.catch(() => {
+      if (indexPromise === attempt) indexPromise = null;
+    });
   }
   return indexPromise;
+}
+
+/** Lenient form for callers that already render an honest "no results"
+ * state (Connect's album picker): a fetch failure resolves to an empty
+ * index rather than rejecting -- losing a nice-to-have beats breaking play
+ * (the same philosophy `store.ts` documents for its own storage failures). */
+export function loadSearchIndex(): Promise<SearchIndex> {
+  return fetchSearchIndex().catch(() => ({ entries: [] }));
 }

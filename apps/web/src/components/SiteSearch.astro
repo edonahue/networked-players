@@ -1,0 +1,48 @@
+---
+// Header search. Server-renders a plain "Search" link to /albums/ (the
+// no-JavaScript fallback); src/game/headerSearch.ts swaps it for the combobox
+// and only then (and only on focus/typing) fetches the search index.
+---
+
+<div class="site-search" data-site-search>
+  <a class="site-search__fallback" href="/albums/" data-search-fallback>Search records</a>
+  <button
+    class="site-search__trigger"
+    type="button"
+    aria-label="Search records and players"
+    aria-expanded="false"
+    aria-controls="site-search-form"
+    data-search-trigger
+  >
+    <svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true" focusable="false">
+      <circle cx="8.5" cy="8.5" r="5.5" fill="none" stroke="currentColor" stroke-width="1.8"></circle>
+      <path d="M13 13l4.5 4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path>
+    </svg>
+  </button>
+  <div class="site-search__form" id="site-search-form" data-search-form hidden>
+    <label class="visually-hidden" for="site-search-input">Search records and players</label>
+    <input
+      id="site-search-input"
+      class="site-search__input"
+      type="search"
+      role="combobox"
+      autocomplete="off"
+      spellcheck="false"
+      placeholder="Search records, players"
+      aria-expanded="false"
+      aria-controls="site-search-list"
+      aria-autocomplete="list"
+      aria-haspopup="listbox"
+      data-search-input
+    />
+    <div class="site-search__panel" id="site-search-panel" data-search-panel hidden>
+      <div class="site-search__list" id="site-search-list" role="listbox" aria-label="Search results" data-search-list></div>
+      <p class="site-search__message" data-search-message hidden></p>
+      <p class="site-search__browse" data-search-empty hidden>
+        <a href="/albums/">Browse records</a>
+        <a href="/contributors/">Browse players</a>
+      </p>
+    </div>
+    <div class="visually-hidden" role="status" aria-live="polite" data-search-status></div>
+  </div>
+</div>
