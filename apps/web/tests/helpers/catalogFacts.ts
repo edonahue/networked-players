@@ -361,6 +361,10 @@ function cachePath(): string {
     "catalog/albums.v1.json",
     "pathfinding/graph.v4.json",
     "evidence/release-registry.v1.json",
+    // The Explore facts (visible neighbour, a contributor's own record) are
+    // read from these two; leaving them out would reuse stale facts.
+    "contributors/index.v1.json",
+    "pathfinding/prominence.v1.json",
   ]) {
     hash.update(readFileSync(join(DATA_DIR, rel)));
   }

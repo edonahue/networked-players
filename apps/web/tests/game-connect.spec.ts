@@ -23,7 +23,6 @@ const RHYTHM = facts.rhythm;
 const NEGATIVE = facts.negative;
 const GUITAR = facts.guitar;
 const SECOND = facts.secondConnected;
-const REPLACEMENT_B = facts.replacementB;
 
 /** Flushes the page's task queue past every pending promise continuation
  * spawned by a network response that just resolved -- NOT an arbitrary
@@ -470,8 +469,11 @@ test("a multi-search session fetches the pathfinding graph exactly once", async 
     timeout: 15000,
   });
 
+  // SECOND is derived as a connected pair in its own right; mixing its
+  // first record with another pair's second would not be guaranteed to
+  // connect in a catalog with more than one component.
   await selectAlbumById(page, "a", SECOND.a);
-  await selectAlbumById(page, "b", REPLACEMENT_B);
+  await selectAlbumById(page, "b", SECOND.b);
   await page.locator("[data-connect-search]").click();
   await expect(page.locator("[data-connect-results]")).toBeVisible({
     timeout: 15000,

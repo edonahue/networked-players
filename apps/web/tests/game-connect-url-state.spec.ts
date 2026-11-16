@@ -20,7 +20,6 @@ const facts = await catalogFacts();
 const CONNECTED = facts.connected;
 const RHYTHM = facts.rhythm;
 const SECOND = facts.secondConnected;
-const REPLACEMENT_B = facts.replacementB;
 
 async function currentParams(page: import("@playwright/test").Page) {
   return new URL(page.url()).searchParams;
@@ -141,8 +140,11 @@ test("searching a genuinely different pair pushes a new, navigable history entry
   });
   const firstUrl = page.url();
 
+  // SECOND is derived as a connected pair in its own right; mixing its
+  // first record with another pair's second would not be guaranteed to
+  // connect in a catalog with more than one component.
   await selectAlbumById(page, "a", SECOND.a);
-  await selectAlbumById(page, "b", REPLACEMENT_B);
+  await selectAlbumById(page, "b", SECOND.b);
   await page.locator("[data-connect-search]").click();
   await expect(page.locator("[data-connect-results]")).toBeVisible({
     timeout: 15000,
