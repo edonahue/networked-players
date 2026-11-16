@@ -176,8 +176,6 @@ a {
   right: 0;
   z-index: 40;
   width: max(100%, 360px);
-  max-height: min(70vh, 480px);
-  overflow-y: auto;
   padding: 6px 0;
   /* Liner-note paper panel in both themes. */
   background: var(--paper);
@@ -573,7 +571,7 @@ h2 {
   .site-search__panel {
     left: 16px;
     right: 16px;
-    min-width: 0;
+    width: auto;
   }
   .site-footer {
     display: block;

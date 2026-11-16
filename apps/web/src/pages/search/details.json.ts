@@ -7,7 +7,10 @@
 // search -- never the 780 KB contributor index itself.
 
 import type { APIRoute } from "astro";
-import { ROLE_CATEGORY_LABEL, type ContributorIndex } from "../../data/contributors";
+import {
+  ROLE_CATEGORY_LABEL,
+  type ContributorIndex,
+} from "../../data/contributors";
 import type { ChallengeV2 } from "../../data/challenge";
 import contributorIndexData from "../../../public/data/contributors/index.v1.json";
 import challengeData from "../../../public/data/challenge.v3.json";

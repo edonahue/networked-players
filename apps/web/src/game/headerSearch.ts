@@ -12,7 +12,7 @@ import {
 } from "./siteSearch";
 
 const DETAILS_URL = "/search/details.json";
-const PER_GROUP = 6;
+const PER_GROUP = 5;
 
 interface Details {
   players: Record<string, { album: string; roles: string[] }>;
@@ -48,7 +48,8 @@ function init(root: HTMLElement) {
   const trigger = q<HTMLButtonElement>("[data-search-trigger]");
   const fallback = q("[data-search-fallback]");
   const form = q("[data-search-form]");
-  if (!input || !panel || !list || !empty || !message || !status || !form) return;
+  if (!input || !panel || !list || !empty || !message || !status || !form)
+    return;
 
   root.classList.add("is-ready");
   fallback?.setAttribute("hidden", "");
@@ -100,7 +101,9 @@ function init(root: HTMLElement) {
         ? `/explore/${info.album}/?center=${entry.id}`
         : `/contributors/${entry.id}/`,
       title: entry.label,
-      detail: info?.roles.length ? `Credited: ${info.roles.join(", ")}` : "Player",
+      detail: info?.roles.length
+        ? `Credited: ${info.roles.join(", ")}`
+        : "Player",
     };
   }
 
@@ -175,7 +178,9 @@ function init(root: HTMLElement) {
     }).map(toRow);
     if (records.length + players.length === 0) {
       const nAlbums = index.entries.filter((e) => e.kind === "album").length;
-      const nPlayers = index.entries.filter((e) => e.kind === "contributor").length;
+      const nPlayers = index.entries.filter(
+        (e) => e.kind === "contributor",
+      ).length;
       showMessage(
         `Nothing matches "${query}". This is a bounded collection of ${nAlbums} records and ${nPlayers} players, and search only covers what is published here.`,
         true,
@@ -287,9 +292,14 @@ function init(root: HTMLElement) {
   });
 
   document.addEventListener("keydown", (event) => {
-    if (event.key !== "/" || event.metaKey || event.ctrlKey || event.altKey) return;
+    if (event.key !== "/" || event.metaKey || event.ctrlKey || event.altKey)
+      return;
     const t = event.target as HTMLElement | null;
-    if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
+    if (
+      t &&
+      (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))
+    )
+      return;
     event.preventDefault();
     openMobile();
   });
