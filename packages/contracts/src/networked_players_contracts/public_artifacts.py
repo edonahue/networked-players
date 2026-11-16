@@ -43,6 +43,7 @@ from .connection_daily_manifest import (
 )
 from .connection_rounds import connection_rounds_failures
 from .contributor_index import contributor_index_failures
+from .daily_manifest_pin import daily_manifest_pin_failures
 from .evidence_release_registry import evidence_release_registry_failures
 from .pathfinding_graph import pathfinding_graph_failures
 from .prominence import prominence_failures
@@ -89,6 +90,7 @@ def public_artifacts_failures(
     evidence_release_registry: Any,
     search_index: Any,
     approved_pool: Any = None,
+    daily_manifest_pin: Any = None,
 ) -> dict[str, list[str]]:
     """Every contract failure across the whole real-artifact publication set,
     grouped by artifact. Every key in `PUBLIC_ARTIFACT_GROUPS` is always
@@ -139,6 +141,12 @@ def public_artifacts_failures(
     generations and the daily manifest are excluded on purpose (ADR 0041,
     ADR 0066).
 
+    `daily_manifest_pin` (`data/integrity/daily-manifest-pin-v1.json`,
+    `daily_manifest_pin.py`): when supplied, the manifest's already-played
+    prefix must match the committed pin, reported under the
+    `connection_daily_manifest` group. `None` skips the check (callers that
+    predate the pin, e.g. fleet workers); the CLI always supplies it.
+
     Declared lineage (`artifact_lineage.py`): every live artifact that
     declares `provenance.inputs` has each declared version checked against
     the upstream artifact's current version; the failure is attributed to the
@@ -187,6 +195,10 @@ def public_artifacts_failures(
             + approved_pool_catalog_failures(approved_pool, catalog)
         ),
     }
+    if daily_manifest_pin is not None:
+        report["connection_daily_manifest"].extend(
+            daily_manifest_pin_failures(daily_manifest, daily_manifest_pin)
+        )
     lineage = artifact_lineage_report(
         _lineage_payloads(
             catalog=catalog,

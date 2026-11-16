@@ -185,3 +185,45 @@ def test_build_album_catalog_cli_wiring(dataset_root: Path, tmp_path: Path, caps
     assert exit_code == 0
     report = json.loads(capsys.readouterr().out)
     assert report["albums_matched"] == 3
+
+
+def _build_challenge_bytes(
+    dataset_root: Path, tmp_path: Path, name: str, extra_args: list[str]
+) -> bytes:
+    albums_path = tmp_path / "albums.json"
+    albums_path.write_text(json.dumps({"albums": ALBUMS}))
+    output_path = tmp_path / name
+    exit_code = main(
+        [
+            "build-challenge-from-dump",
+            "--onehop-root",
+            str(dataset_root),
+            "--albums",
+            str(albums_path),
+            "--output",
+            str(output_path),
+            "--quiet",
+            *extra_args,
+        ]
+    )
+    assert exit_code == 0
+    return output_path.read_bytes()
+
+
+def test_build_challenge_from_dump_is_byte_identical_across_runs_and_search_paths(
+    dataset_root: Path, tmp_path: Path
+) -> None:
+    """Determinism (Atlas F4c): the same synthetic inputs give byte-identical
+    output on a second run, on both the DuckDB and the in-memory search paths,
+    and the two paths agree with each other (the documented parity claim)."""
+    duckdb_first = _build_challenge_bytes(dataset_root, tmp_path, "d1.json", [])
+    duckdb_second = _build_challenge_bytes(dataset_root, tmp_path, "d2.json", [])
+    memory_first = _build_challenge_bytes(dataset_root, tmp_path, "m1.json", ["--in-memory-search"])
+    memory_second = _build_challenge_bytes(
+        dataset_root, tmp_path, "m2.json", ["--in-memory-search"]
+    )
+
+    assert duckdb_first == duckdb_second
+    assert memory_first == memory_second
+    assert duckdb_first == memory_first
+    assert json.loads(duckdb_first)["paths"]  # not a vacuous pass

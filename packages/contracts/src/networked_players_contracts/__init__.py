@@ -29,11 +29,18 @@ from .connection_rounds import (
     connection_rounds_failures,
 )
 from .contributor_index import CONTRIBUTOR_INDEX_SCHEMA_VERSION, contributor_index_failures
+from .daily_manifest_pin import (
+    DAILY_MANIFEST_PIN_SCHEMA_VERSION,
+    advance_pin,
+    build_pin,
+    daily_manifest_pin_failures,
+)
 from .evidence_release_registry import (
     EVIDENCE_RELEASE_REGISTRY_SCHEMA_VERSION,
     evidence_release_registry_failures,
 )
 from .pathfinding_graph import PATHFINDING_GRAPH_SCHEMA_VERSIONS, pathfinding_graph_failures
+from .payload_budgets import PAYLOAD_BUDGETS_SCHEMA_VERSION, payload_budget_report
 from .prominence import PROMINENCE_SCHEMA_VERSION, prominence_failures
 from .public_artifacts import (
     PUBLIC_ARTIFACT_GROUPS,
@@ -57,17 +64,21 @@ __all__ = [
     "CONNECTION_ROUNDS_SCHEMA_VERSION",
     "CONNECTIVITY_SCHEMA_VERSION",
     "CONTRIBUTOR_INDEX_SCHEMA_VERSION",
+    "DAILY_MANIFEST_PIN_SCHEMA_VERSION",
     "EVIDENCE_RELEASE_REGISTRY_SCHEMA_VERSION",
     "PATHFINDING_GRAPH_SCHEMA_VERSIONS",
+    "PAYLOAD_BUDGETS_SCHEMA_VERSION",
     "PLAYABLE_COHORT_SCHEMA_VERSION",
     "PROMINENCE_SCHEMA_VERSION",
     "PUBLIC_ARTIFACT_GROUPS",
     "RECORD_ROUTES_SCHEMA_VERSION",
     "ROUNDS_SCHEMA_VERSION",
     "SEARCH_INDEX_SCHEMA_VERSION",
+    "advance_pin",
     "album_art_failures",
     "album_art_version",
     "album_credit_membership_failures",
+    "build_pin",
     "canonical_json",
     "challenge_failures",
     "connection_daily_manifest_failures",
@@ -76,8 +87,10 @@ __all__ = [
     "connectivity_failures",
     "content_hash",
     "contributor_index_failures",
+    "daily_manifest_pin_failures",
     "evidence_release_registry_failures",
     "pathfinding_graph_failures",
+    "payload_budget_report",
     "playable_cohort_failures",
     "prominence_failures",
     "public_album_catalog_failures",

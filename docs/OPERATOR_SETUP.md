@@ -1017,6 +1017,26 @@ uv run networked-players-catalog validate-connection-daily-manifest \
   --rounds apps/web/public/data/game/rounds.v1.json
 ```
 
+### 4. Advance the played-dates pin
+
+`data/integrity/daily-manifest-pin-v1.json` pins every already-played date (hash over
+`(date, generation, round_id, round_fingerprint)`), so a past date cannot be re-pointed at
+another valid round; `validate-public-artifacts` (and so `make check`) fails naming the
+first differing date. Advancing it is part of every extension, in the same change:
+
+```bash
+uv run networked-players-catalog advance-daily-manifest-pin \
+  --manifest apps/web/public/data/game/daily-manifest.v1.json \
+  --pin data/integrity/daily-manifest-pin-v1.json \
+  --through 2026-11-09
+```
+
+Choose a date that is safely in the past (strictly before today, UTC). Never pin a future
+date: those may still be rewritten at a generation cutover (ADR 0066). The command refuses
+to move backwards, to pin beyond the manifest's last date, to pin today or later, and to
+advance while the already-pinned prefix no longer matches the manifest. A cutover only
+rewrites dates after the pin, so it needs no pin change.
+
 ### Stop conditions
 
 - Extension raises on a version mismatch — the paired rounds artifact is a different

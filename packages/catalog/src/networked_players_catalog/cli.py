@@ -848,6 +848,20 @@ def _parser() -> argparse.ArgumentParser:
     )
     connection_daily_status.add_argument("--warn-within-days", type=int, default=14)
 
+    advance_pin_parser = subparsers.add_parser(
+        "advance-daily-manifest-pin",
+        help=(
+            "advance (or seed) the committed pin over already-played daily dates; refuses "
+            "to move backwards, to pin a date not strictly before --as-of (default today, "
+            "UTC), to pin beyond the manifest's last date, or to advance while the "
+            "already-pinned prefix no longer matches the manifest"
+        ),
+    )
+    advance_pin_parser.add_argument("--manifest", type=Path, required=True)
+    advance_pin_parser.add_argument("--pin", type=Path, required=True)
+    advance_pin_parser.add_argument("--through", required=True, help="YYYY-MM-DD")
+    advance_pin_parser.add_argument("--as-of", default=None, help="defaults to today (UTC)")
+
     measure_role_modes = subparsers.add_parser(
         "measure-role-mode-candidates",
         help=(
@@ -2078,6 +2092,21 @@ def _parser() -> argparse.ArgumentParser:
         type=Path,
         default=Path("data/albums/approved-pool-v1.json"),
         help="the owner-approved album pool; the catalog's master set must equal it",
+    )
+    validate_public_artifacts.add_argument(
+        "--daily-manifest-pin",
+        type=Path,
+        default=Path("data/integrity/daily-manifest-pin-v1.json"),
+        help="the committed pin over already-played daily dates (Atlas F4a)",
+    )
+    validate_public_artifacts.add_argument(
+        "--payload-budgets",
+        type=Path,
+        default=Path("data/integrity/payload-budgets-v1.json"),
+        help="committed payload-size budgets checked against --data-root (Atlas F4b)",
+    )
+    validate_public_artifacts.add_argument(
+        "--data-root", type=Path, default=Path("apps/web/public/data")
     )
 
     diff_artifact_version = subparsers.add_parser(
@@ -3729,6 +3758,24 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
         print(json.dumps(status, indent=2))
         return 1 if status["already_expired"] else 0
+
+    if args.command == "advance-daily-manifest-pin":
+        import sys
+
+        from networked_players_contracts import advance_pin
+
+        pin_manifest = json.loads(args.manifest.read_text())
+        existing_pin = json.loads(args.pin.read_text()) if args.pin.exists() else None
+        as_of = args.as_of or datetime.now(UTC).date().isoformat()
+        try:
+            new_pin = advance_pin(pin_manifest, existing_pin, args.through, as_of=as_of)
+        except ValueError as error:
+            print(f"error: {error}", file=sys.stderr)
+            return 2
+        args.pin.parent.mkdir(parents=True, exist_ok=True)
+        args.pin.write_text(json.dumps(new_pin, indent=2, sort_keys=True) + "\n")
+        print(json.dumps({"ok": True, "pinned_through": new_pin["pinned_through"]}, indent=2))
+        return 0
 
     if args.command == "measure-role-mode-candidates":
         from networked_players_graph_core.graph import CreditGraph
@@ -5533,13 +5580,28 @@ def main(argv: Sequence[str] | None = None) -> int:
             search_index=json.loads(args.search_index.read_text()),
             approved_pool=json.loads(args.approved_pool.read_text()),
         )
-        report = public_artifacts_failures(**public_artifacts)
+        report = public_artifacts_failures(
+            **public_artifacts,
+            daily_manifest_pin=json.loads(args.daily_manifest_pin.read_text()),
+        )
+        from networked_players_contracts import payload_budget_report
+
+        budget_report = payload_budget_report(
+            args.data_root, json.loads(args.payload_budgets.read_text())
+        )
+        report["payload_budgets"] = budget_report["failures"]
         ok = all(not failures for failures in report.values())
         print(
             json.dumps(
                 {
                     "ok": ok,
                     "failures": report,
+                    # Byte counts of published artifacts (publishable, not
+                    # performance data); warnings are data, never failures.
+                    "payload_budgets": {
+                        "measured": budget_report["measured"],
+                        "warnings": budget_report["warnings"],
+                    },
                     # Data, not a failure (ADR 0072 section 1, "Stated limit"):
                     # live artifacts built before declared lineage existed pass
                     # but are listed until their next rebuild stamps inputs.

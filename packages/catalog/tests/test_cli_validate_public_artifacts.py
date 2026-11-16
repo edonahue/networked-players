@@ -18,6 +18,7 @@ from networked_players_contracts.canonical import content_hash, stable_id_digest
 from networked_players_contracts.catalog import _catalog_version
 from networked_players_contracts.connection_rounds import round_content_fingerprint
 from networked_players_contracts.contributor_index import contributor_index_version
+from networked_players_contracts.daily_manifest_pin import build_pin
 from networked_players_contracts.evidence_release_registry import (
     evidence_release_registry_version,
 )
@@ -610,6 +611,14 @@ def _evidence_release_registry(catalog: dict[str, Any]) -> dict[str, Any]:
     return registry
 
 
+_PAYLOAD_BUDGETS = {
+    "schema_version": 1,
+    "graph_gzip_hard_bytes": 2_500_000,
+    "graph_gzip_warn_bytes": 2_000_000,
+    "data_total_raw_hard_bytes": 60_000_000,
+}
+
+
 def _write(path: Path, payload: dict[str, Any]) -> Path:
     path.write_text(json.dumps(payload))
     return path
@@ -620,7 +629,15 @@ def _write_all(tmp_path: Path) -> dict[str, Path]:
     routes_universe, routes_rounds = _routes_pair()
     pathfinding_graph = _pathfinding_graph(catalog)
     contributor_index = _contributor_index(catalog)
+    data_root = tmp_path / "data-root"
+    (data_root / "pathfinding").mkdir(parents=True)
+    _write(data_root / "pathfinding" / "graph.v4.json", pathfinding_graph)
     return {
+        "data_root": data_root,
+        "daily_manifest_pin": _write(
+            tmp_path / "daily-manifest-pin-v1.json", build_pin(_daily_manifest(), "2026-07-22")
+        ),
+        "payload_budgets": _write(tmp_path / "payload-budgets-v1.json", _PAYLOAD_BUDGETS),
         "catalog": _write(tmp_path / "albums.v1.json", catalog),
         "album_art": _write(tmp_path / "album-art.v1.json", _album_art(catalog)),
         "connection_universe": _write(
@@ -688,6 +705,12 @@ def _args(paths: dict[str, Path]) -> list[str]:
         str(paths["search_index"]),
         "--approved-pool",
         str(paths["approved_pool"]),
+        "--daily-manifest-pin",
+        str(paths["daily_manifest_pin"]),
+        "--payload-budgets",
+        str(paths["payload_budgets"]),
+        "--data-root",
+        str(paths["data_root"]),
     ]
 
 
@@ -712,6 +735,7 @@ def test_clean_set_exits_zero(tmp_path: Path, capsys) -> None:
         "evidence_release_registry": [],
         "search_index": [],
         "approved_pool": [],
+        "payload_budgets": [],
     }
 
 
@@ -758,6 +782,8 @@ def test_default_paths_point_at_the_real_repo_layout(tmp_path: Path, capsys, mon
         ),
         "apps/web/public/data/search/index.v1.json": _search_index(catalog, contributor_index),
         "data/albums/approved-pool-v1.json": _synthetic_pool(catalog),
+        "data/integrity/daily-manifest-pin-v1.json": build_pin(_daily_manifest(), "2026-07-22"),
+        "data/integrity/payload-budgets-v1.json": _PAYLOAD_BUDGETS,
     }
     for relative_path, payload in layout.items():
         full_path = tmp_path / relative_path
@@ -769,3 +795,80 @@ def test_default_paths_point_at_the_real_repo_layout(tmp_path: Path, capsys, mon
     assert exit_code == 0
     report = json.loads(capsys.readouterr().out)
     assert report["ok"] is True
+
+
+def test_changed_played_date_exits_one_and_names_the_date(tmp_path: Path, capsys) -> None:
+    paths = _write_all(tmp_path)
+    manifest = json.loads(paths["daily_manifest"].read_text())
+    manifest["schedule"][0]["round_id"] = "conn-0000000000"
+    paths["daily_manifest"].write_text(json.dumps(manifest))
+
+    assert main(_args(paths)) == 1
+    report = json.loads(capsys.readouterr().out)
+    assert any("2026-07-22" in f for f in report["failures"]["connection_daily_manifest"])
+
+
+def test_payload_budget_exceeded_exits_one(tmp_path: Path, capsys) -> None:
+    paths = _write_all(tmp_path)
+    budgets = {**_PAYLOAD_BUDGETS, "graph_gzip_hard_bytes": 10, "graph_gzip_warn_bytes": 5}
+    paths["payload_budgets"].write_text(json.dumps(budgets))
+
+    assert main(_args(paths)) == 1
+    report = json.loads(capsys.readouterr().out)
+    assert report["failures"]["payload_budgets"] != []
+
+
+def _pin_args(tmp_path: Path, through: str, as_of: str = "2026-11-16") -> list[str]:
+    return [
+        "advance-daily-manifest-pin",
+        "--manifest",
+        str(tmp_path / "manifest.json"),
+        "--pin",
+        str(tmp_path / "pin.json"),
+        "--through",
+        through,
+        "--as-of",
+        as_of,
+    ]
+
+
+def _schedule_manifest(days: int) -> dict[str, Any]:
+    from datetime import date, timedelta
+
+    start = date(2026, 11, 1)
+    return {
+        "schedule": [
+            {
+                "date": (start + timedelta(days=i)).isoformat(),
+                "generation": "gen-1",
+                "round_id": f"conn-{i:010x}",
+                "round_fingerprint": f"rfp-{i:016x}",
+            }
+            for i in range(days)
+        ]
+    }
+
+
+def test_advance_pin_cli_seeds_advances_and_refuses(tmp_path: Path, capsys) -> None:
+    manifest = _schedule_manifest(30)  # 2026-11-01 .. 2026-11-30
+    (tmp_path / "manifest.json").write_text(json.dumps(manifest))
+
+    assert main(_pin_args(tmp_path, "2026-11-05")) == 0
+    assert main(_pin_args(tmp_path, "2026-11-10")) == 0
+    pin = json.loads((tmp_path / "pin.json").read_text())
+    assert pin["pinned_through"] == "2026-11-10"
+    assert pin["entry_count"] == 10
+    capsys.readouterr()
+
+    # backwards, today-or-later, beyond the manifest: all refused, pin untouched
+    assert main(_pin_args(tmp_path, "2026-11-08")) == 2
+    assert main(_pin_args(tmp_path, "2026-11-16")) == 2
+    assert main(_pin_args(tmp_path, "2026-12-01", as_of="2026-12-31")) == 2
+    assert json.loads((tmp_path / "pin.json").read_text()) == pin
+
+    # a changed already-pinned date: advancing must not launder it
+    manifest["schedule"][2]["round_id"] = "conn-ffffffffff"
+    (tmp_path / "manifest.json").write_text(json.dumps(manifest))
+    assert main(_pin_args(tmp_path, "2026-11-12")) == 2
+    assert "2026-11-03" in capsys.readouterr().err
+    assert json.loads((tmp_path / "pin.json").read_text()) == pin

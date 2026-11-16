@@ -1,0 +1,6 @@
+{
+  "data_total_raw_hard_bytes": 60000000,
+  "graph_gzip_hard_bytes": 2500000,
+  "graph_gzip_warn_bytes": 2000000,
+  "schema_version": 1
+}
