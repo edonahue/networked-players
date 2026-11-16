@@ -1043,3 +1043,18 @@ def test_assemble_album_catalog_records_no_editorial_backbone_when_none_given(
         candidates = rank_album_candidates(dataset_root)
         catalog = assemble_album_catalog(graph, [], candidates, target_count=2)
     assert catalog["build_parameters"]["editorial_backbone_used"] is False
+
+
+def test_assemble_album_catalog_is_deterministic(dataset_root: Path) -> None:
+    """Determinism (Atlas F4c): assembling the same inputs twice, each time
+    over a freshly opened graph, yields byte-identical serialized output."""
+    editorial = [{"artist": "Alice", "title": "First Light"}]
+    serialized = []
+    for _ in range(2):
+        with CreditGraph.open(dataset_root) as graph:
+            candidates = rank_album_candidates(dataset_root)
+            catalog = assemble_album_catalog(graph, editorial, candidates, target_count=3)
+        serialized.append(json.dumps(catalog, indent=2, sort_keys=True))
+
+    assert serialized[0] == serialized[1]
+    assert len(json.loads(serialized[0])["albums"]) == 3

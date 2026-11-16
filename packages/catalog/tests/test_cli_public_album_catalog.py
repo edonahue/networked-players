@@ -1848,3 +1848,30 @@ def test_a_previous_catalog_without_build_parameters_is_reported_not_failed(
     code, stderr = _run_catalog_build(tmp_path, None, "--target-count", "2")
     assert code == 0
     assert "no previous build_parameters recorded" in stderr
+
+
+def test_building_the_same_inputs_twice_is_byte_identical(tmp_path: Path) -> None:
+    """Determinism (Atlas F4c): the same synthetic inputs must produce a
+    byte-identical catalog, so a rebuilt-but-unchanged catalog is a no-op diff."""
+    onehop_root = _write_onehop_dataset(tmp_path / "onehop")
+    masters_root = _write_masters_dataset(tmp_path / "masters")
+    policy_path = _write_release_format_policy(tmp_path / "policy.json")
+    exclusions_path = _write_exclusions(tmp_path / "exclusions.json")
+
+    outputs = []
+    for name in ("first.json", "second.json"):
+        output_path = tmp_path / name
+        args = _base_args(tmp_path, onehop_root=onehop_root, output=output_path)
+        args += [
+            "--release-format-policy",
+            str(policy_path),
+            "--masters-root",
+            str(masters_root),
+            "--studio-album-exclusions",
+            str(exclusions_path),
+        ]
+        assert main(args) == 0
+        outputs.append(output_path.read_bytes())
+
+    assert outputs[0] == outputs[1]
+    assert json.loads(outputs[0])["albums"]  # not a vacuous empty-equals-empty pass
