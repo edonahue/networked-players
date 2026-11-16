@@ -78,6 +78,12 @@ the filename never changes when the schema gains new, backward-compatible fields
   standard forbidden substrings/phrases (see `_CATALOG_FORBIDDEN_SUBSTRINGS`/
   `_CATALOG_FORBIDDEN_PHRASES` in `analysis.py`, mirrored in the contracts validator).
 
+> **Note, 2026-11-15:** the "v1-shaped as of this contract's writing" statement above is stale.
+> The committed `albums.v1.json` has been `catalog_schema_version` 2 since the Round 1 rebuild
+> (every album carries `selection_source`/`featured`/`expansion_round`). Its album set must also
+> equal the approved pool (`approved-pool-v1.md`); `build-public-album-catalog --approved-pool`
+> enforces that at build time, and `validate-public-artifacts` in CI.
+
 ## Validators
 
 - `networked_players_graph_core.analysis::validate_album_catalog` (raises

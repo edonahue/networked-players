@@ -221,3 +221,8 @@ full Playwright against the regenerated registry.
   matching) before it can join the registry's caveat flags.
 - The `expansion_round` per-album-uniform limitation must be resolved before any round
   beyond 0 that uses the `already_published` preservation lane.
+
+> **Note, 2026-11-15:** the "uniform `expansion_round`" limitation above was resolved in Round 1
+> (`previously_published_rounds` in `assemble_album_catalog`; the committed catalog holds rounds 0
+> and 1). Round 1 exists. Which albums may be published is now also checked against
+> `data/albums/approved-pool-v1.json` (ADR 0072 section 2).

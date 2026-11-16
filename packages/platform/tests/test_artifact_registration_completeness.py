@@ -63,6 +63,9 @@ _ARTIFACT_GROUPS_WITHOUT_A_PI_CHECK = frozenset(
     {
         "challenge",
         "album_hop_distances",
+        # data/albums/approved-pool-v1.json: a repository file, not a served
+        # artifact with an `artifact_version`; checked only by CI.
+        "approved_pool",
     }
 )
 
