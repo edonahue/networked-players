@@ -1,6 +1,7 @@
 @import "./tokens.css";
 @import "./motif.css";
 @import "./game.css";
+@import "./record.css";
 
 * {
   box-sizing: border-box;

@@ -143,7 +143,7 @@ test("an album page links to a contributor page that resolves", async ({
   await stubCoverArt(page);
 
   await page.goto(`/albums/${album.id}/`);
-  const contributorLink = page.locator("a.contributor-card").first();
+  const contributorLink = page.locator("a.roster-person__name").first();
   await expect(contributorLink).toBeVisible();
   const href = await contributorLink.getAttribute("href");
   expect(href).toMatch(/^\/contributors\/\d+\/$/);

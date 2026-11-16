@@ -1,13 +1,16 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import EvidencePanel from '../../components/EvidencePanel.astro';
-import RevealControls from '../../components/RevealControls.astro';
 import AlbumCard from '../../components/AlbumCard.astro';
+import RosterPerson from '../../components/RosterPerson.astro';
+import AlbumGuessMode from '../../components/AlbumGuessMode.astro';
+import { leadsTo, rosterFor, type Membership, type RosterGroup } from '../../data/albumRecord';
 import { buildHopViews } from '../../data/evidence';
 import type { AlbumV2, ChallengeV2 } from '../../data/challenge';
 import { coverFor } from '../../data/albumArt';
 import type { ContributorIndex } from '../../data/contributors';
 import challengeData from '../../../public/data/challenge.v3.json';
+import membershipData from '../../../public/data/albums/credit-membership.v1.json';
 import contributorIndexData from '../../../public/data/contributors/index.v1.json';
 
 const challenge = challengeData as ChallengeV2;
@@ -106,9 +109,44 @@ const nearbyAlbums = nearbyAlbumIds
   .filter((a): a is AlbumV2 => Boolean(a))
   .slice(0, 6);
 
+
+// --- The album as a record (roster + where these players lead) -----------
+const membership = membershipData as unknown as Membership;
+const roster = rosterFor(membership, album.id);
+const rosterTotal =
+  roster.groups.reduce((n, g) => n + g.people.length, 0);
+const ROSTER_VISIBLE = 30;
+const ALSO_VISIBLE = 12;
+const LEADS_VISIBLE = 8;
+const SHARED_NAMES = 4;
+
+// Split groups so at most `budget` people render in the page body; the
+// remainder sits in a native <details> (no JS), keeping the group headings.
+function splitGroups(groups: RosterGroup[], budget: number) {
+  const visible: RosterGroup[] = [];
+  const rest: RosterGroup[] = [];
+  let left = budget;
+  for (const group of groups) {
+    const shown = group.people.slice(0, Math.max(left, 0));
+    const hidden = group.people.slice(shown.length);
+    left -= shown.length;
+    if (shown.length) visible.push({ ...group, people: shown });
+    if (hidden.length) rest.push({ ...group, people: hidden });
+  }
+  return { visible, rest };
+}
+const { visible: visibleGroups, rest: restGroups } = splitGroups(roster.groups, ROSTER_VISIBLE);
+const alsoVisible = roster.alsoCredited.slice(0, ALSO_VISIBLE);
+const alsoRest = roster.alsoCredited.slice(ALSO_VISIBLE);
+
+const leads = leadsTo(membership, album, albums)
+  .slice(0, LEADS_VISIBLE)
+  .map((lead) => ({ lead, record: albumById.get(lead.albumId) }))
+  .filter((e): e is { lead: (typeof e)['lead']; record: AlbumV2 } => Boolean(e.record));
+
 const description = [
-  `Find the documented connections between ${album.title}`,
-  'and other albums, with credit evidence at every hop.',
+  `Who played on ${album.title} by ${album.artist}, the records those players lead to,`,
+  'and the credit evidence behind each documented connection.',
 ].join(' ');
 ---
 
@@ -132,158 +170,247 @@ const description = [
         )
       }
       <div>
-        <p class="eyebrow" style="margin-bottom:6px">Album</p>
+        <p class="eyebrow record-header__eyebrow">Album</p>
         <h1 class="h1-entity">{album.title}</h1>
-        <p class="lede" style="margin-top:6px;font-size:1rem">
+        <p class="record-header__meta">
           {album.artist}
           {album.year ? ` · ${album.year}` : ''}
         </p>
       </div>
     </div>
 
-    {
-      connectedPaths.length === 0 ? (
-        <p class="lede">
-          No documented connection is indexed from {album.title} yet.{' '}
-          <a href={`/explore/${album.id}/`}>Explore its documented credit network</a> instead, or{' '}
-          <a href={`/play/connect/?a=${album.id}`}>try connecting it to another record</a>.
-        </p>
-      ) : (
-        <>
-          <div class="mode-toggle" role="group" aria-label="Play mode">
-            <button type="button" data-reveal-mode="hide" aria-pressed="true">
-              Find the connection
-            </button>
-            <button type="button" data-reveal-mode="show" aria-pressed="false">
-              Reveal every path
-            </button>
-          </div>
+    <section class="record-section" aria-labelledby="roster-heading" data-record-roster>
+      <h2 id="roster-heading">Who played on this record</h2>
+      {
+        roster.groups.length === 0 ? (
+          <p class="record-section__intro">
+            No performers are documented for this record yet.
+          </p>
+        ) : (
+          <>
+            <p class="record-section__intro">
+              {roster.performerCount} {roster.performerCount === 1 ? 'player' : 'players'} credited
+              with a voice or an instrument, in the credits as released. Names link to a player's
+              page where one exists.
+            </p>
+            {visibleGroups.map((group) => (
+              <div class="roster-group" data-roster-group={group.key}>
+                <h3 class="roster-group__label">{group.label}</h3>
+                <ul class="roster-list">
+                  {group.people.map((person) => (
+                    <RosterPerson person={person} linkable={contributorIdsWithPages} />
+                  ))}
+                </ul>
+              </div>
+            ))}
+            {restGroups.length > 0 && (
+              <details class="record-more">
+                <summary>
+                  Show all {rosterTotal} players
+                </summary>
+                {restGroups.map((group) => (
+                  <div class="roster-group" data-roster-group={group.key}>
+                    <h3 class="roster-group__label">{group.label} (continued)</h3>
+                    <ul class="roster-list">
+                      {group.people.map((person) => (
+                        <RosterPerson person={person} linkable={contributorIdsWithPages} />
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </details>
+            )}
+          </>
+        )
+      }
 
-          {
-            connectedPaths.map(({ path, otherAlbum }, index) => {
-              const evidenceId = `play-${path.id}-evidence`;
+      {
+        roster.alsoCredited.length > 0 && (
+          <div class="record-also" data-record-also>
+            <h3 class="record-also__title">Also credited</h3>
+            <p class="record-also__note">
+              Writers, producers, engineers and others. These credits are evidence about the
+              record, but they do not make a connection.
+            </p>
+            <ul class="roster-list">
+              {alsoVisible.map((person) => (
+                <RosterPerson person={person} linkable={contributorIdsWithPages} />
+              ))}
+            </ul>
+            {alsoRest.length > 0 && (
+              <details class="record-more">
+                <summary>Show all {roster.alsoCredited.length} other credits</summary>
+                <ul class="roster-list">
+                  {alsoRest.map((person) => (
+                    <RosterPerson person={person} linkable={contributorIdsWithPages} />
+                  ))}
+                </ul>
+              </details>
+            )}
+          </div>
+        )
+      }
+    </section>
+
+    {
+      leads.length > 0 && (
+        <section class="record-section" aria-labelledby="leads-heading" data-record-leads>
+          <h2 id="leads-heading">Where these players lead</h2>
+          <p class="record-section__intro">
+            Other records in the catalog where some of the same people are credited as performers,
+            most shared players first. Records by {album.artist} are left out.
+          </p>
+          <ul class="leads-list">
+            {leads.map(({ lead, record }) => {
+              const named = lead.shared.slice(0, SHARED_NAMES);
+              const more = lead.shared.length - named.length;
               return (
-                <div
-                  class="play-path"
-                  data-play-path={path.id}
-                  data-reveal-scope
-                  style="margin-bottom:20px"
-                >
-                  <p class="path-card__sub" style="margin-bottom:12px">
-                    Connection {index + 1}:{' '}
-                    <span class="guess-target" data-guess-target data-revealed="false">
-                      {otherAlbum.title}
-                    </span>{' '}
-                    <button
-                      type="button"
-                      data-reveal-button
-                      data-reveal-label="Reveal"
-                      data-hide-label="Hide"
-                      aria-expanded="false"
-                      aria-controls={evidenceId}
-                    >
-                      Reveal
-                    </button>{' '}
-                    <a href={`/play/connect/?a=${album.id}&b=${otherAlbum.id}`}>
-                      Search this route in Connect Two Records →
+                <li class="lead" data-lead-album={record.id}>
+                  <h3 class="lead__title">
+                    <a href={`/albums/${record.id}/`}>{record.title}</a>
+                  </h3>
+                  <p class="lead__meta">
+                    {record.artist}
+                    {record.year ? ` · ${record.year}` : ''}
+                  </p>
+                  <p class="lead__shared">
+                    <span class="lead__shared-label">
+                      {lead.shared.length === 1 ? 'Shared player: ' : `${lead.shared.length} shared players: `}
+                    </span>
+                    {named.map((s) => s.name).join(', ')}
+                    {more > 0 ? ` and ${more} more` : ''}
+                  </p>
+                  <p class="lead__actions">
+                    <a class="record-link" href={`/play/connect/?a=${album.id}&b=${record.id}`}>
+                      Connect these two records →
                     </a>
                   </p>
-                  <EvidencePanel
-                    class="evidence-card"
-                    id={evidenceId}
-                    pathId={path.id}
-                    hops={buildHopViews(path.hops, releases, artists)}
-                    hidden
-                  >
-                    <div class="evidence-card__summary">
-                      <div class="evidence-card__endpoint">
-                        {albumCover && (
-                          <img
-                            class="cover-thumb"
-                            src={albumCover.uri150}
-                            width="56"
-                            height="56"
-                            loading="lazy"
-                            alt=""
-                            data-art-fallback="hide"
-                          />
-                        )}
-                        <span>{album.title}</span>
-                      </div>
-                      <span class="arrow" aria-hidden="true">→</span>
-                      <div class="evidence-card__endpoint">
-                        {(coverFor(otherAlbum.id) ?? otherAlbum.cover_image) && (
-                          <img
-                            class="cover-thumb"
-                            src={(coverFor(otherAlbum.id) ?? otherAlbum.cover_image)!.uri150}
-                            width="56"
-                            height="56"
-                            loading="lazy"
-                            alt=""
-                            data-art-fallback="hide"
-                          />
-                        )}
-                        <span>{otherAlbum.title}</span>
-                      </div>
-                    </div>
-                    <p class="path-card__sub">{path.description}</p>
-                  </EvidencePanel>
-                </div>
+                </li>
               );
-            })
-          }
+            })}
+          </ul>
+        </section>
+      )
+    }
 
-          {
-            contributors.length > 0 && (
-              <section aria-label="Linked contributors" style="margin-top:28px">
-                <p class="eyebrow" style="margin-bottom:10px">
-                  Contributors in these connections
-                </p>
-                <div class="contributor-grid">
-                  {
-                    contributors.map((artist) =>
-                      contributorIdsWithPages.has(artist.artist_id) ? (
-                        <a
-                          class="contributor-card"
-                          href={`/contributors/${artist.artist_id}/`}
-                        >
-                          <span class="contributor-card__name">{artist.name}</span>
-                          <span class="contributor-card__id">
-                            #{artist.artist_id} · linked identity
-                          </span>
-                        </a>
-                      ) : (
-                        <div class="contributor-card" title="Not yet in the published contributor index -- credited here, but without its own page yet">
-                          <span class="contributor-card__name">{artist.name}</span>
-                          <span class="contributor-card__id">
-                            #{artist.artist_id} · not yet indexed
-                          </span>
+    <section class="record-section" aria-labelledby="connections-heading" data-record-connections>
+      <h2 id="connections-heading">Documented connections</h2>
+      {
+        connectedPaths.length === 0 ? (
+          <p class="record-section__intro">
+            No documented connection is indexed from {album.title} yet.{' '}
+            <a href={`/explore/${album.id}/`}>Explore its documented credit network</a> instead, or{' '}
+            <a href={`/play/connect/?a=${album.id}`}>try connecting it to another record</a>.
+          </p>
+        ) : (
+          <>
+            <p class="record-section__intro">
+              Each path below runs through people credited as performers on the same recordings. The
+              credit evidence is open to read.
+            </p>
+            <div class="connections-toolbar">
+              <button
+                type="button"
+                class="guess-toggle"
+                data-guess-toggle
+                aria-pressed="false"
+                hidden
+              >
+                Guess the connections first
+              </button>
+            </div>
+            <ol class="connections-list">
+              {connectedPaths.map(({ path, otherAlbum }, index) => {
+                const evidenceId = `play-${path.id}-evidence`;
+                const otherCover = coverFor(otherAlbum.id) ?? otherAlbum.cover_image;
+                return (
+                  <li class="connection play-path" data-play-path={path.id} data-connection>
+                    <div class="connection__head">
+                      <h3 class="connection__title">
+                        <span data-guess-title>{otherAlbum.title}</span>
+                        <span class="connection__mask" data-guess-mask hidden>
+                          Connection {index + 1}: which record?
+                        </span>
+                      </h3>
+                      <button
+                        type="button"
+                        class="connection__reveal"
+                        data-guess-reveal
+                        aria-expanded="false"
+                        aria-controls={evidenceId + '-body'}
+                        hidden
+                      >
+                        Reveal
+                      </button>
+                      <a
+                        class="record-link"
+                        href={`/play/connect/?a=${album.id}&b=${otherAlbum.id}`}
+                      >
+                        Search this route in Connect Two Records →
+                      </a>
+                    </div>
+                    <details class="connection__body" id={evidenceId + '-body'} open={index === 0} data-guess-body>
+                      <summary>Credit evidence · {path.description}</summary>
+                      <EvidencePanel
+                        class="evidence-card"
+                        id={evidenceId}
+                        pathId={path.id}
+                        hops={buildHopViews(path.hops, releases, artists)}
+                      >
+                        <div class="evidence-card__summary">
+                          <div class="evidence-card__endpoint">
+                            {albumCover && (
+                              <img
+                                class="cover-thumb"
+                                src={albumCover.uri150}
+                                width="56"
+                                height="56"
+                                loading="lazy"
+                                alt=""
+                                data-art-fallback="hide"
+                              />
+                            )}
+                            <span>{album.title}</span>
+                          </div>
+                          <span class="arrow" aria-hidden="true">→</span>
+                          <div class="evidence-card__endpoint">
+                            {otherCover && (
+                              <img
+                                class="cover-thumb"
+                                src={otherCover.uri150}
+                                width="56"
+                                height="56"
+                                loading="lazy"
+                                alt=""
+                                data-art-fallback="hide"
+                              />
+                            )}
+                            <span>{otherAlbum.title}</span>
+                          </div>
                         </div>
-                      ),
-                    )
-                  }
-                </div>
-              </section>
-            )
-          }
+                      </EvidencePanel>
+                    </details>
+                  </li>
+                );
+              })}
+            </ol>
+          </>
+        )
+      }
+    </section>
 
-          {
-            nearbyAlbums.length > 0 && (
-              <section aria-label="Nearby records" style="margin-top:28px">
-                <p class="eyebrow" style="margin-bottom:10px">
-                  Nearby in the credit network
-                </p>
-                <p class="lede" style="margin-bottom:14px;font-size:0.92rem">
-                  Connected through shared contributors. The credit graph links them; it says
-                  nothing about how they sound.
-                </p>
-                <div class="album-grid">
-                  {nearbyAlbums.map((nearbyAlbum) => <AlbumCard album={nearbyAlbum} />)}
-                </div>
-              </section>
-            )
-          }
-        </>
+    {
+      nearbyAlbums.length > 0 && (
+        <section class="record-section" aria-label="Nearby records">
+          <h2 class="record-section__title">Nearby in the credit network</h2>
+          <p class="record-section__intro">
+            Connected through shared contributors. The credit graph links them; it says nothing
+            about how they sound.
+          </p>
+          <div class="album-grid">
+            {nearbyAlbums.map((nearbyAlbum) => <AlbumCard album={nearbyAlbum} />)}
+          </div>
+        </section>
       )
     }
 
@@ -303,4 +430,4 @@ const description = [
   </section>
 </BaseLayout>
 
-<RevealControls />
+<AlbumGuessMode />

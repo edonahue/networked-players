@@ -168,19 +168,13 @@ test("the retired v2 artifacts are no longer served", async ({ request }) => {
   }
 });
 
-test("an album page renders mode controls and reveals evidence", async ({
+test("an album page reads as a record and keeps guessing as an opt-in", async ({
   page,
   request,
 }) => {
-  // Cover art is optional product data, resolved from a wholly separate
-  // artifact (public/data/catalog/album-art.v1.json) with its own
-  // presence/version validation -- nothing ties "fewest documented paths"
-  // (what this helper picks for) to "has registry art". A regenerated
-  // artifact could legitimately leave the bounded album without art, in
-  // which case the page intentionally renders its placeholder -- this test
-  // stays art-agnostic (asserts the header art slot rendered SOMETHING,
-  // real cover or placeholder, not which branch). The real hotlink contract
-  // has its own dedicated, art-guaranteed test below.
+  // Cover art is optional product data (separate registry artifact), so this
+  // stays art-agnostic: the header slot rendered SOMETHING, real cover or
+  // placeholder. The hotlink contract has its own dedicated test below.
   const { album, pathCount } = await pickBoundedConnectedAlbum(request);
   await stubCoverArt(page);
 
@@ -188,60 +182,61 @@ test("an album page renders mode controls and reveals evidence", async ({
   await expect(
     page.locator(".play-header__cover, .play-header__placeholder"),
   ).toBeVisible();
-
   await expect(page.getByRole("heading", { level: 1 })).toContainText(
     album.title,
   );
-  await expect(
-    page.getByRole("button", { name: "Find the connection" }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: "Reveal every path" }),
-  ).toBeVisible();
 
-  // Evidence starts hidden (guess mode); revealing one path shows its evidence table.
-  await expect(page.locator(".evidence-card:not([hidden])")).toHaveCount(0);
-  const firstReveal = page.locator("[data-reveal-button]").first();
+  // Default view: everything readable, nothing masked or hidden by script.
+  const connections = page.locator("[data-connection]");
+  await expect(connections).toHaveCount(pathCount);
+  await expect(page.locator("[data-play-path]")).toHaveCount(pathCount);
+  await expect(page.locator("[data-guess-mask]:visible")).toHaveCount(0);
+  await expect(page.locator("[data-guess-title]:visible")).toHaveCount(
+    pathCount,
+  );
+  // The first connection's evidence table is open and visible.
+  await expect(
+    connections.first().locator(".evidence table").first(),
+  ).toBeVisible();
+  // Closed evidence opens with a plain click on its native summary.
+  const lastBody = connections.last().locator("[data-guess-body]");
+  if (pathCount > 1) {
+    await lastBody.locator("summary").click();
+    await expect(lastBody.locator(".evidence table").first()).toBeVisible();
+  }
+
+  // Guess mode: explicit opt-in. Titles and evidence hide, Reveal restores.
+  const toggle = page.locator("[data-guess-toggle]");
+  await expect(toggle).toHaveAttribute("aria-pressed", "false");
+  await toggle.click();
+  await expect(toggle).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("[data-guess-title]:visible")).toHaveCount(0);
+  await expect(page.locator("[data-guess-body]:visible")).toHaveCount(0);
+  await expect(page.locator("[data-guess-mask]:visible")).toHaveCount(
+    pathCount,
+  );
+
+  const firstReveal = page.locator("[data-guess-reveal]").first();
   await expect(firstReveal).toHaveText("Reveal");
   await expect(firstReveal).toHaveAttribute("aria-expanded", "false");
-  const controls = await firstReveal.getAttribute("aria-controls");
-  if (!controls) throw new Error("Reveal button is missing aria-controls");
-  await expect(page.locator(`#${controls}`)).toBeHidden();
-
   await firstReveal.click();
   await expect(firstReveal).toHaveText("Hide");
   await expect(firstReveal).toHaveAttribute("aria-expanded", "true");
   await expect(
-    page.locator(".evidence-card:not([hidden]) .evidence table").first(),
+    connections.first().locator(".evidence table").first(),
   ).toBeVisible();
-  await expect(page.locator(`#${controls}`)).toBeVisible();
-
+  await expect(connections.first().locator("[data-guess-title]")).toBeVisible();
   await firstReveal.click();
-  await expect(firstReveal).toHaveText("Reveal");
-  await expect(firstReveal).toHaveAttribute("aria-expanded", "false");
-  await expect(page.locator(`#${controls}`)).toBeHidden();
+  await expect(connections.first().locator("[data-guess-title]")).toBeHidden();
 
-  // "Reveal every path" unhides every evidence card on the page. Compared
-  // against the artifact-derived path count rather than a number read back
-  // off the same page, so this is an independent expectation.
-  await expect(page.locator("[data-play-path]")).toHaveCount(pathCount);
-  await page.getByRole("button", { name: "Reveal every path" }).click();
-  await expect(page.locator(".evidence-card:not([hidden])")).toHaveCount(
+  // Turning guess mode off restores the readable default.
+  await page.getByRole("button", { name: "Show everything" }).click();
+  await expect(page.locator("[data-guess-title]:visible")).toHaveCount(
     pathCount,
   );
-  await expect(
-    page.getByRole("button", { name: "Hide" }).first(),
-  ).toHaveAttribute("aria-expanded", "true");
+  await expect(page.locator("[data-guess-mask]:visible")).toHaveCount(0);
 
-  await page.getByRole("button", { name: "Find the connection" }).click();
-  await expect(page.locator(".evidence-card:not([hidden])")).toHaveCount(0);
-  await expect(page.locator("[data-reveal-button]").first()).toHaveAttribute(
-    "aria-expanded",
-    "false",
-  );
-
-  // Plan §12.7: minimal contributor cards and the play-from-here cross-link.
-  await expect(page.locator(".contributor-card").first()).toBeVisible();
+  // The play-from-here cross-link survives.
   await expect(
     page.locator(".play-from-here a[href='/play/connection/']"),
   ).toBeVisible();
@@ -347,57 +342,48 @@ test("an album with zero documented connections still offers a real way onward",
   await expect(page.locator("[data-connect-results]")).toBeHidden();
 });
 
-// No real catalog album currently has a non-indexed contributor (every
-// artist tied to a documented path already clears the index's own
-// inclusion rule) -- skip-guarded, honest defensive coverage for a future
-// regeneration where one might.
-test("a non-indexed contributor card explains itself instead of silently failing to link", async ({
+// The roster links a performer's name only when a contributor page exists;
+// everyone else renders as plain text rather than a dangling href.
+test("a roster name without a contributor page renders as plain text", async ({
   page,
   request,
 }) => {
-  const [challengeRes, contributorRes] = await Promise.all([
-    request.get("/data/challenge.v3.json"),
+  const [membershipRes, contributorRes] = await Promise.all([
+    request.get("/data/albums/credit-membership.v1.json"),
     request.get("/data/contributors/index.v1.json"),
   ]);
-  const { albums, paths } = (await challengeRes.json()) as {
-    albums: { id: string }[];
-    paths: {
-      from_album_id: string;
-      to_album_id: string;
-      hops: { artist_a_id: number; artist_b_id: number }[];
+  const membership = (await membershipRes.json()) as {
+    albums: {
+      album_id: string;
+      credits: { artist_id: number; name: string; role_text: string | null }[];
     }[];
   };
   const { contributors } = (await contributorRes.json()) as {
     contributors: { artist_id: number }[];
   };
   const indexedIds = new Set(contributors.map((c) => c.artist_id));
-
-  let targetAlbumId: string | null = null;
-  for (const album of albums) {
-    const connectedPaths = paths.filter(
-      (p) => p.from_album_id === album.id || p.to_album_id === album.id,
-    );
-    const hasNonIndexed = connectedPaths.some((p) =>
-      p.hops.some(
-        (h) => !indexedIds.has(h.artist_a_id) || !indexedIds.has(h.artist_b_id),
-      ),
-    );
-    if (hasNonIndexed) {
-      targetAlbumId = album.id;
-      break;
-    }
-  }
-  test.skip(
-    !targetAlbumId,
-    "no album with a non-indexed contributor exists in the real catalog today",
+  const target = membership.albums.find((a) =>
+    a.credits.some(
+      (c) => c.role_text === "Vocals" && !indexedIds.has(c.artist_id),
+    ),
   );
+  test.skip(!target, "every roster vocalist has a contributor page today");
+  if (!target) return;
+  const credit = target.credits.find(
+    (c) => c.role_text === "Vocals" && !indexedIds.has(c.artist_id),
+  )!;
 
   await stubCoverArt(page);
-  await page.goto(`/albums/${targetAlbumId}/`);
-  const nonLinkedCard = page.locator(
-    "div.contributor-card:has-text('not yet indexed')",
-  );
-  await expect(nonLinkedCard.first()).toBeVisible();
+  await page.goto(`/albums/${target.album_id}/`);
+  // The roster may tuck the name inside "Show all N players"; the HTML is
+  // there either way.
+  const plain = page.locator(".roster-person__name", {
+    hasText: credit.name.replace(/\s+\(\d+\)$/, ""),
+  });
+  expect(await plain.count()).toBeGreaterThan(0);
+  for (const el of await plain.all()) {
+    expect(await el.evaluate((n) => n.tagName)).toBe("SPAN");
+  }
 });
 
 // Phase 6: continuous navigation -- every documented connection shown on an
