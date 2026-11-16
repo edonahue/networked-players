@@ -139,9 +139,7 @@ def challenge_catalog_failures(challenge: Any, catalog: Any) -> list[str]:
     does not."""
     if not isinstance(challenge, dict) or not isinstance(catalog, dict):
         return []
-    return _version_failures(
-        "challenge", challenge.get("provenance"), catalog
-    ) + _album_failures(
+    return _version_failures("challenge", challenge.get("provenance"), catalog) + _album_failures(
         "challenge",
         challenge.get("albums"),
         _catalog_albums_by_id(catalog),

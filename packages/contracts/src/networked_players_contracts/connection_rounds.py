@@ -225,9 +225,7 @@ def _privacy_failures(artifact: dict[str, Any], *, name: str) -> list[str]:
     return failures
 
 
-def connection_rounds_failures(
-    universe: Any, rounds: Any, catalog: Any | None = None
-) -> list[str]:
+def connection_rounds_failures(universe: Any, rounds: Any, catalog: Any | None = None) -> list[str]:
     """Return every contract failure in a Connection Guesser universe.v1/
     rounds.v1 pair. With `catalog`, also verify the pool is current against it
     (catalog_version, album subset, title/artist agreement -- see

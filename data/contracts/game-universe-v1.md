@@ -38,6 +38,12 @@ Rules (enforced by `validate_connection_rounds_artifact` at generation time,
 `networked_players_contracts.connection_rounds` independently, and
 `apps/web/tests/game-data.spec.ts`):
 
+- **Current against the catalog.** `connection_rounds_failures(universe, rounds, catalog)`
+  (the catalog argument is optional; `validate-public-artifacts` supplies it) requires
+  `provenance.catalog_version` to equal the catalog's and every `albums[]` entry to exist in
+  the catalog with the same `title` and `act` (artist name). A subset is allowed: the
+  builder applies its own eligibility.
+
 - **PAN identity, never conflated with ANV.** `contributors[].name` is the
   canonical artist name; the as-credited spelling on a specific release lives
   only in a round's `EvidenceRow.credited_as`.
