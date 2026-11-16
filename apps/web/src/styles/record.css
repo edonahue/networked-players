@@ -106,6 +106,7 @@ a.roster-person__name {
   padding: 0;
   display: grid;
   gap: 14px;
+  grid-template-columns: minmax(0, 1fr);
 }
 .lead {
   display: grid;
@@ -174,6 +175,7 @@ a.roster-person__name {
   padding: 0;
   display: grid;
   gap: 26px;
+  grid-template-columns: minmax(0, 1fr);
 }
 .connection__head {
   display: flex;
