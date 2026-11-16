@@ -1,0 +1,223 @@
+/* The album page as a record: header, performer roster, "where these
+   players lead", documented connections. Tokens only; no new colours. */
+
+.record-header__meta {
+  margin: 6px 0 0;
+  font-size: 1rem;
+  color: var(--muted);
+}
+.record-header__eyebrow {
+  margin-bottom: 6px;
+}
+.record-section {
+  margin-top: 44px;
+}
+.record-section > h2,
+.record-section__title {
+  font-size: clamp(1.5rem, 3.4vw, 2.1rem);
+}
+.record-section__intro {
+  max-width: 720px;
+  margin: 10px 0 20px;
+  color: var(--muted);
+}
+.record-section [hidden] {
+  display: none !important;
+}
+
+/* Roster ------------------------------------------------------------------ */
+.roster-group {
+  margin-top: 22px;
+}
+.roster-group__label {
+  margin: 0 0 8px;
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+.roster-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
+  gap: 0 28px;
+}
+.roster-list li {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.roster-person__name {
+  font-weight: 600;
+  color: var(--ink-strong);
+}
+a.roster-person__name {
+  text-decoration-color: var(--accent);
+  text-underline-offset: 3px;
+}
+.roster-person__role {
+  font-size: 0.88rem;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.record-more {
+  margin-top: 22px;
+}
+.record-more > summary,
+.connection__body > summary {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  width: fit-content;
+  cursor: pointer;
+  font-weight: 700;
+  color: var(--accent-strong);
+}
+.record-more > summary:hover,
+.connection__body > summary:hover {
+  text-decoration: underline;
+}
+.record-also {
+  margin-top: 36px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+}
+.record-also__title {
+  margin: 0;
+  font-size: 1.15rem;
+}
+.record-also__note {
+  margin: 6px 0 4px;
+  color: var(--muted);
+  font-size: 0.92rem;
+  max-width: 720px;
+}
+
+/* Where these players lead ----------------------------------------------- */
+.leads-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 14px;
+}
+.lead {
+  display: grid;
+  gap: 4px;
+  padding: 14px 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+.lead__title {
+  margin: 0;
+  font-size: 1.15rem;
+}
+.lead__title a {
+  text-underline-offset: 3px;
+  text-decoration-color: var(--accent);
+}
+.lead__meta {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 0.76rem;
+  color: var(--muted);
+}
+.lead__shared {
+  margin: 0;
+  color: var(--ink);
+}
+.lead__shared-label {
+  color: var(--muted);
+}
+.lead__actions {
+  margin: 2px 0 0;
+}
+
+/* Links that need a 44px target on their own line */
+.record-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--accent-strong);
+  font-weight: 600;
+}
+
+/* Documented connections -------------------------------------------------- */
+.connections-toolbar {
+  margin-bottom: 18px;
+}
+.guess-toggle {
+  min-height: 44px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  border-radius: 999px;
+  padding: 8px 18px;
+  font: inherit;
+  font-size: 0.92rem;
+  cursor: pointer;
+}
+.guess-toggle[aria-pressed="true"] {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 16%, var(--surface));
+}
+.connections-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 26px;
+}
+.connection__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 14px;
+}
+.connection__title {
+  margin: 0;
+  font-size: 1.3rem;
+}
+.connection__mask {
+  color: var(--muted);
+  font-style: italic;
+}
+.connection__reveal {
+  min-height: 44px;
+  min-width: 44px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  border-radius: 999px;
+  padding: 8px 18px;
+  font: inherit;
+  cursor: pointer;
+}
+.connection__body {
+  margin-top: 6px;
+}
+
+.guess-toggle:focus-visible,
+.connection__reveal:focus-visible,
+.record-more > summary:focus-visible,
+.connection__body > summary:focus-visible,
+.record-link:focus-visible,
+.lead a:focus-visible,
+.roster-list a:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .record-section * {
+    transition: none !important;
+    animation: none !important;
+  }
+}

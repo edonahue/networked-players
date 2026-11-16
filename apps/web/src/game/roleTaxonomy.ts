@@ -252,3 +252,173 @@ export function rhythmSectionEdgeFilter(roleA: string, roleB: string): boolean {
 export function guitarPathsEdgeFilter(roleA: string, roleB: string): boolean {
   return isGuitarRole(roleA) && isGuitarRole(roleB);
 }
+
+/** Display-only grouping of performer credits for the album page's roster
+ * ("Who played on this record"). Not a port of any Python classification and
+ * not used by pathfinding: it only decides which heading a credit sits under.
+ * Membership in PERFORMER_TOKENS (isPerformerRole) stays the sole gate for
+ * "is this a performance credit". */
+export type PerformanceCategory =
+  | "vocals"
+  | "guitar-bass"
+  | "keys"
+  | "drums-percussion"
+  | "strings"
+  | "horns-winds"
+  | "other";
+
+export const PERFORMANCE_CATEGORY_ORDER: PerformanceCategory[] = [
+  "vocals",
+  "guitar-bass",
+  "keys",
+  "drums-percussion",
+  "strings",
+  "horns-winds",
+  "other",
+];
+
+export const PERFORMANCE_CATEGORY_LABEL: Record<PerformanceCategory, string> = {
+  vocals: "Vocals",
+  "guitar-bass": "Guitar and bass",
+  keys: "Keys and synths",
+  "drums-percussion": "Drums and percussion",
+  strings: "Strings",
+  "horns-winds": "Horns and woodwinds",
+  other: "Other performers",
+};
+
+const CATEGORY_TOKENS: Record<
+  Exclude<PerformanceCategory, "other">,
+  Set<string>
+> = {
+  vocals: new Set([
+    "vocals",
+    "lead vocals",
+    "co-lead vocals",
+    "backing vocals",
+    "background vocals",
+    "additional vocals",
+    "choir",
+    "chorus",
+    "voice",
+    "rap",
+    "spoken word",
+    "soprano vocals",
+    "tenor vocals",
+    "alto vocals",
+    "baritone vocals",
+    "bass vocals",
+    "human beatbox",
+    "whistling",
+    "featuring",
+    "vocoder",
+    "talk box",
+  ]),
+  "guitar-bass": new Set([
+    ...GUITAR_TOKENS,
+    "bass",
+    "bass guitar",
+    "double bass",
+    "upright bass",
+    "banjo",
+    "mandolin",
+    "ukulele",
+    "sitar",
+    "zither",
+    "dulcimer",
+    "bouzouki",
+    "kora",
+    "autoharp",
+    "dobro",
+  ]),
+  keys: new Set([
+    "piano",
+    "electric piano",
+    "organ",
+    "hammond organ",
+    "keyboards",
+    "synthesizer",
+    "synth",
+    "accordion",
+    "harpsichord",
+    "celesta",
+    "theremin",
+    "moog",
+    "mellotron",
+    "clavinet",
+    "rhodes",
+    "wurlitzer",
+  ]),
+  "drums-percussion": new Set([
+    "drums",
+    "percussion",
+    "congas",
+    "bongos",
+    "timpani",
+    "tabla",
+    "vibraphone",
+    "marimba",
+    "xylophone",
+    "tambourine",
+    "cowbell",
+    "steel drums",
+    "turntables",
+    "scratches",
+  ]),
+  strings: new Set([
+    "violin",
+    "viola",
+    "cello",
+    "fiddle",
+    "harp",
+    "concertmaster",
+    "strings",
+    "orchestra",
+  ]),
+  "horns-winds": new Set([
+    "horns",
+    "trumpet",
+    "trombone",
+    "tuba",
+    "french horn",
+    "cornet",
+    "flugelhorn",
+    "saxophone",
+    "alto saxophone",
+    "tenor saxophone",
+    "baritone saxophone",
+    "soprano saxophone",
+    "clarinet",
+    "flute",
+    "piccolo",
+    "oboe",
+    "bassoon",
+    "bagpipes",
+    "harmonica",
+    "recorder",
+    "didgeridoo",
+    "whistle",
+    "melodica",
+    "kazoo",
+  ]),
+};
+
+/** The display category of the first performer component in `roleText`, or
+ * `null` when no component is a performer token (a non-performance credit).
+ * Components that are performer tokens but not in a named instrument family
+ * (e.g. "performer", "musician", "soloist") land in "other". */
+export function performanceCategory(
+  roleText: string | null,
+): PerformanceCategory | null {
+  if (!roleText) return null;
+  for (const raw of roleText.split(",")) {
+    const component = normalizeComponent(raw);
+    if (!PERFORMER_TOKENS.has(component)) continue;
+    for (const category of PERFORMANCE_CATEGORY_ORDER) {
+      if (category === "other") continue;
+      if (CATEGORY_TOKENS[category].has(component)) return category;
+    }
+    return "other";
+  }
+  return null;
+}
