@@ -24,7 +24,8 @@ direction ([GRAPH_EXPANSION_DIRECTION.md](GRAPH_EXPANSION_DIRECTION.md)), campai
 The next phase is Campaign "Atlas"
 ([ADR 0072](decisions/0072-campaign-atlas-lineage-approved-pool-collections.md)). Work-package
 status, acceptance tests and owner decisions live in [CAMPAIGN.md](CAMPAIGN.md); this list is
-the order only.
+the order only. Tranche 1's code is merged; see
+[ATLAS_TRANCHE_1_REPORT.md](ATLAS_TRANCHE_1_REPORT.md) for what shipped and what is not yet proven.
 
 1. **Tranche 1 — safe to rebuild, worth arriving at.** No catalog growth. Catalog-aware
    artifact checks and declared lineage, a committed approved-album pool with a two-way check,
