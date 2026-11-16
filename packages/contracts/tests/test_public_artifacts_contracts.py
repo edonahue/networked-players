@@ -24,10 +24,13 @@ from networked_players_contracts.prominence import prominence_version
 from networked_players_contracts.search_index import search_index_version
 
 _SNAPSHOT = "20260601"
-_CATALOG_VERSION = "catalog-v1-20260601-abc123abc123"
 
 
 # --- catalog + album-art registry -------------------------------------------
+
+
+_FIXTURE_TITLES = {"master-1": "First Light", "master-2": "Third Wave"}
+_FIXTURE_ARTISTS = {"master-1": "Alice", "master-2": "Cara"}
 
 
 def _catalog_album(album_id: str, *, artist_id: int, main_release_id: int) -> dict[str, Any]:
@@ -35,9 +38,9 @@ def _catalog_album(album_id: str, *, artist_id: int, main_release_id: int) -> di
         "id": album_id,
         "master_id": None,
         "main_release_id": main_release_id,
-        "title": album_id.title(),
+        "title": _FIXTURE_TITLES.get(album_id, album_id.title()),
         "artist_id": artist_id,
-        "artist": "Alice",
+        "artist": _FIXTURE_ARTISTS.get(album_id, "Alice"),
         "year": 1995,
     }
 
@@ -50,7 +53,7 @@ def _catalog() -> dict[str, Any]:
     return {
         "catalog_version": _catalog_version(albums, _SNAPSHOT),
         "snapshot_date": _SNAPSHOT,
-        "generated_by": "networked-players-catalog build-album-catalog 0.1.0",
+        "generated_by": "networked-players-catalog build-master-2atalog 0.1.0",
         "albums": albums,
     }
 
@@ -79,7 +82,7 @@ def _album_art_registry() -> dict[str, Any]:
 
 # --- Connection Guesser ------------------------------------------------------
 
-_CONNECTION_ROUND_ID = f"conn-{stable_id_digest('1h', 'album-a', 'album-c', '700')}"
+_CONNECTION_ROUND_ID = f"conn-{stable_id_digest('1h', 'master-1', 'master-2', '700')}"
 
 
 def _connection_round() -> dict[str, Any]:
@@ -90,7 +93,7 @@ def _connection_round() -> dict[str, Any]:
         "difficulty": "hard",
         "endpoints": [
             {
-                "id": "album-a",
+                "id": "master-1",
                 "title": "First Light",
                 "year": 1995,
                 "act": "Alice",
@@ -98,7 +101,7 @@ def _connection_round() -> dict[str, Any]:
                 "art": None,
             },
             {
-                "id": "album-c",
+                "id": "master-2",
                 "title": "Third Wave",
                 "year": 1996,
                 "act": "Cara",
@@ -111,7 +114,7 @@ def _connection_round() -> dict[str, Any]:
         "clues": [],
         "evidence": [
             {
-                "release_ref": "album-a",
+                "release_ref": "master-1",
                 "release_title": "First Light",
                 "contributor_id": 700,
                 "credited_as": "Xavier",
@@ -119,7 +122,7 @@ def _connection_round() -> dict[str, Any]:
                 "credit_scope": "release_credit",
             },
             {
-                "release_ref": "album-c",
+                "release_ref": "master-2",
                 "release_title": "Third Wave",
                 "contributor_id": 700,
                 "credited_as": "Xavier",
@@ -142,7 +145,7 @@ _CONNECTION_PROVENANCE = {
     "license": "See docs/DATA_AND_RIGHTS.md.",
     "snapshot_date": _SNAPSHOT,
     "generated_by": "networked-players-catalog build-connection-rounds 0.1.0",
-    "catalog_version": _CATALOG_VERSION,
+    "catalog_version": _catalog()["catalog_version"],
     "pool_version": "connection-v1-20260601-def456def456",
     "artifact_version": _connection_artifact_version([_connection_round()]),
     "note": "Real records, not synthetic.",
@@ -155,7 +158,7 @@ def _connection_universe() -> dict[str, Any]:
         "provenance": dict(_CONNECTION_PROVENANCE),
         "albums": [
             {
-                "id": "album-a",
+                "id": "master-1",
                 "title": "First Light",
                 "act": "Alice",
                 "act_id": 100,
@@ -164,7 +167,7 @@ def _connection_universe() -> dict[str, Any]:
                 "art": None,
             },
             {
-                "id": "album-c",
+                "id": "master-2",
                 "title": "Third Wave",
                 "act": "Cara",
                 "act_id": 300,
@@ -176,15 +179,15 @@ def _connection_universe() -> dict[str, Any]:
         "contributors": [{"id": 700, "name": "Xavier", "role_category": "guitar"}],
         "releases": [
             {
-                "id": "album-a",
-                "album_id": "album-a",
+                "id": "master-1",
+                "album_id": "master-1",
                 "title": "First Light",
                 "year": 1995,
                 "catalog_stamp": "DISCOGS-1",
             },
             {
-                "id": "album-c",
-                "album_id": "album-c",
+                "id": "master-2",
+                "album_id": "master-2",
                 "title": "Third Wave",
                 "year": 1996,
                 "catalog_stamp": "DISCOGS-2",
@@ -192,14 +195,14 @@ def _connection_universe() -> dict[str, Any]:
         ],
         "credits": [
             {
-                "release_id": "album-a",
+                "release_id": "master-1",
                 "contributor_id": 700,
                 "role_text": "Guitar",
                 "role_category": "guitar",
                 "credit_scope": "release_credit",
             },
             {
-                "release_id": "album-c",
+                "release_id": "master-2",
                 "contributor_id": 700,
                 "role_text": "Guitar",
                 "role_category": "guitar",
@@ -225,7 +228,7 @@ def _daily_manifest() -> dict[str, Any]:
     return {
         "schema_version": 1,
         "mode": "connection_guesser_one_hop",
-        "catalog_version": _CATALOG_VERSION,
+        "catalog_version": _catalog()["catalog_version"],
         "pool_version": _CONNECTION_PROVENANCE["pool_version"],
         "artifact_version": _CONNECTION_PROVENANCE["artifact_version"],
         "generated_at": "2026-07-22T00:00:00+00:00",
@@ -302,7 +305,7 @@ def _routes_provenance(
         "generated_by": "networked-players-catalog build-record-routes 0.1.0",
         "graph_core_version": "0.1.0",
         "note": "Real path evidence.",
-        "catalog_version": _CATALOG_VERSION,
+        "catalog_version": _catalog()["catalog_version"],
         "artifact_version": (f"routes-artifact-v1-{_SNAPSHOT}-{content_hash(payload, length=12)}"),
     }
 
