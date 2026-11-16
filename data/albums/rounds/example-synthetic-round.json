@@ -18,6 +18,8 @@
     "studio_album_exclusions": "data/albums/studio-album-master-exclusions-v1.json",
     "candidates": "local/example/candidates.json",
     "approved_pool": "data/albums/approved-pool-v1.json",
+    "daily_manifest_pin": "data/integrity/daily-manifest-pin-v1.json",
+    "payload_budgets": "data/integrity/payload-budgets-v1.json",
     "editorial_albums": "local/example/editorial-albums.json",
     "artist_family_exclusions": { "path": null, "reason": "example round does not use it" },
     "featured_albums": { "path": null, "reason": "example round does not use it" },

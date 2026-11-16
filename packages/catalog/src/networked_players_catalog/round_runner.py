@@ -117,6 +117,12 @@ INPUT_SPECS: dict[str, tuple[str, str | None]] = {
     "studio_album_exclusions": ("file", "build-public-album-catalog"),
     "candidates": ("file", "build-public-album-catalog"),
     "approved_pool": ("file", "round verify (validate-public-artifacts has no pool-less mode)"),
+    # The pin over already-played daily dates and the payload budgets are
+    # read by `validate-public-artifacts`. They are explicit round inputs so
+    # the verify stage checks THIS round's output against them instead of
+    # silently falling back to the repository's committed defaults.
+    "daily_manifest_pin": ("file", "round verify (played daily dates must not change)"),
+    "payload_budgets": ("file", "round verify (payload-size budgets)"),
     "artist_family_exclusions": ("file", None),
     "featured_albums": ("file", None),
     "editorial_albums": ("file", None),
@@ -1429,6 +1435,9 @@ def _validate_argv(ctx: Ctx) -> list[str]:
         "--evidence-release-registry", str(ctx.o(EVIDENCE)),
         "--search-index", str(ctx.o(SEARCH)),
         "--approved-pool", str(ctx.inp("approved_pool")),
+        "--daily-manifest-pin", str(ctx.inp("daily_manifest_pin")),
+        "--payload-budgets", str(ctx.inp("payload_budgets")),
+        "--data-root", str(ctx.out),
     ]  # fmt: skip
 
 

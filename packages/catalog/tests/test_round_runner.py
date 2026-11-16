@@ -306,6 +306,26 @@ def world(tmp_path_factory: pytest.TempPathFactory) -> dict[str, Any]:
         "candidates": candidates,
     }
     prev = _build_previous_artifacts(root, onehop, masters, dict(inputs))
+    # A pin over the first already-played date of the previous schedule and a
+    # budgets file: both are explicit round inputs read by the verify stage.
+    from networked_players_contracts import advance_pin
+
+    prev_manifest = json.loads((prev / rr.DAILY_MANIFEST).read_text())
+    first_date = min(entry["date"] for entry in prev_manifest["schedule"])
+    pin = root / "daily-pin.json"
+    pin.write_text(json.dumps(advance_pin(prev_manifest, None, first_date, as_of="2099-01-01")))
+    budgets = root / "budgets.json"
+    budgets.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "graph_gzip_hard_bytes": 2_500_000,
+                "graph_gzip_warn_bytes": 2_000_000,
+                "data_total_raw_hard_bytes": 60_000_000,
+            }
+        )
+    )
+    inputs = {**inputs, "daily_manifest_pin": pin, "payload_budgets": budgets}
     return {
         "root": root,
         "prev": prev,

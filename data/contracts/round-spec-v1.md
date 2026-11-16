@@ -35,13 +35,18 @@ Every key of `inputs` must be present. Each is either a path string, or
 `{"path": null, "reason": "<non-empty text>"}` when this round genuinely does not use it.
 
 `onehop_root`, `masters_root`, `release_format_policy`, `studio_album_exclusions`,
-`candidates`, `approved_pool`, `artist_family_exclusions`, `featured_albums`,
+`candidates`, `approved_pool`, `daily_manifest_pin`, `payload_budgets`,
+`artist_family_exclusions`, `featured_albums`,
 `editorial_albums`, `personal_seed`, `graph_rich_selection`, `coverage_gap_candidates`,
 `album_art_cache_dir`.
 
 Some are required by a builder (the first six, and `album_art_cache_dir` for a real art run):
 a `null` there is a valid spec but fails `round plan`, naming the builder. `approved_pool` is
 required in this version because `validate-public-artifacts` has no pool-less mode.
+`daily_manifest_pin` and `payload_budgets` are required for the same reason: the verify stage
+passes them to `validate-public-artifacts` together with the round's own output directory, so a
+round is checked against the committed pin over already-played daily dates (a round must never
+change one) and the committed payload budgets, not against whatever a default path resolves to.
 
 ## Parameters never come from code defaults
 
