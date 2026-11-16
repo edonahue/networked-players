@@ -201,6 +201,8 @@ function init(root: HTMLElement) {
     status!.textContent = `${r} ${r === 1 ? "record" : "records"}, ${p} ${p === 1 ? "player" : "players"}. Use the up and down arrow keys to review.`;
   }
 
+  let dismissed = false;
+
   function ensureLoaded() {
     if (index || loading) return;
     loading = true;
@@ -215,7 +217,9 @@ function init(root: HTMLElement) {
       })
       .finally(() => {
         loading = false;
-        render();
+        // A slow (or failed) load must not reopen a panel the visitor has
+        // already dismissed with Escape or by moving focus away.
+        if (!dismissed) render();
       });
   }
 
@@ -225,6 +229,8 @@ function init(root: HTMLElement) {
   }
 
   function openMobile() {
+    dismissed = false;
+    document.dispatchEvent(new CustomEvent("np:search-open"));
     root.classList.add("is-open");
     trigger?.setAttribute("aria-expanded", "true");
     input!.focus();
@@ -236,9 +242,16 @@ function init(root: HTMLElement) {
     if (refocus) trigger?.focus();
   }
 
-  input.addEventListener("focus", ensureLoaded);
+  input.addEventListener("focus", () => {
+    // Coming back to the field is a fresh request for results: a load that
+    // finished (or failed) while the field was dismissed shows up now.
+    dismissed = false;
+    ensureLoaded();
+    if (!loading) render();
+  });
   input.addEventListener("input", () => {
     failed = false; // a new keystroke retries a failed load
+    dismissed = false;
     ensureLoaded();
     render();
   });
@@ -259,6 +272,7 @@ function init(root: HTMLElement) {
       }
     } else if (event.key === "Escape") {
       event.preventDefault();
+      dismissed = true;
       if (!panel.hidden) setOpen(false);
       else if (root.classList.contains("is-open")) closeMobile(true);
     }
@@ -273,7 +287,14 @@ function init(root: HTMLElement) {
   root.addEventListener("focusout", (event) => {
     const next = event.relatedTarget as Node | null;
     if (next && root.contains(next)) return;
+    dismissed = true;
     setOpen(false);
+  });
+  // Opening the small-screen menu closes the search layer: both sit in the
+  // same strip under the header bar and would otherwise overlap.
+  document.addEventListener("np:menu-open", () => {
+    dismissed = true;
+    if (root.classList.contains("is-open")) closeMobile(false);
   });
 
   // Mobile: the trigger reveals the field as a second layer under the header
