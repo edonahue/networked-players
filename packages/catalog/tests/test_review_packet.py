@@ -199,6 +199,26 @@ def test_accepted_directories_are_git_ignored() -> None:
         rp.require_review_output(REPO_ROOT / "apps" / "web" / "public" / "x.html")
 
 
+@pytest.mark.parametrize(
+    "lookalike", ["docs/data/private/x.html", "packages/catalog/data/private/deep/x.html"]
+)
+def test_lookalike_directories_inside_the_repo_are_refused(lookalike: str) -> None:
+    """Only the repository root's `data/private/` is ignored (a directory named
+    `local` is ignored anywhere). A `data/private/` elsewhere in the tree is
+    ordinary tracked space: a packet written there would be swept up by
+    `git add`. Git's own answer decides, not the directory names."""
+    target = REPO_ROOT / lookalike
+    assert (
+        subprocess.run(
+            ["git", "check-ignore", "-q", lookalike], cwd=REPO_ROOT, check=False
+        ).returncode
+        != 0
+    ), "fixture assumption: this path is not git-ignored"
+    with pytest.raises(rp.ReviewPacketError, match="not git-ignored"):
+        rp.require_review_output(target)
+    assert not target.exists()
+
+
 def test_already_published_and_pool_flags() -> None:
     catalog = {"albums": [{"master_id": 102}]}
     pool = {"albums": [{"master_id": 103, "round": 0, "selection_source": "editorial"}]}

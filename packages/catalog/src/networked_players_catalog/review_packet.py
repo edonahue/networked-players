@@ -39,6 +39,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import subprocess
 from pathlib import Path
 from typing import Any
 
@@ -79,11 +80,28 @@ class ReviewPacketError(ValueError):
     """Bad input or a refused output path."""
 
 
+def _enclosing_git_root(path: Path) -> Path | None:
+    for parent in path.parents:
+        if (parent / ".git").exists():
+            return parent
+    return None
+
+
 def require_review_output(output: Path) -> None:
-    """Refuse any output that does not resolve under `data/private/` or
-    `local/` (both git-ignored), and anything under `apps/web/public/`.
-    Resolves first so `..` and symlinks cannot escape."""
-    parts = output.resolve().parts
+    """Refuse any output that could end up committed or published.
+
+    The path is resolved first, so `..` and symlinks cannot escape. Then:
+
+    - anything under `apps/web/public/` is refused;
+    - the path must sit under a `data/private/` or `local/` directory; and
+    - when the path is inside a Git work tree, Git itself must report it as
+      ignored. The directory names alone are not enough: only the repository
+      root's `data/private/` and `local/` are ignored, so a look-alike such as
+      `docs/data/private/` would otherwise be accepted and then swept up by an
+      ordinary `git add`.
+    """
+    resolved = output.resolve()
+    parts = resolved.parts
     if any(parts[i : i + 3] == ("apps", "web", "public") for i in range(len(parts) - 2)):
         raise ReviewPacketError(
             f"refusing to write a review packet under apps/web/public/: {output}"
@@ -98,6 +116,25 @@ def require_review_output(output: Path) -> None:
     if not (in_private or in_local):
         raise ReviewPacketError(
             f"review packets must be written under data/private/ or local/ (got {output})"
+        )
+    root = _enclosing_git_root(resolved)
+    if root is None:
+        return  # not inside any repository: nothing here can be committed
+    try:
+        ignored = subprocess.run(
+            ["git", "-C", str(root), "check-ignore", "-q", "--", str(resolved)],
+            capture_output=True,
+            check=False,
+        ).returncode
+    except OSError as exc:
+        raise ReviewPacketError(
+            f"cannot confirm {output} is git-ignored (git unavailable: {exc}); refusing to write"
+        ) from exc
+    if ignored != 0:
+        raise ReviewPacketError(
+            f"refusing to write a review packet to {output}: it is inside the repository "
+            "but not git-ignored, so it could be committed. Use the repository root's "
+            "data/private/ or local/."
         )
 
 
@@ -481,6 +518,18 @@ var Core = (function () {
     return el;
   }
   function $(id) { return document.getElementById(id); }
+  // Clicking a cluster selects it without re-rendering (a re-render would
+  // drop focus from the title or note field being edited), so the outline and
+  // aria-current are updated in place. Shortcuts act on state.cur, and what is
+  // highlighted must always be what they act on.
+  function markCurrentCluster() {
+    var secs = document.querySelectorAll("section.cluster");
+    for (var n = 0; n < secs.length; n++) {
+      var on = n === state.cur;
+      secs[n].className = "cluster" + (on ? " cur" : "");
+      if (on) secs[n].setAttribute("aria-current", "true"); else secs[n].removeAttribute("aria-current");
+    }
+  }
   function fmt(v, d) { return v === null || v === undefined ? "n/a" : (typeof v === "number" && d !== undefined ? v.toFixed(d) : String(v)); }
   function download(name, obj) {
     var blob = new Blob([JSON.stringify(obj, null, 2) + "\n"], { type: "application/json" });
@@ -631,7 +680,7 @@ var Core = (function () {
     var main = $("main"); main.textContent = "";
     list.forEach(function (c, i) {
       var s = cl(c);
-      var sec = h("section", { "class": "cluster" + (i === state.cur ? " cur" : ""), "aria-label": "Cluster " + c.index, "aria-current": i === state.cur ? "true" : false, on: { click: function () { state.cur = i; } } });
+      var sec = h("section", { "class": "cluster" + (i === state.cur ? " cur" : ""), "aria-label": "Cluster " + c.index, "aria-current": i === state.cur ? "true" : false, on: { click: function () { state.cur = i; markCurrentCluster(); } } });
       sec.appendChild(h("h2", { text: "Cluster " + c.index + " - " + (s.status || "undecided") }));
       sec.appendChild(h("p", { "class": "lede", text: c.albums.length + " records, " + fmt(c.artist_count) + " artists; internal density " + fmt(c.internal_density, 2) + " (share of record pairs that share performers); years " + fmt(c.year_min) + "-" + fmt(c.year_max) + " (span " + fmt(c.year_span) + ")." }));
       sec.appendChild(h("p", { text: "Bridge players (performers on 2+ of these records): " + (c.bridge_players.map(function (b) { return b.name + " (" + b.album_count + ")"; }).join(", ") || "none") }));
