@@ -6,9 +6,17 @@
 import { expect, test } from "@playwright/test";
 import {
   picker,
-  selectAlbum,
+  selectAlbumById,
   selectRouteFilter,
 } from "./helpers/connectPicker";
+import { catalogFacts } from "./helpers/catalogFacts";
+
+// Albums are derived from the committed artifacts by rule (see
+// helpers/catalogFacts.ts), never named here.
+const facts = await catalogFacts();
+const CONNECTED = facts.connected;
+const RHYTHM = facts.rhythm;
+const NEGATIVE = facts.negative;
 
 test("the empty state is visible before any search and hides once a search starts", async ({
   page,
@@ -16,8 +24,8 @@ test("the empty state is visible before any search and hides once a search start
   await page.goto("/play/connect/");
   await expect(page.locator("[data-connect-empty-state]")).toBeVisible();
 
-  await selectAlbum(page, "a", "Discovery");
-  await selectAlbum(page, "b", "Joshua Tree");
+  await selectAlbumById(page, "a", CONNECTED.a);
+  await selectAlbumById(page, "b", CONNECTED.b);
   await page.locator("[data-connect-search]").click();
 
   await expect(page.locator("[data-connect-empty-state]")).toBeHidden();
@@ -31,15 +39,15 @@ test("a real pick that invalidates a completed search brings the empty state bac
   page,
 }) => {
   await page.goto("/play/connect/");
-  await selectAlbum(page, "a", "Discovery");
-  await selectAlbum(page, "b", "Joshua Tree");
+  await selectAlbumById(page, "a", CONNECTED.a);
+  await selectAlbumById(page, "b", CONNECTED.b);
   await page.locator("[data-connect-search]").click();
   await expect(page.locator("[data-connect-results]")).toBeVisible({
     timeout: 15000,
   });
   await expect(page.locator("[data-connect-empty-state]")).toBeHidden();
 
-  await selectAlbum(page, "a", "Time Out");
+  await selectAlbumById(page, "a", NEGATIVE.a);
 
   await expect(page.locator("[data-connect-results]")).toBeHidden();
   await expect(page.locator("[data-connect-empty-state]")).toBeVisible();
@@ -49,8 +57,8 @@ test("endpoint cards render real cover art from the album-art registry", async (
   page,
 }) => {
   await page.goto("/play/connect/");
-  await selectAlbum(page, "a", "Discovery");
-  await selectAlbum(page, "b", "Joshua Tree");
+  await selectAlbumById(page, "a", CONNECTED.a);
+  await selectAlbumById(page, "b", CONNECTED.b);
   await page.locator("[data-connect-search]").click();
   await expect(page.locator("[data-connect-results]")).toBeVisible({
     timeout: 15000,
@@ -92,8 +100,8 @@ test("an album with no art-registry entry renders the polished placeholder, not 
     }),
   );
   await page.goto("/play/connect/");
-  await selectAlbum(page, "a", "Discovery");
-  await selectAlbum(page, "b", "Joshua Tree");
+  await selectAlbumById(page, "a", CONNECTED.a);
+  await selectAlbumById(page, "b", CONNECTED.b);
   await page.locator("[data-connect-search]").click();
   await expect(page.locator("[data-connect-results]")).toBeVisible({
     timeout: 15000,
@@ -110,8 +118,8 @@ test("route length is always shown, for a ranked search, a role-filtered search,
   page,
 }) => {
   await page.goto("/play/connect/");
-  await selectAlbum(page, "a", "Discovery");
-  await selectAlbum(page, "b", "Joshua Tree");
+  await selectAlbumById(page, "a", CONNECTED.a);
+  await selectAlbumById(page, "b", CONNECTED.b);
   await page.locator("[data-connect-search]").click();
   await expect(page.locator("[data-connect-results]")).toBeVisible({
     timeout: 15000,
@@ -123,12 +131,11 @@ test("route length is always shown, for a ranked search, a role-filtered search,
     /^(one|two|three|four) hops? documented$/i,
   );
 
-  // Face Value <-> Talking Book, bridged by Nathan East (Bass/Drums) --
-  // the real, verified Rhythm Section pair. The original Ziggy Stardust
-  // <-> A Night At The Opera pair was chosen for Behind the Glass's
-  // producer bridge, which ADR 0068 retired.
-  await selectAlbum(page, "a", "Face Value");
-  await selectAlbum(page, "b", "Talking Book");
+  // The computed Rhythm Section pair (helpers/catalogFacts.ts): a pair with a
+  // drums/bass-only route. Behind the Glass's producer-bridge pair was
+  // retired with that mode (ADR 0068).
+  await selectAlbumById(page, "a", RHYTHM.a);
+  await selectAlbumById(page, "b", RHYTHM.b);
   await selectRouteFilter(page, "rhythm-section");
   await page.locator("[data-connect-search]").click();
   await expect(page.locator("[data-connect-results]")).toBeVisible({
@@ -143,8 +150,8 @@ test('"Why this route?" is a real disclosure, closed by default, that reveals th
   page,
 }) => {
   await page.goto("/play/connect/");
-  await selectAlbum(page, "a", "Discovery");
-  await selectAlbum(page, "b", "Joshua Tree");
+  await selectAlbumById(page, "a", CONNECTED.a);
+  await selectAlbumById(page, "b", CONNECTED.b);
   await page.locator("[data-connect-search]").click();
   await expect(page.locator("[data-connect-results]")).toBeVisible({
     timeout: 15000,
@@ -168,12 +175,11 @@ test('"Why this route?" stays hidden entirely for a role-filtered search, which 
   page,
 }) => {
   await page.goto("/play/connect/");
-  // Face Value <-> Talking Book, bridged by Nathan East (Bass/Drums) --
-  // the real, verified Rhythm Section pair. The original Ziggy Stardust
-  // <-> A Night At The Opera pair was chosen for Behind the Glass's
-  // producer bridge, which ADR 0068 retired.
-  await selectAlbum(page, "a", "Face Value");
-  await selectAlbum(page, "b", "Talking Book");
+  // The computed Rhythm Section pair (helpers/catalogFacts.ts): a pair with a
+  // drums/bass-only route. Behind the Glass's producer-bridge pair was
+  // retired with that mode (ADR 0068).
+  await selectAlbumById(page, "a", RHYTHM.a);
+  await selectAlbumById(page, "b", RHYTHM.b);
   await selectRouteFilter(page, "rhythm-section");
   await page.locator("[data-connect-search]").click();
   await expect(page.locator("[data-connect-results]")).toBeVisible({
@@ -186,8 +192,8 @@ test("swap preserves the endpoint cover art and route length across the reversed
   page,
 }) => {
   await page.goto("/play/connect/");
-  await selectAlbum(page, "a", "Discovery");
-  await selectAlbum(page, "b", "Joshua Tree");
+  await selectAlbumById(page, "a", CONNECTED.a);
+  await selectAlbumById(page, "b", CONNECTED.b);
   await page.locator("[data-connect-search]").click();
   await expect(page.locator("[data-connect-results]")).toBeVisible({
     timeout: 15000,
@@ -199,7 +205,7 @@ test("swap preserves the endpoint cover art and route length across the reversed
   await page.locator("[data-connect-swap]").click();
   await expect(
     picker(page, "a").locator("[data-picker-selected]"),
-  ).toContainText("Joshua Tree");
+  ).toContainText(CONNECTED.b.title);
 
   await expect(
     page.locator(
@@ -227,8 +233,8 @@ test("a slow album-art registry never delays the route from rendering, and cover
   });
 
   await page.goto("/play/connect/");
-  await selectAlbum(page, "a", "Discovery");
-  await selectAlbum(page, "b", "Joshua Tree");
+  await selectAlbumById(page, "a", CONNECTED.a);
+  await selectAlbumById(page, "b", CONNECTED.b);
   await page.locator("[data-connect-search]").click();
 
   // The route renders fully -- status clears, results show, placeholders
@@ -275,8 +281,8 @@ test.describe("390px viewport", () => {
     await expect(page.locator("[data-connect-empty-state]")).toBeVisible();
     expect(await overflow()).toBeLessThanOrEqual(0);
 
-    await selectAlbum(page, "a", "Discovery");
-    await selectAlbum(page, "b", "Joshua Tree");
+    await selectAlbumById(page, "a", CONNECTED.a);
+    await selectAlbumById(page, "b", CONNECTED.b);
     await page.locator("[data-connect-search]").click();
     await expect(page.locator("[data-connect-results]")).toBeVisible({
       timeout: 15000,

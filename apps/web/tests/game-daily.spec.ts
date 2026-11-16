@@ -6,9 +6,14 @@
 // wall-clock date.
 
 import { expect, test, type Page } from "@playwright/test";
+import {
+  PINNED_DATE_A,
+  PINNED_DATE_B,
+  PINNED_DATE_LATER,
+} from "./helpers/pinnedDates";
 
-const PINNED_DATE_A = "2026-08-01";
-const PINNED_DATE_B = "2026-08-02";
+// Already-played, pinned dates taken from the manifest itself
+// (helpers/pinnedDates.ts); never literals.
 // Before the manifest's start_date -> friendly "upcoming". Kept well before
 // any plausible launch date so this stays valid across launch-date migrations.
 const PRE_LAUNCH_DATE = "2020-01-01";
@@ -374,7 +379,7 @@ test("a streak breaks across a missed date", async ({ page }) => {
 
   // Skip a date (not the immediately following calendar day) -- the streak
   // must reset to 1 on the next solve, not continue from 1.
-  const laterDate = "2026-08-10";
+  const laterDate = PINNED_DATE_LATER;
   const { round: laterRound } = await entryAndRound(page, laterDate);
   await gotoDaily(page, laterDate);
   await page

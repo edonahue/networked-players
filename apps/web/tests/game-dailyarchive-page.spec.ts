@@ -6,8 +6,9 @@
 // content ever fetched or leaked.
 
 import { expect, test, type Page } from "@playwright/test";
+import { PINNED_DATE_A } from "./helpers/pinnedDates";
 
-const PINNED_DATE_A = "2026-08-01";
+// An already-played, pinned date from the manifest itself (helpers/pinnedDates.ts).
 
 interface DailyManifestEntry {
   date: string;

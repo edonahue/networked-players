@@ -2,8 +2,8 @@
 // or keyboard-activating an edge shows real release/role evidence, joined
 // against the evidence-release registry (ADR 0058 Slice 3) via the same
 // renderEvidenceHop() Connect Two Records already uses. Real, committed
-// data throughout -- master-107325 (Elvis Presley) is the same real,
-// high-degree seed game-networkexplorer.spec.ts already uses.
+// data throughout -- the seed is the same derived high-degree
+// album (helpers/catalogFacts.ts) game-networkexplorer.spec.ts uses.
 //
 // Real .click()/.hover()/.focus() throughout (post-Phase-4 cleanup audit
 // F15): each edge used to be a single thin <line> with no wider hit-area,
@@ -21,6 +21,11 @@
 // Playwright interaction methods work.
 
 import { expect, test } from "@playwright/test";
+import { catalogFacts } from "./helpers/catalogFacts";
+
+// Explore seed derived by rule from the committed artifacts
+// (helpers/catalogFacts.ts: highest-degree album-artist), never named here.
+const EXPLORER = (await catalogFacts()).explorer;
 
 async function waitForGraph(page: import("@playwright/test").Page) {
   await expect(
@@ -33,7 +38,7 @@ function firstEdge(page: import("@playwright/test").Page) {
 }
 
 test("clicking an edge shows real evidence in the drawer", async ({ page }) => {
-  await page.goto("/explore/master-107325/");
+  await page.goto(`/explore/${EXPLORER.album.id}/`);
   await waitForGraph(page);
   await firstEdge(page).click();
 
@@ -67,7 +72,7 @@ test("evidence drawer hop names link to their own contributor page when one is p
   };
   const contributorIds = new Set(contributors.map((c) => c.artist_id));
 
-  await page.goto("/explore/master-107325/");
+  await page.goto(`/explore/${EXPLORER.album.id}/`);
   await waitForGraph(page);
   // Root cause of this test's long-running intermittent CI failure
   // ("Expected: 0, Received: 1" on a hop-name link), found 2026-11-07: the
@@ -115,10 +120,10 @@ test("evidence drawer hop names link to their own contributor page when one is p
       expect(hrefs).toEqual([]);
     }
   }
-  // Elvis (the center, artist_id 27518) is always one of the two names on
-  // his own high-degree first edge, and always has a real contributor page
-  // -- this pair genuinely exercises the linking behavior, not a vacuous
-  // "nothing had a page" pass.
+  // The center is always one of the two names on its own high-degree first
+  // edge, and the seed rule (helpers/catalogFacts.ts) requires it to have a
+  // real contributor page -- so this genuinely exercises the linking
+  // behavior, not a vacuous "nothing had a page" pass.
   expect(linkedAtLeastOne).toBe(true);
 });
 
@@ -139,7 +144,7 @@ async function hopArtistIds(page: import("@playwright/test").Page) {
 test("an edge scrolled under a stationary cursor never replaces clicked evidence", async ({
   page,
 }) => {
-  await page.goto("/explore/master-107325/");
+  await page.goto(`/explore/${EXPLORER.album.id}/`);
   await waitForGraph(page);
   const edge = firstEdge(page);
   await edge.scrollIntoViewIfNeeded();
@@ -193,7 +198,7 @@ test("an edge scrolled under a stationary cursor never replaces clicked evidence
 test("hovering a different edge after a click still previews it", async ({
   page,
 }) => {
-  await page.goto("/explore/master-107325/");
+  await page.goto(`/explore/${EXPLORER.album.id}/`);
   await waitForGraph(page);
   const edges = page.locator("[data-explorer-edges] .explorer-edge-group");
   const first = edges.first();
@@ -247,7 +252,7 @@ test("the drawer reports loading state until the evidence registry resolves", as
     },
   );
 
-  await page.goto("/explore/master-107325/");
+  await page.goto(`/explore/${EXPLORER.album.id}/`);
   await waitForGraph(page);
   await firstEdge(page).click();
 
@@ -339,7 +344,7 @@ test("closing via the close button during loading discards the pending evidence"
   page,
 }) => {
   const { releaseAndSettle } = await gateEvidenceRegistry(page);
-  await page.goto("/explore/master-107325/");
+  await page.goto(`/explore/${EXPLORER.album.id}/`);
   await waitForGraph(page);
   const edge = firstEdge(page);
   await edge.click();
@@ -359,7 +364,7 @@ test("dismissing via Escape during loading discards the pending evidence", async
   page,
 }) => {
   const { releaseAndSettle } = await gateEvidenceRegistry(page);
-  await page.goto("/explore/master-107325/");
+  await page.goto(`/explore/${EXPLORER.album.id}/`);
   await waitForGraph(page);
   const edge = firstEdge(page);
   await edge.click();
@@ -379,7 +384,7 @@ test("recentering during loading discards the pending evidence for the old view"
   page,
 }) => {
   const { releaseAndSettle } = await gateEvidenceRegistry(page);
-  await page.goto("/explore/master-107325/");
+  await page.goto(`/explore/${EXPLORER.album.id}/`);
   await waitForGraph(page);
   await firstEdge(page).click();
 
@@ -417,13 +422,12 @@ test("a newer edge's open invalidates an older edge's still-pending evidence", a
   page,
 }) => {
   const { releaseAndSettle } = await gateEvidenceRegistry(page);
-  await page.goto("/explore/master-107325/");
+  await page.goto(`/explore/${EXPLORER.album.id}/`);
   await waitForGraph(page);
   const edges = page.locator("[data-explorer-edges] .explorer-edge-group");
   const count = await edges.count();
-  // master-107325 is documented (this file's own header) as a real,
-  // high-degree center -- 1696 real edges in the committed graph.v3.json,
-  // capped at 24 in the DOM. A hard precondition, not a skip: if this ever
+  // The seed is a high-degree center by rule (helpers/catalogFacts.ts),
+  // capped at 24 edges in the DOM. A hard precondition, not a skip: if this ever
   // drops below 2, the fixture itself has changed and this test's premise
   // needs revisiting, not a silently-skipped CI run.
   expect(count).toBeGreaterThanOrEqual(2);
@@ -468,7 +472,7 @@ test("a fresh explicit open works after a previous pending request was invalidat
   page,
 }) => {
   const { releaseAndSettle } = await gateEvidenceRegistry(page);
-  await page.goto("/explore/master-107325/");
+  await page.goto(`/explore/${EXPLORER.album.id}/`);
   await waitForGraph(page);
   const edge = firstEdge(page);
   await edge.click();
@@ -496,7 +500,7 @@ test("a fresh explicit open works after a previous pending request was invalidat
 // Closing the drawer clears the state entirely -- `hidden` already means
 // closed, so a stale "ready" must not linger on a dismissed drawer.
 test("closing the drawer clears its evidence state", async ({ page }) => {
-  await page.goto("/explore/master-107325/");
+  await page.goto(`/explore/${EXPLORER.album.id}/`);
   await waitForGraph(page);
   await firstEdge(page).click();
 
@@ -514,7 +518,7 @@ test("closing the drawer clears its evidence state", async ({ page }) => {
 // Post-Phase-4 cleanup audit F17: a real click/keyboard activation must
 // move real DOM focus into the drawer, not just make it visible.
 test("clicking an edge moves real focus into the drawer", async ({ page }) => {
-  await page.goto("/explore/master-107325/");
+  await page.goto(`/explore/${EXPLORER.album.id}/`);
   await waitForGraph(page);
   await firstEdge(page).click();
 
@@ -522,7 +526,7 @@ test("clicking an edge moves real focus into the drawer", async ({ page }) => {
 });
 
 test("hovering an edge shows the drawer without a click", async ({ page }) => {
-  await page.goto("/explore/master-107325/");
+  await page.goto(`/explore/${EXPLORER.album.id}/`);
   await waitForGraph(page);
   await firstEdge(page).hover();
 
@@ -537,7 +541,7 @@ test("hovering an edge shows the drawer without a click", async ({ page }) => {
 test("hovering an edge does not move focus into the drawer", async ({
   page,
 }) => {
-  await page.goto("/explore/master-107325/");
+  await page.goto(`/explore/${EXPLORER.album.id}/`);
   await waitForGraph(page);
   await firstEdge(page).hover();
 
@@ -550,7 +554,7 @@ test("hovering an edge does not move focus into the drawer", async ({
 test("an edge is keyboard-reachable and Enter opens the same evidence", async ({
   page,
 }) => {
-  await page.goto("/explore/master-107325/");
+  await page.goto(`/explore/${EXPLORER.album.id}/`);
   await waitForGraph(page);
   const edge = firstEdge(page);
   await expect(edge).toHaveAttribute("tabindex", "0");
@@ -569,7 +573,7 @@ test("an edge is keyboard-reachable and Enter opens the same evidence", async ({
 // stop on a fresh render; arrow keys move both the roving position and
 // real focus.
 test("arrow keys move the roving tab stop between edges", async ({ page }) => {
-  await page.goto("/explore/master-107325/");
+  await page.goto(`/explore/${EXPLORER.album.id}/`);
   await waitForGraph(page);
   const edges = page.locator("[data-explorer-edges] .explorer-edge-group");
   const count = await edges.count();
@@ -587,7 +591,7 @@ test("arrow keys move the roving tab stop between edges", async ({ page }) => {
 });
 
 test("the close button hides the drawer", async ({ page }) => {
-  await page.goto("/explore/master-107325/");
+  await page.goto(`/explore/${EXPLORER.album.id}/`);
   await waitForGraph(page);
   await firstEdge(page).click();
   await expect(page.locator("[data-explorer-evidence-drawer]")).toBeVisible();
@@ -602,7 +606,7 @@ test("the close button hides the drawer", async ({ page }) => {
 test("the close button restores focus to the triggering edge", async ({
   page,
 }) => {
-  await page.goto("/explore/master-107325/");
+  await page.goto(`/explore/${EXPLORER.album.id}/`);
   await waitForGraph(page);
   const edge = firstEdge(page);
   await edge.click();
@@ -613,7 +617,7 @@ test("the close button restores focus to the triggering edge", async ({
 });
 
 test("Escape hides the drawer", async ({ page }) => {
-  await page.goto("/explore/master-107325/");
+  await page.goto(`/explore/${EXPLORER.album.id}/`);
   await waitForGraph(page);
   await firstEdge(page).click();
   await expect(page.locator("[data-explorer-evidence-drawer]")).toBeVisible();
@@ -623,7 +627,7 @@ test("Escape hides the drawer", async ({ page }) => {
 });
 
 test("recentering the graph closes the drawer", async ({ page }) => {
-  await page.goto("/explore/master-107325/");
+  await page.goto(`/explore/${EXPLORER.album.id}/`);
   await waitForGraph(page);
   await firstEdge(page).click();
   await expect(page.locator("[data-explorer-evidence-drawer]")).toBeVisible();
@@ -646,7 +650,7 @@ test("recentering the graph closes the drawer", async ({ page }) => {
 test("hovering a new edge after recentering still opens the drawer", async ({
   page,
 }) => {
-  await page.goto("/explore/master-107325/");
+  await page.goto(`/explore/${EXPLORER.album.id}/`);
   await waitForGraph(page);
   await firstEdge(page).click();
   await expect(page.locator("[data-explorer-evidence-drawer]")).toBeVisible();
@@ -664,7 +668,7 @@ test("hovering a new edge after recentering still opens the drawer", async ({
 test("a different edge's evidence replaces the previous edge's content", async ({
   page,
 }) => {
-  await page.goto("/explore/master-107325/");
+  await page.goto(`/explore/${EXPLORER.album.id}/`);
   await waitForGraph(page);
   const edges = page.locator("[data-explorer-edges] .explorer-edge-group");
   const count = await edges.count();
@@ -690,7 +694,7 @@ test("the drawer degrades gracefully when the evidence registry fetch fails", as
   await page.route("**/data/evidence/release-registry.v1.json", (route) =>
     route.abort(),
   );
-  await page.goto("/explore/master-107325/");
+  await page.goto(`/explore/${EXPLORER.album.id}/`);
   await waitForGraph(page);
   await firstEdge(page).click();
 

@@ -1,8 +1,7 @@
 // Network Explorer integration tests (ADR 0052) against the real committed
-// pathfinding graph. master-107325 (Elvis Presley) is a real, high-degree
-// entry in the committed artifact (verified against
-// apps/web/public/data/pathfinding/graph.v3.json, ADR 0058) -- picked from
-// the artifact itself so this exercises the truncation path for real. Node
+// pathfinding graph. The seed is the highest-degree album-artist in the
+// committed artifact, derived by rule in helpers/catalogFacts.ts (never
+// named here), so this exercises the truncation path for real. Node
 // ids/offsets/neighbors are byte-identical between v3 and v4 (ADR 0071
 // only changed role-text encoding), so this file's own raw graph fetch
 // below reads graph.v4.json -- the real file Explore now fetches -- while
@@ -10,6 +9,9 @@
 
 import { expect, test } from "@playwright/test";
 import { pathfindingGraphVersion } from "../src/game/pathfindingGraph";
+import { catalogFacts, escapeRegExp } from "./helpers/catalogFacts";
+
+const EXPLORER = (await catalogFacts()).explorer;
 
 interface ContributorLite {
   artist_id: number;
@@ -63,8 +65,10 @@ async function findBoundedRealInterestingNextStep(
 test("the explorer centers on the album's artist and shows a bounded neighborhood", async ({
   page,
 }) => {
-  await page.goto("/explore/master-107325/");
-  await expect(page.getByRole("heading", { level: 1 })).toContainText("Elvis");
+  await page.goto(`/explore/${EXPLORER.album.id}/`);
+  await expect(page.getByRole("heading", { level: 1 })).toContainText(
+    EXPLORER.album.title,
+  );
 
   const nodes = page.locator("[data-explorer-nodes] .explorer-node");
   await expect(nodes.first()).toBeVisible({ timeout: 15000 });
@@ -88,7 +92,7 @@ test("the explorer centers on the album's artist and shows a bounded neighborhoo
 test("a high-degree center shows the truncation note with real numbers", async ({
   page,
 }) => {
-  await page.goto("/explore/master-107325/");
+  await page.goto(`/explore/${EXPLORER.album.id}/`);
   const note = page.locator("[data-explorer-truncated]");
   await expect(note).toBeVisible({ timeout: 15000 });
   await expect(page.locator("[data-explorer-truncated-count]")).toHaveText(
@@ -100,7 +104,7 @@ test("a high-degree center shows the truncation note with real numbers", async (
 test("show more pages in additional neighbors without recentering or losing the role filter", async ({
   page,
 }) => {
-  await page.goto("/explore/master-107325/");
+  await page.goto(`/explore/${EXPLORER.album.id}/`);
   const countEl = page.locator("[data-explorer-truncated-count]");
   await expect(countEl).toBeVisible({ timeout: 15000 });
   const centerNode = page.locator(
@@ -140,7 +144,7 @@ test("show more pages in additional neighbors without recentering or losing the 
 test("show more eventually pages in every real neighbor and the note disappears", async ({
   page,
 }) => {
-  await page.goto("/explore/master-107325/");
+  await page.goto(`/explore/${EXPLORER.album.id}/`);
   const note = page.locator("[data-explorer-truncated]");
   const showMore = page.locator("[data-explorer-show-more]");
   await expect(note).toBeVisible({ timeout: 15000 });
@@ -159,7 +163,7 @@ test("show more eventually pages in every real neighbor and the note disappears"
 test("loading the graph records a real worker-parse-time diagnostic", async ({
   page,
 }) => {
-  await page.goto("/explore/master-107325/");
+  await page.goto(`/explore/${EXPLORER.album.id}/`);
   await expect(
     page.locator("[data-explorer-nodes] .explorer-node").first(),
   ).toBeVisible({ timeout: 15000 });
@@ -172,7 +176,7 @@ test("loading the graph records a real worker-parse-time diagnostic", async ({
 });
 
 test("clicking a neighbor recenters the view", async ({ page }) => {
-  await page.goto("/explore/master-107325/");
+  await page.goto(`/explore/${EXPLORER.album.id}/`);
   const nodes = page.locator("[data-explorer-nodes] .explorer-node");
   await expect(nodes.first()).toBeVisible({ timeout: 15000 });
 
@@ -194,7 +198,7 @@ test("clicking a neighbor recenters the view", async ({ page }) => {
 test("toggling a role filter dims non-matching nodes without removing them", async ({
   page,
 }) => {
-  await page.goto("/explore/master-107325/");
+  await page.goto(`/explore/${EXPLORER.album.id}/`);
   const chips = page.locator(
     "[data-explorer-role-filter] [data-role-filter-chip]",
   );
@@ -218,7 +222,7 @@ test("toggling a role filter dims non-matching nodes without removing them", asy
 test("only the center node is a tab stop on a fresh render (roving tabindex)", async ({
   page,
 }) => {
-  await page.goto("/explore/master-107325/");
+  await page.goto(`/explore/${EXPLORER.album.id}/`);
   const nodes = page.locator("[data-explorer-nodes] .explorer-node");
   await expect(nodes.first()).toBeVisible({ timeout: 15000 });
 
@@ -233,7 +237,7 @@ test("only the center node is a tab stop on a fresh render (roving tabindex)", a
 });
 
 test("arrow keys move the roving tab stop between nodes", async ({ page }) => {
-  await page.goto("/explore/master-107325/");
+  await page.goto(`/explore/${EXPLORER.album.id}/`);
   const center = page.locator(
     "[data-explorer-nodes] .explorer-node[data-is-center='true']",
   );
@@ -253,7 +257,7 @@ test("arrow keys move the roving tab stop between nodes", async ({ page }) => {
 test("a keyboard-activated recenter moves focus to the new center and announces it", async ({
   page,
 }) => {
-  await page.goto("/explore/master-107325/");
+  await page.goto(`/explore/${EXPLORER.album.id}/`);
   const center = page.locator(
     "[data-explorer-nodes] .explorer-node[data-is-center='true']",
   );
@@ -280,31 +284,37 @@ test("a keyboard-activated recenter moves focus to the new center and announces 
 });
 
 // Phase 6 PR 6-03: a read-only ?center= deep link overrides the default
-// album-artist center. U2 (artist_id 6520) is a real, documented neighbor
-// of Elvis in the committed graph (verified against graph.v3.json) -- this
-// exercises a genuine override, not a no-op landing on the same node.
+// album-artist center. Invariant: a documented neighbor of the seed's center
+// (derived from the committed graph, helpers/catalogFacts.ts) becomes the
+// center -- a genuine override, not a no-op landing on the same node.
 test("a valid ?center= query param overrides the album's default center", async ({
   page,
 }) => {
-  await page.goto("/explore/master-107325/?center=6520");
+  await page.goto(
+    `/explore/${EXPLORER.album.id}/?center=${EXPLORER.neighbor.artistId}`,
+  );
   await expect(
     page.locator("[data-explorer-nodes] .explorer-node[data-is-center='true']"),
-  ).toHaveAttribute("data-artist-id", "6520", { timeout: 15000 });
+  ).toHaveAttribute("data-artist-id", String(EXPLORER.neighbor.artistId), {
+    timeout: 15000,
+  });
   await expect(page.locator("[data-explorer-status]")).toContainText(
-    /Centered on U2/i,
+    new RegExp(`Centered on ${escapeRegExp(EXPLORER.neighbor.name)}`, "i"),
   );
 });
 
 test("an unknown ?center= id is silently ignored and the default center still renders", async ({
   page,
 }) => {
-  await page.goto("/explore/master-107325/?center=999999999");
+  await page.goto(`/explore/${EXPLORER.album.id}/?center=999999999`);
   await expect(
     page.locator("[data-explorer-nodes] .explorer-node[data-is-center='true']"),
   ).toBeVisible({ timeout: 15000 });
-  await expect(page.getByRole("heading", { level: 1 })).toContainText("Elvis");
+  await expect(page.getByRole("heading", { level: 1 })).toContainText(
+    EXPLORER.album.title,
+  );
   await expect(page.locator("[data-explorer-status]")).toContainText(
-    /Centered on Elvis/i,
+    new RegExp(`Centered on ${escapeRegExp(EXPLORER.artistName)}`, "i"),
   );
 });
 
@@ -313,21 +323,27 @@ test("an unknown ?center= id is silently ignored and the default center still re
 test("the center node links to its own contributor page, and updates on recenter", async ({
   page,
 }) => {
-  await page.goto("/explore/master-107325/");
+  await page.goto(`/explore/${EXPLORER.album.id}/`);
   const centerLink = page.locator("[data-explorer-center-link] a");
   await expect(centerLink).toBeVisible({ timeout: 15000 });
-  await expect(centerLink).toHaveAttribute("href", "/contributors/27518/");
-  await expect(centerLink).toContainText("Elvis Presley");
+  await expect(centerLink).toHaveAttribute(
+    "href",
+    `/contributors/${EXPLORER.album.artist_id}/`,
+  );
+  await expect(centerLink).toContainText(EXPLORER.artistName);
 
   const nodes = page.locator("[data-explorer-nodes] .explorer-node");
   await expect(nodes.first()).toBeVisible({ timeout: 15000 });
-  const u2Neighbor = page.locator(
-    "[data-explorer-nodes] .explorer-node[data-artist-id='6520']",
+  const neighborNode = page.locator(
+    `[data-explorer-nodes] .explorer-node[data-artist-id='${EXPLORER.neighbor.artistId}']`,
   );
-  await u2Neighbor.click();
+  await neighborNode.click();
 
-  await expect(centerLink).toHaveAttribute("href", "/contributors/6520/");
-  await expect(centerLink).toContainText("U2");
+  await expect(centerLink).toHaveAttribute(
+    "href",
+    `/contributors/${EXPLORER.neighbor.artistId}/`,
+  );
+  await expect(centerLink).toContainText(EXPLORER.neighbor.name);
 });
 
 test("the center link stays hidden when the current center has no contributor page", async ({
@@ -336,7 +352,7 @@ test("the center link stays hidden when the current center has no contributor pa
   await page.route("**/data/contributors/index.v1.json", async (route) => {
     await route.fulfill({ json: { schema_version: 1, contributors: [] } });
   });
-  await page.goto("/explore/master-107325/");
+  await page.goto(`/explore/${EXPLORER.album.id}/`);
   await expect(
     page.locator("[data-explorer-nodes] .explorer-node").first(),
   ).toBeVisible({ timeout: 15000 });
@@ -395,34 +411,25 @@ test("the center's interesting_next_step neighbor is visually highlighted", asyn
 test("the info panel shows a visible centered-on summary with role text", async ({
   page,
 }) => {
-  await page.goto("/explore/master-107325/");
+  await page.goto(`/explore/${EXPLORER.album.id}/`);
   const summary = page.locator("[data-explorer-info-summary]");
   await expect(summary).toBeVisible({ timeout: 15000 });
   await expect(summary).toContainText("Centered on");
-  await expect(summary).toContainText("Elvis Presley");
+  await expect(summary).toContainText(EXPLORER.artistName);
 });
 
 test("the info panel links to the center's own record page and Connect, prefilled", async ({
   page,
-  request,
 }) => {
   // The center's own record link uses THAT contributor's own albums[0]
   // (contributor_index.py's own shared-hop-count order) -- not necessarily
   // the album this Explorer page happened to launch from, which centers on
   // the album's primary artist but doesn't imply their own albums[0] is
   // this same record.
-  const res = await request.get("/data/contributors/index.v1.json");
-  const { contributors } = (await res.json()) as {
-    contributors: { artist_id: number; albums: string[] }[];
-  };
-  const elvis = contributors.find((c) => c.artist_id === 27518);
-  if (!elvis || elvis.albums.length === 0)
-    throw new Error(
-      "Elvis Presley (27518) missing or has no albums in the real index",
-    );
-  const ownAlbumId = elvis.albums[0];
+  // Derived from the contributor index by helpers/catalogFacts.ts.
+  const ownAlbumId = EXPLORER.ownAlbumId;
 
-  await page.goto("/explore/master-107325/");
+  await page.goto(`/explore/${EXPLORER.album.id}/`);
   const recordLink = page.locator(
     `[data-explorer-info-links] a[href='/albums/${ownAlbumId}/']`,
   );
@@ -462,7 +469,7 @@ test("the info panel explains a real, bounded interesting_next_step highlight in
 test("recentering builds a session trail, and a trail step re-centers back", async ({
   page,
 }) => {
-  await page.goto("/explore/master-107325/");
+  await page.goto(`/explore/${EXPLORER.album.id}/`);
   const trail = page.locator("[data-explorer-trail]");
   // A single center is not a "trail" yet.
   await expect(trail).toBeHidden({ timeout: 15000 });
@@ -483,23 +490,23 @@ test("recentering builds a session trail, and a trail step re-centers back", asy
   await expect(trail).toBeVisible();
   const step = trail.locator(`[data-trail-artist-id='${originalArtistId}']`);
   await expect(step).toBeVisible();
-  await expect(step).toContainText("Elvis Presley");
+  await expect(step).toContainText(EXPLORER.artistName);
 
   await step.click();
   await expect(centerNode).toHaveAttribute("data-artist-id", originalArtistId, {
     timeout: 15000,
   });
   // Re-centering via a trail step is itself a real centerOn(), so it
-  // grows the trail (now 3 entries: Elvis -> neighbor -> Elvis again)
+  // grows the trail (now 3 entries: center -> neighbor -> center again)
   // rather than erasing it.
   await expect(trail.locator(".explorer-trail__current")).toContainText(
-    "Elvis Presley",
+    EXPLORER.artistName,
   );
 });
 
 // graph-expansion Phase 1 (plan §6: "the shareable, back-button-safe URL").
 test("recentering updates the URL's ?center= param", async ({ page }) => {
-  await page.goto("/explore/master-107325/");
+  await page.goto(`/explore/${EXPLORER.album.id}/`);
   const centerNode = page.locator(
     "[data-explorer-nodes] .explorer-node[data-is-center='true']",
   );
@@ -527,7 +534,7 @@ test("recentering updates the URL's ?center= param", async ({ page }) => {
 test("the Back button returns to the previous center, not off the page", async ({
   page,
 }) => {
-  await page.goto("/explore/master-107325/");
+  await page.goto(`/explore/${EXPLORER.album.id}/`);
   const centerNode = page.locator(
     "[data-explorer-nodes] .explorer-node[data-is-center='true']",
   );
@@ -572,7 +579,7 @@ test("a Back press after only the initial load leaves Explore entirely", async (
   page,
 }) => {
   await page.goto("/");
-  await page.goto("/explore/master-107325/");
+  await page.goto(`/explore/${EXPLORER.album.id}/`);
   const centerNode = page.locator(
     "[data-explorer-nodes] .explorer-node[data-is-center='true']",
   );
@@ -609,7 +616,7 @@ test("an unknown artist id shows a graceful message instead of a blank graph", a
     );
     await route.fulfill({ response, json });
   });
-  await page.goto("/explore/master-107325/");
+  await page.goto(`/explore/${EXPLORER.album.id}/`);
   await expect(page.locator("[data-explorer-status]")).toBeVisible({
     timeout: 15000,
   });
@@ -632,7 +639,7 @@ test("an unreachable pathfinding graph shows a terminal error, not a blank graph
   await page.route("**/data/pathfinding/graph.v4.json", (route) =>
     route.abort(),
   );
-  await page.goto("/explore/master-107325/");
+  await page.goto(`/explore/${EXPLORER.album.id}/`);
 
   await expect(page.locator("[data-explorer-status]")).toBeVisible();
   await expect(page.locator("[data-explorer-status]")).toContainText(
@@ -655,7 +662,7 @@ test.describe("mobile layout", () => {
   test("the new info panel and trail don't cause sideways scroll on a phone-sized screen", async ({
     page,
   }) => {
-    await page.goto("/explore/master-107325/");
+    await page.goto(`/explore/${EXPLORER.album.id}/`);
     await expect(page.locator("[data-explorer-info-summary]")).toBeVisible({
       timeout: 15000,
     });
@@ -678,7 +685,7 @@ test.describe("mobile layout", () => {
   test("nodes and edge hit-areas render larger on a phone-sized screen", async ({
     page,
   }) => {
-    await page.goto("/explore/master-107325/");
+    await page.goto(`/explore/${EXPLORER.album.id}/`);
     const centerCircle = page.locator(
       "[data-explorer-nodes] .explorer-node[data-is-center='true'] circle",
     );
@@ -701,7 +708,7 @@ test.describe("mobile layout", () => {
   test("the evidence drawer becomes a fixed bottom sheet on a phone-sized screen", async ({
     page,
   }) => {
-    await page.goto("/explore/master-107325/");
+    await page.goto(`/explore/${EXPLORER.album.id}/`);
     const firstEdge = page.locator(".explorer-edge-group").first();
     await expect(firstEdge).toBeVisible({ timeout: 15000 });
     await firstEdge.click();
@@ -728,7 +735,7 @@ test.describe("desktop layout", () => {
   test("nodes keep the smaller desktop radii above the mobile breakpoint", async ({
     page,
   }) => {
-    await page.goto("/explore/master-107325/");
+    await page.goto(`/explore/${EXPLORER.album.id}/`);
     const centerCircle = page.locator(
       "[data-explorer-nodes] .explorer-node[data-is-center='true'] circle",
     );
@@ -777,7 +784,7 @@ test.describe("pan and zoom", () => {
   test("scrolling over the graph zooms in on the cursor, not the page", async ({
     page,
   }) => {
-    await page.goto("/explore/master-107325/");
+    await page.goto(`/explore/${EXPLORER.album.id}/`);
     const viewport = page.locator("[data-explorer-viewport]");
     const svg = page.locator("[data-explorer-svg]");
     await waitForGraphReady(page);
@@ -815,7 +822,7 @@ test.describe("pan and zoom", () => {
   });
 
   test("zooming out never goes below the identity scale", async ({ page }) => {
-    await page.goto("/explore/master-107325/");
+    await page.goto(`/explore/${EXPLORER.album.id}/`);
     const viewport = page.locator("[data-explorer-viewport]");
     const svg = page.locator("[data-explorer-svg]");
     await waitForGraphReady(page);
@@ -830,7 +837,7 @@ test.describe("pan and zoom", () => {
   });
 
   test("dragging empty background space pans the graph", async ({ page }) => {
-    await page.goto("/explore/master-107325/");
+    await page.goto(`/explore/${EXPLORER.album.id}/`);
     const viewport = page.locator("[data-explorer-viewport]");
     const svg = page.locator("[data-explorer-svg]");
     await waitForGraphReady(page);
@@ -865,7 +872,7 @@ test.describe("pan and zoom", () => {
     // initiate from empty SVG background, never from a real node/edge --
     // otherwise a visitor's ordinary click-and-slightly-move on a node
     // could silently turn into a pan instead of a recenter.
-    await page.goto("/explore/master-107325/");
+    await page.goto(`/explore/${EXPLORER.album.id}/`);
     const viewport = page.locator("[data-explorer-viewport]");
     const centerNode = page.locator(
       "[data-explorer-nodes] .explorer-node[data-is-center='true']",
@@ -904,7 +911,7 @@ test.describe("pan and zoom", () => {
   });
 
   test("a real recenter resets pan/zoom back to identity", async ({ page }) => {
-    await page.goto("/explore/master-107325/");
+    await page.goto(`/explore/${EXPLORER.album.id}/`);
     const viewport = page.locator("[data-explorer-viewport]");
     const svg = page.locator("[data-explorer-svg]");
     await waitForGraphReady(page);
@@ -939,7 +946,7 @@ test.describe("pan and zoom", () => {
   // exactly as a genuine two-finger gesture would, without needing a real
   // touchscreen or CDP-level touch injection.
   test("a synthetic two-finger pinch zooms the graph", async ({ page }) => {
-    await page.goto("/explore/master-107325/");
+    await page.goto(`/explore/${EXPLORER.album.id}/`);
     const viewport = page.locator("[data-explorer-viewport]");
     await waitForGraphReady(page);
 

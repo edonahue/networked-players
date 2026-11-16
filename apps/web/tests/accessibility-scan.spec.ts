@@ -11,8 +11,15 @@
 
 import { expect, test } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
-import { selectAlbum } from "./helpers/connectPicker";
+import { selectAlbumById } from "./helpers/connectPicker";
 import { pickBoundedConnectedAlbum } from "./helpers/challengeAlbums";
+import { catalogFacts, pickScanContributorId } from "./helpers/catalogFacts";
+
+// Albums are derived from the committed artifacts by rule (see
+// helpers/catalogFacts.ts), never named here.
+const facts = await catalogFacts();
+const EXPLORER = facts.explorer;
+const CONNECTED = facts.connected;
 
 async function expectNoViolations(page: import("@playwright/test").Page) {
   const results = await new AxeBuilder({ page }).analyze();
@@ -50,8 +57,8 @@ test("connect has no automated accessibility violations after a real search", as
   page,
 }) => {
   await page.goto("/play/connect/");
-  await selectAlbum(page, "a", "Discovery");
-  await selectAlbum(page, "b", "Joshua Tree");
+  await selectAlbumById(page, "a", CONNECTED.a);
+  await selectAlbumById(page, "b", CONNECTED.b);
   await page.locator("[data-connect-search]").click();
   await expect(page.locator("[data-connect-results]")).toBeVisible({
     timeout: 15000,
@@ -60,7 +67,7 @@ test("connect has no automated accessibility violations after a real search", as
 });
 
 test("explore has no automated accessibility violations", async ({ page }) => {
-  await page.goto("/explore/master-107325/");
+  await page.goto(`/explore/${EXPLORER.album.id}/`);
   await expect(
     page.locator("[data-explorer-nodes] .explorer-node").first(),
   ).toBeVisible({ timeout: 15000 });
@@ -77,7 +84,7 @@ test("explore has no automated accessibility violations", async ({ page }) => {
 test("explore has no automated accessibility violations with the evidence drawer open", async ({
   page,
 }) => {
-  await page.goto("/explore/master-107325/");
+  await page.goto(`/explore/${EXPLORER.album.id}/`);
   await expect(
     page.locator("[data-explorer-nodes] .explorer-node").first(),
   ).toBeVisible({ timeout: 15000 });
@@ -127,7 +134,7 @@ test("explore has no automated accessibility violations while evidence is loadin
     },
   );
 
-  await page.goto("/explore/master-107325/");
+  await page.goto(`/explore/${EXPLORER.album.id}/`);
   await expect(
     page.locator("[data-explorer-nodes] .explorer-node").first(),
   ).toBeVisible({ timeout: 15000 });
@@ -156,26 +163,19 @@ test("contributors directory has no automated accessibility violations", async (
   await expectNoViolations(page);
 });
 
-// The index-derived pick is currently Brian Eno (/contributors/634/: ~3,100
-// elements, ~400 evidence-table rows). Profiled 2026-11-07, a full axe
-// analyze() there takes ~27s on its own (color-contrast ~19s and region
-// ~9s, both per-element elementsFromPoint/geometry work over the table) --
-// inside the default 30s budget in isolation, but over it under full-suite
-// CPU load. A heavy page for the scanner, not a page regression, so give
-// both contributor-page scans the 3x `test.slow()` budget.
+// Invariant: a LARGE contributor page has no axe violations. The page is
+// chosen by rule (pickScanContributorId: most albums among contributors at or
+// under SCAN_ALBUM_CAP), so it is always a heavy page but its size is bounded
+// as the index grows -- a full axe analyze() on such a page is dominated by
+// per-element color-contrast/region work (~27s at ~3,100 elements), inside
+// the default 30s budget in isolation but over it under full-suite CPU
+// load. A heavy page for the scanner, not a page regression, so both
+// contributor-page scans get the 3x `test.slow()` budget.
 test("a contributor page has no automated accessibility violations", async ({
   page,
-  request,
 }) => {
   test.slow();
-  const res = await request.get("/data/contributors/index.v1.json");
-  const { contributors } = (await res.json()) as {
-    contributors: { artist_id: number; albums: string[] }[];
-  };
-  const withAlbum = contributors.find((c) => c.albums.length > 0);
-  if (!withAlbum) throw new Error("no contributor with an album in the index");
-
-  await page.goto(`/contributors/${withAlbum.artist_id}/`);
+  await page.goto(`/contributors/${pickScanContributorId()}/`);
   await expectNoViolations(page);
 });
 
@@ -191,17 +191,9 @@ test("a contributor page has no automated accessibility violations", async ({
 // exists for is unchanged.
 test("a contributor page has no automated accessibility violations in light theme", async ({
   page,
-  request,
 }) => {
   test.slow(); // see the dark-theme scan above for the measured reason
-  const res = await request.get("/data/contributors/index.v1.json");
-  const { contributors } = (await res.json()) as {
-    contributors: { artist_id: number; albums: string[] }[];
-  };
-  const withAlbum = contributors.find((c) => c.albums.length > 0);
-  if (!withAlbum) throw new Error("no contributor with an album in the index");
-
-  await page.goto(`/contributors/${withAlbum.artist_id}/`);
+  await page.goto(`/contributors/${pickScanContributorId()}/`);
   await page.locator("[data-theme-toggle]").click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
   await expectNoViolations(page);

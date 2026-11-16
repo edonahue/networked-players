@@ -31,14 +31,20 @@ export async function waitForPickerReady(
   );
 }
 
-export async function selectAlbum(
+/** Picks a specific catalog album by id: types its title (the query a real
+ * visitor would type) and clicks the suggestion carrying that album's id, so
+ * a duplicate or substring title can never select the wrong record. The
+ * album comes from `catalogFacts()` / the committed catalog, never a literal. */
+export async function selectAlbumById(
   page: Page,
   side: PickerSide,
-  query: string,
+  album: { id: string; title: string },
 ): Promise<void> {
   await waitForPickerReady(page, side);
-  await picker(page, side).locator("input").fill(query);
-  await pickerResults(page, side).first().click();
+  await picker(page, side).locator("input").fill(album.title);
+  await pickerResults(page, side)
+    .and(page.locator(`[data-album-id="${album.id}"]`))
+    .click();
 }
 
 export type RouteFilterMode = "none" | "rhythm-section" | "guitar-paths";

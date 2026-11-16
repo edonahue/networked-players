@@ -4,8 +4,8 @@
 // Specs used to write `albums.find((a) => connectedIds.has(a.id))`, i.e.
 // whichever connected album happens to come FIRST in artifact order. Before
 // the graph-expansion Phase 0 pair-order fix that was the graph hub
-// (master-1046042, "Blonde": 136 of the artifact's 300 paths, ~1MB of HTML
-// and 273 hotlinked cover images -- the single heaviest page on the site).
+// (one album held 136 of the artifact's 300 paths, ~1MB of HTML and 273
+// hotlinked cover images -- the single heaviest page on the site).
 // Every Playwright action against that DOM cost ~700-1600ms of trace
 // snapshotting, which put the album smoke test at 27.5s against a 30s cap
 // and made it fail intermittently. Nothing those tests assert requires a

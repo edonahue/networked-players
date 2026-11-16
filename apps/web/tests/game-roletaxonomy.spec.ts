@@ -181,6 +181,12 @@ test.describe("isPerformerRole", () => {
   // block. It cannot say WHICH token drifted, only THAT the two sets'
   // sizes disagree.
   test("token-set size matches eligibility.py's _PERFORMER_ROLE_TOKENS count", () => {
+    // DELIBERATE TypeScript<->Python parity pin, not catalog-derived: this
+    // literal must equal len(_PERFORMER_ROLE_TOKENS) in eligibility.py, and
+    // the role vocabulary changes only by an edit on BOTH sides (a catalog
+    // round never changes it). Changing one side without this number is the
+    // drift this test exists to catch. Invariant: |TS token set| == 109 ==
+    // |Python token set|.
     expect(PERFORMER_TOKEN_COUNT).toBe(109);
   });
 
