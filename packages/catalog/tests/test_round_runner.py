@@ -667,3 +667,33 @@ def test_committed_example_spec_is_structurally_valid() -> None:
         Path(__file__).resolve().parents[3] / "data/albums/rounds/example-synthetic-round.json"
     )
     assert rr.validate_spec_shape(json.loads(example.read_text())) == []
+
+
+def test_default_formatter_passes_absolute_paths_when_given_relative_ones(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Prettier runs with apps/web as its working directory, so a
+    repo-relative artifact path must be resolved first or it is looked up
+    beneath apps/web/ and the format stage fails on a real round."""
+    web_dir = tmp_path / "apps" / "web"
+    bin_dir = web_dir / "node_modules" / ".bin"
+    bin_dir.mkdir(parents=True)
+    seen = tmp_path / "seen.txt"
+    fake = bin_dir / "prettier"
+    # A stand-in that fails unless every file argument exists from ITS cwd.
+    fake.write_text(
+        "#!/bin/sh\n"
+        'shift\nfor f in "$@"; do [ -f "$f" ] || { echo "missing $f" >&2; exit 3; }; '
+        f'echo "$f" >> "{seen}"; done\n'
+    )
+    fake.chmod(0o755)
+    artifact = tmp_path / "out" / "data" / "catalog" / "albums.v1.json"
+    artifact.parent.mkdir(parents=True)
+    artifact.write_text("{}")
+    monkeypatch.setattr(rr, "WEB_DIR", web_dir)
+    monkeypatch.setattr(rr.shutil, "which", lambda name: "/usr/bin/node")
+    monkeypatch.chdir(tmp_path)
+
+    rr.default_formatter([Path("out/data/catalog/albums.v1.json")])
+
+    assert seen.read_text().split() == [str(artifact.resolve())]

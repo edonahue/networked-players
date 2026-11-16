@@ -349,8 +349,11 @@ def default_formatter(files: list[Path]) -> None:
             f"Prettier is not installed ({prettier} missing). Run `npm ci` in apps/web, "
             "then restart with --from-stage format."
         )
+    # Prettier runs from apps/web (its config and ignore file live there), so
+    # every file argument must be absolute: a spec written with repo-relative
+    # paths would otherwise be looked up beneath apps/web/ and not found.
     proc = subprocess.run(
-        [str(prettier), "--write", *map(str, files)],
+        [str(prettier), "--write", *(str(f.resolve()) for f in files)],
         cwd=WEB_DIR,
         capture_output=True,
         text=True,
