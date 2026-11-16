@@ -1228,7 +1228,12 @@ make catalog-check-distributed
 > check — and treat a fleet-wide failure that CI's `validate-public-artifacts` passed as
 > a staleness suspect before believing it about the artifact.
 
-Every validator except `catalog` reads two artifacts; the real default paths (matching
+Every validator except `catalog` reads two or more artifacts (`connection-rounds` and
+`record-routes` also take the catalog as an optional third input, which the default
+submission supplies, so the fleet runs the same catalog-lineage checks as
+`validate-public-artifacts`; a worker whose `networked-players-platform` predates that
+accepts only two inputs and rejects the default submission, so redeploy the platform
+runtime and reinstall contracts first); the real default paths (matching
 the published artifact locations exactly) live in `submit_artifact_check.py`'s
 `_DEFAULT_ARTIFACTS` table — pass `--artifact <path>` (twice, in order) to override for a
 not-yet-published candidate. Results are written to

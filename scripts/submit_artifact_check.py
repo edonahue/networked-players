@@ -79,6 +79,7 @@ _DEFAULT_ARTIFACTS: dict[str, tuple[str, ...]] = {
     "connection-rounds": (
         "apps/web/public/data/game/universe.v1.json",
         "apps/web/public/data/game/rounds.v1.json",
+        "apps/web/public/data/catalog/albums.v1.json",
     ),
     "contributor-index": (
         "apps/web/public/data/contributors/index.v1.json",
@@ -107,6 +108,7 @@ _DEFAULT_ARTIFACTS: dict[str, tuple[str, ...]] = {
     "record-routes": (
         "apps/web/public/data/routes/universe.v1.json",
         "apps/web/public/data/routes/rounds.v1.json",
+        "apps/web/public/data/catalog/albums.v1.json",
     ),
     "album-credit-membership": (
         "apps/web/public/data/albums/credit-membership.v1.json",

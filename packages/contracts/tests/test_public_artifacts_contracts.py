@@ -24,10 +24,13 @@ from networked_players_contracts.prominence import prominence_version
 from networked_players_contracts.search_index import search_index_version
 
 _SNAPSHOT = "20260601"
-_CATALOG_VERSION = "catalog-v1-20260601-abc123abc123"
 
 
 # --- catalog + album-art registry -------------------------------------------
+
+
+_FIXTURE_TITLES = {"master-1": "First Light", "master-2": "Third Wave"}
+_FIXTURE_ARTISTS = {"master-1": "Alice", "master-2": "Cara"}
 
 
 def _catalog_album(album_id: str, *, artist_id: int, main_release_id: int) -> dict[str, Any]:
@@ -35,9 +38,9 @@ def _catalog_album(album_id: str, *, artist_id: int, main_release_id: int) -> di
         "id": album_id,
         "master_id": None,
         "main_release_id": main_release_id,
-        "title": album_id.title(),
+        "title": _FIXTURE_TITLES.get(album_id, album_id.title()),
         "artist_id": artist_id,
-        "artist": "Alice",
+        "artist": _FIXTURE_ARTISTS.get(album_id, "Alice"),
         "year": 1995,
     }
 
@@ -50,7 +53,7 @@ def _catalog() -> dict[str, Any]:
     return {
         "catalog_version": _catalog_version(albums, _SNAPSHOT),
         "snapshot_date": _SNAPSHOT,
-        "generated_by": "networked-players-catalog build-album-catalog 0.1.0",
+        "generated_by": "networked-players-catalog build-master-2atalog 0.1.0",
         "albums": albums,
     }
 
@@ -79,7 +82,7 @@ def _album_art_registry() -> dict[str, Any]:
 
 # --- Connection Guesser ------------------------------------------------------
 
-_CONNECTION_ROUND_ID = f"conn-{stable_id_digest('1h', 'album-a', 'album-c', '700')}"
+_CONNECTION_ROUND_ID = f"conn-{stable_id_digest('1h', 'master-1', 'master-2', '700')}"
 
 
 def _connection_round() -> dict[str, Any]:
@@ -90,7 +93,7 @@ def _connection_round() -> dict[str, Any]:
         "difficulty": "hard",
         "endpoints": [
             {
-                "id": "album-a",
+                "id": "master-1",
                 "title": "First Light",
                 "year": 1995,
                 "act": "Alice",
@@ -98,7 +101,7 @@ def _connection_round() -> dict[str, Any]:
                 "art": None,
             },
             {
-                "id": "album-c",
+                "id": "master-2",
                 "title": "Third Wave",
                 "year": 1996,
                 "act": "Cara",
@@ -111,7 +114,7 @@ def _connection_round() -> dict[str, Any]:
         "clues": [],
         "evidence": [
             {
-                "release_ref": "album-a",
+                "release_ref": "master-1",
                 "release_title": "First Light",
                 "contributor_id": 700,
                 "credited_as": "Xavier",
@@ -119,7 +122,7 @@ def _connection_round() -> dict[str, Any]:
                 "credit_scope": "release_credit",
             },
             {
-                "release_ref": "album-c",
+                "release_ref": "master-2",
                 "release_title": "Third Wave",
                 "contributor_id": 700,
                 "credited_as": "Xavier",
@@ -142,7 +145,7 @@ _CONNECTION_PROVENANCE = {
     "license": "See docs/DATA_AND_RIGHTS.md.",
     "snapshot_date": _SNAPSHOT,
     "generated_by": "networked-players-catalog build-connection-rounds 0.1.0",
-    "catalog_version": _CATALOG_VERSION,
+    "catalog_version": _catalog()["catalog_version"],
     "pool_version": "connection-v1-20260601-def456def456",
     "artifact_version": _connection_artifact_version([_connection_round()]),
     "note": "Real records, not synthetic.",
@@ -155,7 +158,7 @@ def _connection_universe() -> dict[str, Any]:
         "provenance": dict(_CONNECTION_PROVENANCE),
         "albums": [
             {
-                "id": "album-a",
+                "id": "master-1",
                 "title": "First Light",
                 "act": "Alice",
                 "act_id": 100,
@@ -164,7 +167,7 @@ def _connection_universe() -> dict[str, Any]:
                 "art": None,
             },
             {
-                "id": "album-c",
+                "id": "master-2",
                 "title": "Third Wave",
                 "act": "Cara",
                 "act_id": 300,
@@ -176,15 +179,15 @@ def _connection_universe() -> dict[str, Any]:
         "contributors": [{"id": 700, "name": "Xavier", "role_category": "guitar"}],
         "releases": [
             {
-                "id": "album-a",
-                "album_id": "album-a",
+                "id": "master-1",
+                "album_id": "master-1",
                 "title": "First Light",
                 "year": 1995,
                 "catalog_stamp": "DISCOGS-1",
             },
             {
-                "id": "album-c",
-                "album_id": "album-c",
+                "id": "master-2",
+                "album_id": "master-2",
                 "title": "Third Wave",
                 "year": 1996,
                 "catalog_stamp": "DISCOGS-2",
@@ -192,14 +195,14 @@ def _connection_universe() -> dict[str, Any]:
         ],
         "credits": [
             {
-                "release_id": "album-a",
+                "release_id": "master-1",
                 "contributor_id": 700,
                 "role_text": "Guitar",
                 "role_category": "guitar",
                 "credit_scope": "release_credit",
             },
             {
-                "release_id": "album-c",
+                "release_id": "master-2",
                 "contributor_id": 700,
                 "role_text": "Guitar",
                 "role_category": "guitar",
@@ -225,7 +228,7 @@ def _daily_manifest() -> dict[str, Any]:
     return {
         "schema_version": 1,
         "mode": "connection_guesser_one_hop",
-        "catalog_version": _CATALOG_VERSION,
+        "catalog_version": _catalog()["catalog_version"],
         "pool_version": _CONNECTION_PROVENANCE["pool_version"],
         "artifact_version": _CONNECTION_PROVENANCE["artifact_version"],
         "generated_at": "2026-07-22T00:00:00+00:00",
@@ -302,7 +305,7 @@ def _routes_provenance(
         "generated_by": "networked-players-catalog build-record-routes 0.1.0",
         "graph_core_version": "0.1.0",
         "note": "Real path evidence.",
-        "catalog_version": _CATALOG_VERSION,
+        "catalog_version": _catalog()["catalog_version"],
         "artifact_version": (f"routes-artifact-v1-{_SNAPSHOT}-{content_hash(payload, length=12)}"),
     }
 
@@ -613,14 +616,14 @@ def _album_credit_membership() -> dict[str, Any]:
 def _evidence_release_registry() -> dict[str, Any]:
     catalog_version = _catalog()["catalog_version"]
     fields = {
-        "release_ids": [1, 2],
-        "titles": ["First Light", "Second Wave"],
-        "years": [1995, 1998],
-        "countries": ["US", "US"],
-        "master_ids": [None, None],
-        "source_urls": ["https://data.discogs.com/?download=fake"] * 2,
-        "cover_uri150s": [None, None],
-        "relation_to_catalog_album_ids": ["master-1", "master-2"],
+        "release_ids": [1, 2, 500],
+        "titles": ["First Light", "Second Wave", "Third Wave"],
+        "years": [1995, 1998, 1999],
+        "countries": ["US", "US", "US"],
+        "master_ids": [None, None, None],
+        "source_urls": ["https://data.discogs.com/?download=fake"] * 3,
+        "cover_uri150s": [None, None, None],
+        "relation_to_catalog_album_ids": ["master-1", "master-2", "master-2"],
     }
     registry = {
         "schema_version": 1,
@@ -764,7 +767,10 @@ def test_deleted_mode_on_record_routes_is_caught() -> None:
 def test_catalog_defect_is_caught_independently() -> None:
     artifacts = _clean_artifacts()
     broken_catalog = deepcopy(artifacts["catalog"])
-    del broken_catalog["albums"][0]["title"]
+    # `year` is not compared by any downstream catalog-aware check, so this
+    # defect stays isolated to the catalog group (a missing title would now,
+    # correctly, also surface as a title mismatch in every dependent pool).
+    del broken_catalog["albums"][0]["year"]
     artifacts["catalog"] = broken_catalog
 
     report = public_artifacts_failures(**artifacts)
@@ -831,3 +837,217 @@ def test_pathfinding_graph_defect_is_caught_independently() -> None:
     assert report["catalog"] == []
     assert report["challenge"] == []
     assert report["contributor_index"] == []
+
+
+# --- catalog lineage: cross-artifact checks that need the catalog -------------
+#
+# Each test makes exactly ONE artifact stale or inconsistent against an
+# otherwise-clean set and asserts the specific group reports a clear message.
+
+
+def _with_regenerated_catalog(artifacts: dict[str, Any]) -> dict[str, Any]:
+    """The 'operator regenerated the catalog and forgot to rebuild the pools'
+    scenario: a valid catalog with one more album, so its catalog_version
+    changes, while every pool artifact keeps the old version."""
+    catalog = deepcopy(artifacts["catalog"])
+    catalog["albums"].append(_catalog_album("master-3", artist_id=300, main_release_id=3))
+    catalog["catalog_version"] = _catalog_version(catalog["albums"], _SNAPSHOT)
+    artifacts = dict(artifacts)
+    artifacts["catalog"] = catalog
+    return artifacts
+
+
+def test_unmodified_fixtures_pass_the_lineage_checks() -> None:
+    report = public_artifacts_failures(**_clean_artifacts())
+    for group in (
+        "connection_guesser",
+        "record_routes",
+        "challenge",
+        "evidence_release_registry",
+        "search_index",
+    ):
+        assert report[group] == [], group
+
+
+def test_connection_pool_built_against_an_older_catalog_is_caught() -> None:
+    artifacts = _with_regenerated_catalog(_clean_artifacts())
+    report = public_artifacts_failures(**artifacts)
+    assert any("catalog_version" in f for f in report["connection_guesser"])
+
+
+def test_connection_universe_album_missing_from_catalog_is_caught() -> None:
+    artifacts = _clean_artifacts()
+    universe = deepcopy(artifacts["connection_universe"])
+    universe["albums"][0]["id"] = "master-99"
+    artifacts["connection_universe"] = universe
+    report = public_artifacts_failures(**artifacts)
+    assert any("master-99" in f and "catalog" in f for f in report["connection_guesser"])
+
+
+def test_connection_universe_retitled_album_is_caught() -> None:
+    artifacts = _clean_artifacts()
+    universe = deepcopy(artifacts["connection_universe"])
+    universe["albums"][0]["title"] = "Renamed Elsewhere"
+    artifacts["connection_universe"] = universe
+    report = public_artifacts_failures(**artifacts)
+    assert any("title" in f and "master-1" in f for f in report["connection_guesser"])
+
+
+def test_connection_universe_artist_rename_is_caught() -> None:
+    artifacts = _clean_artifacts()
+    universe = deepcopy(artifacts["connection_universe"])
+    universe["albums"][1]["act"] = "Someone Else"
+    artifacts["connection_universe"] = universe
+    report = public_artifacts_failures(**artifacts)
+    assert any("artist" in f and "master-2" in f for f in report["connection_guesser"])
+
+
+def test_routes_pool_built_against_an_older_catalog_is_caught() -> None:
+    artifacts = _with_regenerated_catalog(_clean_artifacts())
+    report = public_artifacts_failures(**artifacts)
+    assert any("catalog_version" in f for f in report["record_routes"])
+
+
+def test_routes_universe_album_missing_from_catalog_is_caught() -> None:
+    artifacts = _clean_artifacts()
+    universe = deepcopy(artifacts["routes_universe"])
+    universe["albums"][0]["id"] = "master-99"
+    artifacts["routes_universe"] = universe
+    report = public_artifacts_failures(**artifacts)
+    assert any("master-99" in f and "catalog" in f for f in report["record_routes"])
+
+
+def test_routes_universe_retitled_album_is_caught() -> None:
+    artifacts = _clean_artifacts()
+    universe = deepcopy(artifacts["routes_universe"])
+    universe["albums"][1]["title"] = "Renamed Elsewhere"
+    artifacts["routes_universe"] = universe
+    report = public_artifacts_failures(**artifacts)
+    assert any("title" in f and "master-2" in f for f in report["record_routes"])
+
+
+def test_challenge_built_against_an_older_catalog_is_caught() -> None:
+    artifacts = _with_regenerated_catalog(_clean_artifacts())
+    report = public_artifacts_failures(**artifacts)
+    assert any("catalog_version" in f for f in report["challenge"])
+
+
+def test_challenge_without_a_catalog_version_is_caught() -> None:
+    """challenge_failures tolerates a missing catalog_version (a hand-written
+    query list has no catalog), but the live, catalog-derived challenge.v3 must
+    carry one -- otherwise it can never be proven current."""
+    artifacts = _clean_artifacts()
+    challenge = deepcopy(artifacts["challenge"])
+    challenge["provenance"]["catalog_version"] = None
+    artifacts["challenge"] = challenge
+    report = public_artifacts_failures(**artifacts)
+    assert any("catalog_version" in f for f in report["challenge"])
+
+
+def test_challenge_album_missing_from_catalog_is_caught() -> None:
+    artifacts = _clean_artifacts()
+    challenge = deepcopy(artifacts["challenge"])
+    challenge["albums"][0]["id"] = "master-99"
+    artifacts["challenge"] = challenge
+    report = public_artifacts_failures(**artifacts)
+    assert any("master-99" in f and "catalog" in f for f in report["challenge"])
+
+
+def test_challenge_covering_fewer_albums_than_the_catalog_is_allowed() -> None:
+    """ADR 0067: the album shelf shows the whole catalog; the challenge may
+    legitimately cover fewer albums (matching can miss one), so a subset is
+    clean. Staleness is caught by catalog_version, not by set equality."""
+    artifacts = _clean_artifacts()
+    challenge = deepcopy(artifacts["challenge"])
+    challenge["albums"] = challenge["albums"][:1]
+    artifacts["challenge"] = challenge
+    report = public_artifacts_failures(**artifacts)
+    assert not any("not in the canonical catalog" in f for f in report["challenge"])
+
+
+def test_challenge_retitled_album_is_caught() -> None:
+    artifacts = _clean_artifacts()
+    challenge = deepcopy(artifacts["challenge"])
+    challenge["albums"][0]["title"] = "Renamed Elsewhere"
+    artifacts["challenge"] = challenge
+    report = public_artifacts_failures(**artifacts)
+    assert any("title" in f and "master-1" in f for f in report["challenge"])
+
+
+def test_challenge_artist_rename_is_caught() -> None:
+    artifacts = _clean_artifacts()
+    challenge = deepcopy(artifacts["challenge"])
+    challenge["albums"][1]["artist"] = "Someone Else"
+    artifacts["challenge"] = challenge
+    report = public_artifacts_failures(**artifacts)
+    assert any("artist" in f and "master-2" in f for f in report["challenge"])
+
+
+def _registry_without_release(artifacts: dict[str, Any], release_id: int) -> dict[str, Any]:
+    registry = deepcopy(artifacts["evidence_release_registry"])
+    index = registry["release_ids"].index(release_id)
+    for key in (
+        "release_ids",
+        "titles",
+        "years",
+        "countries",
+        "master_ids",
+        "source_urls",
+        "cover_uri150s",
+        "relation_to_catalog_album_ids",
+    ):
+        del registry[key][index]
+    registry["evidence_release_registry_version"] = evidence_release_registry_version(
+        registry, _SNAPSHOT
+    )
+    artifacts = dict(artifacts)
+    artifacts["evidence_release_registry"] = registry
+    return artifacts
+
+
+def test_registry_missing_a_release_cited_by_the_challenge_is_caught() -> None:
+    artifacts = _registry_without_release(_clean_artifacts(), 1)
+    report = public_artifacts_failures(**artifacts)
+    assert any("challenge" in f and "1" in f for f in report["evidence_release_registry"])
+
+
+def test_registry_missing_a_release_cited_by_routes_is_caught() -> None:
+    artifacts = _registry_without_release(_clean_artifacts(), 500)
+    report = public_artifacts_failures(**artifacts)
+    assert any("routes" in f and "500" in f for f in report["evidence_release_registry"])
+
+
+def test_registry_missing_a_release_cited_by_the_graph_is_caught() -> None:
+    artifacts = _clean_artifacts()
+    graph = deepcopy(artifacts["pathfinding_graph"])
+    graph["evidence_release_ids"][0] = 777
+    graph["pathfinding_graph_version"] = pathfinding_graph_version(graph, _SNAPSHOT)
+    artifacts["pathfinding_graph"] = graph
+    report = public_artifacts_failures(**artifacts)
+    assert any("graph" in f and "777" in f for f in report["evidence_release_registry"])
+
+
+def test_search_index_stale_label_is_caught() -> None:
+    artifacts = _clean_artifacts()
+    index = deepcopy(artifacts["search_index"])
+    entry = next(e for e in index["entries"] if e["id"] == "master-1")
+    entry["label"] = "Renamed Elsewhere"
+    index["search_index_version"] = search_index_version(index["entries"], _SNAPSHOT)
+    artifacts["search_index"] = index
+    report = public_artifacts_failures(**artifacts)
+    assert any("label" in f and "master-1" in f for f in report["search_index"])
+
+
+def test_optional_catalog_argument_extends_the_per_artifact_validators() -> None:
+    """The fleet's `connection-rounds` / `record-routes` validators call these
+    with (universe, rounds) or, now, (universe, rounds, catalog)."""
+    from networked_players_contracts import connection_rounds_failures, record_routes_failures
+
+    artifacts = _with_regenerated_catalog(_clean_artifacts())
+    catalog = artifacts["catalog"]
+    connection = (artifacts["connection_universe"], artifacts["connection_rounds"])
+    routes = (artifacts["routes_universe"], artifacts["routes_rounds"])
+    assert connection_rounds_failures(*connection) == []
+    assert connection_rounds_failures(*connection, catalog)
+    assert record_routes_failures(*routes) == []
+    assert record_routes_failures(*routes, catalog)

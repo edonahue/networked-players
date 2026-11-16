@@ -74,6 +74,11 @@ every published integer.
 
 ## Validation
 
+`validate-public-artifacts` additionally checks (`catalog_lineage.registry_citation_failures`)
+that the registry contains every release id cited by `challenge.v3.json` (releases and hops),
+`routes/rounds.v1.json` (releases and hops) and `pathfinding/graph.v4.json`'s
+`evidence_release_ids`: the union the builder is defined to produce. Extra entries are tolerated.
+
 `evidence_release_registry_failures(registry, catalog)` checks: exact
 top-level key set for the payload's own schema version, `schema_version`
 in `{1, 2}`, `catalog_version` agreement,

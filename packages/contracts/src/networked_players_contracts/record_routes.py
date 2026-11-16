@@ -21,6 +21,7 @@ import re
 from typing import Any
 
 from .canonical import content_hash, stable_id_digest
+from .catalog_lineage import routes_catalog_failures
 from .rounds import (
     _DIFFICULTIES,
     _DISTRACTOR_KEYS,
@@ -143,8 +144,17 @@ def _artifact_version(
     return f"routes-artifact-v1-{snapshot_date}-{digest}"
 
 
-def record_routes_failures(universe: Any, rounds: Any) -> list[str]:
-    """Return every contract failure in a Record Routes universe/rounds pair."""
+def record_routes_failures(universe: Any, rounds: Any, catalog: Any | None = None) -> list[str]:
+    """Return every contract failure in a Record Routes universe/rounds pair.
+    With `catalog`, also verify the pool is current against it (see
+    `catalog_lineage`); optional so older two-argument callers keep working."""
+    failures = _record_routes_pair_failures(universe, rounds)
+    if catalog is not None:
+        failures.extend(routes_catalog_failures(universe, catalog))
+    return failures
+
+
+def _record_routes_pair_failures(universe: Any, rounds: Any) -> list[str]:
     failures: list[str] = []
     if not isinstance(universe, dict):
         return ["universe artifact must be an object"]

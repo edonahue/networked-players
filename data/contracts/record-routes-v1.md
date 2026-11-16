@@ -65,6 +65,12 @@ changes.
 
 ## Validation
 
+With an optional third `catalog` argument, `record_routes_failures(universe, rounds, catalog)`
+also runs the catalog-lineage checks (`networked_players_contracts.catalog_lineage`):
+`provenance.catalog_version` must equal the catalog's, and every universe album must exist
+in the catalog with the same title and artist (a subset: the pool applies its own
+eligibility). `validate-public-artifacts` always supplies the catalog.
+
 `record_routes_failures(universe, rounds)` (pure, Pi-safe) checks: exact
 top-level key sets; `schema_version`/`mode` literals on both artifacts;
 `pool_version` agreement; exact `provenance` match; required provenance

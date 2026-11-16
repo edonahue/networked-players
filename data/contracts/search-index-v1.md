@@ -62,6 +62,10 @@ search feature (index + `siteSearch.ts` combined).
 
 ## Validation
 
+Album entries' `label`/`sublabel` must also equal the catalog album's `title`/`artist`
+(`catalog_lineage.search_index_text_failures`): a retitle does not change `catalog_version`,
+so the version check alone cannot see it.
+
 `search_index_failures(artifact, catalog, contributor_index)` checks:
 exact top-level key set; `schema_version == 1`; every metadata string
 non-empty; `catalog_version`/`contributor_index_version` agreement with
