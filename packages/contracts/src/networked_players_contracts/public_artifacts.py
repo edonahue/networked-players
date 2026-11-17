@@ -36,6 +36,7 @@ from .artifact_lineage import artifact_lineage_report
 from .catalog import public_album_catalog_failures
 from .catalog_lineage import challenge_catalog_failures, registry_citation_failures
 from .challenge import challenge_failures
+from .collection import collections_failures
 from .connection_daily_manifest import (
     CONNECTION_DAILY_MANIFEST_SCHEMA_VERSION_V2,
     connection_daily_manifest_failures,
@@ -68,6 +69,7 @@ PUBLIC_ARTIFACT_GROUPS = (
     "evidence_release_registry",
     "search_index",
     "approved_pool",
+    "collections",
 )
 
 
@@ -91,6 +93,7 @@ def public_artifacts_failures(
     search_index: Any,
     approved_pool: Any = None,
     daily_manifest_pin: Any = None,
+    collections: Any = None,
 ) -> dict[str, list[str]]:
     """Every contract failure across the whole real-artifact publication set,
     grouped by artifact. Every key in `PUBLIC_ARTIFACT_GROUPS` is always
@@ -151,7 +154,11 @@ def public_artifacts_failures(
     declares `provenance.inputs` has each declared version checked against
     the upstream artifact's current version; the failure is attributed to the
     downstream group and names both. Artifacts that declare nothing pass --
-    see `public_artifacts_lineage_undeclared` for that list."""
+    see `public_artifacts_lineage_undeclared` for that list.
+
+    `collections` (ADR 0074): `None` or `{"index": ..., "files": {id: ...}}`
+    loaded from `collections/` under the data root; checked by
+    `collection.py`, which also owns its (multi-file) lineage check."""
     report = {
         "catalog": public_album_catalog_failures(catalog),
         "album_art_registry": album_art_failures(album_art, catalog),
@@ -194,6 +201,10 @@ def public_artifacts_failures(
             else approved_pool_failures(approved_pool)
             + approved_pool_catalog_failures(approved_pool, catalog)
         ),
+        # Collections (ADR 0074): `None` (no collections published yet) passes.
+        # Every collection the index lists is checked against the catalog and
+        # the pathfinding graph, including its own declared lineage.
+        "collections": collections_failures(collections, catalog, pathfinding_graph),
     }
     if daily_manifest_pin is not None:
         report["connection_daily_manifest"].extend(
