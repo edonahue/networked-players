@@ -77,3 +77,17 @@ def test_lane_quotas_sum_to_target_by_largest_remainder() -> None:
     spec["target_count"] = 7
     quotas = lane_quotas(spec)
     assert sum(quotas.values()) == 7 and quotas["theme"] == 4
+
+
+def test_non_string_and_whitespace_variant_names_return_failures_not_exceptions() -> None:
+    spec = _spec()
+    spec["themes"][0]["name"] = ["unhashable"]
+    spec["themes"][1]["name"] = 7
+    failures = round_seed_spec_failures(spec)
+    assert sum("name must be a non-empty string" in f for f in failures) == 2
+    spec = _spec()
+    spec["themes"][1]["name"] = spec["themes"][0]["name"] + " "
+    failures = round_seed_spec_failures(spec)
+    assert any("leading or trailing whitespace" in f for f in failures)
+    spec["themes"][1]["name"] = spec["themes"][0]["name"].upper()
+    assert any("unique" in f for f in round_seed_spec_failures(spec))

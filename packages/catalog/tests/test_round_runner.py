@@ -740,6 +740,10 @@ def test_opt_in_stages_run_only_when_named() -> None:
     assert "theme-supply" not in from_rewiden
     with pytest.raises(rr.RoundError):
         rr.select_stages("catalog", None, "theme-supply")
+    # A range out of supply would skip scoring, review and approval: refused.
+    for to in (None, "onehop-rewiden", "catalog", "verify"):
+        with pytest.raises(rr.RoundError, match="skip scoring"):
+            rr.select_stages("theme-supply", to)
     # Supply precedes every builder; re-widen follows the approved pool and precedes the catalog.
     assert rr.STAGE_NAMES.index("theme-supply") < rr.STAGE_NAMES.index("prepare-output")
     assert rr.STAGE_NAMES.index("onehop-rewiden") < rr.STAGE_NAMES.index("catalog")
@@ -851,3 +855,17 @@ def test_rewiden_stage_replaces_the_onehop_corpus_for_approved_albums(
     path.write_text(json.dumps(spec))
     _, failures = rr.plan_round(_ctx(path), rr.select_stages(None, None, "onehop-rewiden"))
     assert any("must be named" in f or "does not exist" in f for f in failures)
+
+
+def test_rewiden_reports_a_corpus_without_a_manifest(world: dict[str, Any], tmp_path: Path) -> None:
+    path, _ = _supply_world(world, tmp_path, "nomanifest")
+    spec = json.loads(path.read_text())
+    empty = tmp_path / "empty-corpus"
+    empty.mkdir()
+    spec["inputs"]["full_corpus_root"] = str(empty)
+    path.write_text(json.dumps(spec))
+    ctx = _ctx(path)
+    failures = rr.evaluate_preconditions(
+        ctx, rr.select_stages(None, None, "onehop-rewiden"), planning=True
+    )
+    assert any("has no manifest.json" in f for f in failures)

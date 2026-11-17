@@ -61,8 +61,11 @@ def _theme_failures(index: int, theme: Any) -> list[str]:
     extra = sorted(set(theme) - _THEME_KEYS)
     if extra:
         failures.append(f"{at} has unexpected keys: {extra}")
-    if not isinstance(theme.get("name"), str) or not theme["name"].strip():
+    name = theme.get("name")
+    if not isinstance(name, str) or not name.strip():
         failures.append(f"{at}.name must be a non-empty string")
+    elif name != name.strip():
+        failures.append(f"{at}.name must not have leading or trailing whitespace")
     artists = theme.get("seed_artist_ids", [])
     masters = theme.get("seed_master_ids", [])
     if not _positive_int_list(artists):
@@ -133,7 +136,11 @@ def round_seed_spec_failures(spec: Any) -> list[str]:
     else:
         for index, theme in enumerate(themes):
             failures += _theme_failures(index, theme)
-        names = [t.get("name") for t in themes if isinstance(t, dict)]
+        names = [
+            t["name"].strip().casefold()
+            for t in themes
+            if isinstance(t, dict) and isinstance(t.get("name"), str)
+        ]
         if len(names) != len(set(names)):
             failures.append("theme names must be unique")
     return failures

@@ -1050,6 +1050,11 @@ def _pre_rewiden(ctx: Ctx, planning: bool) -> list[str]:
         failures.append(f"{error} (paths.work_dir must be a git-ignored local/ path)")
     onehop = ctx.inputs["onehop_root"]
     corpus = ctx.inputs["full_corpus_root"]
+    if corpus is not None and not (corpus / "manifest.json").is_file():
+        failures.append(
+            f"inputs.full_corpus_root {corpus} has no manifest.json (not a parsed snapshot); "
+            "cannot check that onehop_root matches its snapshot date"
+        )
     if onehop is not None and corpus is not None and (corpus / "manifest.json").is_file():
         try:
             date_ = str(json.loads((corpus / "manifest.json").read_text())["snapshot_date"])
@@ -1223,7 +1228,8 @@ STAGES: tuple[Stage, ...] = (
           _exec_prepare, _pre_prepare),
     Stage("onehop-rewiden", "build-rewiden-seed + expand-one-hop",
           "re-widen the one-hop corpus ONLY for approved albums (approved pool + committed "
-          "editorial seed + private seed); replaces onehop_root atomically; workstation-only",
+          "editorial seed + private seed); replaces onehop_root by a rename-aside swap (old "
+          "corpus restored on failure); workstation-only",
           "full corpus, approved pool, editorial seed, private seed",
           ("<work>/rewiden-seed.json", "onehop_root"), _argv_rewiden, _exec_argv_in_work_dir,
           _pre_rewiden, True),
@@ -1303,6 +1309,15 @@ def select_stages(
     end = STAGE_NAMES.index(to_stage) if to_stage else len(STAGES) - 1
     if start > end:
         raise RoundError("--from-stage comes after --to-stage")
+    if from_stage == "theme-supply" and to_stage != "theme-supply":
+        # Supply is followed by scoring, owner review and approval, none of which the
+        # runner performs; a range out of it would publish without that approval.
+        raise RoundError(
+            "--from-stage theme-supply would run on into the publish stages and skip "
+            "scoring, owner review and approval. Run supply alone with --only-stage "
+            "theme-supply (or --to-stage theme-supply); start publishing later with "
+            "--from-stage onehop-rewiden or --from-stage prepare-output once the pool is approved"
+        )
     named = {from_stage, to_stage}
     return [s for s in STAGES[start : end + 1] if not s.opt_in or s.name in named]
 

@@ -59,11 +59,11 @@ from typing import Any
 
 import duckdb
 
-from .album_policy import master_non_studio_sql
+from .album_policy import master_non_studio_reason, master_non_studio_sql
 from .collection_candidates import _release_artist
 from .editorial_seed import EDITORIAL_SEED_KIND, EDITORIAL_SEED_SCHEMA_VERSION
 from .graph import CreditGraph, _not_placeholder_sql, read_parquet_sql
-from .master_eligibility import master_studio_eligibility_reason, select_master_main_release_id
+from .master_eligibility import master_studio_verdicts_batch
 from .relationship_pool import performer_qualifying_credit_sql
 
 _SOURCE_NAMES = {0: "seed_master", 1: "seed_artist_master", 2: "shared_performers"}
@@ -129,7 +129,7 @@ def _theme_pool_query(excluded_master_ids: Sequence[int]) -> str:
         ),
         gated AS (
             SELECT p.theme_idx, p.master_id, p.source_rank, p.shared,
-                   m.main_release_id, m.title, m.year,
+                   m.main_release_id, m.title, m.year, m.genres, m.styles,
                    row_number() OVER (
                        PARTITION BY p.theme_idx
                        ORDER BY p.source_rank, p.shared DESC NULLS LAST, p.master_id
@@ -150,11 +150,42 @@ def _theme_pool_query(excluded_master_ids: Sequence[int]) -> str:
               )
               {exclusions_sql}
         )
-        SELECT theme_idx, master_id, source_rank, shared, main_release_id, title, year
+        SELECT theme_idx, master_id, source_rank, shared, main_release_id, title, year,
+               genres, styles
         FROM gated
         WHERE rank_in_theme <= candidate_cap
         ORDER BY theme_idx, rank_in_theme
     """
+
+
+def _seed_master_drop_reason(
+    master_id: int,
+    facts: Sequence[Any] | None,
+    theme: Mapping[str, Any],
+    *,
+    excluded: frozenset[int],
+    published: frozenset[int],
+) -> str:
+    """Why an explicit seed master did not reach its theme's pool, so an operator's
+    seed is never silently lost. `facts` is `(master_id, main_release_id, year,
+    genres, styles)` from the masters table, or None when it has no row."""
+    if master_id in published:
+        return "already_published"
+    if master_id in excluded:
+        return "curated_master_exclusion"
+    if facts is None:
+        return "not_in_masters_table"
+    _, main_release_id, year, genres, styles = facts
+    if main_release_id is None:
+        return "no_main_release"
+    if master_non_studio_reason(list(genres or []), list(styles or [])):
+        return "non_studio_genre_style"
+    lo, hi = theme.get("year_min"), theme.get("year_max")
+    if (lo is not None or hi is not None) and year is None:
+        return "no_year_but_year_bounds_set"
+    if (lo is not None and year < lo) or (hi is not None and year > hi):
+        return "outside_year_bounds"
+    return "cut_by_candidate_cap"
 
 
 def derive_theme_candidates(
@@ -224,8 +255,23 @@ def derive_theme_candidates(
             "INSERT INTO theme_seed_masters VALUES (?, ?)",
             [[i, int(m)] for i, t in enumerate(themes) for m in t.get("seed_master_ids", [])],
         )
+        connection.execute(
+            "CREATE TEMP TABLE theme_pool AS "
+            + _theme_pool_query(sorted(master_exclusions | already_published_master_ids))
+        )
         pool_rows = connection.execute(
-            _theme_pool_query(sorted(master_exclusions | already_published_master_ids))
+            "SELECT theme_idx, master_id, source_rank, shared, main_release_id, title, year, "
+            "genres, styles FROM theme_pool"
+        ).fetchall()
+        # Set-based eligibility inputs: every candidate master's releases in ONE query,
+        # not several full-corpus scans per master.
+        release_rows = connection.execute(
+            "SELECT r.release_id, r.master_id, r.released FROM releases r "
+            "WHERE r.master_id IN (SELECT DISTINCT master_id FROM theme_pool)"
+        ).fetchall()
+        seed_master_facts = connection.execute(
+            "SELECT m.master_id, m.main_release_id, m.year, m.genres, m.styles "
+            "FROM masters m WHERE m.master_id IN (SELECT master_id FROM theme_seed_masters)"
         ).fetchall()
     finally:
         connection.close()
@@ -234,8 +280,18 @@ def derive_theme_candidates(
     # Per distinct master: its facts once, and which themes surfaced it.
     surfaced: dict[int, list[dict[str, Any]]] = {}
     pool_by_theme: dict[int, int] = {}
-    for theme_idx, master_id, source_rank, shared, _main, _title, _year in pool_rows:
+    pool_ids_by_theme: dict[int, set[int]] = {}
+    facts: dict[int, dict[str, Any]] = {}
+    for theme_idx, master_id, source_rank, shared, main, title, year, genres, styles in pool_rows:
+        facts[int(master_id)] = {
+            "main_release_id": main,
+            "title": title,
+            "year": year,
+            "genres": genres,
+            "styles": styles,
+        }
         pool_by_theme[int(theme_idx)] = pool_by_theme.get(int(theme_idx), 0) + 1
+        pool_ids_by_theme.setdefault(int(theme_idx), set()).add(int(master_id))
         surfaced.setdefault(int(master_id), []).append(
             {
                 "theme": themes[int(theme_idx)]["name"],
@@ -245,24 +301,15 @@ def derive_theme_candidates(
         )
     master_ids = sorted(surfaced)
 
-    verdicts: dict[int, tuple[str, int | None, str]] = {}
-    for master_id in master_ids:
-        reason = master_studio_eligibility_reason(
-            graph,
-            master_id,
-            allowed_release_ids=allowed_release_ids,
-            master_exclusions=master_exclusions,
-        )
-        if reason is not None:
-            verdicts[master_id] = (reason, None, reason)
-            continue
-        main_release_id, release_reason = select_master_main_release_id(
-            graph, master_id, allowed_release_ids=allowed_release_ids
-        )
-        if main_release_id is None:
-            verdicts[master_id] = (release_reason, None, release_reason)
-            continue
-        verdicts[master_id] = ("eligible", main_release_id, release_reason)
+    releases_by_master: dict[int, list[tuple[int, str | None]]] = {}
+    for release_id, master_id, released in release_rows:
+        releases_by_master.setdefault(int(master_id), []).append((int(release_id), released))
+    verdicts = master_studio_verdicts_batch(
+        facts,
+        releases_by_master,
+        allowed_release_ids=allowed_release_ids,
+        master_exclusions=master_exclusions,
+    )
 
     # One batched credit query across every eligible candidate's selected main release.
     eligible_release_ids = sorted({r for _, r, _ in verdicts.values() if r is not None})
@@ -271,7 +318,7 @@ def derive_theme_candidates(
     rows: list[dict[str, Any]] = []
     for master_id in master_ids:
         eligibility, main_release_id, release_reason = verdicts[master_id]
-        master = graph.master(master_id) or {}
+        master = facts[master_id]
         artist_id: int | None = None
         artist_name: str | None = None
         if main_release_id is not None:
@@ -283,15 +330,16 @@ def derive_theme_candidates(
                 "master_id": master_id,
                 "artist_id": artist_id,
                 "artist_name": artist_name,
-                "sample_title": master.get("title"),
+                "sample_title": master["title"],
                 "main_release_id": main_release_id,
-                "year": master.get("year"),
+                "year": master["year"],
                 "eligibility": eligibility,
                 "main_release_selection_reason": release_reason,
                 "themes": surfaced[master_id],
             }
         )
 
+    seed_facts = {int(r[0]): r for r in seed_master_facts}
     eligible_by_master = {r["master_id"]: r["eligibility"] == "eligible" for r in rows}
     summaries = []
     for i, theme in enumerate(themes):
@@ -300,9 +348,24 @@ def derive_theme_candidates(
             for mid, entries in surfaced.items()
             if any(e["theme"] == theme["name"] for e in entries)
         ]
+        dropped = [
+            {
+                "master_id": int(mid),
+                "reason": _seed_master_drop_reason(
+                    int(mid),
+                    seed_facts.get(int(mid)),
+                    theme,
+                    excluded=master_exclusions,
+                    published=already_published_master_ids,
+                ),
+            }
+            for mid in theme.get("seed_master_ids", [])
+            if int(mid) not in pool_ids_by_theme.get(i, set())
+        ]
         summaries.append(
             {
                 "theme": theme["name"],
+                "dropped_seed_masters": dropped,
                 "pool_size": pool_by_theme.get(i, 0),
                 "eligible_count": sum(1 for mid in names if eligible_by_master[mid]),
                 "candidate_cap": int(theme["candidate_cap"]),
@@ -365,7 +428,8 @@ def build_rewiden_seed(
             rows = connection.execute(
                 f"""
                 SELECT m.master_id, m.main_release_id, m.title, m.year,
-                       min(c.artist_id) AS artist_id, min(c.name) AS artist_name
+                       min(c.artist_id) AS artist_id,
+                       arg_min(c.name, c.artist_id) AS artist_name
                 FROM wanted w
                 JOIN masters m ON m.master_id = w.master_id
                 JOIN credits c ON c.release_id = m.main_release_id

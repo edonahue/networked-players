@@ -144,7 +144,7 @@ These steps produce *proposals*. Nothing here authorises publication: the approv
    `build-theme-candidates` directly. Output: `<work_dir>/theme-candidates.json`, private and
    git-ignored (the command refuses a committable path). Each row is `rank-album-candidates`
    shaped plus `eligibility` (via `master_eligibility`) and `themes` (which theme, by which
-   route: seed master, seed-artist master, or shared performers). Check each theme's
+   route: seed master, seed-artist master, or shared performers). Each theme's summary also lists `dropped_seed_masters` (explicit seed masters that did not reach the pool, with a reason) so a seed is never silently lost. Check each theme's
    `eligible_count` against its lane quota before going on. Then score with
    `score-expansion-candidates --candidates <that file> --onehop-root <FULL corpus>`: the
    scorer reads credits from `--onehop-root`, and the theme albums only exist in the full
@@ -272,7 +272,7 @@ uv run networked-players-catalog round run --spec ... --from-stage <stage>
 `theme-supply` and `onehop-rewiden` are opt-in stages: the default `plan`/`run` covers the
 publish sequence only, because both straddle the human review steps (supply before scoring and
 review, re-widen after the pool is approved). Name them with `--only-stage`, `--from-stage` or
-`--to-stage`. Their inputs (`round_seed_spec`, `full_corpus_root`, `private_seed`,
+`--to-stage`. `--from-stage theme-supply` is refused unless the range ends at it, because supply is followed by scoring, owner review and approval, which the runner does not perform. `--from-stage onehop-rewiden` is allowed: it runs after the pool is approved. Their inputs (`round_seed_spec`, `full_corpus_root`, `private_seed`,
 `editorial_seed`) are stated in every spec and enforced only when the stage is selected;
 there are no defaults for any of them.
 

@@ -87,18 +87,28 @@ STONER = ["Stoner Rock"]
 
 # release -> (master, year, styles, billed artist, performers)
 WORLD: dict[int, tuple[int, int, list[str], tuple[int, str], list[tuple[int, str, str]]]] = {
-    1: (9100, 1995, STONER, (9001, "Seed Band"), [P1, P2, P3]),  # theme 1 seed artist's master
+    # Xavi only PRODUCES on the seed master but plays on master 9110 (with seed performer Rae):
+    # counting him as a seed performer would wrongly lift 9110 to two shared performers.
+    1: (
+        9100,
+        1995,
+        STONER,
+        (9001, "Seed Band"),
+        [P1, P2, P3, (7201, "Xavi", "Producer")],
+    ),  # theme 1 seed artist's master
     2: (9101, 2000, STONER, (9002, "Alpha"), [P1, P2]),  # overlap 2 -> in
     3: (9102, 2000, STONER, (9003, "Beta"), [P1]),  # overlap 1 -> out
     4: (9103, 2000, ["Pop Rock"], (9004, "Gamma"), [P1, P2]),  # wrong tag -> out
     5: (9104, 2015, STONER, (9005, "Delta"), [P1, P2]),  # outside decade bounds -> out
     7: (9106, 1998, STONER, (9006, "Epsilon"), [P1, P2]),  # no allowed release -> reasoned
+    10: (9109, 2000, STONER, (8002, "Amy"), []),  # split billing: ids and names must pair up
+    11: (9110, 2000, STONER, (9010, "Theta"), [P3, (7201, "Xavi", "Guitar")]),  # see Producer note
     8: (9107, 1999, STONER, (9007, "Zeta"), [P1, (7002, "Quinn", "Producer")]),  # non-performer
     9: (9108, 1999, STONER, (9008, "Eta"), [P1, P2]),  # already published -> dropped
     20: (9500, 1980, ["Fusion"], (9500, "Fusion Seed"), [Q1, Q2]),  # theme 2 seed master
     21: (9501, 1985, ["Fusion"], (9501, "Fusion Next"), [Q1, Q2]),  # overlap 2, no tags -> in
 }
-ALLOWED = [1, 2, 3, 4, 5, 8, 9, 20, 21]  # release 7 is deliberately not format-allowed
+ALLOWED = [1, 2, 3, 4, 5, 8, 9, 10, 11, 20, 21]  # release 7 is deliberately not format-allowed
 
 
 def _write_world(root: Path) -> tuple[Path, Path]:
@@ -110,6 +120,8 @@ def _write_world(root: Path) -> tuple[Path, Path]:
     for rid, (_m, _y, _s, billed, people) in WORLD.items():
         credits.append(_credit(rid, billed[0], billed[1]))
         credits += _perf(rid, *people)
+        if rid == 10:
+            credits.append(_credit(rid, 8001, "Zed"))  # a second billed artist, higher name
     for table, rows in (
         ("releases", releases),
         ("credits", credits),
@@ -218,6 +230,8 @@ def test_theme_seed_outside_onehop_corpus_yields_eligible_candidates(
     # Out: single shared performer, wrong tag, outside decade, non-performer role, published.
     for master_id in (9102, 9103, 9104, 9107, 9108):
         assert master_id not in rows, master_id
+    # A seed-side producer who plays on another master must not make that master qualify.
+    assert 9110 not in rows
     # Present but reasoned, not silently dropped: nothing under the master is format-allowed.
     assert rows[9106]["eligibility"] == "no_format_allowed_release_under_master"
     assert rows[9106]["main_release_id"] is None
@@ -396,3 +410,78 @@ def test_rewiden_seed_refuses_an_unseedable_approved_master(
     pool = _pool(tmp_path / "pool.json", [9100, 424242])
     assert main(_rewiden_argv(world, pool, _editorial(tmp_path / "ed.json"), out)) == 1
     assert not out.exists()
+
+
+def test_seed_master_ids_that_do_not_reach_the_pool_are_reported_with_a_reason(
+    world: dict[str, Path], tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    spec = json.loads(FIXTURE_SPEC.read_text())
+    spec["themes"][1]["seed_master_ids"] = [9500, 9108, 9888]
+    spec["themes"][1]["year_min"] = 1981  # 9500 is from 1980
+    path = tmp_path / "dropped.json"
+    path.write_text(json.dumps(spec))
+    assert main(_supply_argv(world, path)) == 0
+    summary = json.loads(capsys.readouterr().out)
+    fusion = next(t for t in summary["themes"] if t["theme"] == "synthetic fusion theme")
+    assert {d["master_id"]: d["reason"] for d in fusion["dropped_seed_masters"]} == {
+        9500: "outside_year_bounds",
+        9108: "already_published",
+        9888: "not_in_masters_table",
+    }
+    desert = next(t for t in summary["themes"] if t["theme"] == "synthetic desert theme")
+    assert desert["dropped_seed_masters"] == []
+
+
+def test_batch_eligibility_matches_the_per_master_functions(world: dict[str, Path]) -> None:
+    """Parity: the set-based verdicts equal master_studio_eligibility_reason +
+    select_master_main_release_id for every master in the fixture, including a
+    curated exclusion, a master with no format-allowed release and a main release
+    that is not itself allowed."""
+    from networked_players_graph_core.graph import CreditGraph
+    from networked_players_graph_core.master_eligibility import (
+        master_studio_eligibility_reason,
+        master_studio_verdicts_batch,
+        select_master_main_release_id,
+    )
+
+    allowed = frozenset(ALLOWED) - {1}  # master 9100's main release is no longer allowed
+    exclusions = frozenset({9101})
+    with CreditGraph.open(world["full"], build_edges=False) as graph:
+        graph.attach_masters(world["masters"])
+        master_ids = sorted(spec[0] for spec in WORLD.values())
+        facts = {m: graph.master(m) for m in master_ids}
+        releases = {
+            m: [
+                (rid, (graph.releases_for_ids([rid]).get(rid) or {}).get("released"))
+                for rid in graph.release_ids_for_master(m)
+            ]
+            for m in master_ids
+        }
+        batch = master_studio_verdicts_batch(
+            {m: f for m, f in facts.items() if f is not None},
+            releases,
+            allowed_release_ids=allowed,
+            master_exclusions=exclusions,
+        )
+        for master_id in master_ids:
+            reason = master_studio_eligibility_reason(
+                graph, master_id, allowed_release_ids=allowed, master_exclusions=exclusions
+            )
+            if reason is not None:
+                assert batch[master_id] == (reason, None, reason), master_id
+                continue
+            main, why = select_master_main_release_id(graph, master_id, allowed_release_ids=allowed)
+            assert batch[master_id] == ("eligible", main, why), master_id
+    assert batch[9100][2] == "earliest_allowed_release" or batch[9100][0] != "eligible"
+    assert batch[9101][0] == "curated_master_exclusion"
+    assert batch[9106][0] == "no_format_allowed_release_under_master"
+
+
+def test_rewiden_seed_pairs_artist_id_with_its_own_name(
+    world: dict[str, Path], tmp_path: Path
+) -> None:
+    out = tmp_path / "local" / "rewiden-seed.json"
+    pool = _pool(tmp_path / "pool.json", [9109])
+    assert main(_rewiden_argv(world, pool, _editorial(tmp_path / "ed.json"), out)) == 0
+    entry = next(a for a in json.loads(out.read_text())["albums"] if a["master_id"] == 9109)
+    assert (entry["artist_id"], entry["artist"]) == (8001, "Zed")

@@ -39,6 +39,9 @@ batched form then -- not guessed at here.
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Mapping
+from typing import Any
+
 from .album_policy import master_non_studio_reason
 from .challenge import _year_from_released
 from .graph import CreditGraph
@@ -110,3 +113,60 @@ def select_master_main_release_id(
         ),
     )
     return ranked[0], "earliest_allowed_release"
+
+
+def master_studio_verdicts_batch(
+    masters: Mapping[int, Mapping[str, Any]],
+    releases_by_master: Mapping[int, Iterable[tuple[int, str | None]]],
+    *,
+    allowed_release_ids: frozenset[int],
+    master_exclusions: frozenset[int] = frozenset(),
+) -> dict[int, tuple[str, int | None, str]]:
+    """Set-based form of `master_studio_eligibility_reason` +
+    `select_master_main_release_id`, for callers that have already materialised
+    the facts in bulk (one query for the masters' `main_release_id`/`genres`/
+    `styles`, one for their `(release_id, released)` rows) instead of paying
+    several full-corpus scans per master (`theme_supply`).
+
+    Returns `{master_id: (eligibility, main_release_id, selection_reason)}`
+    where `eligibility` is `"eligible"` or the same fail-closed reason string
+    the per-master function returns, and `(main_release_id, selection_reason)`
+    follows `select_master_main_release_id` exactly (the master's own main
+    release when format-allowed, else the earliest-year allowed release, ties
+    by release id). Parity with the per-master functions is pinned by
+    `test_theme_supply.py`; change the two together.
+    """
+    verdicts: dict[int, tuple[str, int | None, str]] = {}
+    for master_id, master in masters.items():
+        if master_id in master_exclusions:
+            verdicts[master_id] = ("curated_master_exclusion", None, "curated_master_exclusion")
+            continue
+        genre_style_reason = master_non_studio_reason(
+            list(master.get("genres") or []), list(master.get("styles") or [])
+        )
+        if genre_style_reason:
+            verdicts[master_id] = (genre_style_reason, None, genre_style_reason)
+            continue
+        allowed = [
+            (rid, released)
+            for rid, released in releases_by_master.get(master_id, ())
+            if rid in allowed_release_ids
+        ]
+        if not allowed:
+            reason = "no_format_allowed_release_under_master"
+            verdicts[master_id] = (reason, None, reason)
+            continue
+        main = master.get("main_release_id")
+        if main is not None and int(main) in allowed_release_ids:
+            verdicts[master_id] = ("eligible", int(main), "master_main_release")
+            continue
+        ranked = sorted((_year_from_released(released) or 9999, rid) for rid, released in allowed)
+        verdicts[master_id] = ("eligible", ranked[0][1], "earliest_allowed_release")
+    return verdicts
+
+
+__all__ = [
+    "master_studio_eligibility_reason",
+    "master_studio_verdicts_batch",
+    "select_master_main_release_id",
+]

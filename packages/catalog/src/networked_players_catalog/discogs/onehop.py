@@ -460,9 +460,21 @@ def expand_one_hop(
         (staging_root / "manifest.json").write_text(
             json.dumps(manifest, indent=2, sort_keys=True) + "\n"
         )
+        # Swap, never delete-then-move: the old corpus is renamed aside, the new one
+        # moved in, and the old one deleted only after that succeeded. Any failure
+        # restores the old corpus (a partial rmtree of it would be unrecoverable).
+        backup: Path | None = None
         if final_root.exists():
-            shutil.rmtree(final_root)
-        staging_root.replace(final_root)
+            backup = final_root.with_name(f".{final_root.name}.old-{uuid.uuid4().hex}")
+            final_root.rename(backup)
+        try:
+            staging_root.replace(final_root)
+        except BaseException:
+            if backup is not None and not final_root.exists():
+                backup.rename(final_root)
+            raise
+        if backup is not None:
+            shutil.rmtree(backup, ignore_errors=True)
         return manifest
     except Exception:
         shutil.rmtree(staging_root, ignore_errors=True)
