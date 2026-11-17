@@ -542,3 +542,71 @@ def test_shard_outputs_merge_to_the_single_node_file_byte_for_byte(tmp_path: Pat
     with pytest.raises(SystemExit):
         main([*head, *dup, "--output", str(out / "bad2.json")])
     assert not (out / "bad1.json").exists() and not (out / "bad2.json").exists()
+
+
+def test_merge_refuses_mixed_inputs_foreign_candidates_and_bad_indexes(tmp_path: Path) -> None:
+    dataset = _write_onehop_dataset(tmp_path)
+    masters_root = _write_masters_dataset(tmp_path)
+    policy = _write_release_format_policy(tmp_path / "policy.json")
+    graph_a = _write_pathfinding_graph(tmp_path / "graph-a.json", existing_node_ids=[100, -1])
+    graph_b = _write_pathfinding_graph(tmp_path / "graph-b.json", existing_node_ids=[100, 200, -1])
+    candidates = tmp_path / "candidates.json"
+    candidates.write_text(
+        json.dumps(
+            [
+                {"master_id": 900, "artist_id": 100, "artist_name": "Alice"},
+                {"master_id": 901, "artist_id": 400, "artist_name": "Dan"},
+            ]
+        )
+    )
+    out = tmp_path / "local" / "scored"
+
+    def score(index: int, graph: Path, name: str) -> Path:
+        path = out / name
+        argv = [
+            "score-expansion-candidates",
+            "--onehop-root",
+            str(dataset),
+            "--masters-root",
+            str(masters_root),
+            "--candidates",
+            str(candidates),
+            "--pathfinding-graph",
+            str(graph),
+            "--release-format-policy",
+            str(policy),
+            "--quiet",
+            "--output",
+            str(path),
+            "--shard-count",
+            "2",
+            "--shard-index",
+            str(index),
+        ]
+        assert main(argv) == 0
+        return path
+
+    good = [score(0, graph_a, "g0.json"), score(1, graph_a, "g1.json")]
+    mixed = [good[0], score(1, graph_b, "m1.json")]
+
+    def merge(shards: list[Path], name: str, cands: Path = candidates) -> int:
+        argv = ["merge-scored-shards", "--candidates", str(cands), "--shard-count", "2"]
+        for path in shards:
+            argv += ["--shard-output", str(path)]
+        return main([*argv, "--output", str(out / name)])
+
+    assert merge(good, "ok.json") == 0
+    with pytest.raises(SystemExit, match="different inputs"):
+        merge(mixed, "mixed.json")
+    other = tmp_path / "other-candidates.json"
+    other.write_text(candidates.read_text() + "\n")  # different bytes, same masters
+    with pytest.raises(SystemExit, match="different candidates file"):
+        merge(good, "foreign.json", other)
+    for bad_index in (-1, 2, 99):
+        payload = json.loads(good[1].read_text())
+        payload["shard"]["index"] = bad_index
+        broken = out / f"bad-{bad_index}.json"
+        broken.write_text(json.dumps(payload))
+        with pytest.raises(SystemExit, match="outside"):
+            merge([good[0], broken], f"idx{bad_index}.json")
+    assert not any((out / n).exists() for n in ("mixed.json", "foreign.json", "idx-1.json"))

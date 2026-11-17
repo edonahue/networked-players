@@ -212,13 +212,19 @@ addendum rather than a new ADR. **Nothing here is deployed or run against the re
   worker below a floor is not eligible; no limit is ever raised to make a shard fit.
 - **Shards** (`sharding.py`). Items are assigned by `sha256(str(key))`, never Python's
   `hash()`, so a plan is reproducible across processes and independent of input order.
-  Duplicate keys are rejected. A shard's input is bounded at 256 MB including shared inputs;
-  an oversized shard is cured by more shards (max 256), not by memory. Empty shards are not
+  Duplicate keys are rejected (so sharded scoring refuses a repeated `master_id`, which a
+  single-node run would accept and score twice). A shard's input is capped at 256 MB, an
+  estimate of input BYTES including shared inputs, not a memory bound: resident size on a Pi
+  is roughly 3x that (parse and index overhead), so size shards to the 1 GB budget, not to
+  the cap. An oversized shard is cured by more shards (max 256), never by raising memory. Empty shards are not
   submitted. Each active shard is its own platform job with run id `<job>-sNNNofMMM`, so its
   retries are `-aN` attempt directories exactly as in decision 10.
 - **Fan-out** (`run_sharded`). One `run_with_retries` per shard, in threads bounded by the
-  eligible worker count (a Pi takes one job at a time) and 8. A balancer spreads in-flight
-  shards over distinct workers. A shard whose worker is lost (decision 10's RQ-liveness
+  eligible worker count (a Pi takes one job at a time) and 8. A balancer gives each in-flight
+  shard its own worker and never stacks a second shard on an occupied one: a retry waits
+  until a worker frees up (bounded wait, then an error), because a job queued behind another
+  would burn its client-side deadline without running. The client's run deadline also now
+  starts when the job is first seen started, not at enqueue. A shard whose worker is lost (decision 10's RQ-liveness
   rule, not the advertisement) is re-queued on another eligible worker within the shard's
   declared retry budget; a deterministic failure is not retried. Every shard is attempted;
   any that exhaust their budget raise `ShardedRunError` carrying the completed ones. There is
@@ -235,7 +241,10 @@ addendum rather than a new ADR. **Nothing here is deployed or run against the re
   content hash of the output document, for 1 to 64 shards, on a synthetic corpus covering
   exclusions, flags, bridge span and coverage delta, and again with an injected lost worker
   and retry. `score-expansion-candidates --shard-index/--shard-count` and
-  `merge-scored-shards` expose the same on the catalog CLI.
+  `merge-scored-shards` expose the same on the catalog CLI. Each shard output records a
+  content hash of every scoring input (pathfinding graph, release-format policy, exclusions,
+  editorial and private-seed lists, buckets, candidates); the merge refuses shards whose
+  hashes differ, a different candidates file, and an out-of-range shard index.
 - **Commands.** `networked-players-platform shards plan` and
   `scripts/submit_sharded_score.py --dry-run` print the shard plan (and, with a broker, the
   current eligible workers and a preview placement) and submit nothing. A real

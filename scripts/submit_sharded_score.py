@@ -57,10 +57,16 @@ def _arguments(argv: list[str] | None = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
+def _is_local_output(path: Path) -> bool:
+    """True only for a path that resolves inside THIS repo's `local/` (not any
+    directory that merely has a component named local, such as /usr/local)."""
+    return path.resolve().is_relative_to((REPO_ROOT / "local").resolve())
+
+
 def _job_id(args: argparse.Namespace) -> str:
     if args.job_id:
         return str(args.job_id)
-    return f"score-shards-{datetime.now(UTC):%Y%m%dt%H%M%sz}-{uuid.uuid4().hex[:8]}"
+    return f"score-shards-{datetime.now(UTC):%Y%m%dt%H%M%Sz}-{uuid.uuid4().hex[:8]}"
 
 
 def _dry_run(args: argparse.Namespace, job_id: str) -> int:
@@ -112,6 +118,7 @@ def main(argv: list[str] | None = None) -> int:
         merge_scored_shards,
         plan_score_shards,
         scoring_payload,
+        shard_candidates,
     )
     from networked_players_platform.models import (
         CapabilityRequirement,
@@ -132,8 +139,7 @@ def main(argv: list[str] | None = None) -> int:
         if getattr(args, required) is None:
             print(f"--{required.replace('_', '-')} is required to submit", file=sys.stderr)
             return 2
-    parts = {part for part in args.output.resolve().parts}
-    if "local" not in parts:
+    if not _is_local_output(args.output):
         print("--output must be under local/ (private scoring rows)", file=sys.stderr)
         return 2
 
@@ -195,7 +201,7 @@ def main(argv: list[str] | None = None) -> int:
         local_run = REPO_ROOT / "local/platform/runs" / shard.run_id
         input_dir = local_run / "input"
         input_dir.mkdir(parents=True)
-        subset = [c for c in candidates if int(c["master_id"]) in {int(k) for k in shard.keys}]
+        subset = shard_candidates(plan, candidates, shard.index)
         (input_dir / "candidates.json").write_text(json.dumps(subset, sort_keys=True) + "\n")
         for name, source in shared.items():
             shutil.copy2(source, input_dir / name)

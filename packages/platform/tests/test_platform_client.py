@@ -637,3 +637,26 @@ def test_dispatch_shards_fails_when_a_shard_cannot_complete(
             max_retries=2,
         )
     assert len(backend.enqueued) == 1  # a deterministic failure is not retried
+
+
+def test_the_run_deadline_starts_when_the_job_starts_not_at_enqueue(backend: Backend) -> None:
+    class QueuedThenRunning(FakeJob):
+        def get_status(self, refresh: bool = True) -> JobStatus:
+            elapsed = backend.clock.elapsed
+            if elapsed < 150:
+                return JobStatus.QUEUED
+            if elapsed < 300:
+                return JobStatus.STARTED
+            self.result = {"status": "succeeded", "attempt": 1}
+            return JobStatus.FINISHED
+
+    # timeout 120 s => deadline 180 s after enqueue. The job waits 150 s in the queue and
+    # then runs 150 s: inside a 120 s + 60 s budget measured from START, outside it from
+    # enqueue, where a live worker past the deadline would be a "genuine timeout".
+    backend.rq_heartbeat["worker-a"] = lambda now: now
+    backend.jobs_by_queue["networked-players.platform.worker-a"] = [
+        QueuedThenRunning("q", [JobStatus.QUEUED])
+    ]
+    result = _wait(backend, timeout_seconds=120)
+    assert result["status"] == "succeeded"
+    assert backend.clock.elapsed >= 300 and backend.stops == []

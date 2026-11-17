@@ -4365,10 +4365,29 @@ def main(argv: Sequence[str] | None = None) -> int:
             "candidates": scored_candidates,
         }
         if args.shard_count is not None:
+            from networked_players_graph_core.sharded_scoring import (
+                file_sha256,
+                inputs_fingerprint,
+            )
+
             payload["shard"] = {
                 "index": args.shard_index,
                 "count": args.shard_count,
                 "of_candidate_count": all_candidate_count,
+                "candidates_sha256": file_sha256(args.candidates),
+                # Content hash of every scoring input; merge refuses mixed values.
+                "inputs_sha256": inputs_fingerprint(
+                    {
+                        "candidates": args.candidates,
+                        "pathfinding_graph": args.pathfinding_graph,
+                        "release_format_policy": args.release_format_policy,
+                        "studio_album_exclusions": args.studio_album_exclusions,
+                        "editorial_master_ids": args.editorial_master_ids,
+                        "editorial_seed": args.editorial_seed,
+                        "private_seed_master_ids": args.private_seed_master_ids,
+                        "underrepresented_buckets": args.underrepresented_buckets,
+                    }
+                ),
             }
         write_atomic(args.output, (json.dumps(payload, indent=2, sort_keys=True) + "\n").encode())
         print(
@@ -4385,6 +4404,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if args.command == "merge-scored-shards":
         from networked_players_graph_core.sharded_scoring import (
+            file_sha256,
             merge_scored_shards,
             plan_score_shards,
             scoring_payload,
@@ -4399,6 +4419,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         all_candidates = json.loads(args.candidates.read_text())
         merge_plan = plan_score_shards("cli-shard", all_candidates, args.shard_count)
         received: list[tuple[int, Any]] = []
+        candidates_digest = file_sha256(args.candidates)
+        seen_inputs: dict[str, Path] = {}
         for shard_path in args.shard_outputs:
             shard_payload = json.loads(shard_path.read_text())
             meta = shard_payload.get("shard")
@@ -4409,6 +4431,22 @@ def main(argv: Sequence[str] | None = None) -> int:
             ):
                 raise SystemExit(
                     f"{shard_path} is not a shard output of this {args.shard_count}-way split"
+                )
+            shard_index = meta.get("index")
+            if not isinstance(shard_index, int) or not 0 <= shard_index < args.shard_count:
+                raise SystemExit(
+                    f"{shard_path} has shard index {shard_index!r}, outside [0, {args.shard_count})"
+                )
+            if meta.get("candidates_sha256") != candidates_digest:
+                raise SystemExit(f"{shard_path} was scored from a different candidates file")
+            inputs_digest = meta.get("inputs_sha256")
+            if not inputs_digest:
+                raise SystemExit(f"{shard_path} records no scoring-input hash; re-score it")
+            seen_inputs[inputs_digest] = shard_path
+            if len(seen_inputs) > 1:
+                raise SystemExit(
+                    "merge refused: shards were scored with different inputs "
+                    f"(graph/policy/exclusions/buckets): {sorted(map(str, seen_inputs.values()))}"
                 )
             if not shard_payload["candidates"] and not merge_plan.shard(int(meta["index"])).keys:
                 continue  # a legitimately empty shard: nothing to gather

@@ -19,6 +19,7 @@ import json
 import os
 import re
 import threading
+import time
 from collections import Counter
 from collections.abc import Callable, Iterable, Sequence
 from concurrent.futures import ThreadPoolExecutor
@@ -254,49 +255,69 @@ ListEligible = Callable[[frozenset[str], int | None], list[WorkerAdvertisement]]
 
 
 class ShardBalancer:
-    """Spreads concurrently running shards over distinct eligible workers.
+    """Gives each in-flight shard its own eligible worker, never doubling up.
 
     `list_eligible(excluded, memory_floor)` returns the eligible workers (the caller
     wires it to `select_workers`, raising `NoEligibleWorkerError` when there are
-    none). A shard prefers the worker holding the fewest of our in-flight shards, with
-    a stable rotation by shard position so placement is reproducible. A retry after a
-    lost worker passes that worker in `excluded`, so the shard moves to another one.
+    none). A shard is only ever assigned a worker that holds none of OUR other
+    in-flight shards; when every eligible worker is occupied it waits for one to free
+    up (re-listing eligibility each pass, so a worker that dies meanwhile drops out).
+    Stacking a second shard on a busy worker would leave it queued behind the first,
+    where its client-side deadline runs without it executing. Among free workers the
+    choice rotates by shard position so placement is reproducible. A retry after a lost
+    worker passes that worker in `excluded`, so the shard moves to another one.
     """
 
-    def __init__(self, list_eligible: ListEligible) -> None:
+    def __init__(
+        self,
+        list_eligible: ListEligible,
+        *,
+        poll_seconds: float = 1.0,
+        max_wait_seconds: float = 3600.0,
+        monotonic: Callable[[], float] = time.monotonic,
+    ) -> None:
         self._list_eligible = list_eligible
-        self._lock = threading.Lock()
+        self._cond = threading.Condition()
         self._in_flight: Counter[str] = Counter()
         self._holding: dict[int, str] = {}
+        self._poll = poll_seconds
+        self._max_wait = max_wait_seconds
+        self._monotonic = monotonic
 
     def selector(self, position: int, shard_index: int) -> Selector:
         def select(excluded: frozenset[str], memory_floor: int | None) -> WorkerAdvertisement:
-            eligible = self._list_eligible(excluded, memory_floor)
-            with self._lock:
-                self._release_locked(shard_index)
-                size = len(eligible)
-                chosen = min(
-                    range(size),
-                    key=lambda i: (
-                        self._in_flight[eligible[i].worker_id],
-                        (i - position) % size,
-                    ),
-                )
-                worker = eligible[chosen]
-                self._in_flight[worker.worker_id] += 1
-                self._holding[shard_index] = worker.worker_id
-            return worker
+            started = self._monotonic()
+            while True:
+                with self._cond:
+                    self._release_locked(shard_index)
+                eligible = self._list_eligible(excluded, memory_floor)
+                with self._cond:
+                    size = len(eligible)
+                    free = [i for i in range(size) if self._in_flight[eligible[i].worker_id] == 0]
+                    if free:
+                        chosen = min(free, key=lambda i: (i - position) % size)
+                        worker = eligible[chosen]
+                        self._in_flight[worker.worker_id] += 1
+                        self._holding[shard_index] = worker.worker_id
+                        return worker
+                    if self._monotonic() - started >= self._max_wait:
+                        raise TimeoutError(
+                            f"shard {shard_index}: no unoccupied eligible worker after "
+                            f"{int(self._max_wait)}s"
+                        )
+                    self._cond.wait(timeout=self._poll)
 
         return select
 
     def release(self, shard_index: int) -> None:
-        with self._lock:
+        with self._cond:
             self._release_locked(shard_index)
 
     def _release_locked(self, shard_index: int) -> None:
         previous = self._holding.pop(shard_index, None)
         if previous is not None:
             self._in_flight[previous] -= 1
+            self._cond.notify_all()
 
 
 RunOne = Callable[[ShardSpec, Selector], RetryOutcome]
@@ -332,6 +353,7 @@ def run_sharded(
     run_one: RunOne,
     list_eligible: ListEligible,
     concurrency: int | None = None,
+    balancer: ShardBalancer | None = None,
 ) -> ShardedRun:
     """Run every active shard to completion, each with its own retries.
 
@@ -351,7 +373,7 @@ def run_sharded(
     limit = min(len(initial), MAX_SHARD_CONCURRENCY, len(active))
     if concurrency is not None:
         limit = min(limit, max(1, concurrency))
-    balancer = ShardBalancer(list_eligible)
+    balancer = balancer or ShardBalancer(list_eligible)
 
     def work(position: int, shard: ShardSpec) -> RetryOutcome:
         try:

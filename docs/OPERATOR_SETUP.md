@@ -1415,8 +1415,13 @@ contracts digest `make platform-status` prints is computed from the release venv
   --keys-file <candidates.json> --shard-count N --job-id <id> [--workload-id W --broker-url
   ...]`, or `uv run python scripts/submit_sharded_score.py --candidates ... --shard-count N
   --dry-run`. Both are read-only and print "DRY RUN: nothing submitted".
-- Pick N so each shard's input (shard candidates plus shared inputs) stays under 256 MB and
-  the shards fit the workers' `max_job_memory_mb`; never raise a memory limit to fit.
+- Pick N so each shard's input (shard candidates plus shared inputs) stays under the 256 MB
+  cap, which is an estimate of input bytes, not a memory bound: resident size on a Pi is
+  roughly 3x the input, so size shards to the 1 GB budget and the workers'
+  `max_job_memory_mb`; never raise a memory limit to fit.
+- Sharded scoring refuses a duplicate `master_id` in the candidates (single-node
+  `score-expansion-candidates` accepts it and scores it twice); dedupe first.
+- Shards are never stacked on one worker; with fewer free workers than shards the rest wait.
 - A real submission needs the worker-side `candidate.score-shard` workload, which is **not**
   registered or deployed yet (ADR 0073 addendum); it fails closed until it is. Rollout
   therefore stays: build, deploy to all workers, `platform-status`, then submit.

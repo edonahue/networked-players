@@ -13,12 +13,15 @@ fan-out (`networked_players_platform.sharding`) drives `score_shard` on workers.
 
 from __future__ import annotations
 
+import hashlib
 from collections.abc import Mapping, Sequence
+from pathlib import Path
 from typing import Any
 
 from networked_players_platform.sharding import (
     GatherError,
     ShardPlan,
+    canonical_hash,
     plan_shards,
     verify_complete,
     verify_shard_keys,
@@ -83,3 +86,18 @@ def scoring_payload(rows: list[dict[str, Any]], candidate_count: int) -> dict[st
         "eligible_count": sum(1 for row in rows if row["eligibility"] == "eligible"),
         "candidates": rows,
     }
+
+
+def inputs_fingerprint(named_files: Mapping[str, Path | None]) -> str:
+    """One hash over the CONTENT of every scoring input file (an absent optional
+    input is recorded as absent, not skipped), so shards scored against different
+    graph/policy/exclusion/bucket inputs can never be merged as one run."""
+    digests = {
+        name: (hashlib.sha256(path.read_bytes()).hexdigest() if path is not None else None)
+        for name, path in named_files.items()
+    }
+    return canonical_hash(digests)
+
+
+def file_sha256(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()

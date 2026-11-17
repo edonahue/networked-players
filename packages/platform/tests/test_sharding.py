@@ -434,3 +434,61 @@ def test_submit_script_dry_run_prints_the_plan_and_submits_nothing(
     out = capsys.readouterr().out
     assert code == 0
     assert out.startswith("DRY RUN: nothing submitted") and "dry-1-s000of004" in out
+
+
+def test_balancer_never_double_books_a_worker_even_when_a_retry_needs_one() -> None:
+    """Shard A is lost on w-a and retries. w-b holds shard B, so A must WAIT for it to
+    free up instead of stacking behind B (where its deadline would run un-started)."""
+    from networked_players_platform.sharding import ShardBalancer
+
+    fleet = Fleet([_ad("w-a"), _ad("w-b")])
+    balancer = ShardBalancer(fleet.list_eligible, poll_seconds=0.01)
+    pick_a = balancer.selector(0, 0)
+    pick_b = balancer.selector(1, 1)
+    first = pick_a(frozenset(), None)
+    held_by_b = pick_b(frozenset(), None)
+    assert {first.worker_id, held_by_b.worker_id} == {"w-a", "w-b"}
+
+    got: list[str] = []
+    thread = threading.Thread(
+        target=lambda: got.append(pick_a(frozenset({first.worker_id}), None).worker_id)
+    )
+    thread.start()
+    time.sleep(0.1)
+    assert got == [], "retry must wait while the only other worker is occupied"
+    balancer.release(1)  # shard B finishes
+    thread.join(timeout=5)
+    assert got == [held_by_b.worker_id]
+    # And nothing is ever double-booked.
+    assert max(balancer._in_flight.values()) == 1  # type: ignore[attr-defined]
+
+
+def test_balancer_gives_up_with_a_clear_error_if_no_worker_ever_frees() -> None:
+    from networked_players_platform.sharding import ShardBalancer
+
+    fleet = Fleet([_ad("w-a")])
+    balancer = ShardBalancer(fleet.list_eligible, poll_seconds=0.01, max_wait_seconds=0.05)
+    balancer.selector(0, 0)(frozenset(), None)
+    with pytest.raises(TimeoutError, match="no unoccupied eligible worker"):
+        balancer.selector(1, 1)(frozenset(), None)
+
+
+def test_submit_script_output_guard_accepts_only_this_repos_local_dir(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import sys
+
+    scripts = str(Path(__file__).resolve().parents[3] / "scripts")
+    monkeypatch.syspath_prepend(scripts)
+    sys.modules.pop("submit_sharded_score", None)
+    import submit_sharded_score as script
+
+    repo = script.REPO_ROOT
+    assert script._is_local_output(repo / "local" / "analysis" / "x.json")
+    assert not script._is_local_output(Path("/usr/local/share/x.json"))
+    assert not script._is_local_output(repo / "apps" / "web" / "local" / "x.json")
+    assert not script._is_local_output(repo / "local" / ".." / "apps" / "x.json")
+    import re
+
+    job_id = script._job_id(type("A", (), {"job_id": None})())
+    assert re.fullmatch(r"score-shards-\d{8}t\d{6}z-[0-9a-f]{8}", job_id)

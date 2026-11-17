@@ -308,6 +308,7 @@ def enqueue_and_wait(
     deadline = started + timeout_seconds + 60
     hard_end = deadline + RQ_WORKER_TTL_SECONDS + lost_grace.total_seconds() + 30
     next_check = 0.0
+    seen_started = False
     beat: datetime | None = None
     status: JobStatus | None = None
     try:
@@ -315,6 +316,12 @@ def enqueue_and_wait(
             status = job.get_status(refresh=True)
             if status == JobStatus.FINISHED:
                 break
+            if status == JobStatus.STARTED and not seen_started:
+                # The timeout budget is for RUNNING, not for waiting in a queue behind
+                # other work: restart the deadline when the job is first seen started.
+                seen_started = True
+                deadline = max(deadline, monotonic() + timeout_seconds + 60)
+                hard_end = deadline + RQ_WORKER_TTL_SECONDS + lost_grace.total_seconds() + 30
             if status in {JobStatus.FAILED, JobStatus.CANCELED, JobStatus.STOPPED}:
                 kind = classify_failure(job.exc_info)
                 raise RunFailedError(
