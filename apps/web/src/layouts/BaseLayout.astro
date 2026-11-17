@@ -46,6 +46,13 @@ const isCurrent = (href: string) =>
     {noIndex && <meta name="robots" content="noindex, nofollow" />}
     <link rel="canonical" href={canonicalUrl} />
     <meta name="author" content="Erich Donahue" />
+    <link
+      rel="preload"
+      href="/fonts/inter-latin-400-normal.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
 
     <!-- Open Graph -->
     <meta property="og:site_name" content={site.title} />
@@ -170,7 +177,6 @@ const isCurrent = (href: string) =>
       <p>
         <a href="/about/">About</a>
         · <a href="/cohorts/" title="Collections are a synthetic, unreviewed sample grouping — not editorial curation">Collections (sample)</a>
-        · <a href="/demo/" title="An earlier artist-path demo from before the performer-only model; kept as an archive, not part of the current site">Earlier demo (archive)</a>
         · <a href={site.repositoryUrl}>Source on GitHub</a>
       </p>
     </footer>

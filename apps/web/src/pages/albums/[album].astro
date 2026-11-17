@@ -8,6 +8,7 @@ import { leadsTo, rosterFor, type Membership, type RosterGroup } from '../../dat
 import { buildHopViews } from '../../data/evidence';
 import type { AlbumV2, ChallengeV2 } from '../../data/challenge';
 import { coverFor } from '../../data/albumArt';
+import { jsonLdScript, musicAlbumJsonLd } from '../../data/structuredData';
 import type { ContributorIndex } from '../../data/contributors';
 import challengeData from '../../../public/data/challenge.v3.json';
 import membershipData from '../../../public/data/albums/credit-membership.v1.json';
@@ -151,6 +152,17 @@ const description = [
 ---
 
 <BaseLayout title={album.title} description={description}>
+  <script
+    slot="head"
+    is:inline
+    type="application/ld+json"
+    set:html={jsonLdScript(
+      musicAlbumJsonLd(
+        album,
+        contributorIdsWithPages.has(album.artist_id) ? album.artist_id : undefined,
+      ),
+    )}
+  />
   <section class="shell" style="padding-top:40px">
     <div class="play-header">
       {

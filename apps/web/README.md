@@ -71,10 +71,10 @@ versioned static artifacts — no backend, no accounts.
   synthetic and clearly labeled until a real, human-reviewed `playable-cohort-v1`
   artifact is explicitly added to the manifest and static import map.
 - **About** (`/about/`) — fuller picture, the evidence-vs-influence stance, data & rights.
-- **Legacy demo** (`/demo/`) — 2–3 curated paths rendered from a versioned static
-  artifact (`public/data/challenge.v1.json`). Predates the album-centered experience
-  above; kept during the transition, linked from the footer archive. Runs fully
-  client-side; no backend required for this build.
+- The earlier API-sourced `/demo/` page and its `challenge.v1.json` artifact were
+  retired in Campaign Atlas P5 (the builder in `packages/catalog`
+  `discogs/demo_challenge.py` and the Python v1 contract readers remain for history,
+  ADR 0012).
 
 ## The game surface
 
@@ -117,11 +117,8 @@ rate-limited/resumable enrichment run coordination-host-only — see ADR 0044/00
 `cover_image` inside `challenge.v3.json` itself is deliberately `null` for every album —
 art was decoupled from frozen game/browse content on purpose, so refreshing art never
 disturbs a scheduled daily round; the frontend resolves real art via the registry at
-render time, with a placeholder-disc fallback on any lookup failure. `challenge.v1.json` (the
-`/demo/` page) is **real Discogs data, a small curated subset** — fetched via the
-Discogs API (`packages/catalog` `discogs/demo_challenge.py`, see ADR 0012) against a
-handful of real artist connections, never the full private seed or collection. Cover
-art in both is hotlinked directly from Discogs' own CDN, never downloaded or rehosted.
+render time, with a placeholder-disc fallback on any lookup failure. Cover art is
+hotlinked directly from Discogs' own CDN, never downloaded or rehosted.
 
 ## Develop
 
