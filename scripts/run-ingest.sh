@@ -15,6 +15,9 @@
 #                  around silently). Unset by default: a second run against a
 #                  snapshot that already has processed output fails loudly rather
 #                  than risking a partial/mismatched overwrite.
+#   RESUME         Optional. Set to any non-empty value to pass --resume to parse-releases
+#                  and continue an interrupted parse (same MAX_RELEASES; see
+#                  docs/OPERATOR_SETUP.md). Unset by default.
 #   RAW_DIR        Optional. Default: local/raw/discogs
 #   PROCESSED_DIR  Optional. Default: local/processed/discogs
 #   MANIFEST_DIR   Optional. Default: local/manifests
@@ -48,9 +51,16 @@ mkdir -p "${MANIFEST_DIR}" "${RAW_DIR}" "${PROCESSED_DIR}"
 echo "==> Snapshot ${SNAPSHOT}${MAX_RELEASES:+ (max ${MAX_RELEASES} releases)}"
 
 echo "==> 1/4 manifest"
-uv run networked-players-catalog manifest \
-  --snapshot "${SNAPSHOT}" \
-  --output "${MANIFEST_PATH}"
+# The manifest step rebuilds an offline manifest, which drops the sha256 that a previous
+# run's download recorded. When resuming, keep the existing manifest so the dump's
+# recorded sha256 (if any) can be checked by parse-releases --resume.
+if [[ -n "${RESUME:-}" && -f "${MANIFEST_PATH}" ]]; then
+  echo "    RESUME: reusing existing ${MANIFEST_PATH}"
+else
+  uv run networked-players-catalog manifest \
+    --snapshot "${SNAPSHOT}" \
+    --output "${MANIFEST_PATH}"
+fi
 
 # The manifest (built by manifest.py's object_url()) is the single source of truth
 # for the real download URL -- read it back for provenance rather than
@@ -94,6 +104,19 @@ if [[ -n "${MAX_RELEASES:-}" ]]; then
 fi
 if [[ -n "${OVERWRITE:-}" ]]; then
   parse_args+=(--overwrite)
+fi
+if [[ -n "${RESUME:-}" ]]; then
+  parse_args+=(--resume)
+fi
+# Pass the download manifest only when it carries the releases object's sha256 (recorded by
+# the download step after a verified transfer). The multi-GB dump is never hashed here.
+if uv run python3 -c "
+import json, sys
+with open('${MANIFEST_PATH}') as f:
+    manifest = json.load(f)
+sys.exit(0 if next(o.get('sha256') for o in manifest['objects'] if o['kind'] == 'releases') else 1)
+"; then
+  parse_args+=(--input-manifest "${MANIFEST_PATH}")
 fi
 uv run networked-players-catalog parse-releases "${parse_args[@]}"
 
