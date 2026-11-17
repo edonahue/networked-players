@@ -128,21 +128,30 @@ record is kept, so first check whether it can be resumed:
 SNAPSHOT=<snapshot> ./scripts/check-ingest-recovery.sh
 ```
 
-The JSON report verifies every recorded part (size + sha256) and says `resume_safe` with a
-recommendation. If safe, re-run the **same** parse with `--resume` (identical
-`--chunk-releases` / `--max-releases`; with the wrapper scripts: `RESUME=1` plus the same
-`SNAPSHOT` / `MAX_RELEASES`). Pass `--input-manifest local/manifests/discogs-<snapshot>.json`
-to also check the dump's recorded sha256 (the 11 GB file is never re-hashed).
+The JSON report verifies every recorded part (size + sha256), says whether a live writer
+currently holds the staging directory's lock (`writer_lock_held`; if so `resume_safe` is false --
+the original ingest is still running, so do not resume or delete), lists the unrecorded files a
+resume would delete, and gives a recommendation. If safe, re-run the **same** parse with `--resume`
+(identical `--chunk-releases` / `--max-releases`; with the wrapper scripts: `RESUME=1` plus the same
+`SNAPSHOT` / `MAX_RELEASES`). The wrapper reuses the existing download manifest under `RESUME=1` (a
+regenerated manifest would drop the recorded sha256) and passes it as `--input-manifest` when it
+carries the dump's sha256; if the original run recorded a sha256, a resume without it is refused. The
+multi-GB dump is never re-hashed.
 
 Resume re-reads the dump from the start and discards the already-persisted prefix, so it
 saves the transform/write work of the completed portion, not the decompress/parse work of
-skipping it. It refuses (and leaves the directory alone) for no or several staging
-directories, a missing/corrupt record, an altered part, changed parameters, or a different
-input; in those cases delete the staging directory and re-run without `--resume`. A plain
-re-run without `--resume` also refuses while a staging directory exists. Details:
-[DISCOGS_INGESTION.md](DISCOGS_INGESTION.md#atomic-parts-and-resumable-release-parsing).
-A staging directory from a build before this feature has no `progress.json` and is not
-resumable; delete it.
+skipping it. The input check is a digest over the ordered release *ids* plus file name/size
+(and the manifest sha256 when recorded), not over release content. Resume refuses (leaving the
+directory alone) for no or several staging directories, a live writer holding the lock, a
+missing/corrupt record, an altered part, changed parameters or pyarrow version, any failure while
+re-reading the already-persisted prefix (e.g. a truncated dump), or a different input; in those
+cases fix the cause, or delete the staging directory and re-run without `--resume`. A failure
+*after* the prefix on a resumed run (or disk-full on any run with committed parts) also keeps the
+committed parts; only a fresh run's non-environmental failure (e.g. malformed XML) or a failure
+with nothing committed deletes the staging directory (full table in
+[DISCOGS_INGESTION.md](DISCOGS_INGESTION.md#atomic-parts-and-resumable-release-parsing)). A plain
+re-run without `--resume` also refuses while a staging directory exists. A staging directory from
+a build before this feature has no `progress.json` and is not resumable; delete it.
 
 ## Lessons from the first real bring-up (2026-07-01)
 
