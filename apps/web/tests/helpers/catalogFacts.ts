@@ -425,3 +425,47 @@ export function pickScanContributorId(): number {
   }
   return eligible[0].artist_id;
 }
+
+/** The `count` albums (one per album-artist) whose album-artist has the most
+ * documented neighbors, ties by album id -- the densest default Explore
+ * stars, chosen by rule from the committed artifacts so no name is pinned.
+ * Each has more than one page of neighbors, so "Show 24 more" is real. */
+export async function denseExplorerAlbums(
+  count: number,
+): Promise<CatalogAlbum[]> {
+  const graph = await loadGraph();
+  const artistIndex = buildArtistIndex(graph);
+  const contributorIndex = readArtifact<{ contributors: Contributor[] }>(
+    "contributors/index.v1.json",
+  );
+  const contributorByArtistId = new Map(
+    contributorIndex.contributors.map((c) => [c.artist_id, c]),
+  );
+  const prominence = readArtifact<{ node_ids: number[]; rank: number[] }>(
+    "pathfinding/prominence.v1.json",
+  );
+  const rankByArtistId = new Map(
+    prominence.node_ids.map((id, i) => [id, prominence.rank[i]]),
+  );
+  const seen = new Set<number>();
+  const scored: { album: CatalogAlbum; degree: number }[] = [];
+  for (const album of catalogAlbums) {
+    if (seen.has(album.artist_id)) continue;
+    const view = buildView(
+      graph,
+      artistIndex,
+      contributorByArtistId,
+      album.artist_id,
+      24,
+      rankByArtistId,
+    );
+    if (!view || !view.truncated) continue;
+    seen.add(album.artist_id);
+    scored.push({ album, degree: view.totalNeighborCount });
+  }
+  scored.sort((a, b) => b.degree - a.degree); // stable: id order breaks ties
+  if (scored.length < count) {
+    throw new Error("fewer dense Explore records than the spec needs");
+  }
+  return scored.slice(0, count).map((s) => s.album);
+}
