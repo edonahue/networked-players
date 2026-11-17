@@ -176,7 +176,7 @@ def _parser() -> argparse.ArgumentParser:
     classify_roles = subparsers.add_parser(
         "classify-roles",
         help=(
-            "corpus coverage diagnostic for the role taxonomy: % of role_text "
+            "corpus coverage diagnostic for the role taxonomy: share of role_text "
             "classified and the unknown-role frequency distribution -- never "
             "a filter or a build step, and never published"
         ),
