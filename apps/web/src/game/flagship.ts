@@ -71,7 +71,7 @@ function sessionStore(): StorageLike | null {
 }
 
 function poolLabel(round: GameRound): string {
-  return round.pool === "real-records" ? "Real records" : "Synthetic universe";
+  return round.pool === "real-records" ? "Real records" : "Synthetic records";
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -573,7 +573,7 @@ export async function initFlagship(
         "aria-label",
         state.step === "middle"
           ? "Pick the hidden middle record"
-          : "Pick the contributor credited on both records",
+          : "Pick the player credited on both records",
       );
       stepLabel.textContent = stepLabelFor(state.step);
       $("question").textContent = questionFor(state.step);

@@ -9,7 +9,7 @@ import { ROLE_CATEGORY_CHIPS } from '../game/contributorsDirectory';
 
 <div class="contributors-directory" data-testid="contributors-directory">
   <div class="contributors-directory__controls">
-    <label for="contributors-search">Search contributors</label>
+    <label for="contributors-search">Search players</label>
     <input
       id="contributors-search"
       type="text"
@@ -20,7 +20,7 @@ import { ROLE_CATEGORY_CHIPS } from '../game/contributorsDirectory';
     <div
       class="contributors-directory__chips"
       role="group"
-      aria-label="Filter by role category"
+      aria-label="Filter by role"
     >
       {
         ROLE_CATEGORY_CHIPS.map((chip) => (
@@ -43,7 +43,7 @@ import { ROLE_CATEGORY_CHIPS } from '../game/contributorsDirectory';
     role="status"
     aria-live="polite"
   >
-    Loading contributors…
+    Loading players…
   </p>
 
   <p class="eyebrow" data-contributors-heading style="margin-top:20px">Most connected</p>

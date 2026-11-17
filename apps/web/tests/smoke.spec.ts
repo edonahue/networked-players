@@ -282,12 +282,10 @@ test("an album page surfaces nearby records via shared contributors", async ({
     "this album has no nearby-record suggestion in the real index today",
   );
 
-  await expect(
-    nearbySection.getByText("Nearby in the credit network"),
-  ).toBeVisible();
+  await expect(nearbySection.getByText("Nearby records")).toBeVisible();
   // Honest framing, not a similarity claim.
   await expect(nearbySection).toContainText(
-    "Connected through shared contributors",
+    "Connected through players they share",
   );
   await expect(nearbySection.locator(".album-card").first()).toBeVisible();
 });
@@ -625,7 +623,7 @@ test("the play hub is reachable from the homepage, not just by URL", async ({
   );
 });
 
-test("the play hub lists Contributors as a real, live mode card", async ({
+test("the play hub lists Players as a real, live mode card", async ({
   page,
 }) => {
   await page.goto("/play/");

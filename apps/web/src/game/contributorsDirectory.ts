@@ -193,8 +193,8 @@ export async function initContributorsDirectory(): Promise<void> {
   if ("error" in result) {
     statusEl.textContent =
       result.error === "fetch-failed"
-        ? fetchFailureMessage("the contributors directory")
-        : "The contributors directory looked corrupted. Try reloading the page.";
+        ? fetchFailureMessage("the players directory")
+        : "The players directory looked corrupted. Try reloading the page.";
     return;
   }
   const contributors = result.contributors;
@@ -221,8 +221,8 @@ export async function initContributorsDirectory(): Promise<void> {
     statusEl.hidden = false;
     statusEl.textContent =
       results.length === 0
-        ? "No contributors match your search."
-        : `Showing ${results.length} of ${contributors.length} contributors.`;
+        ? "No players match your search."
+        : `Showing ${results.length} of ${contributors.length} players.`;
   };
 
   searchInput.addEventListener("input", render);

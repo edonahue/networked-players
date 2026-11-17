@@ -3,7 +3,8 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import AlbumCard from '../../components/AlbumCard.astro';
 import EvidencePanel from '../../components/EvidencePanel.astro';
 import { buildHopViews } from '../../data/evidence';
-import { ROLE_CATEGORY_LABEL, type Contributor, type ContributorIndex } from '../../data/contributors';
+import type { Contributor, ContributorIndex } from '../../data/contributors';
+import { playedPhrase, playerRoles } from '../../data/playerRecord';
 import { albumHopDistancesByArtist, type AlbumHopDistances } from '../../data/albumHopDistances';
 import { coverFor } from '../../data/albumArt';
 import type { AlbumV2, ChallengeV2 } from '../../data/challenge';
@@ -125,30 +126,39 @@ const evidenceHops = [
 // album with no cover gets, not a blank header.
 const contributorCover = albums.length > 0 ? coverFor(albums[0].id) : null;
 
-// A one-line human summary of role_categories, alongside (not instead of)
-// the tag chips below -- "Primarily credited for: X, Y" rather than
-// requiring a visitor to parse a row of tags on their own.
-const roleSummary = contributor.role_categories
-  .map((category) => ROLE_CATEGORY_LABEL[category] ?? category)
-  .join(', ');
+// What this person is documented PLAYING, from the role text in the indexed
+// evidence (data/playerRecord.ts). Producer/engineer/writer credits are kept
+// apart as "Also credited" and never described as playing.
+const roles = playerRoles(contributor);
+const playedText = playedPhrase(roles.played);
+const ALSO_VISIBLE = 8;
+const alsoVisible = roles.also.slice(0, ALSO_VISIBLE);
+const alsoRest = roles.also.slice(ALSO_VISIBLE);
 
-// "Connect records through this contributor": only offered when there are
+// "Connect records through this player": only offered when there are
 // genuinely two distinct connected albums to prefill Connect Two Records
 // with -- never a single-album or self-paired link.
 const connectAlbumA = albums[0];
 const connectAlbumB = albums.length > 1 ? albums[1] : undefined;
 
-// A concrete "why" for the ADR 0060 nudge, not just "a different kind of
-// role" -- interestingNeighbor's own role_categories are guaranteed
-// disjoint from contributor's own (that's the field's own selection rule),
-// so naming them directly is always accurate, never inferred.
-const interestingNeighborRoleSummary = interestingNeighbor
-  ? interestingNeighbor.role_categories
-      .map((category) => ROLE_CATEGORY_LABEL[category] ?? category)
-      .join(', ')
+// A concrete "why" for the ADR 0060 nudge, in the same terms as the header:
+// what the neighbor is documented playing.
+const interestingNeighborPlayed = interestingNeighbor
+  ? playedPhrase(playerRoles(interestingNeighbor).played)
   : null;
 
-const description = `Documented credits and connections for ${contributor.name} in the Networked Players credit graph.`;
+const recordCount = albums.length;
+const description = playedText
+  ? `${contributor.name} is documented playing ${playedText}${
+      recordCount > 0
+        ? `, with documented connections reaching ${recordCount} ${recordCount === 1 ? 'record' : 'records'} in the Networked Players catalog`
+        : ''
+    }, the players they recur with, and the credits behind each connection.`
+  : `${contributor.name} is credited in the Networked Players catalog${
+      recordCount > 0
+        ? ` on releases connecting ${recordCount} ${recordCount === 1 ? 'record' : 'records'}`
+        : ''
+    }. No voice or instrument credit is indexed for them, so they make no connection here; their credits are listed as evidence.`;
 ---
 
 <BaseLayout title={contributor.name} description={description}>
@@ -172,57 +182,27 @@ const description = `Documented credits and connections for ${contributor.name} 
         )
       }
       <div>
-        <p class="eyebrow" style="margin-bottom:6px">
-          <a href="/contributors/">Contributors</a>
+        <p class="eyebrow record-header__eyebrow">
+          <a href="/contributors/">Players</a>
         </p>
-        <h1 class="h1-entity">{contributor.name}</h1>
-        <p class="lede" style="margin-top:6px;font-size:1rem">
-          #{contributor.artist_id} · linked identity
-        </p>
-        {
-          roleSummary && (
-            <p class="lede" style="margin-top:6px;font-size:0.95rem">
-              Primarily credited for: {roleSummary}
-            </p>
-          )
-        }
-        <div class="contributor-grid" style="margin-top:14px;gap:8px">
+        <h1 class="h1-entity" data-artist-id={contributor.artist_id}>{contributor.name}</h1>
+        <p class="record-header__meta" data-player-summary>
           {
-            contributor.role_categories.map((category) => (
-              <span class="tag tag--linked">
-                {ROLE_CATEGORY_LABEL[category] ?? category}
-              </span>
-            ))
+            playedText
+              ? `Documented playing ${playedText}.`
+              : 'No voice or instrument credit is indexed for this person yet.'
           }
-        </div>
-        {
-          contributor.role_text_examples.length > 0 && (
-            <p class="lede" style="margin-top:10px;font-size:0.92rem">
-              Credited as: {contributor.role_text_examples.join(', ')}
-            </p>
-          )
-        }
-        {
-          contributor.decade_activity.length > 0 && (
-            <p class="lede" style="margin-top:6px;font-size:0.92rem">
-              Active decades in this dataset: {contributor.decade_activity.map((d) => `${d}s`).join(', ')}
-            </p>
-          )
-        }
+        </p>
       </div>
     </div>
-
-    <p class="lede" style="max-width:720px">
-      {contributor.name} is documented performing on the releases connecting the albums below.
-    </p>
 
     {
       albums.length > 0 ? (
         <p class="lede" style="max-width:720px;font-size:0.98rem">
           <a href={`/explore/${albums[0].id}/?center=${contributor.artist_id}`}>
-            Explore {contributor.name}'s documented credit neighborhood
+            Explore around {contributor.name}
           </a>{' '}
-          in the Network Explorer.
+          to see who they played with.
           {connectAlbumB && (
             <>
               {' '}Or{' '}
@@ -235,17 +215,19 @@ const description = `Documented credits and connections for ${contributor.name} 
         </p>
       ) : (
         <p class="lede" style="max-width:720px;font-size:0.98rem">
-          No documented album connection is indexed for {contributor.name} yet. Browse{' '}
-          <a href="/contributors/">everyone else in the graph</a> instead.
+          No record is connected to {contributor.name} yet. Browse{' '}
+          <a href="/contributors/">other players</a> instead.
         </p>
       )
     }
 
     {
       albumEntries.length > 0 && (
-        <section aria-label="Connected albums" style="margin-top:28px">
-          <p class="eyebrow" style="margin-bottom:10px">
-            Albums connected through this contributor's documented credits
+        <section class="record-section" aria-labelledby="records-heading" data-player-records>
+          <h2 id="records-heading">Records their connections reach</h2>
+          <p class="lede">
+            Records their documented connections lead to. A record marked with a distance is that
+            many connections away, not one they played on.
           </p>
           <div class="album-grid">
             {
@@ -254,7 +236,7 @@ const description = `Documented credits and connections for ${contributor.name} 
                   album={album}
                   note={
                     hopDistance > 0
-                      ? `${hopDistance} documented hop${hopDistance === 1 ? "" : "s"} away`
+                      ? `${hopDistance} documented hop${hopDistance === 1 ? '' : 's'} away`
                       : undefined
                   }
                 />
@@ -267,54 +249,76 @@ const description = `Documented credits and connections for ${contributor.name} 
 
     {
       neighbors.length > 0 ? (
-        <section aria-label="Neighboring contributors" style="margin-top:28px">
-          <p class="eyebrow" style="margin-bottom:10px">
-            Other contributors documented performing on the same releases
+        <section class="record-section" aria-labelledby="recur-heading" data-player-recurs>
+          <h2 id="recur-heading">Players they recur with</h2>
+          <p class="record-section__intro">
+            Other players documented on the same recordings.
           </p>
           {
-            interestingNeighbor && interestingNeighborRoleSummary && (
+            interestingNeighbor && (
               <p class="lede" style="margin-bottom:14px;font-size:0.92rem">
                 Worth a look:{' '}
                 <a href={`/contributors/${interestingNeighbor.artist_id}/`}>
                   {interestingNeighbor.name}
-                </a>{' '}
-                is credited for {interestingNeighborRoleSummary} — a different kind of role than
-                {roleSummary ? ` ${contributor.name}'s ${roleSummary}` : ` ${contributor.name}'s`}.
+                </a>
+                {interestingNeighborPlayed
+                  ? `, documented playing ${interestingNeighborPlayed}${playedText ? `, where ${contributor.name} is documented on ${playedText}` : ''}.`
+                  : ', who took a different part on these records.'}
               </p>
             )
           }
           <div class="contributor-grid">
-            {neighbors.map((neighbor) => (
-              <a
-                class="contributor-card"
-                href={`/contributors/${neighbor.artist_id}/`}
-              >
-                <span class="contributor-card__name">
-                  {neighbor.name}
-                  {interestingNeighbor && neighbor.artist_id === interestingNeighbor.artist_id && (
-                    <span class="tag tag--highlight" style="margin-left:6px">
-                      Different role
-                    </span>
-                  )}
-                </span>
-                <span class="contributor-card__id">#{neighbor.artist_id} · linked identity</span>
-              </a>
-            ))}
+            {neighbors.map((neighbor) => {
+              const theirs = playedPhrase(playerRoles(neighbor).played);
+              return (
+                <a class="contributor-card" href={`/contributors/${neighbor.artist_id}/`}>
+                  <span class="contributor-card__name">
+                    {neighbor.name}
+                    {interestingNeighbor && neighbor.artist_id === interestingNeighbor.artist_id && (
+                      <span class="tag tag--highlight" style="margin-left:6px">
+                        Different part
+                      </span>
+                    )}
+                  </span>
+                  {theirs && <span class="contributor-card__id">{theirs}</span>}
+                </a>
+              );
+            })}
           </div>
         </section>
       ) : (
         <p class="lede" style="max-width:720px;margin-top:28px;font-size:0.95rem">
-          No other contributor is indexed alongside {contributor.name} on a documented release
-          yet. <a href="/contributors/">Browse the full directory</a> to find someone else worth
-          following.
+          No other player is indexed alongside {contributor.name} on a documented recording yet.{' '}
+          <a href="/contributors/">Browse all players</a> to find someone to follow.
         </p>
       )
     }
 
     {
+      roles.also.length > 0 && (
+        <div class="record-also" data-player-also>
+          <h2 class="record-also__title">Also credited</h2>
+          <p class="record-also__note">
+            {contributor.name} is also credited for these. They appear in the credits but do not
+            make a connection.
+          </p>
+          <p class="lede" style="font-size:0.95rem" data-player-also-list>
+            {alsoVisible.join(', ')}
+          </p>
+          {alsoRest.length > 0 && (
+            <details class="record-more">
+              <summary>Show {alsoRest.length} more</summary>
+              <p class="lede" style="font-size:0.95rem">{alsoRest.join(', ')}</p>
+            </details>
+          )}
+        </div>
+      )
+    }
+
+    {
       evidenceHops.length > 0 && (
-        <section aria-label="Documented evidence" style="margin-top:28px">
-          <p class="eyebrow" style="margin-bottom:10px">Documented evidence</p>
+        <section class="record-section" aria-labelledby="evidence-heading">
+          <h2 id="evidence-heading">Documented evidence</h2>
           <EvidencePanel class="evidence-card" hops={evidenceHops} />
         </section>
       )

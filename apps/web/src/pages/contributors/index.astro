@@ -15,17 +15,17 @@ import ContributorsDirectory from '../../components/ContributorsDirectory.astro'
 // go (ADR 0048's 2026-09-05 addendum), so the copy must not imply exhaustive
 // coverage of the graph.
 const description =
-  'Search and filter the contributors behind Networked Players’ documented connections, or browse the most connected.';
+  'Search the players behind Networked Players’ documented connections by name or what they played, or browse the most connected.';
 ---
 
-<BaseLayout title="Contributors" description={description}>
+<BaseLayout title="Players" description={description}>
   <section class="prose shell" style="padding-bottom:0">
-    <p class="eyebrow">Contributors</p>
+    <p class="eyebrow">Players</p>
     <h1 class="h1-intro">
       The people behind the documented connections.
     </h1>
     <p class="lede">
-      Every name here is credited on at least one release in the catalog.
+      Every name here is documented on at least one record in the catalog.
     </p>
   </section>
 

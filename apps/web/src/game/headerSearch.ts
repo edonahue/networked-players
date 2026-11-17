@@ -182,7 +182,7 @@ function init(root: HTMLElement) {
         (e) => e.kind === "contributor",
       ).length;
       showMessage(
-        `Nothing matches "${query}". This is a bounded collection of ${nAlbums} records and ${nPlayers} players, and search only covers what is published here.`,
+        `Nothing matches "${query}". Search covers the ${nAlbums} records and ${nPlayers} players published here, and nothing else.`,
         true,
       );
       status!.textContent = "No results.";
