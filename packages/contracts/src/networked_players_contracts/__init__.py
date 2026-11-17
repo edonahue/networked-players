@@ -11,7 +11,11 @@ from .album_credit_membership import (
 )
 from .canonical import canonical_json, content_hash, stable_id_digest
 from .catalog import public_album_catalog_failures
-from .challenge import CHALLENGE_SCHEMA_VERSION, challenge_failures
+from .challenge import (
+    CHALLENGE_SCHEMA_VERSION,
+    challenge_failures,
+    challenge_hops_missing_from_graph,
+)
 from .cohort import (
     CONNECTIVITY_SCHEMA_VERSION,
     PLAYABLE_COHORT_SCHEMA_VERSION,
@@ -87,6 +91,7 @@ __all__ = [
     "build_pin",
     "canonical_json",
     "challenge_failures",
+    "challenge_hops_missing_from_graph",
     "collection_failures",
     "collections_failures",
     "connection_daily_manifest_failures",

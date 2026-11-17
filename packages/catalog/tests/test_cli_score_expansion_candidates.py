@@ -487,3 +487,194 @@ def test_bridge_span_and_coverage_delta_wire_through_the_cli(tmp_path: Path, sha
     row = json.loads(output.read_text())["candidates"][0]
     assert row["bridge_span"] == 2
     assert row["coverage_delta"] == 1
+
+
+def test_shard_outputs_merge_to_the_single_node_file_byte_for_byte(tmp_path: Path) -> None:
+    """Campaign Atlas I2: --shard-index/--shard-count + merge-scored-shards."""
+    dataset = _write_onehop_dataset(tmp_path)
+    masters_root = _write_masters_dataset(tmp_path)
+    policy = _write_release_format_policy(tmp_path / "policy.json")
+    graph = _write_pathfinding_graph(tmp_path / "graph.v4.json", existing_node_ids=[100, -1])
+    candidates = tmp_path / "candidates.json"
+    candidates.write_text(
+        json.dumps(
+            [
+                {"master_id": 901, "artist_id": 400, "artist_name": "Dan"},
+                {"master_id": 900, "artist_id": 100, "artist_name": "Alice"},
+            ]
+        )
+    )
+    out = tmp_path / "local" / "scored"
+    base = [
+        "--onehop-root",
+        str(dataset),
+        "--masters-root",
+        str(masters_root),
+        "--candidates",
+        str(candidates),
+        "--pathfinding-graph",
+        str(graph),
+        "--release-format-policy",
+        str(policy),
+        "--quiet",
+    ]
+    assert main(["score-expansion-candidates", *base, "--output", str(out / "single.json")]) == 0
+    shard_files = []
+    for index in range(3):
+        path = out / f"shard-{index}.json"
+        shard_files.append(path)
+        argv = ["score-expansion-candidates", *base, "--output", str(path)]
+        assert main([*argv, "--shard-count", "3", "--shard-index", str(index)]) == 0
+    merge = ["merge-scored-shards", "--candidates", str(candidates), "--shard-count", "3"]
+    for path in shard_files:
+        merge += ["--shard-output", str(path)]
+    assert main([*merge, "--output", str(out / "merged.json")]) == 0
+    assert (out / "merged.json").read_bytes() == (out / "single.json").read_bytes()
+
+    # A missing shard and a duplicated shard are both refused, and nothing is written.
+    active = [p for p in shard_files if json.loads(p.read_text())["candidates"]]
+    assert len(active) == 2  # the 2 masters land on 2 distinct shards at this count
+    refused = [a for p in [*shard_files[:0], active[0]] for a in ("--shard-output", str(p))]
+    head = ["merge-scored-shards", "--candidates", str(candidates), "--shard-count", "3"]
+    with pytest.raises(SystemExit):
+        main([*head, *refused, "--output", str(out / "bad1.json")])
+    dup = [a for p in [*shard_files, active[0]] for a in ("--shard-output", str(p))]
+    with pytest.raises(SystemExit):
+        main([*head, *dup, "--output", str(out / "bad2.json")])
+    assert not (out / "bad1.json").exists() and not (out / "bad2.json").exists()
+
+
+def test_merge_refuses_mixed_inputs_foreign_candidates_and_bad_indexes(tmp_path: Path) -> None:
+    dataset = _write_onehop_dataset(tmp_path)
+    masters_root = _write_masters_dataset(tmp_path)
+    policy = _write_release_format_policy(tmp_path / "policy.json")
+    graph_a = _write_pathfinding_graph(tmp_path / "graph-a.json", existing_node_ids=[100, -1])
+    graph_b = _write_pathfinding_graph(tmp_path / "graph-b.json", existing_node_ids=[100, 200, -1])
+    candidates = tmp_path / "candidates.json"
+    candidates.write_text(
+        json.dumps(
+            [
+                {"master_id": 900, "artist_id": 100, "artist_name": "Alice"},
+                {"master_id": 901, "artist_id": 400, "artist_name": "Dan"},
+            ]
+        )
+    )
+    out = tmp_path / "local" / "scored"
+
+    def score(index: int, graph: Path, name: str) -> Path:
+        path = out / name
+        argv = [
+            "score-expansion-candidates",
+            "--onehop-root",
+            str(dataset),
+            "--masters-root",
+            str(masters_root),
+            "--candidates",
+            str(candidates),
+            "--pathfinding-graph",
+            str(graph),
+            "--release-format-policy",
+            str(policy),
+            "--quiet",
+            "--output",
+            str(path),
+            "--shard-count",
+            "2",
+            "--shard-index",
+            str(index),
+        ]
+        assert main(argv) == 0
+        return path
+
+    good = [score(0, graph_a, "g0.json"), score(1, graph_a, "g1.json")]
+    mixed = [good[0], score(1, graph_b, "m1.json")]
+
+    def merge(shards: list[Path], name: str, cands: Path = candidates) -> int:
+        argv = ["merge-scored-shards", "--candidates", str(cands), "--shard-count", "2"]
+        for path in shards:
+            argv += ["--shard-output", str(path)]
+        return main([*argv, "--output", str(out / name)])
+
+    assert merge(good, "ok.json") == 0
+    with pytest.raises(SystemExit, match="different inputs"):
+        merge(mixed, "mixed.json")
+    other = tmp_path / "other-candidates.json"
+    other.write_text(candidates.read_text() + "\n")  # different bytes, same masters
+    with pytest.raises(SystemExit, match="different candidates file"):
+        merge(good, "foreign.json", other)
+    for bad_index in (-1, 2, 99):
+        payload = json.loads(good[1].read_text())
+        payload["shard"]["index"] = bad_index
+        broken = out / f"bad-{bad_index}.json"
+        broken.write_text(json.dumps(payload))
+        with pytest.raises(SystemExit, match="outside"):
+            merge([good[0], broken], f"idx{bad_index}.json")
+    assert not any((out / n).exists() for n in ("mixed.json", "foreign.json", "idx-1.json"))
+
+
+def test_merge_refuses_shards_from_different_snapshots_or_code(tmp_path: Path) -> None:
+    import networked_players_graph_core.sharded_scoring as sharded
+
+    dataset = _write_onehop_dataset(tmp_path)
+    masters_root = _write_masters_dataset(tmp_path)
+    policy = _write_release_format_policy(tmp_path / "policy.json")
+    graph = _write_pathfinding_graph(tmp_path / "graph.json", existing_node_ids=[100, -1])
+    candidates = tmp_path / "candidates.json"
+    candidates.write_text(
+        json.dumps([{"master_id": 900, "artist_id": 100}, {"master_id": 901, "artist_id": 400}])
+    )
+    out = tmp_path / "local" / "scored"
+
+    def score(index: int, name: str) -> Path:
+        path = out / name
+        argv = [
+            "score-expansion-candidates",
+            "--onehop-root",
+            str(dataset),
+            "--masters-root",
+            str(masters_root),
+            "--candidates",
+            str(candidates),
+            "--pathfinding-graph",
+            str(graph),
+            "--release-format-policy",
+            str(policy),
+            "--quiet",
+            "--output",
+            str(path),
+            "--shard-count",
+            "2",
+            "--shard-index",
+            str(index),
+        ]
+        assert main(argv) == 0
+        return path
+
+    def merge(shards: list[Path], name: str) -> int:
+        argv = ["merge-scored-shards", "--candidates", str(candidates), "--shard-count", "2"]
+        for path in shards:
+            argv += ["--shard-output", str(path)]
+        return main([*argv, "--output", str(out / name)])
+
+    first = score(0, "s0.json")
+    assert merge([first, score(1, "s1.json")], "same.json") == 0
+
+    # A different snapshot of the same dataset between shards (its manifest changes).
+    manifest = dataset / "manifest.json"
+    original = manifest.read_text()
+    manifest.write_text(json.dumps({**json.loads(original), "snapshot_note": "other"}))
+    other_snapshot = score(1, "s1-other.json")
+    manifest.write_text(original)
+    with pytest.raises(SystemExit, match="different inputs"):
+        merge([first, other_snapshot], "snap.json")
+
+    # Different scorer code between shards.
+    real = sharded.scorer_code_identity
+    sharded.scorer_code_identity = lambda: "f" * 64  # type: ignore[assignment]
+    try:
+        other_code = score(1, "s1-code.json")
+    finally:
+        sharded.scorer_code_identity = real  # type: ignore[assignment]
+    with pytest.raises(SystemExit, match="different inputs"):
+        merge([first, other_code], "code.json")
+    assert not (out / "snap.json").exists() and not (out / "code.json").exists()

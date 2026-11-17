@@ -97,7 +97,7 @@ def test_build_challenge_v2_produces_a_valid_artifact(dataset_root: Path) -> Non
 
     validate_challenge(artifact)
     assert artifact["schema_version"] == 2
-    assert artifact["provenance"]["graph_policy_version"] == 1
+    assert artifact["provenance"]["graph_policy_version"] == 2
     assert report["albums_matched"] == 3
     assert report["albums_missed"] == 0
     assert report["paths_found"] >= 1
@@ -913,6 +913,7 @@ def test_build_challenge_v2_stamps_the_build_parameters_it_ran_with(dataset_root
         "max_hops": 3,
         "max_frontier_expansion": 42,
         "carried_forward_pairs_used": True,
+        "path_edge_scope": "seed_touching",
     }
 
 
