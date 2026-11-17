@@ -156,6 +156,9 @@ def _wait(
 
 @pytest.fixture
 def backend(monkeypatch: pytest.MonkeyPatch) -> Backend:
+    # Selection uses the real clock, so each test's fake timeline starts at "now".
+    global T0
+    T0 = datetime.now(UTC).replace(microsecond=0)
     backend = Backend(Clock())
     backend.install(monkeypatch)
     backend.rq_heartbeat["worker-a"] = lambda now: now  # healthy RQ worker

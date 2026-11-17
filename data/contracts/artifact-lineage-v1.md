@@ -151,15 +151,19 @@ index, hop distances, search index) it may contain nothing but `inputs`.
 
 ## Fleet ordering
 
-Per-artifact validators on fleet workers come from the `networked_players_contracts` install
-on each worker. A worker still on a contracts version from before this contract rejects a
-rebuilt artifact that carries `provenance` ("unexpected top-level keys"). The package version
-is a constant, so it cannot tell a stale worker from a bad artifact; the validation report
-therefore now records `contracts_version`, `contracts_digest` (a content digest of the
-installed contracts package) and `runtime_digest` (ADR 0073, Campaign Atlas work package I1),
-and `make platform-status` prints each worker's contracts digest and whether it matches the
-current checkout. **Reinstall contracts on every worker before the first rebuild that stamps
-lineage is validated on the fleet** (`equip-workers.yml` still does not do this on change), and
-confirm with `make platform-status` that every worker's contracts digest says `match`. A
-fleet-wide failure whose reports carry a `contracts_digest` that differs from the checkout's is
-a staleness problem, not an artifact problem.
+Per-artifact validators on fleet workers come from the `networked_players_contracts` package
+in each worker's **release venv** (`~/.local/share/networked-players/platform/releases/<commit>/venv`),
+which `make platform-deploy` creates per commit from the wheels `make platform-build` packaged.
+(`equip-workers.yml` installs contracts into a different, legacy `worker-venv` used only by old
+copied job bodies; reinstalling there does not change what `artifact.validate` runs.) A worker
+whose release predates this contract rejects a rebuilt artifact that carries `provenance`
+("unexpected top-level keys"). The package version is a constant, so it cannot tell a stale
+worker from a bad artifact; the validation report (`platform-validation-report-v2`) therefore
+records `contracts_version`, `contracts_digest` (a content digest of the contracts package that
+ran), `runtime_digest`, the worker's built `runtime_commit`, `worker_id` and `attempt` (ADR 0073,
+Campaign Atlas work package I1). **Build and deploy a release containing the current contracts to
+every worker before the first rebuild that stamps lineage is validated on the fleet**, and confirm
+with `make platform-status` that every worker's contracts digest says `match` against the
+checkout; that command measures the release venv, which is the one that matters. A fleet-wide
+failure whose reports carry a `contracts_digest` that differs from the checkout's is a staleness
+problem, not an artifact problem.

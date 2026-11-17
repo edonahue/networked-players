@@ -14,8 +14,9 @@ deployment playbook.
 ## Runtime digests (ADR 0073)
 
 Worker eligibility is a per-workload runtime digest (`digest.py`), not the git commit, which
-stays recorded as provenance. The digest covers every `.py` and packaged `.json` file of each
-`networked_players_*` package in the workload's import closure, plus `uv.lock`. Observed
+stays recorded as provenance. The digest covers every file of each
+`networked_players_*` package in the workload's import closure (every file except
+bytecode). `uv.lock` is provenance only, not part of the digest. Observed
 closures (asserted in `tests/test_runtime_digest.py`):
 
 | Workload | Packages hashed |
@@ -24,7 +25,8 @@ closures (asserted in `tests/test_runtime_digest.py`):
 | `cohort.score` | platform, contracts, catalog, graph-core |
 | `research.graph-metrics` | platform, contracts, graph-core, research |
 
-Workers set `PLATFORM_RELEASE_JSON` (written by `deploy-platform-runtime.yml`) so the runtime
-can read the release's `uv.lock` hash; without it a worker advertises no digests and is
-refused with an explicit reason. `networked-players-platform runtime-digests` prints a
+Workers compute their digests from the installed packages; `PLATFORM_RELEASE_JSON`
+(written by `deploy-platform-runtime.yml`) is optional provenance the worker cross-checks and
+warns about. `verify-wheels` (run by the build script) fails if the built wheels' digests
+differ from the checkout's. `networked-players-platform runtime-digests` prints a
 checkout's digests; `jobs list|status|cancel|logs` is the operator job view.

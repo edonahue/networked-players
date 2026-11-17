@@ -1259,13 +1259,16 @@ run, so there is nothing to keep in sync between a "deploy" step and a "check" s
 make catalog-check-distributed
 ```
 
-> **Reinstall contracts BEFORE checking a schema-bumped artifact.** Each worker
-> validates with whatever `networked_players_contracts` is installed on it, and
-> `equip-workers.yml` does not reinstall contracts just because they changed. Publish a
+> **Deploy current contracts BEFORE checking a schema-bumped artifact.** Each worker
+> validates with the `networked_players_contracts` in its platform **release venv**
+> (installed per commit by `make platform-deploy`; `equip-workers.yml` only touches the
+> legacy `worker-venv` and does not refresh it). Since ADR 0073 the validation report and
+> `make platform-status` name the contracts digest that ran, so staleness is attributable.
+> Publish a
 > registry with a `schema_version` the fleet's copy predates and every Pi reports a
 > confident, wrong failure (`schema_version must be 1`) against a perfectly good
-> artifact. This bit the ADR 0059 evidence-registry v2 bump. Reinstall first, then
-> check — and treat a fleet-wide failure that CI's `validate-public-artifacts` passed as
+> artifact. This bit the ADR 0059 evidence-registry v2 bump. Deploy first, confirm with
+> `make platform-status`, then check — and treat a fleet-wide failure that CI's `validate-public-artifacts` passed as
 > a staleness suspect before believing it about the artifact.
 
 Every validator except `catalog` reads two or more artifacts (`connection-rounds` and
@@ -1273,7 +1276,7 @@ Every validator except `catalog` reads two or more artifacts (`connection-rounds
 submission supplies, so the fleet runs the same catalog-lineage checks as
 `validate-public-artifacts`; a worker whose `networked-players-platform` predates that
 accepts only two inputs and rejects the default submission, so redeploy the platform
-runtime and reinstall contracts first); the real default paths (matching
+runtime first, which also installs the release's contracts); the real default paths (matching
 the published artifact locations exactly) live in `submit_artifact_check.py`'s
 `_DEFAULT_ARTIFACTS` table — pass `--artifact <path>` (twice, in order) to override for a
 not-yet-published candidate. Results are written to
@@ -1310,34 +1313,43 @@ or fleet.** Nothing below has been run on real workers.
 ### What changed
 
 - **Eligibility is by runtime digest, not git commit.** A worker advertises one SHA-256 per
-  workload over the content of every `.py`/packaged `.json` file in that workload's import
-  closure plus `uv.lock`. `make platform-build` records the digests in
-  `local/platform/releases/<commit>/release.json`; submit scripts compute the same digest
-  from the checkout. A docs-only or web-only commit therefore leaves the fleet eligible; any
+  workload over every file (except bytecode) of the packages in that workload's import
+  closure; `uv.lock` is provenance only and does not affect it. `make platform-build` first
+  verifies that the digests of the wheels it built equal the checkout's (it refuses to build
+  otherwise), then records them in `local/platform/releases/<commit>/release.json`; submit
+  scripts compute the same digest from the checkout. A docs-only or web-only commit therefore leaves the fleet eligible; any
   change to executed code or the lock does not. The git commit is still recorded on every
   request and result as provenance. See ADR 0073 for what the digest does not cover (notably
-  worker third-party installs, which are resolved by version bounds, not `uv.lock`).
+  worker third-party installs, which were never pinned, before or after this change).
 - **Skew is explained.** `make platform-status` prints, per worker: advertisement schema,
   recorded commit, contracts version and contracts content digest, and for each workload the
   digest plus `match`/`mismatch`/`no-digest` against this checkout. A submit that finds no
   eligible worker fails with every worker's reasons (stale heartbeat, digest mismatch with both
   digests, missing workload, architecture/tags/memory, dataset identity).
-- **Validation reports attribute themselves.** `validation-report.json` (schema 2) records
-  `contracts_version`, `contracts_digest`, `runtime_digest` and `attempt`. The contracts
+- **Validation reports attribute themselves.** `validation-report.json` (schema 2, contract
+  `platform-validation-report-v2`) records `contracts_version`, `contracts_digest`,
+  `runtime_digest`, the worker's built `runtime_commit`, `submitted_commit`, `worker_id` and
+  `attempt`; the artifact-check script's local record also lists every attempt and orphan. The contracts
   package version is a constant (`0.1.0`, never bumped), so the content digest is what
   distinguishes a stale worker from a bad artifact: compare `contracts_digest` with
   `make platform-status` output for this checkout.
 - **Retries are honoured.** Submit scripts use the workload's declared `max_retries`
   (`--max-retries N` overrides; `0` disables). Each attempt is a fresh run id
   (`<id>`, `<id>-a2`, ...), run directory and RQ job; the executor's no-reuse rule is
-  untouched. A worker is "lost" when its advertisement has been missing or stale for 90
-  continuous seconds while it holds the job (advertisements come from a separate heartbeat
-  timer, so a busy worker keeps advertising). The client then cancels a queued job or sends a
-  stop command for a started one (best effort: a dead worker never receives it), re-selects
-  among the other eligible workers, and prints the orphan. Only lost workers and killed
-  work-horses retry; a workload that raised does not. `submit_artifact_check.py` pins each
-  attempt to its own worker (redundant fan-out), so a lost worker there is reported, not
-  re-routed.
+  untouched. **A worker is lost** only when RQ's own record of it (`rq:worker:<name>`) has
+  been absent, or its `last_heartbeat` older than 420 seconds (RQ's default worker TTL), and
+  then stays that way for 60 further continuous seconds, so detection takes roughly 7 to 8
+  minutes after an idle worker dies (less for a busy one, whose record RQ refreshes more
+  often). The advertisement (a separate heartbeat unit) never decides this: a failing
+  heartbeat with a live RQ worker never causes a stop or a retry, and a dead RQ worker with a
+  fresh advertisement is detected, reported as `RQ worker process absent` by `platform-status`
+  and by selection, and not scheduled onto. On loss the client cancels a queued job, or stops
+  a started one only after re-confirming the lapse, then retries on another eligible worker
+  and prints the orphan. Only lost workers and killed work-horses retry; a workload that
+  raised does not, and a SIGKILLed or abandoned job (indistinguishable from an out-of-memory
+  kill) retries only on a worker with a strictly larger `max_job_memory_mb`.
+  `submit_artifact_check.py` pins each attempt to its own worker (redundant fan-out), so a
+  lost worker there is reported, not re-routed.
 - **Job control**: `make platform-jobs ARGS="list"` (add `--worker <id>`, `--state failed`,
   `--limit N`), `ARGS="status <job>"`, `ARGS="cancel <job>"`, `ARGS="logs <job>"`. Read-only
   except `cancel`; nothing connects to a worker. Output contains worker ids and stays on your
@@ -1356,23 +1368,41 @@ or fleet.** Nothing below has been run on real workers.
 ### Rollout order for a mixed fleet
 
 Schema-1 workers advertise no digests and are refused with an explicit reason until
-redeployed; nothing silently matches them. Order: **build, deploy to all workers, reinstall
-contracts, verify with `platform-status`, then submit.**
+redeployed; nothing silently matches them. Conversely, a submitting checkout from before
+this change rejects schema-2 advertisements and fails closed (it can select no worker), so
+update the submitting checkout before or with the deploy. Order: **build, deploy to all
+workers, verify the release venv's contracts with `platform-status`, then submit.**
+
+Which venv matters: platform workloads (`artifact.validate` and the rest) run from the
+**release venv** `~/.local/share/networked-players/platform/releases/<commit>/venv`, created
+fresh per commit by `deploy-platform-runtime.yml` from the wheels in that release (the
+worker and heartbeat units start `current/venv/bin/networked-players-platform`). The
+contracts that validate artifacts are therefore the ones `make platform-build` packaged and
+`make platform-deploy` installed. `equip-workers.yml` installs contracts into a different,
+legacy `worker-venv`, used only by the old copied job bodies; reinstalling there does **not**
+change what `artifact.validate` runs, and `platform-status` does not measure it. The
+contracts digest `make platform-status` prints is computed from the release venv.
 
 ### Rollout checklist (operator, to be run later; nothing here has been run)
 
 1. From a clean checkout of the merged commit: `make platform-build`. Confirm
    `local/platform/releases/<commit>/release.json` lists `runtime_digests`, `uv_lock_sha256`
-   and `contracts_digest`.
+   and `contracts_digest`, and that `verify-wheels` printed `wheel digests match the
+   checkout`.
 2. `make platform-deploy` for **every** worker group (Pi workers and x86 workers), not just
    `pi_workers`. The playbook now sets `PLATFORM_RELEASE_JSON` in each worker's `worker.env`
    and restarts the worker and heartbeat units.
-3. Reinstall contracts on every worker (`equip-workers.yml` does not do this on change; see
-   the warning in the Pi checks section above).
-4. `make platform-status`: every worker should show schema 2 and, for each workload, `match`;
-   contracts digest `match`. Investigate any `mismatch`/`no-digest` before submitting.
+3. Contracts need no separate step for platform workloads: the deploy in step 2 installs the
+   release's own contracts wheel into the new per-commit release venv. (Only the legacy
+   `worker-venv` used by old copied job bodies is touched by `equip-workers.yml`; skip it
+   unless you still run those.) Do not treat an `equip-workers` run as having refreshed
+   what `artifact.validate` uses.
+4. `make platform-status`: every worker should show schema 2, an `RQ worker:` timestamp (not
+   `ABSENT`), and for each workload `match`; contracts digest `match`. This is the
+   confirmation that the release venv, not the legacy one, holds the current contracts. Investigate any `mismatch`/`no-digest` before submitting.
 5. Submit one cheap check (`make catalog-check-distributed`) and confirm the written
-   `local/jobs/*.json` report carries `contracts_version`/`contracts_digest`.
+   `local/jobs/*.json` report carries `contracts_version`, `contracts_digest`,
+   `runtime_commit` and `worker_id`.
 6. Push a docs-only commit, re-run `make platform-status`, and confirm nothing became a
    mismatch (this is the property the ADR exists for).
 7. Only after the real runs, move ADR 0073 from Proposed to Accepted.
