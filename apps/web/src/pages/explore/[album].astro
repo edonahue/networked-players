@@ -3,6 +3,10 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import NetworkExplorer from '../../components/NetworkExplorer.astro';
 import type { AlbumV2, ChallengeV2 } from '../../data/challenge';
 import challengeData from '../../../public/data/challenge.v3.json';
+import membershipData from '../../../public/data/albums/credit-membership.v1.json';
+import prominenceData from '../../../public/data/pathfinding/prominence.v1.json';
+import type { Membership } from '../../data/albumRecord';
+import { buildRecordView, renderRecordList } from '../../data/recordExplorer';
 
 // Network Explorer (Phase 2 Slice G, ADR 0052): centers on one album's
 // primary artist and shows a bounded, real neighborhood from the same
@@ -28,6 +32,16 @@ interface Props {
 }
 
 const { album } = Astro.props;
+// Static/no-JS fallback for the record-centred prototype (?mode=record): the
+// same capped data, built at build time from the same builder.
+const prominence = prominenceData as { node_ids: number[]; rank: number[] };
+const rank = new Map(prominence.node_ids.map((id, i) => [id, prominence.rank[i]]));
+const recordView = buildRecordView(
+  membershipData as unknown as Membership,
+  (challengeData as ChallengeV2).albums,
+  rank,
+  album.id,
+);
 const description = `Explore the players documented on ${album.title} and who they played with.`;
 ---
 
@@ -35,7 +49,7 @@ const description = `Explore the players documented on ${album.title} and who th
   <section class="prose shell" style="padding-bottom:0">
     <p class="eyebrow">Explore</p>
     <h1 class="h1-intro">{album.title}</h1>
-    <p class="lede" style="font-size:0.95rem">
+    <p class="lede" style="font-size:0.95rem" data-explore-lede>
       {album.artist}
       {album.year ? ` · ${album.year}` : ''} — click any player to recenter
       around them. Filter by role to fade everything else without hiding it.
@@ -45,6 +59,36 @@ const description = `Explore the players documented on ${album.title} and who th
   <div class="shell">
     <NetworkExplorer initialArtistId={album.artist_id} initialLabel={album.artist} />
   </div>
+
+  <div class="shell record-explorer" data-record-explorer data-album-id={album.id} hidden>
+    <p class="record-explorer__banner">
+      Prototype: record-centred view. Players are the people documented performing on the
+      record; the second ring is their other records. Every link is a documented performance credit.
+      <a href={`/explore/${album.id}/`}>Back to the standard artist view</a>
+    </p>
+    <div class="explorer-status" data-record-status role="status" aria-live="polite" hidden></div>
+    <div class="visually-hidden" data-record-alert aria-live="assertive" role="alert"></div>
+    <svg class="record-svg" data-record-svg viewBox="0 0 900 600" role="group"
+      aria-label="Record-centred graph. Players are in the inner ring, their other records in the outer ring. Select a player for credits, or a record to recenter.">
+      <g data-record-edges></g>
+      <g data-record-nodes></g>
+    </svg>
+    <p class="explorer-truncated-note" data-record-more hidden></p>
+    <div class="explorer-evidence-drawer" data-record-drawer role="region" aria-label="Player credits" tabindex="-1" hidden>
+      <button type="button" class="explorer-evidence-drawer__close" data-record-drawer-close aria-label="Close credits">×</button>
+      <div data-record-drawer-content></div>
+    </div>
+    <div class="record-list" data-record-list aria-label="The same players and records as a list"></div>
+  </div>
+
+  {recordView && (
+    <noscript>
+      <div class="shell record-list">
+        <p class="lede" style="font-size:0.92rem">The interactive view needs JavaScript. The same documented players and records, as a list:</p>
+        <Fragment set:html={renderRecordList(recordView)} />
+      </div>
+    </noscript>
+  )}
 
   <section class="prose shell" style="padding-top:20px;padding-bottom:72px">
     <p class="lede" style="font-size:0.92rem">
@@ -59,5 +103,15 @@ const description = `Explore the players documented on ${album.title} and who th
 
 <script>
   import { initExplorerStage } from '../../game/explorerStage';
-  initExplorerStage();
+  // Prototype flag (Campaign Atlas G2): ?mode=record swaps the artist star
+  // for the record-centred view. Without it nothing below changes.
+  if (new URLSearchParams(window.location.search).get('mode') === 'record') {
+    document.querySelector<HTMLElement>('.explorer-stage')?.setAttribute('hidden', '');
+    document.querySelector<HTMLElement>('[data-record-explorer]')?.removeAttribute('hidden');
+    const lede = document.querySelector<HTMLElement>('[data-explore-lede]');
+    if (lede) lede.textContent = 'Select a player to see their credits, or a record to recenter on it.';
+    import('../../game/recordExplorerStage').then((m) => m.initRecordExplorer());
+  } else {
+    initExplorerStage();
+  }
 </script>
