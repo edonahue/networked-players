@@ -7,7 +7,8 @@
 
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
-import { readArtifact } from "./helpers/catalogFacts";
+import { readArtifact, SCAN_ALBUM_CAP } from "./helpers/catalogFacts";
+import { stubCoverArt } from "./helpers/coverArt";
 import type { Contributor } from "../src/data/contributors";
 import { playedPhrase, playerRoles } from "../src/data/playerRecord";
 
@@ -32,6 +33,21 @@ const withPlayAndAlso =
 const withoutPlay = players.find(
   (c) => c.albums.length > 0 && playerRoles(c).played.length === 0,
 );
+// Axe on a page with hundreds of evidence rows times out (the accessibility
+// scan bounds its player by SCAN_ALBUM_CAP for the same reason), so the axe
+// run uses the first players of each kind within that bound.
+const bounded = (c: Contributor) =>
+  c.albums.length > 0 && c.albums.length <= SCAN_ALBUM_CAP;
+const axeWithPlay = players.find(
+  (c) => bounded(c) && playerRoles(c).played.length > 0,
+);
+const axeWithoutPlay = players.find(
+  (c) => bounded(c) && playerRoles(c).played.length === 0,
+);
+
+test.beforeEach(async ({ page }) => {
+  await stubCoverArt(page);
+});
 
 test("the rule finds a player with and a player without a performance role", () => {
   expect(withPlay, "no player with a performance role").toBeTruthy();
@@ -141,7 +157,7 @@ for (const theme of ["dark", "light"] as const) {
       (t) => window.localStorage.setItem("networked-players-theme", t),
       theme,
     );
-    for (const player of [withPlayAndAlso!, withoutPlay!]) {
+    for (const player of [axeWithPlay!, axeWithoutPlay!]) {
       await page.goto(`/contributors/${player.artist_id}/`);
       await page.waitForLoadState("networkidle");
       const results = await new AxeBuilder({ page }).analyze();

@@ -138,7 +138,7 @@ test("an unmatched query shows an honest empty state with real counts", async ({
   await expect(message).toContainText(
     `${albums} records and ${players} players`,
   );
-  await expect(message).toContainText("only covers what is published");
+  await expect(message).toContainText("and nothing else");
   await expect(
     page.locator("[data-search-empty] a[href='/albums/']"),
   ).toBeVisible();

@@ -15,7 +15,7 @@ versioned static artifacts — no backend, no accounts.
 - **Connection Guesser** (`/play/connection/`) — the flagship: two records land on
   the counter, pick the contributor credited on both from a chip tray (two
   attempts, a spendable clue ladder, an honest give-up), then the round resolves
-  into a liner-note evidence sheet. Two-hop rounds (`?kind=two_hop`) hide a middle
+  into a liner-note evidence sheet, with a row linking onward to the records, the connecting player and Connect. Two-hop rounds (`?kind=two_hop`) hide a middle
   record: find the bridge credit on each side, then name the record. Rounds play
   in five-round sittings with a needle-drop set summary (● clean / ◐ with help /
   ○ revealed).
@@ -57,11 +57,15 @@ versioned static artifacts — no backend, no accounts.
 - **Explore** (`/explore/`, `/explore/<album-id>/`, ADR 0052) — an open-ended,
   bounded network view of one album's documented credit neighborhood; click any
   name to recenter, filter by role to fade the rest without hiding it.
-- **Contributors** (`/contributors/`, `/contributors/<artist-id>/`, ADR 0058
-  Slice 8) — a searchable, role-filterable directory of every contributor in
+- **Players** (`/contributors/`, `/contributors/<artist-id>/`, ADR 0058
+  Slice 8) — a searchable, role-filterable directory of every player in
   the contributor index, plus a most-connected list from its public
-  `connection_count` field, and a per-contributor detail page (albums,
-  neighboring contributors, evidence).
+  `connection_count` field. A player's page leads with what they are documented
+  _playing_ (instrument and voice families derived from the indexed evidence's
+  role text; an honest "no voice or instrument credit is indexed" when there is
+  none), then their records, the players they recur with, and a secondary "Also
+  credited" block for non-performance credits, which appear as evidence but make
+  no connection (ADR 0068). Routes and data keys keep the `contributors` name.
 - **Cohorts** (`/cohorts/`, `/cohorts/<cohort-id>/`) — a static manifest-driven index
   and detail pages for reviewed playable cohorts. The committed cohort fixture is
   synthetic and clearly labeled until a real, human-reviewed `playable-cohort-v1`

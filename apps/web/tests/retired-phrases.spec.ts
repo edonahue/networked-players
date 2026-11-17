@@ -5,6 +5,7 @@
 
 import { expect, test } from "@playwright/test";
 import { catalogAlbums, readArtifact } from "./helpers/catalogFacts";
+import { stubCoverArt } from "./helpers/coverArt";
 
 const RETIRED = [
   "linked identity",
@@ -44,9 +45,10 @@ const ROUTES = [
 ];
 
 for (const route of ROUTES) {
-  test(`no retired phrase in the rendered text of ${route.replace(/[0-9a-z-]{6,}/g, "…")}`, async ({
+  test(`no retired phrase in the rendered text of ${route}`, async ({
     page,
   }) => {
+    await stubCoverArt(page);
     await page.goto(route);
     await page.waitForLoadState("networkidle");
     const text = (await page.locator("body").innerText()).toLowerCase();
