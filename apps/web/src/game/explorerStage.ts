@@ -29,6 +29,13 @@ import {
 } from "./domUtils";
 import type { Contributor, ContributorIndex } from "../data/contributors";
 import { ROLE_CATEGORY_LABEL } from "../data/contributors";
+import {
+  DESKTOP_METRICS,
+  LABEL_LINE_HEIGHT,
+  MOBILE_METRICS,
+  computeLayout,
+  type PlacedLabel,
+} from "./explorerLayout";
 
 const EVIDENCE_REGISTRY_URL = "/data/evidence/release-registry.v1.json";
 // v4 (graph-expansion Phase 1, ADR 0071): role-dictionary-encoded, real
@@ -48,9 +55,9 @@ const PROMINENCE_URL = "/data/pathfinding/prominence.v1.json";
  * page rather than an arbitrary different-sized second batch. */
 const NEIGHBOR_PAGE_SIZE = MAX_NEIGHBORS;
 
-const VIEW_SIZE = 320;
-const CENTER = VIEW_SIZE / 2;
-const RADIUS = 120;
+// The viewBox is now `0 0 <layout.width> <layout.height>` per render (see
+// explorerLayout.ts: radial labels in outside columns; the height grows with
+// the label count), not a fixed 320x320 square.
 /** Desktop defaults. Mobile uses larger values (see `MOBILE_BREAKPOINT`/
  * `mobileTouchTargets` below) -- the SVG viewBox stays a fixed 320x320
  * regardless of viewport, so a circle's actual ON-SCREEN size depends on
@@ -89,18 +96,6 @@ const MOBILE_BREAKPOINT = "(max-width: 640px)";
 const MOBILE_NODE_RADIUS = 12;
 const MOBILE_CENTER_NODE_RADIUS = 18;
 const MOBILE_EDGE_HIT_AREA_WIDTH = 18;
-
-function neighborPosition(
-  index: number,
-  total: number,
-): { x: number; y: number } {
-  if (total === 0) return { x: CENTER, y: CENTER };
-  const angle = (2 * Math.PI * index) / total - Math.PI / 2;
-  return {
-    x: CENTER + RADIUS * Math.cos(angle),
-    y: CENTER + RADIUS * Math.sin(angle),
-  };
-}
 
 /** Roving-tabindex arrow-key move shared by the node and edge layers
  * (post-Phase-4 cleanup audit F16 -- edges used to be up to 24 independent
@@ -378,13 +373,23 @@ export async function initExplorerStage(): Promise<void> {
       showMoreEl!.textContent = `Show ${Math.min(NEIGHBOR_PAGE_SIZE, view.totalNeighborCount - view.neighbors.length)} more`;
     }
 
+    const layout = computeLayout(
+      view.center.name,
+      view.neighbors.map((n) => n.name),
+      isMobileViewport ? MOBILE_METRICS : DESKTOP_METRICS,
+    );
+    viewW = layout.width;
+    viewH = layout.height;
+    svg!.setAttribute("viewBox", `0 0 ${viewW} ${viewH}`);
     const nodePositions = new Map<number, { x: number; y: number }>();
-    nodePositions.set(view.center.artistId, { x: CENTER, y: CENTER });
+    nodePositions.set(view.center.artistId, { x: layout.cx, y: layout.cy });
+    const placedByArtistId = new Map<
+      number,
+      { label: PlacedLabel; leader?: (typeof layout.nodes)[number]["leader"] }
+    >([[view.center.artistId, { label: layout.center }]]);
     view.neighbors.forEach((node, i) => {
-      nodePositions.set(
-        node.artistId,
-        neighborPosition(i, view.neighbors.length),
-      );
+      nodePositions.set(node.artistId, layout.nodes[i]);
+      placedByArtistId.set(node.artistId, layout.nodes[i]);
     });
 
     const nodeNameById = new Map<number, string>(
@@ -457,23 +462,49 @@ export async function initExplorerStage(): Promise<void> {
       const label = isInterestingNextStep
         ? `${escapeHtml(node.name)} (credited in a different kind of role — worth a look)`
         : `${escapeHtml(node.name)}${node.isCenter ? " (center)" : ""}`;
-      return (
+      const placed = placedByArtistId.get(node.artistId)!;
+      const l = placed.leader;
+      const leader = l
+        ? `<line class="explorer-leader" x1="${l.x1}" y1="${l.y1}" x2="${l.x2}" y2="${l.y2}" />`
+        : "";
+      // Wrapped lines are separate tspans; word-boundary breaks keep a
+      // trailing space (see wrapName), so the visible text equals the name.
+      const spans = placed.label.lines
+        .map(
+          (line, li) =>
+            `<tspan x="${placed.label.x}" dy="${li === 0 ? 0 : LABEL_LINE_HEIGHT}">${escapeHtml(line)}</tspan>`,
+        )
+        .join("");
+      // The circle (the button) and its label live in SEPARATE groups: a
+      // button's pointer target is its bounding-box centre, and a group that
+      // also spanned a leader line and an outside label would put that centre
+      // in empty space. The label layer is aria-hidden, a visual duplicate of
+      // the button's aria-label (the accessible name still equals the text).
+      const nodeHtml =
         `<g class="explorer-node${dimmed ? " explorer-node--dimmed" : ""}${isInterestingNextStep ? " explorer-node--interesting" : ""}" ` +
         `data-artist-id="${node.artistId}" data-is-center="${node.isCenter}" ` +
         `data-is-interesting-next-step="${isInterestingNextStep}" ` +
         `tabindex="${node.isCenter ? "0" : "-1"}" role="button" aria-label="${label}">` +
         `<circle cx="${pos.x}" cy="${pos.y}" r="${r}" />` +
-        `<text x="${pos.x}" y="${pos.y + r + 12}" text-anchor="middle">${escapeHtml(node.name)}</text>` +
-        `</g>`
-      );
+        `</g>`;
+      const labelHtml =
+        `<g class="explorer-label${dimmed ? " explorer-label--dimmed" : ""}" data-label-for="${node.artistId}">` +
+        leader +
+        `<text x="${placed.label.x}" y="${placed.label.y}" text-anchor="${placed.label.anchor}">${spans}</text>` +
+        `</g>`;
+      return { nodeHtml, labelHtml };
     };
 
+    const rendered = [view.center, ...view.neighbors].map(renderNode);
     nodesLayer!.innerHTML =
-      renderNode(view.center) +
-      view.neighbors.map((n) => renderNode(n)).join("");
+      `<g class="explorer-labels" aria-hidden="true">${rendered.map((x) => x.labelHtml).join("")}</g>` +
+      rendered.map((x) => x.nodeHtml).join("");
   }
 
   let currentView: ExplorerView | null = null;
+  // Current viewBox size, set by every renderView (it grows with label count).
+  let viewW = DESKTOP_METRICS.width;
+  let viewH = 320;
 
   // Paging (plan §6: "Showing 24 of 137 · show next 24"), NOT a hidden
   // truncation -- `neighborLimit` resets to the default cap on every real
@@ -528,12 +559,8 @@ export async function initExplorerStage(): Promise<void> {
   } {
     const rect = svg!.getBoundingClientRect();
     return {
-      x:
-        rect.width === 0 ? 0 : ((clientX - rect.left) / rect.width) * VIEW_SIZE,
-      y:
-        rect.height === 0
-          ? 0
-          : ((clientY - rect.top) / rect.height) * VIEW_SIZE,
+      x: rect.width === 0 ? 0 : ((clientX - rect.left) / rect.width) * viewW,
+      y: rect.height === 0 ? 0 : ((clientY - rect.top) / rect.height) * viewH,
     };
   }
 
@@ -553,7 +580,7 @@ export async function initExplorerStage(): Promise<void> {
     panX += px * (zoom - clamped);
     panY += py * (zoom - clamped);
     zoom = clamped;
-    const maxPan = VIEW_SIZE * zoom;
+    const maxPan = Math.max(viewW, viewH) * zoom;
     panX = Math.min(maxPan, Math.max(-maxPan, panX));
     panY = Math.min(maxPan, Math.max(-maxPan, panY));
     applyViewTransform();
@@ -666,10 +693,10 @@ export async function initExplorerStage(): Promise<void> {
 
     if (event.pointerId !== panPointerId) return;
     const rect = svg!.getBoundingClientRect();
-    const scale = rect.width === 0 ? 1 : VIEW_SIZE / rect.width;
+    const scale = rect.width === 0 ? 1 : viewW / rect.width;
     panX = panStart.panX + (event.clientX - panStart.clientX) * scale;
     panY = panStart.panY + (event.clientY - panStart.clientY) * scale;
-    const maxPan = VIEW_SIZE * zoom;
+    const maxPan = Math.max(viewW, viewH) * zoom;
     panX = Math.min(maxPan, Math.max(-maxPan, panX));
     panY = Math.min(maxPan, Math.max(-maxPan, panY));
     applyViewTransform();

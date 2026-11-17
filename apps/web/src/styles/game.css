@@ -947,7 +947,9 @@ a.contributor-card:focus-visible {
   max-width: 640px;
   height: auto;
   margin-inline: auto;
-  aspect-ratio: 1;
+  /* No fixed aspect-ratio: the viewBox (set per render by explorerStage.ts
+     from explorerLayout.ts) is wider than tall and grows taller with the
+     label count, and the SVG's own intrinsic ratio follows it. */
   /* `hidden`, not the previous `visible`: pan/zoom (graph-expansion Phase
      1, plan §6) now lets a visitor move content beyond the original
      320x320 frame on purpose -- panned-out content should clip cleanly at
@@ -1045,11 +1047,24 @@ a.contributor-card:focus-visible {
   fill: var(--accent);
   stroke: var(--accent-strong);
 }
-.explorer-node text {
+.explorer-label text {
   font-family: var(--mono);
   font-size: 8px;
   fill: var(--ink);
   pointer-events: none;
+  /* Halo so the centre label stays legible over the edges beneath it. */
+  paint-order: stroke;
+  stroke: var(--bg);
+  stroke-width: 2px;
+  stroke-linejoin: round;
+}
+.explorer-leader {
+  stroke: var(--line);
+  stroke-width: 1;
+  pointer-events: none;
+}
+.explorer-label--dimmed .explorer-leader {
+  opacity: 0.35;
 }
 .explorer-node:focus-visible circle {
   outline: 2px solid var(--accent-strong);
@@ -1058,7 +1073,7 @@ a.contributor-card:focus-visible {
 .explorer-node--dimmed circle {
   opacity: 0.25;
 }
-.explorer-node--dimmed text {
+.explorer-label--dimmed text {
   opacity: 0.35;
 }
 /* ADR 0060: the center's own interesting_next_step neighbor, when currently
@@ -1162,13 +1177,10 @@ a.contributor-card:focus-visible {
    target at every scale" honesty EDGE_HIT_AREA_WIDTH's own comment above
    already sets. */
 @media (max-width: 640px) {
-  .explorer-svg {
-    /* Caps how much of a short phone viewport the graph alone can claim,
-       so the info panel/evidence below it doesn't get pushed off-screen
-       on first paint -- aspect-ratio:1 already keeps height tied to
-       width; this bounds the width (and so the height) further. */
-    max-height: 60vh;
-  }
+  /* The old `.explorer-svg { max-height: 60vh }` cap is gone: the mobile
+     viewBox is tall (two label columns need ~12 label rows), and capping the
+     height would letterbox the graph down to illegible text. The page
+     scrolls instead; the evidence drawer is a fixed bottom sheet anyway. */
   /* Bottom sheet: fixed to the viewport's bottom edge instead of sitting
      inline in normal document flow, so opening it never requires
      scrolling to reach on a phone-sized screen -- the graph and evidence
