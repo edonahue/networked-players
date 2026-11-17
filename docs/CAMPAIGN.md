@@ -77,7 +77,7 @@ No catalog growth, no real collection published, no public data regenerated.
 | P5 | Self-hosted body and mono faces, motif consistency, structured data, text-only share images, retire `/demo/` | P3 | P5a done (#283): fonts, JSON-LD, canonical, sitemap, demo retired; motif consistency and text-only share images remain |
 | P6 | "How it's built" page from published-artifact facts | F1 | todo |
 | I1 | Runtime digest in place of exact-commit matching; skew report; honoured retries; `jobs` commands | I0 | todo |
-| I2 | Multi-worker shard dispatch; sharded supply and scoring | I1 | In review (#PR) |
+| I2 | Multi-worker shard dispatch; sharded supply and scoring | I1 | In review (#289) |
 | I3 | ADR plus platform migration and extension of the sharded hop re-check | I2 | todo |
 | I4 | Parse resume and atomic part writes | — | todo |
 | R2 | Round 2, 217 → about 277 albums | F1–F4, RP, SS, G1a, I0 | todo |
