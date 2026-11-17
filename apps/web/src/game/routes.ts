@@ -17,6 +17,7 @@
 
 import { fetchAlbumArt, type ResolvedArt } from "./albumArt";
 import { fetchFailureMessage } from "./domUtils";
+import { showOnward, type OnwardPlayer } from "./onward";
 import { createRng } from "./prng";
 import { wireRadioTray } from "./radioGroup";
 import {
@@ -310,6 +311,37 @@ export async function initRoutes(): Promise<void> {
     provenanceNote.textContent =
       "Real records: derived from the Discogs monthly data dump (CC0).";
     provenanceNote.hidden = false;
+    const players: OnwardPlayer[] =
+      route.kind === "one_hop"
+        ? [
+            {
+              id: route.from_artist_id,
+              name: nameFor(route.from_artist_id),
+              exploreAlbumId: route.from_album_id,
+            },
+            {
+              id: route.to_artist_id,
+              name: nameFor(route.to_artist_id),
+              exploreAlbumId: route.to_album_id,
+            },
+          ]
+        : bridge !== null
+          ? [
+              {
+                id: bridge,
+                name: nameFor(bridge),
+                exploreAlbumId: route.from_album_id,
+              },
+            ]
+          : [];
+    showOnward($("routes-onward"), {
+      records: [
+        { id: fromAlbum.id, title: fromAlbum.title },
+        { id: toAlbum.id, title: toAlbum.title },
+      ],
+      players,
+      connect: { a: fromAlbum.id, b: toAlbum.id },
+    });
     nextButton.hidden = false;
     stage.setAttribute("data-phase", "revealed");
     liveAssertive.textContent = `${verdictHeading.textContent}. ${ratingText}`;
