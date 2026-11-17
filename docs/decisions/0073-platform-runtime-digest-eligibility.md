@@ -148,7 +148,11 @@ over-narrow, and three further reliability gaps sit around it. All four are docu
     advertisement comes from a separate heartbeat unit, so its lapse alone never marks a
     worker lost and a worker with a live RQ record is never sent a stop command, while a
     dead RQ worker with a fresh advertisement is detected and also excluded from scheduling
-    (a per-worker reason). On loss the client cancels a queued orphan (or stops a started one
+    (a per-worker reason). The client deadline (job timeout + 60 s) only triggers a decision:
+    a still-queued job is cancelled and re-dispatched, a started job with a worker heartbeat
+    within 90 s is a genuine non-retryable timeout, and anything undecidable keeps being
+    watched until the loss window (deadline + 420 + 60 + 30 s) ends, so a worker that dies just
+    after enqueue on a 120 s workload is still recovered. On loss the client cancels a queued orphan (or stops a started one
     only after re-confirming lapsed RQ liveness), retries on another eligible worker if
     retries remain, and reports the orphan. Only infrastructure-class failures retry. A
     workload that raised is deterministic and does not. A work-horse killed by SIGKILL, or an

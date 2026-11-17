@@ -1348,6 +1348,12 @@ or fleet.** Nothing below has been run on real workers.
   and prints the orphan. Only lost workers and killed work-horses retry; a workload that
   raised does not, and a SIGKILLed or abandoned job (indistinguishable from an out-of-memory
   kill) retries only on a worker with a strictly larger `max_job_memory_mb`.
+  **The client deadline (job timeout + 60 s) is a decision point, not a give-up**: loss
+  detection can take longer than a short workload's deadline, so after it the client decides
+  by job status and RQ liveness. A job still queued is cancelled and re-dispatched; a started
+  job whose worker heartbeated within 90 s is a genuine timeout (stop requested, not
+  retried); a started job with undecidable liveness is watched until the loss window closes
+  (deadline + 420 s + 60 s + 30 s), then treated as lost.
   `submit_artifact_check.py` pins each attempt to its own worker (redundant fan-out), so a
   lost worker there is reported, not re-routed.
 - **Job control**: `make platform-jobs ARGS="list"` (add `--worker <id>`, `--state failed`,
