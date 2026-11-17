@@ -30,6 +30,7 @@ evidence ids -- not as the best route.
 
 from __future__ import annotations
 
+import itertools
 import json
 from collections import deque
 from pathlib import Path
@@ -124,9 +125,7 @@ def select_cluster(selection: Any, study: Any, cluster: int | None) -> dict[str,
 # ------------------------------------------------------------------- routes
 
 
-def _route_tree(
-    gi: GraphIndex, source: str, targets: list[str]
-) -> dict[str, list[int]]:
+def _route_tree(gi: GraphIndex, source: str, targets: list[str]) -> dict[str, list[int]]:
     """Shortest routes from `source` to each target, as lists of performer
     node ids. One bounded BFS over real nodes (anchors are never entered, so a
     route cannot pass through another album's anchor); ties go to whichever
@@ -171,7 +170,7 @@ def _route_tree(
 
 def _route_fields(gi: GraphIndex, via: list[int]) -> dict[str, Any]:
     evidence = []
-    for a, b in zip(via, via[1:], strict=False):
+    for a, b in itertools.pairwise(via):
         release = gi.edge_evidence(a, b)
         if release is None:  # cannot happen for a BFS path; fail loudly if it does
             raise CollectionPromotionError(f"internal: no edge between {a} and {b}")
@@ -266,7 +265,7 @@ def _journey(gi: GraphIndex, records: list[str], order: list[str]) -> list[dict[
     if len(set(order)) != len(order):
         raise CollectionPromotionError("journey must not revisit a record")
     hops: list[dict[str, Any]] = []
-    for a, b in zip(order, order[1:], strict=False):
+    for a, b in itertools.pairwise(order):
         via = _route_tree(gi, a, [b]).get(b)
         if via is None:
             raise CollectionPromotionError(
@@ -336,7 +335,7 @@ def write_collection(
     directory.mkdir(parents=True, exist_ok=True)
     cid = artifact["collection_id"]
     index_path = directory / "index.v1.json"
-    index = (
+    index: dict[str, Any] = (
         json.loads(index_path.read_text())
         if index_path.is_file()
         else {"schema_version": 1, "collections": []}

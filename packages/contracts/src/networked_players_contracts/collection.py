@@ -160,7 +160,9 @@ class GraphIndex:
             return ["pathfinding graph must be an object"]
         for key in ("node_ids", "names", "offsets", "neighbors", "evidence_release_ids"):
             value = graph.get(key)
-            if not isinstance(value, list) or not all(_is_int(x) or isinstance(x, str) for x in value):
+            if not isinstance(value, list) or not all(
+                _is_int(x) or isinstance(x, str) for x in value
+            ):
                 return [f"pathfinding graph {key} must be an array"]
         if not all(_is_int(x) for x in graph["node_ids"] + graph["offsets"] + graph["neighbors"]):
             return ["pathfinding graph node_ids/offsets/neighbors must be integers"]
@@ -243,7 +245,9 @@ def private_field_failures(value: Any, path: str = "$") -> list[str]:
 
 
 def _text_failures(label: str, text: str) -> list[str]:
-    failures = [f"{label} contains forbidden substring {s!r}" for s in _FORBIDDEN_SUBSTRINGS if s in text]
+    failures = [
+        f"{label} contains forbidden substring {s!r}" for s in _FORBIDDEN_SUBSTRINGS if s in text
+    ]
     lowered = text.lower()
     failures.extend(
         f"{label} contains forbidden phrase {phrase!r}"
@@ -341,7 +345,11 @@ def collection_failures(collection: Any, catalog: Any, graph: Any) -> list[str]:
         failures.append(f"schema_version must be {COLLECTION_SCHEMA_VERSION}")
 
     collection_id = collection.get("collection_id")
-    if not isinstance(collection_id, str) or not _SLUG.match(collection_id) or len(collection_id) > 64:
+    if (
+        not isinstance(collection_id, str)
+        or not _SLUG.match(collection_id)
+        or len(collection_id) > 64
+    ):
         failures.append("collection_id must be a lowercase slug (a-z, 0-9, hyphens), 1..64 chars")
     for field, limit in (("title", MAX_TITLE_CHARS), ("intro", MAX_INTRO_CHARS)):
         value = collection.get(field)
@@ -365,9 +373,11 @@ def collection_failures(collection: Any, catalog: Any, graph: Any) -> list[str]:
         gi = GraphIndex(graph)
 
     albums = catalog.get("albums") if isinstance(catalog, dict) else None
-    album_by_id = {
-        a["id"]: a for a in albums if isinstance(a, dict) and isinstance(a.get("id"), str)
-    } if isinstance(albums, list) else {}
+    album_by_id = (
+        {a["id"]: a for a in albums if isinstance(a, dict) and isinstance(a.get("id"), str)}
+        if isinstance(albums, list)
+        else {}
+    )
 
     records = _record_failures(collection.get("records"), album_by_id, failures)
     record_set = set(records)
@@ -383,9 +393,7 @@ def collection_failures(collection: Any, catalog: Any, graph: Any) -> list[str]:
     return failures
 
 
-def _record_failures(
-    records: Any, album_by_id: dict[str, Any], failures: list[str]
-) -> list[str]:
+def _record_failures(records: Any, album_by_id: dict[str, Any], failures: list[str]) -> list[str]:
     if not isinstance(records, list) or not all(isinstance(r, str) and r for r in records):
         failures.append("records must be an array of catalog album id strings")
         return []
@@ -445,7 +453,9 @@ def _bridge_failures(
             continue
         for record in on:
             if record not in record_set:
-                failures.append(f"{label}: record {record!r} is not one of the collection's records")
+                failures.append(
+                    f"{label}: record {record!r} is not one of the collection's records"
+                )
             elif gi is not None and not gi.adjacent_to_anchor(record, player):
                 failures.append(
                     f"{label}: not adjacent to record {record!r}'s anchor in the pathfinding "
@@ -492,7 +502,9 @@ def _playable_failures(
         failures.append(f"playable_cohort must have exactly keys {sorted(_PLAYABLE_KEYS)}")
         return
     if playable["schema_version"] != PLAYABLE_COHORT_V2_SCHEMA_VERSION:
-        failures.append(f"playable_cohort.schema_version must be {PLAYABLE_COHORT_V2_SCHEMA_VERSION}")
+        failures.append(
+            f"playable_cohort.schema_version must be {PLAYABLE_COHORT_V2_SCHEMA_VERSION}"
+        )
     if playable["route_policy"] != ROUTE_POLICY:
         failures.append(f"playable_cohort.route_policy must be {ROUTE_POLICY!r}")
     pairs = playable["pairs"]
@@ -594,15 +606,19 @@ def collections_failures(collections: Any, catalog: Any, graph: Any) -> list[str
     if not isinstance(files, dict):
         return ["collections files must be an object keyed by collection_id"]
     if index is None:
-        return [f"collection file {cid!r} exists but there is no collections index" for cid in files]
+        return [
+            f"collection file {cid!r} exists but there is no collections index" for cid in files
+        ]
     failures: list[str] = []
     if not isinstance(index, dict) or set(index) != _INDEX_KEYS:
         return [f"collections index must have exactly keys {sorted(_INDEX_KEYS)}"]
     if index["schema_version"] != COLLECTION_INDEX_SCHEMA_VERSION:
-        failures.append(f"collections index schema_version must be {COLLECTION_INDEX_SCHEMA_VERSION}")
+        failures.append(
+            f"collections index schema_version must be {COLLECTION_INDEX_SCHEMA_VERSION}"
+        )
     entries = index["collections"]
     if not isinstance(entries, list):
-        return failures + ["collections index 'collections' must be an array"]
+        return [*failures, "collections index 'collections' must be an array"]
     ids: list[str] = []
     for i, entry in enumerate(entries):
         if not isinstance(entry, dict) or set(entry) != _INDEX_ENTRY_KEYS:
@@ -620,7 +636,9 @@ def collections_failures(collections: Any, catalog: Any, graph: Any) -> list[str
             continue
         if isinstance(payload, dict):
             provenance = payload.get("provenance")
-            file_version = provenance.get("collection_version") if isinstance(provenance, dict) else None
+            file_version = (
+                provenance.get("collection_version") if isinstance(provenance, dict) else None
+            )
             if payload.get("collection_id") != cid:
                 failures.append(f"index entry {cid!r} does not match the file's collection_id")
             if payload.get("title") != entry["title"]:

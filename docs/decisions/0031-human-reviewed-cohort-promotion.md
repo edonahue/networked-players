@@ -88,3 +88,5 @@ selection file painful. Revisit whether reviewer identity should ever be publish
 public "curated by" credit) only if Erich explicitly wants that — the current default is to
 keep it private, not because it's sensitive, but because nothing in this pipeline currently
 needs it published.
+
+> 2026-11-17: [ADR 0074](0074-collections-contracts.md) keeps this approval boundary and extends it to record-level Collection selections (see its "Amendments"); this ADR is otherwise unchanged.

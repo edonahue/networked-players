@@ -735,6 +735,7 @@ def test_clean_set_exits_zero(tmp_path: Path, capsys) -> None:
         "evidence_release_registry": [],
         "search_index": [],
         "approved_pool": [],
+        "collections": [],
         "payload_budgets": [],
     }
 

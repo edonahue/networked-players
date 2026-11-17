@@ -735,6 +735,7 @@ def test_clean_publication_set_has_no_failures() -> None:
         "evidence_release_registry": [],
         "search_index": [],
         "approved_pool": [],
+        "collections": [],
     }
 
 
@@ -755,6 +756,7 @@ def test_every_group_key_always_present() -> None:
         "evidence_release_registry",
         "search_index",
         "approved_pool",
+        "collections",
     }
 
 

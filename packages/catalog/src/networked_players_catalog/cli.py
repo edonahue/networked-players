@@ -2487,7 +2487,6 @@ def _parser() -> argparse.ArgumentParser:
     return parser
 
 
-
 def _load_published_collections(data_root: Path) -> dict[str, Any] | None:
     """The published Collections (ADR 0074) under `<data_root>/collections/`:
     `None` when the directory does not exist (nothing published, which is
