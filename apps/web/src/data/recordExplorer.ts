@@ -160,15 +160,13 @@ export function buildRecordView(
       a.albumId.localeCompare(b.albumId),
   );
   const recordCap = Math.max(0, MAX_LABELLED_NODES - 1 - players.length);
-  const records: RecordNode[] = candidates
-    .slice(0, recordCap)
-    .map((c) => ({
-      albumId: c.albumId,
-      title: c.title,
-      artist: c.artist,
-      year: c.year,
-      sharedPlayerIds: c.sharedPlayerIds,
-    }));
+  const records: RecordNode[] = candidates.slice(0, recordCap).map((c) => ({
+    albumId: c.albumId,
+    title: c.title,
+    artist: c.artist,
+    year: c.year,
+    sharedPlayerIds: c.sharedPlayerIds,
+  }));
 
   return {
     centre: { ...centre, releaseId: releaseIds.get(centre.id) ?? null },
@@ -258,12 +256,12 @@ export function renderRecordList(view: RecordView): string {
       ? `<p>+${view.moreRecords} more record${view.moreRecords === 1 ? "" : "s"} share these players, not shown.</p>`
       : "";
   return (
-    `<h3>Players documented performing on ${esc(recordLabel(view.centre))}</h3>` +
+    `<h2>Players documented performing on ${esc(recordLabel(view.centre))}</h2>` +
     (players
       ? `<ul>${players}</ul>`
       : "<p>No performance credits are documented for this record.</p>") +
     morePlayers +
-    `<h3>Other records these players are documented on</h3>` +
+    `<h2>Other records these players are documented on</h2>` +
     (records ? `<ul>${records}</ul>` : "<p>None in the catalog.</p>") +
     moreRecords +
     `<p>Each link is a documented performance credit, shown with its role text on the <a href="/albums/${esc(view.centre.id)}/">record page</a>. Credits are the evidence; a shared credit says nothing about influence.</p>`

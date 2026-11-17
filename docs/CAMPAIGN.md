@@ -70,7 +70,7 @@ No catalog growth, no real collection published, no public data regenerated.
 | G1a | One evidence-release selection policy for graph, challenge and routes (ships only with a rebuild) | F3 | todo |
 | G1b | Align the challenge edge rule with the graph's | F3 | Investigated: all 119 hops are interior hops between two non-seed artists (graph keeps only seed-touching edges); fix belongs in the challenge builder and ships with the Round 2 rebuild |
 | G1c | ADR plus graph-derived contributor index; owner reviews the page-set diff | F3 | todo |
-| G2 | Record-centred Explore prototype and decision | P1 | todo |
+| G2 | Record-centred Explore prototype and decision | P1 | In review (#PR): prototype at `?mode=record`; owner preference decision pending |
 | G3 | Album-level atlas prototype and decision | S1 | todo |
 | G4 | Graph format change, only if a size or load-time trigger fires | F1 | todo |
 | P4 | Games link onward; player page leads with performance; copy pass | P1 | todo |

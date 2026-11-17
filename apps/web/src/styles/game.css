@@ -1333,7 +1333,7 @@ a.contributor-card:focus-visible {
   font-family: var(--mono);
   font-size: 11px;
   fill: var(--ink);
-  pointer-events: none;
+  cursor: pointer;
   paint-order: stroke;
   stroke: var(--bg);
   stroke-width: 3px;
@@ -1356,7 +1356,7 @@ a.contributor-card:focus-visible {
 .record-credit-track {
   color: var(--muted);
 }
-.record-list h3 {
+.record-list h2 {
   font-size: 1rem;
   margin: 12px 0 4px;
 }

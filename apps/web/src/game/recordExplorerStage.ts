@@ -39,8 +39,25 @@ interface Pt {
   y: number;
 }
 
-function ellipsize(text: string, max: number): string {
-  return text.length <= max ? text : `${text.slice(0, max - 1).trimEnd()}…`;
+/** Wraps text into at most two lines of `max` characters so the visible
+ * label is the real name (an ellipsis would break the visible-text-in-name
+ * accessibility rule). Only a name too long even for two lines is cut. */
+function wrapLabel(text: string, max: number): string[] {
+  if (text.length <= max) return [text];
+  const words = text.split(/\s+/);
+  let first = "";
+  let i = 0;
+  while (i < words.length && (first + " " + words[i]).trim().length <= max) {
+    first = (first + " " + words[i]).trim();
+    i++;
+  }
+  if (first === "") {
+    first = words[0].slice(0, max);
+    words[0] = words[0].slice(max);
+  }
+  let rest = words.slice(i).join(" ");
+  if (rest.length > max) rest = `${rest.slice(0, max - 1).trimEnd()}…`;
+  return rest ? [first, rest] : [first];
 }
 
 /** n angles (radians) spread over [-spread, +spread], centred on 0. */
@@ -241,29 +258,38 @@ export async function initRecordExplorer(): Promise<void> {
 
     const label = (
       text: string,
+      max: number,
       pos: Pt,
       r: number,
       side: "left" | "right",
       anchorBelow = false,
     ) => {
-      if (anchorBelow) {
-        return `<text class="record-label" x="${pos.x}" y="${pos.y + r + 16}" text-anchor="middle">${escapeHtml(text)}</text>`;
-      }
-      const dx = side === "right" ? r + 6 : -(r + 6);
-      return `<text class="record-label" x="${pos.x + dx}" y="${pos.y + 4}" text-anchor="${side === "right" ? "start" : "end"}">${escapeHtml(text)}</text>`;
+      const lines = wrapLabel(text, max);
+      const x = anchorBelow
+        ? pos.x
+        : pos.x + (side === "right" ? r + 6 : -(r + 6));
+      const y0 = anchorBelow
+        ? pos.y + r + 16
+        : pos.y + 4 - ((lines.length - 1) * 13) / 2;
+      const anchor = anchorBelow
+        ? "middle"
+        : side === "right"
+          ? "start"
+          : "end";
+      const spans = lines
+        .map(
+          (l, i) =>
+            `<tspan x="${x}" dy="${i === 0 ? 0 : 13}">${escapeHtml(l)}${i < lines.length - 1 ? " " : ""}</tspan>`,
+        )
+        .join("");
+      return `<text class="record-label" x="${x}" y="${y0}" text-anchor="${anchor}">${spans}</text>`;
     };
 
     const centreName = recordLabelShort(v.centre.title);
     const centreNode =
       `<g class="explorer-node record-node" data-kind="centre" data-is-center="true" role="img" aria-label="${escapeHtml(`Centre record: ${recordLabel(v.centre)}`)}">` +
       `<circle cx="${centrePos.x}" cy="${centrePos.y}" r="${centreR}" />` +
-      label(
-        ellipsize(centreName, maxCentre),
-        centrePos,
-        centreR,
-        "right",
-        true,
-      ) +
+      label(centreName, maxCentre, centrePos, centreR, "right", true) +
       `</g>`;
 
     const playerNodes = players.map(({ item, pos, side }, i) => {
@@ -273,7 +299,7 @@ export async function initRecordExplorer(): Promise<void> {
         `tabindex="${i === 0 ? 0 : -1}" role="button" ` +
         `aria-label="${escapeHtml(`${item.name}: show credits and records (${credits} credit${credits === 1 ? "" : "s"} on this record, ${item.recordCount} record${item.recordCount === 1 ? "" : "s"} in the catalog)`)}">` +
         `<circle cx="${pos.x}" cy="${pos.y}" r="${nodeR}" />` +
-        label(ellipsize(item.name, maxPlayer), pos, nodeR, side) +
+        label(item.name, maxPlayer, pos, nodeR, side) +
         `</g>`
       );
     });
@@ -286,12 +312,7 @@ export async function initRecordExplorer(): Promise<void> {
         `tabindex="-1" role="button" ` +
         `aria-label="${escapeHtml(`Recenter on ${recordLabel(item)}. Shares ${item.sharedPlayerIds.length} player${item.sharedPlayerIds.length === 1 ? "" : "s"}: ${names}`)}">` +
         `<circle cx="${pos.x}" cy="${pos.y}" r="${nodeR}" />` +
-        label(
-          ellipsize(displayName(item.title), maxRecord),
-          pos,
-          nodeR,
-          side,
-        ) +
+        label(displayName(item.title), maxRecord, pos, nodeR, side) +
         `</g>`
       );
     });
@@ -395,7 +416,7 @@ export async function initRecordExplorer(): Promise<void> {
         ? `<p>+${ev.length - shown.length} more record${ev.length - shown.length === 1 ? "" : "s"} with a documented performance credit.</p>`
         : "";
     drawerContent!.innerHTML =
-      `<h3 class="record-drawer-title">${escapeHtml(player.name)}</h3>` +
+      `<h2 class="record-drawer-title">${escapeHtml(player.name)}</h2>` +
       `<p>Documented performance credits, with the original role text. A shared credit connects records; it does not say anything about influence. ` +
       `<a href="https://www.discogs.com/artist/${player.artistId}" rel="noopener noreferrer">Discogs artist page</a></p>` +
       `<ul class="record-evidence-list">${items}</ul>${more}`;
@@ -404,16 +425,12 @@ export async function initRecordExplorer(): Promise<void> {
   }
 
   nodesLayer.addEventListener("click", (event) => {
-    const node = (event.target as Element).closest<SVGGElement>(
-      "[data-kind]",
-    );
+    const node = (event.target as Element).closest<SVGGElement>("[data-kind]");
     if (!node) return;
     activate(node);
   });
   nodesLayer.addEventListener("keydown", (event) => {
-    const node = (event.target as Element).closest<SVGGElement>(
-      "[data-kind]",
-    );
+    const node = (event.target as Element).closest<SVGGElement>("[data-kind]");
     if (!node) return;
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
