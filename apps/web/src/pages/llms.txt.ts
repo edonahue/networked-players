@@ -32,7 +32,7 @@ Networked Players (networked-players.com) is an evidence-first music-credit grap
 
 ## Current state (honest)
 
-The album grid, evidence viewer, and every game mode run on a real, Discogs monthly-dump-derived catalog (CC0-licensed): ${studioAlbumCount} studio albums, ${artistCount} artists, ${documentedConnectionCount} documented performance paths between albums. Connection Guesser (${oneHopRoundCount} one-hop and ${twoHopRoundCount} two-hop rounds, plus a frozen Connection of the Day schedule), Connect Two Records (search any two catalog albums for a documented route through their credited contributors, with role-restricted modes), Record Routes (guess how many documented-credit hops connect two records), and Explore (an open-ended, bounded network view of the performers documented around one album) all draw from this same catalog and its evidence. A separate archived demo at /demo/ runs on a small, curated, API-sourced Discogs subset predating both the dump pipeline and the performer-only graph model -- it is not the main catalog and is not part of the current site.
+The album grid, evidence viewer, and every game mode run on a real, Discogs monthly-dump-derived catalog (CC0-licensed): ${studioAlbumCount} studio albums, ${artistCount} artists, ${documentedConnectionCount} documented performance paths between albums. Connection Guesser (${oneHopRoundCount} one-hop and ${twoHopRoundCount} two-hop rounds, plus a frozen Connection of the Day schedule), Connect Two Records (search any two catalog albums for a documented route through their credited players, with role-restricted modes), Record Routes (guess how many documented-credit hops connect two records), and Explore (an open-ended network view of the performers documented around one album) all draw from this same catalog and its evidence. A separate archived demo at /demo/ runs on a small, curated, API-sourced Discogs subset predating both the dump pipeline and the performer-only graph model -- it is not the main catalog and is not part of the current site.
 
 ## Data & rights stance
 
@@ -46,7 +46,7 @@ The album grid, evidence viewer, and every game mode run on a real, Discogs mont
 - About: ${base}/about/
 - Albums: ${base}/albums/
 - Explore: ${base}/explore/
-- Contributors: ${base}/contributors/
+- Players: ${base}/contributors/
 - Play: ${base}/play/
 - Legacy demo: ${base}/demo/
 - Repository: ${site.repositoryUrl}

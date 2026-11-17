@@ -420,7 +420,7 @@ export async function initExplorerStage(): Promise<void> {
         const from = nodePositions.get(view.center.artistId)!;
         const to = nodePositions.get(edge.neighborArtistId)!;
         const neighborName =
-          nodeNameById.get(edge.neighborArtistId) ?? "this contributor";
+          nodeNameById.get(edge.neighborArtistId) ?? "this player";
         const coords = `x1="${from.x}" y1="${from.y}" x2="${to.x}" y2="${to.y}"`;
         const dx = to.x - from.x;
         const dy = to.y - from.y;
@@ -809,7 +809,7 @@ export async function initExplorerStage(): Promise<void> {
       centerLinkEl!.hidden = false;
       centerLinkEl!.innerHTML =
         `<a href="/contributors/${centerContributor.artist_id}/" data-explorer-center-contributor-link>` +
-        `View ${escapeHtml(view.center.name)}'s full contributor page →</a>`;
+        `View ${escapeHtml(view.center.name)}'s full player page →</a>`;
     } else {
       centerLinkEl!.hidden = true;
       centerLinkEl!.innerHTML = "";
@@ -839,7 +839,7 @@ export async function initExplorerStage(): Promise<void> {
       : undefined;
     if (nextStep && worthALookNeighbor) {
       infoWorthALookEl!.hidden = false;
-      infoWorthALookEl!.innerHTML = `Worth a look: <a href="/contributors/${nextStep.artist_id}/">${escapeHtml(worthALookNeighbor.name)}</a> — ${escapeHtml(nextStep.reason)}.`;
+      infoWorthALookEl!.innerHTML = `Worth a look: <a href="/contributors/${nextStep.artist_id}/">${escapeHtml(worthALookNeighbor.name)}</a> — ${escapeHtml(nextStep.reason.replace(/\bcontributor\b/g, "player"))}.`;
     } else {
       infoWorthALookEl!.hidden = true;
       infoWorthALookEl!.innerHTML = "";

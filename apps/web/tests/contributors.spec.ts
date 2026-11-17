@@ -190,14 +190,14 @@ test("a contributor page highlights its interesting_next_step neighbor without h
   await page.goto(`/contributors/${contributor.artist_id}/`);
 
   // Scoped to the specific "worth a look" paragraph (the one that also
-  // links to the neighbor) -- both the contributor's own name and the
-  // phrase "different kind of role" also appear elsewhere on the page
-  // (the Explore link, the header) since PR 2's role-summary additions.
+  // links to the neighbor).
   const worthALookPara = page.locator(
     `.lede:has(a[href='/contributors/${neighbor.artist_id}/'])`,
   );
-  await expect(worthALookPara).toContainText("a different kind of role than");
-  await expect(worthALookPara).toContainText(`${contributor.name}'s`);
+  await expect(worthALookPara).toContainText("Worth a look");
+  await expect(worthALookPara).toContainText(
+    /documented playing|a different part/,
+  );
   await expect(
     worthALookPara.locator(`a[href='/contributors/${neighbor.artist_id}/']`),
   ).toHaveText(neighbor.name);
@@ -210,7 +210,7 @@ test("a contributor page highlights its interesting_next_step neighbor without h
   );
   await expect(highlightedCard).toBeVisible();
   await expect(highlightedCard.locator(".tag--highlight")).toHaveText(
-    "Different role",
+    "Different part",
   );
   // The highlight decorates one card; the full neighbor list -- every id in
   // neighboring_contributor_ids -- still renders alongside it.
@@ -233,16 +233,16 @@ test("a contributor page shows a visual anchor -- a real cover or the house plac
   expect(coverCount + placeholderCount).toBe(1);
 });
 
-test("a contributor page summarizes its role categories in plain language", async ({
+test("a contributor page summarizes what the person played in plain language", async ({
   page,
   request,
 }) => {
   const contributor = await firstContributor(request);
   await page.goto(`/contributors/${contributor.artist_id}/`);
 
-  await expect(
-    page.getByText("Primarily credited for:", { exact: false }),
-  ).toBeVisible();
+  await expect(page.locator("[data-player-summary]")).toHaveText(
+    /^(Documented playing .+\.|No voice or instrument credit is indexed for this person yet\.)$/,
+  );
 });
 
 // Every real contributor in the committed index has at least 2 connected

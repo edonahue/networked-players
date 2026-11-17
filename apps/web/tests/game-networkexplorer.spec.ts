@@ -452,7 +452,11 @@ test("the info panel explains a real, bounded interesting_next_step highlight in
 }) => {
   const { contributor, neighborId } =
     await findBoundedRealInterestingNextStep(request);
-  const reason = contributor.interesting_next_step!.reason;
+  // The artifact's wording says "contributor"; the page says "player".
+  const reason = contributor.interesting_next_step!.reason.replace(
+    /\bcontributor\b/g,
+    "player",
+  );
 
   await page.goto(
     `/explore/${contributor.albums[0]}/?center=${contributor.artist_id}`,
