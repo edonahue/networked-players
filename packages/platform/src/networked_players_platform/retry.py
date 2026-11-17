@@ -14,10 +14,12 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
+from .broker import RQ_WORKER_TTL_SECONDS
 from .models import WorkerAdvertisement
-from .scheduler import DEFAULT_HEARTBEAT_MAX_AGE, NoEligibleWorkerError
+from .scheduler import NoEligibleWorkerError
 
-DEFAULT_LOST_GRACE = timedelta(seconds=90)
+# Extra continuous time the RQ worker must stay not-live (on top of RQ's own TTL).
+DEFAULT_LOST_GRACE = timedelta(seconds=60)
 
 
 class RunLostError(RuntimeError):
@@ -28,9 +30,12 @@ class RunFailedError(RuntimeError):
     """The attempt ended without a success manifest. `retryable` marks an
     infrastructure-class failure (killed work-horse); a workload exception is not."""
 
-    def __init__(self, message: str, *, retryable: bool) -> None:
+    def __init__(self, message: str, *, retryable: bool, memory_suspect: bool = False) -> None:
         super().__init__(message)
         self.retryable = retryable
+        # A killed work-horse that cannot be told apart from an out-of-memory kill:
+        # retried only on a worker with a larger job-memory budget.
+        self.memory_suspect = memory_suspect
 
 
 @dataclass(slots=True)
@@ -77,42 +82,51 @@ def attempt_run_id(base_run_id: str, attempt: int) -> str:
 
 
 class WorkerWatch:
-    """Decides a worker is lost when its advertisement has been missing or stale
-    continuously for `grace`. Advertisements come from a heartbeat timer that is
-    independent of the RQ worker process, so a busy worker keeps advertising;
-    a lapse means the host, the service or the network is down. Redis cannot tell
-    those apart, which is why a lost job is cancelled/stopped before a retry."""
+    """Decides a worker is lost from RQ's OWN liveness, never from the advertisement.
+
+    The advertisement comes from a separate heartbeat timer unit, so its lapse says
+    nothing about whether the RQ worker process (the consumer of the queue and the
+    owner of a started job) is alive, and a failing heartbeat must never get a
+    healthy job killed. The rule: the RQ worker is *live* when its `rq:worker:<name>`
+    record exists and its `last_heartbeat` is at most `rq_ttl` old (RQ's own worker
+    TTL); it is *lost* only when it has been not-live continuously for `grace`.
+    While it is live, `observe` always returns False, whatever the advertisement
+    says; the advertisement only annotates the report."""
 
     def __init__(
         self,
         worker_id: str,
         *,
         grace: timedelta = DEFAULT_LOST_GRACE,
-        max_age: timedelta = DEFAULT_HEARTBEAT_MAX_AGE,
+        rq_ttl: timedelta = timedelta(seconds=RQ_WORKER_TTL_SECONDS),
     ) -> None:
         self.worker_id = worker_id
         self.grace = grace
-        self.max_age = max_age
-        self._unhealthy_since: datetime | None = None
+        self.rq_ttl = rq_ttl
+        self._not_live_since: datetime | None = None
+        self.advertisement_fresh = True
 
-    def observe(self, workers: list[WorkerAdvertisement], now: datetime) -> bool:
-        """Record one observation; True when the worker is now considered lost."""
+    def observe(
+        self,
+        rq_last_heartbeat: datetime | None,
+        now: datetime,
+        *,
+        advertisement_fresh: bool = True,
+    ) -> bool:
+        """Record one observation; True when the RQ worker is now considered lost."""
         current = now.astimezone(UTC)
-        fresh = any(
-            w.worker_id == self.worker_id
-            and current - datetime.fromisoformat(w.observed_at).astimezone(UTC) <= self.max_age
-            for w in workers
-        )
-        if fresh:
-            self._unhealthy_since = None
+        self.advertisement_fresh = advertisement_fresh
+        live = rq_last_heartbeat is not None and current - rq_last_heartbeat <= self.rq_ttl
+        if live:
+            self._not_live_since = None
             return False
-        if self._unhealthy_since is None:
-            self._unhealthy_since = current
-        return current - self._unhealthy_since >= self.grace
+        if self._not_live_since is None:
+            self._not_live_since = current
+        return current - self._not_live_since >= self.grace
 
 
 AttemptRunner = Callable[[WorkerAdvertisement, str, int, str | None], dict[str, Any]]
-Selector = Callable[[frozenset[str]], WorkerAdvertisement]
+Selector = Callable[[frozenset[str], int | None], WorkerAdvertisement]
 
 
 def run_with_retries(
@@ -129,15 +143,22 @@ def run_with_retries(
     attempts: list[AttemptRecord] = []
     tried: set[str] = set()
     previous: str | None = None
+    memory_floor: int | None = None
     for attempt in range(1, max_retries + 2):
         run_id = attempt_run_id(base_run_id, attempt)
         try:
-            worker = select(frozenset(tried))
+            worker = select(frozenset(tried), memory_floor)
         except NoEligibleWorkerError as exc:
             if not attempts:
                 raise
+            why = (
+                f"the work-horse was killed (possibly out of memory at {memory_floor} MB) and "
+                "no eligible worker has a larger max_job_memory_mb"
+                if memory_floor is not None
+                else "no worker left"
+            )
             raise RetriesExhaustedError(
-                f"no worker left to retry attempt {attempt}: {exc}", attempts
+                f"cannot retry attempt {attempt}: {why}: {exc}", attempts
             ) from exc
         tried.add(worker.worker_id)
         try:
@@ -147,7 +168,15 @@ def run_with_retries(
                 AttemptRecord(attempt, run_id, worker.worker_id, "worker-lost", str(exc))
             )
         except RunFailedError as exc:
-            outcome = "retryable-failure" if exc.retryable else "failed"
+            outcome = (
+                "memory-suspect-kill"
+                if exc.memory_suspect
+                else "retryable-failure"
+                if exc.retryable
+                else "failed"
+            )
+            if exc.memory_suspect:
+                memory_floor = max(memory_floor or 0, worker.max_job_memory_mb)
             attempts.append(AttemptRecord(attempt, run_id, worker.worker_id, outcome, str(exc)))
             if not exc.retryable:
                 raise RetriesExhaustedError(str(exc), attempts) from exc

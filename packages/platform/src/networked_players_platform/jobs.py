@@ -7,6 +7,7 @@ Nothing here opens an SSH connection, and listing never mutates Redis.
 
 from __future__ import annotations
 
+import re
 from collections.abc import Iterable
 from dataclasses import asdict, dataclass
 from datetime import datetime
@@ -16,9 +17,12 @@ from .broker import QUEUE_PREFIX
 
 QUEUED_STATES = frozenset({"queued", "scheduled", "deferred"})
 TERMINAL_STATES = frozenset({"finished", "failed", "canceled", "stopped"})
-# RQ's own wording for work-horse deaths; the only failure text treated as an
-# infrastructure loss that a fresh attempt on another worker can reasonably fix.
-RETRYABLE_FAILURE_MARKERS = ("Work-horse terminated unexpectedly", "AbandonedJobError")
+# RQ's own wording for work-horse deaths. A SIGKILL (or an abandoned job, whose cause is
+# unknown) cannot be told apart from an out-of-memory kill, and a Pi retried on identical
+# hardware would die the same way, so those are "memory-suspect".
+HORSE_KILLED_MARKER = "Work-horse terminated unexpectedly"
+ABANDONED_MARKER = "AbandonedJobError"
+STOPPED_MARKER = "Job stopped by user"
 
 
 @dataclass(frozen=True, slots=True)
@@ -57,10 +61,23 @@ class JobBackend(Protocol):
     def request_stop(self, job_id: str) -> None: ...
 
 
+def classify_failure(exc_info: str | None) -> str:
+    """One of: memory-suspect, retryable, stopped, deterministic."""
+    text = exc_info or ""
+    if STOPPED_MARKER in text:
+        return "stopped"
+    if ABANDONED_MARKER in text:
+        return "memory-suspect"
+    if HORSE_KILLED_MARKER in text:
+        match = re.search(r"\(signal (\d+)\)", text)
+        if match is None or match.group(1) == "9":
+            return "memory-suspect"
+        return "retryable"
+    return "deterministic"
+
+
 def is_retryable_failure(exc_info: str | None) -> bool:
-    return bool(exc_info) and any(
-        marker in (exc_info or "") for marker in RETRYABLE_FAILURE_MARKERS
-    )
+    return classify_failure(exc_info) in {"memory-suspect", "retryable"}
 
 
 def cancel_job(

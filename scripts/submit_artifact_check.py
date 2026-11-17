@@ -293,8 +293,15 @@ def _worker_record(
     result: dict[str, Any] | None,
     ok: bool,
     error: str | None = None,
+    attempts: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
+    """The per-worker record written to local/jobs/. `attempts` lists every attempt
+    including orphaned ones (outcome `worker-lost`), which would otherwise only reach
+    stderr; the surviving record of WHICH code ran is the validation report's own
+    `runtime_commit`/`runtime_digest`/`worker_id`/`attempt` fields (`result`)."""
     record: dict[str, Any] = {
+        "attempts": attempts or [],
+        "orphans": [a for a in (attempts or []) if a.get("outcome") == "worker-lost"],
         "job_id": job_id,
         "started_at_utc": started_at,
         "finished_at_utc": finished_at,
@@ -367,6 +374,7 @@ def _check_one_worker(
             result=None,
             ok=False,
             error=str(exc),
+            attempts=exc.attempts,
         )
     result = outcome.result
     run_id = outcome.run_id
@@ -393,6 +401,7 @@ def _check_one_worker(
         job_failed=False,
         result=report,
         ok=bool(report.get("valid", False)),
+        attempts=[a.to_dict() for a in outcome.attempts],
     )
 
 

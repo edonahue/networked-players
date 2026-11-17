@@ -111,6 +111,8 @@ class WorkerAdvertisement:
     runtime_digests: dict[str, str] = field(default_factory=dict)
     contracts_version: str = ""
     contracts_digest: str = ""
+    # workload_id -> why it could not be offered (plugin import or digest failure).
+    unavailable_workloads: dict[str, str] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         if self.schema_version not in SUPPORTED_SCHEMA_VERSIONS:

@@ -6,8 +6,10 @@ carries a human-readable reason so version skew is explained, not silent.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from datetime import UTC, datetime, timedelta
 
+from .broker import RQ_WORKER_TTL_SECONDS
 from .models import CapabilityRequirement, WorkerAdvertisement
 
 DEFAULT_HEARTBEAT_MAX_AGE = timedelta(seconds=90)
@@ -37,6 +39,8 @@ def ineligibility_reasons(
     runtime_digest: str,
     now: datetime,
     heartbeat_max_age: timedelta = DEFAULT_HEARTBEAT_MAX_AGE,
+    rq_checked: bool = False,
+    rq_last_heartbeat: datetime | None = None,
 ) -> list[str]:
     """Every reason `worker` cannot take the job; an empty list means eligible."""
     reasons: list[str] = []
@@ -50,8 +54,25 @@ def ineligibility_reasons(
     elif observed > now + timedelta(seconds=5):
         reasons.append(f"heartbeat is in the future: observed {worker.observed_at}")
 
+    if rq_checked:
+        if rq_last_heartbeat is None:
+            reasons.append(
+                "RQ worker process absent: no rq:worker record, so nothing consumes this "
+                "worker's queue even though its advertisement is fresh"
+            )
+        elif now - rq_last_heartbeat > timedelta(seconds=RQ_WORKER_TTL_SECONDS):
+            reasons.append(
+                f"RQ worker heartbeat stale: last {rq_last_heartbeat.isoformat()} "
+                f"(RQ expires a silent worker after {RQ_WORKER_TTL_SECONDS}s)"
+            )
+
     installed_version = worker.workloads.get(workload_id)
-    if installed_version != workload_version:
+    if installed_version != workload_version and workload_id in worker.unavailable_workloads:
+        reasons.append(
+            f"workload {workload_id} unavailable on worker: "
+            f"{worker.unavailable_workloads[workload_id]}"
+        )
+    elif installed_version != workload_version:
         reasons.append(
             f"workload {workload_id}@{workload_version} not provided "
             f"(worker has {installed_version or 'none'})"
@@ -101,6 +122,7 @@ def explain_workers(
     runtime_digest: str,
     now: datetime | None = None,
     heartbeat_max_age: timedelta = DEFAULT_HEARTBEAT_MAX_AGE,
+    rq_heartbeats: Mapping[str, datetime | None] | None = None,
 ) -> dict[str, list[str]]:
     """worker_id -> ineligibility reasons (empty list = eligible)."""
     current = (now or datetime.now(UTC)).astimezone(UTC)
@@ -113,6 +135,8 @@ def explain_workers(
             runtime_digest=runtime_digest,
             now=current,
             heartbeat_max_age=heartbeat_max_age,
+            rq_checked=rq_heartbeats is not None,
+            rq_last_heartbeat=(rq_heartbeats or {}).get(worker.worker_id),
         )
         for worker in workers
     }
@@ -138,11 +162,19 @@ def select_worker(
     now: datetime | None = None,
     heartbeat_max_age: timedelta = DEFAULT_HEARTBEAT_MAX_AGE,
     exclude: frozenset[str] = frozenset(),
+    rq_heartbeats: Mapping[str, datetime | None] | None = None,
+    problems: Mapping[str, str] | None = None,
+    memory_above_mb: int | None = None,
 ) -> WorkerAdvertisement:
     """Select the least-loaded eligible worker with stable tie breaking.
 
     `exclude` removes workers already tried (a lost worker must not be re-picked
-    by a retry). Raises `NoEligibleWorkerError` carrying per-worker reasons.
+    by a retry). `rq_heartbeats` (worker_id -> RQ `last_heartbeat`, None = absent)
+    additionally excludes a worker whose RQ process is not running even though its
+    advertisement is fresh; leave it None to skip that check. `problems` are
+    unreadable advertisements, reported per worker. `memory_above_mb` restricts to
+    workers with a strictly larger job-memory budget (retry after a suspected OOM).
+    Raises `NoEligibleWorkerError` carrying per-worker reasons.
     """
     reasons = explain_workers(
         workers,
@@ -152,7 +184,16 @@ def select_worker(
         runtime_digest=runtime_digest,
         now=now,
         heartbeat_max_age=heartbeat_max_age,
+        rq_heartbeats=rq_heartbeats,
     )
+    for worker in workers:
+        if memory_above_mb is not None and worker.max_job_memory_mb <= memory_above_mb:
+            reasons[worker.worker_id].append(
+                f"max job memory {worker.max_job_memory_mb} MB is not above the "
+                f"{memory_above_mb} MB budget of the worker whose job was killed"
+            )
+    for worker_id, problem in (problems or {}).items():
+        reasons.setdefault(worker_id, []).append(problem)
     for worker_id in exclude:
         if worker_id in reasons:
             reasons[worker_id] = [*reasons[worker_id], "already attempted (lost or failed)"]

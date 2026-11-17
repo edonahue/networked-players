@@ -21,6 +21,11 @@ uv build --package networked-players-platform --wheel --out-dir "${WHEELS_DIR}"
 uv build --package networked-players-catalog --wheel --out-dir "${WHEELS_DIR}"
 uv build --package networked-players-research --wheel --out-dir "${WHEELS_DIR}"
 
+# ADR 0073 hard check: the digests of the code inside the wheels must equal the digests
+# computed from this checkout (what submitters compute). Refuse to build a release whose
+# workers could never match, or that ships different files than the checkout hashes.
+uv run networked-players-platform verify-wheels --repo-root "${REPO_ROOT}" --wheels-dir "${WHEELS_DIR}"
+
 (
   cd "${WHEELS_DIR}"
   sha256sum ./*.whl | sort > "${RELEASE_DIR}/wheel-sha256.txt"

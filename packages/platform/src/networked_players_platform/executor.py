@@ -8,10 +8,10 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from .digest import installed_runtime_digests
+from .digest import installed_digest_report
 from .models import RunRequest, RunResult
 from .staging import describe_artifact, publish_completed_run
-from .workloads import discover_workloads
+from .workloads import load_workload
 
 
 class RunExecutionError(RuntimeError):
@@ -64,10 +64,13 @@ def execute_run(run_dir_value: str) -> dict[str, Any]:
             raise RunExecutionError(
                 "request carries no runtime digest (schema 1); resubmit with a current client"
             )
-        worker_digest = installed_runtime_digests().get(request.workload_id)
+        digests, digest_errors = installed_digest_report()
+        worker_digest = digests.get(request.workload_id)
         if worker_digest is None:
+            detail = digest_errors.get(request.workload_id, "not computed")
             raise RunExecutionError(
-                f"worker has no runtime digest for {request.workload_id}; redeploy the runtime"
+                f"worker has no runtime digest for {request.workload_id} ({detail}); "
+                "redeploy the runtime"
             )
         if worker_digest != request.runtime_digest:
             raise RunExecutionError(
@@ -76,7 +79,8 @@ def execute_run(run_dir_value: str) -> dict[str, Any]:
             )
         _verify_inputs(request, run_dir / "input")
 
-        workload = discover_workloads().get(request.workload_id)
+        # Verified digest first, then import ONLY this workload (no other plugin runs).
+        workload = load_workload(request.workload_id)
         if workload is None or workload.spec.version != request.workload_version:
             raise RunExecutionError(
                 f"workload {request.workload_id}@{request.workload_version} is not installed"

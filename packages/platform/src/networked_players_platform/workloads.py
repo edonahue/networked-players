@@ -5,11 +5,19 @@ from __future__ import annotations
 import hashlib
 import importlib.metadata
 import json
+import os
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
-from .digest import contracts_version, installed_contracts_digest, installed_runtime_digests
+from .digest import (
+    WORKLOAD_ENTRY_GROUP,
+    contracts_version,
+    entry_point_name_for_workload,
+    installed_contracts_digest,
+    installed_runtime_digests,
+    workload_id_for_entry_point,
+)
 from .models import ArtifactDescriptor, CapabilityRequirement, RunRequest, WorkloadSpec
 from .staging import describe_artifact
 
@@ -145,6 +153,11 @@ def _artifact_validate_handler(
         "contracts_version": contracts_version(),
         "contracts_digest": installed_contracts_digest(),
         "runtime_digest": installed_runtime_digests().get(request.workload_id),
+        # The record that survives: the remote run is deleted after fetch and the RQ
+        # result expires, so the report itself names the code, worker and attempt.
+        "runtime_commit": os.environ.get("PLATFORM_RUNTIME_COMMIT") or None,
+        "submitted_commit": request.runtime_commit,
+        "worker_id": os.environ.get("PLATFORM_WORKER_ID") or None,
         "attempt": request.attempt,
     }
     (output_dir / "validation-report.json").write_text(
@@ -155,7 +168,7 @@ def _artifact_validate_handler(
             output_dir,
             "validation-report.json",
             name="validation-report",
-            contract="platform-validation-report-v1",
+            contract="platform-validation-report-v2",
         ),
     )
 
@@ -210,8 +223,8 @@ def _research_corpus_check_handler(
     )
 
 
-def discover_workloads() -> dict[str, RegisteredWorkload]:
-    workloads = {
+def _builtin_workloads() -> dict[str, RegisteredWorkload]:
+    return {
         "platform.self-test": RegisteredWorkload(
             spec=WorkloadSpec(
                 workload_id="platform.self-test",
@@ -250,11 +263,56 @@ def discover_workloads() -> dict[str, RegisteredWorkload]:
             handler=_research_corpus_check_handler,
         ),
     }
-    for entry_point in importlib.metadata.entry_points(group="networked_players.workloads"):
-        registered = entry_point.load()()
-        if not isinstance(registered, RegisteredWorkload):
-            raise TypeError(f"workload entry point {entry_point.name!r} returned the wrong type")
+
+
+def _load_entry_point(entry_point: importlib.metadata.EntryPoint) -> RegisteredWorkload:
+    registered = entry_point.load()()
+    if not isinstance(registered, RegisteredWorkload):
+        raise TypeError(f"workload entry point {entry_point.name!r} returned the wrong type")
+    expected_id = workload_id_for_entry_point(entry_point.name)
+    if registered.spec.workload_id != expected_id:
+        raise ValueError(
+            f"entry point {entry_point.name!r} must register workload {expected_id!r}, "
+            f"not {registered.spec.workload_id!r}"
+        )
+    return registered
+
+
+def load_workload(workload_id: str) -> RegisteredWorkload | None:
+    """Load ONLY the requested workload. The executor uses this so another plugin's
+    import-time code never runs under this workload's digest."""
+    builtin = _builtin_workloads()
+    if workload_id in builtin:
+        return builtin[workload_id]
+    wanted = entry_point_name_for_workload(workload_id)
+    for entry_point in importlib.metadata.entry_points(group=WORKLOAD_ENTRY_GROUP):
+        if entry_point.name == wanted:
+            return _load_entry_point(entry_point)
+    return None
+
+
+def discover_available_workloads() -> tuple[dict[str, RegisteredWorkload], dict[str, str]]:
+    """(workloads, errors): a plugin that fails to import is reported unavailable
+    instead of taking every other workload (and the heartbeat) down with it."""
+    workloads = _builtin_workloads()
+    errors: dict[str, str] = {}
+    for entry_point in importlib.metadata.entry_points(group=WORKLOAD_ENTRY_GROUP):
+        workload_id = workload_id_for_entry_point(entry_point.name)
+        try:
+            registered = _load_entry_point(entry_point)
+        except Exception as exc:
+            errors[workload_id] = f"{type(exc).__name__}: {exc}"[:200]
+            continue
         if registered.spec.workload_id in workloads:
-            raise ValueError(f"duplicate workload ID: {registered.spec.workload_id}")
+            errors[workload_id] = f"duplicate workload ID: {registered.spec.workload_id}"
+            continue
         workloads[registered.spec.workload_id] = registered
+    return workloads, errors
+
+
+def discover_workloads() -> dict[str, RegisteredWorkload]:
+    """Strict discovery (tests, submit-side lookups): any bad plugin raises."""
+    workloads, errors = discover_available_workloads()
+    if errors:
+        raise RuntimeError(f"workload plugins failed to load: {errors}")
     return workloads

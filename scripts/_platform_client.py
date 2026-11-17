@@ -30,9 +30,14 @@ from rq import Queue
 from rq.command import send_stop_job_command
 from rq.job import JobStatus
 
-from networked_players_platform.broker import queue_name, read_advertisements
+from networked_players_platform.broker import (
+    RQ_WORKER_TTL_SECONDS,
+    queue_name,
+    read_advertisements_checked,
+    read_rq_worker_heartbeat,
+)
 from networked_players_platform.digest import checkout_runtime_digests
-from networked_players_platform.jobs import is_retryable_failure
+from networked_players_platform.jobs import classify_failure
 from networked_players_platform.models import ArtifactDescriptor, RunRequest, WorkerAdvertisement
 from networked_players_platform.retry import (
     DEFAULT_LOST_GRACE,
@@ -43,16 +48,25 @@ from networked_players_platform.retry import (
     WorkerWatch,
     run_with_retries,
 )
-from networked_players_platform.scheduler import NoEligibleWorkerError, select_worker
+from networked_players_platform.scheduler import (
+    DEFAULT_HEARTBEAT_MAX_AGE,
+    NoEligibleWorkerError,
+    select_worker,
+)
 from networked_players_platform.staging import describe_artifact
-from networked_players_platform.workloads import discover_workloads
+from networked_players_platform.workloads import load_workload
 
 
 class PlatformClientError(RuntimeError):
     """Raised for any real submission-lifecycle failure: missing
     inventory, a dirty checkout, an unreachable/misconfigured broker, a
     failed or timed-out remote run, or a fetched output failing checksum
-    verification."""
+    verification. `attempts` carries the per-attempt records (including orphans)
+    when the failure came out of a retry sequence."""
+
+    def __init__(self, message: str, attempts: list[dict[str, Any]] | None = None) -> None:
+        super().__init__(message)
+        self.attempts = attempts or []
 
 
 def run(*command: str, cwd: Path, capture: bool = False) -> str:
@@ -224,7 +238,7 @@ def declared_max_retries(workload_id: str, override: int | None) -> int:
         if override < 0:
             raise PlatformClientError("--max-retries must be non-negative")
         return override
-    registered = discover_workloads().get(workload_id)
+    registered = load_workload(workload_id)
     if registered is None:
         raise PlatformClientError(f"workload {workload_id!r} is not installed locally")
     return registered.spec.max_retries
@@ -253,13 +267,16 @@ def enqueue_and_wait(
     attempt: int = 1,
     retry_of: str | None = None,
     lost_grace: timedelta = DEFAULT_LOST_GRACE,
-    advertisement_poll_seconds: float = 10.0,
+    check_interval_seconds: float = 10.0,
     sleep: Callable[[float], None] = time.sleep,
+    monotonic: Callable[[], float] = time.monotonic,
+    clock: Callable[[], datetime] = lambda: datetime.now(UTC),
 ) -> dict[str, Any]:
-    """Enqueue one attempt and wait. Raises `RunLostError` when the worker stops
-    advertising for `lost_grace` (the orphaned job is cancelled/stop-requested first),
-    `RunFailedError` for any other non-success. RQ's own retry stays off: a retry
-    is a new attempt with a new run id and directory (see `retry.py`)."""
+    """Enqueue one attempt and wait. Raises `RunLostError` only when RQ's own liveness
+    for the worker (its `rq:worker:<name>` record) has lapsed for `lost_grace` (see
+    `WorkerWatch`); the advertisement never causes a lost verdict and a live RQ worker
+    is never sent a stop command. `RunFailedError` for any other non-success. RQ's own
+    retry stays off: a retry is a new attempt with a new run id and directory."""
     queue = Queue(queue_name(worker_id), connection=broker)
     job = queue.enqueue(
         "networked_players_platform.executor.execute_run",
@@ -272,29 +289,49 @@ def enqueue_and_wait(
         meta={"workload_id": workload_id, "attempt": attempt, "retry_of": retry_of},
     )
     watch = WorkerWatch(worker_id, grace=lost_grace)
-    deadline = time.monotonic() + timeout_seconds + 60
+    deadline = monotonic() + timeout_seconds + 60
     next_check = 0.0
-    while time.monotonic() < deadline:
-        status = job.get_status(refresh=True)
-        if status == JobStatus.FINISHED:
-            break
-        if status in {JobStatus.FAILED, JobStatus.CANCELED, JobStatus.STOPPED}:
-            raise RunFailedError(
-                f"remote run ended with status {status.value}: {job.exc_info}",
-                retryable=is_retryable_failure(job.exc_info),
-            )
-        if time.monotonic() >= next_check:
-            next_check = time.monotonic() + advertisement_poll_seconds
-            if watch.observe(read_advertisements(broker), datetime.now(UTC)):
-                _release_orphan(broker, job, status)
-                raise RunLostError(
-                    f"worker {worker_id} stopped advertising for over "
-                    f"{int(lost_grace.total_seconds())}s while job {run_id} was {status.value}; "
-                    f"remote run directory {remote_run} may remain on it"
+    status: JobStatus | None = None
+    try:
+        while monotonic() < deadline:
+            status = job.get_status(refresh=True)
+            if status == JobStatus.FINISHED:
+                break
+            if status in {JobStatus.FAILED, JobStatus.CANCELED, JobStatus.STOPPED}:
+                kind = classify_failure(job.exc_info)
+                raise RunFailedError(
+                    f"remote run ended with status {status.value} ({kind}): {job.exc_info}",
+                    retryable=kind in {"retryable", "memory-suspect"},
+                    memory_suspect=kind == "memory-suspect",
                 )
-        sleep(2)
-    else:
-        raise RunFailedError("timed out waiting for remote run completion", retryable=False)
+            if monotonic() >= next_check:
+                next_check = monotonic() + check_interval_seconds
+                now = clock()
+                beat = read_rq_worker_heartbeat(broker, worker_id)
+                advertisements, _ = read_advertisements_checked(broker)
+                fresh = any(
+                    ad.worker_id == worker_id
+                    and now - datetime.fromisoformat(ad.observed_at) <= DEFAULT_HEARTBEAT_MAX_AGE
+                    for ad in advertisements
+                )
+                if watch.observe(beat, now, advertisement_fresh=fresh):
+                    _release_orphan(broker, job, status, worker_id, now)
+                    raise RunLostError(
+                        f"RQ worker {worker_id} has had no live rq:worker record for over "
+                        f"{int(lost_grace.total_seconds())}s (last RQ heartbeat "
+                        f"{beat.isoformat() if beat else 'none'}; advertisement "
+                        f"{'fresh' if fresh else 'also lapsed'}) while job {run_id} was "
+                        f"{status.value}; remote run directory {remote_run} may remain on it"
+                    )
+            sleep(2)
+        else:
+            raise RunFailedError("timed out waiting for remote run completion", retryable=False)
+    except (RunLostError, RunFailedError):
+        raise
+    except Exception:
+        # Abandoning the wait (e.g. a Redis error): release the job before propagating.
+        _release_orphan(broker, job, status, worker_id, None)
+        raise
 
     result = job.result
     if not isinstance(result, dict) or result.get("status") != "succeeded":
@@ -302,14 +339,32 @@ def enqueue_and_wait(
     return result
 
 
-def _release_orphan(broker: Redis, job: Any, status: JobStatus) -> None:
-    """Best effort: a queued orphan is cancelled (Redis-side, reliable); a started
-    one gets a stop command, which a dead worker never receives."""
+def _release_orphan(
+    broker: Redis, job: Any, status: JobStatus | None, worker_id: str, now: datetime | None
+) -> None:
+    """Best effort. A queued job is cancelled (Redis-side, always safe). A started job
+    is sent a stop command ONLY when RQ's liveness for its worker has just been
+    re-read and is lapsed; if the worker is live, or liveness cannot be read (for
+    example because Redis itself failed), the job is left running and reported, since
+    stopping a healthy job is worse than orphaning a result nobody fetches."""
     try:
         if status == JobStatus.QUEUED:
             job.cancel()
         elif status == JobStatus.STARTED:
-            send_stop_job_command(broker, job.id)
+            beat = read_rq_worker_heartbeat(broker, worker_id)
+            current = now or datetime.now(UTC)
+            if beat is not None and current - beat <= timedelta(seconds=RQ_WORKER_TTL_SECONDS):
+                print(
+                    f"note: not stopping {job.id}: RQ worker {worker_id} is live",
+                    file=sys.stderr,
+                )
+            elif now is None:
+                print(
+                    f"warning: job {job.id} left running; liveness unknown after an error",
+                    file=sys.stderr,
+                )
+            else:
+                send_stop_job_command(broker, job.id)
     except Exception as exc:
         print(f"warning: could not release orphaned job {job.id}: {exc}", file=sys.stderr)
 
@@ -332,10 +387,15 @@ def dispatch_with_retries(
     own remote directory, so no attempt ever reuses another's output."""
     final: dict[str, Any] = {}
 
-    def select(excluded: frozenset[str]) -> WorkerAdvertisement:
-        workers = read_advertisements(broker)
+    def select(excluded: frozenset[str], memory_floor: int | None) -> WorkerAdvertisement:
+        workers, problems = read_advertisements_checked(broker)
         if worker_id_filter:
             workers = [w for w in workers if w.worker_id == worker_id_filter]
+            problems = {k: v for k, v in problems.items() if k == worker_id_filter}
+        # A fresh advertisement alone is not enough: the RQ worker must be running too.
+        rq_heartbeats = {
+            w.worker_id: read_rq_worker_heartbeat(broker, w.worker_id) for w in workers
+        }
         return select_worker(
             workers,
             request.capabilities,
@@ -343,6 +403,9 @@ def dispatch_with_retries(
             workload_version=request.workload_version,
             runtime_digest=request.runtime_digest,
             exclude=excluded,
+            rq_heartbeats=rq_heartbeats,
+            problems=problems,
+            memory_above_mb=memory_floor,
         )
 
     def run_attempt(
@@ -390,7 +453,8 @@ def dispatch_with_retries(
         )
     except RetriesExhaustedError as exc:
         raise PlatformClientError(
-            f"{exc}\nattempts: {json.dumps([a.to_dict() for a in exc.attempts])}"
+            f"{exc}\nattempts: {json.dumps([a.to_dict() for a in exc.attempts])}",
+            attempts=[a.to_dict() for a in exc.attempts],
         ) from exc
     except NoEligibleWorkerError as exc:
         raise PlatformClientError(str(exc)) from exc
