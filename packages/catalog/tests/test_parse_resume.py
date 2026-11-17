@@ -8,6 +8,7 @@ plus one real SIGKILL of a child process.
 
 from __future__ import annotations
 
+import errno
 import gzip
 import json
 import logging
@@ -459,22 +460,132 @@ def test_malformed_input_still_cleans_up_staging(tmp_path: Path) -> None:
     assert not (out / f"snapshot={SNAPSHOT}").exists()
 
 
-def test_refusal_does_not_delete_staging_but_ordinary_failure_does(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    dump, out, staging = _interrupted(tmp_path, monkeypatch)
-    # A resume that hits malformed input behaves like any failed run (staging removed).
-    torn = tmp_path / "torn" / DUMP_NAME
-    torn.parent.mkdir()
-    raw = gzip.decompress(dump.read_bytes())
-    torn.write_bytes(gzip.compress(raw[: len(raw) - 400]))
+def _swap_input(staging: Path, tmp_path: Path, content: bytes) -> Path:
+    """A differently-damaged input with the recorded filename; record its size as identity."""
+    path = tmp_path / "damaged" / DUMP_NAME
+    path.parent.mkdir(exist_ok=True)
+    path.write_bytes(content)
     record_path = staging / PROGRESS_FILENAME
     record = json.loads(record_path.read_text())
-    record["input"]["size_bytes"] = torn.stat().st_size
+    record["input"]["size_bytes"] = path.stat().st_size
     record_path.write_text(json.dumps(record))
-    with pytest.raises(Exception):  # noqa: B017
+    return path
+
+
+def _assert_intact_and_resumable(
+    dump: Path, out: Path, staging: Path, reference_manifest: dict[str, object]
+) -> None:
+    assert staging.is_dir()
+    assert (staging / "table=releases" / "part-00000.parquet").is_file()
+    # The original input still resumes to the same result from the surviving parts.
+    record_path = staging / PROGRESS_FILENAME
+    record = json.loads(record_path.read_text())
+    record["input"]["size_bytes"] = dump.stat().st_size
+    record_path.write_text(json.dumps(record))
+    assert comparable(run(dump, out, resume=True)) == comparable(reference_manifest)
+
+
+def test_truncated_gzip_in_persisted_prefix_is_refused_and_keeps_staging(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    reference: tuple[Path, dict[str, object], dict[str, bytes]],
+) -> None:
+    dump, ref_manifest, _ = reference
+    out = tmp_path / "out"
+    interrupt(monkeypatch, dump, out, nth=8)
+    (staging,) = staging_dirs(out)
+    raw = dump.read_bytes()
+    torn = _swap_input(staging, tmp_path, raw[: len(raw) // 4])
+    with pytest.raises(ResumeRefused, match="already-persisted"):
         run(torn, out, resume=True)
-    assert staging_dirs(out) == []
+    _assert_intact_and_resumable(dump, out, staging, ref_manifest)
+
+
+def test_malformed_xml_in_persisted_prefix_is_refused_and_keeps_staging(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    reference: tuple[Path, dict[str, object], dict[str, bytes]],
+) -> None:
+    dump, ref_manifest, _ = reference
+    out = tmp_path / "out"
+    interrupt(monkeypatch, dump, out, nth=8)
+    (staging,) = staging_dirs(out)
+    raw = gzip.decompress(dump.read_bytes()).replace(b"Record 1001</title>", b"Record 1001</titl>")
+    bad = _swap_input(staging, tmp_path, gzip.compress(raw))
+    with pytest.raises(ResumeRefused, match="already-persisted"):
+        run(bad, out, resume=True)
+    _assert_intact_and_resumable(dump, out, staging, ref_manifest)
+
+
+def test_malformed_input_after_prefix_on_resumed_run_keeps_committed_parts(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    reference: tuple[Path, dict[str, object], dict[str, bytes]],
+) -> None:
+    dump, ref_manifest, _ = reference
+    out = tmp_path / "out"
+    interrupt(monkeypatch, dump, out, nth=8)
+    (staging,) = staging_dirs(out)
+    raw = gzip.decompress(dump.read_bytes())
+    torn = _swap_input(staging, tmp_path, gzip.compress(raw[: len(raw) - 400]))
+    with pytest.raises(Exception) as excinfo:
+        run(torn, out, resume=True)
+    assert not isinstance(excinfo.value, ResumeRefused)
+    _assert_intact_and_resumable(dump, out, staging, ref_manifest)
+
+
+def test_enospc_after_skip_on_resumed_run_keeps_committed_parts(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    reference: tuple[Path, dict[str, object], dict[str, bytes]],
+) -> None:
+    dump, ref_manifest, ref_bytes = reference
+    out = tmp_path / "out"
+    interrupt(monkeypatch, dump, out, nth=8)
+    with monkeypatch.context() as patch:
+
+        def full_disk(tmp: Path, final: Path) -> None:
+            raise OSError(errno.ENOSPC, "No space left on device")
+
+        patch.setattr(parquet, "_replace_into_place", full_disk)
+        with pytest.raises(OSError, match="No space"):
+            run(dump, out, resume=True)
+    (staging,) = staging_dirs(out)
+    assert (staging / "table=releases" / "part-00000.parquet").is_file()
+    assert comparable(run(dump, out, resume=True)) == comparable(ref_manifest)
+    assert dataset_bytes(out) == ref_bytes
+
+
+def test_fresh_run_oserror_keeps_committed_parts_but_not_an_empty_staging_dir(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    dump = make_dump(tmp_path / "raw")
+
+    def full_disk_after(nth: int) -> Callable[[Path, Path], None]:
+        real = parquet._replace_into_place
+        calls = {"n": 0}
+
+        def fake(tmp: Path, final: Path) -> None:
+            calls["n"] += 1
+            if calls["n"] >= nth:
+                raise OSError(errno.ENOSPC, "No space left on device")
+            real(tmp, final)
+
+        return fake
+
+    late = tmp_path / "late"
+    with monkeypatch.context() as patch:
+        patch.setattr(parquet, "_replace_into_place", full_disk_after(8))
+        with pytest.raises(OSError, match="No space"):
+            run(dump, late)
+    assert len(staging_dirs(late)) == 1  # committed parts exist -> kept for --resume
+
+    early = tmp_path / "early"
+    with monkeypatch.context() as patch:
+        patch.setattr(parquet, "_replace_into_place", full_disk_after(1))
+        with pytest.raises(OSError, match="No space"):
+            run(dump, early)
+    assert staging_dirs(early) == []  # nothing committed -> nothing to keep
 
 
 # --- CLI ---------------------------------------------------------------------------

@@ -27,6 +27,7 @@ from .releases import (
     release_id_digest_update,
 )
 from .resume import (
+    LOCK_FILENAME,
     PROGRESS_FILENAME,
     PROGRESS_VERSION,
     STATE_FINALIZED,
@@ -34,13 +35,16 @@ from .resume import (
     ResumeRefused,
     check_input_identity,
     check_parameters,
+    cleanup_promoted_leftovers,
     describe_input,
     find_staging_dirs,
     fsync_directory,
     load_progress,
+    lock_is_held,
     sha256_file,
     validate_and_clean_staging,
     write_json_atomic,
+    writer_lock,
 )
 
 if TYPE_CHECKING:
@@ -213,9 +217,19 @@ def _promote(staging_root: Path, final_root: Path) -> None:
         shutil.rmtree(final_root)
     staging_root.replace(final_root)
     fsync_directory(final_root.parent)
-    leftover = final_root / PROGRESS_FILENAME
-    if leftover.exists():
-        leftover.unlink()
+    _remove_promoted_leftovers(final_root)
+
+
+def _remove_promoted_leftovers(final_root: Path) -> None:
+    """Drop the progress record and lock file that moved with the staging dir.
+
+    Deliberately after the rename (never before: a finalized-but-unpromoted dir must stay
+    resumable). A crash in between is healed by ``cleanup_promoted_leftovers``.
+    """
+    for name in (PROGRESS_FILENAME, LOCK_FILENAME):
+        leftover = final_root / name
+        if leftover.exists():
+            leftover.unlink()
 
 
 def _write_chunk(
@@ -287,6 +301,7 @@ def _run_params(
         "source_url": source_url,
         "schema_version": SCHEMA_VERSION,
         "parser_version": __version__,
+        "pyarrow_version": pa.__version__,
         "chunk_releases": chunk_releases,
         "max_releases": max_releases,
         "input": input_identity
@@ -326,15 +341,19 @@ def write_release_dataset(
     if chunk_releases <= 0:
         raise ValueError("chunk_releases must be positive")
     final_root = output_root / f"snapshot={snapshot_date}"
+    cleanup_promoted_leftovers(final_root)
     if final_root.exists() and not overwrite:
         raise FileExistsError(f"dataset already exists: {final_root}")
     existing = find_staging_dirs(output_root, snapshot_date)
     if existing:
+        running = [p.name for p in existing if lock_is_held(p)]
         raise FileExistsError(
             f"a staging directory for snapshot {snapshot_date} already exists "
-            f"({', '.join(p.name for p in existing)}). It may hold resumable output: "
-            "re-run with --resume, or inspect it with scripts/check-ingest-recovery.sh "
-            "(scripts/check_ingest_recovery.py) and delete it to start over."
+            f"({', '.join(p.name for p in existing)})"
+            + (f"; {', '.join(running)} is locked by a running writer" if running else "")
+            + ". It may hold resumable output: re-run with --resume, or inspect it with "
+            "scripts/check-ingest-recovery.sh (scripts/check_ingest_recovery.py) and "
+            "delete it to start over."
         )
     staging_root = output_root / f".snapshot={snapshot_date}.tmp-{uuid.uuid4().hex}"
     staging_root.mkdir(parents=True, exist_ok=False)
@@ -345,14 +364,15 @@ def write_release_dataset(
         max_releases=max_releases,
         input_identity=input_identity,
     )
-    return _write_release_dataset(
-        records,
-        staging_root,
-        final_root,
-        params=params,
-        resume_record=None,
-        skip_report=None,
-    )
+    with writer_lock(staging_root):
+        return _write_release_dataset(
+            records,
+            staging_root,
+            final_root,
+            params=params,
+            resume_record=None,
+            skip_report=None,
+        )
 
 
 _END = object()
@@ -424,7 +444,21 @@ def _write_release_dataset(
             persisted = int(resume_record["releases_persisted"])
             last_release_id = resume_record["last_release_id"]
             iterator = iter(records)
-            first = next(iterator, _END)  # performs the whole re-read-and-skip prefix
+            try:
+                first = next(iterator, _END)  # performs the whole re-read-and-skip prefix
+            except ResumeRefused:
+                raise
+            except Exception as error:
+                if skip_report.skipped < persisted:
+                    # Failure while re-reading the already-persisted prefix: the input is
+                    # truncated/corrupt/different. Refuse; never touch the valid parts.
+                    raise ResumeRefused(
+                        f"could not re-read the {persisted} already-persisted releases "
+                        f"(stopped after {skip_report.skipped}): {error!r}. The input is "
+                        "truncated, corrupt or not the same dump; the staging directory "
+                        "was left intact."
+                    ) from error
+                raise
             if skip_report.skipped != persisted:
                 raise ResumeRefused(
                     f"input has only {skip_report.skipped} releases but the interrupted run "
@@ -537,8 +571,21 @@ def _write_release_dataset(
     except ResumeRefused:
         # A refusal must leave the (possibly hours-old) staging directory intact.
         raise
-    except Exception:
-        shutil.rmtree(staging_root, ignore_errors=True)
+    except Exception as error:
+        # Keep-vs-delete rule: the staging dir is KEPT (for --resume) when at least one part
+        # is committed AND the run is a resume (any failure after the verified prefix) or the
+        # failure is environmental (OSError, e.g. ENOSPC; MemoryError). It is DELETED when
+        # nothing is committed yet, or on a fresh run for a failure that is not environmental
+        # (malformed input, no records) -- the original behaviour.
+        if files and (resume_record is not None or isinstance(error, OSError | MemoryError)):
+            logger.warning(
+                "keeping staging directory %s with %d committed files for --resume (%r)",
+                staging_root.name,
+                len(files),
+                error,
+            )
+        else:
+            shutil.rmtree(staging_root, ignore_errors=True)
         raise
 
 
@@ -582,6 +629,7 @@ def parse_release_dump(
         )
 
     final_root = output_root / f"snapshot={snapshot_date}"
+    cleanup_promoted_leftovers(final_root)
     if final_root.exists() and not overwrite:
         raise FileExistsError(f"dataset already exists: {final_root}")
     candidates = find_staging_dirs(output_root, snapshot_date)
@@ -597,6 +645,30 @@ def parse_release_dump(
             "scripts/check-ingest-recovery.sh and delete all but the one to resume."
         )
     staging_root = candidates[0]
+    with writer_lock(staging_root):
+        return _resume_locked(
+            staging_root,
+            final_root,
+            input_path,
+            identity,
+            snapshot_date=snapshot_date,
+            source_url=source_url,
+            chunk_releases=chunk_releases,
+            max_releases=max_releases,
+        )
+
+
+def _resume_locked(
+    staging_root: Path,
+    final_root: Path,
+    input_path: Path,
+    identity: dict[str, object],
+    *,
+    snapshot_date: str,
+    source_url: str,
+    chunk_releases: int,
+    max_releases: int | None,
+) -> dict[str, object]:
     record = load_progress(staging_root)
     params = _run_params(
         snapshot_date=snapshot_date,
