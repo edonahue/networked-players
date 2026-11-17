@@ -108,7 +108,7 @@ function neighborPosition(
  * nodes already used). `items` is the current tab-stop set in DOM order;
  * moves both the roving `tabIndex` and real focus to the next/previous
  * item, wrapping around either end. */
-function moveRovingFocus(items: SVGGElement[], key: string): void {
+export function moveRovingFocus(items: SVGGElement[], key: string): void {
   if (items.length === 0) return;
   const current = document.activeElement as SVGGElement | null;
   const index = Math.max(0, items.indexOf(current as SVGGElement));

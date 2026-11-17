@@ -138,7 +138,7 @@ export function buildRoster(credits: MembershipCredit[]): AlbumRoster {
   return { performerCount: performerIds.size, groups, alsoCredited };
 }
 
-interface Index {
+export interface Index {
   creditsByAlbum: Map<string, MembershipCredit[]>;
   performersByAlbum: Map<string, Map<number, string>>;
   albumsPerPerformer: Map<number, number>;
@@ -146,7 +146,7 @@ interface Index {
 
 let cached: { source: Membership; index: Index } | null = null;
 
-function indexFor(membership: Membership): Index {
+export function indexFor(membership: Membership): Index {
   if (cached && cached.source === membership) return cached.index;
   const creditsByAlbum = new Map<string, MembershipCredit[]>();
   const performersByAlbum = new Map<string, Map<number, string>>();

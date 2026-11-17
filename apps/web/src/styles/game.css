@@ -1286,3 +1286,90 @@ a.contributor-card:focus-visible {
   color: var(--muted);
   font-size: 0.9rem;
 }
+
+/* Record-centred Explore prototype (Campaign Atlas G2, ?mode=record) ------- */
+.record-explorer {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-block: 20px;
+}
+.record-explorer[hidden] {
+  display: none;
+}
+.record-explorer__banner {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+.record-svg {
+  width: 100%;
+  max-width: 960px;
+  height: auto;
+  margin-inline: auto;
+  overflow: hidden;
+}
+.record-edge {
+  stroke: var(--line);
+  stroke-width: 1;
+  opacity: 0.7;
+}
+.record-edge--centre {
+  stroke-width: 1.5;
+}
+.record-node--record circle {
+  stroke: var(--gold, var(--accent));
+}
+.record-node:focus-visible {
+  outline: none;
+}
+.record-node:focus-visible circle,
+.record-node:hover circle {
+  stroke: var(--accent-strong);
+  stroke-width: 4;
+}
+.explorer-node .record-label,
+.record-ring-title {
+  font-family: var(--mono);
+  font-size: 11px;
+  fill: var(--ink);
+  pointer-events: none;
+  paint-order: stroke;
+  stroke: var(--bg);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+.record-ring-title {
+  fill: var(--muted);
+  stroke: none;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.record-evidence-list,
+.record-evidence-list ul {
+  margin: 4px 0;
+  padding-left: 20px;
+}
+.record-evidence-record {
+  margin-bottom: 8px;
+}
+.record-credit-track {
+  color: var(--muted);
+}
+.record-list h3 {
+  font-size: 1rem;
+  margin: 12px 0 4px;
+}
+@media (max-width: 640px) {
+  .explorer-node .record-label,
+  .record-ring-title {
+    font-size: 11.5px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .record-node circle,
+  .record-edge {
+    transition: none !important;
+    animation: none !important;
+  }
+}
