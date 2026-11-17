@@ -46,6 +46,7 @@ from networked_players_platform.retry import (
     RetryOutcome,
     RunFailedError,
     RunLostError,
+    Selector,
     WorkerWatch,
     run_with_retries,
 )
@@ -53,6 +54,14 @@ from networked_players_platform.scheduler import (
     DEFAULT_HEARTBEAT_MAX_AGE,
     NoEligibleWorkerError,
     select_worker,
+    select_workers,
+)
+from networked_players_platform.sharding import (
+    ShardedRun,
+    ShardedRunError,
+    ShardPlan,
+    ShardSpec,
+    run_sharded,
 )
 from networked_players_platform.staging import describe_artifact
 from networked_players_platform.workloads import load_workload
@@ -434,11 +443,14 @@ def dispatch_with_retries(
     min_free_disk_gb: float,
     max_retries: int,
     worker_id_filter: str | None = None,
+    select_override: Selector | None = None,
 ) -> tuple[RetryOutcome, str, str]:
     """select -> disk preflight -> stage -> enqueue/wait, retried on a lost or killed
     worker. Returns (outcome, inventory host, remote run dir) of the successful attempt.
     Each attempt rewrites `request.json` with its own run id/attempt and stages to its
-    own remote directory, so no attempt ever reuses another's output."""
+    own remote directory, so no attempt ever reuses another's output.
+    `select_override` lets a shard fan-out choose the worker (still from the same
+    eligibility rules, see `list_eligible_workers`)."""
     final: dict[str, Any] = {}
 
     def select(excluded: frozenset[str], memory_floor: int | None) -> WorkerAdvertisement:
@@ -461,6 +473,8 @@ def dispatch_with_retries(
             problems=problems,
             memory_above_mb=memory_floor,
         )
+
+    chosen_select: Selector = select_override if select_override is not None else select
 
     def run_attempt(
         worker: WorkerAdvertisement, run_id: str, attempt: int, retry_of: str | None
@@ -502,7 +516,7 @@ def dispatch_with_retries(
         outcome = run_with_retries(
             base_run_id=request.run_id,
             max_retries=max_retries,
-            select=select,
+            select=chosen_select,
             run_attempt=run_attempt,
         )
     except RetriesExhaustedError as exc:
@@ -574,3 +588,95 @@ def remove_remote_run(*, inventory_path: Path, repo_root: Path, host: str, remot
     verified. Never call this for a failed/timed-out run; those are left
     in place for debugging (see each script's `--keep-remote` flag)."""
     ansible(inventory_path, repo_root, host, "file", f"path={remote_run} state=absent")
+
+
+def list_eligible_workers(
+    broker: Redis, request: RunRequest, *, worker_id_filter: str | None = None
+) -> Callable[[frozenset[str], int | None], list[WorkerAdvertisement]]:
+    """`select_workers` over live advertisements and RQ liveness, as the `ListEligible`
+    callable `sharding.run_sharded` needs: every eligible worker, least-loaded first,
+    minus `excluded` (workers already tried by a retry)."""
+
+    def list_eligible(
+        excluded: frozenset[str], memory_floor: int | None
+    ) -> list[WorkerAdvertisement]:
+        workers, problems = read_advertisements_checked(broker)
+        if worker_id_filter:
+            workers = [w for w in workers if w.worker_id == worker_id_filter]
+            problems = {k: v for k, v in problems.items() if k == worker_id_filter}
+        rq_heartbeats = {
+            w.worker_id: read_rq_worker_heartbeat(broker, w.worker_id) for w in workers
+        }
+        return select_workers(
+            workers,
+            max(len(workers), 1),
+            request.capabilities,
+            workload_id=request.workload_id,
+            workload_version=request.workload_version,
+            runtime_digest=request.runtime_digest,
+            exclude=excluded,
+            rq_heartbeats=rq_heartbeats,
+            problems=problems,
+            memory_above_mb=memory_floor,
+        )
+
+    return list_eligible
+
+
+def dispatch_shards(
+    *,
+    broker: Redis,
+    plan: ShardPlan,
+    requests: dict[int, tuple[RunRequest, Path]],
+    inventory_path: Path,
+    repo_root: Path,
+    hostvars: dict[str, dict[str, Any]],
+    min_free_disk_gb: float,
+    max_retries: int,
+    worker_id_filter: str | None = None,
+    concurrency: int | None = None,
+) -> tuple[ShardedRun, dict[int, tuple[str, str]]]:
+    """Fan a sharded job out: one `dispatch_with_retries` per active shard (its own run
+    id, its own staging, its own retry budget), spread over distinct eligible workers.
+    A shard whose worker is lost is re-queued on another eligible worker by the same
+    retry rule a single job uses. `requests` maps shard index -> (request, local run
+    dir) for every active shard. Returns the run and shard index -> (host, remote run).
+    Raises `PlatformClientError` if any shard cannot complete (completed shards are
+    left staged remotely and fetched by nobody: re-run the whole job)."""
+    missing = sorted(shard.index for shard in plan.active if shard.index not in requests)
+    if missing:
+        raise PlatformClientError(f"no request prepared for shard(s) {missing}")
+    placements: dict[int, tuple[str, str]] = {}
+    template = requests[plan.active[0].index][0]
+
+    def run_one(shard: ShardSpec, select: Selector) -> RetryOutcome:
+        request, local_run = requests[shard.index]
+        outcome, host, remote_run = dispatch_with_retries(
+            broker=broker,
+            request=request,
+            local_run=local_run,
+            inventory_path=inventory_path,
+            repo_root=repo_root,
+            hostvars=hostvars,
+            min_free_disk_gb=min_free_disk_gb,
+            max_retries=max_retries,
+            worker_id_filter=worker_id_filter,
+            select_override=select,
+        )
+        placements[shard.index] = (host, remote_run)
+        return outcome
+
+    try:
+        run = run_sharded(
+            plan,
+            run_one=run_one,
+            list_eligible=list_eligible_workers(
+                broker, template, worker_id_filter=worker_id_filter
+            ),
+            concurrency=concurrency,
+        )
+    except ShardedRunError as exc:
+        raise PlatformClientError(str(exc)) from exc
+    except NoEligibleWorkerError as exc:
+        raise PlatformClientError(str(exc)) from exc
+    return run, placements

@@ -152,30 +152,22 @@ def format_refusals(workload_id: str, workload_version: str, reasons: dict[str, 
     return "\n".join(lines)
 
 
-def select_worker(
+def _eligible_ordered(
     workers: list[WorkerAdvertisement],
     requirement: CapabilityRequirement,
     *,
     workload_id: str,
     workload_version: str,
     runtime_digest: str,
-    now: datetime | None = None,
-    heartbeat_max_age: timedelta = DEFAULT_HEARTBEAT_MAX_AGE,
-    exclude: frozenset[str] = frozenset(),
-    rq_heartbeats: Mapping[str, datetime | None] | None = None,
-    problems: Mapping[str, str] | None = None,
-    memory_above_mb: int | None = None,
-) -> WorkerAdvertisement:
-    """Select the least-loaded eligible worker with stable tie breaking.
-
-    `exclude` removes workers already tried (a lost worker must not be re-picked
-    by a retry). `rq_heartbeats` (worker_id -> RQ `last_heartbeat`, None = absent)
-    additionally excludes a worker whose RQ process is not running even though its
-    advertisement is fresh; leave it None to skip that check. `problems` are
-    unreadable advertisements, reported per worker. `memory_above_mb` restricts to
-    workers with a strictly larger job-memory budget (retry after a suspected OOM).
-    Raises `NoEligibleWorkerError` carrying per-worker reasons.
-    """
+    now: datetime | None,
+    heartbeat_max_age: timedelta,
+    exclude: frozenset[str],
+    rq_heartbeats: Mapping[str, datetime | None] | None,
+    problems: Mapping[str, str] | None,
+    memory_above_mb: int | None,
+) -> list[WorkerAdvertisement]:
+    """Eligible workers, least-loaded first with stable tie breaking; raises
+    `NoEligibleWorkerError` (with per-worker reasons) when there are none."""
     reasons = explain_workers(
         workers,
         requirement,
@@ -201,7 +193,7 @@ def select_worker(
     if not eligible:
         message = format_refusals(workload_id, workload_version, reasons)
         raise NoEligibleWorkerError(message, reasons)
-    return min(
+    return sorted(
         eligible,
         key=lambda worker: (
             worker.active_jobs,
@@ -209,3 +201,85 @@ def select_worker(
             worker.worker_id,
         ),
     )
+
+
+def select_worker(
+    workers: list[WorkerAdvertisement],
+    requirement: CapabilityRequirement,
+    *,
+    workload_id: str,
+    workload_version: str,
+    runtime_digest: str,
+    now: datetime | None = None,
+    heartbeat_max_age: timedelta = DEFAULT_HEARTBEAT_MAX_AGE,
+    exclude: frozenset[str] = frozenset(),
+    rq_heartbeats: Mapping[str, datetime | None] | None = None,
+    problems: Mapping[str, str] | None = None,
+    memory_above_mb: int | None = None,
+) -> WorkerAdvertisement:
+    """Select the least-loaded eligible worker with stable tie breaking.
+
+    `exclude` removes workers already tried (a lost worker must not be re-picked
+    by a retry). `rq_heartbeats` (worker_id -> RQ `last_heartbeat`, None = absent)
+    additionally excludes a worker whose RQ process is not running even though its
+    advertisement is fresh; leave it None to skip that check. `problems` are
+    unreadable advertisements, reported per worker. `memory_above_mb` restricts to
+    workers with a strictly larger job-memory budget (retry after a suspected OOM).
+    Raises `NoEligibleWorkerError` carrying per-worker reasons.
+    """
+    return select_workers(
+        workers,
+        1,
+        requirement,
+        workload_id=workload_id,
+        workload_version=workload_version,
+        runtime_digest=runtime_digest,
+        now=now,
+        heartbeat_max_age=heartbeat_max_age,
+        exclude=exclude,
+        rq_heartbeats=rq_heartbeats,
+        problems=problems,
+        memory_above_mb=memory_above_mb,
+    )[0]
+
+
+def select_workers(
+    workers: list[WorkerAdvertisement],
+    n: int,
+    requirement: CapabilityRequirement,
+    *,
+    workload_id: str,
+    workload_version: str,
+    runtime_digest: str,
+    now: datetime | None = None,
+    heartbeat_max_age: timedelta = DEFAULT_HEARTBEAT_MAX_AGE,
+    exclude: frozenset[str] = frozenset(),
+    rq_heartbeats: Mapping[str, datetime | None] | None = None,
+    problems: Mapping[str, str] | None = None,
+    memory_above_mb: int | None = None,
+) -> list[WorkerAdvertisement]:
+    """Up to `n` distinct eligible workers, least-loaded first (ADR 0073 addendum).
+
+    Applies exactly the per-worker rules of `select_worker` (fresh advertisement, live
+    RQ worker, matching runtime digest for THIS workload, architecture, tags, datasets
+    and `requirement.min_memory_mb` against the worker's own `max_job_memory_mb`).
+    Nothing here relaxes a memory limit: a worker below the workload's declared floor
+    is simply not eligible, and fewer than `n` workers may be returned. Raises
+    `NoEligibleWorkerError` only when none is eligible. `n` must be positive.
+    """
+    if n < 1:
+        raise ValueError("n must be at least 1")
+    ordered = _eligible_ordered(
+        workers,
+        requirement,
+        workload_id=workload_id,
+        workload_version=workload_version,
+        runtime_digest=runtime_digest,
+        now=now,
+        heartbeat_max_age=heartbeat_max_age,
+        exclude=exclude,
+        rq_heartbeats=rq_heartbeats,
+        problems=problems,
+        memory_above_mb=memory_above_mb,
+    )
+    return ordered[:n]

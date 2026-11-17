@@ -51,6 +51,22 @@ def _parser() -> argparse.ArgumentParser:
     subparsers.add_parser("heartbeat", help="publish this worker's observed capabilities")
     subparsers.add_parser("worker", help="run the standing RQ worker")
 
+    shards = subparsers.add_parser(
+        "shards",
+        help="print the shard plan of a keyed job (dry run: reads state, submits nothing)",
+    )
+    shards_sub = shards.add_subparsers(dest="shards_command", required=True)
+    plan = shards_sub.add_parser(
+        "plan", help="stable-hash shard split, plus current worker eligibility when a broker is set"
+    )
+    plan.add_argument("--keys-file", type=Path, required=True)
+    plan.add_argument("--shard-count", type=int, required=True)
+    plan.add_argument("--job-id", required=True)
+    plan.add_argument("--workload-id", help="preview worker assignment for this workload")
+    plan.add_argument("--repo-root", type=Path, default=Path.cwd())
+    plan.add_argument("--broker-url")
+    plan.add_argument("--json", action="store_true")
+
     jobs = subparsers.add_parser("jobs", help="list, inspect and cancel platform jobs")
     jobs.add_argument("--broker-url")
     jobs.add_argument("--json", action="store_true")
@@ -249,6 +265,78 @@ def _jobs(args: argparse.Namespace, broker_url: str | None, backend: JobBackend 
     raise AssertionError(f"unhandled jobs command: {command}")
 
 
+def load_shard_keys(path: Path) -> list[Any]:
+    """Keys from a JSON list of scalars or of {"master_id": ...} objects, or a dict
+    holding `master_ids` / `keys` / `candidates`."""
+    payload = json.loads(path.read_text())
+    if isinstance(payload, dict):
+        for name in ("master_ids", "keys", "candidates"):
+            if name in payload:
+                payload = payload[name]
+                break
+        else:
+            raise ValueError("keys file dict needs one of: master_ids, keys, candidates")
+    if not isinstance(payload, list):
+        raise ValueError("keys file must hold a JSON list")
+    return [item["master_id"] if isinstance(item, dict) else item for item in payload]
+
+
+def _shards_plan(args: argparse.Namespace, broker_url: str | None) -> int:
+    from .digest import DigestError, checkout_runtime_digests
+    from .scheduler import NoEligibleWorkerError, select_workers
+    from .sharding import ShardPlanError, assign_preview, plan_shards
+    from .workloads import load_workload
+
+    try:
+        keys = load_shard_keys(args.keys_file)
+        plan = plan_shards(args.job_id, keys, args.shard_count)
+    except (ShardPlanError, ValueError, OSError) as exc:
+        print(f"cannot plan: {exc}")
+        return 2
+    payload: dict[str, Any] = {"dry_run": True, "plan": plan.to_dict()}
+    if args.workload_id and broker_url:
+        registered = load_workload(args.workload_id)
+        if registered is None:
+            payload["assignment_error"] = f"workload {args.workload_id!r} is not installed here"
+        else:
+            connection = redis_from_url(broker_url)
+            advertisements, problems = read_advertisements_checked(connection)
+            heartbeats = {
+                w.worker_id: read_rq_worker_heartbeat(connection, w.worker_id)
+                for w in advertisements
+            }
+            try:
+                digest = checkout_runtime_digests(args.repo_root)[args.workload_id]
+                eligible = select_workers(
+                    advertisements,
+                    len(plan.active) or 1,
+                    registered.spec.capabilities,
+                    workload_id=args.workload_id,
+                    workload_version=registered.spec.version,
+                    runtime_digest=digest,
+                    rq_heartbeats=heartbeats,
+                    problems=problems,
+                )
+                payload["eligible_workers"] = [w.worker_id for w in eligible]
+                payload["assignment_preview"] = {
+                    str(k): v for k, v in assign_preview(plan, eligible).items()
+                }
+            except (NoEligibleWorkerError, DigestError, KeyError) as exc:
+                payload["assignment_error"] = str(exc)
+    if args.json:
+        print(json.dumps(payload, indent=2, sort_keys=True))
+        return 0
+    print(f"DRY RUN: nothing submitted. job {args.job_id}: {len(plan.key_order)} key(s)")
+    print("SHARD\tRUN_ID\tKEYS\tWORKER")
+    preview = payload.get("assignment_preview", {})
+    for shard in plan.shards:
+        worker = preview.get(str(shard.index), "-" if shard.keys else "(empty, not submitted)")
+        print(f"{shard.index}\t{shard.run_id}\t{len(shard.keys)}\t{worker}")
+    if "assignment_error" in payload:
+        print(f"no assignment preview: {payload['assignment_error']}")
+    return 0
+
+
 def main(argv: list[str] | None = None, *, jobs_backend: JobBackend | None = None) -> int:
     args = _parser().parse_args(argv)
     if args.command == "cluster-status":
@@ -278,6 +366,8 @@ def main(argv: list[str] | None = None, *, jobs_backend: JobBackend | None = Non
         if not problems:
             print("wheel digests match the checkout")
         return 1 if problems else 0
+    if args.command == "shards":
+        return _shards_plan(args, args.broker_url or os.environ.get("JOBS_BROKER_URL"))
     if args.command == "jobs":
         broker_url = args.broker_url or os.environ.get("JOBS_BROKER_URL")
         return _jobs(args, broker_url, jobs_backend)
