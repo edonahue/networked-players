@@ -151,11 +151,13 @@ const recordCount = albums.length;
 const description = playedText
   ? `${contributor.name} is documented playing ${playedText}${
       recordCount > 0
-        ? ` on ${recordCount} ${recordCount === 1 ? 'record' : 'records'} in the Networked Players catalog`
+        ? `, with documented connections reaching ${recordCount} ${recordCount === 1 ? 'record' : 'records'} in the Networked Players catalog`
         : ''
-    }, with the players they recur with and the credits behind each connection.`
-  : `${contributor.name} appears in the Networked Players catalog${
-      recordCount > 0 ? ` on ${recordCount} ${recordCount === 1 ? 'record' : 'records'}` : ''
+    }, the players they recur with, and the credits behind each connection.`
+  : `${contributor.name} is credited in the Networked Players catalog${
+      recordCount > 0
+        ? ` on releases connecting ${recordCount} ${recordCount === 1 ? 'record' : 'records'}`
+        : ''
     }. No voice or instrument credit is indexed for them, so they make no connection here; their credits are listed as evidence.`;
 ---
 
@@ -222,7 +224,11 @@ const description = playedText
     {
       albumEntries.length > 0 && (
         <section class="record-section" aria-labelledby="records-heading" data-player-records>
-          <h2 id="records-heading">Records they are on</h2>
+          <h2 id="records-heading">Records their connections reach</h2>
+          <p class="lede">
+            Records their documented connections lead to. A record marked with a distance is that
+            many connections away, not one they played on.
+          </p>
           <div class="album-grid">
             {
               albumEntries.map(({ album, hopDistance }) => (

@@ -33,10 +33,15 @@ export interface PlayerRoles {
   also: string[];
 }
 
+// Discogs role text puts free-text notes in square brackets, and a note can
+// itself contain commas ("Voice [Breath, Blood And Voice]"). Notes are removed
+// before splitting on commas, so a note's fragments never become credits of
+// their own and never hide the role they annotate.
 function components(roleText: string): string[] {
   return roleText
+    .replace(/\[[^\]]*\]/g, "")
     .split(",")
-    .map((c) => c.replace(/\[.*?\]/g, "").trim())
+    .map((c) => c.trim())
     .filter((c) => c.length > 0);
 }
 

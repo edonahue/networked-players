@@ -185,3 +185,56 @@ test.describe("390px", () => {
     }
   });
 });
+
+test("bracketed role notes containing commas never become credits of their own", () => {
+  // Discogs notes such as "Voice [Breath, Blood And Voice]" contain commas.
+  // Splitting before removing the note would invent the credits
+  // "Voice [Breath" and "Blood And Voice]" and lose the performance role.
+  const synthetic = {
+    artist_id: -1,
+    name: "Synthetic Player",
+    role_categories: [],
+    albums: [],
+    evidence: [
+      {
+        role_text:
+          "Voice [Breath, Blood And Voice], Producer [Co-producer, Mix]",
+      },
+    ],
+    role_text_examples: ["Synthesizer [Prophet-5, Minimoog], Arranged By"],
+  } as unknown as Contributor;
+  const roles = playerRoles(synthetic);
+  expect(roles.played.length).toBeGreaterThan(0);
+  expect(roles.also.some((c) => /[[\]]/.test(c))).toBe(false);
+  expect(roles.also.map((c) => c.toLowerCase()).sort()).toEqual([
+    "arranged by",
+    "producer",
+  ]);
+
+  // And across the real committed index: no "Also credited" entry may carry a
+  // stray bracket, which is what a mis-split note looks like.
+  const index = readArtifact<{ contributors: Contributor[] }>(
+    "contributors/index.v1.json",
+  );
+  const broken = index.contributors.flatMap((c) =>
+    playerRoles(c).also.filter((credit) => /[[\]]/.test(credit)),
+  );
+  expect(broken).toEqual([]);
+});
+
+test("the records list is described as where connections reach, not where they played", async ({
+  page,
+}) => {
+  // The contributor index's `albums` are endpoints of documented connections
+  // (data/contracts/contributor-index-v1.md), most of them more than one
+  // connection away, so neither the heading nor the meta description may
+  // present them as records the person appears on.
+  await page.goto(`/contributors/${withPlay!.artist_id}/`);
+  const heading = page.locator("#records-heading");
+  await expect(heading).toBeVisible();
+  await expect(heading).not.toContainText(/they are on|played on/i);
+  const description = await page
+    .locator('meta[name="description"]')
+    .getAttribute("content");
+  expect(description ?? "").not.toMatch(/ on \d+ records?/);
+});
