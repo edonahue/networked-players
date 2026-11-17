@@ -70,13 +70,15 @@ export interface ExplorerLayout {
 /** Greedy word wrap to `maxChars`. A single word longer than a line is split
  * hard (no hyphen added), so concatenated pieces still read as the name. */
 export function wrapName(name: string, maxChars: number): string[] {
+  // Every line break at a word boundary leaves one trailing space on the
+  // line, so concatenating the lines reproduces the name exactly.
   const lines: string[] = [];
   let line = "";
   for (const word of name.split(/\s+/).filter(Boolean)) {
     let w = word;
     while (w.length > maxChars) {
       if (line) {
-        lines.push(line);
+        lines.push(`${line} `);
         line = "";
       }
       lines.push(w.slice(0, maxChars));
@@ -85,7 +87,7 @@ export function wrapName(name: string, maxChars: number): string[] {
     if (!line) line = w;
     else if (line.length + 1 + w.length <= maxChars) line += ` ${w}`;
     else {
-      lines.push(line);
+      lines.push(`${line} `);
       line = w;
     }
   }
@@ -95,6 +97,35 @@ export function wrapName(name: string, maxChars: number): string[] {
 
 function ellipsePerimeter(a: number, b: number): number {
   return Math.PI * (3 * (a + b) - Math.sqrt((3 * a + b) * (a + 3 * b)));
+}
+
+/** `n` points evenly spaced by arc length on an ellipse, starting at the top
+ * and running clockwise (a tall, narrow ring would crowd its tips if spaced by
+ * angle instead). */
+function ringPoints(n: number, rx: number, ry: number) {
+  const steps = 720;
+  const cum = [0];
+  let prev = { x: 0, y: -ry };
+  const samples = [{ t: -Math.PI / 2, ...prev }];
+  for (let k = 1; k <= steps; k++) {
+    const t = -Math.PI / 2 + (2 * Math.PI * k) / steps;
+    const p = { x: rx * Math.cos(t), y: ry * Math.sin(t) };
+    cum.push(cum[k - 1] + Math.hypot(p.x - prev.x, p.y - prev.y));
+    samples.push({ t, ...p });
+    prev = p;
+  }
+  const total = cum[steps];
+  const out: { x: number; y: number }[] = [];
+  let k = 0;
+  for (let i = 0; i < n; i++) {
+    const target = (total * i) / n;
+    while (k < steps - 1 && cum[k + 1] < target) k++;
+    const span = cum[k + 1] - cum[k] || 1;
+    const f = (target - cum[k]) / span;
+    const t = samples[k].t + f * (samples[k + 1].t - samples[k].t);
+    out.push({ x: rx * Math.cos(t), y: ry * Math.sin(t) });
+  }
+  return out;
 }
 
 export function computeLayout(
@@ -109,14 +140,17 @@ export function computeLayout(
   const labelX = cx + m.rx + colGap + 4;
   const maxChars = Math.max(
     4,
-    Math.floor((m.width - labelX - 2) / CHAR_W), // same room on both sides
+    // Same room on both sides; one char reserved for the trailing space a
+    // soft-wrapped line carries (it counts toward an end-anchored box).
+    Math.floor((m.width - labelX - 2) / CHAR_W) - 1,
   );
   const wrapped = names.map((nm) => wrapName(nm, maxChars));
   const blockH = (lines: string[]) => lines.length * LABEL_LINE_HEIGHT;
 
   // Side by angle: right half of the ring uses the right column.
-  const angles = names.map((_, i) => (2 * Math.PI * i) / n - Math.PI / 2);
-  const right = (i: number) => Math.cos(angles[i]) >= 0;
+  // Evenly spaced by ARC LENGTH (below), starting at the top and running
+  // clockwise, so the right half is the first half of the indices.
+  const right = (i: number) => i / n <= 0.5;
   const sideTotal = (isRight: boolean) =>
     wrapped.reduce(
       (s, l, i) => (right(i) === isRight ? s + blockH(l) + BLOCK_GAP : s),
@@ -132,9 +166,9 @@ export function computeLayout(
 
   const cy = height / 2;
   const ry = height / 2 - PAD - r;
-  const pts = angles.map((a) => ({
-    x: cx + m.rx * Math.cos(a),
-    y: cy + ry * Math.sin(a),
+  const pts = ringPoints(n, m.rx, ry).map((p) => ({
+    x: cx + p.x,
+    y: cy + p.y,
   }));
 
   const labelTop = new Array<number>(n).fill(0);
