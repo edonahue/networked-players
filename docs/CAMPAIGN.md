@@ -68,16 +68,16 @@ No catalog growth, no real collection published, no public data regenerated.
 | S3 | Collection page and guided journey; retire the synthetic `/cohorts/` example | S2, P1 | Done (#285); renders nothing until a Collection is promoted |
 | S4 | Owner approves and publishes the first real collection | S1–S3 | todo |
 | G1a | One evidence-release selection policy for graph, challenge and routes (ships only with a rebuild) | F3 | todo |
-| G1b | Align the challenge edge rule with the graph's | F3 | In review (#288). Challenge path search now restricted to seed-touching edges via one shared scope predicate; carry-forward re-searched and counted; opt-in `check-challenge-hops-in-graph` (runner enables it for new rounds). Becomes mandatory, and the committed challenge.v3's 119 out-of-scope hops go away, only with the Round 2 rebuild (see docs/EXPANSION_PIPELINE.md) |
+| G1b | Align the challenge edge rule with the graph's | F3 | Done (#288). Challenge path search now restricted to seed-touching edges via one shared scope predicate; carry-forward re-searched and counted; opt-in `check-challenge-hops-in-graph` (runner enables it for new rounds). Becomes mandatory, and the committed challenge.v3's 119 out-of-scope hops go away, only with the Round 2 rebuild (see docs/EXPANSION_PIPELINE.md) |
 | G1c | ADR plus graph-derived contributor index; owner reviews the page-set diff | F3 | todo |
-| G2 | Record-centred Explore prototype and decision | P1 | In review (#290): prototype at `?mode=record`; owner preference decision pending |
+| G2 | Record-centred Explore prototype and decision | P1 | Prototype live (#290):  at `?mode=record`; owner preference decision pending |
 | G3 | Album-level atlas prototype and decision | S1 | todo |
 | G4 | Graph format change, only if a size or load-time trigger fires | F1 | todo |
 | P4 | Games link onward; player page leads with performance; copy pass | P1 | todo |
 | P5 | Self-hosted body and mono faces, motif consistency, structured data, text-only share images, retire `/demo/` | P3 | P5a done (#283): fonts, JSON-LD, canonical, sitemap, demo retired; motif consistency (P5b: liner-note paper panel + groove rules on record/player/Explore/directories/collections, 45 inline styles replaced by utility classes and guarded by tests/no-inline-styles.spec.ts) done; text-only share images remain |
 | P6 | "How it's built" page from published-artifact facts | F1 | todo |
 | I1 | Runtime digest in place of exact-commit matching; skew report; honoured retries; `jobs` commands | I0 | todo |
-| I2 | Multi-worker shard dispatch; sharded supply and scoring | I1 | In review (#289) |
+| I2 | Multi-worker shard dispatch; sharded supply and scoring | I1 | Done in code (#289): select_workers, shard plan/gather, sharded scoring byte-identical to single-node; worker workload not registered and nothing deployed |
 | I3 | ADR plus platform migration and extension of the sharded hop re-check | I2 | todo |
 | I4 | Parse resume and atomic part writes | — | todo |
 | R2 | Round 2, 217 → about 277 albums | F1–F4, RP, SS, G1a, I0 | todo |
