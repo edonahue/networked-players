@@ -101,6 +101,16 @@ def _parser() -> argparse.ArgumentParser:
     parse.add_argument("--max-releases", type=int)
     parse.add_argument("--chunk-releases", type=int, default=5_000)
     parse.add_argument("--overwrite", action="store_true")
+    parse.add_argument(
+        "--resume",
+        action="store_true",
+        help="continue an interrupted parse from its staging directory (re-read and skip)",
+    )
+    parse.add_argument(
+        "--input-manifest",
+        type=Path,
+        help="download manifest whose recorded sha256/size identify --input (never re-hashed)",
+    )
 
     parse_masters = subparsers.add_parser(
         "parse-masters", help="stream a masters dump into Parquet"
@@ -2473,23 +2483,26 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 0
 
     if args.command == "parse-releases":
-        from .discogs.parquet import write_release_dataset
-        from .discogs.releases import iter_releases
+        import sys
 
-        records = iter_releases(
-            args.input,
-            snapshot_date=args.snapshot,
-            source_url=args.source_url,
-            max_releases=args.max_releases,
-        )
-        dataset_manifest = write_release_dataset(
-            records,
-            args.output_root,
-            snapshot_date=args.snapshot,
-            source_url=args.source_url,
-            chunk_releases=args.chunk_releases,
-            overwrite=args.overwrite,
-        )
+        from .discogs.parquet import parse_release_dump
+        from .discogs.resume import ResumeRefused
+
+        try:
+            dataset_manifest = parse_release_dump(
+                args.input,
+                args.output_root,
+                snapshot_date=args.snapshot,
+                source_url=args.source_url,
+                chunk_releases=args.chunk_releases,
+                max_releases=args.max_releases,
+                overwrite=args.overwrite,
+                resume=args.resume,
+                input_manifest=args.input_manifest,
+            )
+        except ResumeRefused as error:
+            print(f"parse-releases refused: {error}", file=sys.stderr)
+            return 2
         print(json.dumps(dataset_manifest, indent=2, sort_keys=True))
         return 0
 
