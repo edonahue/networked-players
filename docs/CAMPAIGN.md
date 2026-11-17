@@ -65,7 +65,7 @@ No catalog growth, no real collection published, no public data regenerated.
 |---|---|---|---|
 | SS | Theme-seed supply from the full corpus; re-widen the one-hop corpus after approval | F3 | todo |
 | S2 | ADR plus `collection-v1` and `playable-cohort-v2` on the performer graph; collection validator group | F1 | todo |
-| S3 | Collection page and guided journey; retire the synthetic `/cohorts/` example | S2, P1 | In review (#PR) |
+| S3 | Collection page and guided journey; retire the synthetic `/cohorts/` example | S2, P1 | In review (#285) |
 | S4 | Owner approves and publishes the first real collection | S1–S3 | todo |
 | G1a | One evidence-release selection policy for graph, challenge and routes (ships only with a rebuild) | F3 | todo |
 | G1b | Align the challenge edge rule with the graph's | F3 | todo |
