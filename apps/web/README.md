@@ -66,10 +66,15 @@ versioned static artifacts — no backend, no accounts.
   none), then their records, the players they recur with, and a secondary "Also
   credited" block for non-performance credits, which appear as evidence but make
   no connection (ADR 0068). Routes and data keys keep the `contributors` name.
-- **Cohorts** (`/cohorts/`, `/cohorts/<cohort-id>/`) — a static manifest-driven index
-  and detail pages for reviewed playable cohorts. The committed cohort fixture is
-  synthetic and clearly labeled until a real, human-reviewed `playable-cohort-v1`
-  artifact is explicitly added to the manifest and static import map.
+- **Collections** (`/collections/`, `/collections/<id>/`, Campaign Atlas S3) — a titled,
+  owner-introduced set of catalog records with its bridge players, an optional guided
+  Journey (ordered `graph.v4` hops, each linking to its credit evidence release) and
+  playable pairs that open in Connect. Read at build time from
+  `public/data/collections/` (written by `promote-collection`, ADR 0074). With no
+  collection published, none of these routes exist and nothing links to them. Tests render
+  a synthetic collection through the test-only `NP_COLLECTIONS_DIR` seam (honoured only with
+  `NP_TEST_OUT_DIR`; see `src/data/collections.ts`). The synthetic `/cohorts/` sample pages
+  were retired in S3.
 - **About** (`/about/`) — fuller picture, the evidence-vs-influence stance, data & rights.
 - The earlier API-sourced `/demo/` page and its `challenge.v1.json` artifact were
   retired in Campaign Atlas P5 (the builder in `packages/catalog`

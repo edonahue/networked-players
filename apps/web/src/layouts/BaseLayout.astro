@@ -2,6 +2,7 @@
 import '../styles/global.css';
 import site from '../data/site.json';
 import SiteSearch from '../components/SiteSearch.astro';
+import { hasCollections } from '../data/collections';
 
 interface Props {
   title?: string;
@@ -176,7 +177,7 @@ const isCurrent = (href: string) =>
       <p>An evidence-first project by <a href={site.authorUrl}>Erich Donahue</a>.</p>
       <p>
         <a href="/about/">About</a>
-        · <a href="/cohorts/" title="Collections are a synthetic, unreviewed sample grouping — not editorial curation">Collections (sample)</a>
+        {hasCollections() && <> · <a href="/collections/">Collections</a></>}
         · <a href={site.repositoryUrl}>Source on GitHub</a>
       </p>
     </footer>

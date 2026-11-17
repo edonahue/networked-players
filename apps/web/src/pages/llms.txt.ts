@@ -11,6 +11,7 @@
 import type { APIRoute } from "astro";
 import { catalogStats } from "../data/catalogStats";
 import site from "../data/site.json";
+import { hasCollections } from "../data/collections";
 
 export const prerender = true;
 
@@ -48,7 +49,7 @@ The album grid, evidence viewer, and every game mode run on a real, Discogs mont
 - Explore: ${base}/explore/
 - Players: ${base}/contributors/
 - Play: ${base}/play/
-- Repository: ${site.repositoryUrl}
+${hasCollections() ? `- Collections: ${base}/collections/\n` : ""}- Repository: ${site.repositoryUrl}
 - Sitemap: ${base}/sitemap.xml
 
 ## Author

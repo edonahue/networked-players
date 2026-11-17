@@ -2,6 +2,7 @@
 @import "./motif.css";
 @import "./game.css";
 @import "./record.css";
+@import "./collection.css";
 
 /* Self-hosted latin subsets (SIL OFL, see /fonts/*-OFL.txt). Georgia stays
    the system display face. Only the body 400 weight is preloaded. */

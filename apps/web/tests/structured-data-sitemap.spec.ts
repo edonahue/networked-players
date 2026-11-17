@@ -35,6 +35,7 @@ test("sitemap lists records but not /demo/ or synthetic cohort pages", async ({
   expect(xml).toContain(`/albums/${album.id}/`);
   expect(xml).not.toContain("/demo/");
   expect(xml).not.toContain("/cohorts/");
+  expect(xml).not.toContain("/collections/");
 });
 
 test("album and explore pages emit canonical trailing-slash URLs and album JSON-LD", async ({

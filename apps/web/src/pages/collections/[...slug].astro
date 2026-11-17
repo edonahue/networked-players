@@ -1,0 +1,230 @@
+---
+// Collections (Campaign Atlas S3, ADR 0074). One catch-all route so that with
+// zero published collections NO /collections/ page is generated at all:
+// getStaticPaths returns [] and Astro emits nothing. With >= 1, slug
+// undefined is the index and slug <id> is one collection.
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import AlbumCard from '../../components/AlbumCard.astro';
+import { loadCollections, type Collection } from '../../data/collections';
+import { rosterFor, type Membership } from '../../data/albumRecord';
+import { discogsReleaseUrl } from '../../game/connectEvidence';
+import type { ChallengeV2 } from '../../data/challenge';
+import type { ContributorIndex } from '../../data/contributors';
+import challengeData from '../../../public/data/challenge.v3.json';
+import membershipData from '../../../public/data/albums/credit-membership.v1.json';
+import contributorIndexData from '../../../public/data/contributors/index.v1.json';
+
+export function getStaticPaths() {
+  const collections = loadCollections();
+  if (collections.length === 0) return [];
+  return [
+    { params: { slug: undefined }, props: { collection: null } },
+    ...collections.map((c) => ({
+      params: { slug: c.collection_id },
+      props: { collection: c },
+    })),
+  ];
+}
+
+interface Props {
+  collection: Collection | null;
+}
+const { collection } = Astro.props;
+const all = loadCollections();
+
+const albums = (challengeData as ChallengeV2).albums;
+const albumById = new Map(albums.map((a) => [a.id, a]));
+const membership = membershipData as unknown as Membership;
+const linkable = new Set(
+  (contributorIndexData as ContributorIndex).contributors.map((c) => c.artist_id),
+);
+
+const recordLabel = (id: string) => {
+  const a = albumById.get(id);
+  return a ? `${a.title} (${a.artist})` : id;
+};
+const recordHref = (id: string) => (albumById.has(id) ? `/albums/${id}/` : undefined);
+
+/** The verbatim role text this player has on a record, when credited there. */
+function roleOn(albumId: string, artistId: number): string | null {
+  if (!albumById.has(albumId)) return null;
+  const r = rosterFor(membership, albumId);
+  for (const g of r.groups) {
+    const p = g.people.find((x) => x.artistId === artistId);
+    if (p && p.roles.length) return p.roles.join(' · ');
+  }
+  return null;
+}
+
+const description = collection
+  ? `${collection.title}: a set of records, the players who bridge them, and the credit evidence behind each documented connection.`
+  : 'Reviewed sets of records, the players who bridge them, and the credit evidence behind each documented connection.';
+const title = collection ? collection.title : 'Collections';
+---
+
+<BaseLayout title={title} description={description}>
+  <section class="shell" style="padding-top:40px;padding-bottom:72px">
+    {
+      collection === null ? (
+        <>
+          <p class="eyebrow record-header__eyebrow">Collections</p>
+          <h1 class="h1-entity">Collections</h1>
+          <p class="record-section__intro">
+            Reviewed sets of records from the catalog, each with the players who bridge them. Every
+            connection is a documented performance; the credits are the evidence.
+          </p>
+          <ul class="collection-index" data-collection-index>
+            {all.map((c) => (
+              <li data-collection-id={c.collection_id}>
+                <h2>
+                  <a href={`/collections/${c.collection_id}/`}>{c.title}</a>
+                </h2>
+                <p>
+                  {c.records.length} records · {c.bridge_players.length} bridge players
+                </p>
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : (
+        <>
+          <p class="eyebrow record-header__eyebrow">Collection</p>
+          <h1 class="h1-entity">{collection.title}</h1>
+          <p class="collection-intro" data-collection-intro>{collection.intro}</p>
+          {collection.attribution && (
+            <p class="collection-attribution">
+              Theme: <a href={collection.attribution.source_url}>{collection.attribution.label}</a>
+            </p>
+          )}
+
+          <section class="record-section collection-section" aria-labelledby="records-heading" data-collection-records>
+            <h2 id="records-heading">The records</h2>
+            <p class="record-section__intro">
+              {collection.records.length} records from the catalog, in the order the collection
+              lists them.
+            </p>
+            <div class="album-grid">
+              {collection.records.map((id) => {
+                const a = albumById.get(id);
+                return a ? <AlbumCard album={a} /> : <span data-missing-record={id}>{id}</span>;
+              })}
+            </div>
+          </section>
+
+          <section class="record-section collection-section" aria-labelledby="bridge-heading" data-collection-bridges>
+            <h2 id="bridge-heading">Bridge players</h2>
+            <p class="record-section__intro">
+              Players credited as performers on more than one of these records, across different
+              artists. Names link to a player's page where one exists.
+            </p>
+            <ul class="bridge-list">
+              {collection.bridge_players.map((p) => (
+                <li data-bridge-player={p.artist_id}>
+                  {linkable.has(p.artist_id) ? (
+                    <a class="bridge-player__name" href={`/contributors/${p.artist_id}/`}>{p.name}</a>
+                  ) : (
+                    <span class="bridge-player__name">{p.name}</span>
+                  )}
+                  <span class="bridge-player__on">
+                    Credited on {p.records.map(recordLabel).join('; ')}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </section>
+
+          {collection.journey && collection.journey.length > 0 && (
+            <section class="record-section collection-section" aria-labelledby="journey-heading" data-collection-journey>
+              <h2 id="journey-heading">A journey through the records</h2>
+              <p class="record-section__intro">
+                An ordered walk. Each step links two records through players credited as performers,
+                and every link between players names the release whose credits document it.
+              </p>
+              <ol class="journey">
+                {collection.journey.map((hop) => (
+                  <li class="journey-hop" data-journey-hop>
+                    <p class="journey-hop__records">
+                      {recordHref(hop.from_record) ? (
+                        <a href={recordHref(hop.from_record)}>{recordLabel(hop.from_record)}</a>
+                      ) : (
+                        recordLabel(hop.from_record)
+                      )}
+                      <span aria-hidden="true"> → </span>
+                      {recordHref(hop.to_record) ? (
+                        <a href={recordHref(hop.to_record)}>{recordLabel(hop.to_record)}</a>
+                      ) : (
+                        recordLabel(hop.to_record)
+                      )}
+                    </p>
+                    <ul class="journey-hop__players">
+                      {hop.via.map((id, i) => {
+                        const role =
+                          (i === 0 ? roleOn(hop.from_record, id) : null) ??
+                          (i === hop.via.length - 1 ? roleOn(hop.to_record, id) : null);
+                        return (
+                          <li data-journey-player={id}>
+                            {linkable.has(id) ? (
+                              <a href={`/contributors/${id}/`}>{hop.via_names[i]}</a>
+                            ) : (
+                              hop.via_names[i]
+                            )}
+                            {role && <span class="journey-hop__role"> · {role}</span>}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                    <p class="journey-hop__evidence">
+                      {hop.evidence_release_ids.length === 0
+                        ? 'One player is credited on both records.'
+                        : 'Credit evidence: '}
+                      {hop.evidence_release_ids.map((rid, i) => (
+                        <>
+                          {i > 0 && ', '}
+                          <a data-evidence-link href={discogsReleaseUrl(rid)}>
+                            release {rid}
+                          </a>
+                        </>
+                      ))}
+                    </p>
+                  </li>
+                ))}
+              </ol>
+            </section>
+          )}
+
+          {collection.playable_cohort && collection.playable_cohort.pairs.length > 0 && (
+            <section class="record-section collection-section" aria-labelledby="pairs-heading" data-collection-pairs>
+              <h2 id="pairs-heading">Connect two of these records</h2>
+              <p class="record-section__intro">
+                Pairs with a documented route between them. Open one in Connect Two Records to search
+                it yourself.
+              </p>
+              <ul class="pair-list">
+                {collection.playable_cohort.pairs.map((pair) => (
+                  <li data-collection-pair>
+                    <p class="pair-list__records">
+                      {recordLabel(pair.record_a)} and {recordLabel(pair.record_b)}
+                    </p>
+                    <p class="pair-list__via">
+                      {pair.hop_count === 0
+                        ? 'One shared player'
+                        : `${pair.hop_count} ${pair.hop_count === 1 ? 'hop' : 'hops'}`}
+                      {' · '}via {pair.via_names.join(', ')}
+                    </p>
+                    <a
+                      class="record-link"
+                      data-pair-link
+                      href={`/play/connect/?a=${pair.record_a}&b=${pair.record_b}`}
+                    >
+                      Search this pair in Connect Two Records →
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+        </>
+      )
+    }
+  </section>
+</BaseLayout>
