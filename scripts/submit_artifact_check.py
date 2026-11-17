@@ -33,22 +33,21 @@ from typing import Any
 
 from _platform_client import (
     PlatformClientError,
+    add_retry_argument,
     current_commit,
-    enqueue_and_wait,
+    current_runtime_digest,
+    declared_max_retries,
+    dispatch_with_retries,
     fetch_and_verify,
     inventory_group_hosts,
     inventory_hostvars,
     remove_remote_run,
     require_broker_url,
     require_clean_checkout,
-    require_free_disk,
-    stage_run,
 )
 from redis import Redis
 
-from networked_players_platform.broker import read_advertisements
 from networked_players_platform.models import ArtifactDescriptor, CapabilityRequirement, RunRequest
-from networked_players_platform.scheduler import NoEligibleWorkerError, select_worker
 from networked_players_platform.staging import describe_artifact
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -157,6 +156,7 @@ def _arguments() -> argparse.Namespace:
             "submission scripts' default since these payloads are KB-scale."
         ),
     )
+    add_retry_argument(parser)
     parser.add_argument(
         "--keep-remote",
         action="store_true",
@@ -314,6 +314,9 @@ def _check_one_worker(
     validator: str,
     artifact_paths: list[Path],
     commit: str,
+    runtime_digest: str,
+    max_retries: int,
+    hostvars: dict[str, dict[str, Any]],
     broker: Redis,
     keep_remote: bool,
     min_free_disk_gb: float,
@@ -324,12 +327,13 @@ def _check_one_worker(
     inputs = _stage_inputs(artifact_paths, local_run / "input")
 
     request = RunRequest(
-        schema_version=1,
+        schema_version=2,
         run_id=run_id,
         workload_id="artifact.validate",
         workload_version="1",
         submitted_at=started_at,
         runtime_commit=commit,
+        runtime_digest=runtime_digest,
         timeout_seconds=120,
         max_retries=0,
         capabilities=_CAPABILITIES,
@@ -341,72 +345,31 @@ def _check_one_worker(
         json.dumps(request.to_dict(), indent=2, sort_keys=True) + "\n"
     )
 
-    workers = [worker for worker in read_advertisements(broker) if worker.worker_id == worker_id]
     try:
-        worker = select_worker(
-            workers,
-            request.capabilities,
-            workload_id=request.workload_id,
-            workload_version=request.workload_version,
-            runtime_commit=request.runtime_commit,
-        )
-    except NoEligibleWorkerError as exc:
-        return _worker_record(
-            job_id=None,
-            started_at=started_at,
-            finished_at=None,
-            job_failed=True,
-            result=None,
-            ok=False,
-            error=str(exc),
-        )
-
-    try:
-        require_free_disk(
+        outcome, host, remote_run = dispatch_with_retries(
+            broker=broker,
+            request=request,
+            local_run=local_run,
             inventory_path=INVENTORY,
             repo_root=REPO_ROOT,
-            host=host,
-            min_free_gb=min_free_disk_gb,
+            hostvars=hostvars,
+            min_free_disk_gb=min_free_disk_gb,
+            max_retries=max_retries,
+            worker_id_filter=worker_id,
         )
     except PlatformClientError as exc:
+        # Carries the per-worker ineligibility reasons (digest mismatch, stale, ...).
         return _worker_record(
             job_id=run_id,
             started_at=started_at,
-            finished_at=None,
+            finished_at=datetime.now(UTC).isoformat(),
             job_failed=True,
             result=None,
             ok=False,
             error=str(exc),
         )
-
-    remote_run = f"~/.local/share/networked-players/platform/runs/{run_id}"
-    stage_run(
-        inventory_path=INVENTORY,
-        repo_root=REPO_ROOT,
-        host=host,
-        remote_run=remote_run,
-        local_run=local_run,
-    )
-
-    try:
-        result = enqueue_and_wait(
-            broker=broker,
-            worker_id=worker.worker_id,
-            remote_run=remote_run,
-            run_id=run_id,
-            timeout_seconds=request.timeout_seconds,
-        )
-    except PlatformClientError as exc:
-        finished_at = datetime.now(UTC).isoformat()
-        return _worker_record(
-            job_id=run_id,
-            started_at=started_at,
-            finished_at=finished_at,
-            job_failed=True,
-            result=None,
-            ok=False,
-            error=str(exc),
-        )
+    result = outcome.result
+    run_id = outcome.run_id
 
     finished_at = datetime.now(UTC).isoformat()
     completed = fetch_and_verify(
@@ -437,6 +400,8 @@ def main() -> int:
     args = _arguments()
     require_clean_checkout(REPO_ROOT)
     commit = current_commit(REPO_ROOT)
+    runtime_digest = current_runtime_digest(REPO_ROOT, "artifact.validate")
+    max_retries = declared_max_retries("artifact.validate", args.max_retries)
     artifact_paths = _resolve_artifact_paths(args.validator, args.artifact)
     hostvars = inventory_hostvars(INVENTORY, REPO_ROOT)
     hosts = _target_hosts(args.workers, args.limit, hostvars=hostvars)
@@ -454,6 +419,9 @@ def main() -> int:
             validator=args.validator,
             artifact_paths=artifact_paths,
             commit=commit,
+            runtime_digest=runtime_digest,
+            max_retries=max_retries,
+            hostvars=hostvars,
             broker=broker,
             keep_remote=args.keep_remote,
             min_free_disk_gb=args.min_free_disk_gb,

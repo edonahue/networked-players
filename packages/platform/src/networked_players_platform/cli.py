@@ -85,7 +85,9 @@ def worker_report(
     elif local_contracts_digest is None:
         contracts_match = "unknown"
     else:
-        contracts_match = "match" if worker.contracts_digest == local_contracts_digest else "mismatch"
+        contracts_match = (
+            "match" if worker.contracts_digest == local_contracts_digest else "mismatch"
+        )
     return {
         **worker.to_dict(),
         "workload_status": workloads,

@@ -58,7 +58,9 @@ class JobBackend(Protocol):
 
 
 def is_retryable_failure(exc_info: str | None) -> bool:
-    return bool(exc_info) and any(marker in (exc_info or "") for marker in RETRYABLE_FAILURE_MARKERS)
+    return bool(exc_info) and any(
+        marker in (exc_info or "") for marker in RETRYABLE_FAILURE_MARKERS
+    )
 
 
 def cancel_job(
@@ -80,7 +82,8 @@ def cancel_job(
         return CancelOutcome(
             job_id,
             "canceled",
-            "removed from the queue before it started; nothing ran and nothing is left on the worker",
+            "removed from the queue before it started; nothing ran and nothing is left "
+            "on the worker",
         )
     if record.state == "started":
         backend.request_stop(job_id)
