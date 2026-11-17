@@ -8,15 +8,13 @@ detail; this file is the quick orientation for agents working here.
   `npm run test:smoke` (Playwright). The root `Makefile`/`uv` commands do not apply here.
 - **Static output to Cloudflare Workers** via `wrangler` (`astro.config.mjs` is
   `output: 'static'`, `trailingSlash: 'always'`). Keep it static; deploy is `npm run deploy`.
-- **Demo data is real, curated, and privacy-safe.** `public/data/challenge.v1.json` is real
-  Discogs data for a small, curated subset of releases (see `packages/catalog`
-  `discogs/demo_challenge.py` and ADR 0012) — not the full private seed. Cover art is hotlinked
-  directly from Discogs' own CDN (`i.discogs.com`) in `<img src>`; the repo never downloads,
-  stores, or rehosts image bytes. The raw per-release API cache and the private seed itself
-  never leave `data/private/` on the coordination host and are never published here. It mirrors
-  the real credits schema in `packages/catalog` (`CREDIT_SCHEMA`) so a future CC0-dump-derived
-  artifact (Milestone 8) can replace this API-sourced one under the same shape.
-- **Static-first:** the demo runs entirely client-side; no live API may become required.
+- **Cover art** is hotlinked directly from Discogs' own CDN (`i.discogs.com`) in `<img src>`;
+  the repo never downloads, stores, or rehosts image bytes. The raw per-release API cache and
+  the private seed itself never leave `data/private/` on the coordination host. The old
+  API-sourced `/demo/` and `challenge.v1.json` were retired (Campaign Atlas P5).
+- **Fonts** (Inter, IBM Plex Mono) are self-hosted latin woff2 under `public/fonts/` with OFL
+  texts; Georgia stays the system display face. No font npm dependency.
+- **Static-first:** no live API may become required.
 - Preserve evidence-first framing: connections are documented musical performances (ADR 0068,
   performer-only public graph); credits are the evidence. Never inferred influence, and never a
   non-performance credit presented as a connection on its own.

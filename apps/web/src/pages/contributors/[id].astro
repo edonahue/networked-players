@@ -7,6 +7,7 @@ import type { Contributor, ContributorIndex } from '../../data/contributors';
 import { playedPhrase, playerRoles } from '../../data/playerRecord';
 import { albumHopDistancesByArtist, type AlbumHopDistances } from '../../data/albumHopDistances';
 import { coverFor } from '../../data/albumArt';
+import { jsonLdScript, personJsonLd } from '../../data/structuredData';
 import type { AlbumV2, ChallengeV2 } from '../../data/challenge';
 import type { RoutesRounds } from '../../game/routesTypes';
 import contributorIndexData from '../../../public/data/contributors/index.v1.json';
@@ -162,6 +163,12 @@ const description = playedText
 ---
 
 <BaseLayout title={contributor.name} description={description}>
+  <script
+    slot="head"
+    is:inline
+    type="application/ld+json"
+    set:html={jsonLdScript(personJsonLd(contributor.artist_id, contributor.name))}
+  />
   <section class="shell" style="padding-top:40px">
     <div class="play-header">
       {
