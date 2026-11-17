@@ -95,31 +95,6 @@ test("llms.txt quotes the real, current catalog counts and never re-states the o
   expect(body).not.toContain("no public API");
 });
 
-test("demo renders a path with evidence and switches paths", async ({
-  page,
-  request,
-}) => {
-  // Path labels are real, curated Discogs data and change whenever the artifact is
-  // regenerated -- read them from the artifact itself rather than hardcoding names.
-  const res = await request.get("/data/challenge.v1.json");
-  const { paths } = await res.json();
-  test.skip(paths.length < 2, "need at least two paths to test switching");
-
-  await page.goto("/demo/");
-  // First path visible by default with an evidence table.
-  await expect(page.locator(".path-card:not([hidden])")).toHaveCount(1);
-  await expect(
-    page.locator(".path-card:not([hidden]) .evidence table").first(),
-  ).toBeVisible();
-
-  // Switch to another path via the picker.
-  const secondPath = paths[1];
-  await page.getByRole("button", { name: secondPath.label }).click();
-  const visibleCard = page.locator(".path-card:not([hidden])");
-  await expect(visibleCard).toHaveCount(1);
-  await expect(visibleCard).toHaveAttribute("data-path-id", secondPath.id);
-});
-
 test("theme toggle persists", async ({ page }) => {
   await page.goto("/");
   const html = page.locator("html");
@@ -128,14 +103,6 @@ test("theme toggle persists", async ({ page }) => {
   await expect(html).toHaveAttribute("data-theme", "light");
   await page.reload();
   await expect(html).toHaveAttribute("data-theme", "light");
-});
-
-test("static demo artifact is reachable", async ({ request }) => {
-  const res = await request.get("/data/challenge.v1.json");
-  expect(res.ok()).toBeTruthy();
-  const body = await res.json();
-  expect(body.schema_version).toBe(1);
-  expect(Array.isArray(body.paths)).toBe(true);
 });
 
 test("static challenge.v3 artifact is reachable", async ({ request }) => {

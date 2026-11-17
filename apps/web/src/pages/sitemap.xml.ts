@@ -19,12 +19,8 @@ const challenge = challengeData as ChallengeV2;
 const albumPaths = challenge.albums.map((album) => `/albums/${album.id}/`);
 const explorePaths = challenge.albums.map((album) => `/explore/${album.id}/`);
 
-import cohortManifest from "../../public/data/cohorts/index.json";
-
-const cohortPaths = cohortManifest.cohorts.map(
-  (cohort: { cohort_id: string }) => `/cohorts/${cohort.cohort_id}/`,
-);
-
+// /cohorts/ pages are a synthetic, unreviewed sample grouping and /demo/ is
+// retired: neither belongs in the sitemap.
 import type { ContributorIndex } from "../data/contributors";
 import contributorIndexData from "../../public/data/contributors/index.v1.json";
 
@@ -44,10 +40,7 @@ const paths = [
   "/albums/",
   "/explore/",
   "/about/",
-  "/demo/",
-  "/cohorts/",
   "/contributors/",
-  ...cohortPaths,
   ...albumPaths,
   ...explorePaths,
   ...contributorPaths,

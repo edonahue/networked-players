@@ -20,15 +20,14 @@
       "heading": "Where the project actually is",
       "paragraphs": [
         "The album grid and evidence viewer run on Discogs monthly-dump data (snapshot 20260601): {{studioAlbumCount}} studio albums, {{artistCount}} artists, {{documentedConnectionCount}} documented performance paths, drawn from a limited working set seeded by a private collection that's never itself published. Album years are the master's original release year, and the catalog excludes live albums, soundtracks, compilations, and other non-studio releases by default.",
-        "The flagship Connection Guesser game (below) runs on the same catalog: {{oneHopRoundCount}} one-hop and {{twoHopRoundCount}} two-hop rounds derived from those {{studioAlbumCount}} studio albums and their credits. (An earlier synthetic round set still exists as a test fixture, but nobody plays it.) Connection of the Day serves one frozen round per local calendar day from a committed schedule. Record Routes is a third mode on the same catalog: guess how many credited hops connect two records, and, for two-hop routes, who bridges them.",
-        "An earlier connections demo, linked from the footer as an archive, runs separately on a small, curated subset of Discogs releases fetched via the Discogs API before the CC0 dump pipeline existed (ADR 0012). It predates the performer-only graph model and is not part of the current site."
+        "The flagship Connection Guesser game (below) runs on the same catalog: {{oneHopRoundCount}} one-hop and {{twoHopRoundCount}} two-hop rounds derived from those {{studioAlbumCount}} studio albums and their credits. (An earlier synthetic round set still exists as a test fixture, but nobody plays it.) Connection of the Day serves one frozen round per local calendar day from a committed schedule. Record Routes is a third mode on the same catalog: guess how many credited hops connect two records, and, for two-hop routes, who bridges them."
       ]
     },
     {
       "heading": "Data and rights",
       "paragraphs": [
         "Publishable catalog facts derive from CC0 Discogs monthly data dumps, always carried with provenance: snapshot date, source URL, parser and schema versions, and the original role text.",
-        "Private collection membership is never published, and raw API responses stay on the coordination host. The demo dataset here is fetched from the private seed's release list but curated down to a small subset — deliberately too small a fraction to reconstruct real collection membership. Cover art is hotlinked directly from Discogs' own CDN, never downloaded or rehosted; marketplace and pricing data remain out of scope entirely."
+        "Private collection membership is never published, and raw API responses stay on the coordination host. Cover art is hotlinked directly from Discogs' own CDN, never downloaded or rehosted; marketplace and pricing data remain out of scope entirely."
       ]
     },
     {
@@ -41,7 +40,7 @@
     {
       "heading": "What's next",
       "paragraphs": [
-        "The archived connections demo still runs on its original API-sourced dataset and will be retired rather than replaced. A future live-search mode would only ever add to the site — the static-first core keeps working on its own either way."
+        "The earlier API-sourced connections demo has been retired. A future live-search mode would only ever add to the site — the static-first core keeps working on its own either way."
       ]
     }
   ]
