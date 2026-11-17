@@ -11,6 +11,7 @@ from rq import Queue, Worker
 from rq.registry import StartedJobRegistry
 
 from .broker import publish_advertisement, queue_name, redis_from_url
+from .digest import contracts_version, installed_contracts_digest, installed_runtime_digests
 from .models import WorkerAdvertisement
 from .workloads import discover_workloads
 
@@ -45,7 +46,7 @@ def build_advertisement(*, active_jobs: int = 0) -> WorkerAdvertisement:
     datasets_json = os.environ.get("PLATFORM_DATASETS_JSON", "[]")
     datasets = json.loads(datasets_json)
     payload = {
-        "schema_version": 1,
+        "schema_version": 2,
         "worker_id": _required_env("PLATFORM_WORKER_ID"),
         "observed_at": datetime.now(UTC).isoformat(),
         "architecture": platform.machine().lower(),
@@ -56,6 +57,9 @@ def build_advertisement(*, active_jobs: int = 0) -> WorkerAdvertisement:
         "workloads": _workloads(),
         "datasets": datasets,
         "active_jobs": active_jobs,
+        "runtime_digests": installed_runtime_digests(),
+        "contracts_version": contracts_version(),
+        "contracts_digest": installed_contracts_digest(),
     }
     return WorkerAdvertisement.from_dict(payload)
 
@@ -74,6 +78,9 @@ def run_worker() -> bool:
     broker = redis_from_url(_required_env("JOBS_BROKER_URL"))
     worker_id = _required_env("PLATFORM_WORKER_ID")
     queue = Queue(queue_name(worker_id), connection=broker)
+    # Hash the installed code once, before the first job: RQ forks a work-horse per
+    # job and the cached digests are inherited, so no job pays for hashing again.
+    installed_runtime_digests()
     publish_advertisement(broker, build_advertisement(active_jobs=0))
     worker = Worker([queue], connection=broker, name=worker_id)
     return worker.work(with_scheduler=False)

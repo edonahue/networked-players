@@ -12,6 +12,7 @@ from .models import WorkerAdvertisement
 
 WORKER_KEY_PREFIX = "networked-players:platform:worker:"
 WORKER_TTL_SECONDS = 120
+QUEUE_PREFIX = "networked-players.platform."
 
 
 class AdvertisementStore(Protocol):
@@ -27,7 +28,7 @@ def redis_from_url(url: str) -> Redis:
 
 
 def queue_name(worker_id: str) -> str:
-    return f"networked-players.platform.{worker_id}"
+    return QUEUE_PREFIX + worker_id
 
 
 def publish_advertisement(

@@ -11,6 +11,12 @@ _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 _COMMIT_RE = re.compile(r"^[0-9a-f]{40}$")
 _IDENTIFIER_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{0,127}$")
 
+# ADR 0073: schema 2 adds runtime digests, attempt numbers and contracts identity.
+# Schema 1 documents stay readable; a schema-1 worker advertises no digests and is
+# refused with an explicit reason rather than matched by commit.
+CURRENT_SCHEMA_VERSION = 2
+SUPPORTED_SCHEMA_VERSIONS = (1, 2)
+
 
 def _identifier(value: str, field_name: str) -> str:
     if not _IDENTIFIER_RE.fullmatch(value):
@@ -101,10 +107,19 @@ class WorkerAdvertisement:
     datasets: tuple[DatasetIdentity, ...] = ()
     active_jobs: int = 0
     last_assigned_at: str | None = None
+    # workload_id -> runtime digest of the code installed here (ADR 0073).
+    runtime_digests: dict[str, str] = field(default_factory=dict)
+    contracts_version: str = ""
+    contracts_digest: str = ""
 
     def __post_init__(self) -> None:
-        if self.schema_version != 1:
-            raise ValueError("worker advertisement schema_version must be 1")
+        if self.schema_version not in SUPPORTED_SCHEMA_VERSIONS:
+            raise ValueError("worker advertisement schema_version must be 1 or 2")
+        for workload_id, digest in self.runtime_digests.items():
+            _identifier(workload_id, "runtime_digests workload id")
+            _sha256(digest, "runtime_digests value")
+        if self.contracts_digest:
+            _sha256(self.contracts_digest, "contracts_digest")
         _identifier(self.worker_id, "worker_id")
         _identifier(self.architecture, "architecture")
         if self.total_memory_mb <= 0 or self.max_job_memory_mb <= 0:
@@ -144,10 +159,22 @@ class RunRequest:
     inputs: tuple[ArtifactDescriptor, ...]
     expected_outputs: tuple[str, ...]
     parameters: dict[str, Any]
+    # ADR 0073: eligibility key (digest for this workload); `runtime_commit` above is
+    # recorded provenance only. 1-based attempt number; `retry_of` is the previous
+    # attempt's run_id.
+    runtime_digest: str = ""
+    attempt: int = 1
+    retry_of: str | None = None
 
     def __post_init__(self) -> None:
-        if self.schema_version != 1:
-            raise ValueError("run request schema_version must be 1")
+        if self.schema_version not in SUPPORTED_SCHEMA_VERSIONS:
+            raise ValueError("run request schema_version must be 1 or 2")
+        if self.schema_version >= 2:
+            _sha256(self.runtime_digest, "runtime_digest")
+        if self.attempt < 1:
+            raise ValueError("attempt must be at least 1")
+        if self.retry_of is not None:
+            _identifier(self.retry_of, "retry_of")
         _identifier(self.run_id, "run_id")
         _identifier(self.workload_id, "workload_id")
         _identifier(self.workload_version, "workload_version")
@@ -188,10 +215,14 @@ class RunResult:
     runtime_commit: str
     outputs: tuple[ArtifactDescriptor, ...]
     error: str | None = None
+    runtime_digest: str = ""
+    attempt: int = 1
 
     def __post_init__(self) -> None:
-        if self.schema_version != 1:
-            raise ValueError("run result schema_version must be 1")
+        if self.schema_version not in SUPPORTED_SCHEMA_VERSIONS:
+            raise ValueError("run result schema_version must be 1 or 2")
+        if self.schema_version >= 2:
+            _sha256(self.runtime_digest, "runtime_digest")
         _identifier(self.run_id, "run_id")
         _identifier(self.worker_id, "worker_id")
         if self.status not in {"succeeded", "failed"}:

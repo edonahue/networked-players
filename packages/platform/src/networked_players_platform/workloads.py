@@ -9,6 +9,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
+from .digest import contracts_version, installed_contracts_digest, installed_runtime_digests
 from .models import ArtifactDescriptor, CapabilityRequirement, RunRequest, WorkloadSpec
 from .staging import describe_artifact
 
@@ -133,11 +134,18 @@ def _artifact_validate_handler(
 
     failures = validate(*artifacts)
     output_dir.mkdir(parents=True, exist_ok=True)
+    # ADR 0073: attribute the verdict. The contracts package version is a constant
+    # that is never bumped, so its content digest is what tells a stale worker
+    # from a bad artifact.
     report = {
-        "schema_version": 1,
+        "schema_version": 2,
         "validator": validator,
         "valid": not failures,
         "failures": failures,
+        "contracts_version": contracts_version(),
+        "contracts_digest": installed_contracts_digest(),
+        "runtime_digest": installed_runtime_digests().get(request.workload_id),
+        "attempt": request.attempt,
     }
     (output_dir / "validation-report.json").write_text(
         json.dumps(report, indent=2, sort_keys=True) + "\n"
