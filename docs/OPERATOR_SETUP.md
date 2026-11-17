@@ -1409,6 +1409,22 @@ contracts digest `make platform-status` prints is computed from the release venv
    mismatch (this is the property the ADR exists for).
 7. Only after the real runs, move ADR 0073 from Proposed to Accepted.
 
+### Sharded dispatch (Atlas I2; nothing deployed or run)
+
+- Preview a split without submitting: `uv run networked-players-platform shards plan
+  --keys-file <candidates.json> --shard-count N --job-id <id> [--workload-id W --broker-url
+  ...]`, or `uv run python scripts/submit_sharded_score.py --candidates ... --shard-count N
+  --dry-run`. Both are read-only and print "DRY RUN: nothing submitted".
+- Pick N so each shard's input (shard candidates plus shared inputs) stays under 256 MB and
+  the shards fit the workers' `max_job_memory_mb`; never raise a memory limit to fit.
+- A real submission needs the worker-side `candidate.score-shard` workload, which is **not**
+  registered or deployed yet (ADR 0073 addendum); it fails closed until it is. Rollout
+  therefore stays: build, deploy to all workers, `platform-status`, then submit.
+- Gather or re-gather fetched shard outputs with `networked-players-catalog
+  merge-scored-shards`; it refuses a missing, duplicated or mismatched shard and writes
+  atomically. A lost worker's shard is retried on another eligible worker within the
+  workload's declared `max_retries`.
+
 ## Public artifact and version-relationship reference
 
 | Artifact | Real path | Version field(s) | Derived from | Dependency-free validator | `artifact.validate` name | Consumers |

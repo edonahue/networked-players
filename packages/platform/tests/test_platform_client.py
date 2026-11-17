@@ -546,3 +546,94 @@ def test_dispatch_recovers_a_worker_that_dies_after_enqueue_on_a_short_workload(
     assert outcome.attempt == 2 and host == "host-b"
     assert [o.worker_id for o in outcome.orphans] == ["worker-a"]
     assert len(staged) == 2
+
+
+# --- dispatch_shards -------------------------------------------------------------------
+
+
+def test_dispatch_shards_requeues_a_lost_workers_shard_on_another_worker(
+    monkeypatch: pytest.MonkeyPatch, backend: Backend, tmp_path: Path
+) -> None:
+    from dataclasses import replace
+
+    from networked_players_platform.sharding import plan_shards
+
+    staged: list[str] = []
+    monkeypatch.setattr(client, "require_free_disk", lambda **kwargs: None)
+    monkeypatch.setattr(client, "stage_run", lambda **kwargs: staged.append(kwargs["remote_run"]))
+    backend.advertisements = [_ad("worker-a", T0), _ad("worker-b", T0)]
+    backend.rq_heartbeat["worker-b"] = lambda now: now
+    # worker-a's RQ record lapses 5 s in: the first shard placed there is lost.
+    backend.rq_heartbeat["worker-a"] = lambda now: now if (now - T0).total_seconds() < 5 else None
+    hostvars = {
+        "host-a": {"platform_worker_id": "worker-a"},
+        "host-b": {"platform_worker_id": "worker-b"},
+    }
+    plan = plan_shards("job-1", list(range(20)), 2)
+    assert len(plan.active) == 2
+    template, _ = _request(tmp_path)
+    requests = {}
+    for shard in plan.active:
+        local = tmp_path / shard.run_id
+        local.mkdir()
+        requests[shard.index] = (replace(template, run_id=shard.run_id), local)
+    backend.jobs_by_queue["networked-players.platform.worker-a"] = [
+        FakeJob("a", [JobStatus.STARTED])
+    ]
+    backend.jobs_by_queue["networked-players.platform.worker-b"] = [
+        FakeJob("b1", [JobStatus.FINISHED], result={"status": "succeeded", "n": 1}),
+        FakeJob("b2", [JobStatus.FINISHED], result={"status": "succeeded", "n": 2}),
+    ]
+    run, placements = client.dispatch_shards(
+        broker=None,  # type: ignore[arg-type]
+        plan=plan,
+        requests=requests,
+        inventory_path=tmp_path / "inventory.yml",
+        repo_root=tmp_path,
+        hostvars=hostvars,
+        min_free_disk_gb=0.1,
+        max_retries=1,
+        concurrency=1,  # the fake clock is shared; real runs are concurrent
+    )
+    first, second = (s.index for s in plan.active)
+    assert run.outcomes[first].attempt == 2 and run.outcomes[first].worker.worker_id == "worker-b"
+    assert run.outcomes[first].run_id == f"{plan.shard(first).run_id}-a2"
+    assert run.outcomes[second].attempt == 1 and run.outcomes[second].worker.worker_id == "worker-b"
+    assert [o.worker_id for o in run.outcomes[first].orphans] == ["worker-a"]
+    assert {h for h, _ in placements.values()} == {"host-b"}
+    assert len(set(staged)) == len(staged) == 3  # every attempt had its own directory
+    request = json.loads((requests[first][1] / "request.json").read_text())
+    assert request["attempt"] == 2 and request["retry_of"] == plan.shard(first).run_id
+
+
+def test_dispatch_shards_fails_when_a_shard_cannot_complete(
+    monkeypatch: pytest.MonkeyPatch, backend: Backend, tmp_path: Path
+) -> None:
+    from dataclasses import replace
+
+    from networked_players_platform.sharding import plan_shards
+
+    monkeypatch.setattr(client, "require_free_disk", lambda **kwargs: None)
+    monkeypatch.setattr(client, "stage_run", lambda **kwargs: None)
+    backend.advertisements = [_ad("worker-a", T0)]
+    plan = plan_shards("job-2", [1], 1)
+    template, _ = _request(tmp_path)
+    shard = plan.active[0]
+    local = tmp_path / shard.run_id
+    local.mkdir()
+    backend.rq_heartbeat["worker-a"] = lambda now: now
+    backend.jobs_by_queue["networked-players.platform.worker-a"] = [
+        FakeJob("a", [JobStatus.FAILED], exc_info="ValueError: bad input")
+    ]
+    with pytest.raises(client.PlatformClientError, match="shard"):
+        client.dispatch_shards(
+            broker=None,  # type: ignore[arg-type]
+            plan=plan,
+            requests={shard.index: (replace(template, run_id=shard.run_id), local)},
+            inventory_path=tmp_path / "inventory.yml",
+            repo_root=tmp_path,
+            hostvars={"host-a": {"platform_worker_id": "worker-a"}},
+            min_free_disk_gb=0.1,
+            max_retries=2,
+        )
+    assert len(backend.enqueued) == 1  # a deterministic failure is not retried

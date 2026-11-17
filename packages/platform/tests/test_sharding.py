@@ -413,3 +413,24 @@ def test_shards_plan_cli_rejects_duplicates(
     )
     assert code == 2
     assert "duplicate" in capsys.readouterr().out
+
+
+def test_submit_script_dry_run_prints_the_plan_and_submits_nothing(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import sys
+
+    monkeypatch.delenv("JOBS_BROKER_URL", raising=False)
+    scripts = str(Path(__file__).resolve().parents[3] / "scripts")
+    monkeypatch.syspath_prepend(scripts)
+    sys.modules.pop("submit_sharded_score", None)
+    import submit_sharded_score
+
+    candidates = tmp_path / "c.json"
+    candidates.write_text(json.dumps([{"master_id": i} for i in range(12)]))
+    code = submit_sharded_score.main(
+        ["--candidates", str(candidates), "--shard-count", "4", "--job-id", "dry-1", "--dry-run"]
+    )
+    out = capsys.readouterr().out
+    assert code == 0
+    assert out.startswith("DRY RUN: nothing submitted") and "dry-1-s000of004" in out

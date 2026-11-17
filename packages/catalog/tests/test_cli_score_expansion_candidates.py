@@ -487,3 +487,58 @@ def test_bridge_span_and_coverage_delta_wire_through_the_cli(tmp_path: Path, sha
     row = json.loads(output.read_text())["candidates"][0]
     assert row["bridge_span"] == 2
     assert row["coverage_delta"] == 1
+
+
+def test_shard_outputs_merge_to_the_single_node_file_byte_for_byte(tmp_path: Path) -> None:
+    """Campaign Atlas I2: --shard-index/--shard-count + merge-scored-shards."""
+    dataset = _write_onehop_dataset(tmp_path)
+    masters_root = _write_masters_dataset(tmp_path)
+    policy = _write_release_format_policy(tmp_path / "policy.json")
+    graph = _write_pathfinding_graph(tmp_path / "graph.v4.json", existing_node_ids=[100, -1])
+    candidates = tmp_path / "candidates.json"
+    candidates.write_text(
+        json.dumps(
+            [
+                {"master_id": 901, "artist_id": 400, "artist_name": "Dan"},
+                {"master_id": 900, "artist_id": 100, "artist_name": "Alice"},
+            ]
+        )
+    )
+    out = tmp_path / "local" / "scored"
+    base = [
+        "--onehop-root",
+        str(dataset),
+        "--masters-root",
+        str(masters_root),
+        "--candidates",
+        str(candidates),
+        "--pathfinding-graph",
+        str(graph),
+        "--release-format-policy",
+        str(policy),
+        "--quiet",
+    ]
+    assert main(["score-expansion-candidates", *base, "--output", str(out / "single.json")]) == 0
+    shard_files = []
+    for index in range(3):
+        path = out / f"shard-{index}.json"
+        shard_files.append(path)
+        argv = ["score-expansion-candidates", *base, "--output", str(path)]
+        assert main([*argv, "--shard-count", "3", "--shard-index", str(index)]) == 0
+    merge = ["merge-scored-shards", "--candidates", str(candidates), "--shard-count", "3"]
+    for path in shard_files:
+        merge += ["--shard-output", str(path)]
+    assert main([*merge, "--output", str(out / "merged.json")]) == 0
+    assert (out / "merged.json").read_bytes() == (out / "single.json").read_bytes()
+
+    # A missing shard and a duplicated shard are both refused, and nothing is written.
+    active = [p for p in shard_files if json.loads(p.read_text())["candidates"]]
+    assert len(active) == 2  # the 2 masters land on 2 distinct shards at this count
+    refused = [a for p in [*shard_files[:0], active[0]] for a in ("--shard-output", str(p))]
+    head = ["merge-scored-shards", "--candidates", str(candidates), "--shard-count", "3"]
+    with pytest.raises(SystemExit):
+        main([*head, *refused, "--output", str(out / "bad1.json")])
+    dup = [a for p in [*shard_files, active[0]] for a in ("--shard-output", str(p))]
+    with pytest.raises(SystemExit):
+        main([*head, *dup, "--output", str(out / "bad2.json")])
+    assert not (out / "bad1.json").exists() and not (out / "bad2.json").exists()

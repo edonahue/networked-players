@@ -50,7 +50,9 @@ def _arguments(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--concurrency", type=int, default=None)
     parser.add_argument("--min-free-disk-gb", type=float, default=2.0)
     parser.add_argument("--keep-remote", action="store_true")
-    parser.add_argument("--dry-run", action="store_true", help="print the shard plan; submit nothing")
+    parser.add_argument(
+        "--dry-run", action="store_true", help="print the shard plan; submit nothing"
+    )
     parser.add_argument("--max-retries", type=int, default=None)
     return parser.parse_args(argv)
 
@@ -249,7 +251,9 @@ def main(argv: list[str] | None = None) -> int:
                 local_run=requests[index][1],
                 result=outcome.result,
             )
-            shard_rows.append((index, json.loads((completed / SHARD_OUTPUT).read_text())["candidates"]))
+            shard_rows.append(
+                (index, json.loads((completed / SHARD_OUTPUT).read_text())["candidates"])
+            )
             if not args.keep_remote:
                 remove_remote_run(
                     inventory_path=INVENTORY, repo_root=REPO_ROOT, host=host, remote_run=remote_run

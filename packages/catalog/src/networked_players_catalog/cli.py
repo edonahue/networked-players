@@ -4410,6 +4410,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                 raise SystemExit(
                     f"{shard_path} is not a shard output of this {args.shard_count}-way split"
                 )
+            if not shard_payload["candidates"] and not merge_plan.shard(int(meta["index"])).keys:
+                continue  # a legitimately empty shard: nothing to gather
             received.append((int(meta["index"]), shard_payload["candidates"]))
         try:
             merged = merge_scored_shards(merge_plan, received)

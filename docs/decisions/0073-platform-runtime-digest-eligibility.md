@@ -198,3 +198,52 @@ submit, `jobs` and status for everyone.
 - Operators find per-workload digests confusing: collapse to one runtime digest.
 - Closures grow so that most commits change every digest: the benefit is gone; revisit.
 - A worker needs attestation against a hostile host: that needs signing, a different ADR.
+
+## Addendum (2026-11-17): multi-worker shard dispatch (Atlas I2)
+
+This extends the retry and liveness rules above; it does not change them, so it is an
+addendum rather than a new ADR. **Nothing here is deployed or run against the real fleet.**
+
+- **`select_workers(workers, n, requirement, ...)`** (`scheduler.py`) returns up to `n`
+  distinct eligible workers, least loaded first with a stable tie-break. It applies exactly
+  the per-worker rules of `select_worker` (which is now `select_workers(..., 1)[0]`): fresh
+  advertisement, live RQ worker, per-workload digest match, architecture, tags, datasets, and
+  the workload's declared `min_memory_mb` against the worker's own `max_job_memory_mb`. A
+  worker below a floor is not eligible; no limit is ever raised to make a shard fit.
+- **Shards** (`sharding.py`). Items are assigned by `sha256(str(key))`, never Python's
+  `hash()`, so a plan is reproducible across processes and independent of input order.
+  Duplicate keys are rejected. A shard's input is bounded at 256 MB including shared inputs;
+  an oversized shard is cured by more shards (max 256), not by memory. Empty shards are not
+  submitted. Each active shard is its own platform job with run id `<job>-sNNNofMMM`, so its
+  retries are `-aN` attempt directories exactly as in decision 10.
+- **Fan-out** (`run_sharded`). One `run_with_retries` per shard, in threads bounded by the
+  eligible worker count (a Pi takes one job at a time) and 8. A balancer spreads in-flight
+  shards over distinct workers. A shard whose worker is lost (decision 10's RQ-liveness
+  rule, not the advertisement) is re-queued on another eligible worker within the shard's
+  declared retry budget; a deterministic failure is not retried. Every shard is attempted;
+  any that exhaust their budget raise `ShardedRunError` carrying the completed ones. There is
+  no partial-result publication: the caller writes the merged file only after a complete gather.
+- **Gather** (`verify_complete`, `verify_shard_keys`). Every active shard must appear exactly
+  once; missing, duplicated and unexpected shards are each named, and each shard must return
+  exactly its own keys. Results are merged in the plan's original key order, and the merged
+  file is written with temp-file, fsync, `os.replace` (`write_atomic`). Per-shard fetches keep
+  the existing verified atomic `completed/` promotion.
+- **Sharded candidate scoring** (`graph-core/sharded_scoring.py`). Candidates are sharded by
+  `master_id`; each shard runs `score_expansion_candidates` unchanged (scoring is per
+  candidate; the single batched roster query is only an optimisation). Acceptance
+  ("identical output to a single-node run") is tested as byte equality and equal canonical
+  content hash of the output document, for 1 to 64 shards, on a synthetic corpus covering
+  exclusions, flags, bridge span and coverage delta, and again with an injected lost worker
+  and retry. `score-expansion-candidates --shard-index/--shard-count` and
+  `merge-scored-shards` expose the same on the catalog CLI.
+- **Commands.** `networked-players-platform shards plan` and
+  `scripts/submit_sharded_score.py --dry-run` print the shard plan (and, with a broker, the
+  current eligible workers and a preview placement) and submit nothing. A real
+  `submit_sharded_score.py` run stages, dispatches (`dispatch_shards`), fetches, gathers and
+  writes the merged file; `merge-scored-shards` re-gathers fetched shard outputs.
+- **Not shipped (deliberately).** The worker-side `candidate.score-shard` workload is not
+  registered: it needs the masters dataset's worker-local identity and layout decided, and a
+  registration changes runtime digests and so a redeploy. Until then a real submission fails
+  closed with "not installed locally". Real-fleet behaviour (queue timing, a genuine lost
+  Pi, 1 GB memory under shard load) is unmeasured. Scoring needs the one-hop dataset, so it
+  is x86-worker work; the Pi-sized path is the shard fan-out for bounded checks (I3).
