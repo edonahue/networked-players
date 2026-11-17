@@ -1241,3 +1241,48 @@ a.contributor-card:focus-visible {
   font-size: 0.78rem;
   color: var(--muted);
 }
+
+/* Onward row: links out of a resolved round (Atlas P4). Quiet, one block
+   under the evidence sheet; every link keeps a 44px target. */
+.onward {
+  margin-top: 14px;
+}
+.onward__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 22px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.onward__group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 14px;
+}
+.onward__label {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.onward__link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--accent-strong);
+  font-weight: 600;
+}
+.onward__link:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+}
+.onward__note {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--muted);
+  font-size: 0.9rem;
+}

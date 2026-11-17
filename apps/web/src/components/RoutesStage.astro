@@ -70,6 +70,9 @@ const { label = "Record Routes round" } = Astro.props;
 
   <div data-testid="routes-evidence-mount"></div>
   <p class="stamp stage__provenance" data-testid="routes-provenance-note" hidden></p>
+  <nav class="onward" data-testid="routes-onward" aria-label="Keep going from this connection" hidden>
+    <ul class="onward__list"></ul>
+  </nav>
 
   <button type="button" class="stage__action" data-testid="routes-next" hidden>
     Deal the next round
