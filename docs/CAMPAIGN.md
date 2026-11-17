@@ -63,18 +63,18 @@ No catalog growth, no real collection published, no public data regenerated.
 
 | ID | Deliverable | Depends on | Status |
 |---|---|---|---|
-| SS | Theme-seed supply from the full corpus; re-widen the one-hop corpus after approval | F3 | In review (#284) |
+| SS | Theme-seed supply from the full corpus; re-widen the one-hop corpus after approval | F3 | Done (#284); synthetic-proven only, real Round 2 seed spec still to write |
 | S2 | ADR plus `collection-v1` and `playable-cohort-v2` on the performer graph; collection validator group | F1 | todo |
-| S3 | Collection page and guided journey; retire the synthetic `/cohorts/` example | S2, P1 | In review (#285) |
+| S3 | Collection page and guided journey; retire the synthetic `/cohorts/` example | S2, P1 | Done (#285); renders nothing until a Collection is promoted |
 | S4 | Owner approves and publishes the first real collection | S1–S3 | todo |
 | G1a | One evidence-release selection policy for graph, challenge and routes (ships only with a rebuild) | F3 | todo |
-| G1b | Align the challenge edge rule with the graph's | F3 | todo |
+| G1b | Align the challenge edge rule with the graph's | F3 | Investigated: all 119 hops are interior hops between two non-seed artists (graph keeps only seed-touching edges); fix belongs in the challenge builder and ships with the Round 2 rebuild |
 | G1c | ADR plus graph-derived contributor index; owner reviews the page-set diff | F3 | todo |
 | G2 | Record-centred Explore prototype and decision | P1 | todo |
 | G3 | Album-level atlas prototype and decision | S1 | todo |
 | G4 | Graph format change, only if a size or load-time trigger fires | F1 | todo |
 | P4 | Games link onward; player page leads with performance; copy pass | P1 | todo |
-| P5 | Self-hosted body and mono faces, motif consistency, structured data, text-only share images, retire `/demo/` | P3 | P5a In review (#283): fonts, JSON-LD, canonical, sitemap, demo retired; motif consistency and text-only share images remain |
+| P5 | Self-hosted body and mono faces, motif consistency, structured data, text-only share images, retire `/demo/` | P3 | P5a done (#283): fonts, JSON-LD, canonical, sitemap, demo retired; motif consistency and text-only share images remain |
 | P6 | "How it's built" page from published-artifact facts | F1 | todo |
 | I1 | Runtime digest in place of exact-commit matching; skew report; honoured retries; `jobs` commands | I0 | todo |
 | I2 | Multi-worker shard dispatch; sharded supply and scoring | I1 | todo |
