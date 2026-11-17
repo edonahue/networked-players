@@ -130,3 +130,7 @@ detection on the performer graph and tiles (ADR 0070).
   explicit round inputs. Its first real use will be Round 2; until then it is proven only on
   synthetic fixtures. The old hand-run runbook it replaces omitted `--albums` on the challenge
   build and had no daily-manifest freeze or migrate step.
+- 2026-11-17 (later) — F6 merged (#275); all tranche 1 code is on `main`. Report:
+  [ATLAS_TRANCHE_1_REPORT.md](ATLAS_TRANCHE_1_REPORT.md). Tranche 1 stays open on two owner
+  items (cluster legibility, the x86 worker's disk). The owner gave a standing go-ahead for
+  tranche 2 work that publishes nothing and deploys nothing; P4 and I4 started.
