@@ -18,6 +18,11 @@ from .cohort import (
     connectivity_failures,
     playable_cohort_failures,
 )
+from .collection import (
+    COLLECTION_SCHEMA_VERSION,
+    collection_failures,
+    collections_failures,
+)
 from .connection_daily_manifest import (
     CONNECTION_DAILY_MANIFEST_MODE,
     CONNECTION_DAILY_MANIFEST_SCHEMA_VERSION,
@@ -59,6 +64,7 @@ __all__ = [
     "ALBUM_ART_SCHEMA_VERSION",
     "ALBUM_CREDIT_MEMBERSHIP_SCHEMA_VERSION",
     "CHALLENGE_SCHEMA_VERSION",
+    "COLLECTION_SCHEMA_VERSION",
     "CONNECTION_DAILY_MANIFEST_MODE",
     "CONNECTION_DAILY_MANIFEST_SCHEMA_VERSION",
     "CONNECTION_ROUNDS_SCHEMA_VERSION",
@@ -81,6 +87,8 @@ __all__ = [
     "build_pin",
     "canonical_json",
     "challenge_failures",
+    "collection_failures",
+    "collections_failures",
     "connection_daily_manifest_failures",
     "connection_daily_manifest_failures_from_artifacts",
     "connection_rounds_failures",

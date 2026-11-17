@@ -57,6 +57,9 @@ ARTIFACT_CLASSES: dict[str, str] = {
     "evidence_release_registry": LIVE,
     "search_index": LIVE,
     "approved_pool": SOURCE,
+    # Many files, one group: `collection.py` checks each file's declared inputs
+    # itself, so the generic single-payload rule never visits it.
+    "collections": LIVE,
 }
 
 # Published paths (relative to apps/web/public/data/) of the frozen class.
@@ -101,6 +104,7 @@ EXPECTED_INPUTS: dict[str, tuple[str, ...]] = {
     "contributor_index": ("catalog", "challenge", "record_routes", "evidence_release_registry"),
     "album_hop_distances": ("catalog", "challenge", "record_routes", "contributor_index"),
     "search_index": ("catalog", "contributor_index"),
+    "collections": ("catalog", "pathfinding_graph"),
 }
 
 

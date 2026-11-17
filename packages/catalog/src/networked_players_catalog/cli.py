@@ -2119,6 +2119,47 @@ def _parser() -> argparse.ArgumentParser:
         "--data-root", type=Path, default=Path("apps/web/public/data")
     )
 
+    promote_collection = subparsers.add_parser(
+        "promote-collection",
+        help=(
+            "OPERATOR-RUN, never automatic (ADR 0074): turn the review packet's private "
+            "collection-selection export into a public Collection artifact over the committed "
+            "catalog and graph.v4. Stages under local/ unless --publish-to is given."
+        ),
+    )
+    promote_collection.add_argument("--selection", type=Path, required=True)
+    promote_collection.add_argument("--study", type=Path, required=True)
+    promote_collection.add_argument(
+        "--catalog", type=Path, default=Path("apps/web/public/data/catalog/albums.v1.json")
+    )
+    promote_collection.add_argument(
+        "--graph", type=Path, default=Path("apps/web/public/data/pathfinding/graph.v4.json")
+    )
+    promote_collection.add_argument("--collection-id", required=True)
+    promote_collection.add_argument("--cluster", type=int, default=None)
+    promote_collection.add_argument("--title", default=None)
+    promote_collection.add_argument("--intro", default=None)
+    promote_collection.add_argument(
+        "--text-file",
+        type=Path,
+        default=None,
+        help="owner-written public text: JSON {title, intro, attribution?}",
+    )
+    promote_collection.add_argument(
+        "--journey", default=None, help="comma-separated ordered record ids"
+    )
+    promote_collection.add_argument("--skip-playable", action="store_true")
+    promote_collection.add_argument("--generated-at", required=True)
+    promote_collection.add_argument(
+        "--output-dir", type=Path, default=Path("local/collections-staging")
+    )
+    promote_collection.add_argument(
+        "--publish-to",
+        type=Path,
+        default=None,
+        help="the public data root (apps/web/public/data); writes <root>/collections/",
+    )
+
     diff_artifact_version = subparsers.add_parser(
         "diff-artifact-version",
         help=(
@@ -2444,6 +2485,24 @@ def _parser() -> argparse.ArgumentParser:
 
     register_round_parser(subparsers)
     return parser
+
+
+
+def _load_published_collections(data_root: Path) -> dict[str, Any] | None:
+    """The published Collections (ADR 0074) under `<data_root>/collections/`:
+    `None` when the directory does not exist (nothing published, which is
+    valid). Every `*.v1.json` file other than the index is loaded, so a file the
+    index forgot to list is reported rather than ignored."""
+    directory = data_root / "collections"
+    if not directory.is_dir():
+        return None
+    index_path = directory / "index.v1.json"
+    index = json.loads(index_path.read_text()) if index_path.is_file() else None
+    files: dict[str, Any] = {}
+    for path in sorted(directory.glob("*.v1.json")):
+        if path.name != "index.v1.json":
+            files[path.name.removesuffix(".v1.json")] = json.loads(path.read_text())
+    return {"index": index, "files": files}
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -5592,6 +5651,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             evidence_release_registry=json.loads(args.evidence_release_registry.read_text()),
             search_index=json.loads(args.search_index.read_text()),
             approved_pool=json.loads(args.approved_pool.read_text()),
+            # None when no collections have been published (ADR 0074).
+            collections=_load_published_collections(args.data_root),
         )
         report = public_artifacts_failures(
             **public_artifacts,
@@ -5631,6 +5692,11 @@ def main(argv: Sequence[str] | None = None) -> int:
             )
         )
         return 0 if ok else 1
+
+    if args.command == "promote-collection":
+        from .collection_promote import run_promote_collection
+
+        return run_promote_collection(args)
 
     if args.command == "diff-artifact-version":
         from networked_players_contracts.artifact_diff import artifact_diff
