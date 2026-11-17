@@ -2904,8 +2904,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         from networked_players_graph_core.challenge import (
             build_challenge_v2,
             build_challenge_v2_from_matched,
-            resolved_album_from_dict,
             carry_forward_scope_outcomes,
+            resolved_album_from_dict,
             stamp_challenge_version,
             validate_challenge,
         )

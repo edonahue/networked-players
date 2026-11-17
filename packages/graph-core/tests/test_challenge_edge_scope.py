@@ -16,9 +16,9 @@ from typing import Any
 
 import duckdb
 import pytest
+
 from conftest import SNAPSHOT_DATE, _performed, _release, write_synthetic_dataset
 from networked_players_contracts import challenge_hops_missing_from_graph
-
 from networked_players_graph_core.challenge import (
     MatchedAlbum,
     build_challenge_v2_from_matched,

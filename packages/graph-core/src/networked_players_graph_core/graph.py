@@ -1299,7 +1299,8 @@ class CreditGraph:
         if from_artist_id == to_artist_id:
             raise GraphError("from_artist_id and to_artist_id must differ")
         scope_e = (
-            f" AND {seed_scope_sql(seed_artist_ids, a_column='e.artist_a_id', b_column='e.artist_b_id')}"
+            " AND "
+            + seed_scope_sql(seed_artist_ids, a_column="e.artist_a_id", b_column="e.artist_b_id")
             if seed_artist_ids is not None
             else ""
         )
