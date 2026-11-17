@@ -26,12 +26,20 @@ itself verifies it and refuses a different input.
 A staging directory with NO progress.json (written by a pre-I4 build) is
 reported with the legacy DuckDB-based part validation and is not resumable.
 
+`writer_lock_held` is a read-only check of the advisory flock a running parse-releases
+holds on the staging dir (`.writer.lock`); when true, `resume_safe` is false -- the
+original writer is alive. The `unrecorded_files_resume_will_delete` list comes from the
+same function resume itself uses. For a promoted snapshot, any leftover progress.json /
+.writer.lock is reported (cleanup happens in the next parse-releases invocation).
+
 Read-only: never modifies or deletes anything. Safe to run against a
 STILL-RUNNING ingest too -- useful for exactly that: distinguishing "done
 so far, confirmed valid" from "currently being written, don't trust yet."
 
 Output is a single JSON object on stdout. Exit codes: 0 nothing to look at,
 1 interrupted_or_in_progress, 2 ambiguous (multiple staging dirs).
+
+Run with `uv run python3` (imports the catalog package's resume helpers).
 
 Usage: python3 scripts/check_ingest_recovery.py <snapshot> \
          [--processed-dir local/processed/discogs] [--chunk-releases 5000]
@@ -44,6 +52,12 @@ import hashlib
 import json
 import subprocess
 from pathlib import Path
+
+from networked_players_catalog.discogs.resume import (
+    find_staging_dirs,
+    lock_is_held,
+    unrecorded_files,
+)
 
 DEFAULT_CHUNK_RELEASES = 5000  # matches packages/catalog's parquet.py default
 
@@ -111,13 +125,11 @@ def _check_progress_record(snapshot: str, staging_root: Path) -> dict[str, objec
             problems.append(f"missing: {item['path']}")
         elif path.stat().st_size != item["size_bytes"] or _sha256(path) != item["sha256"]:
             problems.append(f"altered: {item['path']}")
-    unrecorded = sorted(
-        p.relative_to(staging_root).as_posix()
-        for p in staging_root.rglob("*")
-        if p.is_file()
-        and p.relative_to(staging_root).as_posix() not in recorded
-        and p.name not in ("progress.json", ".progress.json.tmp")
-    )
+    # The same function resume uses to decide what to delete -- not a copy of its rule.
+    unrecorded = [
+        p.relative_to(staging_root).as_posix() for p in unrecorded_files(staging_root, record)
+    ]
+    writer_running = lock_is_held(staging_root)
     result.update(
         state=state,
         parts_completed=parts,
@@ -126,9 +138,13 @@ def _check_progress_record(snapshot: str, staging_root: Path) -> dict[str, objec
         recorded_parts_ok=not problems,
         recorded_part_problems=problems,
         unrecorded_files_resume_will_delete=unrecorded,
-        resume_safe=not problems,
+        writer_lock_held=writer_running,
+        resume_safe=not problems and not writer_running,
         recommendation=(
-            "re-run the same parse-releases command with --resume (identical parameters)"
+            "a parse-releases process currently holds the writer lock (.writer.lock): it is "
+            "still running; do not resume or delete anything while it runs"
+            if writer_running
+            else "re-run the same parse-releases command with --resume (identical parameters)"
             if not problems
             else "a recorded part is missing/altered: delete the staging dir and re-run "
             "without --resume"
@@ -140,9 +156,24 @@ def _check_progress_record(snapshot: str, staging_root: Path) -> dict[str, objec
 def check_recovery(snapshot: str, processed_dir: Path, chunk_releases: int) -> dict[str, object]:
     final_root = processed_dir / f"snapshot={snapshot}"
     if final_root.exists():
-        return {"snapshot": snapshot, "status": "complete", "final_root": str(final_root)}
+        leftovers = [
+            name for name in ("progress.json", ".writer.lock") if (final_root / name).exists()
+        ]
+        result: dict[str, object] = {
+            "snapshot": snapshot,
+            "status": "complete",
+            "final_root": str(final_root),
+        }
+        if leftovers:
+            result["leftover_files_in_promoted_snapshot"] = leftovers
+            result["leftover_note"] = (
+                "harmless leftovers of a crash between promotion and cleanup; they are not "
+                "listed in manifest.json and are removed (once the manifest verifies) by the "
+                "next parse-releases invocation for this snapshot"
+            )
+        return result
 
-    staging_candidates = sorted(processed_dir.glob(f".snapshot={snapshot}.tmp-*"))
+    staging_candidates = find_staging_dirs(processed_dir, snapshot)
     if not staging_candidates:
         return {"snapshot": snapshot, "status": "not_started"}
     if len(staging_candidates) > 1:
