@@ -134,3 +134,8 @@ detection on the performer graph and tiles (ADR 0070).
   [ATLAS_TRANCHE_1_REPORT.md](ATLAS_TRANCHE_1_REPORT.md). Tranche 1 stays open on two owner
   items (cluster legibility, the x86 worker's disk). The owner gave a standing go-ahead for
   tranche 2 work that publishes nothing and deploys nothing; P4 and I4 started.
+- 2026-11-17 (later still) — P4 (#278, #279), I4 (#277), I1 (#280) and S2 (#281) merged, each
+  after an independent review whose findings were fixed before merge. Nothing was deployed and
+  no real data was rebuilt. Fleet rollout of I1 is an operator step listed in
+  `docs/OPERATOR_SETUP.md`; it waits on the x86 worker's disk. Fixed an intermittent Record
+  Routes test that clicked before its round had loaded.

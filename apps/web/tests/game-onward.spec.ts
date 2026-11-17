@@ -276,11 +276,22 @@ for (const theme of ["dark", "light"] as const) {
     ).toEqual([]);
 
     await page.goto(`/play/routes/?route=${routeOne.id}&motion=off`);
+    // Wait for the stage to finish loading its round before guessing: a click
+    // that lands first is ignored and the reveal never happens (an
+    // intermittent CI failure, 2026-11-17).
+    await expect(page.getByTestId("routes-stage")).toHaveAttribute(
+      "data-phase",
+      "guessing",
+    );
     await page
       .locator(
         '[data-testid="routes-length-tray"] .chip[data-length="one_hop"]',
       )
       .click();
+    await expect(page.getByTestId("routes-stage")).toHaveAttribute(
+      "data-phase",
+      "revealed",
+    );
     await expect(page.getByTestId("routes-onward")).toBeVisible();
     results = await new AxeBuilder({ page }).analyze();
     expect(
