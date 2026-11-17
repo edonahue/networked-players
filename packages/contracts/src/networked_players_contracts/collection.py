@@ -10,6 +10,10 @@ What this module does NOT do: decide, build or publish anything. It only
 checks. The builder is `networked_players_catalog.collection_promote`; nothing
 here runs automatically.
 
+Totality: every validator here reports malformed input as a failure string and
+never raises, so one bad collection cannot cost `validate-public-artifacts` the
+output of its other groups.
+
 Graph access goes through `GraphIndex`, a thin view over the graph's own CSR
 arrays. It never materialises the edge set as Python tuples; an edge lookup
 scans one node's neighbour slice. Pure Python, stdlib only (runs on Pi workers).
@@ -20,7 +24,10 @@ from __future__ import annotations
 import json
 import re
 from collections.abc import Iterator
+from datetime import datetime
+from pathlib import Path
 from typing import Any, TypeGuard
+from urllib.parse import urlsplit
 
 from .canonical import content_hash
 
@@ -34,9 +41,18 @@ MIN_DISTINCT_ARTISTS = 3
 MIN_BRIDGE_PLAYERS = 1
 MAX_BRIDGE_PLAYERS = 12
 MIN_BRIDGE_RECORDS = 2
-#: Longest route, counted in performers (so at most MAX_VIA - 1 performer-to-
-#: performer hops). A bound on payload size and on builder work.
-MAX_VIA = 7
+MIN_BRIDGE_ARTISTS = 2
+#: The site's real, user-facing hop budget between people
+#: (`findAlbumRoute(..., maxHops = 4)` in `apps/web/src/game/pathfindingGraph.ts`,
+#: called with 4 by `connect.ts`). The site's BFS gets that budget PLUS two
+#: invisible anchor hops (album -> first performer, last performer -> album),
+#: and `stripAlbumAnchors` removes those two, leaving performer-to-performer
+#: hops. A route through `via` has `len(via) - 1` such hops (a single shared
+#: performer is 0 hops, two total anchor edges). So a published route is
+#: reachable by the site's own search iff `len(via) - 1 <= 4`.
+MAX_SITE_HOPS = 4
+#: Longest route, counted in performers: `MAX_SITE_HOPS + 1`.
+MAX_VIA = MAX_SITE_HOPS + 1
 MAX_TITLE_CHARS = 120
 MAX_INTRO_CHARS = 1500
 
@@ -48,6 +64,11 @@ INPUT_NAMES = ("catalog", "pathfinding_graph")
 
 _SLUG = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 _VERSION = re.compile(r"^collection-v1-[0-9a-f]{12}$")
+_ISO_TIMESTAMP = re.compile(
+    r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?(?:Z|[+-]\d{2}:\d{2})$"
+)
+_FILE_NAME = re.compile(r"^([a-z0-9]+(?:-[a-z0-9]+)*)\.v1\.json$")
+INDEX_FILE_NAME = "index.v1.json"
 
 # Private-field denylist (ADR 0074). Exact keys at any nesting level, plus any
 # key ending `_private`.
@@ -67,26 +88,44 @@ PRIVATE_KEYS = frozenset(
 )
 PRIVATE_KEY_SUFFIX = "_private"
 
-_FORBIDDEN_SUBSTRINGS = (
-    "/" + "home/",
-    "data/" + "private",
-    "local" + "/",
-    "DISCOGS" + "_TOKEN",
-    "." + "ssh",
+# Checked on EVERY string value in the artifact (names, titles and ids
+# included). Anchored so ordinary music text is not caught: `/home/` must not
+# be preceded by a word character, `local/` is lowercase and must be followed
+# by a word character, and so on.
+_PATH_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
+    ("/home/", re.compile(r"(?<!\w)/home/")),
+    ("data/private", re.compile(r"data/private")),
+    ("local/", re.compile(r"(?<![\w/])local/\w")),
+    ("DISCOGS_TOKEN", re.compile(r"DISCOGS_TOKEN")),
+    (".ssh", re.compile(r"(?<![\w])\.ssh\b")),
 )
-# Copy must never suggest the owner's private record collection (ADR 0072 s5)
-# or infer influence / working relationships from a shared credit (AGENTS.md).
-_FORBIDDEN_PHRASES = (
-    "my collection",
-    "my record",
-    "my shelf",
-    "my library",
-    "personal collection",
-    "private collection",
-    "from my ",
-    "worked with",
-    "collaborated with",
-    "influenced",
+# Checked on the owner-written copy only (title, intro, attribution label):
+# copy must never suggest the owner's private record collection (ADR 0072 s5).
+_OWNER_COLLECTION = re.compile(
+    r"\b(?:my (?:own )?(?:record |vinyl )?(?:collection|records|shelf|shelves|library)"
+    r"|(?:personal|private) (?:record )?collection)\b",
+    re.IGNORECASE,
+)
+# Title and intro only: copy must not infer influence or a working relationship
+# from a shared credit (AGENTS.md). Names and record titles are facts, not claims.
+_INFLUENCE = re.compile(r"\b(?:worked with|collaborated with|influenced)\b", re.IGNORECASE)
+
+# Segments that mark a personal page on a music-database or social site.
+_URL_DENY_SEGMENTS = frozenset(
+    {
+        "user",
+        "users",
+        "collection",
+        "mycollection",
+        "wantlist",
+        "mywantlist",
+        "people",
+        "profile",
+        "seller",
+        "sell",
+        "lists",
+        "list",
+    }
 )
 
 _TOP_REQUIRED = frozenset(
@@ -116,10 +155,15 @@ _INDEX_KEYS = frozenset({"schema_version", "collections"})
 _INDEX_ENTRY_KEYS = frozenset(
     {"collection_id", "title", "artifact_path", "record_count", "collection_version"}
 )
+_COLLECTIONS_KEYS = frozenset({"index", "files", "problems"})
 
 
 def _is_int(value: Any) -> TypeGuard[int]:
     return isinstance(value, int) and not isinstance(value, bool)
+
+
+def _is_str(value: Any) -> TypeGuard[str]:
+    return isinstance(value, str)
 
 
 def collection_version(collection: dict[str, Any]) -> str:
@@ -132,6 +176,14 @@ def collection_version(collection: dict[str, Any]) -> str:
 
 def collection_artifact_path(collection_id: str) -> str:
     return f"/data/collections/{collection_id}.v1.json"
+
+
+def artist_key(album: Any) -> Any:
+    """A catalog album's primary-artist identity: `artist_id`, else the name."""
+    if not isinstance(album, dict):
+        return None
+    value = album.get("artist_id", album.get("artist"))
+    return value if isinstance(value, (int, str)) and not isinstance(value, bool) else None
 
 
 # ---------------------------------------------------------------- graph view
@@ -158,17 +210,16 @@ class GraphIndex:
         """Why a graph payload cannot be indexed ([] when it can)."""
         if not isinstance(graph, dict):
             return ["pathfinding graph must be an object"]
-        for key in ("node_ids", "names", "offsets", "neighbors", "evidence_release_ids"):
+        for key in ("node_ids", "offsets", "neighbors", "evidence_release_ids"):
             value = graph.get(key)
-            if not isinstance(value, list) or not all(
-                _is_int(x) or isinstance(x, str) for x in value
-            ):
-                return [f"pathfinding graph {key} must be an array"]
-        if not all(_is_int(x) for x in graph["node_ids"] + graph["offsets"] + graph["neighbors"]):
-            return ["pathfinding graph node_ids/offsets/neighbors must be integers"]
+            if not isinstance(value, list) or not all(_is_int(x) for x in value):
+                return [f"pathfinding graph {key} must be an array of integers"]
+        names = graph.get("names")
+        if not isinstance(names, list) or not all(_is_str(x) for x in names):
+            return ["pathfinding graph names must be an array of strings"]
         node_count = len(graph["node_ids"])
         offsets = graph["offsets"]
-        if len(graph["names"]) != node_count or len(offsets) != node_count + 1:
+        if len(names) != node_count or len(offsets) != node_count + 1:
             return ["pathfinding graph arrays are not aligned"]
         if (
             offsets[0] != 0
@@ -194,9 +245,6 @@ class GraphIndex:
 
     def anchor_index(self, album_id: str) -> int | None:
         return self._anchor_by_album.get(album_id)
-
-    def is_virtual(self, index: int) -> bool:
-        return self.node_ids[index] < 0
 
     def performer_indices(self, album_id: str) -> Iterator[int]:
         """Real (non-anchor) neighbours of the album's anchor, CSR order."""
@@ -244,16 +292,80 @@ def private_field_failures(value: Any, path: str = "$") -> list[str]:
     return failures
 
 
-def _text_failures(label: str, text: str) -> list[str]:
+def string_values(value: Any, path: str = "$") -> Iterator[tuple[str, str]]:
+    """Every string VALUE in a JSON tree with its path (keys excluded)."""
+    if isinstance(value, str):
+        yield path, value
+    elif isinstance(value, dict):
+        for key, child in value.items():
+            yield from string_values(child, f"{path}.{key}")
+    elif isinstance(value, list):
+        for i, child in enumerate(value):
+            yield from string_values(child, f"{path}[{i}]")
+
+
+def path_text_failures(value: Any) -> list[str]:
+    """Forbidden path/credential substrings in ANY string value."""
+    failures: list[str] = []
+    for path, text in string_values(value):
+        failures.extend(
+            f"{path} contains forbidden substring {label!r}"
+            for label, pattern in _PATH_PATTERNS
+            if pattern.search(text)
+        )
+    return failures
+
+
+def copy_failures(label: str, text: str, *, claims: bool) -> list[str]:
+    """Owner-written copy: no suggestion of the owner's own collection; and,
+    for `claims` copy (title, intro), no inferred influence or working
+    relationship."""
     failures = [
-        f"{label} contains forbidden substring {s!r}" for s in _FORBIDDEN_SUBSTRINGS if s in text
+        f"{label} contains forbidden phrase {m.group(0).lower()!r}"
+        for m in _OWNER_COLLECTION.finditer(text)
     ]
-    lowered = text.lower()
-    failures.extend(
-        f"{label} contains forbidden phrase {phrase!r}"
-        for phrase in _FORBIDDEN_PHRASES
-        if phrase in lowered
-    )
+    if claims:
+        failures.extend(
+            f"{label} contains forbidden phrase {m.group(0).lower()!r}"
+            for m in _INFLUENCE.finditer(text)
+        )
+    return failures
+
+
+def is_iso_timestamp(value: Any) -> bool:
+    if not isinstance(value, str) or not _ISO_TIMESTAMP.match(value):
+        return False
+    try:
+        datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return False
+    return True
+
+
+def url_failures(label: str, url: Any) -> list[str]:
+    """A public source URL: https, a host, no credentials, query or fragment,
+    and no personal-page path (user, collection, wantlist, profile, ...)."""
+    if not isinstance(url, str) or re.search(r"\s", url) or not url.startswith("https://"):
+        return [f"{label} must be an https URL"]
+    try:
+        parts = urlsplit(url)
+        host = parts.hostname
+    except ValueError:
+        return [f"{label} is not a valid URL"]
+    if not host:
+        return [f"{label} must have a host"]
+    failures: list[str] = []
+    if parts.username is not None or parts.password is not None:
+        failures.append(f"{label} must not carry credentials")
+    if parts.query or parts.fragment:
+        failures.append(f"{label} must not carry a query or fragment")
+    for segment in (s.lower() for s in parts.path.split("/") if s):
+        if segment in _URL_DENY_SEGMENTS:
+            failures.append(
+                f"{label} points at a personal page (path segment {segment!r}); a source must "
+                "be a public page, never a user, collection, wantlist or profile"
+            )
+            break
     return failures
 
 
@@ -272,7 +384,10 @@ def _route_failures(
         or not 1 <= len(via) <= MAX_VIA
         or not all(_is_int(v) and v > 0 for v in via)
     ):
-        return [f"{label}: via must be 1..{MAX_VIA} positive performer artist ids"]
+        return [
+            f"{label}: via must be 1..{MAX_VIA} positive performer artist ids (at most "
+            f"{MAX_SITE_HOPS} hops, the site's own search limit)"
+        ]
     if len(set(via)) != len(via):
         return [f"{label}: via repeats a performer"]
     if (
@@ -328,16 +443,25 @@ def _route_failures(
 
 def collection_failures(collection: Any, catalog: Any, graph: Any) -> list[str]:
     """Every contract failure in one collection-v1 artifact, validated against
-    the catalog and the pathfinding graph it claims to be a view of."""
+    the catalog and the pathfinding graph it claims to be a view of. Never
+    raises."""
+    try:
+        return _collection_failures(collection, catalog, graph)
+    except Exception as exc:  # last resort: report, never lose other groups
+        return [f"collection could not be validated ({type(exc).__name__}: {exc})"]
+
+
+def _collection_failures(collection: Any, catalog: Any, graph: Any) -> list[str]:
     if not isinstance(collection, dict):
         return ["collection must be an object"]
     failures: list[str] = []
     failures.extend(private_field_failures(collection))
+    failures.extend(path_text_failures(collection))
 
     keys = set(collection)
     if (keys - _TOP_OPTIONAL) != _TOP_REQUIRED:
         missing = sorted(_TOP_REQUIRED - keys)
-        extra = sorted(keys - _TOP_REQUIRED - _TOP_OPTIONAL)
+        extra = sorted(str(k) for k in keys - _TOP_REQUIRED - _TOP_OPTIONAL)
         failures.append(f"collection top-level keys wrong (missing {missing}, unexpected {extra})")
         if missing:
             return failures
@@ -345,23 +469,18 @@ def collection_failures(collection: Any, catalog: Any, graph: Any) -> list[str]:
         failures.append(f"schema_version must be {COLLECTION_SCHEMA_VERSION}")
 
     collection_id = collection.get("collection_id")
-    if (
-        not isinstance(collection_id, str)
-        or not _SLUG.match(collection_id)
-        or len(collection_id) > 64
-    ):
+    if not _is_str(collection_id) or not _SLUG.match(collection_id) or len(collection_id) > 64:
         failures.append("collection_id must be a lowercase slug (a-z, 0-9, hyphens), 1..64 chars")
     for field, limit in (("title", MAX_TITLE_CHARS), ("intro", MAX_INTRO_CHARS)):
         value = collection.get(field)
-        if not isinstance(value, str) or not value.strip():
+        if not _is_str(value) or not value.strip():
             failures.append(f"{field} is required for publication and must be non-empty text")
         elif len(value) > limit:
             failures.append(f"{field} must be at most {limit} characters")
         else:
-            failures.extend(_text_failures(field, value))
-    generated_at = collection.get("generated_at")
-    if not isinstance(generated_at, str) or not generated_at:
-        failures.append("generated_at must be a non-empty string")
+            failures.extend(copy_failures(field, value, claims=True))
+    if not is_iso_timestamp(collection.get("generated_at")):
+        failures.append("generated_at must be an ISO-8601 timestamp (e.g. 2026-01-01T00:00:00Z)")
 
     graph_failures = GraphIndex.shape_failures(graph)
     gi: GraphIndex | None = None
@@ -373,20 +492,20 @@ def collection_failures(collection: Any, catalog: Any, graph: Any) -> list[str]:
         gi = GraphIndex(graph)
 
     albums = catalog.get("albums") if isinstance(catalog, dict) else None
-    album_by_id = (
-        {a["id"]: a for a in albums if isinstance(a, dict) and isinstance(a.get("id"), str)}
-        if isinstance(albums, list)
-        else {}
-    )
+    album_by_id: dict[str, Any] = {}
+    if isinstance(albums, list):
+        album_by_id = {
+            a["id"]: a for a in albums if isinstance(a, dict) and isinstance(a.get("id"), str)
+        }
 
     records = _record_failures(collection.get("records"), album_by_id, failures)
     record_set = set(records)
 
-    _bridge_failures(collection.get("bridge_players"), record_set, gi, failures)
+    _bridge_failures(collection.get("bridge_players"), record_set, album_by_id, gi, failures)
     if "journey" in collection:
-        _journey_failures(collection["journey"], record_set, gi, failures)
+        _journey_failures(collection["journey"], record_set, album_by_id, gi, failures)
     if "playable_cohort" in collection:
-        _playable_failures(collection["playable_cohort"], records, gi, failures)
+        _playable_failures(collection["playable_cohort"], records, album_by_id, gi, failures)
     if "attribution" in collection:
         _attribution_failures(collection["attribution"], failures)
     _provenance_failures(collection, catalog, graph, failures)
@@ -409,7 +528,9 @@ def _record_failures(records: Any, album_by_id: dict[str, Any], failures: list[s
         if album is None:
             failures.append(f"record {record!r} is not in the catalog")
             continue
-        artists.add(album.get("artist_id", album.get("artist")))
+        key = artist_key(album)
+        if key is not None:
+            artists.add(key)
     if len(artists) < MIN_DISTINCT_ARTISTS:
         failures.append(
             f"records must span at least {MIN_DISTINCT_ARTISTS} distinct primary artists, "
@@ -418,8 +539,17 @@ def _record_failures(records: Any, album_by_id: dict[str, Any], failures: list[s
     return list(records)
 
 
+def _same_artist(a: str, b: str, album_by_id: dict[str, Any]) -> bool:
+    key_a, key_b = artist_key(album_by_id.get(a)), artist_key(album_by_id.get(b))
+    return key_a is not None and key_a == key_b
+
+
 def _bridge_failures(
-    bridges: Any, record_set: set[str], gi: GraphIndex | None, failures: list[str]
+    bridges: Any,
+    record_set: set[str],
+    album_by_id: dict[str, Any],
+    gi: GraphIndex | None,
+    failures: list[str],
 ) -> None:
     if not isinstance(bridges, list) or not (
         MIN_BRIDGE_PLAYERS <= len(bridges) <= MAX_BRIDGE_PLAYERS
@@ -428,7 +558,7 @@ def _bridge_failures(
             f"bridge_players must be an array of {MIN_BRIDGE_PLAYERS}..{MAX_BRIDGE_PLAYERS} players"
         )
         return
-    seen: set[Any] = set()
+    seen: set[int] = set()
     for i, bridge in enumerate(bridges):
         if not isinstance(bridge, dict) or set(bridge) != _BRIDGE_KEYS:
             failures.append(f"bridge_players[{i}] must have exactly keys {sorted(_BRIDGE_KEYS)}")
@@ -461,6 +591,15 @@ def _bridge_failures(
                     f"{label}: not adjacent to record {record!r}'s anchor in the pathfinding "
                     "graph (not credited as a performer on it)"
                 )
+        # A bridge connects DIFFERENT artists' records. A primary artist is
+        # adjacent to all of their own albums, so without this rule one artist
+        # would "bridge" nothing but their own discography.
+        artists = {artist_key(album_by_id.get(r)) for r in on if r in record_set} - {None}
+        if len(artists) < MIN_BRIDGE_ARTISTS:
+            failures.append(
+                f"{label}: records must span at least {MIN_BRIDGE_ARTISTS} distinct primary "
+                "artists; a player credited only on one artist's own records bridges nothing"
+            )
         if gi is not None:
             index = gi.index_by_id.get(player)
             if index is None:
@@ -470,7 +609,11 @@ def _bridge_failures(
 
 
 def _journey_failures(
-    journey: Any, record_set: set[str], gi: GraphIndex | None, failures: list[str]
+    journey: Any,
+    record_set: set[str],
+    album_by_id: dict[str, Any],
+    gi: GraphIndex | None,
+    failures: list[str],
 ) -> None:
     if not isinstance(journey, list) or not journey:
         failures.append("journey must be a non-empty array of hops")
@@ -482,9 +625,14 @@ def _journey_failures(
             return
         a, b = hop["from_record"], hop["to_record"]
         label = f"journey hop {i + 1} ({a} -> {b})"
-        if a not in record_set or b not in record_set or a == b:
+        if not _is_str(a) or not _is_str(b) or a not in record_set or b not in record_set or a == b:
             failures.append(f"{label}: both ends must be distinct records of the collection")
             continue
+        if _same_artist(a, b, album_by_id):
+            failures.append(
+                f"{label}: both records have the same primary artist; a hop must connect "
+                "different artists' records"
+            )
         if visited and visited[-1] != a:
             failures.append(f"{label}: must start where the previous hop ended ({visited[-1]})")
         if not visited:
@@ -496,7 +644,11 @@ def _journey_failures(
 
 
 def _playable_failures(
-    playable: Any, records: list[str], gi: GraphIndex | None, failures: list[str]
+    playable: Any,
+    records: list[str],
+    album_by_id: dict[str, Any],
+    gi: GraphIndex | None,
+    failures: list[str],
 ) -> None:
     if not isinstance(playable, dict) or set(playable) != _PLAYABLE_KEYS:
         failures.append(f"playable_cohort must have exactly keys {sorted(_PLAYABLE_KEYS)}")
@@ -519,9 +671,17 @@ def _playable_failures(
             continue
         a, b = pair["record_a"], pair["record_b"]
         label = f"playable pair {i + 1} ({a} -> {b})"
-        if a not in position or b not in position or position[a] >= position[b]:
-            failures.append(f"{label}: record_a must precede record_b, both in the collection")
+        if not _is_str(a) or not _is_str(b) or a not in position or b not in position:
+            failures.append(f"{label}: both records must be records of the collection")
             continue
+        if position[a] >= position[b]:
+            failures.append(f"{label}: record_a must precede record_b in the collection")
+            continue
+        if _same_artist(a, b, album_by_id):
+            failures.append(
+                f"{label}: both records have the same primary artist; a pair must connect "
+                "different artists' records"
+            )
         key = (position[a], position[b])
         if previous is not None and key <= previous:
             failures.append(f"{label}: pairs must be unique and ordered by collection record order")
@@ -539,13 +699,12 @@ def _attribution_failures(attribution: Any, failures: list[str]) -> None:
     if not isinstance(attribution, dict) or set(attribution) != _ATTRIBUTION_KEYS:
         failures.append(f"attribution must have exactly keys {sorted(_ATTRIBUTION_KEYS)}")
         return
-    label, url = attribution["label"], attribution["source_url"]
-    if not isinstance(label, str) or not label.strip():
+    label = attribution["label"]
+    if not _is_str(label) or not label.strip():
         failures.append("attribution.label must be non-empty text")
     else:
-        failures.extend(_text_failures("attribution.label", label))
-    if not isinstance(url, str) or not re.match(r"^https://[^\s]+$", url):
-        failures.append("attribution.source_url must be an https URL")
+        failures.extend(copy_failures("attribution.label", label, claims=False))
+    failures.extend(url_failures("attribution.source_url", attribution["source_url"]))
 
 
 def _current_versions(catalog: Any, graph: Any) -> dict[str, Any]:
@@ -571,7 +730,7 @@ def _provenance_failures(
         current = _current_versions(catalog, graph)
         for name in INPUT_NAMES:
             declared = inputs[name]
-            if not isinstance(declared, str) or not declared:
+            if not _is_str(declared) or not declared:
                 failures.append(f"provenance.inputs[{name!r}] must be a version string")
             elif declared != current[name]:
                 failures.append(
@@ -579,7 +738,7 @@ def _provenance_failures(
                     f"{name} is {current[name]!r} -- re-run promote-collection and re-review"
                 )
     declared_version = provenance["collection_version"]
-    if not isinstance(declared_version, str) or not _VERSION.match(declared_version):
+    if not _is_str(declared_version) or not _VERSION.match(declared_version):
         failures.append("provenance.collection_version is not well-formed")
     else:
         expected = collection_version(collection)
@@ -593,25 +752,72 @@ def _provenance_failures(
 # ------------------------------------------------------------ index + group
 
 
+def load_collections_directory(directory: Path) -> dict[str, Any] | None:
+    """Load `collections/` for validation: `None` when the directory does not
+    exist (nothing published: valid). EVERY entry is accounted for: the index,
+    `<id>.v1.json` files, and everything else (other names, subdirectories,
+    symlinks) is reported in `problems` so a stray private file cannot sit in a
+    served directory unchecked. Unreadable or malformed JSON is also a problem,
+    never an exception."""
+    if not directory.is_dir():
+        return None
+    index: Any = None
+    files: dict[str, Any] = {}
+    problems: list[str] = []
+    for entry in sorted(directory.iterdir(), key=lambda p: p.name):
+        name = entry.name
+        match = _FILE_NAME.match(name)
+        if entry.is_symlink() or not entry.is_file() or (name != INDEX_FILE_NAME and not match):
+            problems.append(
+                f"unexpected entry {name!r} in collections/: only {INDEX_FILE_NAME} and "
+                "<id>.v1.json files listed in it may be published"
+            )
+            continue
+        try:
+            payload = json.loads(entry.read_text(encoding="utf-8"))
+        except (OSError, ValueError) as exc:
+            problems.append(f"{name} is unreadable or not valid JSON ({type(exc).__name__})")
+            continue
+        if name == INDEX_FILE_NAME:
+            index = payload
+        elif match:
+            files[match.group(1)] = payload
+    return {"index": index, "files": files, "problems": problems}
+
+
 def collections_failures(collections: Any, catalog: Any, graph: Any) -> list[str]:
     """The `collections` group. `collections` is `None` (no collections
-    directory: passes) or `{"index": <index payload>, "files": {collection_id:
-    <payload>}}`. Every collection the index lists is validated; a collection
-    file not listed in the index is a failure."""
+    directory: passes) or what `load_collections_directory` returns:
+    `{"index", "files": {collection_id: payload}, "problems"?: [str]}`. Every
+    collection the index lists is validated; a collection file not listed in
+    the index, and every loader problem, is a failure. Never raises."""
+    try:
+        return _collections_failures(collections, catalog, graph)
+    except Exception as exc:  # last resort: report, never lose other groups
+        return [f"collections could not be validated ({type(exc).__name__}: {exc})"]
+
+
+def _collections_failures(collections: Any, catalog: Any, graph: Any) -> list[str]:
     if collections is None:
         return []
-    if not isinstance(collections, dict) or set(collections) != {"index", "files"}:
-        return ["collections must be an object with keys ['files', 'index']"]
+    if (
+        not isinstance(collections, dict)
+        or not {"index", "files"} <= set(collections)
+        or set(collections) - _COLLECTIONS_KEYS
+    ):
+        return ["collections must be an object with keys 'index', 'files' and optional 'problems'"]
     index, files = collections["index"], collections["files"]
+    problems = collections.get("problems") or []
+    failures: list[str] = [str(p) for p in problems] if isinstance(problems, list) else []
     if not isinstance(files, dict):
-        return ["collections files must be an object keyed by collection_id"]
+        return [*failures, "collections files must be an object keyed by collection_id"]
     if index is None:
-        return [
+        failures.extend(
             f"collection file {cid!r} exists but there is no collections index" for cid in files
-        ]
-    failures: list[str] = []
+        )
+        return failures
     if not isinstance(index, dict) or set(index) != _INDEX_KEYS:
-        return [f"collections index must have exactly keys {sorted(_INDEX_KEYS)}"]
+        return [*failures, f"collections index must have exactly keys {sorted(_INDEX_KEYS)}"]
     if index["schema_version"] != COLLECTION_INDEX_SCHEMA_VERSION:
         failures.append(
             f"collections index schema_version must be {COLLECTION_INDEX_SCHEMA_VERSION}"
@@ -625,10 +831,14 @@ def collections_failures(collections: Any, catalog: Any, graph: Any) -> list[str
             failures.append(f"index entry {i} must have exactly keys {sorted(_INDEX_ENTRY_KEYS)}")
             continue
         cid = entry["collection_id"]
-        ids.append(str(cid))
-        if entry["artifact_path"] != collection_artifact_path(str(cid)):
+        if not _is_str(cid):
+            failures.append(f"index entry {i} collection_id must be a string")
+            continue
+        ids.append(cid)
+        failures.extend(path_text_failures(entry))
+        if entry["artifact_path"] != collection_artifact_path(cid):
             failures.append(
-                f"index entry {cid!r} artifact_path must be {collection_artifact_path(str(cid))!r}"
+                f"index entry {cid!r} artifact_path must be {collection_artifact_path(cid)!r}"
             )
         payload = files.get(cid)
         if payload is None:
@@ -645,7 +855,8 @@ def collections_failures(collections: Any, catalog: Any, graph: Any) -> list[str
                 failures.append(f"index entry {cid!r} title does not match the file's")
             if entry["collection_version"] != file_version:
                 failures.append(f"index entry {cid!r} collection_version does not match the file's")
-            if entry["record_count"] != len(payload.get("records") or []):
+            records = payload.get("records")
+            if entry["record_count"] != (len(records) if isinstance(records, list) else None):
                 failures.append(f"index entry {cid!r} record_count does not match the file's")
         failures.extend(f"{cid}: {f}" for f in collection_failures(payload, catalog, graph))
     if ids != sorted(ids) or len(set(ids)) != len(ids):
@@ -658,5 +869,7 @@ def collections_failures(collections: Any, catalog: Any, graph: Any) -> list[str
 
 
 def dumps_stable(value: Any) -> str:
-    """Stable text form used by builders (sorted keys, 2-space indent)."""
+    """Stable text form used by builders (sorted keys, 2-space indent). Not
+    Prettier-shaped: `apps/web/.prettierignore` lists `public/data/collections/`
+    so a re-run of Prettier never rewrites it."""
     return json.dumps(value, indent=2, sort_keys=True, ensure_ascii=False) + "\n"

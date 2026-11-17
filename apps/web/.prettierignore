@@ -15,3 +15,7 @@ public/data/evidence/release-registry.v1.json
 # ignore is a correctness guard, not a convenience. Globbed so future
 # generations are covered without another CI failure to discover it.
 public/data/game/generations/**/rounds.json
+
+# Collections (ADR 0074): the builder writes json.dumps(indent=2) output, which Prettier would
+# reflow. Ignored so a Prettier re-run never rewrites it; re-run `promote-collection` to update.
+public/data/collections/

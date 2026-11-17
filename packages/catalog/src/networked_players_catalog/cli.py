@@ -2136,7 +2136,15 @@ def _parser() -> argparse.ArgumentParser:
         "--graph", type=Path, default=Path("apps/web/public/data/pathfinding/graph.v4.json")
     )
     promote_collection.add_argument("--collection-id", required=True)
-    promote_collection.add_argument("--cluster", type=int, default=None)
+    promote_collection.add_argument(
+        "--approval",
+        type=Path,
+        required=True,
+        help=(
+            "the owner's PRIVATE approval file (kind collection-approval): cluster, exact "
+            "ordered records, journey order, playable on/off -- see docs/REVIEW_PACKET.md"
+        ),
+    )
     promote_collection.add_argument("--title", default=None)
     promote_collection.add_argument("--intro", default=None)
     promote_collection.add_argument(
@@ -2145,10 +2153,6 @@ def _parser() -> argparse.ArgumentParser:
         default=None,
         help="owner-written public text: JSON {title, intro, attribution?}",
     )
-    promote_collection.add_argument(
-        "--journey", default=None, help="comma-separated ordered record ids"
-    )
-    promote_collection.add_argument("--skip-playable", action="store_true")
     promote_collection.add_argument("--generated-at", required=True)
     promote_collection.add_argument(
         "--output-dir", type=Path, default=Path("local/collections-staging")
@@ -2490,18 +2494,10 @@ def _parser() -> argparse.ArgumentParser:
 def _load_published_collections(data_root: Path) -> dict[str, Any] | None:
     """The published Collections (ADR 0074) under `<data_root>/collections/`:
     `None` when the directory does not exist (nothing published, which is
-    valid). Every `*.v1.json` file other than the index is loaded, so a file the
-    index forgot to list is reported rather than ignored."""
-    directory = data_root / "collections"
-    if not directory.is_dir():
-        return None
-    index_path = directory / "index.v1.json"
-    index = json.loads(index_path.read_text()) if index_path.is_file() else None
-    files: dict[str, Any] = {}
-    for path in sorted(directory.glob("*.v1.json")):
-        if path.name != "index.v1.json":
-            files[path.name.removesuffix(".v1.json")] = json.loads(path.read_text())
-    return {"index": index, "files": files}
+    valid). Every entry is accounted for (see `load_collections_directory`)."""
+    from networked_players_contracts.collection import load_collections_directory
+
+    return load_collections_directory(data_root / "collections")
 
 
 def main(argv: Sequence[str] | None = None) -> int:
