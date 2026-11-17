@@ -267,7 +267,9 @@ test("a keyboard-activated recenter moves focus to the new center and announces 
   await page.keyboard.press("ArrowRight");
   const neighbor = page.locator("[data-explorer-nodes] .explorer-node:focus");
   const neighborId = await neighbor.getAttribute("data-artist-id");
-  const neighborName = await neighbor.locator("text").first().textContent();
+  const neighborName = await page
+    .locator(`[data-label-for="${neighborId}"] text`)
+    .textContent();
 
   await page.keyboard.press("Enter");
 
@@ -931,9 +933,14 @@ test.describe("pan and zoom", () => {
       )
       .toBeGreaterThan(1);
 
-    const trailStep = page
-      .locator("[data-explorer-nodes] .explorer-node[data-is-center='false']")
-      .first();
+    // A node near the ring's equator: the ring now fills the viewBox's full
+    // height, so after the 1.15x wheel zoom above the TOP node is clipped by
+    // the SVG's own overflow (a pan would reveal it); an equator node stays
+    // on screen.
+    const neighbors = page.locator(
+      "[data-explorer-nodes] .explorer-node[data-is-center='false']",
+    );
+    const trailStep = neighbors.nth(Math.floor((await neighbors.count()) / 4));
     await trailStep.click({ force: true });
 
     await expect

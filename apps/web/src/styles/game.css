@@ -1047,7 +1047,7 @@ a.contributor-card:focus-visible {
   fill: var(--accent);
   stroke: var(--accent-strong);
 }
-.explorer-node text {
+.explorer-label text {
   font-family: var(--mono);
   font-size: 8px;
   fill: var(--ink);
@@ -1063,7 +1063,7 @@ a.contributor-card:focus-visible {
   stroke-width: 1;
   pointer-events: none;
 }
-.explorer-node--dimmed .explorer-leader {
+.explorer-label--dimmed .explorer-leader {
   opacity: 0.35;
 }
 .explorer-node:focus-visible circle {
@@ -1073,7 +1073,7 @@ a.contributor-card:focus-visible {
 .explorer-node--dimmed circle {
   opacity: 0.25;
 }
-.explorer-node--dimmed text {
+.explorer-label--dimmed text {
   opacity: 0.35;
 }
 /* ADR 0060: the center's own interesting_next_step neighbor, when currently

@@ -475,21 +475,30 @@ export async function initExplorerStage(): Promise<void> {
             `<tspan x="${placed.label.x}" dy="${li === 0 ? 0 : LABEL_LINE_HEIGHT}">${escapeHtml(line)}</tspan>`,
         )
         .join("");
-      return (
+      // The circle (the button) and its label live in SEPARATE groups: a
+      // button's pointer target is its bounding-box centre, and a group that
+      // also spanned a leader line and an outside label would put that centre
+      // in empty space. The label layer is aria-hidden, a visual duplicate of
+      // the button's aria-label (the accessible name still equals the text).
+      const nodeHtml =
         `<g class="explorer-node${dimmed ? " explorer-node--dimmed" : ""}${isInterestingNextStep ? " explorer-node--interesting" : ""}" ` +
         `data-artist-id="${node.artistId}" data-is-center="${node.isCenter}" ` +
         `data-is-interesting-next-step="${isInterestingNextStep}" ` +
         `tabindex="${node.isCenter ? "0" : "-1"}" role="button" aria-label="${label}">` +
-        leader +
         `<circle cx="${pos.x}" cy="${pos.y}" r="${r}" />` +
+        `</g>`;
+      const labelHtml =
+        `<g class="explorer-label${dimmed ? " explorer-label--dimmed" : ""}" data-label-for="${node.artistId}">` +
+        leader +
         `<text x="${placed.label.x}" y="${placed.label.y}" text-anchor="${placed.label.anchor}">${spans}</text>` +
-        `</g>`
-      );
+        `</g>`;
+      return { nodeHtml, labelHtml };
     };
 
+    const rendered = [view.center, ...view.neighbors].map(renderNode);
     nodesLayer!.innerHTML =
-      renderNode(view.center) +
-      view.neighbors.map((n) => renderNode(n)).join("");
+      `<g class="explorer-labels" aria-hidden="true">${rendered.map((x) => x.labelHtml).join("")}</g>` +
+      rendered.map((x) => x.nodeHtml).join("");
   }
 
   let currentView: ExplorerView | null = null;

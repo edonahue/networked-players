@@ -25,10 +25,16 @@ async function boxes(page: Page) {
       const r = e.getBoundingClientRect();
       return { text, x: r.x, y: r.y, w: r.width, h: r.height };
     };
-    return nodes.map((n) => ({
-      label: rect(n.querySelector("text")!, n.textContent?.trim() ?? ""),
-      circle: rect(n.querySelector("circle")!, "circle"),
-    }));
+    return nodes.map((n) => {
+      const id = n.getAttribute("data-artist-id");
+      const text = document.querySelector(
+        `[data-explorer-nodes] [data-label-for="${id}"] text`,
+      )!;
+      return {
+        label: rect(text, text.textContent?.trim() ?? ""),
+        circle: rect(n.querySelector("circle")!, "circle"),
+      };
+    });
   });
 }
 
