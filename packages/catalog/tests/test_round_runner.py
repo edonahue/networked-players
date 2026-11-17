@@ -347,6 +347,10 @@ def make_spec(world: dict[str, Any], tmp: Path, name: str = "run", **overrides: 
         "graph_rich_selection": null,
         "coverage_gap_candidates": null,
         "album_art_cache_dir": null,
+        "round_seed_spec": null,
+        "full_corpus_root": null,
+        "private_seed": null,
+        "editorial_seed": null,
     }
     spec: dict[str, Any] = {
         "schema_version": 1,
@@ -446,8 +450,9 @@ def test_plan_writes_nothing_and_lists_every_stage(
     ctx = _ctx(spec_path)
     text, failures = rr.plan_round(ctx, rr.select_stages(None, None))
     assert failures == [], failures
-    for stage in rr.STAGE_NAMES:
-        assert f"] {stage}:" in text
+    for stage in rr.STAGES:
+        # Opt-in stages (supply, re-widen) are outside the default publish sequence.
+        assert (f"] {stage.name}:" in text) is not stage.opt_in
     assert "--carry-forward-challenge" in text and "--previous-routes-universe" in text
     assert "--previous-connection-universe" in text and "--approved-pool" in text
     assert "record_routes.two_hop_target = 5 (inherited)" in text
@@ -611,7 +616,7 @@ def test_a_failing_stage_stops_the_run_and_is_named(world: dict[str, Any], tmp_p
     ctx.inputs["approved_pool"] = _pool(tmp_path / "bad-pool.json", [901, 902, 903, 777])
     assert rr.run_round(ctx) == 1
     text = "\n".join(messages)
-    assert "[2/17] catalog: FAILED" in text
+    assert f"[{rr.STAGE_NAMES.index('catalog') + 1}/{len(rr.STAGES)}] catalog: FAILED" in text
     assert "--from-stage catalog" in text
     assert not ctx.o(rr.GRAPH).exists()  # nothing after the failure ran
 

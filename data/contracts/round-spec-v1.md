@@ -38,7 +38,15 @@ Every key of `inputs` must be present. Each is either a path string, or
 `candidates`, `approved_pool`, `daily_manifest_pin`, `payload_budgets`,
 `artist_family_exclusions`, `featured_albums`,
 `editorial_albums`, `personal_seed`, `graph_rich_selection`, `coverage_gap_candidates`,
-`album_art_cache_dir`.
+`album_art_cache_dir`, and the stage-scoped `round_seed_spec`, `full_corpus_root`,
+`private_seed`, `editorial_seed` (Campaign Atlas SS).
+
+The four stage-scoped inputs must still be stated, but are enforced (non-null, existing) only
+when a selected stage needs them: `round_seed_spec` and `full_corpus_root` for `theme-supply`,
+`full_corpus_root`, `private_seed` and `editorial_seed` (plus `approved_pool`) for
+`onehop-rewiden`. Those two stages are **opt-in**: the default `round plan|run` covers the
+publish sequence only, and they run when named with `--only-stage`, `--from-stage` or
+`--to-stage`. See `docs/EXPANSION_PIPELINE.md`.
 
 Some are required by a builder (the first six, and `album_art_cache_dir` for a real art run):
 a `null` there is a valid spec but fails `round plan`, naming the builder. `approved_pool` is

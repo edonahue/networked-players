@@ -130,7 +130,22 @@ INPUT_SPECS: dict[str, tuple[str, str | None]] = {
     "graph_rich_selection": ("file", None),
     "coverage_gap_candidates": ("file", None),
     "album_art_cache_dir": ("dir", None),
+    # Seed supply and post-approval re-widen (Campaign Atlas SS). Stated in every
+    # spec, but only enforced when a selected stage needs them (INPUT_STAGES).
+    "round_seed_spec": ("file", "theme-supply"),
+    "full_corpus_root": ("dir", "theme-supply and onehop-rewiden"),
+    "private_seed": ("file", "onehop-rewiden"),
+    "editorial_seed": ("file", "onehop-rewiden"),
 }
+# Inputs enforced (non-null, existing) only when one of these stages is selected.
+INPUT_STAGES: dict[str, frozenset[str]] = {
+    "round_seed_spec": frozenset({"theme-supply"}),
+    "full_corpus_root": frozenset({"theme-supply", "onehop-rewiden"}),
+    "private_seed": frozenset({"onehop-rewiden"}),
+    "editorial_seed": frozenset({"onehop-rewiden"}),
+}
+THEME_CANDIDATES = "theme-candidates.json"  # under work_dir (git-ignored)
+REWIDEN_SEED = "rewiden-seed.json"  # under work_dir (git-ignored)
 
 PARAMETER_KEYS: dict[str, tuple[str, ...]] = {
     "challenge": tuple(CHALLENGE_DEFAULT_BUILD_PARAMETERS),
@@ -691,6 +706,9 @@ class Stage:
     argv: Callable[[Ctx], list[list[str]]]
     execute: Callable[[Ctx, Stage], None] | None = None  # None: run argv through cli.main
     precheck: Callable[[Ctx, bool], list[str]] | None = None  # (ctx, planning) -> failures
+    # Opt-in stages sit outside the default publish sequence (they straddle human review
+    # steps or need a workstation); they run only when a selection names them.
+    opt_in: bool = False
 
 
 def _optional(ctx: Ctx, name: str, flag: str) -> list[str]:
@@ -935,6 +953,46 @@ def _argv_none(ctx: Ctx) -> list[list[str]]:
     return []
 
 
+def _argv_theme_supply(ctx: Ctx) -> list[list[str]]:
+    return [
+        [
+            "build-theme-candidates",
+            "--seed-spec", str(ctx.inp("round_seed_spec")),
+            "--dataset", str(ctx.inp("full_corpus_root")),
+            "--masters-root", str(ctx.inp("masters_root")),
+            "--release-format-policy", str(ctx.inp("release_format_policy")),
+            "--studio-album-exclusions", str(ctx.inp("studio_album_exclusions")),
+            "--already-published-catalog", str(ctx.p(CATALOG)),
+            "--output", str(ctx.work / THEME_CANDIDATES),
+            "--quiet",
+        ]
+    ]  # fmt: skip
+
+
+def _argv_rewiden(ctx: Ctx) -> list[list[str]]:
+    onehop = ctx.inp("onehop_root")
+    return [
+        [
+            "build-rewiden-seed",
+            "--approved-pool", str(ctx.inp("approved_pool")),
+            "--editorial-seed", str(ctx.inp("editorial_seed")),
+            "--dataset", str(ctx.inp("full_corpus_root")),
+            "--masters-root", str(ctx.inp("masters_root")),
+            "--generated-at", ctx.generated_at,
+            "--output", str(ctx.work / REWIDEN_SEED),
+        ],
+        [
+            "expand-one-hop",
+            "--seed", str(ctx.inp("private_seed")),
+            "--additional-seed", str(ctx.work / REWIDEN_SEED),
+            "--dataset", str(ctx.inp("full_corpus_root")),
+            "--output-root", str(onehop.parent),
+            "--overwrite",
+            "--quiet",
+        ],
+    ]  # fmt: skip
+
+
 def _freeze_guard(ctx: Ctx, planning: bool, *, freeze_pending: bool) -> list[str]:
     """The Round 1 incident as one condition: the connection-rounds stage would
     overwrite the file a daily-manifest generation still points at."""
@@ -953,6 +1011,59 @@ def _freeze_guard(ctx: Ctx, planning: bool, *, freeze_pending: bool) -> list[str
 
 def _pre_prepare(ctx: Ctx, planning: bool) -> list[str]:
     return []
+
+
+def _pre_theme_supply(ctx: Ctx, planning: bool) -> list[str]:
+    from networked_players_contracts.round_seed_spec import round_seed_spec_failures
+
+    from .theme_supply_cli import ThemeSupplyError, require_private_ignored_output
+
+    failures: list[str] = []
+    try:
+        require_private_ignored_output(ctx.work / THEME_CANDIDATES, command="theme-supply")
+    except ThemeSupplyError as error:
+        failures.append(f"{error} (paths.work_dir must be a git-ignored local/ path)")
+    path = ctx.inputs["round_seed_spec"]
+    if path is not None and path.is_file():
+        try:
+            seed_spec = json.loads(path.read_text())
+        except json.JSONDecodeError as error:
+            return failures + [f"round seed spec {path} is not JSON: {error}"]
+        failures += [f"round seed spec: {f}" for f in round_seed_spec_failures(seed_spec)]
+        if isinstance(seed_spec, dict):
+            for key in ("round", "target_count"):
+                if seed_spec.get(key) != ctx.spec[key]:
+                    failures.append(
+                        f"round seed spec {key} {seed_spec.get(key)!r} does not match the run "
+                        f"spec's {ctx.spec[key]!r}"
+                    )
+    return failures
+
+
+def _pre_rewiden(ctx: Ctx, planning: bool) -> list[str]:
+    from .theme_supply_cli import ThemeSupplyError, require_private_ignored_output
+
+    failures: list[str] = []
+    try:
+        require_private_ignored_output(ctx.work / REWIDEN_SEED, command="onehop-rewiden")
+    except ThemeSupplyError as error:
+        failures.append(f"{error} (paths.work_dir must be a git-ignored local/ path)")
+    onehop = ctx.inputs["onehop_root"]
+    corpus = ctx.inputs["full_corpus_root"]
+    if onehop is not None and corpus is not None and (corpus / "manifest.json").is_file():
+        try:
+            date_ = str(json.loads((corpus / "manifest.json").read_text())["snapshot_date"])
+        except (json.JSONDecodeError, KeyError) as error:
+            return failures + [f"full corpus manifest is unreadable: {error!r}"]
+        if onehop.name != f"snapshot={date_}":
+            failures.append(
+                f"inputs.onehop_root must be named 'snapshot={date_}' (the full corpus's "
+                f"snapshot): expand-one-hop writes <parent>/snapshot={date_}, so any other "
+                "name would leave every later stage reading the stale corpus"
+            )
+        if onehop.resolve() == corpus.resolve():
+            failures.append("inputs.onehop_root must not be the full corpus itself")
+    return failures
 
 
 def _pre_catalog(ctx: Ctx, planning: bool) -> list[str]:
@@ -1041,6 +1152,12 @@ def _pre_format(ctx: Ctx, planning: bool) -> list[str]:
 _FREEZE_PENDING: dict[int, bool] = {}
 
 
+def _exec_argv_in_work_dir(ctx: Ctx, stage: Stage) -> None:
+    ctx.work.mkdir(parents=True, exist_ok=True)
+    for argv in stage.argv(ctx):
+        _run_cli(ctx, stage.name, argv)
+
+
 def _exec_prepare(ctx: Ctx, stage: Stage) -> None:
     """Take the daily-manifest baseline (and frozen generations) from P into O
     when O does not have them yet. A no-op when O already has them (a restart,
@@ -1095,9 +1212,21 @@ def _exec_verify(ctx: Ctx, stage: Stage) -> None:
 
 
 STAGES: tuple[Stage, ...] = (
+    Stage("theme-supply", "build-theme-candidates",
+          "SUPPLY: theme-seed candidates from the FULL corpus (private output); naming a "
+          "theme approves nothing. Scoring, review and approval follow by hand",
+          "full corpus, masters, policy, exclusions, previous catalog, round seed spec",
+          ("<work>/theme-candidates.json",), _argv_theme_supply, _exec_argv_in_work_dir,
+          _pre_theme_supply, True),
     Stage("prepare-output", "(internal)", "create O/W; take the daily-manifest baseline from P",
           "previous daily manifest + generations", (DAILY_MANIFEST,), _argv_prepare,
           _exec_prepare, _pre_prepare),
+    Stage("onehop-rewiden", "build-rewiden-seed + expand-one-hop",
+          "re-widen the one-hop corpus ONLY for approved albums (approved pool + committed "
+          "editorial seed + private seed); replaces onehop_root atomically; workstation-only",
+          "full corpus, approved pool, editorial seed, private seed",
+          ("<work>/rewiden-seed.json", "onehop_root"), _argv_rewiden, _exec_argv_in_work_dir,
+          _pre_rewiden, True),
     Stage("catalog", "build-public-album-catalog",
           "publish exactly the approved pool (two-way check); keep already-published albums",
           "one-hop, masters, policy, exclusions, approved pool, previous catalog",
@@ -1153,7 +1282,18 @@ STAGES: tuple[Stage, ...] = (
 STAGE_NAMES = tuple(s.name for s in STAGES)
 
 
-def select_stages(from_stage: str | None, to_stage: str | None) -> list[Stage]:
+def select_stages(
+    from_stage: str | None, to_stage: str | None, only_stage: str | None = None
+) -> list[Stage]:
+    """The stages a plan/run covers. The default range is the publish sequence; an
+    opt-in stage (`theme-supply`, `onehop-rewiden`) is included only when named by
+    `--from-stage`, `--to-stage` or `--only-stage`."""
+    if only_stage is not None:
+        if from_stage is not None or to_stage is not None:
+            raise RoundError("--only-stage cannot be combined with --from-stage/--to-stage")
+        if only_stage not in STAGE_NAMES:
+            raise RoundError(f"--only-stage {only_stage!r} is not a stage")
+        return [STAGES[STAGE_NAMES.index(only_stage)]]
     for label, name in (("--from-stage", from_stage), ("--to-stage", to_stage)):
         if name is not None and name not in STAGE_NAMES:
             raise RoundError(
@@ -1163,7 +1303,8 @@ def select_stages(from_stage: str | None, to_stage: str | None) -> list[Stage]:
     end = STAGE_NAMES.index(to_stage) if to_stage else len(STAGES) - 1
     if start > end:
         raise RoundError("--from-stage comes after --to-stage")
-    return list(STAGES[start : end + 1])
+    named = {from_stage, to_stage}
+    return [s for s in STAGES[start : end + 1] if not s.opt_in or s.name in named]
 
 
 # ---------------------------------------------------------------------------
@@ -1171,11 +1312,15 @@ def select_stages(from_stage: str | None, to_stage: str | None) -> list[Stage]:
 # ---------------------------------------------------------------------------
 
 
-def input_failures(ctx: Ctx) -> list[str]:
+def input_failures(ctx: Ctx, stages: Sequence[Stage] | None = None) -> list[str]:
     """Every input is explicit (checked structurally) and every stated path exists.
-    Only existence is checked; private inputs are never opened here."""
+    Only existence is checked; private inputs are never opened here. Stage-scoped
+    inputs (INPUT_STAGES) are enforced only when one of `stages` is selected."""
     failures: list[str] = []
+    selected = {s.name for s in stages} if stages is not None else set()
     for name, (kind, required_by) in INPUT_SPECS.items():
+        if name in INPUT_STAGES and not (INPUT_STAGES[name] & selected):
+            continue
         path = ctx.inputs[name]
         if path is None:
             if required_by is not None:
@@ -1217,7 +1362,7 @@ def baseline_failures(ctx: Ctx) -> list[str]:
 def evaluate_preconditions(ctx: Ctx, stages: Sequence[Stage], *, planning: bool) -> list[str]:
     """All preconditions for the selected stages. Stage prechecks read the daily
     manifest and so need a baseline; they run only when the baseline is sound."""
-    failures = input_failures(ctx) + baseline_failures(ctx)
+    failures = input_failures(ctx, stages) + baseline_failures(ctx)
     try:
         _, parameter_failures = resolve_parameters(ctx)
         failures += parameter_failures
@@ -1338,8 +1483,14 @@ def _save_results(ctx: Ctx) -> None:
     _results_path(ctx).write_text(json.dumps(ctx.results, indent=2, sort_keys=True) + "\n")
 
 
-def run_round(ctx: Ctx, *, from_stage: str | None = None, to_stage: str | None = None) -> int:
-    stages = select_stages(from_stage, to_stage)
+def run_round(
+    ctx: Ctx,
+    *,
+    from_stage: str | None = None,
+    to_stage: str | None = None,
+    only_stage: str | None = None,
+) -> int:
+    stages = select_stages(from_stage, to_stage, only_stage)
     failures = evaluate_preconditions(ctx, stages, planning=False)
     if failures:
         ctx.log("round run refused; preconditions failed:")
@@ -1642,6 +1793,11 @@ def register_round_parser(subparsers: Any) -> None:
         if name in ("plan", "run"):
             sub.add_argument("--from-stage", choices=STAGE_NAMES)
             sub.add_argument("--to-stage", choices=STAGE_NAMES)
+            sub.add_argument(
+                "--only-stage",
+                choices=STAGE_NAMES,
+                help="run exactly one stage (the way to run an opt-in stage alone)",
+            )
     cutover = actions.add_parser(
         "check-cutover",
         help=(
@@ -1674,13 +1830,15 @@ def round_main(
         spec = load_spec(args.spec)
         ctx = build_ctx(spec, today=today, formatter=formatter, art_builder=art_builder)
         if args.round_action == "plan":
-            text, failures = plan_round(ctx, select_stages(args.from_stage, args.to_stage))
+            text, failures = plan_round(ctx, select_stages(args.from_stage, args.to_stage, args.only_stage))
             out.write(text)
             return 1 if failures else 0
         if args.round_action == "run":
-            return run_round(ctx, from_stage=args.from_stage, to_stage=args.to_stage)
+            return run_round(
+                ctx, from_stage=args.from_stage, to_stage=args.to_stage, only_stage=args.only_stage
+            )
         # verify
-        failures = input_failures(ctx) + baseline_failures(ctx)
+        failures = input_failures(ctx, ()) + baseline_failures(ctx)
         if failures:
             for failure in failures:
                 print(f"FAIL {failure}", file=sys.stderr)
