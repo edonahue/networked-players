@@ -134,6 +134,23 @@ These steps produce *proposals*. Nothing here authorises publication: the approv
 (ADR 0072 section 2), and the runner publishes exactly the pool. All outputs stay under
 `local/` or `data/private/`.
 
+0a. **Theme-seed supply from the FULL corpus (Campaign Atlas SS).** Themes outside the
+   current one-hop corpus (e.g. desert rock) cannot be found by the steps below, which read the
+   one-hop corpus; supply them first from the full parsed corpus. Write the round's seed spec
+   (`data/rounds/round-<n>-seed-spec-v1.json`, contract `data/contracts/round-seed-spec-v1.md`;
+   the real Round 2 file is an owner/operator TODO, see `data/rounds/README.md`), validate it
+   (`validate-round-seed-spec --spec ...`), then run the runner's `theme-supply` stage
+   (`round run --spec ... --only-stage theme-supply`) or the underlying
+   `build-theme-candidates` directly. Output: `<work_dir>/theme-candidates.json`, private and
+   git-ignored (the command refuses a committable path). Each row is `rank-album-candidates`
+   shaped plus `eligibility` (via `master_eligibility`) and `themes` (which theme, by which
+   route: seed master, seed-artist master, or shared performers). Each theme's summary also lists `dropped_seed_masters` (explicit seed masters that did not reach the pool, with a reason) so a seed is never silently lost. Check each theme's
+   `eligible_count` against its lane quota before going on. Then score with
+   `score-expansion-candidates --candidates <that file> --onehop-root <FULL corpus>`: the
+   scorer reads credits from `--onehop-root`, and the theme albums only exist in the full
+   corpus (that opens the full corpus with edges built: workstation work, not measured here).
+   The scorer drops the `themes` column, so keep the supply file beside the scored one when
+   reviewing.
 0. **Supply candidates first.** Scorers and re-rankers are consumers, not producers (Round 1
    delivered 6 albums against a target of 30 because no supply stage existed). Run the
    supply commands before anything below, and check the pool sizes against the lane quotas:
@@ -215,9 +232,16 @@ These steps produce *proposals*. Nothing here authorises publication: the approv
    section 2). With a pool, the catalog build fails naming any album it would publish outside
    the pool or any pool album it would drop (including one dropped for eligibility), shortlist
    auto-fill is off, and the `--editorial-albums` default fallback does not apply.
-10. **Widen the one-hop corpus** only if the picks introduced release ids the current root
-    lacks (`expand-one-hop --additional-seed ...`). Coordination host only; never replicate
-    the full snapshot to `zimaworker1` (plan §17, ADR 0057 disk floor).
+10. **Re-widen the one-hop corpus** for the approved albums (runner stage `onehop-rewiden`,
+    `round run --spec ... --only-stage onehop-rewiden`). It runs `build-rewiden-seed` (the
+    committed editorial seed carried forward plus one entry per approved-pool master, resolved
+    from the full corpus; it fails, writing nothing, if an approved master cannot be seeded)
+    and then `expand-one-hop --seed <private seed> --additional-seed <that file> --overwrite`
+    over the full corpus into `inputs.onehop_root`'s parent. `onehop_root` must be named
+    `snapshot=<full corpus snapshot date>`; `expand-one-hop` stages and swaps, so a failure
+    leaves the old corpus intact. Afterwards refresh anything that read the old root (relationship
+    pool, fleet replicas). Coordination host only; never replicate the full snapshot to
+    `zimaworker1` (plan §17, ADR 0057 disk floor).
 11. **Write the round spec** (`data/albums/rounds/round-<n>.json`, contract
     `data/contracts/round-spec-v1.md`; synthetic template:
     `data/albums/rounds/example-synthetic-round.json`). Every policy input is stated
@@ -245,6 +269,13 @@ uv run networked-players-catalog round verify --spec data/albums/rounds/round-<n
 uv run networked-players-catalog round run --spec ... --from-stage <stage>
 ```
 
+`theme-supply` and `onehop-rewiden` are opt-in stages: the default `plan`/`run` covers the
+publish sequence only, because both straddle the human review steps (supply before scoring and
+review, re-widen after the pool is approved). Name them with `--only-stage`, `--from-stage` or
+`--to-stage`. `--from-stage theme-supply` is refused unless the range ends at it, because supply is followed by scoring, owner review and approval, which the runner does not perform. `--from-stage onehop-rewiden` is allowed: it runs after the pool is approved. Their inputs (`round_seed_spec`, `full_corpus_root`, `private_seed`,
+`editorial_seed`) are stated in every spec and enforced only when the stage is selected;
+there are no defaults for any of them.
+
 `--today` defaults to the real UTC date; pass it explicitly to reproduce a plan. The runner
 writes artifacts to the spec's `output_dir` (`apps/web/public/data` in a real round),
 `stage-results.json` and `report.md` to `work_dir`. Stage progress goes to stderr; no elapsed
@@ -252,6 +283,8 @@ time or memory figure is ever printed or recorded (ADR 0018).
 
 | # | Stage | Command (existing builder) | Notes |
 | --- | --- | --- | --- |
+| opt-in | `theme-supply` | `build-theme-candidates` | step 0a; stage 1 in `STAGES` but outside the default range; private output under `work_dir` |
+| opt-in | `onehop-rewiden` | `build-rewiden-seed` + `expand-one-hop` | step 10; follows the approved pool, precedes `catalog`; outside the default range |
 | 1 | `prepare-output` | internal | take the daily-manifest baseline and frozen generations from the previous dir when the output lacks them |
 | 2 | `catalog` | `build-public-album-catalog` | always `--approved-pool`, `--already-published-catalog`, `--expansion-round`, `--candidates`; explicit lanes from the spec |
 | 3 | `album-credit-membership` | `build-album-credit-membership` | |
@@ -314,7 +347,7 @@ revert of the round PR is safe.
 - **No real round has been run through it yet.** It is exercised end to end only over a
   synthetic corpus (`packages/catalog/tests/test_round_runner.py`). Its first real use is
   Round 2.
-- No stage cache (ADR 0072 section 3), no candidate supply or scoring, no owner approval,
+- No stage cache (ADR 0072 section 3), scoring and owner approval stay manual (candidate supply and the post-approval re-widen are the opt-in stages above),
   no fleet validation (steps 14–15 below), no audit.
 
 ### Steps 14–15: measure and validate on the fleet

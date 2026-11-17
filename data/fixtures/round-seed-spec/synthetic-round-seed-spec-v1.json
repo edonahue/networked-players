@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "round": 99,
+  "target_count": 20,
+  "lane_shares_percent": { "theme": 60, "graph_value": 25, "coverage_repair": 15 },
+  "note": "Synthetic fixture: invented ids, no real artists. The real Round 2 seed spec is an owner/operator TODO (see data/rounds/README.md).",
+  "themes": [
+    {
+      "name": "synthetic desert theme",
+      "seed_artist_ids": [9001],
+      "seed_master_ids": [],
+      "styles": ["Stoner Rock"],
+      "genres": [],
+      "year_min": 1990,
+      "year_max": 2010,
+      "min_shared_performers": 2,
+      "candidate_cap": 50
+    },
+    {
+      "name": "synthetic fusion theme",
+      "seed_artist_ids": [],
+      "seed_master_ids": [9500],
+      "styles": [],
+      "genres": [],
+      "year_min": null,
+      "year_max": null,
+      "min_shared_performers": 2,
+      "candidate_cap": 50
+    }
+  ]
+}

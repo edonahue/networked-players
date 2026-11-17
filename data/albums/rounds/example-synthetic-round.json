@@ -26,7 +26,11 @@
     "personal_seed": { "path": null, "reason": "example round does not use it" },
     "graph_rich_selection": { "path": null, "reason": "example round does not use it" },
     "coverage_gap_candidates": { "path": null, "reason": "example round does not use it" },
-    "album_art_cache_dir": "data/private/discogs-api-cache"
+    "album_art_cache_dir": "data/private/discogs-api-cache",
+    "round_seed_spec": "data/fixtures/round-seed-spec/synthetic-round-seed-spec-v1.json",
+    "full_corpus_root": "data/private/discogs-full/snapshot=20260601",
+    "private_seed": "data/private/discogs-seed.json",
+    "editorial_seed": "data/albums/editorial-seed-v1.json"
   },
   "parameters": {
     "challenge": { "max_hops": 4, "max_frontier_expansion": 0 }

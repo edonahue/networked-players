@@ -2488,6 +2488,9 @@ def _parser() -> argparse.ArgumentParser:
     from .round_runner import register_round_parser
 
     register_round_parser(subparsers)
+    from .theme_supply_cli import register_theme_supply_parsers
+
+    register_theme_supply_parsers(subparsers)
     return parser
 
 
@@ -2506,6 +2509,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         from .round_runner import round_main
 
         return round_main(args)
+    if args.command in (
+        "validate-round-seed-spec",
+        "build-theme-candidates",
+        "build-rewiden-seed",
+    ):
+        from .theme_supply_cli import run_theme_supply_command
+
+        return run_theme_supply_command(args)
     if args.command == "manifest":
         kwargs = {}
         if args.base_url:

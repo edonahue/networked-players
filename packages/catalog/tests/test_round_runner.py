@@ -14,6 +14,7 @@ import contextlib
 import copy
 import io
 import json
+import shutil
 from datetime import date
 from pathlib import Path
 from typing import Any
@@ -347,6 +348,10 @@ def make_spec(world: dict[str, Any], tmp: Path, name: str = "run", **overrides: 
         "graph_rich_selection": null,
         "coverage_gap_candidates": null,
         "album_art_cache_dir": null,
+        "round_seed_spec": null,
+        "full_corpus_root": null,
+        "private_seed": null,
+        "editorial_seed": null,
     }
     spec: dict[str, Any] = {
         "schema_version": 1,
@@ -446,8 +451,9 @@ def test_plan_writes_nothing_and_lists_every_stage(
     ctx = _ctx(spec_path)
     text, failures = rr.plan_round(ctx, rr.select_stages(None, None))
     assert failures == [], failures
-    for stage in rr.STAGE_NAMES:
-        assert f"] {stage}:" in text
+    for stage in rr.STAGES:
+        # Opt-in stages (supply, re-widen) are outside the default publish sequence.
+        assert (f"] {stage.name}:" in text) is not stage.opt_in
     assert "--carry-forward-challenge" in text and "--previous-routes-universe" in text
     assert "--previous-connection-universe" in text and "--approved-pool" in text
     assert "record_routes.two_hop_target = 5 (inherited)" in text
@@ -611,7 +617,7 @@ def test_a_failing_stage_stops_the_run_and_is_named(world: dict[str, Any], tmp_p
     ctx.inputs["approved_pool"] = _pool(tmp_path / "bad-pool.json", [901, 902, 903, 777])
     assert rr.run_round(ctx) == 1
     text = "\n".join(messages)
-    assert "[2/17] catalog: FAILED" in text
+    assert f"[{rr.STAGE_NAMES.index('catalog') + 1}/{len(rr.STAGES)}] catalog: FAILED" in text
     assert "--from-stage catalog" in text
     assert not ctx.o(rr.GRAPH).exists()  # nothing after the failure ran
 
@@ -717,3 +723,149 @@ def test_default_formatter_passes_absolute_paths_when_given_relative_ones(
     rr.default_formatter([Path("out/data/catalog/albums.v1.json")])
 
     assert seen.read_text().split() == [str(artifact.resolve())]
+
+
+# ---------------------------------------------------------------------------
+# Seed supply and post-approval re-widen stages (Campaign Atlas SS)
+# ---------------------------------------------------------------------------
+
+
+def test_opt_in_stages_run_only_when_named() -> None:
+    default = [s.name for s in rr.select_stages(None, None)]
+    assert "theme-supply" not in default and "onehop-rewiden" not in default
+    assert [s.name for s in rr.select_stages(None, None, "theme-supply")] == ["theme-supply"]
+    assert [s.name for s in rr.select_stages(None, "theme-supply")] == ["theme-supply"]
+    from_rewiden = [s.name for s in rr.select_stages("onehop-rewiden", None)]
+    assert from_rewiden[:2] == ["onehop-rewiden", "catalog"]
+    assert "theme-supply" not in from_rewiden
+    with pytest.raises(rr.RoundError):
+        rr.select_stages("catalog", None, "theme-supply")
+    # A range out of supply would skip scoring, review and approval: refused.
+    for to in (None, "onehop-rewiden", "catalog", "verify"):
+        with pytest.raises(rr.RoundError, match="skip scoring"):
+            rr.select_stages("theme-supply", to)
+    # Supply precedes every builder; re-widen follows the approved pool and precedes the catalog.
+    assert rr.STAGE_NAMES.index("theme-supply") < rr.STAGE_NAMES.index("prepare-output")
+    assert rr.STAGE_NAMES.index("onehop-rewiden") < rr.STAGE_NAMES.index("catalog")
+
+
+@pytest.mark.parametrize(
+    ("stage", "needed"),
+    [
+        ("theme-supply", ["round_seed_spec", "full_corpus_root"]),
+        ("onehop-rewiden", ["full_corpus_root", "private_seed", "editorial_seed"]),
+    ],
+)
+def test_supply_stages_require_their_inputs_explicitly(
+    world: dict[str, Any], tmp_path: Path, stage: str, needed: list[str]
+) -> None:
+    ctx = _ctx(make_spec(world, tmp_path, "needs"))
+    # Null inputs are fine for the default publish range ...
+    assert rr.input_failures(ctx, rr.select_stages(None, None)) == []
+    # ... and refused, naming the stage, once the stage is selected.
+    failures = rr.input_failures(ctx, rr.select_stages(None, None, stage))
+    for name in needed:
+        assert any(f"inputs.{name} is null" in f and stage in f for f in failures), name
+
+
+def _supply_world(world: dict[str, Any], tmp_path: Path, name: str) -> tuple[Path, rr.Ctx]:
+    from test_theme_supply import ALLOWED, FIXTURE_SPEC, _editorial, _pool, _write_world
+
+    full, masters = _write_world(tmp_path / f"{name}-corpus")
+    policy = Path(world["inputs"]["release_format_policy"])
+    policy_payload = json.loads(policy.read_text())
+    policy_payload["allowed_release_ids"] = ALLOWED
+    own_policy = tmp_path / f"{name}-policy.json"
+    own_policy.write_text(json.dumps(policy_payload))
+    path = make_spec(world, tmp_path, name)
+    spec = json.loads(path.read_text())
+    spec["paths"]["work_dir"] = str(tmp_path / "local" / name / "work")
+    spec["round"] = 99
+    spec["target_count"] = 20
+    spec["inputs"].update(
+        {
+            "round_seed_spec": str(FIXTURE_SPEC),
+            "full_corpus_root": str(full),
+            "masters_root": str(masters),
+            "release_format_policy": str(own_policy),
+            "editorial_seed": str(_editorial(tmp_path / f"{name}-ed.json")),
+            "approved_pool": str(_pool(tmp_path / f"{name}-pool.json", [9100, 9101, 9501])),
+        }
+    )
+    path.write_text(json.dumps(spec))
+    return path, _ctx(path)
+
+
+def test_theme_supply_stage_writes_private_candidates(
+    world: dict[str, Any], tmp_path: Path
+) -> None:
+    _path, ctx = _supply_world(world, tmp_path, "supply")
+    text, failures = rr.plan_round(ctx, rr.select_stages(None, None, "theme-supply"))
+    assert failures == [], failures
+    assert "build-theme-candidates" in text and "--seed-spec" in text
+    assert rr.run_round(ctx, only_stage="theme-supply") == 0
+    rows = json.loads((ctx.work / rr.THEME_CANDIDATES).read_text())
+    eligible = {r["master_id"] for r in rows if r["eligibility"] == "eligible"}
+    # The run spec's previous catalog does not publish 9108, so it is a candidate here.
+    assert eligible == {9100, 9101, 9108, 9500, 9501}
+    assert not ctx.out.exists()  # a supply run never touches the public output
+
+
+def test_theme_supply_refuses_a_tracked_work_dir_and_a_mismatched_seed_spec(
+    world: dict[str, Any], tmp_path: Path
+) -> None:
+    path, _ = _supply_world(world, tmp_path, "refuse")
+    spec = json.loads(path.read_text())
+    spec["paths"]["work_dir"] = str(tmp_path / "plainwork")  # not under local/
+    spec["round"] = 5  # does not match the seed spec's round
+    path.write_text(json.dumps(spec))
+    _, failures = rr.plan_round(_ctx(path), rr.select_stages(None, None, "theme-supply"))
+    assert any("local/" in f for f in failures)
+    assert any("does not match the run spec" in f for f in failures)
+    assert rr.run_round(_ctx(path), only_stage="theme-supply") == 2
+
+
+def test_rewiden_stage_replaces_the_onehop_corpus_for_approved_albums(
+    world: dict[str, Any], tmp_path: Path
+) -> None:
+    import pyarrow.dataset as ds
+
+    from networked_players_catalog.discogs.seed import SeedManifest
+
+    path, ctx = _supply_world(world, tmp_path, "rewiden")
+    onehop = tmp_path / "onehop-parent" / f"snapshot={SNAPSHOT}"
+    shutil.copytree(ctx.inp("onehop_root"), onehop)
+    seed = tmp_path / "private-seed.json"
+    SeedManifest(1, "synthetic", "2026-12-01T00:00:00+00:00", [1]).write(seed)
+    spec = json.loads(path.read_text())
+    spec["inputs"]["private_seed"] = str(seed)
+    spec["inputs"]["onehop_root"] = str(onehop)
+    path.write_text(json.dumps(spec))
+    ctx = _ctx(path)
+    text, failures = rr.plan_round(ctx, rr.select_stages(None, None, "onehop-rewiden"))
+    assert failures == [], failures
+    assert "--additional-seed" in text and "--overwrite" in text
+    before = {r["master_id"] for r in ds.dataset(onehop / "table=releases").to_table().to_pylist()}
+    assert not {9100, 9101, 9501} & before  # the synthetic corpus lacks the approved albums
+    assert rr.run_round(ctx, only_stage="onehop-rewiden") == 0
+    after = {r["master_id"] for r in ds.dataset(onehop / "table=releases").to_table().to_pylist()}
+    assert {9100, 9101, 9501} <= after  # approved albums are now inside the corpus
+    # The corpus must keep its name, or later stages would read a stale directory.
+    spec["inputs"]["onehop_root"] = str(onehop.parent / "snapshot=19990101")
+    path.write_text(json.dumps(spec))
+    _, failures = rr.plan_round(_ctx(path), rr.select_stages(None, None, "onehop-rewiden"))
+    assert any("must be named" in f or "does not exist" in f for f in failures)
+
+
+def test_rewiden_reports_a_corpus_without_a_manifest(world: dict[str, Any], tmp_path: Path) -> None:
+    path, _ = _supply_world(world, tmp_path, "nomanifest")
+    spec = json.loads(path.read_text())
+    empty = tmp_path / "empty-corpus"
+    empty.mkdir()
+    spec["inputs"]["full_corpus_root"] = str(empty)
+    path.write_text(json.dumps(spec))
+    ctx = _ctx(path)
+    failures = rr.evaluate_preconditions(
+        ctx, rr.select_stages(None, None, "onehop-rewiden"), planning=True
+    )
+    assert any("has no manifest.json" in f for f in failures)

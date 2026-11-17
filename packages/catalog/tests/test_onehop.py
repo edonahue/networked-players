@@ -384,6 +384,35 @@ def test_immutable_without_overwrite(tmp_path: Path) -> None:
     expand_one_hop(seed_path, dataset, tmp_path / "onehop", overwrite=True)
 
 
+def test_overwrite_keeps_the_old_corpus_when_the_swap_fails(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    dataset = _write_source_dataset(tmp_path)
+    seed_path = _write_seed(tmp_path, [101])
+    root = tmp_path / "onehop"
+    expand_one_hop(seed_path, dataset, root)
+    final = root / f"snapshot={SNAPSHOT}"
+    before = (final / "manifest.json").read_text()
+
+    real_replace = Path.replace
+
+    def failing_replace(self: Path, target: Path) -> Path:
+        if ".tmp-" in self.name:
+            raise OSError("simulated swap failure")
+        return real_replace(self, target)
+
+    monkeypatch.setattr(Path, "replace", failing_replace)
+    with pytest.raises(OSError, match="simulated swap failure"):
+        expand_one_hop(seed_path, dataset, root, overwrite=True)
+    monkeypatch.undo()
+
+    assert (final / "manifest.json").read_text() == before  # the old corpus is intact
+    assert [p.name for p in root.iterdir()] == [f"snapshot={SNAPSHOT}"]  # nothing stray left
+
+    expand_one_hop(seed_path, dataset, root, overwrite=True)
+    assert [p.name for p in root.iterdir()] == [f"snapshot={SNAPSHOT}"]
+
+
 def test_generic_validation_passes_on_output(tmp_path: Path) -> None:
     dataset = _write_source_dataset(tmp_path)
     seed_path = _write_seed(tmp_path, [101])

@@ -63,7 +63,7 @@ No catalog growth, no real collection published, no public data regenerated.
 
 | ID | Deliverable | Depends on | Status |
 |---|---|---|---|
-| SS | Theme-seed supply from the full corpus; re-widen the one-hop corpus after approval | F3 | todo |
+| SS | Theme-seed supply from the full corpus; re-widen the one-hop corpus after approval | F3 | In review (#284) |
 | S2 | ADR plus `collection-v1` and `playable-cohort-v2` on the performer graph; collection validator group | F1 | todo |
 | S3 | Collection page and guided journey; retire the synthetic `/cohorts/` example | S2, P1 | todo |
 | S4 | Owner approves and publishes the first real collection | S1–S3 | todo |
