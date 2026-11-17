@@ -23,14 +23,23 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
+import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 
 from networked_players_catalog import cli
 from networked_players_catalog.discogs import parquet
+from networked_players_catalog.discogs import resume as resume_module
 from networked_players_catalog.discogs.manifest import DumpKind, build_manifest
 from networked_players_catalog.discogs.parquet import parse_release_dump
-from networked_players_catalog.discogs.resume import PROGRESS_FILENAME, ResumeRefused
+from networked_players_catalog.discogs.resume import (
+    PROGRESS_FILENAME,
+    ResumeRefused,
+    find_staging_dirs,
+    lock_is_held,
+    unrecorded_files,
+    writer_lock,
+)
 from networked_players_catalog.discogs.validation import validate_dataset
 
 SNAPSHOT = "20260501"
@@ -709,6 +718,286 @@ def test_recovery_report_recommends_resume_only_when_safe(
     report = _recovery_module().check_recovery(SNAPSHOT, out, 2)
     assert report["resume_safe"] is False
     assert report["recorded_part_problems"] == ["altered: table=releases/part-00000.parquet"]
+
+
+def _crash_on_json_replace(
+    monkeypatch: pytest.MonkeyPatch, predicate: Callable[[Path, int], bool]
+) -> None:
+    """Crash at the rename step of write_json_atomic (temp file fully written, not renamed)."""
+    real = resume_module._replace_json
+    calls: dict[str, int] = {}
+
+    def fake(tmp: Path, final: Path) -> None:
+        calls[final.name] = calls.get(final.name, 0) + 1
+        if predicate(final, calls[final.name]):
+            raise SimulatedCrash
+        real(tmp, final)
+
+    monkeypatch.setattr(resume_module, "_replace_json", fake)
+
+
+@pytest.mark.parametrize(
+    "target",
+    [
+        ("progress.json", 1),  # the initial record: nothing persisted yet
+        ("progress.json", 2),  # after the first completed part
+        ("progress.json", 5),  # after the last part
+        ("manifest.json", 1),  # manifest temp written, never renamed
+        ("progress.json", 6),  # manifest written, finalized record not
+    ],
+)
+def test_crash_inside_atomic_json_write_resumes_to_identical_result(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    reference: tuple[Path, dict[str, object], dict[str, bytes]],
+    target: tuple[str, int],
+) -> None:
+    dump, ref_manifest, ref_bytes = reference
+    out = tmp_path / "out"
+    name, nth = target
+    with monkeypatch.context() as patch:
+        _crash_on_json_replace(patch, lambda final, n: final.name == name and n == nth)
+        with pytest.raises(SimulatedCrash):
+            run(dump, out)
+    (staging,) = staging_dirs(out)
+    if name == "progress.json" and nth == 6:
+        assert (staging / "manifest.json").exists()  # stale manifest, state not finalized
+        assert json.loads((staging / PROGRESS_FILENAME).read_text())["state"] == "in_progress"
+    if target == ("progress.json", 1):
+        # Crashed before any record existed: nothing to resume; clear refusal, then start over.
+        with pytest.raises(ResumeRefused, match="holds no completed work"):
+            run(dump, out, resume=True)
+        shutil.rmtree(staging)
+        manifest = run(dump, out)
+    else:
+        manifest = run(dump, out, resume=True)
+    assert comparable(manifest) == comparable(ref_manifest)
+    assert dataset_bytes(out) == ref_bytes
+    assert staging_dirs(out) == []
+    assert sorted(p.name for p in (out / f"snapshot={SNAPSHOT}").iterdir() if p.is_file()) == [
+        "manifest.json"
+    ]
+
+
+def test_crash_during_a_resume_then_resume_again(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    reference: tuple[Path, dict[str, object], dict[str, bytes]],
+) -> None:
+    dump, ref_manifest, ref_bytes = reference
+    out = tmp_path / "out"
+    interrupt(monkeypatch, dump, out, nth=3)
+    with monkeypatch.context() as patch:
+        crash_on_replace(patch, 4)
+        with pytest.raises(SimulatedCrash):
+            run(dump, out, resume=True)
+    assert len(staging_dirs(out)) == 1
+    manifest = run(dump, out, resume=True)
+    assert comparable(manifest) == comparable(ref_manifest)
+    assert dataset_bytes(out) == ref_bytes
+
+
+# --- writer lock -------------------------------------------------------------------
+
+
+def test_second_writer_is_refused_while_lock_is_held_and_nothing_is_touched(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    dump, out, staging = _interrupted(tmp_path, monkeypatch)
+    before = {
+        p.relative_to(staging).as_posix(): p.read_bytes() for p in staging.rglob("*") if p.is_file()
+    }
+    with writer_lock(staging):
+        assert lock_is_held(staging)
+        with pytest.raises(ResumeRefused, match=r"\.writer\.lock"):
+            run(dump, out, resume=True)
+        with pytest.raises(FileExistsError, match="locked by a running writer"):
+            run(dump, out)
+    after = {
+        p.relative_to(staging).as_posix(): p.read_bytes() for p in staging.rglob("*") if p.is_file()
+    }
+    assert after == before
+    assert not lock_is_held(staging)
+
+
+HOLDER = textwrap.dedent(
+    """
+    import pathlib, sys, time
+    from networked_players_catalog.discogs.resume import writer_lock
+
+    staging, marker = pathlib.Path(sys.argv[1]), pathlib.Path(sys.argv[2])
+    with writer_lock(staging):
+        marker.write_text("held")
+        time.sleep(600)
+    """
+)
+
+
+@pytest.mark.skipif(not hasattr(signal, "SIGKILL"), reason="needs POSIX SIGKILL")
+def test_lock_held_by_a_real_other_process_blocks_resume_and_dies_with_it(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    dump, out, staging = _interrupted(tmp_path, monkeypatch)
+    marker = tmp_path / "held"
+    script = tmp_path / "holder.py"
+    script.write_text(HOLDER)
+    child = subprocess.Popen([sys.executable, str(script), str(staging), str(marker)])
+    try:
+        wait_for(marker.exists, "holder never took the lock")
+        assert lock_is_held(staging)
+        assert cli.main(_cli_args(dump, out, "--resume")) == 2
+        report = _recovery_module().check_recovery(SNAPSHOT, out, 2)
+        assert report["writer_lock_held"] is True
+        assert report["resume_safe"] is False
+    finally:
+        os.kill(child.pid, signal.SIGKILL)
+        child.wait(timeout=30)
+    # The lock file is now stale (no holder): it must not block a resume.
+    assert (staging / ".writer.lock").exists()
+    assert not lock_is_held(staging)
+    assert run(dump, out, resume=True)["counts"]
+
+
+def test_lock_file_is_not_in_manifest_not_deleted_as_unrecorded_and_not_promoted(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    reference: tuple[Path, dict[str, object], dict[str, bytes]],
+) -> None:
+    dump, ref_manifest, _ = reference
+    assert ".writer.lock" not in json.dumps(ref_manifest)
+    out = tmp_path / "out"
+    interrupt(monkeypatch, dump, out, nth=8)
+    (staging,) = staging_dirs(out)
+    assert (staging / ".writer.lock").exists()
+    record = json.loads((staging / PROGRESS_FILENAME).read_text())
+    assert ".writer.lock" not in [p.name for p in unrecorded_files(staging, record)]
+    run(dump, out, resume=True)
+    names = sorted(p.name for p in (out / f"snapshot={SNAPSHOT}").iterdir())
+    assert ".writer.lock" not in names and PROGRESS_FILENAME not in names
+
+
+# --- leftovers after a crash between rename and cleanup -----------------------------
+
+
+def test_leftover_progress_and_lock_in_promoted_snapshot_are_cleaned_by_next_invocation(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    reference: tuple[Path, dict[str, object], dict[str, bytes]],
+) -> None:
+    dump, _ref_manifest, ref_bytes = reference
+    out = tmp_path / "out"
+    with monkeypatch.context() as patch:
+
+        def boom(final_root: Path) -> None:
+            raise SimulatedCrash
+
+        patch.setattr(parquet, "_remove_promoted_leftovers", boom)
+        with pytest.raises(SimulatedCrash):
+            run(dump, out)
+    final = out / f"snapshot={SNAPSHOT}"
+    assert (final / PROGRESS_FILENAME).exists() and (final / ".writer.lock").exists()
+    # No reader trips on them meanwhile.
+    assert validate_dataset(final)["release_rows"] == 7
+    assert dataset_bytes(out) == ref_bytes  # *.parquet only
+    report = _recovery_module().check_recovery(SNAPSHOT, out, 2)
+    assert sorted(report["leftover_files_in_promoted_snapshot"]) == [
+        ".writer.lock",
+        "progress.json",
+    ]
+    # A later invocation (refused as 'already exists') heals it.
+    with pytest.raises(FileExistsError, match="already exists"):
+        run(dump, out)
+    assert not (final / PROGRESS_FILENAME).exists() and not (final / ".writer.lock").exists()
+    assert sorted(p.name for p in final.iterdir() if p.is_file()) == ["manifest.json"]
+
+
+def test_leftovers_are_kept_when_the_manifest_does_not_verify(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    dump = make_dump(tmp_path / "raw")
+    out = tmp_path / "out"
+    with monkeypatch.context() as patch:
+        patch.setattr(
+            parquet,
+            "_remove_promoted_leftovers",
+            lambda root: (_ for _ in ()).throw(SimulatedCrash()),
+        )
+        with pytest.raises(SimulatedCrash):
+            run(dump, out)
+    final = out / f"snapshot={SNAPSHOT}"
+    (final / "manifest.json").write_text("{}\n")
+    with pytest.raises(FileExistsError):
+        run(dump, out)
+    assert (final / PROGRESS_FILENAME).exists()
+
+
+# --- identity / parameters ---------------------------------------------------------
+
+
+def test_refuses_resume_without_manifest_sha_when_original_recorded_one(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    dump = make_dump(tmp_path / "raw")
+    out = tmp_path / "out"
+    manifest = build_manifest(SNAPSHOT, "2026-01-01")
+    item = manifest.object_for(DumpKind.RELEASES)
+    item.sha256, item.size_bytes = "c" * 64, dump.stat().st_size
+    manifest_path = tmp_path / "m.json"
+    manifest.write(manifest_path)
+    with monkeypatch.context() as patch:
+        crash_on_replace(patch, 5)
+        with pytest.raises(SimulatedCrash):
+            run(dump, out, input_manifest=manifest_path)
+    with pytest.raises(ResumeRefused, match="--input-manifest"):
+        run(dump, out, resume=True)
+
+
+def test_refuses_resume_under_a_different_pyarrow_version(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    dump, out, staging = _interrupted(tmp_path, monkeypatch)
+    record = json.loads((staging / PROGRESS_FILENAME).read_text())
+    assert record["pyarrow_version"] == pa.__version__
+    monkeypatch.setattr(parquet.pa, "__version__", "0.0.0-other")
+    with pytest.raises(ResumeRefused, match="pyarrow_version"):
+        run(dump, out, resume=True)
+    assert staging.is_dir()
+
+
+# --- other datasets sharing an output root -----------------------------------------
+
+
+def test_other_datasets_staging_dirs_do_not_trip_detection(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    dump = make_dump(tmp_path / "raw")
+    out = tmp_path / "out"
+    for table in ("masters", "artist_relations", "frontier_artists"):
+        (out / f".snapshot={SNAPSHOT}.tmp-{table}" / f"table={table}").mkdir(parents=True)
+    # A fresh run is not refused by them, and resume neither counts nor touches them.
+    with monkeypatch.context() as patch:
+        crash_on_replace(patch, 5)
+        with pytest.raises(SimulatedCrash):
+            run(dump, out)
+    assert len(find_staging_dirs(out, SNAPSHOT)) == 1
+    assert run(dump, out, resume=True)["counts"]
+    assert len(list(out.glob(f".snapshot={SNAPSHOT}.tmp-*"))) == 3
+
+
+def test_recovery_report_for_finalized_staging_matches_what_resume_deletes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    dump = make_dump(tmp_path / "raw")
+    out = tmp_path / "out"
+    with monkeypatch.context() as patch:
+        patch.setattr(parquet, "_promote", lambda s, f: (_ for _ in ()).throw(SimulatedCrash()))
+        with pytest.raises(SimulatedCrash):
+            run(dump, out)
+    (staging,) = staging_dirs(out)
+    (staging / ".manifest.json.tmp").write_text("x")
+    report = _recovery_module().check_recovery(SNAPSHOT, out, 2)
+    assert report["unrecorded_files_resume_will_delete"] == [".manifest.json.tmp"]
+    assert report["resume_safe"] is True
 
 
 def wait_for(predicate: Callable[[], bool], message: str, timeout: float = 60.0) -> None:

@@ -207,6 +207,11 @@ def describe_input(input_path: Path, *, input_manifest: Path | None = None) -> d
 def load_progress(staging_root: Path) -> dict[str, Any]:
     path = staging_root / PROGRESS_FILENAME
     if not path.is_file():
+        if not any(staging_root.glob("table=*/*")):
+            raise ResumeRefused(
+                f"{staging_root.name} holds no completed work (the run stopped before its "
+                f"first {PROGRESS_FILENAME} was written); delete it and re-run without --resume."
+            )
         raise ResumeRefused(
             f"{staging_root.name} has no {PROGRESS_FILENAME}; it was not written by a "
             "resumable run (or the record was lost). Inspect it with "
