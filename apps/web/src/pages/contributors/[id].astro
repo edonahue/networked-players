@@ -169,7 +169,7 @@ const description = playedText
     type="application/ld+json"
     set:html={jsonLdScript(personJsonLd(contributor.artist_id, contributor.name))}
   />
-  <section class="shell" style="padding-top:40px">
+  <section class="shell u-pt-40">
     <div class="play-header">
       {
         contributorCover ? (
@@ -205,7 +205,7 @@ const description = playedText
 
     {
       albums.length > 0 ? (
-        <p class="lede" style="max-width:720px;font-size:0.98rem">
+        <p class="lede lede--lg paper-panel liner-note">
           <a href={`/explore/${albums[0].id}/?center=${contributor.artist_id}`}>
             Explore around {contributor.name}
           </a>{' '}
@@ -221,7 +221,7 @@ const description = playedText
           )}
         </p>
       ) : (
-        <p class="lede" style="max-width:720px;font-size:0.98rem">
+        <p class="lede lede--lg paper-panel liner-note">
           No record is connected to {contributor.name} yet. Browse{' '}
           <a href="/contributors/">other players</a> instead.
         </p>
@@ -263,7 +263,7 @@ const description = playedText
           </p>
           {
             interestingNeighbor && (
-              <p class="lede" style="margin-bottom:14px;font-size:0.92rem">
+              <p class="lede u-mb-14 lede--sm">
                 Worth a look:{' '}
                 <a href={`/contributors/${interestingNeighbor.artist_id}/`}>
                   {interestingNeighbor.name}
@@ -282,7 +282,7 @@ const description = playedText
                   <span class="contributor-card__name">
                     {neighbor.name}
                     {interestingNeighbor && neighbor.artist_id === interestingNeighbor.artist_id && (
-                      <span class="tag tag--highlight" style="margin-left:6px">
+                      <span class="tag tag--highlight u-ml-6">
                         Different part
                       </span>
                     )}
@@ -294,7 +294,7 @@ const description = playedText
           </div>
         </section>
       ) : (
-        <p class="lede" style="max-width:720px;margin-top:28px;font-size:0.95rem">
+        <p class="lede u-mt-28 lede--md">
           No other player is indexed alongside {contributor.name} on a documented recording yet.{' '}
           <a href="/contributors/">Browse all players</a> to find someone to follow.
         </p>
@@ -309,13 +309,13 @@ const description = playedText
             {contributor.name} is also credited for these. They appear in the credits but do not
             make a connection.
           </p>
-          <p class="lede" style="font-size:0.95rem" data-player-also-list>
+          <p class="lede lede--md" data-player-also-list>
             {alsoVisible.join(', ')}
           </p>
           {alsoRest.length > 0 && (
             <details class="record-more">
               <summary>Show {alsoRest.length} more</summary>
-              <p class="lede" style="font-size:0.95rem">{alsoRest.join(', ')}</p>
+              <p class="lede lede--md">{alsoRest.join(', ')}</p>
             </details>
           )}
         </div>

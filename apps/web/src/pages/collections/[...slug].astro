@@ -63,7 +63,7 @@ const title = collection ? collection.title : 'Collections';
 ---
 
 <BaseLayout title={title} description={description}>
-  <section class="shell" style="padding-top:40px;padding-bottom:72px">
+  <section class="shell u-pt-40 u-pb-72">
     {
       collection === null ? (
         <>
@@ -90,12 +90,14 @@ const title = collection ? collection.title : 'Collections';
         <>
           <p class="eyebrow record-header__eyebrow">Collection</p>
           <h1 class="h1-entity">{collection.title}</h1>
-          <p class="collection-intro" data-collection-intro>{collection.intro}</p>
+          <div class="paper-panel liner-note">
+            <p class="collection-intro" data-collection-intro>{collection.intro}</p>
           {collection.attribution && (
             <p class="collection-attribution">
               Theme: <a href={collection.attribution.source_url}>{collection.attribution.label}</a>
             </p>
           )}
+          </div>
 
           <section class="record-section collection-section" aria-labelledby="records-heading" data-collection-records>
             <h2 id="records-heading">The records</h2>

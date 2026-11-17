@@ -18,7 +18,7 @@ const description =
 ---
 
 <BaseLayout title="Albums" description={description}>
-  <section class="prose shell" style="padding-bottom:8px">
+  <section class="prose shell u-pb-8 groove-head">
     <p class="eyebrow">Browse</p>
     <h1>Albums</h1>
     <p class="lede">
@@ -28,7 +28,7 @@ const description =
     </p>
   </section>
 
-  <section class="shell" aria-label="Album grid" style="padding-bottom:72px">
+  <section class="shell u-pb-72" aria-label="Album grid">
     <AlbumsDirectory albums={albums} connectedAlbumIds={connectedIds} />
   </section>
 </BaseLayout>
