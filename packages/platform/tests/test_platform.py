@@ -47,8 +47,8 @@ class _FakeStore:
 
 def _install_digests(monkeypatch: pytest.MonkeyPatch, digest: str = DIGEST) -> None:
     monkeypatch.setattr(
-        "networked_players_platform.executor.installed_runtime_digests",
-        lambda: {"platform.self-test": digest, "artifact.validate": digest},
+        "networked_players_platform.executor.installed_digest_report",
+        lambda: ({"platform.self-test": digest, "artifact.validate": digest}, {}),
     )
 
 

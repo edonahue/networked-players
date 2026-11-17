@@ -21,9 +21,8 @@ from networked_players_platform.digest import (
     DigestError,
     checkout_package_roots,
     contracts_digest,
-    handler_modules,
+    entry_modules,
     import_closure,
-    installed_package_roots,
     runtime_digest,
     workload_closures,
     workload_digests,
@@ -33,6 +32,7 @@ from networked_players_platform.jobs import (
     JobRecord,
     RqJobBackend,
     cancel_job,
+    classify_failure,
     is_retryable_failure,
     log_locations,
 )
@@ -92,8 +92,7 @@ def _make_repo(tmp_path: Path) -> Path:
 
 def _digest(repo: Path, module: str = "networked_players_alpha.entry") -> str:
     roots = checkout_package_roots(repo)
-    lock = digest_module.uv_lock_sha256(repo)
-    return runtime_digest(import_closure(module, roots), roots, lock)
+    return runtime_digest(import_closure(module, roots), roots)
 
 
 def test_digest_is_stable_across_file_order_and_mtime(tmp_path: Path) -> None:
@@ -131,14 +130,13 @@ def test_docs_web_data_tests_and_pycache_do_not_change_the_digest(tmp_path: Path
 @pytest.mark.parametrize(
     "relative",
     [
-        "uv.lock",
         "packages/alpha/src/networked_players_alpha/entry.py",
         "packages/alpha/src/networked_players_alpha/unused.py",  # same package: covered
         "packages/beta/src/networked_players_beta/util.py",
         "packages/beta/src/networked_players_beta/data.json",
     ],
 )
-def test_one_byte_change_in_executed_code_or_lock_changes_the_digest(
+def test_one_byte_change_in_executed_package_files_changes_the_digest(
     tmp_path: Path, relative: str
 ) -> None:
     repo = _make_repo(tmp_path)
@@ -146,6 +144,58 @@ def test_one_byte_change_in_executed_code_or_lock_changes_the_digest(
     target = repo / relative
     target.write_bytes(target.read_bytes() + b" ")
     assert _digest(repo) != before
+
+
+def test_uv_lock_is_provenance_only_not_part_of_the_digest(tmp_path: Path) -> None:
+    repo = _make_repo(tmp_path)
+    before = _digest(repo)
+    (repo / "uv.lock").write_text("a dev-tool bump\n")
+    assert _digest(repo) == before
+    assert digest_module.uv_lock_sha256(repo) != digest_module.file_sha256(
+        tmp_path / "repo" / "docs/NOTES.md"
+    )
+
+
+def test_any_packaged_file_type_is_hashed_but_bytecode_is_not(tmp_path: Path) -> None:
+    repo = _make_repo(tmp_path)
+    before = _digest(repo)
+    package = repo / "packages/beta/src/networked_players_beta"
+    (package / "model.bin").write_bytes(b"weights")  # a packaged non-Python file
+    assert _digest(repo) != before
+    with_bin = _digest(repo)
+    (package / "util.cpython-312.pyc").write_bytes(b"bytecode")
+    assert _digest(repo) == with_bin
+
+
+def test_package_hashing_is_memoized_across_workloads(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    repo = _make_repo(tmp_path)
+    calls: list[Path] = []
+    real = digest_module.file_sha256
+    monkeypatch.setattr(digest_module, "file_sha256", lambda path: calls.append(path) or real(path))
+    modules = {
+        "w.one": "networked_players_alpha.entry",
+        "w.two": "networked_players_alpha.entry",
+        "w.three": "networked_players_alpha.entry",
+    }
+    workload_digests(modules, checkout_package_roots(repo))
+    assert len(calls) == len(set(calls))  # no file hashed twice across three workloads
+
+
+def test_one_unhashable_workload_is_unavailable_and_the_rest_stay(tmp_path: Path) -> None:
+    repo = _make_repo(tmp_path)
+    (repo / "packages/alpha/src/networked_players_alpha/broken.py").write_text("def (:\n")
+    modules = {
+        "ok.workload": "networked_players_beta.util",
+        "bad.workload": "networked_players_alpha.broken",
+        "missing.workload": "networked_players_nowhere.entry",
+    }
+    digests, errors = digest_module.safe_workload_digests(modules, checkout_package_roots(repo))
+    assert set(digests) == {"ok.workload"}
+    assert set(errors) == {"bad.workload", "missing.workload"}
+    with pytest.raises(DigestError):
+        workload_digests(modules, checkout_package_roots(repo))
 
 
 def test_import_closure_follows_function_local_and_relative_imports(tmp_path: Path) -> None:
@@ -177,7 +227,7 @@ def test_contracts_digest_tracks_content_not_version(tmp_path: Path) -> None:
 
 def test_real_import_closures_are_pinned() -> None:
     """A new import that widens a workload's closure must be a visible review change."""
-    closures = workload_closures(handler_modules(), checkout_package_roots(REPO_ROOT))
+    closures = workload_closures(entry_modules(), checkout_package_roots(REPO_ROOT))
     platform_and_contracts = ("networked_players_contracts", "networked_players_platform")
     assert closures["artifact.validate"] == platform_and_contracts
     assert closures["platform.self-test"] == platform_and_contracts
@@ -196,35 +246,66 @@ def test_real_import_closures_are_pinned() -> None:
     )
 
 
-def test_installed_code_digest_matches_the_checkout_digest(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+def test_entry_points_follow_the_workload_id_convention() -> None:
+    """Entry point `cohort-score` must register workload `cohort.score`, because the
+    executor and the digest code resolve plugin workloads by name without importing."""
+    from networked_players_platform.workloads import discover_workloads
+
+    modules = entry_modules()
+    for workload_id in discover_workloads():
+        assert workload_id in modules
+    assert digest_module.workload_id_for_entry_point("research-graph-metrics") == (
+        "research.graph-metrics"
+    )
+
+
+def test_load_workload_imports_only_the_requested_plugin(
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    lock = digest_module.uv_lock_sha256(REPO_ROOT)
-    release = tmp_path / "release.json"
-    release.write_text(json.dumps({"uv_lock_sha256": lock}))
-    monkeypatch.setenv("PLATFORM_RELEASE_JSON", str(release))
-    digest_module.installed_runtime_digests.cache_clear()
-    try:
-        installed = digest_module.installed_runtime_digests()
-    finally:
-        digest_module.installed_runtime_digests.cache_clear()
-    expected = workload_digests(handler_modules(), checkout_package_roots(REPO_ROOT), lock)
-    assert installed == expected
-    assert set(installed_package_roots()) >= {
-        "networked_players_contracts",
-        "networked_players_platform",
-    }
+    import importlib.metadata
+
+    from networked_players_platform import workloads
+
+    loaded: list[str] = []
+    real = workloads._load_entry_point
+
+    def tracking(entry_point: importlib.metadata.EntryPoint):
+        loaded.append(entry_point.name)
+        return real(entry_point)
+
+    monkeypatch.setattr(workloads, "_load_entry_point", tracking)
+    assert workloads.load_workload("artifact.validate") is not None
+    assert loaded == []  # a built-in imports no plugin at all
+    assert workloads.load_workload("cohort.score") is not None
+    assert loaded == ["cohort-score"]
+    assert workloads.load_workload("no.such-workload") is None
 
 
-def test_worker_without_release_manifest_advertises_no_digests(
+def test_worker_without_a_release_manifest_still_advertises_digests(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.delenv("PLATFORM_RELEASE_JSON", raising=False)
-    digest_module.installed_runtime_digests.cache_clear()
+    digest_module.installed_digest_report.cache_clear()
     try:
-        assert digest_module.installed_runtime_digests() == {}
+        digests, errors = digest_module.installed_digest_report()
     finally:
-        digest_module.installed_runtime_digests.cache_clear()
+        digest_module.installed_digest_report.cache_clear()
+    assert errors == {}
+    assert digests == workload_digests(entry_modules(), checkout_package_roots(REPO_ROOT))
+
+
+def test_a_broken_release_manifest_is_only_a_warning(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    release = tmp_path / "release.json"
+    release.write_text("not json")
+    monkeypatch.setenv("PLATFORM_RELEASE_JSON", str(release))
+    digest_module.installed_digest_report.cache_clear()
+    try:
+        digests, _ = digest_module.installed_digest_report()
+    finally:
+        digest_module.installed_digest_report.cache_clear()
+    assert "artifact.validate" in digests
 
 
 # --- selection and skew reporting ----------------------------------------------------
@@ -258,6 +339,10 @@ def _worker(
         runtime_digests={"artifact.validate": digest} if digest else {},
         contracts_version="0.1.0" if schema_version >= 2 else "",
     )
+
+
+def _rq_alive(*worker_ids: str) -> dict[str, datetime | None]:
+    return {worker_id: NOW for worker_id in worker_ids}
 
 
 def _select(workers: list[WorkerAdvertisement], **kwargs: Any) -> WorkerAdvertisement:
@@ -444,7 +529,7 @@ def _runner(script: dict[str, Any], calls: list[tuple[str, str, int, str | None]
 
 
 def _selector(workers: list[WorkerAdvertisement]):
-    return lambda excluded: _select(workers, exclude=excluded)
+    return lambda excluded, floor: _select(workers, exclude=excluded, memory_above_mb=floor)
 
 
 def test_lost_worker_retries_on_another_worker_and_records_attempt_two() -> None:
@@ -495,7 +580,7 @@ def test_killed_work_horse_is_retried_and_retries_run_out_with_reasons() -> None
     workers = [_worker("worker-a")]
     calls: list[tuple[str, str, int, str | None]] = []
     killed = RunFailedError("Work-horse terminated unexpectedly", retryable=True)
-    with pytest.raises(RetriesExhaustedError, match="no worker left to retry"):
+    with pytest.raises(RetriesExhaustedError, match="cannot retry attempt 2"):
         run_with_retries(
             base_run_id="run-1",
             max_retries=1,
@@ -515,27 +600,89 @@ def test_first_attempt_without_eligible_worker_raises_the_reasons() -> None:
         )
 
 
-def test_retryable_failure_classification() -> None:
-    assert is_retryable_failure("... Work-horse terminated unexpectedly; waitpid returned 9")
-    assert is_retryable_failure("rq.exceptions.AbandonedJobError")
-    assert not is_retryable_failure("Traceback ... RunExecutionError: bad")
-    assert not is_retryable_failure("Task exceeded maximum timeout value (120 seconds)")
-    assert not is_retryable_failure(None)
+def test_failure_classification_maps_rq_statuses_to_retry_decisions() -> None:
+    horse = "Work-horse terminated unexpectedly; waitpid returned"
+    assert classify_failure(f"{horse} 9 (signal 9); ") == "memory-suspect"
+    # No signal info: cannot be told apart from an OOM kill.
+    assert classify_failure(f"{horse} 256; ") == "memory-suspect"
+    assert classify_failure(f"{horse} 15 (signal 15); ") == "retryable"
+    assert classify_failure("rq.exceptions.AbandonedJobError") == "memory-suspect"
+    assert classify_failure("Job stopped by user, work-horse terminated.") == "stopped"
+    assert classify_failure("Traceback ... RunExecutionError: bad") == "deterministic"
+    assert classify_failure("Task exceeded maximum timeout value (120 seconds)") == "deterministic"
+    assert classify_failure(None) == "deterministic"
+    assert is_retryable_failure(f"{horse} 15 (signal 15); ")
+    assert not is_retryable_failure("Job stopped by user, work-horse terminated.")
 
 
-def test_worker_watch_declares_loss_only_after_the_grace() -> None:
-    watch = WorkerWatch("worker-a", grace=timedelta(seconds=90), max_age=timedelta(seconds=90))
-    fresh = [_worker("worker-a", observed_at=NOW)]
-    assert watch.observe(fresh, NOW) is False
-    assert watch.observe([], NOW + timedelta(seconds=30)) is False  # missing, within grace
-    assert watch.observe([], NOW + timedelta(seconds=100)) is False  # 70s unhealthy
-    assert watch.observe([], NOW + timedelta(seconds=125)) is True  # 95s unhealthy
-    # A returning heartbeat resets the clock.
-    back = [_worker("worker-a", observed_at=NOW + timedelta(seconds=130))]
-    assert watch.observe(back, NOW + timedelta(seconds=131)) is False
-    stale = [_worker("worker-a", observed_at=NOW)]
-    assert watch.observe(stale, NOW + timedelta(seconds=200)) is False  # stale counts as lapse
-    assert watch.observe(stale, NOW + timedelta(seconds=300)) is True
+def test_suspected_oom_is_not_retried_on_identical_hardware() -> None:
+    workers = [_worker("worker-a"), _worker("worker-b", active_jobs=1)]  # same 512 MB budget
+    calls: list[tuple[str, str, int, str | None]] = []
+    killed = RunFailedError("killed (signal 9)", retryable=True, memory_suspect=True)
+    with pytest.raises(RetriesExhaustedError, match="possibly out of memory at 512 MB") as excinfo:
+        run_with_retries(
+            base_run_id="run-1",
+            max_retries=2,
+            select=_selector(workers),
+            run_attempt=_runner({"worker-a": killed, "worker-b": None}, calls),
+        )
+    assert [c[0] for c in calls] == ["worker-a"]
+    assert excinfo.value.attempts[0].outcome == "memory-suspect-kill"
+
+
+def test_suspected_oom_is_retried_on_a_worker_with_a_larger_budget() -> None:
+    workers = [_worker("worker-a"), _worker("worker-big", max_job_memory_mb=1000, active_jobs=5)]
+    calls: list[tuple[str, str, int, str | None]] = []
+    killed = RunFailedError("killed (signal 9)", retryable=True, memory_suspect=True)
+    outcome = run_with_retries(
+        base_run_id="run-1",
+        max_retries=1,
+        select=_selector(workers),
+        run_attempt=_runner({"worker-a": killed, "worker-big": None}, calls),
+    )
+    assert outcome.worker.worker_id == "worker-big" and outcome.attempt == 2
+
+
+def test_worker_watch_uses_rq_liveness_only_and_the_grace() -> None:
+    watch = WorkerWatch("worker-a", grace=timedelta(seconds=60))
+    assert watch.observe(NOW, NOW) is False  # live
+    # RQ record absent: not yet lost within the grace...
+    assert watch.observe(None, NOW + timedelta(seconds=30)) is False
+    # ...lost once it has stayed absent for the grace.
+    assert watch.observe(None, NOW + timedelta(seconds=95)) is True
+    # A returning RQ heartbeat resets the clock.
+    back = NOW + timedelta(seconds=100)
+    assert watch.observe(back, back) is False
+    assert watch.observe(None, back + timedelta(seconds=10)) is False
+
+
+def test_scenario_a_dead_rq_worker_with_a_fresh_advertisement_is_lost_and_unschedulable() -> None:
+    """RQ worker dead while the separate heartbeat timer keeps advertising."""
+    watch = WorkerWatch("worker-a", grace=timedelta(seconds=60))
+    verdicts = []
+    for step in range(0, 700, 30):
+        now = NOW + timedelta(seconds=step)
+        # The advertisement is fresh at every step; RQ expires its record after 420 s.
+        beat = NOW if step < 420 else None
+        verdicts.append(watch.observe(beat, now, advertisement_fresh=True))
+    assert verdicts[-1] is True and watch.advertisement_fresh is True
+    # Scheduling: fresh advertisement, absent RQ record -> excluded with a reason.
+    with pytest.raises(NoEligibleWorkerError) as excinfo:
+        _select([_worker("worker-a")], rq_heartbeats={"worker-a": None})
+    assert any("RQ worker process absent" in r for r in excinfo.value.reasons["worker-a"])
+    stale_rq = {"worker-a": NOW - timedelta(seconds=500)}
+    with pytest.raises(NoEligibleWorkerError, match="RQ worker heartbeat stale"):
+        _select([_worker("worker-a")], rq_heartbeats=stale_rq)
+    chosen = _select([_worker("worker-a")], rq_heartbeats=_rq_alive("worker-a"))
+    assert chosen.worker_id == "worker-a"
+
+
+def test_scenario_b_failing_heartbeat_with_a_live_rq_worker_is_never_lost() -> None:
+    """Advertisement lapsed (heartbeat unit failing) while RQ itself is healthy."""
+    watch = WorkerWatch("worker-a", grace=timedelta(seconds=60))
+    for step in range(0, 3600, 30):
+        now = NOW + timedelta(seconds=step)
+        assert watch.observe(now - timedelta(seconds=5), now, advertisement_fresh=False) is False
 
 
 def _run_dir(base: Path, name: str, request: RunRequest) -> Path:
@@ -551,8 +698,8 @@ def test_a_retried_attempt_does_not_collide_with_the_first_attempts_output(
     monkeypatch.setenv("PLATFORM_WORKER_ID", "worker-b")
     monkeypatch.setenv("PLATFORM_RUNTIME_COMMIT", COMMIT)
     monkeypatch.setattr(
-        "networked_players_platform.executor.installed_runtime_digests",
-        lambda: {"platform.self-test": DIGEST},
+        "networked_players_platform.executor.installed_digest_report",
+        lambda: ({"platform.self-test": DIGEST}, {}),
     )
 
     def request(run_id: str, attempt: int, retry_of: str | None) -> RunRequest:
