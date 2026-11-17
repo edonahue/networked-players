@@ -500,7 +500,10 @@ def test_validation_report_records_contracts_version_and_digests(
         "networked_players_platform.workloads.installed_runtime_digests",
         lambda: {"artifact.validate": DIGEST},
     )
-    _artifact_validate_handler(request, input_dir, tmp_path / "out")
+    monkeypatch.setenv("PLATFORM_RUNTIME_COMMIT", COMMIT)
+    monkeypatch.setenv("PLATFORM_WORKER_ID", "worker-a")
+    outputs = _artifact_validate_handler(request, input_dir, tmp_path / "out")
+    assert outputs[0].contract == "platform-validation-report-v2"
     report = json.loads((tmp_path / "out" / "validation-report.json").read_text())
     import networked_players_contracts
 
@@ -509,6 +512,8 @@ def test_validation_report_records_contracts_version_and_digests(
     assert len(report["contracts_digest"]) == 64
     assert report["runtime_digest"] == DIGEST
     assert report["attempt"] == 2
+    assert report["runtime_commit"] == COMMIT and report["worker_id"] == "worker-a"
+    assert report["submitted_commit"] == COMMIT and report["schema_version"] == 2
     assert report["valid"] is False
 
 
@@ -800,6 +805,11 @@ def backend() -> FakeBackend:
     )
 
 
+@pytest.fixture
+def backend_fixture(backend: FakeBackend) -> FakeBackend:
+    return backend
+
+
 def test_jobs_list_filters_and_prints_timestamps(
     backend: FakeBackend, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -886,3 +896,175 @@ def test_rq_backend_maps_a_job_to_a_record_without_a_broker() -> None:
         "job-0",
     )
     assert record.remote_run == "~/runs/job-1" and record.enqueued_at == NOW.isoformat()
+
+
+# --- executor refusals -----------------------------------------------------------------
+
+
+def _self_test_request(**overrides: Any) -> RunRequest:
+    fields: dict[str, Any] = {
+        "schema_version": 2,
+        "run_id": "refusal-1",
+        "workload_id": "platform.self-test",
+        "workload_version": "1",
+        "submitted_at": NOW.isoformat(),
+        "runtime_commit": COMMIT,
+        "runtime_digest": DIGEST,
+        "timeout_seconds": 60,
+        "max_retries": 0,
+        "capabilities": CapabilityRequirement(),
+        "inputs": (),
+        "expected_outputs": ("self-test",),
+        "parameters": {},
+    }
+    fields.update(overrides)
+    return RunRequest(**fields)
+
+
+def test_executor_refuses_a_schema_1_request_that_carries_no_digest(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("PLATFORM_WORKER_ID", "worker-a")
+    monkeypatch.setattr(
+        "networked_players_platform.executor.installed_digest_report",
+        lambda: ({"platform.self-test": DIGEST}, {}),
+    )
+    request = _self_test_request(schema_version=1, runtime_digest="")
+    run_dir = _run_dir(tmp_path, "legacy", request)
+    with pytest.raises(Exception, match="no runtime digest"):
+        execute_run(str(run_dir))
+    assert (run_dir / "failed.json").exists() and not (run_dir / "completed").exists()
+
+
+def test_executor_refuses_when_the_worker_has_no_digest_for_the_workload(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("PLATFORM_WORKER_ID", "worker-a")
+    monkeypatch.setattr(
+        "networked_players_platform.executor.installed_digest_report",
+        lambda: ({}, {"platform.self-test": "cannot parse broken.py"}),
+    )
+    run_dir = _run_dir(tmp_path, "nodigest", _self_test_request())
+    with pytest.raises(Exception, match=r"no runtime digest for platform\.self-test") as excinfo:
+        execute_run(str(run_dir))
+    assert "cannot parse broken.py" in str(excinfo.value)
+    assert not (run_dir / "completed").exists()
+
+
+def test_executor_loads_only_the_requested_workload(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("PLATFORM_WORKER_ID", "worker-a")
+    monkeypatch.setenv("PLATFORM_RUNTIME_COMMIT", COMMIT)
+    monkeypatch.setattr(
+        "networked_players_platform.executor.installed_digest_report",
+        lambda: ({"platform.self-test": DIGEST}, {}),
+    )
+
+    def forbidden() -> None:
+        raise AssertionError("executor must not discover every plugin")
+
+    monkeypatch.setattr("networked_players_platform.workloads.discover_workloads", forbidden)
+    monkeypatch.setattr(
+        "networked_players_platform.workloads.discover_available_workloads", forbidden
+    )
+    run_dir = _run_dir(tmp_path, "single", _self_test_request())
+    assert execute_run(str(run_dir))["status"] == "succeeded"
+
+
+# --- advertisements and CLI ------------------------------------------------------------
+
+
+class _Store:
+    def __init__(self, values: dict[str, str]) -> None:
+        self.values = values
+
+    def scan_iter(self, match: str):
+        return iter(self.values)
+
+    def get(self, name: bytes | str) -> str | None:
+        return self.values.get(name if isinstance(name, str) else name.decode())
+
+
+def test_one_malformed_advertisement_is_skipped_with_a_per_worker_reason() -> None:
+    from networked_players_platform.broker import (
+        WORKER_KEY_PREFIX,
+        read_advertisements,
+        read_advertisements_checked,
+    )
+
+    good = _worker("worker-a")
+    store = _Store(
+        {
+            WORKER_KEY_PREFIX + "worker-a": json.dumps(good.to_dict()),
+            WORKER_KEY_PREFIX + "worker-bad": "{not json",
+            WORKER_KEY_PREFIX + "worker-future": json.dumps(
+                {**good.to_dict(), "schema_version": 9}
+            ),
+            WORKER_KEY_PREFIX + "worker-short": json.dumps({"schema_version": 2}),
+        }
+    )
+    workers, problems = read_advertisements_checked(store)
+    assert [w.worker_id for w in workers] == ["worker-a"]
+    assert set(problems) == {"worker-bad", "worker-future", "worker-short"}
+    assert all(p.startswith("unreadable advertisement") for p in problems.values())
+    assert [w.worker_id for w in read_advertisements(store)] == ["worker-a"]
+    # The reasons surface in selection failures.
+    with pytest.raises(NoEligibleWorkerError) as excinfo:
+        _select([_worker("worker-a", digest=OTHER_DIGEST)], problems=problems)
+    assert "unreadable advertisement" in excinfo.value.reasons["worker-bad"][0]
+
+
+def test_rq_worker_heartbeat_reads_the_rq_record_read_only() -> None:
+    from networked_players_platform.broker import read_rq_worker_heartbeat
+
+    class Store:
+        def __init__(self, value: bytes | None) -> None:
+            self.value = value
+            self.asked: list[tuple[str, str]] = []
+
+        def hget(self, name: str, key: str) -> bytes | None:
+            self.asked.append((name, key))
+            return self.value
+
+    store = Store(b"2026-11-16T00:00:30.250000Z")
+    beat = read_rq_worker_heartbeat(store, "worker-a")
+    assert beat == datetime(2026, 11, 16, 0, 0, 30, 250000, tzinfo=UTC)
+    assert store.asked == [("rq:worker:worker-a", "last_heartbeat")]
+    assert read_rq_worker_heartbeat(Store(None), "worker-a") is None
+    assert read_rq_worker_heartbeat(Store(b"garbage"), "worker-a") is None
+
+
+def test_unavailable_workload_is_reported_with_its_reason() -> None:
+    worker = WorkerAdvertisement.from_dict(
+        {
+            **_worker("worker-a", workloads={}).to_dict(),
+            "unavailable_workloads": {"artifact.validate": "ImportError: boom"},
+        }
+    )
+    with pytest.raises(NoEligibleWorkerError, match="unavailable on worker: ImportError: boom"):
+        _select([worker])
+
+
+def test_makefile_shaped_jobs_invocation_accepts_json_after_the_subcommand(
+    backend_fixture: Any, capsys: pytest.CaptureFixture[str]
+) -> None:
+    # `make platform-jobs ARGS="list --json"` runs: networked-players-platform jobs list --json
+    assert main(["jobs", "list", "--json"], jobs_backend=backend_fixture) == 0
+    assert isinstance(json.loads(capsys.readouterr().out), list)
+    # Parent-position flags keep working, and a subcommand flag does not reset them.
+    assert main(["jobs", "--json", "status", "job-queued"], jobs_backend=backend_fixture) == 0
+    assert json.loads(capsys.readouterr().out)["job_id"] == "job-queued"
+    assert main(["jobs", "status", "job-queued", "--json"], jobs_backend=backend_fixture) == 0
+    assert json.loads(capsys.readouterr().out)["state"] == "queued"
+    assert main(["jobs", "cancel", "job-queued", "--json"], jobs_backend=backend_fixture) == 0
+    assert json.loads(capsys.readouterr().out)["action"] == "canceled"
+    assert main(["jobs", "logs", "job-queued", "--json"], jobs_backend=backend_fixture) == 0
+    assert json.loads(capsys.readouterr().out)["worker_id"] == "worker-a"
+
+
+def test_makefile_target_passes_args_to_the_jobs_subcommand() -> None:
+    makefile = (REPO_ROOT / "Makefile").read_text()
+    assert "PLATFORM_SUBCOMMAND=jobs ./scripts/platform-status.sh $(or $(ARGS),list)" in makefile
+    script = (REPO_ROOT / "scripts/platform-status.sh").read_text()
+    assert 'networked-players-platform "${PLATFORM_SUBCOMMAND:-cluster-status}" "$@"' in script

@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+from dataclasses import asdict
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -222,7 +223,7 @@ def _jobs(args: argparse.Namespace, broker_url: str | None, backend: JobBackend 
     if command == "cancel":
         outcome = cancel_job(backend, args.job_id, advertised_workers=advertised)
         if as_json:
-            print(json.dumps(outcome.__dict__, indent=2, sort_keys=True))
+            print(json.dumps(asdict(outcome), indent=2, sort_keys=True))
         else:
             print(f"{outcome.job_id}: {outcome.action}: {outcome.message}")
         return 0 if outcome.action in {"canceled", "stop-requested"} else 1
