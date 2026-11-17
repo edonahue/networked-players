@@ -24,6 +24,7 @@ from networked_players_platform.workloads import (
 )
 
 COMMIT = "a" * 40
+DIGEST = "e" * 64
 MANIFEST_HASH = "b" * 64
 
 
@@ -44,6 +45,13 @@ class _FakeStore:
         return self.values.get(key)
 
 
+def _install_digests(monkeypatch: pytest.MonkeyPatch, digest: str = DIGEST) -> None:
+    monkeypatch.setattr(
+        "networked_players_platform.executor.installed_digest_report",
+        lambda: ({"platform.self-test": digest, "artifact.validate": digest}, {}),
+    )
+
+
 def _worker(
     worker_id: str,
     *,
@@ -52,7 +60,7 @@ def _worker(
     architecture: str = "aarch64",
 ) -> WorkerAdvertisement:
     return WorkerAdvertisement(
-        schema_version=1,
+        schema_version=2,
         worker_id=worker_id,
         observed_at=observed_at.isoformat(),
         architecture=architecture,
@@ -60,6 +68,7 @@ def _worker(
         total_memory_mb=1024,
         max_job_memory_mb=512,
         runtime_commit=COMMIT,
+        runtime_digests={"artifact.validate": DIGEST},
         workloads={"artifact.validate": "1"},
         datasets=(DatasetIdentity("discogs-onehop", "20260601", MANIFEST_HASH),),
         active_jobs=active_jobs,
@@ -76,7 +85,7 @@ def test_scheduler_filters_stale_and_selects_lowest_load() -> None:
         CapabilityRequirement(architectures=("aarch64",), tags=("validation",), min_memory_mb=256),
         workload_id="artifact.validate",
         workload_version="1",
-        runtime_commit=COMMIT,
+        runtime_digest=DIGEST,
         now=now,
     )
     assert selected.worker_id == "worker-idle"
@@ -93,7 +102,7 @@ def test_scheduler_requires_exact_dataset_and_runtime() -> None:
             requirement,
             workload_id="artifact.validate",
             workload_version="1",
-            runtime_commit=COMMIT,
+            runtime_digest=DIGEST,
             now=now,
         )
 
@@ -140,12 +149,13 @@ def test_executor_publishes_verified_self_test(
     run_dir = tmp_path / "run"
     (run_dir / "input").mkdir(parents=True)
     request = RunRequest(
-        schema_version=1,
+        schema_version=2,
         run_id="self-test-001",
         workload_id="platform.self-test",
         workload_version="1",
         submitted_at="2026-07-10T00:00:00+00:00",
         runtime_commit=COMMIT,
+        runtime_digest=DIGEST,
         timeout_seconds=60,
         max_retries=0,
         capabilities=CapabilityRequirement(),
@@ -155,6 +165,7 @@ def test_executor_publishes_verified_self_test(
     )
     (run_dir / "request.json").write_text(json.dumps(request.to_dict()))
     monkeypatch.setenv("PLATFORM_RUNTIME_COMMIT", COMMIT)
+    _install_digests(monkeypatch)
     monkeypatch.setenv("PLATFORM_WORKER_ID", "worker-1")
 
     result = execute_run(str(run_dir))
@@ -163,18 +174,19 @@ def test_executor_publishes_verified_self_test(
     assert not (run_dir / ".output.staging").exists()
 
 
-def test_executor_records_runtime_mismatch_without_completed_output(
+def test_executor_records_digest_mismatch_without_completed_output(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     run_dir = tmp_path / "run"
     (run_dir / "input").mkdir(parents=True)
     request = RunRequest(
-        schema_version=1,
+        schema_version=2,
         run_id="self-test-002",
         workload_id="platform.self-test",
         workload_version="1",
         submitted_at="2026-07-10T00:00:00+00:00",
         runtime_commit=COMMIT,
+        runtime_digest=DIGEST,
         timeout_seconds=60,
         max_retries=0,
         capabilities=CapabilityRequirement(),
@@ -183,10 +195,11 @@ def test_executor_records_runtime_mismatch_without_completed_output(
         parameters={},
     )
     (run_dir / "request.json").write_text(json.dumps(request.to_dict()))
-    monkeypatch.setenv("PLATFORM_RUNTIME_COMMIT", "d" * 40)
+    monkeypatch.setenv("PLATFORM_RUNTIME_COMMIT", COMMIT)
+    _install_digests(monkeypatch, "d" * 64)
     monkeypatch.setenv("PLATFORM_WORKER_ID", "worker-1")
 
-    with pytest.raises(RunExecutionError, match="commit mismatch"):
+    with pytest.raises(RunExecutionError, match="digest mismatch"):
         execute_run(str(run_dir))
     assert (run_dir / "failed.json").exists()
     assert not (run_dir / "completed").exists()
@@ -230,12 +243,13 @@ def test_research_corpus_check_flags_a_real_checksum_mismatch(tmp_path: Path) ->
     output_dir = tmp_path / "output"
 
     request = RunRequest(
-        schema_version=1,
+        schema_version=2,
         run_id="corpus-check-001",
         workload_id="research.corpus-check",
         workload_version="1",
         submitted_at="2026-08-04T00:00:00+00:00",
         runtime_commit=COMMIT,
+        runtime_digest=DIGEST,
         timeout_seconds=120,
         max_retries=1,
         capabilities=CapabilityRequirement(),
@@ -264,12 +278,13 @@ def test_executor_runs_dependency_free_artifact_validation(
         contract="synthetic-json-v1",
     )
     request = RunRequest(
-        schema_version=1,
+        schema_version=2,
         run_id="validation-001",
         workload_id="artifact.validate",
         workload_version="1",
         submitted_at="2026-07-10T00:00:00+00:00",
         runtime_commit=COMMIT,
+        runtime_digest=DIGEST,
         timeout_seconds=120,
         max_retries=1,
         capabilities=CapabilityRequirement(),
@@ -279,6 +294,7 @@ def test_executor_runs_dependency_free_artifact_validation(
     )
     (run_dir / "request.json").write_text(json.dumps(request.to_dict()))
     monkeypatch.setenv("PLATFORM_RUNTIME_COMMIT", COMMIT)
+    _install_digests(monkeypatch)
     monkeypatch.setenv("PLATFORM_WORKER_ID", "worker-1")
 
     result = execute_run(str(run_dir))
@@ -300,12 +316,13 @@ def test_artifact_validate_handles_a_real_single_input_validator(tmp_path: Path)
         input_dir, "catalog.json", name="catalog", contract="synthetic-json-v1"
     )
     request = RunRequest(
-        schema_version=1,
+        schema_version=2,
         run_id="validation-catalog-001",
         workload_id="artifact.validate",
         workload_version="1",
         submitted_at="2026-08-04T00:00:00+00:00",
         runtime_commit=COMMIT,
+        runtime_digest=DIGEST,
         timeout_seconds=120,
         max_retries=1,
         capabilities=CapabilityRequirement(),
@@ -338,12 +355,13 @@ def test_artifact_validate_handles_a_real_two_input_validator(tmp_path: Path) ->
         input_dir, "catalog.json", name="catalog", contract="synthetic-json-v1"
     )
     request = RunRequest(
-        schema_version=1,
+        schema_version=2,
         run_id="validation-album-art-001",
         workload_id="artifact.validate",
         workload_version="1",
         submitted_at="2026-08-04T00:00:00+00:00",
         runtime_commit=COMMIT,
+        runtime_digest=DIGEST,
         timeout_seconds=120,
         max_retries=1,
         capabilities=CapabilityRequirement(),
@@ -369,12 +387,13 @@ def test_artifact_validate_rejects_the_wrong_input_count(tmp_path: Path) -> None
     )
     # "album-art" requires 2 inputs; only 1 is provided here.
     request = RunRequest(
-        schema_version=1,
+        schema_version=2,
         run_id="validation-arity-001",
         workload_id="artifact.validate",
         workload_version="1",
         submitted_at="2026-08-04T00:00:00+00:00",
         runtime_commit=COMMIT,
+        runtime_digest=DIGEST,
         timeout_seconds=120,
         max_retries=1,
         capabilities=CapabilityRequirement(),
@@ -405,12 +424,13 @@ def _daily_manifest_fleet_request(
             )
         )
     request = RunRequest(
-        schema_version=1,
+        schema_version=2,
         run_id="validation-variadic-001",
         workload_id="artifact.validate",
         workload_version="1",
         submitted_at="2026-09-07T00:00:00+00:00",
         runtime_commit=COMMIT,
+        runtime_digest=DIGEST,
         timeout_seconds=120,
         max_retries=1,
         capabilities=CapabilityRequirement(),

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Read standing worker advertisements without printing the broker credential.
+# Read standing worker advertisements (or jobs) without printing the broker credential.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -14,4 +14,5 @@ source "${ENV_FILE}"
 
 export JOBS_BROKER_URL="redis://:${JOBS_BROKER_PASSWORD}@${JOBS_BROKER_BIND_IP}:${JOBS_BROKER_PORT:-6380}/0"
 cd "${REPO_ROOT}"
-exec uv run networked-players-platform cluster-status "$@"
+# PLATFORM_SUBCOMMAND=jobs makes this the `jobs list|status|cancel|logs` operator view.
+exec uv run networked-players-platform "${PLATFORM_SUBCOMMAND:-cluster-status}" "$@"

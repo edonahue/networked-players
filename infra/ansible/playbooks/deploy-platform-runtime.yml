@@ -130,6 +130,7 @@
           PLATFORM_TAGS={{ platform_tags | join(',') }}
           PLATFORM_MAX_JOB_MEMORY_MB={{ platform_max_job_memory_mb }}
           PLATFORM_RUNTIME_COMMIT={{ platform_runtime_commit }}
+          PLATFORM_RELEASE_JSON={{ platform_release_root }}/release.json
           PLATFORM_DATASETS_JSON={{ platform_datasets_json | default([]) | to_json }}
           {% if catalog_cache_root is defined %}
           CATALOG_DATA_DIR={{ catalog_cache_root }}

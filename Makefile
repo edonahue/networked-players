@@ -22,7 +22,7 @@
 	prominence-check-distributed \
 	search-index-check-distributed \
 	score-cohort-on-worker \
-	platform-build platform-deploy platform-status curator workbench \
+	platform-build platform-deploy platform-status platform-jobs curator workbench \
 	dask-up dask-down
 
 help: ## List available targets
@@ -191,14 +191,17 @@ search-index-check-distributed: ## Independently re-validate the published site 
 score-cohort-on-worker: ## Submit whole-cohort scoring to a matching platform worker; needs platform runtime + verified x86 cache; ARGS="--source-id <id> --snapshot-date <date> [--release-format-policy <path>]"
 	./scripts/score-cohort-on-worker.sh $(ARGS)
 
-platform-build: ## Build immutable contracts/platform wheels under local/platform/releases/<commit>
+platform-build: ## Build immutable contracts/platform wheels (and record per-workload runtime digests, ADR 0073) under local/platform/releases/<commit>
 	./scripts/build-platform-release.sh
 
 platform-deploy: ## Deploy the built platform runtime to capability workers; ARGS="--limit pi_workers"
 	./infra/ansible/run-deploy-platform-runtime-local.sh $(ARGS)
 
-platform-status: ## Read standing worker advertisements from the private jobs broker
+platform-status: ## Read worker advertisements from the private jobs broker: per-worker runtime digest, recorded commit, contracts version, and match against this checkout (ADR 0073)
 	./scripts/platform-status.sh $(ARGS)
+
+platform-jobs: ## Operator view of platform jobs (ADR 0073); ARGS="list [--worker <id>] [--state failed]" | "status <job>" | "cancel <job>" | "logs <job>" (default: list)
+	PLATFORM_SUBCOMMAND=jobs ./scripts/platform-status.sh $(or $(ARGS),list)
 
 curator: ## Serve a local-only cohort curator; needs SOURCE_ID=; ARGS="--host 0.0.0.0" enables trusted-LAN access
 	@test -n "$(SOURCE_ID)" || (echo "Set SOURCE_ID=<source-id>" >&2; exit 1)

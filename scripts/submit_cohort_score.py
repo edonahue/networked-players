@@ -13,22 +13,20 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from _platform_client import (
+    add_retry_argument,
     current_commit,
-    enqueue_and_wait,
+    current_runtime_digest,
+    declared_max_retries,
+    dispatch_with_retries,
     fetch_and_verify,
     inventory_hostvars,
     remove_remote_run,
     require_broker_url,
     require_clean_checkout,
-    require_free_disk,
-    resolve_inventory_host,
-    stage_run,
 )
 from redis import Redis
 
-from networked_players_platform.broker import read_advertisements
 from networked_players_platform.models import CapabilityRequirement, DatasetIdentity, RunRequest
-from networked_players_platform.scheduler import select_worker
 from networked_players_platform.staging import describe_artifact
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -93,6 +91,7 @@ def _arguments() -> argparse.Namespace:
         action="store_true",
         help="do not delete the remote run directory after a successful fetch (debugging)",
     )
+    add_retry_argument(parser)
     return parser.parse_args()
 
 
@@ -140,12 +139,13 @@ def _request(args: argparse.Namespace, run_id: str, commit: str) -> tuple[RunReq
         )
         inputs = (resolved_descriptor, policy_descriptor)
     request = RunRequest(
-        schema_version=1,
+        schema_version=2,
         run_id=run_id,
         workload_id="cohort.score",
         workload_version="1",
         submitted_at=datetime.now(UTC).isoformat(),
         runtime_commit=commit,
+        runtime_digest=current_runtime_digest(REPO_ROOT, "cohort.score"),
         timeout_seconds=1800,
         max_retries=0,
         capabilities=CapabilityRequirement(
@@ -201,40 +201,19 @@ def main() -> int:
 
     broker_url = require_broker_url()
     broker = Redis.from_url(broker_url)
-    workers = read_advertisements(broker)
-    if args.worker_id:
-        workers = [worker for worker in workers if worker.worker_id == args.worker_id]
-    worker = select_worker(
-        workers,
-        request.capabilities,
-        workload_id=request.workload_id,
-        workload_version=request.workload_version,
-        runtime_commit=request.runtime_commit,
-    )
     hostvars = inventory_hostvars(INVENTORY, REPO_ROOT)
-    host = resolve_inventory_host(hostvars, worker.worker_id)
-    require_free_disk(
-        inventory_path=INVENTORY,
-        repo_root=REPO_ROOT,
-        host=host,
-        min_free_gb=args.min_free_disk_gb,
-    )
-    remote_run = f"~/.local/share/networked-players/platform/runs/{run_id}"
-    stage_run(
-        inventory_path=INVENTORY,
-        repo_root=REPO_ROOT,
-        host=host,
-        remote_run=remote_run,
-        local_run=local_run,
-    )
-
-    result = enqueue_and_wait(
+    outcome, host, remote_run = dispatch_with_retries(
         broker=broker,
-        worker_id=worker.worker_id,
-        remote_run=remote_run,
-        run_id=run_id,
-        timeout_seconds=request.timeout_seconds,
+        request=request,
+        local_run=local_run,
+        inventory_path=INVENTORY,
+        repo_root=REPO_ROOT,
+        hostvars=hostvars,
+        min_free_disk_gb=args.min_free_disk_gb,
+        max_retries=declared_max_retries(request.workload_id, args.max_retries),
+        worker_id_filter=args.worker_id,
     )
+    worker, result, run_id = outcome.worker, outcome.result, outcome.run_id
     completed = fetch_and_verify(
         inventory_path=INVENTORY,
         repo_root=REPO_ROOT,
