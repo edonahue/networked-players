@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import gzip
+import hashlib
 from collections.abc import Iterator
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import BinaryIO, cast
 
@@ -17,6 +18,24 @@ class ParsedRelease:
     tracks: list[dict[str, object]]
     credits: list[dict[str, object]]
     formats: list[dict[str, object]]
+
+
+@dataclass(slots=True)
+class SkipReport:
+    """Position evidence gathered while re-reading and discarding a stream prefix.
+
+    ``digest`` is a running SHA-256 over ``"<release_id>\\n"`` for every release ordinal
+    seen so far (skipped and, once the writer adopts it, newly written). It is how a resumed
+    run proves the input is the same stream the interrupted run was reading.
+    """
+
+    skipped: int = 0
+    last_release_id: int | None = None
+    digest: hashlib._Hash = field(default_factory=hashlib.sha256)
+
+
+def release_id_digest_update(digest: hashlib._Hash, release_id: int) -> None:
+    digest.update(f"{release_id}\n".encode("ascii"))
 
 
 def _format_rows(
@@ -306,6 +325,8 @@ def _iter_handle(
     snapshot_date: str,
     source_url: str,
     max_releases: int | None,
+    skip_releases: int = 0,
+    skip_report: SkipReport | None = None,
 ) -> Iterator[ParsedRelease]:
     count = 0
     context = etree.iterparse(
@@ -318,8 +339,19 @@ def _iter_handle(
         no_network=True,
     )
     for _, element in context:
-        yield parse_release_element(element, snapshot_date=snapshot_date, source_url=source_url)
-        count += 1
+        if count < skip_releases:
+            # Re-read and discard: only the id is read (no normalization, no rows
+            # retained). The element is still cleared like any other, so memory stays
+            # bounded; the decompress/XML-parse cost of the prefix is still paid.
+            assert skip_report is not None
+            release_id = int(element.attrib["id"])
+            release_id_digest_update(skip_report.digest, release_id)
+            skip_report.skipped += 1
+            skip_report.last_release_id = release_id
+            count += 1
+        else:
+            yield parse_release_element(element, snapshot_date=snapshot_date, source_url=source_url)
+            count += 1
         element.clear()
         parent = element.getparent()
         if parent is not None:
@@ -335,11 +367,22 @@ def iter_releases(
     snapshot_date: str,
     source_url: str,
     max_releases: int | None = None,
+    skip_releases: int = 0,
+    skip_report: SkipReport | None = None,
 ) -> Iterator[ParsedRelease]:
-    """Yield normalized releases while keeping XML memory bounded."""
+    """Yield normalized releases while keeping XML memory bounded.
+
+    ``skip_releases`` re-reads and discards that many leading releases (resume support),
+    recording their ids into ``skip_report``. ``max_releases`` counts ordinals from the
+    start of the stream, skipped ones included.
+    """
 
     if max_releases is not None and max_releases <= 0:
         raise ValueError("max_releases must be positive")
+    if skip_releases < 0:
+        raise ValueError("skip_releases must be non-negative")
+    if skip_releases and skip_report is None:
+        raise ValueError("skip_report is required when skip_releases is set")
     if path.name.endswith(".gz"):
         with gzip.open(path, "rb") as handle:
             yield from _iter_handle(
@@ -347,6 +390,8 @@ def iter_releases(
                 snapshot_date=snapshot_date,
                 source_url=source_url,
                 max_releases=max_releases,
+                skip_releases=skip_releases,
+                skip_report=skip_report,
             )
     else:
         with path.open("rb") as handle:
@@ -355,4 +400,6 @@ def iter_releases(
                 snapshot_date=snapshot_date,
                 source_url=source_url,
                 max_releases=max_releases,
+                skip_releases=skip_releases,
+                skip_report=skip_report,
             )
