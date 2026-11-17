@@ -322,6 +322,18 @@ def _parser() -> argparse.ArgumentParser:
         ),
     )
     build_challenge.add_argument(
+        "--verify-hops-against-graph",
+        type=Path,
+        default=None,
+        help=(
+            "opt-in build-time check (campaign Atlas G1b): after building, fail loudly if any "
+            "published hop is not an edge of this pathfinding graph (graph.v4.json). Not a "
+            "validate-public-artifacts default yet -- the committed challenge.v3 would fail "
+            "until the Round 2 rebuild; mandatory from that rebuild on "
+            "(docs/EXPANSION_PIPELINE.md). The round runner passes it for every new round"
+        ),
+    )
+    build_challenge.add_argument(
         "--max-paths",
         type=int,
         default=None,
@@ -408,6 +420,16 @@ def _parser() -> argparse.ArgumentParser:
         "validate-challenge", help="validate a challenge.v2 artifact against its contract"
     )
     validate_challenge.add_argument("--input", type=Path, required=True)
+
+    check_hops = subparsers.add_parser(
+        "check-challenge-hops-in-graph",
+        help=(
+            "opt-in check: every challenge hop must be an edge of the pathfinding graph "
+            "(campaign Atlas G1b); exits 1 listing offending hops"
+        ),
+    )
+    check_hops.add_argument("--challenge", type=Path, required=True)
+    check_hops.add_argument("--pathfinding-graph", type=Path, required=True)
 
     build_rounds = subparsers.add_parser(
         "build-rounds-from-dump",
@@ -2909,6 +2931,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         from networked_players_graph_core.challenge import (
             build_challenge_v2,
             build_challenge_v2_from_matched,
+            carry_forward_scope_outcomes,
             resolved_album_from_dict,
             stamp_challenge_version,
             validate_challenge,
@@ -2947,6 +2970,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         carry_forward_artist_pairs: frozenset[tuple[int, int]] = frozenset()
         challenge_previous_block = None
         challenge_previous_label = None
+        previous = None
         if args.carry_forward_challenge is not None:
             previous = json.loads(args.carry_forward_challenge.read_text())
             carry_forward_artist_pairs = frozenset(
@@ -3073,6 +3097,9 @@ def main(argv: Sequence[str] | None = None) -> int:
                     ),
                     max_paths=max_paths,
                     carry_forward_artist_pairs=carry_forward_artist_pairs,
+                    # The graph builder's own source: every catalog album's
+                    # primary artist, BEFORE the defence-in-depth filters above.
+                    seed_artist_ids=frozenset(int(a["artist_id"]) for a in albums),
                     max_hops=resolved_max_hops,
                     max_workers=args.max_workers,
                     is_family_excluded=is_family_excluded,
@@ -3115,6 +3142,35 @@ def main(argv: Sequence[str] | None = None) -> int:
             stamp_challenge_version(artifact)
 
         validate_challenge(artifact)
+        if previous is not None:
+            report["carry_forward_scope"] = carry_forward_scope_outcomes(
+                previous,
+                artifact,
+                frozenset(
+                    int(a["artist_id"])
+                    for a in (albums if albums_are_resolved else artifact["albums"])
+                ),
+            )
+            print(
+                f"  carry-forward scope audit: {report['carry_forward_scope']}",
+                file=sys.stderr,
+            )
+        if args.verify_hops_against_graph is not None:
+            from networked_players_contracts import challenge_hops_missing_from_graph
+
+            hop_failures = challenge_hops_missing_from_graph(
+                artifact, json.loads(args.verify_hops_against_graph.read_text())
+            )
+            if hop_failures:
+                print(
+                    f"ERROR: {len(hop_failures)} challenge hop(s) are not edges of "
+                    f"{args.verify_hops_against_graph}:",
+                    file=sys.stderr,
+                )
+                for failure in hop_failures[:20]:
+                    print(f"  {failure}", file=sys.stderr)
+                return 1
+            report["hops_verified_against_graph"] = str(args.verify_hops_against_graph)
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(json.dumps(artifact, indent=2) + "\n")
         print(
@@ -3129,6 +3185,16 @@ def main(argv: Sequence[str] | None = None) -> int:
         }
         print(json.dumps(report, indent=2, sort_keys=True))
         return 0
+
+    if args.command == "check-challenge-hops-in-graph":
+        from networked_players_contracts import challenge_hops_missing_from_graph
+
+        hop_failures = challenge_hops_missing_from_graph(
+            json.loads(args.challenge.read_text()),
+            json.loads(args.pathfinding_graph.read_text()),
+        )
+        print(json.dumps({"ok": not hop_failures, "failures": hop_failures}, indent=2))
+        return 1 if hop_failures else 0
 
     if args.command == "validate-challenge":
         from networked_players_graph_core.challenge import validate_challenge

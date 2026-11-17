@@ -84,6 +84,43 @@ def challenge_content_version(artifact: dict[str, Any]) -> str:
     )
 
 
+def challenge_hops_missing_from_graph(artifact: Any, graph: Any) -> list[str]:
+    """Opt-in cross-artifact check (campaign Atlas G1b): every hop of every
+    published challenge path must be an edge of the supplied pathfinding graph
+    (CSR `node_ids`/`offsets`/`neighbors`, schema v1-v4). Returns one failure
+    string per offending hop (empty = every hop present).
+
+    NOT part of `validate-public-artifacts` defaults yet: challenge.v3 as
+    committed carries hops with no graph edge (both endpoints non-seed) until
+    the Round 2 rebuild applies the shared seed-scope rule; it becomes
+    mandatory with that rebuild (docs/CAMPAIGN.md, docs/EXPANSION_PIPELINE.md).
+    Dependency-free so the fleet and web build can run it too."""
+    if not isinstance(artifact, dict) or not isinstance(graph, dict):
+        return ["challenge and graph must both be objects"]
+    node_ids = graph.get("node_ids")
+    offsets = graph.get("offsets")
+    neighbors = graph.get("neighbors")
+    if not (
+        isinstance(node_ids, list) and isinstance(offsets, list) and isinstance(neighbors, list)
+    ):
+        return ["graph is missing node_ids/offsets/neighbors"]
+    index_of = {int(a): i for i, a in enumerate(node_ids)}
+    failures: list[str] = []
+    for path in artifact.get("paths") or []:
+        for position, hop in enumerate(path.get("hops") or [], start=1):
+            a, b = hop.get("artist_a_id"), hop.get("artist_b_id")
+            ia, ib = index_of.get(a), index_of.get(b)
+            present = False
+            if ia is not None and ib is not None and ia + 1 < len(offsets):
+                present = ib in neighbors[offsets[ia] : offsets[ia + 1]]
+            if not present:
+                failures.append(
+                    f"path {path.get('id')!r} hop {position}: artists {a}-{b} "
+                    f"(release {hop.get('release_id')}) is not an edge of the pathfinding graph"
+                )
+    return failures
+
+
 def challenge_failures(artifact: Any, catalog: Any | None = None) -> list[str]:
     """Return every contract failure in a challenge.v2 artifact.
 

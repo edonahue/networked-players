@@ -64,7 +64,13 @@ from networked_players_contracts.canonical import content_hash
 
 from .compact_graph_bench import build_csr_adjacency
 from .eligibility import is_performer_role
-from .graph import GRAPH_POLICY_VERSION, CreditGraph, edge_ineligible_role
+from .graph import (
+    GRAPH_POLICY_VERSION,
+    CreditGraph,
+    catalog_seed_artist_ids,
+    edge_ineligible_role,
+    seed_scope_sql,
+)
 from .lineage_inputs import lineage_inputs, stamp_inputs
 
 
@@ -263,11 +269,10 @@ def build_pathfinding_graph(
     the numbers above, but no real build should pass it."""
     if schema_version not in (3, 4):
         raise ValueError(f"unsupported pathfinding graph schema_version: {schema_version}")
-    seed_artist_ids = sorted({int(a["artist_id"]) for a in catalog["albums"]})
+    seed_artist_ids = sorted(catalog_seed_artist_ids(catalog))
     if not seed_artist_ids:
         raise ValueError("catalog has no albums to seed the pathfinding graph from")
 
-    ids_sql = ", ".join(str(i) for i in seed_artist_ids)
     _progress(
         quiet,
         f"pathfinding graph: querying credit_edges for {len(seed_artist_ids)} seed artists...",
@@ -275,7 +280,7 @@ def build_pathfinding_graph(
     query_start = time.monotonic()
     rows = graph._connection.execute(
         f"SELECT artist_a_id, artist_b_id, release_id FROM credit_edges "
-        f"WHERE artist_a_id IN ({ids_sql}) OR artist_b_id IN ({ids_sql})"
+        f"WHERE {seed_scope_sql(seed_artist_ids)}"
     ).fetchall()
     _progress(
         quiet,

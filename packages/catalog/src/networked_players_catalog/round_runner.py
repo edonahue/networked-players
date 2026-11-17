@@ -782,6 +782,9 @@ def _argv_challenge(ctx: Ctx) -> list[list[str]]:
             *_optional(ctx, "artist_family_exclusions", "--artist-family-exclusions"),
             "--carry-forward-challenge", str(ctx.p(CHALLENGE)),
             "--in-memory-search",
+            # G1b: fail the stage if any published hop is not an edge of THIS round's graph
+            # (the graph stage runs first). Opt-in on the CLI, always on for new rounds.
+            "--verify-hops-against-graph", str(ctx.o(GRAPH)),
             *_parameter_flags(ctx, "challenge"),
             "--output", str(ctx.o(CHALLENGE)),
         ]
@@ -1633,6 +1636,17 @@ def verify_round(ctx: Ctx) -> tuple[bool, dict[str, Any]]:
     if lineage.get("partially_declared_inputs"):
         partial = lineage["partially_declared_inputs"]
         problems.append(f"lineage.partially_declared_inputs is not empty: {partial}")
+
+    hops_code, hops_result = _capture_cli(
+        [
+            "check-challenge-hops-in-graph",
+            "--challenge", str(ctx.o(CHALLENGE)),
+            "--pathfinding-graph", str(ctx.o(GRAPH)),
+        ]
+    )  # fmt: skip
+    if hops_code != 0:
+        listed = (hops_result or {}).get("failures") or [f"exit {hops_code}"]
+        problems += [f"challenge hop not in graph: {item}" for item in listed]
 
     continuity_code, continuity = _capture_cli(
         [
