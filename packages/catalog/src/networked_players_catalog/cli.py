@@ -9,6 +9,8 @@ from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any
 
+from networked_players_platform.sharding import write_atomic
+
 from . import __version__
 from .build_parameters import (
     CHALLENGE_DEFAULT_BUILD_PARAMETERS,
@@ -1299,6 +1301,31 @@ def _parser() -> argparse.ArgumentParser:
         action="store_true",
         help="suppress the coarse progress lines this otherwise prints to stderr",
     )
+    score_expansion_candidates_parser.add_argument(
+        "--shard-count",
+        type=int,
+        default=None,
+        help=(
+            "score only one stable-hash shard of the candidates by master_id (Campaign "
+            "Atlas I2; needs --shard-index); merge shard outputs with merge-scored-shards"
+        ),
+    )
+    score_expansion_candidates_parser.add_argument("--shard-index", type=int, default=None)
+
+    merge_scored_shards_parser = subparsers.add_parser(
+        "merge-scored-shards",
+        help=(
+            "gather score-expansion-candidates --shard-index/--shard-count outputs into the "
+            "single-node output (byte-identical); fails on a missing, duplicated or "
+            "mismatched shard; local-only"
+        ),
+    )
+    merge_scored_shards_parser.add_argument("--candidates", type=Path, required=True)
+    merge_scored_shards_parser.add_argument("--shard-count", type=int, required=True)
+    merge_scored_shards_parser.add_argument(
+        "--shard-output", type=Path, action="append", required=True, dest="shard_outputs"
+    )
+    merge_scored_shards_parser.add_argument("--output", type=Path, required=True)
 
     review_packet_parser = subparsers.add_parser(
         "build-review-packet",
@@ -4258,6 +4285,19 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
 
         candidates = json.loads(args.candidates.read_text())
+        all_candidate_count = len(candidates)
+        if (args.shard_count is None) != (args.shard_index is None):
+            raise SystemExit("--shard-count and --shard-index must be given together")
+        if args.shard_count is not None:
+            from networked_players_graph_core.sharded_scoring import (
+                plan_score_shards,
+                shard_candidates,
+            )
+
+            if not 0 <= args.shard_index < args.shard_count:
+                raise SystemExit("--shard-index must be in [0, --shard-count)")
+            shard_plan = plan_score_shards("cli-shard", candidates, args.shard_count)
+            candidates = shard_candidates(shard_plan, candidates, args.shard_index)
         pathfinding_graph = json.loads(args.pathfinding_graph.read_text())
         existing_node_ids = frozenset(
             int(node_id) for node_id in pathfinding_graph["node_ids"] if int(node_id) > 0
@@ -4324,14 +4364,120 @@ def main(argv: Sequence[str] | None = None) -> int:
             ),
             "candidates": scored_candidates,
         }
-        args.output.parent.mkdir(parents=True, exist_ok=True)
-        args.output.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
+        if args.shard_count is not None:
+            from networked_players_graph_core.sharded_scoring import (
+                file_sha256,
+                inputs_fingerprint,
+                scorer_code_identity,
+            )
+
+            onehop_manifest = args.onehop_root / "manifest.json"
+            masters_manifest = args.masters_root / "manifest.json"
+            payload["shard"] = {
+                "index": args.shard_index,
+                "count": args.shard_count,
+                "of_candidate_count": all_candidate_count,
+                "candidates_sha256": file_sha256(args.candidates),
+                # Content hash of every scoring input; merge refuses mixed values.
+                "inputs_sha256": inputs_fingerprint(
+                    {
+                        "candidates": args.candidates,
+                        "pathfinding_graph": args.pathfinding_graph,
+                        "release_format_policy": args.release_format_policy,
+                        "studio_album_exclusions": args.studio_album_exclusions,
+                        "editorial_master_ids": args.editorial_master_ids,
+                        "editorial_seed": args.editorial_seed,
+                        "private_seed_master_ids": args.private_seed_master_ids,
+                        "underrepresented_buckets": args.underrepresented_buckets,
+                        # The datasets (their manifests pin the snapshot) and the code.
+                        "onehop_manifest": onehop_manifest if onehop_manifest.is_file() else None,
+                        "masters_manifest": (
+                            masters_manifest if masters_manifest.is_file() else None
+                        ),
+                    },
+                    extra={
+                        "catalog_version": __version__,
+                        "scorer_code": scorer_code_identity(),
+                    },
+                ),
+            }
+        write_atomic(args.output, (json.dumps(payload, indent=2, sort_keys=True) + "\n").encode())
         print(
             json.dumps(
                 {
                     "output": str(args.output),
                     "candidate_count": payload["candidate_count"],
                     "eligible_count": payload["eligible_count"],
+                },
+                indent=2,
+            )
+        )
+        return 0
+
+    if args.command == "merge-scored-shards":
+        from networked_players_graph_core.sharded_scoring import (
+            file_sha256,
+            merge_scored_shards,
+            plan_score_shards,
+            scoring_payload,
+        )
+        from networked_players_platform.sharding import GatherError
+
+        _require_local_only_output(
+            args.output,
+            command="merge-scored-shards",
+            why="this is the private scoring row set, merged from shards",
+        )
+        all_candidates = json.loads(args.candidates.read_text())
+        merge_plan = plan_score_shards("cli-shard", all_candidates, args.shard_count)
+        received: list[tuple[int, Any]] = []
+        candidates_digest = file_sha256(args.candidates)
+        seen_inputs: dict[str, Path] = {}
+        for shard_path in args.shard_outputs:
+            shard_payload = json.loads(shard_path.read_text())
+            meta = shard_payload.get("shard")
+            if (
+                not meta
+                or meta.get("count") != args.shard_count
+                or meta.get("of_candidate_count") != len(all_candidates)
+            ):
+                raise SystemExit(
+                    f"{shard_path} is not a shard output of this {args.shard_count}-way split"
+                )
+            shard_index = meta.get("index")
+            if not isinstance(shard_index, int) or not 0 <= shard_index < args.shard_count:
+                raise SystemExit(
+                    f"{shard_path} has shard index {shard_index!r}, outside [0, {args.shard_count})"
+                )
+            if meta.get("candidates_sha256") != candidates_digest:
+                raise SystemExit(f"{shard_path} was scored from a different candidates file")
+            inputs_digest = meta.get("inputs_sha256")
+            if not inputs_digest:
+                raise SystemExit(f"{shard_path} records no scoring-input hash; re-score it")
+            seen_inputs[inputs_digest] = shard_path
+            if len(seen_inputs) > 1:
+                raise SystemExit(
+                    "merge refused: shards were scored with different inputs "
+                    f"(graph/policy/exclusions/buckets): {sorted(map(str, seen_inputs.values()))}"
+                )
+            if not shard_payload["candidates"] and not merge_plan.shard(int(meta["index"])).keys:
+                continue  # a legitimately empty shard: nothing to gather
+            received.append((int(meta["index"]), shard_payload["candidates"]))
+        try:
+            merged = merge_scored_shards(merge_plan, received)
+        except GatherError as exc:
+            raise SystemExit(f"merge refused: {exc}") from exc
+        merged_payload = scoring_payload(merged, len(all_candidates))
+        write_atomic(
+            args.output, (json.dumps(merged_payload, indent=2, sort_keys=True) + "\n").encode()
+        )
+        print(
+            json.dumps(
+                {
+                    "output": str(args.output),
+                    "candidate_count": merged_payload["candidate_count"],
+                    "eligible_count": merged_payload["eligible_count"],
+                    "shards_merged": len(received),
                 },
                 indent=2,
             )

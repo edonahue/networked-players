@@ -10,7 +10,7 @@ from .models import (
     WorkerAdvertisement,
     WorkloadSpec,
 )
-from .scheduler import NoEligibleWorkerError, select_worker
+from .scheduler import NoEligibleWorkerError, select_worker, select_workers
 from .workloads import RegisteredWorkload
 
 __all__ = [
@@ -27,6 +27,7 @@ __all__ = [
     "queue_name",
     "read_advertisements",
     "select_worker",
+    "select_workers",
 ]
 
 __version__ = "0.1.0"
