@@ -74,7 +74,7 @@ No catalog growth, no real collection published, no public data regenerated.
 | G3 | Album-level atlas prototype and decision | S1 | todo |
 | G4 | Graph format change, only if a size or load-time trigger fires | F1 | todo |
 | P4 | Games link onward; player page leads with performance; copy pass | P1 | todo |
-| P5 | Self-hosted body and mono faces, motif consistency, structured data, text-only share images, retire `/demo/` | P3 | P5a done (#283): fonts, JSON-LD, canonical, sitemap, demo retired; motif consistency and text-only share images remain |
+| P5 | Self-hosted body and mono faces, motif consistency, structured data, text-only share images, retire `/demo/` | P3 | P5a done (#283): fonts, JSON-LD, canonical, sitemap, demo retired; motif consistency (P5b: liner-note paper panel + groove rules on record/player/Explore/directories/collections, 45 inline styles replaced by utility classes and guarded by tests/no-inline-styles.spec.ts) done; text-only share images remain |
 | P6 | "How it's built" page from published-artifact facts | F1 | todo |
 | I1 | Runtime digest in place of exact-commit matching; skew report; honoured retries; `jobs` commands | I0 | todo |
 | I2 | Multi-worker shard dispatch; sharded supply and scoring | I1 | In review (#289) |

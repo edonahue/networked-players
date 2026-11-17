@@ -479,3 +479,61 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Liner-note + groove consistency (Atlas P5b) -----------------------------
+   Carries two existing motifs to the record, player, Explore, directory and
+   collection pages. No new colours or tokens beyond a paper link colour:
+   - the cream "paper panel" (.paper-panel, game.css) for the prose notes a
+     reader would find on a sleeve insert (.liner-note);
+   - the vinyl groove pattern (repeating concentric lines, as in the
+     wordmark and placeholder disc) as flat parallel grooves (.groove-head,
+     .record-section). All static, so nothing to disable for
+     prefers-reduced-motion. */
+.liner-note {
+  max-width: 760px;
+  margin-top: 28px;
+  padding: 16px 20px;
+}
+.liner-note.paper-panel,
+.liner-note.paper-panel p {
+  color: var(--paper-ink);
+}
+.liner-note.paper-panel p {
+  margin: 0;
+}
+.liner-note.paper-panel p + p {
+  margin-top: 10px;
+}
+.play-from-here.liner-note {
+  margin-top: 32px;
+  padding: 16px 20px;
+  border-top: 1px solid var(--paper-line);
+}
+.liner-note a {
+  color: var(--paper-link);
+  text-underline-offset: 3px;
+}
+.liner-note .collection-intro,
+.liner-note .collection-attribution {
+  color: var(--paper-ink);
+}
+.record-section::before,
+.groove-head::after {
+  content: "";
+  display: block;
+  height: 7px;
+  background: repeating-linear-gradient(
+    to bottom,
+    var(--line) 0 1px,
+    transparent 1px 3px
+  );
+}
+.record-section::before {
+  margin-bottom: 22px;
+}
+.groove-head::after {
+  margin-top: 28px;
+}
+.groove-head.u-pb-0::after {
+  margin-top: 20px;
+}

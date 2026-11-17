@@ -163,7 +163,7 @@ const description = [
       ),
     )}
   />
-  <section class="shell" style="padding-top:40px">
+  <section class="shell u-pt-40">
     <div class="play-header">
       {
         albumCover ? (
@@ -426,14 +426,14 @@ const description = [
       )
     }
 
-    <section aria-label="Play from here" class="play-from-here">
-      <p class="lede" style="font-size:0.98rem">
+    <section aria-label="Play from here" class="play-from-here paper-panel liner-note">
+      <p class="lede lede--lg">
         Prefer to guess before you look? The{' '}
         <a href="/play/connection/">Connection Guesser</a> deals rounds like these —
         two records, one credited name to find — and the{' '}
         <a href="/play/daily/">Connection of the Day</a> deals one for everyone.
       </p>
-      <p class="lede" style="font-size:0.98rem">
+      <p class="lede lede--lg">
         See how {album.title} connects to everything else in the{' '}
         <a href={`/explore/${album.id}/`}>Network Explorer</a>, centered on {album.artist} — or{' '}
         <a href={`/play/connect/?a=${album.id}`}>try connecting it to another record</a> yourself.

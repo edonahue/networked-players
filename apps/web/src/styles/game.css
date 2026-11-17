@@ -18,6 +18,7 @@
   --paper-panel-deep: #d8c5a7;
   --paper-ink: #292722;
   --paper-muted: #6f665a;
+  --paper-link: #285c55;
   --paper-line: rgba(41, 39, 34, 0.22);
   /* Motion budget (consumed by the flagship stage; reduced-motion and
      ?motion=off collapse these to near-zero). */

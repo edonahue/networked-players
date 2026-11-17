@@ -46,10 +46,10 @@ const description = `Explore the players documented on ${album.title} and who th
 ---
 
 <BaseLayout title={`Explore: ${album.title}`} description={description}>
-  <section class="prose shell" style="padding-bottom:0">
+  <section class="prose shell u-pb-0 groove-head">
     <p class="eyebrow">Explore</p>
     <h1 class="h1-intro">{album.title}</h1>
-    <p class="lede" style="font-size:0.95rem" data-explore-lede>
+    <p class="lede lede--md" data-explore-lede>
       {album.artist}
       {album.year ? ` · ${album.year}` : ''} — click any player to recenter
       around them. Filter by role to fade everything else without hiding it.
@@ -84,20 +84,22 @@ const description = `Explore the players documented on ${album.title} and who th
   {recordView && (
     <noscript>
       <div class="shell record-list">
-        <p class="lede" style="font-size:0.92rem">The interactive view needs JavaScript. The same documented players and records, as a list:</p>
+        <p class="lede lede--sm">The interactive view needs JavaScript. The same documented players and records, as a list:</p>
         <Fragment set:html={renderRecordList(recordView)} />
       </div>
     </noscript>
   )}
 
-  <section class="prose shell" style="padding-top:20px;padding-bottom:72px">
-    <p class="lede" style="font-size:0.92rem">
+  <section class="prose shell u-pt-20 u-pb-72">
+    <div class="paper-panel liner-note">
+    <p class="lede lede--sm">
       This view shows the players near this record — the same reach
       <a href="/play/connect/">Connect Two Records</a> searches.
     </p>
-    <p class="lede" style="font-size:0.92rem">
+    <p class="lede lede--sm">
       <a href={`/albums/${album.id}/`}>View the {album.title} page →</a>
     </p>
+    </div>
   </section>
 </BaseLayout>
 

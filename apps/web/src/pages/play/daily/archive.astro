@@ -11,16 +11,16 @@ const description =
 ---
 
 <BaseLayout title="Connection of the Day — Archive" description={description}>
-  <section class="prose shell" style="padding-bottom:0">
+  <section class="prose shell u-pb-0">
     <p class="eyebrow">Connection of the Day</p>
     <h1 class="h1-intro">Your archive</h1>
-    <p class="lede" style="font-size:0.95rem">
+    <p class="lede lede--md">
       Every scheduled date, and whether you've played it yet. Local to this
       device only — no account, no server.
     </p>
   </section>
 
-  <section class="prose shell" data-testid="daily-archive" style="padding-top:12px;padding-bottom:72px">
+  <section class="prose shell u-pt-12 u-pb-72" data-testid="daily-archive">
     <p class="archive-stats" data-archive-stats></p>
     <p class="archive-status" data-archive-status role="status" aria-live="polite" hidden></p>
     <ul class="archive-calendar" data-archive-calendar></ul>

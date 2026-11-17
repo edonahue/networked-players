@@ -102,7 +102,7 @@ const { hops, pathId, id, hidden = false, class: className } = Astro.props;
         )}
         {hop.flagsLine && <p class="hop__release">{hop.flagsLine}</p>}
         {hop.nonLinked.length > 0 && (
-          <p class="hop__release" style="margin-top:10px">
+          <p class="hop__release u-mt-10">
             Also on this release as <strong>evidence only</strong> (not a playable identity):{' '}
             {hop.nonLinked.map((c, i) => (
               <>
