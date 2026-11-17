@@ -19,6 +19,10 @@ RQ_WORKER_KEY_PREFIX = "rq:worker:"
 # worker last heartbeated (idle workers refresh it every dequeue timeout, running
 # ones every ~30 s). The worker unit does not override it.
 RQ_WORKER_TTL_SECONDS = 420
+# While a job runs RQ refreshes the worker record every ~30 s with a 90 s expiry
+# (job_monitoring_interval + 60), so a started job's worker is only "live" if its
+# last heartbeat is this recent; used for the post-deadline timeout decision.
+RQ_BUSY_WORKER_TTL_SECONDS = 90
 
 
 class AdvertisementStore(Protocol):

@@ -1059,6 +1059,11 @@ def test_makefile_shaped_jobs_invocation_accepts_json_after_the_subcommand(
     assert json.loads(capsys.readouterr().out)["state"] == "queued"
     assert main(["jobs", "cancel", "job-queued", "--json"], jobs_backend=backend_fixture) == 0
     assert json.loads(capsys.readouterr().out)["action"] == "canceled"
+    assert main(["jobs", "--json", "cancel", "job-started"], jobs_backend=backend_fixture) == 0
+    started = json.loads(capsys.readouterr().out)
+    assert started["action"] == "stop-requested" and started["job_id"] == "job-started"
+    assert backend_fixture.canceled == ["job-queued"]
+    assert backend_fixture.stopped == ["job-started"]
     assert main(["jobs", "logs", "job-queued", "--json"], jobs_backend=backend_fixture) == 0
     assert json.loads(capsys.readouterr().out)["worker_id"] == "worker-a"
 

@@ -31,6 +31,7 @@ from rq.command import send_stop_job_command
 from rq.job import JobStatus
 
 from networked_players_platform.broker import (
+    RQ_BUSY_WORKER_TTL_SECONDS,
     RQ_WORKER_TTL_SECONDS,
     queue_name,
     read_advertisements_checked,
@@ -289,11 +290,19 @@ def enqueue_and_wait(
         meta={"workload_id": workload_id, "attempt": attempt, "retry_of": retry_of},
     )
     watch = WorkerWatch(worker_id, grace=lost_grace)
-    deadline = monotonic() + timeout_seconds + 60
+    # Two explicit points. `deadline` (job timeout + 60 s) is when a timeout DECISION is
+    # due, not when the client gives up: a worker that died just after enqueue needs up to
+    # RQ's worker TTL plus the grace to be declared lost, which is longer than a short
+    # workload's deadline. `hard_end` is therefore the last moment recovery may still
+    # run; after `deadline` the client resolves by job status and RQ liveness (below).
+    started = monotonic()
+    deadline = started + timeout_seconds + 60
+    hard_end = deadline + RQ_WORKER_TTL_SECONDS + lost_grace.total_seconds() + 30
     next_check = 0.0
+    beat: datetime | None = None
     status: JobStatus | None = None
     try:
-        while monotonic() < deadline:
+        while True:
             status = job.get_status(refresh=True)
             if status == JobStatus.FINISHED:
                 break
@@ -323,9 +332,17 @@ def enqueue_and_wait(
                         f"{'fresh' if fresh else 'also lapsed'}) while job {run_id} was "
                         f"{status.value}; remote run directory {remote_run} may remain on it"
                     )
+            if monotonic() >= deadline:
+                _resolve_after_deadline(
+                    broker, job, status, worker_id, beat, clock(), run_id, remote_run
+                )
+                if monotonic() >= hard_end:
+                    _release_orphan(broker, job, status, worker_id, clock())
+                    raise RunLostError(
+                        f"job {run_id} still {status.value} at the end of the recovery "
+                        f"window; worker {worker_id} liveness never became decidable"
+                    )
             sleep(2)
-        else:
-            raise RunFailedError("timed out waiting for remote run completion", retryable=False)
     except (RunLostError, RunFailedError):
         raise
     except Exception:
@@ -337,6 +354,43 @@ def enqueue_and_wait(
     if not isinstance(result, dict) or result.get("status") != "succeeded":
         raise RunFailedError("remote run returned no valid success manifest", retryable=False)
     return result
+
+
+def _resolve_after_deadline(
+    broker: Redis,
+    job: Any,
+    status: JobStatus,
+    worker_id: str,
+    beat: datetime | None,
+    now: datetime,
+    run_id: str,
+    remote_run: str,
+) -> None:
+    """The timeout decision, made once the deadline has passed (never a bare give-up):
+
+    - QUEUED: the job never started. Cancel it (Redis-side, safe) and raise
+      `RunLostError` so a retry can re-dispatch to another worker.
+    - STARTED, RQ worker live (heartbeat within 90 s): a genuine timeout. RQ's own
+      job_timeout kills the job;
+      also ask for a stop, and fail non-retryably (a slow job would only be slow again).
+    - STARTED, RQ worker not live: not decidable yet. Return and keep watching;
+      `WorkerWatch` declares the loss after the grace, and `hard_end` bounds the wait.
+    """
+    # A running job's worker refreshes its record every ~30 s, so "live" is strict here.
+    ttl = timedelta(seconds=RQ_BUSY_WORKER_TTL_SECONDS)
+    if status == JobStatus.QUEUED:
+        _release_orphan(broker, job, status, worker_id, now)
+        raise RunLostError(
+            f"job {run_id} was still queued after the deadline (never started); cancelled "
+            f"so it can be re-dispatched; remote run directory {remote_run} was only staged"
+        )
+    live = beat is not None and now - beat <= ttl
+    if status == JobStatus.STARTED and live:
+        try:
+            send_stop_job_command(broker, job.id)
+        except Exception as exc:
+            print(f"warning: could not stop timed-out job {job.id}: {exc}", file=sys.stderr)
+        raise RunFailedError("timed out waiting for remote run completion", retryable=False)
 
 
 def _release_orphan(

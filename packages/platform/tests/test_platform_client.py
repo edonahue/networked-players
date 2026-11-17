@@ -487,3 +487,62 @@ def test_artifact_check_worker_record_persists_attempts_and_orphans() -> None:
         attempts=attempts[:1],
     )
     assert failed["orphans"] and failed["error"] == "no eligible worker"
+
+
+# --- the deadline never short-circuits recovery --------------------------------------------
+
+
+def test_queued_past_the_deadline_is_cancelled_and_redispatchable(backend: Backend) -> None:
+    # The worker died just after enqueue; its RQ record lingers (RQ TTL 420 s), so loss
+    # is not yet decidable when the 120 s workload's 180 s deadline passes.
+    backend.rq_heartbeat["worker-a"] = lambda now: T0
+    job = FakeJob("x", [JobStatus.QUEUED])
+    backend.jobs_by_queue["networked-players.platform.worker-a"] = [job]
+    with pytest.raises(RunLostError, match="still queued after the deadline"):
+        _wait(backend, timeout_seconds=120)
+    assert job.cancelled and backend.stops == []
+    assert 180 <= backend.clock.elapsed < 190
+
+
+def test_started_with_a_live_rq_worker_past_the_deadline_is_a_genuine_timeout(
+    backend: Backend,
+) -> None:
+    job = FakeJob("x", [JobStatus.STARTED])
+    backend.jobs_by_queue["networked-players.platform.worker-a"] = [job]
+    with pytest.raises(RunFailedError, match="timed out") as excinfo:
+        _wait(backend, timeout_seconds=120)
+    assert excinfo.value.retryable is False
+    assert backend.stops == ["run-1"] and not job.cancelled
+    assert 180 <= backend.clock.elapsed < 200
+
+
+def test_started_with_undecidable_liveness_keeps_watching_until_the_loss_window(
+    backend: Backend,
+) -> None:
+    # The worker died mid-job: its record lingers, aging, then expires at 420 s.
+    backend.rq_heartbeat["worker-a"] = lambda now: T0 if (now - T0).total_seconds() < 420 else None
+    job = FakeJob("x", [JobStatus.STARTED])
+    backend.jobs_by_queue["networked-players.platform.worker-a"] = [job]
+    with pytest.raises(RunLostError, match="no live rq:worker record"):
+        _wait(backend, timeout_seconds=120)
+    # Past the 180 s deadline (not a timeout verdict), inside the recovery window, and the
+    # orphan was stopped only once liveness had lapsed.
+    assert 480 <= backend.clock.elapsed <= 180 + 420 + 60 + 30
+    assert backend.stops == ["run-1"]
+
+
+def test_dispatch_recovers_a_worker_that_dies_after_enqueue_on_a_short_workload(
+    backend: Backend, dispatch: Any
+) -> None:
+    run, staged = dispatch
+    backend.rq_heartbeat["worker-a"] = lambda now: T0  # lingering record, then silence
+    backend.jobs_by_queue["networked-players.platform.worker-a"] = [
+        FakeJob("a", [JobStatus.QUEUED])
+    ]
+    backend.jobs_by_queue["networked-players.platform.worker-b"] = [
+        FakeJob("b", [JobStatus.FINISHED], result={"status": "succeeded", "attempt": 2})
+    ]
+    (outcome, host, _), _ = run(1)
+    assert outcome.attempt == 2 and host == "host-b"
+    assert [o.worker_id for o in outcome.orphans] == ["worker-a"]
+    assert len(staged) == 2
