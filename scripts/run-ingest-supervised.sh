@@ -19,7 +19,7 @@
 # as your normal user, not root -- only the unit *creation* needs root.
 #
 # Configure via the same environment variables as run-ingest.sh (SNAPSHOT required;
-# MAX_RELEASES, OVERWRITE, RAW_DIR, PROCESSED_DIR, MANIFEST_DIR optional), or an optional
+# MAX_RELEASES, OVERWRITE, RESUME, RAW_DIR, PROCESSED_DIR, MANIFEST_DIR optional), or an optional
 # git-ignored local/ingest.env. NTFY_URL (see ~/.bashrc) is passed through if set;
 # notifications are silently skipped otherwise (scripts/lib/notify.sh degrades
 # gracefully).
@@ -78,6 +78,7 @@ sudo systemd-run \
     "SNAPSHOT=${SNAPSHOT}" \
     "MAX_RELEASES=${MAX_RELEASES:-}" \
     "OVERWRITE=${OVERWRITE:-}" \
+    "RESUME=${RESUME:-}" \
     "RAW_DIR=${RAW_DIR:-}" \
     "PROCESSED_DIR=${PROCESSED_DIR:-}" \
     "MANIFEST_DIR=${MANIFEST_DIR:-}" \

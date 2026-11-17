@@ -95,3 +95,82 @@ The first full sequential parse completed 2026-07-02 (19,192,301 releases from t
 ## Recovery and reproducibility
 
 Raw compressed dumps are immutable inputs. Normalized datasets live under `snapshot=YYYYMMDD`, publish only after validation, and are never mutated in place. A failed staging directory can be deleted. The previous canonical snapshot remains available for rollback. PostgreSQL may index a selected snapshot later, but it is not the only copy of catalog truth.
+
+### Atomic parts and resumable release parsing
+
+`parse-releases` is a long single-stream job, so its output is built to survive interruption:
+
+- **Atomic parts.** Every Parquet part is written to a hidden temp name (`.part-NNNNN.parquet.tmp`) in
+  its table directory, fsynced, renamed to `part-NNNNN.parquet`, and the directory is fsynced where the
+  platform allows. A file under a final part name is always complete. (The masters and
+  artist-relations writers share this part-write code but have no progress record and no resume.)
+- **Progress record.** `progress.json` in the staging directory is replaced atomically (write-temp,
+  fsync, rename) after each completed part. It records the run parameters (snapshot, source URL,
+  `--chunk-releases`, `--max-releases`, schema, parser and pyarrow versions), the input identity (file
+  name, size, and the download manifest's sha256 when `--input-manifest` is given -- the dump itself is
+  never re-hashed), every completed part (`path`, `size_bytes`, `sha256`, `rows`), and the stream
+  position: `releases_persisted` (the release ordinal reached), `last_release_id`, and
+  `release_id_digest`. The record is committed after a part's write finishes, so at most the one part in
+  flight at a kill is unrecorded and gets redone.
+- **Writer lock.** The writer (fresh run or resume) holds an exclusive non-blocking `flock` on
+  `.writer.lock` in the staging directory for its whole lifetime. A second `parse-releases` for the same
+  staging directory -- resume or fresh -- is refused naming the lock, and nothing is touched. The kernel
+  drops the lock when the holder exits or is killed, so a stale lock file does not block a resume. The
+  lock file is not an "unrecorded file", is not in `manifest.json`, and is removed from the promoted
+  snapshot. The check is advisory and relies on a local filesystem with `flock` support.
+- **`parse-releases --resume`.** The dump is one gzip XML stream and cannot be seeked, so resume is
+  *re-read and skip*: it takes the lock, validates the staging directory, re-streams the dump from the
+  start, reading only the `id` of each already-persisted release (nothing is normalized, hashed or
+  retained; elements are cleared as usual, so memory stays bounded), checks the count, last
+  `release_id` and digest against the record, then continues writing at the next part index. The final
+  parts, rows and sha256s equal an uninterrupted run's (only `generated_at` in `manifest.json`
+  differs). Part bytes are reproducible (tests assert byte equality) because the writer embeds no
+  timestamps, only its library version in `created_by`; resume therefore refuses a different pyarrow
+  version.
+- **What the input identity is.** `release_id_digest` is a SHA-256 over the *ordered release ids* of the
+  persisted prefix, not over the content of the releases. Together with the file name, the file size
+  and (if recorded from the download manifest) the whole-file sha256, it detects a different, shorter or
+  re-ordered dump; it would not detect a dump that changed release content while keeping the same ids,
+  order and file size. If the original run recorded a manifest sha256, resume must be given the same
+  `--input-manifest` (it is refused otherwise). Without a recorded sha256, identity is only the weaker
+  evidence above.
+- **What resume does not save.** It saves the normalization, Parquet-write and hashing work of the
+  completed portion. It does not save the decompress and XML-parse cost of re-reading that portion.
+  No speed-up is claimed.
+
+Resume refuses, leaving the staging directory untouched, when: there is no staging directory for the
+snapshot (staging directories of other dataset types -- masters, artist relations, one-hop -- sharing
+the output root are ignored); there is more than one (all are named); another process holds the writer
+lock; `progress.json` is missing, corrupt or inconsistent, or the directory holds no completed work; a
+recorded part is missing or differs in size or sha256; a parameter (`--chunk-releases`,
+`--max-releases`, source URL, schema, parser or pyarrow version) differs from the original run; the
+input's file name or size differs, or its sha256 differs from -- or is missing relative to -- the one
+recorded; any failure occurs while re-reading the already-persisted prefix (truncated or corrupt
+gzip, malformed XML, I/O error); or that prefix's ids do not match the record, or the input is
+shorter than the record (or longer after a recorded final partial part).
+
+Files in the staging directory that the record does not list (temp files, a complete-but-unrecorded
+part, a stale `manifest.json` of an unfinalized run) are deleted with a logged line; the lock file, the
+progress record, and a finalized run's `manifest.json` are kept. A run without `--resume` refuses to
+start while a release staging directory for the snapshot exists, and names `--resume` and the
+recovery check (and says if a writer is currently running).
+
+**When the staging directory is kept or deleted** after a failure inside a write that has started:
+
+| Situation | Staging directory |
+| --- | --- |
+| Refusal (any case above, including prefix re-read failures) | kept |
+| Hard kill, power loss, Ctrl-C (not a catchable `Exception`) | kept |
+| Resumed run, at least one part committed, any later failure | kept |
+| Fresh run, at least one part committed, `OSError` (e.g. disk full) or `MemoryError` | kept |
+| Fresh run, failure with nothing committed yet | deleted |
+| Fresh run, other failure (e.g. malformed XML, no releases) | deleted |
+
+`--max-releases` counts release ordinals from the start of the stream, so a bounded run resumes with
+the same cap and stops at the same release.
+
+After the staging directory is renamed to `snapshot=YYYYMMDD`, its `progress.json` and lock file are
+removed. If a crash lands between the rename and that removal, they remain in the snapshot (they are not
+listed in `manifest.json`, and readers only read `table=*/*.parquet`); the next `parse-releases`
+invocation for that snapshot removes them once the manifest verifies against the finalized record, and
+`check_ingest_recovery.py` reports them.

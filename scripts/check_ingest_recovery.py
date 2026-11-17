@@ -1,33 +1,45 @@
 #!/usr/bin/env python3
 """Check for a partially-completed (interrupted or still-running) Discogs
 ingest staging directory, and report exactly how much real, VALID output
-survives.
+survives -- and whether `parse-releases --resume` can safely continue it.
 
-packages/catalog's write_release_dataset() (parquet.py) writes each part
-file DIRECTLY to its final filename -- no atomic temp-file-then-rename --
-and keeps at most one background write in flight at a time. A hard kill
-(SIGKILL, power loss, OOM-kill, Ctrl-C -- none of which trigger
-write_release_dataset()'s own `except Exception: shutil.rmtree(...)`
-cleanup, since none of those raise a catchable Exception) can leave the
-LAST part(s) truncated or corrupt on disk, even though every earlier part
-is safe (each earlier part's write already fully completed and closed
-before the next one started -- writes are sequential, never concurrent). A
-clean application-level crash (an ordinary Python exception during
-parsing) already self-cleans via that same except-block, so there's
-nothing to recover in that case -- this script is specifically for the
-OTHER case.
+Since Atlas I4, packages/catalog's parse-releases writes every part file
+atomically (temp name + fsync + rename, so a final part name is always
+complete) and keeps a durable `progress.json` in the staging directory
+(parts with size/sha256/rows, the release ordinal reached, the last
+release_id and a running digest of all persisted release ids). When that
+record is present this script verifies every recorded part's size and
+sha256 against it and reports `resume_safe` plus a recommendation:
+
+  resume_safe true  -> re-run the same parse-releases command with --resume
+                       (identical parameters; unrecorded/temp files are
+                       deleted by the resume itself, with a logged line).
+  resume_safe false -> a recorded part is missing/altered or the record is
+                       corrupt; resume would refuse. Delete the staging
+                       directory and re-run without --resume.
+
+Resume is re-read-and-skip: it saves the transform/write cost of the
+completed portion, not the decompress/parse cost of skipping it. This
+script cannot check the INPUT identity (that needs the dump); --resume
+itself verifies it and refuses a different input.
+
+A staging directory with NO progress.json (written by a pre-I4 build) is
+reported with the legacy DuckDB-based part validation and is not resumable.
+
+`writer_lock_held` is a read-only check of the advisory flock a running parse-releases
+holds on the staging dir (`.writer.lock`); when true, `resume_safe` is false -- the
+original writer is alive. The `unrecorded_files_resume_will_delete` list comes from the
+same function resume itself uses. For a promoted snapshot, any leftover progress.json /
+.writer.lock is reported (cleanup happens in the next parse-releases invocation).
 
 Read-only: never modifies or deletes anything. Safe to run against a
 STILL-RUNNING ingest too -- useful for exactly that: distinguishing "done
 so far, confirmed valid" from "currently being written, don't trust yet."
 
-Output is a single JSON object on stdout, deliberately shaped to be
-directly consumable by a future `parse-releases --resume` flag (not built
-yet -- this is a planned follow-up, see the ADR this script's own
-introduction should reference): resume_part_number and
-resume_release_count_estimate tell you exactly where a real resume would
-restart, and corrupt_parts tells you exactly what a resume implementation
-would need to discard and redo.
+Output is a single JSON object on stdout. Exit codes: 0 nothing to look at,
+1 interrupted_or_in_progress, 2 ambiguous (multiple staging dirs).
+
+Run with `uv run python3` (imports the catalog package's resume helpers).
 
 Usage: python3 scripts/check_ingest_recovery.py <snapshot> \
          [--processed-dir local/processed/discogs] [--chunk-releases 5000]
@@ -36,9 +48,16 @@ Usage: python3 scripts/check_ingest_recovery.py <snapshot> \
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import subprocess
 from pathlib import Path
+
+from networked_players_catalog.discogs.resume import (
+    find_staging_dirs,
+    lock_is_held,
+    unrecorded_files,
+)
 
 DEFAULT_CHUNK_RELEASES = 5000  # matches packages/catalog's parquet.py default
 
@@ -65,12 +84,96 @@ def _is_valid_parquet(path: Path) -> tuple[bool, int | None]:
         return False, None
 
 
+def _sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(4 * 1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _check_progress_record(snapshot: str, staging_root: Path) -> dict[str, object] | None:
+    """Verify a staging dir against its progress.json; None if there is no record."""
+    record_path = staging_root / "progress.json"
+    if not record_path.is_file():
+        return None
+    result: dict[str, object] = {
+        "snapshot": snapshot,
+        "status": "interrupted_or_in_progress",
+        "staging_root": str(staging_root),
+        "progress_record": True,
+    }
+    try:
+        record = json.loads(record_path.read_text())
+        files = list(record["files"])
+        state = record["state"]
+        persisted = int(record["releases_persisted"])
+        parts = int(record["parts_completed"])
+    except (OSError, ValueError, KeyError, TypeError):
+        result.update(
+            resume_safe=False,
+            recommendation="progress.json is corrupt: delete the staging dir, "
+            "re-run without --resume",
+        )
+        return result
+    problems: list[str] = []
+    recorded = set()
+    for item in files:
+        recorded.add(item["path"])
+        path = staging_root / item["path"]
+        if not path.is_file():
+            problems.append(f"missing: {item['path']}")
+        elif path.stat().st_size != item["size_bytes"] or _sha256(path) != item["sha256"]:
+            problems.append(f"altered: {item['path']}")
+    # The same function resume uses to decide what to delete -- not a copy of its rule.
+    unrecorded = [
+        p.relative_to(staging_root).as_posix() for p in unrecorded_files(staging_root, record)
+    ]
+    writer_running = lock_is_held(staging_root)
+    result.update(
+        state=state,
+        parts_completed=parts,
+        releases_persisted=persisted,
+        last_release_id=record["last_release_id"],
+        recorded_parts_ok=not problems,
+        recorded_part_problems=problems,
+        unrecorded_files_resume_will_delete=unrecorded,
+        writer_lock_held=writer_running,
+        resume_safe=not problems and not writer_running,
+        recommendation=(
+            "a parse-releases process currently holds the writer lock (.writer.lock): it is "
+            "still running; do not resume or delete anything while it runs"
+            if writer_running
+            else "re-run the same parse-releases command with --resume (identical parameters)"
+            if not problems
+            else "a recorded part is missing/altered: delete the staging dir and re-run "
+            "without --resume"
+        ),
+    )
+    return result
+
+
 def check_recovery(snapshot: str, processed_dir: Path, chunk_releases: int) -> dict[str, object]:
     final_root = processed_dir / f"snapshot={snapshot}"
     if final_root.exists():
-        return {"snapshot": snapshot, "status": "complete", "final_root": str(final_root)}
+        leftovers = [
+            name for name in ("progress.json", ".writer.lock") if (final_root / name).exists()
+        ]
+        result: dict[str, object] = {
+            "snapshot": snapshot,
+            "status": "complete",
+            "final_root": str(final_root),
+        }
+        if leftovers:
+            result["leftover_files_in_promoted_snapshot"] = leftovers
+            result["leftover_note"] = (
+                "harmless leftovers of a crash between promotion and cleanup; they are not "
+                "listed in manifest.json and are removed (once the manifest verifies) by the "
+                "next parse-releases invocation for this snapshot"
+            )
+        return result
 
-    staging_candidates = sorted(processed_dir.glob(f".snapshot={snapshot}.tmp-*"))
+    staging_candidates = find_staging_dirs(processed_dir, snapshot)
     if not staging_candidates:
         return {"snapshot": snapshot, "status": "not_started"}
     if len(staging_candidates) > 1:
@@ -83,6 +186,10 @@ def check_recovery(snapshot: str, processed_dir: Path, chunk_releases: int) -> d
             "staging_roots": [str(p) for p in staging_candidates],
         }
     staging_root = staging_candidates[0]
+
+    with_record = _check_progress_record(snapshot, staging_root)
+    if with_record is not None:
+        return with_record
 
     releases_dir = staging_root / "table=releases"
     if not releases_dir.is_dir():
