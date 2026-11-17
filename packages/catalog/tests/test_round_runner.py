@@ -688,6 +688,23 @@ def test_verify_reports_a_stale_artifact(world: dict[str, Any], tmp_path: Path) 
     assert not ok and detail["problems"]
 
 
+def test_verify_fails_when_a_challenge_hop_is_not_a_graph_edge(
+    world: dict[str, Any], tmp_path: Path
+) -> None:
+    """G1b: the round runner's verify stage (and the challenge stage, which passes
+    --verify-hops-against-graph) enforce that every published hop is a graph edge."""
+    ctx = _ctx(make_spec(world, tmp_path, "hopscope"))
+    assert rr.run_round(ctx) == 0  # the challenge stage's own check passed
+    ok, detail = rr.verify_round(ctx)
+    assert ok, detail["problems"]
+    challenge = json.loads(ctx.o(rr.CHALLENGE).read_text())
+    challenge["paths"][0]["hops"][0]["artist_b_id"] = 987654321  # no such graph node
+    ctx.o(rr.CHALLENGE).write_text(json.dumps(challenge))
+    ok, detail = rr.verify_round(ctx)
+    assert not ok
+    assert any("challenge hop not in graph" in p for p in detail["problems"])
+
+
 def test_committed_example_spec_is_structurally_valid() -> None:
     example = (
         Path(__file__).resolve().parents[3] / "data/albums/rounds/example-synthetic-round.json"

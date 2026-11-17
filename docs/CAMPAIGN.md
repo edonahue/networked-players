@@ -68,7 +68,7 @@ No catalog growth, no real collection published, no public data regenerated.
 | S3 | Collection page and guided journey; retire the synthetic `/cohorts/` example | S2, P1 | Done (#285); renders nothing until a Collection is promoted |
 | S4 | Owner approves and publishes the first real collection | S1–S3 | todo |
 | G1a | One evidence-release selection policy for graph, challenge and routes (ships only with a rebuild) | F3 | todo |
-| G1b | Align the challenge edge rule with the graph's | F3 | Investigated: all 119 hops are interior hops between two non-seed artists (graph keeps only seed-touching edges); fix belongs in the challenge builder and ships with the Round 2 rebuild |
+| G1b | Align the challenge edge rule with the graph's | F3 | In review (#PR). Challenge path search now restricted to seed-touching edges via one shared scope predicate; carry-forward re-searched and counted; opt-in `check-challenge-hops-in-graph` (runner enables it for new rounds). Becomes mandatory, and the committed challenge.v3's 119 out-of-scope hops go away, only with the Round 2 rebuild (see docs/EXPANSION_PIPELINE.md) |
 | G1c | ADR plus graph-derived contributor index; owner reviews the page-set diff | F3 | todo |
 | G2 | Record-centred Explore prototype and decision | P1 | todo |
 | G3 | Album-level atlas prototype and decision | S1 | todo |

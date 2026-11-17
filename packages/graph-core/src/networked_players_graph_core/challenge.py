@@ -21,7 +21,13 @@ from networked_players_contracts.challenge import challenge_content_version, cha
 
 from . import __version__
 from .album_policy import master_non_studio_reason
-from .graph import GRAPH_POLICY_VERSION, CreditGraph, EvidencePath, FrontierTooLargeError
+from .graph import (
+    GRAPH_POLICY_VERSION,
+    CreditGraph,
+    EvidencePath,
+    FrontierTooLargeError,
+    edge_in_seed_scope,
+)
 from .lineage_inputs import stamp_inputs
 
 CHALLENGE_SCHEMA_VERSION = 2
@@ -417,6 +423,72 @@ def _bounded_find_path(
         return None, True
 
 
+class _ScopedFinder:
+    """`CreditGraph.find_path` restricted to seed-touching edges (the shared
+    ADR 0050 scope rule, `graph.edge_in_seed_scope`)."""
+
+    def __init__(self, graph: CreditGraph, seed_artist_ids: frozenset[int]):
+        self._graph = graph
+        self._seeds = seed_artist_ids
+
+    def find_path(
+        self,
+        from_artist_id: int,
+        to_artist_id: int,
+        *,
+        max_hops: int = 4,
+        max_frontier_expansion: int | None = None,
+    ) -> EvidencePath | None:
+        return self._graph.find_path(
+            from_artist_id,
+            to_artist_id,
+            max_hops=max_hops,
+            max_frontier_expansion=max_frontier_expansion,
+            seed_artist_ids=self._seeds,
+        )
+
+    def cursor(self) -> _ScopedFinder:
+        return _ScopedFinder(self._graph.cursor(), self._seeds)
+
+
+def path_hops_out_of_scope(
+    hops: list[tuple[int, int]], seed_artist_ids: frozenset[int]
+) -> list[tuple[int, int]]:
+    """The `(artist_a, artist_b)` hops that fail `edge_in_seed_scope`."""
+    return [(a, b) for a, b in hops if not edge_in_seed_scope(a, b, seed_artist_ids)]
+
+
+def carry_forward_scope_outcomes(
+    previous: dict[str, Any], current: dict[str, Any], seed_artist_ids: frozenset[int]
+) -> dict[str, int]:
+    """Counts for the carry-forward audit (campaign Atlas G1b): of the
+    previous artifact's paths, how many carried an out-of-scope hop, and of
+    those how many artist pairs were re-found in `current` (necessarily via an
+    in-scope path -- every search is scope-restricted) versus dropped. Nothing
+    is ever carried verbatim, so none is silently kept."""
+
+    def key(p: dict[str, Any]) -> tuple[int, int]:
+        a, b = int(p["from_artist_id"]), int(p["to_artist_id"])
+        return (min(a, b), max(a, b))
+
+    current_pairs = {key(p) for p in current.get("paths", [])}
+    stale = [
+        p
+        for p in previous.get("paths", [])
+        if path_hops_out_of_scope(
+            [(int(h["artist_a_id"]), int(h["artist_b_id"])) for h in p.get("hops", [])],
+            seed_artist_ids,
+        )
+    ]
+    refound = sum(1 for p in stale if key(p) in current_pairs)
+    return {
+        "previous_paths": len(previous.get("paths", [])),
+        "previous_paths_with_out_of_scope_hop": len(stale),
+        "out_of_scope_pairs_refound_in_scope": refound,
+        "out_of_scope_pairs_dropped": len(stale) - refound,
+    }
+
+
 # How many pairs each worker gets per concurrent batch. Bigger batches
 # amortize thread/cursor overhead but waste more work past an early stop;
 # the wasted tail is bounded by `max_workers * _PATH_BATCH_PER_WORKER`.
@@ -431,6 +503,7 @@ def _iter_path_results(
     max_workers: int,
     max_frontier_expansion: int | None,
     in_memory: bool = False,
+    seed_artist_ids: frozenset[int] | None = None,
 ) -> Iterator[tuple[MatchedAlbum, MatchedAlbum, EvidencePath | None, bool]]:
     """Yield `(from_album, to_album, path, capped)` in `candidate_pairs`
     order, computing lazily so the caller can stop early.
@@ -453,7 +526,14 @@ def _iter_path_results(
     wasted past an early stop is bounded by a single batch, not the entire
     remaining candidate list, and the yielded sequence is byte-identical to
     the sequential path's regardless of `max_workers`.
+
+    `seed_artist_ids`, when given, restricts every search to seed-touching
+    edges (`graph.edge_in_seed_scope`) -- the rule the public pathfinding
+    graph is built under, so no published hop can lack a graph edge.
     """
+    finder: Any = graph
+    if seed_artist_ids is not None:
+        finder = _ScopedFinder(graph, seed_artist_ids)
     if in_memory:
         # One `fetchall()` of the already-built `credit_edges`, then every
         # search runs against RAM instead of issuing ~8 SQL round-trips per
@@ -464,7 +544,7 @@ def _iter_path_results(
         # performer-gated corpus: all 14,878 candidate pairs in 636s with
         # 14,343 paths found and no frontier cap, versus a DuckDB build that
         # did not finish in over two hours across four attempts.
-        index = graph.load_in_memory_edge_index()
+        index = graph.load_in_memory_edge_index(seed_artist_ids=seed_artist_ids)
         for from_album, to_album in candidate_pairs:
             path, capped = _bounded_find_path(
                 index,
@@ -479,7 +559,7 @@ def _iter_path_results(
     if max_workers <= 1:
         for from_album, to_album in candidate_pairs:
             path, capped = _bounded_find_path(
-                graph,
+                finder,
                 from_album.artist_id,
                 to_album.artist_id,
                 max_hops=max_hops,
@@ -488,7 +568,7 @@ def _iter_path_results(
             yield from_album, to_album, path, capped
         return
 
-    worker_graphs = [graph.cursor() for _ in range(max_workers)]
+    worker_graphs = [finder.cursor() for _ in range(max_workers)]
     batch_size = max_workers * _PATH_BATCH_PER_WORKER
 
     with ThreadPoolExecutor(max_workers=max_workers) as pool:
@@ -675,6 +755,11 @@ def build_challenge_v2_from_matched(
             "(need at least 2); widen the album list or check the snapshot"
         )
 
+    # Path search is restricted to seed-touching edges (seeds = the catalog's
+    # primary artists), the SAME rule `build_pathfinding_graph` applies
+    # (`graph.edge_in_seed_scope`, ADR 0050), so every published hop is an
+    # edge of the published graph (campaign Atlas G1b).
+    seed_artist_ids = frozenset(m.artist_id for m in matched)
     ordered = sorted(matched, key=lambda m: m.album_id)
     candidate_pairs = _candidate_album_pairs(
         ordered,
@@ -706,6 +791,7 @@ def build_challenge_v2_from_matched(
         max_workers=max_workers,
         max_frontier_expansion=max_frontier_expansion,
         in_memory=in_memory,
+        seed_artist_ids=seed_artist_ids,
     )
     if max_paths <= 0:
         # Nothing to fill: never advance the iterator at all (a top-of-loop
@@ -805,6 +891,9 @@ def build_challenge_v2_from_matched(
                 "max_hops": max_hops,
                 "max_frontier_expansion": max_frontier_expansion,
                 "carried_forward_pairs_used": bool(carry_forward_artist_pairs),
+                # Policy 2 (G1b): path search restricted to edges with a seed
+                # (catalog primary artist) endpoint.
+                "path_edge_scope": "seed_touching",
             },
             "note": (
                 "Derived from a bounded one-hop working set; the private "
@@ -816,7 +905,9 @@ def build_challenge_v2_from_matched(
                 "(null for a hand-written {artist,title} query list). "
                 "graph_policy_version (ADR 0068) records which "
                 "graph.GRAPH_POLICY_VERSION produced these paths -- every "
-                "hop's edge passed that version's performer gate."
+                "hop's edge passed that version's performer gate; from "
+                "version 2 every hop also has a seed-artist endpoint, so it "
+                "is an edge of the published pathfinding graph."
             ),
         },
         "albums": albums_json,
@@ -826,7 +917,14 @@ def build_challenge_v2_from_matched(
     }
     stamp_inputs(artifact, {"catalog": catalog_version})
     stamp_challenge_version(artifact)
+    published_pairs = {
+        (min(p["from_artist_id"], p["to_artist_id"]), max(p["from_artist_id"], p["to_artist_id"]))
+        for p in paths_json
+    }
     report = {
+        "carried_pairs_total": len(carry_forward_artist_pairs),
+        "carried_pairs_republished": len(carry_forward_artist_pairs & published_pairs),
+        "carried_pairs_dropped": len(carry_forward_artist_pairs - published_pairs),
         "albums_matched": len(matched),
         "albums_missed": len(missed),
         "missed_queries": missed,

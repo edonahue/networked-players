@@ -336,7 +336,7 @@ def test_top_level_shape_and_version(onehop_dataset: Path) -> None:
         )
     assert payload["schema_version"] == 3
     assert payload["catalog_version"] == _CATALOG_VERSION
-    assert payload["graph_policy_version"] == 1
+    assert payload["graph_policy_version"] == 2
     assert payload["pathfinding_graph_version"].startswith(f"pathfinding-graph-v3-{_SNAPSHOT}-")
 
 

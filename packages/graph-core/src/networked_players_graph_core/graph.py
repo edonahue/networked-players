@@ -16,7 +16,7 @@ from __future__ import annotations
 import json
 import re
 import uuid
-from collections.abc import Sequence
+from collections.abc import Collection, Sequence
 from dataclasses import dataclass
 from importlib import resources
 from pathlib import Path
@@ -471,7 +471,40 @@ class EvidenceReleasePreference:
 #    performer-qualifying; `track_credit`/`release_credit` scope must pass
 #    `eligibility.py`'s `is_performer_role`. Everything built before this
 #    constant existed predates any performer gate at all.
-GRAPH_POLICY_VERSION = 1
+# 2: the ADR 0050 seed-scope rule (an edge is in scope iff at least one
+#    endpoint is a catalog primary artist) is now ONE shared definition
+#    (`edge_in_seed_scope` / `seed_scope_sql`) used by BOTH the pathfinding
+#    graph builder and the challenge builder's path search (campaign Atlas
+#    G1b). Before this, only the graph applied it, so a challenge path's
+#    interior hop could join two non-seed artists and have no graph edge.
+#    The graph's own edge set is unchanged by the bump (graph.v4 built under
+#    1 was already seed-scoped); challenge paths built under 1 may contain
+#    out-of-scope interior hops and are not comparable to 2.
+GRAPH_POLICY_VERSION = 2
+
+
+def edge_in_seed_scope(
+    artist_a_id: int, artist_b_id: int, seed_artist_ids: Collection[int]
+) -> bool:
+    """The ADR 0050 ego-network scope rule: an edge is kept iff at least one
+    endpoint is a seed (catalog primary artist). The single definition shared
+    with `seed_scope_sql`; `pathfinding_graph.build_pathfinding_graph` and the
+    challenge builder's path search both go through it."""
+    return artist_a_id in seed_artist_ids or artist_b_id in seed_artist_ids
+
+
+def seed_scope_sql(
+    seed_artist_ids: Collection[int],
+    *,
+    a_column: str = "artist_a_id",
+    b_column: str = "artist_b_id",
+) -> str:
+    """SQL boolean expression equivalent to `edge_in_seed_scope` over the given
+    columns. Seed ids are coerced to int (never interpolate caller text)."""
+    ids = ", ".join(str(int(i)) for i in sorted(set(seed_artist_ids)))
+    if not ids:
+        return "FALSE"
+    return f"({a_column} IN ({ids}) OR {b_column} IN ({ids}))"
 
 
 def credit_edges_sql(
@@ -1212,7 +1245,9 @@ class CreditGraph:
             result[int(a_id)][int(b_id)] = (int(release_id),)
         return result
 
-    def load_in_memory_edge_index(self) -> InMemoryEdgeIndex:
+    def load_in_memory_edge_index(
+        self, *, seed_artist_ids: Collection[int] | None = None
+    ) -> InMemoryEdgeIndex:
         """Materialize the whole `credit_edges` relation as an
         `InMemoryEdgeIndex` (see that class for why, and for the measured
         numbers that justify it).
@@ -1229,9 +1264,11 @@ class CreditGraph:
         exact-parity contract documented on `InMemoryEdgeIndex`.
         """
         self._require_edges()
+        where = f"WHERE {seed_scope_sql(seed_artist_ids)} " if seed_artist_ids is not None else ""
         rows = self._connection.execute(
             "SELECT artist_a_id, artist_b_id, release_id FROM credit_edges "
-            "ORDER BY artist_a_id, artist_b_id"
+            + where
+            + "ORDER BY artist_a_id, artist_b_id"
         ).fetchall()
         adjacency: dict[int, list[tuple[int, int]]] = {}
         for artist_a_id, artist_b_id, release_id in rows:
@@ -1245,8 +1282,12 @@ class CreditGraph:
         *,
         max_hops: int = 4,
         max_frontier_expansion: int | None = None,
+        seed_artist_ids: Collection[int] | None = None,
     ) -> EvidencePath | None:
-        """Bounded BFS. `max_frontier_expansion`, when given, is a degree
+        """Bounded BFS. `seed_artist_ids`, when given, restricts traversal to
+        edges in seed scope (`edge_in_seed_scope`), the same rule the public
+        pathfinding graph is built under; degree caps count scoped edges
+        only. `max_frontier_expansion`, when given, is a degree
         threshold (see `degree`): a frontier artist above it is excluded from
         *expansion* this call (its own edges are never explored), though it
         can still be *reached* as a target via another artist's edges. If the
@@ -1257,6 +1298,11 @@ class CreditGraph:
         self._require_edges()
         if from_artist_id == to_artist_id:
             raise GraphError("from_artist_id and to_artist_id must differ")
+        scope_e = (
+            f" AND {seed_scope_sql(seed_artist_ids, a_column='e.artist_a_id', b_column='e.artist_b_id')}"
+            if seed_artist_ids is not None
+            else ""
+        )
 
         suffix = uuid.uuid4().hex
         frontier_table = f"frontier_{suffix}"
@@ -1276,7 +1322,12 @@ class CreditGraph:
                     degrees = self._connection.execute(
                         "SELECT artist_a_id, count(*) FROM credit_edges "
                         f"WHERE artist_a_id IN (SELECT artist_id FROM {frontier_table}) "
-                        "GROUP BY artist_a_id"
+                        + (
+                            f"AND {seed_scope_sql(seed_artist_ids)} "
+                            if seed_artist_ids is not None
+                            else ""
+                        )
+                        + "GROUP BY artist_a_id"
                     ).fetchall()
                     newly_capped = {
                         int(artist_id)
@@ -1297,7 +1348,8 @@ class CreditGraph:
                     "SELECT e.artist_a_id, e.artist_b_id, e.release_id "
                     "FROM credit_edges e "
                     f"JOIN {expand_from_table} f ON f.artist_id = e.artist_a_id "
-                    f"WHERE e.artist_b_id NOT IN (SELECT artist_id FROM {visited_table}) "
+                    f"WHERE e.artist_b_id NOT IN (SELECT artist_id FROM {visited_table})"
+                    f"{scope_e} "
                     "ORDER BY e.artist_a_id, e.artist_b_id"
                 ).fetchall()
 

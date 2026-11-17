@@ -289,7 +289,7 @@ time or memory figure is ever printed or recorded (ADR 0018).
 | 2 | `catalog` | `build-public-album-catalog` | always `--approved-pool`, `--already-published-catalog`, `--expansion-round`, `--candidates`; explicit lanes from the spec |
 | 3 | `album-credit-membership` | `build-album-credit-membership` | |
 | 4 | `pathfinding-graph` | `build-pathfinding-graph` | |
-| 5 | `challenge` | `build-challenge-from-dump` | always `--albums <new catalog>` and `--carry-forward-challenge <previous>` |
+| 5 | `challenge` | `build-challenge-from-dump` | always `--albums <new catalog>`, `--carry-forward-challenge <previous>` and `--verify-hops-against-graph <this round's graph>` (G1b) |
 | 6 | `record-routes` | `build-record-routes` | always `--previous-routes-universe`; targets inherited unless the spec states them |
 | 7 | `freeze-daily-generation` | `freeze-connection-daily-manifest-generation` | freezes the generation pointing at the live rounds file; a no-op when none does |
 | 8 | `connection-rounds` | `build-connection-rounds` | refused while any generation points at the live file; always `--previous-connection-universe` |
@@ -336,6 +336,24 @@ frozen in place (freeze it with `freeze-connection-daily-manifest-generation` if
 points at the live file), and schedule forward with `extend-connection-daily-manifest-v2` or a
 new generation whose cutover is still in the future. Before the cutover has passed, a full
 revert of the round PR is safe.
+
+### Challenge edge scope (campaign Atlas G1b)
+
+`build-challenge-from-dump` searches only edges with at least one **seed** (catalog primary
+artist) endpoint -- the same ADR 0050 rule `build-pathfinding-graph` applies, defined once as
+`graph.edge_in_seed_scope` / `seed_scope_sql` and used by both builders
+(`GRAPH_POLICY_VERSION` 2; challenge provenance records `build_parameters.path_edge_scope:
+"seed_touching"`). A pair whose only routes cross an edge between two non-seed artists is
+re-found through a seed-touching alternative or dropped. Carried-forward pairs are always
+re-searched, never kept verbatim; the build report prints `carried_pairs_*` and a
+`carry_forward_scope` audit (previous paths with an out-of-scope hop, re-found vs dropped).
+
+The check "every published hop is an edge of graph.v4" is available as
+`check-challenge-hops-in-graph` and `build-challenge-from-dump --verify-hops-against-graph`.
+The round runner enables it in the `challenge` stage and in `verify` for every new round. It
+is **not** a `validate-public-artifacts` default yet: the committed challenge.v3 (built under
+policy 1) has 119 hops with no graph edge and would fail. **It becomes mandatory with the
+Round 2 rebuild**, which regenerates the challenge under policy 2.
 
 ### What the runner does not do
 
