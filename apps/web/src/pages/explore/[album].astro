@@ -28,7 +28,7 @@ interface Props {
 }
 
 const { album } = Astro.props;
-const description = `Explore the documented credit network around ${album.title}.`;
+const description = `Explore the players documented on ${album.title} and who they played with.`;
 ---
 
 <BaseLayout title={`Explore: ${album.title}`} description={description}>
@@ -37,7 +37,7 @@ const description = `Explore the documented credit network around ${album.title}
     <h1 class="h1-intro">{album.title}</h1>
     <p class="lede" style="font-size:0.95rem">
       {album.artist}
-      {album.year ? ` · ${album.year}` : ''} — click any contributor to recenter the network
+      {album.year ? ` · ${album.year}` : ''} — click any player to recenter
       around them. Filter by role to fade everything else without hiding it.
     </p>
   </section>
@@ -48,7 +48,7 @@ const description = `Explore the documented credit network around ${album.title}
 
   <section class="prose shell" style="padding-top:20px;padding-bottom:72px">
     <p class="lede" style="font-size:0.92rem">
-      This view shows a bounded neighborhood — the same scope
+      This view shows the players near this record — the same reach
       <a href="/play/connect/">Connect Two Records</a> searches.
     </p>
     <p class="lede" style="font-size:0.92rem">

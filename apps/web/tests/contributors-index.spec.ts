@@ -93,7 +93,7 @@ test("a real search finds a real contributor by name in the committed index", as
 }) => {
   await page.goto("/contributors/");
   await expect(page.locator("[data-contributors-status]")).toHaveText(
-    /^Showing \d+ of \d+ contributors\.$/,
+    /^Showing \d+ of \d+ players\.$/,
     { timeout: 15000 },
   );
   await expect(page.locator("[data-contributors-heading]")).toHaveText(
@@ -113,7 +113,7 @@ test("a real search finds a real contributor by name in the committed index", as
   // The count must update with the filter, not stay stuck at the
   // unfiltered total.
   await expect(page.locator("[data-contributors-status]")).toHaveText(
-    /^Showing \d+ of \d+ contributors\.$/,
+    /^Showing \d+ of \d+ players\.$/,
   );
 });
 
@@ -122,7 +122,7 @@ test("a role-category chip filters real results and can be toggled off", async (
 }) => {
   await page.goto("/contributors/");
   await expect(page.locator("[data-contributors-status]")).toHaveText(
-    /^Showing \d+ of \d+ contributors\.$/,
+    /^Showing \d+ of \d+ players\.$/,
     { timeout: 15000 },
   );
 
@@ -148,7 +148,7 @@ test("a search with no real matches shows an empty results grid and an honest me
 }) => {
   await page.goto("/contributors/");
   const status = page.locator("[data-contributors-status]");
-  await expect(status).toHaveText(/^Showing \d+ of \d+ contributors\.$/, {
+  await expect(status).toHaveText(/^Showing \d+ of \d+ players\.$/, {
     timeout: 15000,
   });
   await page
@@ -161,12 +161,12 @@ test("a search with no real matches shows an empty results grid and an honest me
   // fallback message at all, unlike the albums directory's own "No albums
   // match your search." for the same zero-results case.
   await expect(status).toBeVisible();
-  await expect(status).toHaveText("No contributors match your search.");
+  await expect(status).toHaveText("No players match your search.");
 
   // Clearing the search must restore the visible unfiltered count, not
   // leave the empty-state message stuck.
   await page.locator("[data-contributors-search]").fill("");
-  await expect(status).toHaveText(/^Showing \d+ of \d+ contributors\.$/);
+  await expect(status).toHaveText(/^Showing \d+ of \d+ players\.$/);
 });
 
 test("the contributors directory is reachable from the primary nav", async ({

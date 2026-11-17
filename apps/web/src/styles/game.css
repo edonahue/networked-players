@@ -146,7 +146,7 @@ a.mode-card:focus-visible {
   font-size: 0.7rem;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--gold);
+  color: color-mix(in srgb, var(--gold) 85%, var(--ink));
   background: color-mix(in srgb, var(--gold) 10%, transparent);
 }
 .stage__badge:empty {
@@ -179,7 +179,7 @@ a.mode-card:focus-visible {
   text-align: center;
 }
 .sleeve__art {
-  width: clamp(120px, 34vw, 170px);
+  width: clamp(96px, 30vw, 170px);
   aspect-ratio: 1;
   margin: 0 auto;
   border-radius: 4px;
@@ -267,7 +267,7 @@ a.mode-card:focus-visible {
 
 /* The hidden-middle slot: face-down until the round resolves. */
 .sleeve--middle .sleeve__art {
-  width: clamp(90px, 24vw, 130px);
+  width: clamp(72px, 20vw, 130px);
 }
 .sleeve__mystery {
   display: grid;
@@ -1240,4 +1240,49 @@ a.contributor-card:focus-visible {
 .archive-day__status {
   font-size: 0.78rem;
   color: var(--muted);
+}
+
+/* Onward row: links out of a resolved round (Atlas P4). Quiet, one block
+   under the evidence sheet; every link keeps a 44px target. */
+.onward {
+  margin-top: 14px;
+}
+.onward__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 22px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.onward__group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 14px;
+}
+.onward__label {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.onward__link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--accent-strong);
+  font-weight: 600;
+}
+.onward__link:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+}
+.onward__note {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--muted);
+  font-size: 0.9rem;
 }

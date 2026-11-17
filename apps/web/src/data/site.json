@@ -1,12 +1,12 @@
 {
   "title": "Networked Players",
-  "tagline": "An evidence-first music-credit graph",
+  "tagline": "Records, players, and the performances that connect them",
   "description": "Given two artists or releases, Networked Players finds a documented path through credited work and shows the evidence for every step.",
   "socialImage": "/og.png",
   "repositoryUrl": "https://github.com/edonahue/networked-players",
   "authorUrl": "https://erichdonahue.com",
   "hero": {
-    "eyebrow": "Evidence-first · a real credit graph",
+    "eyebrow": "Evidence-first · real records and players",
     "headline": "Explore the hidden network behind recorded music.",
     "lede": "Every record here is real, sourced and versioned. Pick one, follow the players on it to the next record they played on, and see the credits for every step."
   }

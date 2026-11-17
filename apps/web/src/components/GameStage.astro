@@ -48,7 +48,7 @@ const { label = 'Connection Guesser round' } = Astro.props;
     class="chip-tray"
     data-testid="chip-tray"
     role="radiogroup"
-    aria-label="Pick the contributor credited on both records"
+    aria-label="Pick the player credited on both records"
   >
   </div>
   <p class="stage__attempts" data-testid="attempts"></p>
@@ -68,6 +68,9 @@ const { label = 'Connection Guesser round' } = Astro.props;
 
   <div class="paper-panel evidence-sheet" data-testid="evidence-sheet" hidden></div>
   <p class="stamp stage__provenance" data-testid="provenance-note" hidden></p>
+  <nav class="onward" data-testid="onward" aria-label="Keep going from this connection" hidden>
+    <ul class="onward__list"></ul>
+  </nav>
 
   <div class="paper-panel set-summary" data-testid="set-summary" hidden></div>
   <div class="paper-panel daily-panel" data-testid="daily-panel" hidden></div>

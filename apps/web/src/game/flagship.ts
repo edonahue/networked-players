@@ -17,6 +17,7 @@ import { isDateOverrideAllowed } from "./dateOverride";
 import { fetchFailureMessage } from "./domUtils";
 import { createEngine, type Engine } from "./engine";
 import { localIsoDate } from "./localDate";
+import { showOnward, type OnwardPlayer } from "./onward";
 import { createRng } from "./prng";
 import { wireRadioTray } from "./radioGroup";
 import { ratingGlyph, summarizeSet } from "./scoring";
@@ -70,7 +71,7 @@ function sessionStore(): StorageLike | null {
 }
 
 function poolLabel(round: GameRound): string {
-  return round.pool === "real-records" ? "Real records" : "Synthetic universe";
+  return round.pool === "real-records" ? "Real records" : "Synthetic records";
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -572,7 +573,7 @@ export async function initFlagship(
         "aria-label",
         state.step === "middle"
           ? "Pick the hidden middle record"
-          : "Pick the contributor credited on both records",
+          : "Pick the player credited on both records",
       );
       stepLabel.textContent = stepLabelFor(state.step);
       $("question").textContent = questionFor(state.step);
@@ -725,6 +726,7 @@ export async function initFlagship(
     sheet.hidden = false;
     provenance.textContent = round.provenance_note;
     provenance.hidden = false;
+    showOnward($("onward"), onwardInput());
     nextButton.hidden = false;
     announce(verdictHeading.textContent ?? "", true);
     verdictHeading.focus();
@@ -753,6 +755,35 @@ export async function initFlagship(
     } else {
       nextButton.textContent = `Next round (${set.entries.length + 1} of ${SET_SIZE})`;
     }
+  }
+
+  /** Links out of a resolved round. Only called after resolution. */
+  function onwardInput() {
+    const [a, b] = round.endpoints;
+    const records = [{ id: a.id, title: a.title }];
+    if (twoHop && round.middle) {
+      records.push({
+        id: round.middle.album.id,
+        title: round.middle.album.title,
+      });
+    }
+    records.push({ id: b.id, title: b.title });
+    const players: OnwardPlayer[] = [];
+    const seen = new Set<number>();
+    const add = (refs: ContributorRef[], exploreAlbumId: string) => {
+      for (const ref of refs) {
+        if (seen.has(ref.id)) continue;
+        seen.add(ref.id);
+        players.push({ id: ref.id, name: ref.name, exploreAlbumId });
+      }
+    };
+    if (twoHop && round.bridge_answer_sets) {
+      add(round.bridge_answer_sets[0], a.id);
+      add(round.bridge_answer_sets[1], b.id);
+    } else {
+      add(round.answer_set, a.id);
+    }
+    return { records, players, connect: { a: a.id, b: b.id } };
   }
 
   /** Spoiler-free by construction: the date and glyphs — never a name. */

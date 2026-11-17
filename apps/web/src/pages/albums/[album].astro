@@ -77,7 +77,7 @@ const contributorIds = new Set(
 );
 const contributors = artists.filter((artist) => contributorIds.has(artist.artist_id));
 
-// "Nearby in the credit network" (plan §12.7): a real, two-hop, build-time
+// "Nearby records" (plan §12.7): a real, two-hop, build-time
 // join over already-published data -- no new fetch, no new artifact. For
 // each of this album's own indexed contributors, look at their
 // neighboring_contributor_ids (ADR 0048's own published field), then at
@@ -299,7 +299,7 @@ const description = [
         connectedPaths.length === 0 ? (
           <p class="record-section__intro">
             No documented connection is indexed from {album.title} yet.{' '}
-            <a href={`/explore/${album.id}/`}>Explore its documented credit network</a> instead, or{' '}
+            <a href={`/explore/${album.id}/`}>Explore the players around it</a> instead, or{' '}
             <a href={`/play/connect/?a=${album.id}`}>try connecting it to another record</a>.
           </p>
         ) : (
@@ -402,9 +402,9 @@ const description = [
     {
       nearbyAlbums.length > 0 && (
         <section class="record-section" aria-label="Nearby records">
-          <h2 class="record-section__title">Nearby in the credit network</h2>
+          <h2 class="record-section__title">Nearby records</h2>
           <p class="record-section__intro">
-            Connected through shared contributors. The credit graph links them; it says nothing
+            Connected through players they share with this record. The credits link them; they say nothing
             about how they sound.
           </p>
           <div class="album-grid">

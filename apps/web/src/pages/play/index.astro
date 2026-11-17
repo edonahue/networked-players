@@ -3,7 +3,7 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import ModeCard from '../../components/ModeCard.astro';
 
 const description =
-  'The play hub: deduction games over documented music credits. Guess the contributor who connects two records, then open the evidence.';
+  'The play hub: deduction games over documented music credits. Guess the player who connects two records, then open the evidence.';
 ---
 
 <BaseLayout title="Play" description={description}>
@@ -56,7 +56,7 @@ const description =
         tone="rust"
         status="live"
         href="/explore/"
-        description="A focused, bounded view of one record's credited contributors. Click any name to recenter, filter by role to fade the rest."
+        description="The players on one record and who they played with. Click any name to recenter, filter by role to fade the rest."
       />
       <ModeCard
         title="Album connections"
@@ -72,15 +72,15 @@ const description =
         tone="teal"
         status="live"
         href="/cohorts/"
-        description="Curated album pairs scored against the credit graph, with difficulty and hop counts — a synthetic example today, with reviewed sets to follow."
+        description="Curated record pairs with difficulty and step counts — a synthetic example today, with reviewed sets to follow."
       />
       <ModeCard
-        title="Contributors"
+        title="Players"
         kicker="Browse people"
         tone="gold"
         status="live"
         href="/contributors/"
-        description="Every documented contributor in the graph, searchable by name or role. Open anyone's page to see their records and who they connect to."
+        description="The players behind these records, searchable by name or role. Open anyone's page to see what they played, their records, and who they recur with."
       />
     </div>
   </section>
