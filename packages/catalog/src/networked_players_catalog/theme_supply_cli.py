@@ -206,7 +206,9 @@ def _build_rewiden_seed(args: argparse.Namespace) -> int:
         if datetime.fromisoformat(args.generated_at).tzinfo is None:
             raise ValueError
     except ValueError as error:
-        raise ThemeSupplyError("--generated-at must be an ISO datetime with a UTC offset") from error
+        raise ThemeSupplyError(
+            "--generated-at must be an ISO datetime with a UTC offset"
+        ) from error
     pool = _read_json(args.approved_pool, "approved pool")
     pool_failures = approved_pool_failures(pool)
     if pool_failures:
@@ -214,7 +216,9 @@ def _build_rewiden_seed(args: argparse.Namespace) -> int:
     base = _read_json(args.editorial_seed, "editorial seed")
     base_failures = editorial_seed_failures(base)
     if base_failures:
-        raise ThemeSupplyError(f"editorial seed {args.editorial_seed} is malformed: {base_failures}")
+        raise ThemeSupplyError(
+            f"editorial seed {args.editorial_seed} is malformed: {base_failures}"
+        )
     manifest = _read_json(args.dataset / "manifest.json", "full corpus manifest")
     payload, unresolved = build_rewiden_seed(
         args.dataset,

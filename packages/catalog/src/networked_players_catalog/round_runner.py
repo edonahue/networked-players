@@ -1028,7 +1028,7 @@ def _pre_theme_supply(ctx: Ctx, planning: bool) -> list[str]:
         try:
             seed_spec = json.loads(path.read_text())
         except json.JSONDecodeError as error:
-            return failures + [f"round seed spec {path} is not JSON: {error}"]
+            return [*failures, f"round seed spec {path} is not JSON: {error}"]
         failures += [f"round seed spec: {f}" for f in round_seed_spec_failures(seed_spec)]
         if isinstance(seed_spec, dict):
             for key in ("round", "target_count"):
@@ -1054,7 +1054,7 @@ def _pre_rewiden(ctx: Ctx, planning: bool) -> list[str]:
         try:
             date_ = str(json.loads((corpus / "manifest.json").read_text())["snapshot_date"])
         except (json.JSONDecodeError, KeyError) as error:
-            return failures + [f"full corpus manifest is unreadable: {error!r}"]
+            return [*failures, f"full corpus manifest is unreadable: {error!r}"]
         if onehop.name != f"snapshot={date_}":
             failures.append(
                 f"inputs.onehop_root must be named 'snapshot={date_}' (the full corpus's "
@@ -1830,7 +1830,9 @@ def round_main(
         spec = load_spec(args.spec)
         ctx = build_ctx(spec, today=today, formatter=formatter, art_builder=art_builder)
         if args.round_action == "plan":
-            text, failures = plan_round(ctx, select_stages(args.from_stage, args.to_stage, args.only_stage))
+            text, failures = plan_round(
+                ctx, select_stages(args.from_stage, args.to_stage, args.only_stage)
+            )
             out.write(text)
             return 1 if failures else 0
         if args.round_action == "run":

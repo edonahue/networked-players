@@ -103,14 +103,19 @@ ALLOWED = [1, 2, 3, 4, 5, 8, 9, 20, 21]  # release 7 is deliberately not format-
 
 def _write_world(root: Path) -> tuple[Path, Path]:
     full = root / f"full-snapshot={SNAPSHOT}"
-    for table in ("releases", "credits", "tracks"):
+    for table in ("releases", "credits", "tracks", "release_formats"):
         (full / f"table={table}").mkdir(parents=True)
     releases = [_release(rid, spec[0]) for rid, spec in WORLD.items()]
     credits: list[dict[str, Any]] = []
     for rid, (_m, _y, _s, billed, people) in WORLD.items():
         credits.append(_credit(rid, billed[0], billed[1]))
         credits += _perf(rid, *people)
-    for table, rows in (("releases", releases), ("credits", credits), ("tracks", [])):
+    for table, rows in (
+        ("releases", releases),
+        ("credits", credits),
+        ("tracks", []),
+        ("release_formats", []),
+    ):
         pq.write_table(
             pa.Table.from_pylist(rows, schema=SCHEMAS[table]),
             full / f"table={table}" / "part-00000.parquet",
@@ -178,7 +183,9 @@ def world(tmp_path: Path) -> dict[str, Path]:
     }
 
 
-def _supply_argv(w: dict[str, Path], spec: Path = FIXTURE_SPEC, out: Path | None = None) -> list[str]:
+def _supply_argv(
+    w: dict[str, Path], spec: Path = FIXTURE_SPEC, out: Path | None = None
+) -> list[str]:
     return [
         "build-theme-candidates",
         "--seed-spec", str(spec),
@@ -294,7 +301,9 @@ def test_invalid_spec_is_refused_before_reading_the_corpus(
     assert not world["out"].exists()
 
 
-def test_validate_round_seed_spec_command(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+def test_validate_round_seed_spec_command(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
     assert main(["validate-round-seed-spec", "--spec", str(FIXTURE_SPEC)]) == 0
     assert json.loads(capsys.readouterr().out)["lane_quotas"]["theme"] == 12
     broken = json.loads(FIXTURE_SPEC.read_text())
