@@ -478,8 +478,9 @@ uv run networked-players-catalog score-cohort-connectivity \
 ```
 
 Prefer the capability platform for a real one-hop dataset. The selected x86 worker must
-advertise the exact scorer commit, `cohort.score` workload version, memory policy, tags,
-and verified dataset manifest. Build and deploy the clean commit first (see
+advertise the matching `cohort.score` runtime digest (ADR 0073; a docs-only commit does not
+change it), workload version, memory policy, tags, and verified dataset manifest. Build and
+deploy the clean commit first (see
 `infra/ansible/README.md`), then submit from the coordination host:
 
 ```bash
@@ -489,7 +490,7 @@ make score-cohort-on-worker ARGS="--source-id <source-id> --snapshot-date <SNAPS
 
 The controller creates a unique local and remote run directory, hashes `resolved.json`,
 requires the worker's exact dataset-manifest identity, and enqueues only to a fresh matching
-advertisement. The worker checks the runtime commit and input hashes, writes to staging,
+advertisement. The worker checks the runtime digest and input hashes, writes to staging,
 and publishes a completed result atomically. The controller fetches and verifies every
 output hash before promoting `connectivity.json`, `playable-pairs.json`,
 `review-report.md`, and `scoring-diagnostics.json` into the usual analysis directory.
@@ -1295,10 +1296,86 @@ standing uptime guarantee — see [ADR 0018](decisions/0018-benchmark-results-lo
 all 3 active Pi workers (`worker-01`/`worker-02`/`worker-03`), the same `make
 *-check-distributed` targets above. This required a fresh `make platform-build` +
 `make platform-deploy ARGS="--limit pi_workers"` first: the fleet's previously-deployed
-runtime commit predated the merge, and the ADR 0034 scheduler correctly refuses to dispatch
-a job to a worker whose advertised `runtime_commit` doesn't match (by design — see
+runtime commit predated the merge, and the ADR 0034 scheduler (exact-commit matching at the
+time; since ADR 0073 it matches a runtime digest instead) correctly refused to dispatch
+a job to a worker whose advertised runtime didn't match (by design — see
 `packages/platform/src/networked_players_platform/scheduler.py`). All nine ambient
 validators now have a real, dated fleet-run record.
+
+## Platform runtime digest, retries and job control (ADR 0073, proposed)
+
+Status: implemented and unit-tested; **not yet deployed or exercised against the real broker
+or fleet.** Nothing below has been run on real workers.
+
+### What changed
+
+- **Eligibility is by runtime digest, not git commit.** A worker advertises one SHA-256 per
+  workload over the content of every `.py`/packaged `.json` file in that workload's import
+  closure plus `uv.lock`. `make platform-build` records the digests in
+  `local/platform/releases/<commit>/release.json`; submit scripts compute the same digest
+  from the checkout. A docs-only or web-only commit therefore leaves the fleet eligible; any
+  change to executed code or the lock does not. The git commit is still recorded on every
+  request and result as provenance. See ADR 0073 for what the digest does not cover (notably
+  worker third-party installs, which are resolved by version bounds, not `uv.lock`).
+- **Skew is explained.** `make platform-status` prints, per worker: advertisement schema,
+  recorded commit, contracts version and contracts content digest, and for each workload the
+  digest plus `match`/`mismatch`/`no-digest` against this checkout. A submit that finds no
+  eligible worker fails with every worker's reasons (stale heartbeat, digest mismatch with both
+  digests, missing workload, architecture/tags/memory, dataset identity).
+- **Validation reports attribute themselves.** `validation-report.json` (schema 2) records
+  `contracts_version`, `contracts_digest`, `runtime_digest` and `attempt`. The contracts
+  package version is a constant (`0.1.0`, never bumped), so the content digest is what
+  distinguishes a stale worker from a bad artifact: compare `contracts_digest` with
+  `make platform-status` output for this checkout.
+- **Retries are honoured.** Submit scripts use the workload's declared `max_retries`
+  (`--max-retries N` overrides; `0` disables). Each attempt is a fresh run id
+  (`<id>`, `<id>-a2`, ...), run directory and RQ job; the executor's no-reuse rule is
+  untouched. A worker is "lost" when its advertisement has been missing or stale for 90
+  continuous seconds while it holds the job (advertisements come from a separate heartbeat
+  timer, so a busy worker keeps advertising). The client then cancels a queued job or sends a
+  stop command for a started one (best effort: a dead worker never receives it), re-selects
+  among the other eligible workers, and prints the orphan. Only lost workers and killed
+  work-horses retry; a workload that raised does not. `submit_artifact_check.py` pins each
+  attempt to its own worker (redundant fan-out), so a lost worker there is reported, not
+  re-routed.
+- **Job control**: `make platform-jobs ARGS="list"` (add `--worker <id>`, `--state failed`,
+  `--limit N`), `ARGS="status <job>"`, `ARGS="cancel <job>"`, `ARGS="logs <job>"`. Read-only
+  except `cancel`; nothing connects to a worker. Output contains worker ids and stays on your
+  terminal.
+
+### What `jobs cancel` can and cannot do
+
+- Queued job: removed from the queue in Redis; always works; nothing ran.
+- Started job: asks the owning RQ worker to kill that job's work-horse process (RQ
+  `send_stop_job_command`). It is asynchronous, is lost if the worker is down (the job then
+  sits in RQ's started registry), and cannot reach into the job: the partial
+  `.output.staging` and run directory stay on the worker (`jobs logs` prints where). On a
+  1 GB Pi, killing the horse is the only lever; there is no graceful in-job cancellation.
+- Finished/failed/canceled jobs are refused. Cancel never deletes remote files.
+
+### Rollout order for a mixed fleet
+
+Schema-1 workers advertise no digests and are refused with an explicit reason until
+redeployed; nothing silently matches them. Order: **build, deploy to all workers, reinstall
+contracts, verify with `platform-status`, then submit.**
+
+### Rollout checklist (operator, to be run later; nothing here has been run)
+
+1. From a clean checkout of the merged commit: `make platform-build`. Confirm
+   `local/platform/releases/<commit>/release.json` lists `runtime_digests`, `uv_lock_sha256`
+   and `contracts_digest`.
+2. `make platform-deploy` for **every** worker group (Pi workers and x86 workers), not just
+   `pi_workers`. The playbook now sets `PLATFORM_RELEASE_JSON` in each worker's `worker.env`
+   and restarts the worker and heartbeat units.
+3. Reinstall contracts on every worker (`equip-workers.yml` does not do this on change; see
+   the warning in the Pi checks section above).
+4. `make platform-status`: every worker should show schema 2 and, for each workload, `match`;
+   contracts digest `match`. Investigate any `mismatch`/`no-digest` before submitting.
+5. Submit one cheap check (`make catalog-check-distributed`) and confirm the written
+   `local/jobs/*.json` report carries `contracts_version`/`contracts_digest`.
+6. Push a docs-only commit, re-run `make platform-status`, and confirm nothing became a
+   mismatch (this is the property the ADR exists for).
+7. Only after the real runs, move ADR 0073 from Proposed to Accepted.
 
 ## Public artifact and version-relationship reference
 

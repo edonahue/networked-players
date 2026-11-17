@@ -153,8 +153,13 @@ index, hop distances, search index) it may contain nothing but `inputs`.
 
 Per-artifact validators on fleet workers come from the `networked_players_contracts` install
 on each worker. A worker still on a contracts version from before this contract rejects a
-rebuilt artifact that carries `provenance` ("unexpected top-level keys"), and the validation
-report does not say which contracts version produced it, so a stale worker is
-indistinguishable from a bad artifact. **Reinstall contracts on every worker before the first
-rebuild that stamps lineage is validated on the fleet.** Recording the contracts version in
-the worker's validation report is tracked as part of Campaign Atlas work package I1.
+rebuilt artifact that carries `provenance` ("unexpected top-level keys"). The package version
+is a constant, so it cannot tell a stale worker from a bad artifact; the validation report
+therefore now records `contracts_version`, `contracts_digest` (a content digest of the
+installed contracts package) and `runtime_digest` (ADR 0073, Campaign Atlas work package I1),
+and `make platform-status` prints each worker's contracts digest and whether it matches the
+current checkout. **Reinstall contracts on every worker before the first rebuild that stamps
+lineage is validated on the fleet** (`equip-workers.yml` still does not do this on change), and
+confirm with `make platform-status` that every worker's contracts digest says `match`. A
+fleet-wide failure whose reports carry a `contracts_digest` that differs from the checkout's is
+a staleness problem, not an artifact problem.

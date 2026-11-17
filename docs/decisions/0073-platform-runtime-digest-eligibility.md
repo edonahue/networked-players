@@ -91,7 +91,9 @@ over-narrow, and three further reliability gaps sit around it. All four are docu
    dependencies is the revisit path.
 5. **Computed identically in three places** by one pure function: at build time
    (`make platform-build` records the digests in `release.json`), at worker start (from the
-   installed packages, hashed once per process, never per job -- bounded for a 1 GB Pi), and at
+   installed packages, hashed once per process and cached, never per job; the standing
+   worker hashes before its first job, and the 30-second heartbeat process re-hashes the
+   installed source, about half a megabyte for platform plus contracts, on each tick), and at
    submit time (from the checkout). The executor re-verifies `request.runtime_digest` against
    the worker's own digest before running anything.
 6. **Git commit remains recorded provenance.** Every request records the submitting
