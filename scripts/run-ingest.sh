@@ -15,6 +15,9 @@
 #                  around silently). Unset by default: a second run against a
 #                  snapshot that already has processed output fails loudly rather
 #                  than risking a partial/mismatched overwrite.
+#   RESUME         Optional. Set to any non-empty value to pass --resume to parse-releases
+#                  and continue an interrupted parse (same MAX_RELEASES; see
+#                  docs/OPERATOR_SETUP.md). Unset by default.
 #   RAW_DIR        Optional. Default: local/raw/discogs
 #   PROCESSED_DIR  Optional. Default: local/processed/discogs
 #   MANIFEST_DIR   Optional. Default: local/manifests
@@ -94,6 +97,9 @@ if [[ -n "${MAX_RELEASES:-}" ]]; then
 fi
 if [[ -n "${OVERWRITE:-}" ]]; then
   parse_args+=(--overwrite)
+fi
+if [[ -n "${RESUME:-}" ]]; then
+  parse_args+=(--resume)
 fi
 uv run networked-players-catalog parse-releases "${parse_args[@]}"
 

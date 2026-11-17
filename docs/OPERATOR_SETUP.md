@@ -118,21 +118,31 @@ find local/raw/discogs -name '*.part' -delete
 rm -rf local/processed/discogs/snapshot=<snapshot>
 ```
 
-**Before deleting an interrupted parse's staging directory**
-(`local/processed/discogs/.snapshot=<snapshot>.tmp-*`), check how much real,
-valid output survives first — a hard kill (power loss, OOM, `kill -9`,
-Ctrl-C) skips `write_release_dataset()`'s own cleanup (which only runs on a
-catchable Python exception), so the staging directory can survive with
-hours of real, good output in it:
+**After an interrupted parse (staging directory left behind)**
+(`local/processed/discogs/.snapshot=<snapshot>.tmp-*`): a hard kill (power loss, OOM,
+`kill -9`, Ctrl-C) skips the writer's own cleanup, so the staging directory can survive
+with hours of real, good output. Parts are written atomically and a `progress.json`
+record is kept, so first check whether it can be resumed:
 
 ```bash
 SNAPSHOT=<snapshot> ./scripts/check-ingest-recovery.sh
 ```
 
-Reports valid vs. corrupt part counts (a torn write can only ever be the
-last part or two — see the script's own docstring) as JSON. There's no
-automated resume yet — this is a status check, not a `--resume` flag — but
-it tells you exactly what you'd be discarding before you `rm -rf` it.
+The JSON report verifies every recorded part (size + sha256) and says `resume_safe` with a
+recommendation. If safe, re-run the **same** parse with `--resume` (identical
+`--chunk-releases` / `--max-releases`; with the wrapper scripts: `RESUME=1` plus the same
+`SNAPSHOT` / `MAX_RELEASES`). Pass `--input-manifest local/manifests/discogs-<snapshot>.json`
+to also check the dump's recorded sha256 (the 11 GB file is never re-hashed).
+
+Resume re-reads the dump from the start and discards the already-persisted prefix, so it
+saves the transform/write work of the completed portion, not the decompress/parse work of
+skipping it. It refuses (and leaves the directory alone) for no or several staging
+directories, a missing/corrupt record, an altered part, changed parameters, or a different
+input; in those cases delete the staging directory and re-run without `--resume`. A plain
+re-run without `--resume` also refuses while a staging directory exists. Details:
+[DISCOGS_INGESTION.md](DISCOGS_INGESTION.md#atomic-parts-and-resumable-release-parsing).
+A staging directory from a build before this feature has no `progress.json` and is not
+resumable; delete it.
 
 ## Lessons from the first real bring-up (2026-07-01)
 

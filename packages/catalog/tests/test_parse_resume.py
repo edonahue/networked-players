@@ -1,3 +1,4 @@
+# ruff: noqa: E501
 """Atomic part writes, the progress record, and ``parse-releases --resume`` (Atlas I4).
 
 All inputs are small synthetic dumps; crashes are simulated by raising a ``BaseException``
@@ -19,6 +20,7 @@ import textwrap
 import time
 from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
 import pyarrow.parquet as pq
 import pytest
@@ -95,8 +97,7 @@ def comparable(manifest: dict[str, object]) -> dict[str, object]:
 def dataset_bytes(root: Path) -> dict[str, bytes]:
     final = root / f"snapshot={SNAPSHOT}"
     return {
-        p.relative_to(final).as_posix(): p.read_bytes()
-        for p in sorted(final.rglob("*.parquet"))
+        p.relative_to(final).as_posix(): p.read_bytes() for p in sorted(final.rglob("*.parquet"))
     }
 
 
@@ -236,7 +237,7 @@ def test_finalized_resume_refuses_altered_manifest(
             run(dump, out)
     (staging,) = staging_dirs(out)
     (staging / "manifest.json").write_text("{}\n")
-    with pytest.raises(ResumeRefused, match="manifest.json"):
+    with pytest.raises(ResumeRefused, match=r"manifest\.json"):
         run(dump, out, resume=True)
 
 
@@ -397,7 +398,7 @@ def test_refuses_input_with_different_size(tmp_path: Path, monkeypatch: pytest.M
 def test_refuses_input_shorter_than_recorded_progress(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    dump, out, staging = _interrupted(tmp_path, monkeypatch)
+    _dump, out, staging = _interrupted(tmp_path, monkeypatch)
     record_path = staging / PROGRESS_FILENAME
     short = make_dump(tmp_path / "short", count=2)
     record = json.loads(record_path.read_text())
@@ -569,6 +570,34 @@ def test_sigkill_of_a_real_process_then_resume(
     assert comparable(manifest) == comparable(ref_manifest)
     assert dataset_bytes(out) == ref_bytes
     assert staging_dirs(out) == []
+
+
+def _recovery_module() -> Any:
+    import importlib.util
+
+    path = Path(__file__).resolve().parents[3] / "scripts" / "check_ingest_recovery.py"
+    spec = importlib.util.spec_from_file_location("check_ingest_recovery", path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_recovery_report_recommends_resume_only_when_safe(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _, out, staging = _interrupted(tmp_path, monkeypatch)
+    report = _recovery_module().check_recovery(SNAPSHOT, out, 2)
+    assert report["resume_safe"] is True
+    assert "--resume" in report["recommendation"]
+    assert report["releases_persisted"] == report["parts_completed"] * 2
+    assert report["unrecorded_files_resume_will_delete"]  # the torn temp file
+
+    victim = staging / "table=releases" / "part-00000.parquet"
+    victim.write_bytes(victim.read_bytes()[:-5])
+    report = _recovery_module().check_recovery(SNAPSHOT, out, 2)
+    assert report["resume_safe"] is False
+    assert report["recorded_part_problems"] == ["altered: table=releases/part-00000.parquet"]
 
 
 def wait_for(predicate: Callable[[], bool], message: str, timeout: float = 60.0) -> None:

@@ -95,3 +95,44 @@ The first full sequential parse completed 2026-07-02 (19,192,301 releases from t
 ## Recovery and reproducibility
 
 Raw compressed dumps are immutable inputs. Normalized datasets live under `snapshot=YYYYMMDD`, publish only after validation, and are never mutated in place. A failed staging directory can be deleted. The previous canonical snapshot remains available for rollback. PostgreSQL may index a selected snapshot later, but it is not the only copy of catalog truth.
+
+### Atomic parts and resumable release parsing
+
+`parse-releases` is a long single-stream job, so its output is built to survive interruption:
+
+- **Atomic parts.** Every Parquet part is written to a hidden temp name (`.part-NNNNN.parquet.tmp`) in
+  its table directory, fsynced, renamed to `part-NNNNN.parquet`, and the directory is fsynced where the
+  platform allows. A file under a final part name is always complete.
+- **Progress record.** `progress.json` in the staging directory is replaced atomically (write-temp,
+  fsync, rename) after each completed part. It records the run parameters (snapshot, source URL,
+  `--chunk-releases`, `--max-releases`, schema and parser versions), the input identity (file name,
+  size, and the download manifest's sha256 when `--input-manifest` is given -- the dump itself is never
+  re-hashed), every completed part (`path`, `size_bytes`, `sha256`, `rows`), and the stream position:
+  `releases_persisted` (the release ordinal reached), `last_release_id`, and `release_id_digest`
+  (SHA-256 over the ordered ids of every persisted release). The record is committed after a part's
+  write finishes, so at most the one part in flight at a kill is unrecorded and gets redone.
+- **`parse-releases --resume`.** The dump is one gzip XML stream and cannot be seeked, so resume is
+  *re-read and skip*: it validates the staging directory, re-streams the dump from the start,
+  reading only the `id` of each already-persisted release (nothing is normalized, hashed or retained;
+  elements are cleared as usual, so memory stays bounded), checks the count, last `release_id` and
+  digest against the record, then continues writing at the next part index. Final output is identical
+  to an uninterrupted run (same parts, rows and sha256s; only `generated_at` in `manifest.json`
+  differs). Parquet part bytes are reproducible (tests assert byte equality) because the writer embeds no timestamps, only its library version in `created_by`, so this holds within one pyarrow version.
+- **What resume does not save.** It saves the normalization, Parquet-write and hashing work of the
+  completed portion. It does not save the decompress and XML-parse cost of re-reading that portion.
+  No speed-up figure is claimed; measure on your own hardware (results stay local, ADR 0018).
+
+Resume refuses, leaving the staging directory untouched, when: there is no staging directory for the
+snapshot; there is more than one (all are named); `progress.json` is missing, corrupt or inconsistent;
+a recorded part is missing or differs in size or sha256; a parameter (`--chunk-releases`,
+`--max-releases`, source URL, schema or parser version) differs from the original run; the input's
+file name or size differs, or its sha256 differs from the one recorded from the download manifest; or
+the input's first `releases_persisted` ids do not match (a different, shorter or re-downloaded dump).
+Files in the staging directory that the record does not list (temp files, a complete-but-unrecorded
+part, a stale `manifest.json`) are deleted with a logged line. A run without `--resume` refuses to
+start while a staging directory for the snapshot exists, and names `--resume` and the recovery check.
+
+`--max-releases` counts release ordinals from the start of the stream, so a bounded run resumes with
+the same cap and stops at the same release. An ordinary exception (for example malformed XML) still
+removes the staging directory, resumed or not; only a hard kill, power loss or Ctrl-C leaves it for
+resume. Masters and artist-relations parsing get atomic part writes but no resume.
