@@ -610,3 +610,71 @@ def test_merge_refuses_mixed_inputs_foreign_candidates_and_bad_indexes(tmp_path:
         with pytest.raises(SystemExit, match="outside"):
             merge([good[0], broken], f"idx{bad_index}.json")
     assert not any((out / n).exists() for n in ("mixed.json", "foreign.json", "idx-1.json"))
+
+
+def test_merge_refuses_shards_from_different_snapshots_or_code(tmp_path: Path) -> None:
+    import networked_players_graph_core.sharded_scoring as sharded
+
+    dataset = _write_onehop_dataset(tmp_path)
+    masters_root = _write_masters_dataset(tmp_path)
+    policy = _write_release_format_policy(tmp_path / "policy.json")
+    graph = _write_pathfinding_graph(tmp_path / "graph.json", existing_node_ids=[100, -1])
+    candidates = tmp_path / "candidates.json"
+    candidates.write_text(
+        json.dumps([{"master_id": 900, "artist_id": 100}, {"master_id": 901, "artist_id": 400}])
+    )
+    out = tmp_path / "local" / "scored"
+
+    def score(index: int, name: str) -> Path:
+        path = out / name
+        argv = [
+            "score-expansion-candidates",
+            "--onehop-root",
+            str(dataset),
+            "--masters-root",
+            str(masters_root),
+            "--candidates",
+            str(candidates),
+            "--pathfinding-graph",
+            str(graph),
+            "--release-format-policy",
+            str(policy),
+            "--quiet",
+            "--output",
+            str(path),
+            "--shard-count",
+            "2",
+            "--shard-index",
+            str(index),
+        ]
+        assert main(argv) == 0
+        return path
+
+    def merge(shards: list[Path], name: str) -> int:
+        argv = ["merge-scored-shards", "--candidates", str(candidates), "--shard-count", "2"]
+        for path in shards:
+            argv += ["--shard-output", str(path)]
+        return main([*argv, "--output", str(out / name)])
+
+    first = score(0, "s0.json")
+    assert merge([first, score(1, "s1.json")], "same.json") == 0
+
+    # A different snapshot of the same dataset between shards (its manifest changes).
+    manifest = dataset / "manifest.json"
+    original = manifest.read_text()
+    manifest.write_text(json.dumps({**json.loads(original), "snapshot_note": "other"}))
+    other_snapshot = score(1, "s1-other.json")
+    manifest.write_text(original)
+    with pytest.raises(SystemExit, match="different inputs"):
+        merge([first, other_snapshot], "snap.json")
+
+    # Different scorer code between shards.
+    real = sharded.scorer_code_identity
+    sharded.scorer_code_identity = lambda: "f" * 64  # type: ignore[assignment]
+    try:
+        other_code = score(1, "s1-code.json")
+    finally:
+        sharded.scorer_code_identity = real  # type: ignore[assignment]
+    with pytest.raises(SystemExit, match="different inputs"):
+        merge([first, other_code], "code.json")
+    assert not (out / "snap.json").exists() and not (out / "code.json").exists()

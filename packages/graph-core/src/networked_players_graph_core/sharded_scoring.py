@@ -14,6 +14,7 @@ fan-out (`networked_players_platform.sharding`) drives `score_shard` on workers.
 from __future__ import annotations
 
 import hashlib
+import importlib
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any
@@ -88,7 +89,26 @@ def scoring_payload(rows: list[dict[str, Any]], candidate_count: int) -> dict[st
     }
 
 
-def inputs_fingerprint(named_files: Mapping[str, Path | None]) -> str:
+def scorer_code_identity() -> str:
+    """Hash of the scorer's own source (the modules whose logic decides a row), so
+    shards scored by different code can never be merged. The modules are read from
+    the installed package, not from a version string that is rarely bumped."""
+    modules = (
+        "score_expansion_candidates",
+        "master_eligibility",
+        "coverage_gaps",
+        "pathfinding_graph",
+    )
+    digests = {}
+    for name in modules:
+        module = importlib.import_module(f"{__package__}.{name}")
+        digests[name] = hashlib.sha256(Path(str(module.__file__)).read_bytes()).hexdigest()
+    return canonical_hash(digests)
+
+
+def inputs_fingerprint(
+    named_files: Mapping[str, Path | None], extra: Mapping[str, str | None] | None = None
+) -> str:
     """One hash over the CONTENT of every scoring input file (an absent optional
     input is recorded as absent, not skipped), so shards scored against different
     graph/policy/exclusion/bucket inputs can never be merged as one run."""
@@ -96,7 +116,7 @@ def inputs_fingerprint(named_files: Mapping[str, Path | None]) -> str:
         name: (hashlib.sha256(path.read_bytes()).hexdigest() if path is not None else None)
         for name, path in named_files.items()
     }
-    return canonical_hash(digests)
+    return canonical_hash({"files": digests, "extra": dict(extra or {})})
 
 
 def file_sha256(path: Path) -> str:

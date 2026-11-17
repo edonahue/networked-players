@@ -660,3 +660,8 @@ def test_the_run_deadline_starts_when_the_job_starts_not_at_enqueue(backend: Bac
     result = _wait(backend, timeout_seconds=120)
     assert result["status"] == "succeeded"
     assert backend.clock.elapsed >= 300 and backend.stops == []
+
+
+def test_shard_wait_budget_scales_with_the_workload_timeout_and_retries() -> None:
+    assert client.shard_wait_budget(120, 0) == 120 + 60 + 300
+    assert client.shard_wait_budget(1800, 2) == 3 * 1860 + 300

@@ -469,7 +469,7 @@ def test_balancer_gives_up_with_a_clear_error_if_no_worker_ever_frees() -> None:
     fleet = Fleet([_ad("w-a")])
     balancer = ShardBalancer(fleet.list_eligible, poll_seconds=0.01, max_wait_seconds=0.05)
     balancer.selector(0, 0)(frozenset(), None)
-    with pytest.raises(TimeoutError, match="no unoccupied eligible worker"):
+    with pytest.raises(NoEligibleWorkerError, match="no unoccupied eligible worker"):
         balancer.selector(1, 1)(frozenset(), None)
 
 
@@ -492,3 +492,35 @@ def test_submit_script_output_guard_accepts_only_this_repos_local_dir(
 
     job_id = script._job_id(type("A", (), {"job_id": None})())
     assert re.fullmatch(r"score-shards-\d{8}t\d{6}z-[0-9a-f]{8}", job_id)
+
+
+def test_balancer_wait_timeout_keeps_the_attempt_history() -> None:
+    from networked_players_platform.sharding import ShardBalancer
+
+    fleet = Fleet([_ad("w-a"), _ad("w-b")])
+    balancer = ShardBalancer(fleet.list_eligible, poll_seconds=0.01, max_wait_seconds=0.05)
+    balancer.selector(1, 1)(frozenset(), None)  # another shard occupies one worker
+    select = balancer.selector(0, 0)
+    lost_on: list[str] = []
+
+    def run_attempt(worker: Any, run_id: str, attempt: int, retry_of: Any) -> Any:
+        lost_on.append(worker.worker_id)
+        raise RunLostError(f"{worker.worker_id} lost")
+
+    with pytest.raises(RetriesExhaustedError) as exc:
+        run_with_retries(
+            base_run_id="job-s000of002", max_retries=2, select=select, run_attempt=run_attempt
+        )
+    assert [a.outcome for a in exc.value.attempts] == ["worker-lost"]
+    assert "no unoccupied eligible worker" in str(exc.value)
+    assert len(lost_on) == 1
+
+
+def test_sharded_run_error_carries_each_failed_shards_attempts() -> None:
+    fleet = Fleet([_ad("w-a")])
+    fleet.dead = {"w-a"}
+    plan = plan_shards("job", [1], 1)
+    with pytest.raises(ShardedRunError) as exc:
+        run_sharded(plan, run_one=fleet.run_one(2), list_eligible=fleet.list_eligible)
+    (records,) = exc.value.attempts.values()
+    assert [r.outcome for r in records] == ["worker-lost"]

@@ -28,7 +28,8 @@ from pathlib import Path
 from typing import Any
 
 from .models import WorkerAdvertisement
-from .retry import RetryOutcome, Selector
+from .retry import RetriesExhaustedError, RetryOutcome, Selector
+from .scheduler import NoEligibleWorkerError
 
 MAX_SHARD_INPUT_BYTES = 256 * 1024 * 1024
 MAX_SHARDS = 256
@@ -63,10 +64,18 @@ class ShardedRunError(RuntimeError):
     """One or more shards could not be completed within their retry budget.
     Shards that did complete are kept in `completed` (their outputs are valid)."""
 
-    def __init__(self, message: str, failures: dict[int, str], completed: dict[int, Any]) -> None:
+    def __init__(
+        self,
+        message: str,
+        failures: dict[int, str],
+        completed: dict[int, Any],
+        attempts: dict[int, list[Any]] | None = None,
+    ) -> None:
         super().__init__(message)
         self.failures = failures
         self.completed = completed
+        # shard index -> AttemptRecords of the shard's failed retry sequence
+        self.attempts = attempts or {}
 
 
 def shard_for_key(key: ShardKey, shard_count: int) -> int:
@@ -273,7 +282,7 @@ class ShardBalancer:
         list_eligible: ListEligible,
         *,
         poll_seconds: float = 1.0,
-        max_wait_seconds: float = 3600.0,
+        max_wait_seconds: float = 3600.0,  # callers derive it from the workload timeout
         monotonic: Callable[[], float] = time.monotonic,
     ) -> None:
         self._list_eligible = list_eligible
@@ -301,9 +310,11 @@ class ShardBalancer:
                         self._holding[shard_index] = worker.worker_id
                         return worker
                     if self._monotonic() - started >= self._max_wait:
-                        raise TimeoutError(
+                        # NoEligibleWorkerError, so run_with_retries keeps the attempt
+                        # history and reports RetriesExhaustedError.
+                        raise NoEligibleWorkerError(
                             f"shard {shard_index}: no unoccupied eligible worker after "
-                            f"{int(self._max_wait)}s"
+                            f"{int(self._max_wait)}s (all eligible workers hold other shards)"
                         )
                     self._cond.wait(timeout=self._poll)
 
@@ -382,6 +393,7 @@ def run_sharded(
             balancer.release(shard.index)
 
     failures: dict[int, str] = {}
+    failed_attempts: dict[int, list[Any]] = {}
     with ThreadPoolExecutor(max_workers=max(1, limit)) as pool:
         futures = {
             shard.index: pool.submit(work, position, shard) for position, shard in enumerate(active)
@@ -391,11 +403,14 @@ def run_sharded(
                 run.outcomes[index] = future.result()
             except Exception as exc:
                 failures[index] = f"{type(exc).__name__}: {exc}"
+                if isinstance(exc, RetriesExhaustedError):
+                    failed_attempts[index] = list(exc.attempts)
     if failures:
         raise ShardedRunError(
             f"{len(failures)} of {len(active)} shard(s) of {plan.job_id} failed: "
             + "; ".join(f"shard {i}: {why}" for i, why in sorted(failures.items())),
             failures,
             dict(run.outcomes),
+            failed_attempts,
         )
     return run

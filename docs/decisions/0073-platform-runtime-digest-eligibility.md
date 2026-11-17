@@ -222,7 +222,7 @@ addendum rather than a new ADR. **Nothing here is deployed or run against the re
 - **Fan-out** (`run_sharded`). One `run_with_retries` per shard, in threads bounded by the
   eligible worker count (a Pi takes one job at a time) and 8. A balancer gives each in-flight
   shard its own worker and never stacks a second shard on an occupied one: a retry waits
-  until a worker frees up (bounded wait, then an error), because a job queued behind another
+  until a worker frees up (wait bounded by `(retries+1) x (timeout+60 s) + 300 s`, derived from the workload; on expiry a `NoEligibleWorkerError`, which `run_with_retries` reports as `RetriesExhaustedError` with the attempt history kept), because a job queued behind another
   would burn its client-side deadline without running. The client's run deadline also now
   starts when the job is first seen started, not at enqueue. A shard whose worker is lost (decision 10's RQ-liveness
   rule, not the advertisement) is re-queued on another eligible worker within the shard's
@@ -243,7 +243,7 @@ addendum rather than a new ADR. **Nothing here is deployed or run against the re
   and retry. `score-expansion-candidates --shard-index/--shard-count` and
   `merge-scored-shards` expose the same on the catalog CLI. Each shard output records a
   content hash of every scoring input (pathfinding graph, release-format policy, exclusions,
-  editorial and private-seed lists, buckets, candidates); the merge refuses shards whose
+  editorial and private-seed lists, buckets, candidates), of the one-hop and masters manifests (the snapshot identity) and of the scorer's source modules; the merge refuses shards whose
   hashes differ, a different candidates file, and an out-of-range shard index.
 - **Commands.** `networked-players-platform shards plan` and
   `scripts/submit_sharded_score.py --dry-run` print the shard plan (and, with a broker, the

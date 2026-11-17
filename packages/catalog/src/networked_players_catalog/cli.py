@@ -4368,8 +4368,11 @@ def main(argv: Sequence[str] | None = None) -> int:
             from networked_players_graph_core.sharded_scoring import (
                 file_sha256,
                 inputs_fingerprint,
+                scorer_code_identity,
             )
 
+            onehop_manifest = args.onehop_root / "manifest.json"
+            masters_manifest = args.masters_root / "manifest.json"
             payload["shard"] = {
                 "index": args.shard_index,
                 "count": args.shard_count,
@@ -4386,7 +4389,16 @@ def main(argv: Sequence[str] | None = None) -> int:
                         "editorial_seed": args.editorial_seed,
                         "private_seed_master_ids": args.private_seed_master_ids,
                         "underrepresented_buckets": args.underrepresented_buckets,
-                    }
+                        # The datasets (their manifests pin the snapshot) and the code.
+                        "onehop_manifest": onehop_manifest if onehop_manifest.is_file() else None,
+                        "masters_manifest": (
+                            masters_manifest if masters_manifest.is_file() else None
+                        ),
+                    },
+                    extra={
+                        "catalog_version": __version__,
+                        "scorer_code": scorer_code_identity(),
+                    },
                 ),
             }
         write_atomic(args.output, (json.dumps(payload, indent=2, sort_keys=True) + "\n").encode())

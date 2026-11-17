@@ -57,6 +57,7 @@ from networked_players_platform.scheduler import (
     select_workers,
 )
 from networked_players_platform.sharding import (
+    ShardBalancer,
     ShardedRun,
     ShardedRunError,
     ShardPlan,
@@ -630,6 +631,12 @@ def list_eligible_workers(
     return list_eligible
 
 
+def shard_wait_budget(timeout_seconds: int, max_retries: int) -> float:
+    """Longest a shard should wait for an occupied worker to free up: the holder may
+    use its whole run deadline (timeout + 60 s) on every attempt, plus a margin."""
+    return float((max_retries + 1) * (timeout_seconds + 60) + 300)
+
+
 def dispatch_shards(
     *,
     broker: Redis,
@@ -673,17 +680,25 @@ def dispatch_shards(
         placements[shard.index] = (host, remote_run)
         return outcome
 
+    eligible = list_eligible_workers(broker, template, worker_id_filter=worker_id_filter)
     try:
         run = run_sharded(
             plan,
             run_one=run_one,
-            list_eligible=list_eligible_workers(
-                broker, template, worker_id_filter=worker_id_filter
-            ),
+            list_eligible=eligible,
             concurrency=concurrency,
+            balancer=ShardBalancer(
+                eligible,
+                max_wait_seconds=shard_wait_budget(template.timeout_seconds, max_retries),
+            ),
         )
     except ShardedRunError as exc:
-        raise PlatformClientError(str(exc)) from exc
+        history = [
+            {"shard": index, **record.to_dict()}
+            for index, records in sorted(exc.attempts.items())
+            for record in records
+        ]
+        raise PlatformClientError(str(exc), attempts=history) from exc
     except NoEligibleWorkerError as exc:
         raise PlatformClientError(str(exc)) from exc
     return run, placements
