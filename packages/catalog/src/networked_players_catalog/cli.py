@@ -2119,6 +2119,51 @@ def _parser() -> argparse.ArgumentParser:
         "--data-root", type=Path, default=Path("apps/web/public/data")
     )
 
+    promote_collection = subparsers.add_parser(
+        "promote-collection",
+        help=(
+            "OPERATOR-RUN, never automatic (ADR 0074): turn the review packet's private "
+            "collection-selection export into a public Collection artifact over the committed "
+            "catalog and graph.v4. Stages under local/ unless --publish-to is given."
+        ),
+    )
+    promote_collection.add_argument("--selection", type=Path, required=True)
+    promote_collection.add_argument("--study", type=Path, required=True)
+    promote_collection.add_argument(
+        "--catalog", type=Path, default=Path("apps/web/public/data/catalog/albums.v1.json")
+    )
+    promote_collection.add_argument(
+        "--graph", type=Path, default=Path("apps/web/public/data/pathfinding/graph.v4.json")
+    )
+    promote_collection.add_argument("--collection-id", required=True)
+    promote_collection.add_argument(
+        "--approval",
+        type=Path,
+        required=True,
+        help=(
+            "the owner's PRIVATE approval file (kind collection-approval): cluster, exact "
+            "ordered records, journey order, playable on/off -- see docs/REVIEW_PACKET.md"
+        ),
+    )
+    promote_collection.add_argument("--title", default=None)
+    promote_collection.add_argument("--intro", default=None)
+    promote_collection.add_argument(
+        "--text-file",
+        type=Path,
+        default=None,
+        help="owner-written public text: JSON {title, intro, attribution?}",
+    )
+    promote_collection.add_argument("--generated-at", required=True)
+    promote_collection.add_argument(
+        "--output-dir", type=Path, default=Path("local/collections-staging")
+    )
+    promote_collection.add_argument(
+        "--publish-to",
+        type=Path,
+        default=None,
+        help="the public data root (apps/web/public/data); writes <root>/collections/",
+    )
+
     diff_artifact_version = subparsers.add_parser(
         "diff-artifact-version",
         help=(
@@ -2444,6 +2489,15 @@ def _parser() -> argparse.ArgumentParser:
 
     register_round_parser(subparsers)
     return parser
+
+
+def _load_published_collections(data_root: Path) -> dict[str, Any] | None:
+    """The published Collections (ADR 0074) under `<data_root>/collections/`:
+    `None` when the directory does not exist (nothing published, which is
+    valid). Every entry is accounted for (see `load_collections_directory`)."""
+    from networked_players_contracts.collection import load_collections_directory
+
+    return load_collections_directory(data_root / "collections")
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -5592,6 +5646,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             evidence_release_registry=json.loads(args.evidence_release_registry.read_text()),
             search_index=json.loads(args.search_index.read_text()),
             approved_pool=json.loads(args.approved_pool.read_text()),
+            # None when no collections have been published (ADR 0074).
+            collections=_load_published_collections(args.data_root),
         )
         report = public_artifacts_failures(
             **public_artifacts,
@@ -5631,6 +5687,11 @@ def main(argv: Sequence[str] | None = None) -> int:
             )
         )
         return 0 if ok else 1
+
+    if args.command == "promote-collection":
+        from .collection_promote import run_promote_collection
+
+        return run_promote_collection(args)
 
     if args.command == "diff-artifact-version":
         from networked_players_contracts.artifact_diff import artifact_diff

@@ -735,6 +735,7 @@ def test_clean_publication_set_has_no_failures() -> None:
         "evidence_release_registry": [],
         "search_index": [],
         "approved_pool": [],
+        "collections": [],
     }
 
 
@@ -755,6 +756,7 @@ def test_every_group_key_always_present() -> None:
         "evidence_release_registry",
         "search_index",
         "approved_pool",
+        "collections",
     }
 
 
@@ -1108,6 +1110,8 @@ def _stamp_declared_inputs(artifacts: dict[str, Any]) -> dict[str, Any]:
         search_index=artifacts["search_index"],
     )
     for name, upstream_names in EXPECTED_INPUTS.items():
+        if name not in payloads:  # `collections` is multi-file; it checks its own lineage
+            continue
         payload = payloads[name]
         provenance = payload.setdefault("provenance", {})
         provenance["inputs"] = {

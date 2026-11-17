@@ -92,3 +92,5 @@ if a resolver stage downstream finds text-based resolution reliable enough to ba
 these fields with a clearly-labeled lower confidence — a decision for that stage's own
 ADR, not this one. Revisit the `cohort_source` package boundary if it ever needs to share
 significant code with `discogs/` beyond incidental utility functions.
+
+> 2026-11-17: [ADR 0074](0074-collections-contracts.md) amends the saved-third-party-source premise for Collections only (see its "Amendments"); this ADR's posture for cohort source ingestion is unchanged.

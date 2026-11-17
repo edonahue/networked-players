@@ -70,3 +70,54 @@ that record; type a working title and note per cluster.
 - Tests: `packages/catalog/tests/test_review_packet.py` (determinism, path refusal, escaping,
   offline markup, round trip, export logic under Node, and the real `approved_pool_failures`
   contract on a pool with the additions appended).
+
+## Publishing a Collection
+
+Every step needs the owner; nothing here runs automatically and no step is implied by the one
+before it. Contracts: `data/contracts/collection-v1.md`, ADR 0074.
+
+1. **Export.** Review a collection packet (above) and download
+   `collection-selection.private.json`. Keep it, and the study JSON it came from, under
+   `data/private/` or `local/`.
+2. **Write the approval file.** A small private JSON next to the selection, written by the owner:
+
+   ```json
+   {
+     "schema_version": 1, "kind": "collection-approval", "private": true,
+     "collection_id": "my-slug", "input_hash": "<the selection's input_hash>",
+     "cluster": 0,
+     "records": ["master-1", "master-2", "master-3", "master-4"],
+     "journey": ["master-1", "master-3"],
+     "playable": true
+   }
+   ```
+
+   `records` must be exactly the selection's kept records; their order is the public order.
+   `journey` (or `null`) is the public journey order and `playable` turns the playable pairs on or
+   off. Cluster, order and journey are approved here, not in command-line flags.
+3. **Write the public text.** Title, intro and (only for a genuinely sourced theme) an attribution,
+   as a small JSON file `{"title": ..., "intro": ..., "attribution": {"label": ..., "source_url": ...}}`
+   or as `--title` / `--intro`. These are written by the owner and never generated. The working
+   title in the selection is not copied; use it as the title only by passing it explicitly.
+4. **Promote to a staging directory.**
+
+   ```sh
+   uv run networked-players-catalog promote-collection \
+     --selection local/collection-selection.private.json --study local/study.json \
+     --approval local/collection-approval.json \
+     --collection-id my-slug --text-file local/collection-text.json \
+     --generated-at 2026-12-01T00:00:00Z
+   ```
+
+   Output goes to `local/collections-staging/` (an index plus `<id>.v1.json`). The command refuses
+   a selection whose records fail the rules and names each failure.
+5. **Review the staged files.** Read them as the public would. Nothing is published yet.
+6. **Publish, explicitly.** Re-run with `--publish-to apps/web/public/data` (it must be the public
+   data root; any other path is refused), which writes `apps/web/public/data/collections/`.
+   **Do not run Prettier on it**: the builder's `json.dumps` output is not Prettier-shaped, so
+   `apps/web/.prettierignore` lists `public/data/collections/` and a re-run of `promote-collection`
+   is byte-stable. Then run `make check` (`validate-public-artifacts` validates the `collections`
+   group and fails on any stray file in the directory).
+7. **Open a PR** with the artifact files only. The owner's approval of that PR is the approval.
+   After any later catalog or graph rebuild, re-run steps 4-7 if `make check` reports a stale
+   collection; nothing is re-routed automatically.
