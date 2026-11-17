@@ -19,8 +19,16 @@ const challenge = challengeData as ChallengeV2;
 const albumPaths = challenge.albums.map((album) => `/albums/${album.id}/`);
 const explorePaths = challenge.albums.map((album) => `/explore/${album.id}/`);
 
-// /cohorts/ pages are a synthetic, unreviewed sample grouping and /demo/ is
-// retired: neither belongs in the sitemap.
+// /demo/ is retired and the synthetic /cohorts/ pages are gone (Atlas S3).
+// /collections/ pages exist, and are listed, only when a Collection is published.
+import { loadCollections } from "../data/collections";
+const collections = loadCollections();
+const collectionPaths = collections.length
+  ? [
+      "/collections/",
+      ...collections.map((c) => `/collections/${c.collection_id}/`),
+    ]
+  : [];
 import type { ContributorIndex } from "../data/contributors";
 import contributorIndexData from "../../public/data/contributors/index.v1.json";
 
@@ -44,6 +52,7 @@ const paths = [
   ...albumPaths,
   ...explorePaths,
   ...contributorPaths,
+  ...collectionPaths,
 ];
 
 export const GET: APIRoute = async ({ site }) => {

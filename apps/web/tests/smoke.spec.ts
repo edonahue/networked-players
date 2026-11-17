@@ -420,80 +420,6 @@ test("an album with registry art hotlinks its cover to the Discogs CDN", async (
   );
 });
 
-test("cohorts index lists cohorts and links to a detail page", async ({
-  page,
-}) => {
-  await page.goto("/cohorts/");
-  await expect(page.getByRole("heading", { level: 1 })).toContainText(
-    "Browse cohorts",
-  );
-  await expect(
-    page.getByText("Synthetic Example Cohort").first(),
-  ).toBeVisible();
-
-  const openCohortLink = page
-    .getByRole("link", { name: "Open cohort" })
-    .first();
-  await expect(openCohortLink).toHaveAttribute(
-    "href",
-    "/cohorts/synthetic-example/",
-  );
-});
-
-test("cohort detail page shows the synthetic notice and reveals a pair", async ({
-  page,
-}) => {
-  await page.goto("/cohorts/synthetic-example/");
-  await expect(page.getByRole("heading", { level: 1 })).toContainText(
-    "Synthetic Example Cohort",
-  );
-  await expect(page.locator("[data-synthetic-notice]")).toBeVisible();
-  await expect(page.locator("[data-cohort-pair]").first()).toBeVisible();
-  await expect(page.locator(".tag--status-synthetic")).toBeVisible();
-  await expect(page.locator(".tag--difficulty").first()).toBeVisible();
-
-  await expect(page.locator("[data-guess-target]:not([hidden])")).toHaveCount(
-    0,
-  );
-  const firstReveal = page.locator("[data-reveal-button]").first();
-  await expect(firstReveal).toHaveText("Reveal");
-  await expect(firstReveal).toHaveAttribute("aria-expanded", "false");
-  const controls = await firstReveal.getAttribute("aria-controls");
-  if (!controls) throw new Error("Reveal button is missing aria-controls");
-  await expect(page.locator(`#${controls}`)).toBeHidden();
-
-  await firstReveal.click();
-  await expect(firstReveal).toHaveText("Hide");
-  await expect(firstReveal).toHaveAttribute("aria-expanded", "true");
-  await expect(
-    page.locator("[data-guess-target]:not([hidden])").first(),
-  ).toBeVisible();
-  await expect(page.locator(`#${controls}`)).toBeVisible();
-  // Plan §12.7: cohort hops render through the shared evidence panel — the
-  // playable-cohort contract ships no per-credit rows, so the quality-flags
-  // line stands in.
-  await expect(page.locator(`#${controls} .hop`).first()).toContainText(
-    "reviewed as a whole",
-  );
-
-  await firstReveal.click();
-  await expect(firstReveal).toHaveText("Reveal");
-  await expect(firstReveal).toHaveAttribute("aria-expanded", "false");
-  await expect(page.locator(`#${controls}`)).toBeHidden();
-
-  // Plan §12.7: the page links onward into play.
-  await expect(
-    page.locator(
-      "[data-testid='cohort-play-link'] a[href='/play/connection/']",
-    ),
-  ).toBeVisible();
-
-  const bodyText = (await page.textContent("body"))?.toLowerCase() ?? "";
-  expect(bodyText).not.toContain("worked with");
-  expect(bodyText).not.toContain("collaborated with");
-  expect(bodyText).not.toContain("influenced");
-});
-
 test("play hub lists mode cards with honest availability", async ({ page }) => {
   await page.goto("/play/");
   await expect(page.getByRole("heading", { level: 1 })).toContainText(
@@ -505,7 +431,7 @@ test("play hub lists mode cards with honest availability", async ({ page }) => {
   // At least one live mode links onward; coming modes are never dead links.
   await expect(
     page.locator("a[data-mode-status='live']").first(),
-  ).toHaveAttribute("href", /\/(play\/connection|albums|cohorts)\//);
+  ).toHaveAttribute("href", /\/(play\/connection|albums)\//);
   expect(await page.locator("a[data-mode-status='coming']").count()).toBe(0);
 });
 

@@ -1,0 +1,145 @@
+/* Collection pages (Atlas S3): intro, records, bridge players, journey, pairs.
+   Reuses record.css patterns; tokens only. */
+
+.collection-intro {
+  max-width: 720px;
+  margin: 12px 0 0;
+  font-size: 1.1rem;
+  color: var(--ink);
+  white-space: pre-line;
+}
+.collection-attribution {
+  margin: 10px 0 0;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+.collection-index {
+  list-style: none;
+  margin: 24px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 14px;
+}
+.collection-index li {
+  padding: 14px 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+.collection-index h2 {
+  margin: 0;
+  font-size: 1.3rem;
+}
+.collection-index p {
+  margin: 4px 0 0;
+  font-family: var(--mono);
+  font-size: 0.76rem;
+  color: var(--muted);
+}
+
+.bridge-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
+  gap: 0 28px;
+}
+.bridge-list li {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.bridge-player__name {
+  font-weight: 600;
+  color: var(--ink-strong);
+}
+.bridge-player__on {
+  font-size: 0.88rem;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+/* Journey: a numbered walk, one hop per step */
+.journey {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 16px;
+  counter-reset: hop;
+}
+.journey-hop {
+  counter-increment: hop;
+  position: relative;
+  padding: 14px 18px 14px 56px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+.journey-hop::before {
+  content: counter(hop);
+  position: absolute;
+  left: 16px;
+  top: 14px;
+  font-family: var(--mono);
+  font-weight: 700;
+  color: var(--ink-strong);
+}
+.journey-hop__records {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.journey-hop__records a {
+  text-underline-offset: 3px;
+  text-decoration-color: var(--accent);
+}
+.journey-hop__players {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+.journey-hop__role {
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+.journey-hop__evidence {
+  margin: 8px 0 0;
+  font-size: 0.92rem;
+  color: var(--muted);
+}
+
+.pair-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+.pair-list li {
+  padding: 12px 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+.pair-list__records {
+  margin: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.pair-list__via {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.collection-section a:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+}

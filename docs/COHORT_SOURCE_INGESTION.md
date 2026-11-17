@@ -91,19 +91,14 @@ data/albums/cohorts/<source-id>-playable-v1.json
   (data/contracts/playable-cohort-v1.md)
 ```
 
-The pipeline now runs end-to-end through a web shell: `apps/web/src/pages/cohorts.astro`
-is a static index listing every entry in a small manifest
-(`apps/web/public/data/cohorts/index.json`), and `apps/web/src/pages/cohorts/[cohortId].astro`
-renders one promoted `playable-cohort-v1` artifact per entry as its own static detail page
-(`/cohorts/<cohort_id>/`), with the same guess/reveal framing `play/[album].astro` already
-established for albums. The manifest currently lists only one entry, a bundled,
-clearly-marked synthetic fixture
-(`apps/web/public/data/cohorts/synthetic-example.playable-v1.json`, `status:
-"synthetic"`) — no real cohort exists yet. Generating and reviewing a real cohort from an
-operator-saved source is the next actual step, gated by explicit human review through
-`promote-playable-cohort`'s selection file exactly as
-[ADR 0031](decisions/0031-human-reviewed-cohort-promotion.md) specifies; nothing publishes
-a real cohort automatically.
+The v1 cohort pipeline no longer has a web shell: the synthetic `/cohorts/` pages, their
+manifest and static import map were retired in Campaign Atlas S3, and no cohort is web-visible.
+The pipeline itself (extract, resolve, score, review, `promote-playable-cohort`) is kept for
+rehearsals ([ADR 0074](decisions/0074-collections-contracts.md)). Real public sets are
+Collections (`collection-v1`, `promote-collection`), which the site renders at
+`/collections/<id>/` when one is published. Nothing publishes a real cohort or collection
+automatically; promotion stays gated by an explicit human selection file
+([ADR 0031](decisions/0031-human-reviewed-cohort-promotion.md)).
 
 `cohort-pipeline-status` sits between that preflight check and the pipeline itself. It does
 not replace the pipeline, and it does not validate contracts; it just inspects the expected
@@ -115,25 +110,10 @@ status stages against fabricated HTML and a tiny synthetic graph fixture. That t
 confidence check before the first real source; it does not replace human review and does not
 publish a real cohort.
 
-**A committed `playable-cohort-v1.json` is not automatically web-visible.** Promotion
-(below) only writes `data/albums/cohorts/<source-id>-playable-v1.json`; making it appear on
-the site is a separate, later, explicit step requiring three coordinated changes, done only
-after the artifact is already committed via the review gate above:
-
-1. Commit the reviewed `playable-cohort-v1.json` (already done by promotion above).
-2. Add an entry with `status: "reviewed"` to `apps/web/public/data/cohorts/index.json`.
-3. Add a matching static import to `apps/web/src/data/cohortArtifacts.ts` (Vite needs a
-   statically analyzable import path, not a router).
-
-That's the whole list: the new entry's detail page at `/cohorts/<cohort_id>/` is generated
-automatically from the manifest via `getStaticPaths()` in `cohorts/[cohortId].astro` — there
-is no separate, fourth "add a route" step. `/cohorts/` itself is only the index; the actual
-playable pairs render on each cohort's own `/cohorts/<cohort_id>/` detail page.
-
-`apps/web/tests/cohort-manifest.spec.ts` exists specifically to catch these drifting out of
-sync — a manifest entry with no matching import (or vice versa), a missing artifact file, a
-missing generated `/cohorts/<cohort_id>/` route, a malformed `status`, or a forbidden
-string/phrase in a fixture all fail that test.
+**A committed `playable-cohort-v1.json` is not web-visible.** Promotion (below) only writes
+`data/albums/cohorts/<source-id>-playable-v1.json`; the site has no cohort pages to show it on
+(retired in Atlas S3). `cohort-pipeline-status` tolerates the absent web manifest and reports
+it as not present.
 
 ## Connectivity scoring (summary)
 

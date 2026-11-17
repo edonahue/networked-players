@@ -15,6 +15,7 @@ playwright-report/
 # (run from this directory, so it only reads this .gitignore) from treating
 # leftover generated build output as unformatted source.
 dist-test-artwork/
+dist-test-collections/
 tests/fixtures/.generated/
 
 # environment / local

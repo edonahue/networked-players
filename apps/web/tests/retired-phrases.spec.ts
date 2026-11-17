@@ -40,7 +40,6 @@ const ROUTES = [
   `/explore/${album.id}/`,
   "/contributors/",
   `/contributors/${firstPlayer.artist_id}/`,
-  "/cohorts/",
   "/404.html",
 ];
 

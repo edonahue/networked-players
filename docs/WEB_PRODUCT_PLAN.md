@@ -60,7 +60,7 @@ for the living description.
   reveal engine in `src/components/RevealControls.astro`). Dist ≈ 884 KB, 9 routes,
   single 14.6 KB CSS bundle. 20/20 Playwright tests green.
 - **Routes:** `/` (album grid from `challenge.v2.json`), `/about/`, `/demo/` (legacy,
-  real data), `/cohorts/` + `/cohorts/[cohortId]/`, `/play/[album]/` (three pages),
+  real data), `/play/[album]/` (three pages),
   `/404`, `/sitemap.xml` (omits cohort routes).
 - **The play gap:** `/play/[album]` has a mode toggle and per-connection Reveal buttons;
   the "guess" is a CSS-redacted title (`.guess-target` in `motif.css`) whose text
