@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import itertools
 import json
 from pathlib import Path
 from typing import Any
@@ -66,9 +67,7 @@ def make_graph(
         "schema_version": 4,
         "pathfinding_graph_version": GRAPH_VERSION,
         "node_ids": node_ids,
-        "names": [
-            f"Anchor {-n}" if n < 0 else names.get(n, f"Player {n}") for n in node_ids
-        ],
+        "names": [f"Anchor {-n}" if n < 0 else names.get(n, f"Player {n}") for n in node_ids],
         "offsets": offsets,
         "neighbors": neighbors,
         "evidence_release_ids": evidence,
@@ -329,7 +328,8 @@ def test_a_public_source_url_passes() -> None:
 
 
 @pytest.mark.parametrize(
-    "value", ["tomorrow", "2026-01-01", "2026-01-01 00:00:00", "my notes", "2026-13-01T00:00:00Z", 5]
+    "value",
+    ["tomorrow", "2026-01-01", "2026-01-01 00:00:00", "my notes", "2026-13-01T00:00:00Z", 5],
 )
 def test_generated_at_must_be_an_iso_timestamp(value: Any) -> None:
     c = make_collection()
@@ -405,7 +405,7 @@ def chain_fixture(performers: int) -> tuple[dict[str, Any], dict[str, Any], dict
     `performers` performers 20.. joined in a line; four other albums for the
     distinct-artist rule."""
     chain = list(range(20, 20 + performers))
-    edges = {(a, b): 7000 + a for a, b in zip(chain, chain[1:], strict=False)}
+    edges = {(a, b): 7000 + a for a, b in itertools.pairwise(chain)}
     anchors = {1: [chain[0]], 2: [chain[-1]], 3: [90, 91], 4: [91, 92]}
     graph = make_graph(edges, anchors)
     c = make_collection()
@@ -515,7 +515,9 @@ def test_malformed_index_entries_are_failures_not_exceptions() -> None:
         [],
         {"schema_version": 1, "collections": [], "extra": 1},
     ):
-        assert collections_failures({"index": index, "files": {"a": c}}, make_catalog(), make_graph())
+        assert collections_failures(
+            {"index": index, "files": {"a": c}}, make_catalog(), make_graph()
+        )
     for group in ([], {"index": None}, {"index": None, "files": []}, "x"):
         assert collections_failures(group, make_catalog(), make_graph())
 

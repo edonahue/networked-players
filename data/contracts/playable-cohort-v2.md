@@ -48,7 +48,10 @@ It stays a separately named contract so it can be split out later without changi
   a path in `graph.v4` from one record's anchor to the other's, with the graph's own evidence id
   for every consecutive performer pair.
 - `hop_count` = `len(via) - 1`, the number of performer-to-performer hops; `0` means one
-  performer is credited on both records.
+  performer is credited on both records. At most **4**: the site's own search limit
+  (`findAlbumRoute`, `maxHops = 4`, plus two anchor hops it strips), so every published pair is
+  reachable by the site; `len(via)` is at most 5. See `collection-v1.md`.
+- A pair between two records with the **same primary artist** is refused: it bridges no one.
 - `route_policy` is `shortest-first-found-v1`: a plain shortest path, first discovered in CSR node
   order over real performer nodes. **This is not the site's ranked recommended route** (ADR 0059,
   `recommendedRoute.ts`); there is no Python mirror of that ranking. Validation proves each route

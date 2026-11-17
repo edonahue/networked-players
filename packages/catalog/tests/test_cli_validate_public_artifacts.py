@@ -873,3 +873,39 @@ def test_advance_pin_cli_seeds_advances_and_refuses(tmp_path: Path, capsys) -> N
     assert main(_pin_args(tmp_path, "2026-11-12")) == 2
     assert "2026-11-03" in capsys.readouterr().err
     assert json.loads((tmp_path / "pin.json").read_text()) == pin
+
+
+def _collections_report(tmp_path: Path, capsys, setup) -> tuple[int, list[str]]:
+    paths = _write_all(tmp_path)
+    directory = paths["data_root"] / "collections"
+    directory.mkdir()
+    setup(directory)
+    exit_code = main(_args(paths))
+    report = json.loads(capsys.readouterr().out)
+    return exit_code, report["failures"]["collections"]
+
+
+def test_empty_collections_directory_is_clean(tmp_path: Path, capsys) -> None:
+    exit_code, failures = _collections_report(tmp_path, capsys, lambda d: None)
+    assert (exit_code, failures) == (0, [])
+
+
+def test_stray_file_in_collections_fails_through_the_real_loader(tmp_path: Path, capsys) -> None:
+    def setup(directory: Path) -> None:
+        (directory / "collection-selection.private.json").write_text('{"notes": "private"}')
+        (directory / "x.v2.json").write_text("{}")
+        (directory / "sub").mkdir()
+
+    exit_code, failures = _collections_report(tmp_path, capsys, setup)
+    text = " | ".join(failures)
+    assert exit_code == 1
+    assert "unexpected entry 'collection-selection.private.json'" in text
+    assert "unexpected entry 'x.v2.json'" in text and "unexpected entry 'sub'" in text
+
+
+def test_malformed_collection_json_does_not_lose_other_groups(tmp_path: Path, capsys) -> None:
+    def setup(directory: Path) -> None:
+        (directory / "broken.v1.json").write_text("{not json")
+
+    exit_code, failures = _collections_report(tmp_path, capsys, setup)
+    assert exit_code == 1 and "broken.v1.json is unreadable or not valid JSON" in " ".join(failures)

@@ -28,7 +28,11 @@ routes over the performer-only graph, original thematic concepts over CC0 catalo
   distinct primary artists, with the performers who bridge them. A view over the catalog: a theme
   that needs albums the catalog lacks becomes an expansion seed, never a parallel universe.
 - **Bridge player:** a performer credited (adjacent to the album anchor in `graph.v4`) on at least
-  two of the collection's records.
+  two of the collection's records **spanning at least two distinct primary artists**. A primary
+  artist is adjacent to every one of their own albums, so without this rule one artist's
+  discography would "bridge" nothing but itself. A collection's own primary artist may be a bridge
+  player only on that basis (credited on a record by a different primary artist). Journey hops and
+  playable pairs between two records of the same primary artist are refused.
 - **Journey:** an optional, ordered walk through some of the records. Each hop is a documented
   performer path in `graph.v4` from one record's anchor to the next, carrying the graph's own
   evidence release id for every consecutive performer pair.
@@ -49,11 +53,20 @@ the collection file (one loader request, one shared version and lineage); see th
 2. **Private selection file** `collection-selection.private.json`, exported by the owner from the
    page. Kept records, working title, note, cluster status. It never leaves `data/private/` or
    `local/`.
-3. **`promote-collection`** (operator-run, never automatic): consumes the selection, its study
-   (the selection's `input_hash` must match), the catalog and `graph.v4.json`, plus
-   owner-written public text. Stages under `local/` by default; writes into
+3. **Private approval file** (written by the owner, kept next to the selection): the cluster, the
+   exact ordered records (which must equal the selection's kept records), the public journey order
+   and whether playable pairs are published. Cluster, record order, journey and playable are
+   therefore approved in a reviewable file, not in CLI flags, closing the gap against ADR 0031's
+   "a selection file, not flags" rule. The file is `{schema_version: 1, kind:
+   "collection-approval", private: true, collection_id, input_hash, cluster, records, journey,
+   playable}`; its `input_hash` must equal the selection's, so it cannot be reused for another
+   study.
+4. **`promote-collection`** (operator-run, never automatic): consumes the selection, the approval,
+   the study (the selection's `input_hash` must match), the catalog and `graph.v4.json`, plus
+   owner-written public text (title, intro, optional attribution, passed as flags or a text file;
+   these are reviewed in the final PR, not approved here). Stages under `local/` by default; writes into
    `apps/web/public/data/` only with an explicit `--publish-to`.
-4. **Public artifact**, committed in an owner-reviewed PR. The owner's approval is the commit;
+5. **Public artifact**, committed in an owner-reviewed PR. The owner's approval is the commit;
    nothing is promoted by a threshold, a score or a schedule.
 
 ### Public vs private
@@ -65,7 +78,15 @@ never present in an artifact: notes, reviewer identity, rejected or dropped reco
 status, the selection file, `input_hash`. The validator enforces an explicit key denylist at any
 depth (`notes`, `note`, `review_note`, `reviewer`, `reviewed_by`, `rejected`, `working_title`,
 `kept_records`, `input_hash`, `private`, any key ending `_private`) and the builder additionally
-refuses output in which the selection's note or working-title text appears. Title and intro are
+refuses output in which the selection's note or working-title text appears (compared against the
+decoded string values as whole phrases; text shorter than 12 characters after case and whitespace
+folding is not matched, because short private text such as "jazz" is common vocabulary; each
+sentence of a longer note is matched too). The precise text checks are listed in the contract note
+(`collection-v1.md`, "Private-field guard and text checks"): path/credential text in every string
+value; owner-collection phrases in title, intro and attribution label; influence phrases in title
+and intro only; `source_url` a public page (no user, collection or wantlist paths on any domain);
+`generated_at` an ISO-8601 timestamp. Every entry in `collections/` must be the index or a listed
+`<id>.v1.json`; anything else fails validation. Title and intro are
 owner-written and are never generated; copy must not suggest the owner's private record collection
 or infer influence or a working relationship from a shared credit.
 
@@ -81,6 +102,19 @@ the `generated_at` label. After any graph or catalog rebuild:
   changed, fails and **names the hop**;
 - nothing silently re-routes. The fix is a deliberate re-run of `promote-collection` and a
   re-review of the diff. There is no auto-heal.
+
+### Route length equals the site's search limit
+
+At most 4 performer-to-performer hops (`len(via) <= 5`): the site's `findAlbumRoute` runs with
+`maxHops = 4` plus two anchor hops that `stripAlbumAnchors` removes, and a single shared performer
+is 0 hops. Every published pair and journey hop is therefore reachable by the site's own search.
+
+### Formatting
+
+`apps/web/.prettierignore` lists `public/data/collections/`. The builder writes
+`json.dumps(indent=2, sort_keys=True)`, which Prettier reflows (the same drift that already exempts
+`routes/rounds.v1.json` and others); ignoring the directory keeps re-runs byte-stable, and the
+operator updates a collection by re-running `promote-collection`, never `prettier --write`.
 
 ### Routing
 
