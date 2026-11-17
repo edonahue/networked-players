@@ -705,6 +705,20 @@ def test_verify_fails_when_a_challenge_hop_is_not_a_graph_edge(
     assert any("challenge hop not in graph" in p for p in detail["problems"])
 
 
+def test_challenge_stage_itself_fails_on_a_hop_missing_from_the_graph(
+    world: dict[str, Any], tmp_path: Path
+) -> None:
+    """G1b: the challenge STAGE (--verify-hops-against-graph), not only verify, fails
+    loudly and writes no challenge when this round's graph lacks a published hop."""
+    ctx = _ctx(make_spec(world, tmp_path, "stagehops"))
+    assert rr.run_round(ctx, to_stage="pathfinding-graph") == 0
+    graph = json.loads(ctx.o(rr.GRAPH).read_text())
+    graph["offsets"] = [0] * len(graph["offsets"])  # a graph with no edges at all
+    ctx.o(rr.GRAPH).write_text(json.dumps(graph))
+    assert rr.run_round(ctx, only_stage="challenge") == 1
+    assert not ctx.o(rr.CHALLENGE).exists()
+
+
 def test_committed_example_spec_is_structurally_valid() -> None:
     example = (
         Path(__file__).resolve().parents[3] / "data/albums/rounds/example-synthetic-round.json"

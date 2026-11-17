@@ -355,6 +355,20 @@ is **not** a `validate-public-artifacts` default yet: the committed challenge.v3
 policy 1) has 119 hops with no graph edge and would fail. **It becomes mandatory with the
 Round 2 rebuild**, which regenerates the challenge under policy 2.
 
+Limits of the check and of the scope rule:
+
+- The hop check confirms **adjacency only** (the artist pair is an edge of the graph). It does
+  not confirm that the evidence release the challenge cites for a hop is the release the graph
+  stores for that edge; aligning that is G1a (one evidence-release selection policy).
+- The frontier cap (`max_frontier_expansion`) still counts a node's **full** degree; only
+  expansion follows scoped edges, so an inherited cap keeps the meaning it was chosen under.
+- Seeds come from the catalog (`graph.catalog_seed_artist_ids`, the graph builder's own source)
+  on the catalog-resolved path, so format/studio-exclusion filters on matched albums cannot
+  shrink them. A hand-written `{artist,title}` list has no catalog: seeds are then the matched
+  albums' artists and the report says `seed_artist_source: "matched_albums"`. The report also
+  carries `seed_artists_without_matched_album`, and the carry-forward audit reports
+  `pairs_refound_at_different_length`.
+
 ### What the runner does not do
 
 - **Album art needs the operator's API cache.** The stage is the existing

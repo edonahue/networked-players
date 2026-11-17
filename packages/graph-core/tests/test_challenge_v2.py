@@ -913,6 +913,7 @@ def test_build_challenge_v2_stamps_the_build_parameters_it_ran_with(dataset_root
         "max_hops": 3,
         "max_frontier_expansion": 42,
         "carried_forward_pairs_used": True,
+        "path_edge_scope": "seed_touching",
     }
 
 

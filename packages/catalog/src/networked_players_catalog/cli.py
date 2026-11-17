@@ -3070,6 +3070,9 @@ def main(argv: Sequence[str] | None = None) -> int:
                     ),
                     max_paths=max_paths,
                     carry_forward_artist_pairs=carry_forward_artist_pairs,
+                    # The graph builder's own source: every catalog album's
+                    # primary artist, BEFORE the defence-in-depth filters above.
+                    seed_artist_ids=frozenset(int(a["artist_id"]) for a in albums),
                     max_hops=resolved_max_hops,
                     max_workers=args.max_workers,
                     is_family_excluded=is_family_excluded,
@@ -3114,7 +3117,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         validate_challenge(artifact)
         if previous is not None:
             report["carry_forward_scope"] = carry_forward_scope_outcomes(
-                previous, artifact, frozenset(a["artist_id"] for a in artifact["albums"])
+                previous,
+                artifact,
+                frozenset(
+                    int(a["artist_id"])
+                    for a in (albums if albums_are_resolved else artifact["albums"])
+                ),
             )
             print(
                 f"  carry-forward scope audit: {report['carry_forward_scope']}",

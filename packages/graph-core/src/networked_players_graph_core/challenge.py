@@ -472,6 +472,7 @@ def carry_forward_scope_outcomes(
         return (min(a, b), max(a, b))
 
     current_pairs = {key(p) for p in current.get("paths", [])}
+    current_length = {key(p): len(p.get("hops", [])) for p in current.get("paths", [])}
     stale = [
         p
         for p in previous.get("paths", [])
@@ -481,11 +482,18 @@ def carry_forward_scope_outcomes(
         )
     ]
     refound = sum(1 for p in stale if key(p) in current_pairs)
+    different_length = sum(
+        1
+        for p in previous.get("paths", [])
+        if key(p) in current_length and current_length[key(p)] != len(p.get("hops", []))
+    )
     return {
         "previous_paths": len(previous.get("paths", [])),
         "previous_paths_with_out_of_scope_hop": len(stale),
         "out_of_scope_pairs_refound_in_scope": refound,
         "out_of_scope_pairs_dropped": len(stale) - refound,
+        # ANY previous pair re-found with a different hop count (e.g. 3 -> 4).
+        "pairs_refound_at_different_length": different_length,
     }
 
 
@@ -670,6 +678,7 @@ def build_challenge_v2(
     in_memory: bool = False,
     quiet: bool = False,
     carry_forward_artist_pairs: frozenset[tuple[int, int]] = frozenset(),
+    seed_artist_ids: frozenset[int] | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     """Match `{artist, title}` name/title queries against the graph, then
     build the artifact. For albums already resolved to a real artist_id
@@ -705,6 +714,9 @@ def build_challenge_v2(
         # happened to take the already-resolved branch, which is why the
         # omission stayed invisible.
         carry_forward_artist_pairs=carry_forward_artist_pairs,
+        # None => derived from the albums that matched (a hand-written query
+        # list has no catalog); the report says which source was used.
+        seed_artist_ids=seed_artist_ids,
     )
 
 
@@ -724,10 +736,18 @@ def build_challenge_v2_from_matched(
     in_memory: bool = False,
     quiet: bool = False,
     carry_forward_artist_pairs: frozenset[tuple[int, int]] = frozenset(),
+    seed_artist_ids: frozenset[int] | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     """Build the artifact from an already-resolved album list -- no further
     name-based matching happens here. `missed` is carried through only for
     the report; pass `()` if there is nothing to report as missed.
+
+    `seed_artist_ids` is the ADR 0050 seed set path search is scoped to. Pass
+    `graph.catalog_seed_artist_ids(catalog)` -- the SAME source the pathfinding
+    graph builder uses -- so a format/studio-exclusion filter applied to
+    `matched` cannot shrink the seeds below the graph's. When None it is
+    derived from `matched` and the report records `seed_artist_source:
+    "matched_albums"`.
 
     `max_frontier_expansion` (default 300, same as the cohort scorer's own
     default) bounds each `find_path` search -- at real-catalog scale (tens of
@@ -759,7 +779,9 @@ def build_challenge_v2_from_matched(
     # primary artists), the SAME rule `build_pathfinding_graph` applies
     # (`graph.edge_in_seed_scope`, ADR 0050), so every published hop is an
     # edge of the published graph (campaign Atlas G1b).
-    seed_artist_ids = frozenset(m.artist_id for m in matched)
+    seed_source = "explicit" if seed_artist_ids is not None else "matched_albums"
+    if seed_artist_ids is None:
+        seed_artist_ids = frozenset(m.artist_id for m in matched)
     ordered = sorted(matched, key=lambda m: m.album_id)
     candidate_pairs = _candidate_album_pairs(
         ordered,
@@ -922,6 +944,11 @@ def build_challenge_v2_from_matched(
         for p in paths_json
     }
     report = {
+        "seed_artist_source": seed_source,
+        "seed_artist_count": len(seed_artist_ids),
+        # Seeds with no matched album (e.g. filtered out): they still scope
+        # the search like the graph does, but cannot be path endpoints.
+        "seed_artists_without_matched_album": len(seed_artist_ids - {m.artist_id for m in matched}),
         "carried_pairs_total": len(carry_forward_artist_pairs),
         "carried_pairs_republished": len(carry_forward_artist_pairs & published_pairs),
         "carried_pairs_dropped": len(carry_forward_artist_pairs - published_pairs),

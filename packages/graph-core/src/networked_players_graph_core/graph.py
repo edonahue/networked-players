@@ -493,6 +493,12 @@ def edge_in_seed_scope(
     return artist_a_id in seed_artist_ids or artist_b_id in seed_artist_ids
 
 
+def catalog_seed_artist_ids(catalog: dict[str, Any]) -> frozenset[int]:
+    """The seed set: every catalog album's primary artist. The single source
+    for BOTH the pathfinding graph builder and the challenge builder."""
+    return frozenset(int(a["artist_id"]) for a in catalog["albums"])
+
+
 def seed_scope_sql(
     seed_artist_ids: Collection[int],
     *,
@@ -834,13 +840,26 @@ class InMemoryEdgeIndex:
     an already-built `credit_edges`. Every other query stays in DuckDB.
     """
 
-    __slots__ = ("_adjacency",)
+    __slots__ = ("_adjacency", "_full_degree")
 
-    def __init__(self, adjacency: dict[int, list[tuple[int, int]]]):
+    def __init__(
+        self,
+        adjacency: dict[int, list[tuple[int, int]]],
+        full_degree: dict[int, int] | None = None,
+    ):
+        # `full_degree`: out-degree over ALL credit_edges, for a scope-filtered
+        # index whose adjacency holds only scoped edges. The frontier cap
+        # counts this, never the scoped degree (see `CreditGraph.find_path`).
+        self._full_degree = full_degree
         # artist_a_id -> [(artist_b_id, release_id), ...] ascending by
         # artist_b_id, so a level walked in sorted-`a` order reproduces the
         # SQL's global `ORDER BY artist_a_id, artist_b_id` exactly.
         self._adjacency = adjacency
+
+    def _degree(self, artist_id: int) -> int:
+        if self._full_degree is not None:
+            return self._full_degree.get(artist_id, 0)
+        return len(self._adjacency.get(artist_id, ()))
 
     @property
     def node_count(self) -> int:
@@ -878,7 +897,7 @@ class InMemoryEdgeIndex:
                 newly_capped = {
                     artist_id
                     for artist_id in frontier
-                    if len(self._adjacency.get(artist_id, ())) > max_frontier_expansion
+                    if self._degree(artist_id) > max_frontier_expansion
                 }
                 if newly_capped:
                     capped_artist_ids |= newly_capped
@@ -1273,7 +1292,15 @@ class CreditGraph:
         adjacency: dict[int, list[tuple[int, int]]] = {}
         for artist_a_id, artist_b_id, release_id in rows:
             adjacency.setdefault(int(artist_a_id), []).append((int(artist_b_id), int(release_id)))
-        return InMemoryEdgeIndex(adjacency)
+        full_degree: dict[int, int] | None = None
+        if seed_artist_ids is not None:
+            full_degree = {
+                int(a): int(n)
+                for a, n in self._connection.execute(
+                    "SELECT artist_a_id, count(*) FROM credit_edges GROUP BY artist_a_id"
+                ).fetchall()
+            }
+        return InMemoryEdgeIndex(adjacency, full_degree)
 
     def find_path(
         self,
@@ -1323,12 +1350,10 @@ class CreditGraph:
                     degrees = self._connection.execute(
                         "SELECT artist_a_id, count(*) FROM credit_edges "
                         f"WHERE artist_a_id IN (SELECT artist_id FROM {frontier_table}) "
-                        + (
-                            f"AND {seed_scope_sql(seed_artist_ids)} "
-                            if seed_artist_ids is not None
-                            else ""
-                        )
-                        + "GROUP BY artist_a_id"
+                        # FULL degree, deliberately unscoped: the cap keeps the
+                        # meaning every inherited `max_frontier_expansion` was
+                        # chosen under; only expansion follows scoped edges.
+                        "GROUP BY artist_a_id"
                     ).fetchall()
                     newly_capped = {
                         int(artist_id)

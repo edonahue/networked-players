@@ -28,6 +28,8 @@ from networked_players_graph_core.challenge import (
 from networked_players_graph_core.graph import (
     GRAPH_POLICY_VERSION,
     CreditGraph,
+    FrontierTooLargeError,
+    catalog_seed_artist_ids,
     edge_in_seed_scope,
     seed_scope_sql,
 )
@@ -104,8 +106,8 @@ def _pairs(artifact: dict[str, Any]) -> dict[tuple[int, int], list[tuple[int, in
     }
 
 
-def _graph_payload(graph: CreditGraph) -> dict[str, Any]:
-    catalog = {
+def _catalog() -> dict[str, Any]:
+    return {
         "catalog_version": "catalog-v1-20260601-abc123abc123",
         "snapshot_date": SNAPSHOT_DATE,
         "albums": [
@@ -119,6 +121,10 @@ def _graph_payload(graph: CreditGraph) -> dict[str, Any]:
             for a in _albums()
         ],
     }
+
+
+def _graph_payload(graph: CreditGraph) -> dict[str, Any]:
+    catalog = _catalog()
     membership = {
         "schema_version": 1,
         "catalog_version": catalog["catalog_version"],
@@ -250,6 +256,8 @@ def test_carry_forward_pairs_are_researched_and_counted(scoped_root: Path) -> No
         "previous_paths_with_out_of_scope_hop": 2,
         "out_of_scope_pairs_refound_in_scope": 1,
         "out_of_scope_pairs_dropped": 1,
+        # A-Z went 3 -> 4 hops; A-M is not in the new artifact; Y-Z is dropped.
+        "pairs_refound_at_different_length": 1,
     }
 
 
@@ -276,7 +284,16 @@ def test_graph_builder_and_challenge_search_keep_identical_edge_sets(scoped_root
     substrate) holds."""
     with CreditGraph.open(scoped_root) as graph:
         payload = _graph_payload(graph)
-        index = graph.load_in_memory_edge_index(seed_artist_ids=SEEDS)
+        # The seeds the graph builder uses (catalog), and the seeds the challenge
+        # builder actually computes/records: asserted equal, then used for the index.
+        seeds = catalog_seed_artist_ids(_catalog())
+        _artifact, report = _build(graph)
+        assert report["seed_artist_source"] == "matched_albums"
+        assert report["seed_artist_count"] == len(seeds)
+        assert report["seed_artists_without_matched_album"] == 0
+        _artifact, explicit_report = _build(graph, seed_artist_ids=seeds)
+        assert explicit_report["seed_artist_source"] == "explicit"
+        index = graph.load_in_memory_edge_index(seed_artist_ids=seeds)
     node_ids = payload["node_ids"]
     graph_edges = {
         (node_ids[i], node_ids[payload["neighbors"][s]])
@@ -287,3 +304,41 @@ def test_graph_builder_and_challenge_search_keep_identical_edge_sets(scoped_root
     index_edges = {(a, b) for a, nbrs in index._adjacency.items() for b, _r in nbrs}
     assert graph_edges == index_edges
     assert (B, C) not in index_edges and (P, Q) not in index_edges
+
+
+def test_frontier_cap_counts_full_degree_not_scoped_degree(scoped_root: Path) -> None:
+    """B has 2 edges (A-B in scope, B-C out of scope). With cap 1 it must be capped
+    (full degree 2) even though only 1 of its edges is scoped, on both substrates."""
+    with CreditGraph.open(scoped_root) as graph:
+        with pytest.raises(FrontierTooLargeError):
+            graph.find_path(B, A, max_hops=1, max_frontier_expansion=1, seed_artist_ids=SEEDS)
+        index = graph.load_in_memory_edge_index(seed_artist_ids=SEEDS)
+        with pytest.raises(FrontierTooLargeError):
+            index.find_path(B, A, max_hops=1, max_frontier_expansion=1)
+        # Control: a cap of 2 admits B, and expansion follows only scoped edges.
+        path = index.find_path(B, A, max_hops=1, max_frontier_expansion=2)
+        assert path is not None
+        assert index.find_path(B, C, max_hops=1, max_frontier_expansion=2) is None
+
+
+def test_explicit_seed_set_scopes_search_beyond_matched_albums(scoped_root: Path) -> None:
+    """A seed with no matched album (e.g. filtered out by a format policy) still
+    scopes the search like the graph does, and is reported."""
+    with CreditGraph.open(scoped_root) as graph:
+        matched = [m for m in _albums() if m.artist_id != M]
+        artifact, report = build_challenge_v2_from_matched(
+            graph,
+            matched,
+            [],
+            snapshot_date=SNAPSHOT_DATE,
+            generated_by="test",
+            max_paths=20,
+            max_hops=4,
+            max_frontier_expansion=None,
+            quiet=True,
+            seed_artist_ids=SEEDS,
+        )
+    assert report["seed_artists_without_matched_album"] == 1
+    # With M still a seed, A-Z is found via M even though M's album was filtered out.
+    a_to_z = next(h for (f, t), h in _pairs(artifact).items() if {f, t} == {A, Z})
+    assert len(a_to_z) == 4
