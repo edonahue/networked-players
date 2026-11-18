@@ -4451,8 +4451,14 @@ def main(argv: Sequence[str] | None = None) -> int:
                 (str(entry["dimension"]), str(entry["bucket"])) for entry in buckets_payload
             )
 
+        # The scorer only reads evidence (master/release lookups and
+        # `credit_rows_for_releases`); bridge_span uses the pathfinding graph
+        # JSON. Nothing traverses, so skip materialising `credit_edges`.
         with CreditGraph.open(
-            args.onehop_root, memory_limit=args.memory_limit, threads=args.threads
+            args.onehop_root,
+            memory_limit=args.memory_limit,
+            threads=args.threads,
+            build_edges=False,
         ) as graph:
             graph.attach_masters(args.masters_root)
             scored_candidates = score_expansion_candidates(

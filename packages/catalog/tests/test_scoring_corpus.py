@@ -371,3 +371,36 @@ def test_refuses_mismatched_snapshot_and_leaves_nothing(tmp_path: Path) -> None:
     with pytest.raises(ScoringCorpusError, match="mismatched snapshots"):
         _build(tmp_path, f, output_root)
     assert not output_root.exists() or not list(output_root.iterdir())
+
+
+def test_scorer_output_is_identical_with_and_without_credit_edges(tmp_path: Path) -> None:
+    """The scorer opens the corpus with build_edges=False; the in-process
+    result must equal the one from a graph with edges built."""
+    from networked_players_graph_core.graph import CreditGraph
+    from networked_players_graph_core.score_expansion_candidates import (
+        score_expansion_candidates,
+    )
+
+    f = _fixtures(tmp_path)
+    candidates = json.loads(f["candidates"].read_text())
+    policy = frozenset(json.loads(f["policy"].read_text())["allowed_release_ids"])
+    pathfinding_graph = json.loads(f["graph"].read_text())
+    outputs = []
+    for build_edges in (True, False):
+        with CreditGraph.open(f["full"], build_edges=build_edges) as graph:
+            graph.attach_masters(f["masters"])
+            outputs.append(
+                json.dumps(
+                    score_expansion_candidates(
+                        graph,
+                        candidates,
+                        existing_node_ids=frozenset({100, 500}),
+                        allowed_release_ids=policy,
+                        master_exclusions=frozenset({901}),
+                        pathfinding_graph=pathfinding_graph,
+                        quiet=True,
+                    ),
+                    sort_keys=True,
+                )
+            )
+    assert outputs[0] == outputs[1]
