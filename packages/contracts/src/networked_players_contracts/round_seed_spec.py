@@ -39,6 +39,8 @@ _THEME_KEYS = frozenset(
         "year_max",
         "min_shared_performers",
         "candidate_cap",
+        "max_masters_per_seed_artist",
+        "min_overlap_share_percent",
     }
 )
 MAX_CANDIDATE_CAP = 5000
@@ -102,6 +104,17 @@ def _theme_failures(index: int, theme: Any) -> list[str]:
     if not _is_int(cap) or not 1 <= cap <= MAX_CANDIDATE_CAP:
         failures.append(
             f"{at}.candidate_cap must be an integer in 1..{MAX_CANDIDATE_CAP} (stated, no default)"
+        )
+    per_artist = theme.get("max_masters_per_seed_artist")
+    if not _is_int(per_artist) or not 1 <= per_artist <= MAX_CANDIDATE_CAP:
+        failures.append(
+            f"{at}.max_masters_per_seed_artist must be an integer in "
+            f"1..{MAX_CANDIDATE_CAP} (stated, no default)"
+        )
+    share = theme.get("min_overlap_share_percent")
+    if not _is_int(share) or not 0 <= share <= 100:
+        failures.append(
+            f"{at}.min_overlap_share_percent must be an integer in 0..100 (stated, no default)"
         )
     return failures
 

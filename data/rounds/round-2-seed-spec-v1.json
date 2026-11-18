@@ -14,7 +14,9 @@
       "year_min": 1987,
       "year_max": 2012,
       "min_shared_performers": 2,
-      "candidate_cap": 100
+      "candidate_cap": 100,
+      "max_masters_per_seed_artist": 4,
+      "min_overlap_share_percent": 40
     },
     {
       "name": "desert rock / Palm Desert scene",
@@ -25,7 +27,9 @@
       "year_min": 1988,
       "year_max": 2025,
       "min_shared_performers": 2,
-      "candidate_cap": 100
+      "candidate_cap": 100,
+      "max_masters_per_seed_artist": 4,
+      "min_overlap_share_percent": 40
     },
     {
       "name": "jazz fusion",
@@ -36,7 +40,9 @@
       "year_min": 1968,
       "year_max": 1990,
       "min_shared_performers": 2,
-      "candidate_cap": 150
+      "candidate_cap": 150,
+      "max_masters_per_seed_artist": 4,
+      "min_overlap_share_percent": 40
     }
   ]
 }

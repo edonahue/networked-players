@@ -251,6 +251,7 @@ def test_theme_seed_outside_onehop_corpus_yields_eligible_candidates(
 def test_per_theme_cap_ranks_seed_masters_first(world: dict[str, Path], tmp_path: Path) -> None:
     spec = json.loads(FIXTURE_SPEC.read_text())
     spec["themes"][0]["candidate_cap"] = 1
+    spec["themes"][0]["min_overlap_share_percent"] = 0
     path = tmp_path / "capped.json"
     path.write_text(json.dumps(spec))
     assert main(_supply_argv(world, path)) == 0
@@ -325,6 +326,112 @@ def test_validate_round_seed_spec_command(
     path = tmp_path / "broken.json"
     path.write_text(json.dumps(broken))
     assert main(["validate-round-seed-spec", "--spec", str(path)]) == 1
+
+
+# ------------------------------------------------------------- pool composition
+
+
+@pytest.fixture
+def crowded_world(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> dict[str, Path]:
+    """Seed artist 9001 also has four more masters (9300..9303); 9301 and 9302 share two
+    performers with the seed master, 9300 and 9303 none."""
+    import sys
+
+    module = sys.modules[__name__]
+    extended = dict(WORLD)
+    extended[30] = (9300, 1991, STONER, (9001, "Seed Band"), [])
+    extended[31] = (9301, 1992, STONER, (9001, "Seed Band"), [P1, P2])
+    extended[32] = (9302, 1993, STONER, (9001, "Seed Band"), [P1, P2])
+    extended[33] = (9303, 1994, STONER, (9001, "Seed Band"), [])
+    monkeypatch.setattr(module, "WORLD", extended)
+    full, masters = _write_world(tmp_path)
+    allowed = [*ALLOWED, 30, 31, 32, 33]
+    policy = tmp_path / "policy.json"
+    policy.write_text(
+        json.dumps(
+            {
+                "kind": "release-format-scoring-index",
+                "policy_name": "studio-album-v1",
+                "policy_version": 1,
+                "schema_version": 1,
+                "snapshot_date": SNAPSHOT,
+                "allowed_release_ids": allowed,
+                "allowed_release_count": len(allowed),
+                "source_policy_sha256": "deadbeef",
+            }
+        )
+    )
+    exclusions = tmp_path / "exclusions.json"
+    exclusions.write_text(json.dumps({"exclusions": []}))
+    catalog = tmp_path / "albums.v1.json"
+    catalog.write_text(json.dumps({"albums": [{"master_id": 9108}]}))
+    return {
+        "full": full,
+        "masters": masters,
+        "policy": policy,
+        "exclusions": exclusions,
+        "catalog": catalog,
+        "out": tmp_path / "local" / "round" / "theme-candidates.json",
+    }
+
+
+def _theme1_spec(tmp_path: Path, **overrides: int) -> Path:
+    spec = json.loads(FIXTURE_SPEC.read_text())
+    spec["themes"][0].update(overrides)
+    path = tmp_path / "spec.json"
+    path.write_text(json.dumps(spec))
+    return path
+
+
+def test_per_seed_artist_cap_limits_one_discography_and_cut_masters_do_not_re_enter(
+    crowded_world: dict[str, Path], tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    spec = _theme1_spec(tmp_path, max_masters_per_seed_artist=2)
+    assert main(_supply_argv(crowded_world, spec)) == 0
+    summary = json.loads(capsys.readouterr().out)
+    rows = _rows(crowded_world["out"])
+    # Deterministic: more shared performers first (9100, then 9301 over 9302 by master id).
+    assert {9100, 9301} <= set(rows)
+    # 9300/9302/9303 were cut by the artist cap; 9302 shares two performers but must NOT
+    # slip back in as an overlap candidate.
+    assert not {9300, 9302, 9303} & set(rows)
+    assert {e["source"] for e in rows[9301]["themes"]} == {"seed_artist_master"}
+    theme = {t["theme"]: t for t in summary["themes"]}["synthetic desert theme"]
+    assert theme["max_masters_per_artist_eligible"] == 2
+    assert theme["route_mix"]["pool"] == {
+        "seed_master": 0,
+        "seed_artist_master": 2,
+        "shared_performers": 2,
+    }
+
+
+def test_reserved_overlap_share_keeps_seed_artist_masters_from_crowding_it_out(
+    crowded_world: dict[str, Path], tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    # cap 3, 34% -> 2 overlap slots reserved, so only ONE seed-artist slot.
+    spec = _theme1_spec(
+        tmp_path,
+        candidate_cap=3,
+        min_overlap_share_percent=34,
+        max_masters_per_seed_artist=4,
+    )
+    assert main(_supply_argv(crowded_world, spec)) == 0
+    theme = {t["theme"]: t for t in json.loads(capsys.readouterr().out)["themes"]}[
+        "synthetic desert theme"
+    ]
+    rows = _rows(crowded_world["out"])
+    assert set(rows) >= {9100, 9101, 9106} and not {9300, 9301, 9302, 9303} & set(rows)
+    assert theme["pool_size"] == 3 and theme["overlap_shortfall"] == 0
+
+    # With 40% of 50 = 20 reserved slots but only 2 overlap candidates, the pool is
+    # reported short instead of being padded with seed-artist masters.
+    spec = _theme1_spec(tmp_path, max_masters_per_seed_artist=1)
+    assert main(_supply_argv(crowded_world, spec)) == 0
+    theme = {t["theme"]: t for t in json.loads(capsys.readouterr().out)["themes"]}[
+        "synthetic desert theme"
+    ]
+    assert theme["overlap_quota"] == 20 and theme["overlap_shortfall"] == 18
+    assert theme["pool_size"] == 3  # 9100 + two overlap candidates, not padded
 
 
 # ------------------------------------------------------- bounded format classification

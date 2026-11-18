@@ -31,6 +31,8 @@ Each theme (unknown keys are rejected):
 | `year_min`, `year_max` | int 1900..2100 or null | Decade bounds on the master's year (null = unbounded). Apply to every candidate. |
 | `min_shared_performers` | int 1..20 | Stated, no default. Masters sharing at least this many distinct performers with the seed masters qualify. |
 | `candidate_cap` | int 1..5000 | Stated, no default. Per-theme cap applied before the eligibility verdict. |
+| `max_masters_per_seed_artist` | int 1..5000 | Stated, no default. At most this many masters from any one seed artist enter the pool, so a theme surfaces the scene rather than one discography. Explicit `seed_master_ids` are exempt. Masters cut by this cap never re-enter through the overlap route. |
+| `min_overlap_share_percent` | int 0..100 | Stated, no default. Pool slots reserved for shared-performer (overlap) candidates: `ceil(candidate_cap * share / 100)`. Slots the seed routes do not use also go to overlap. If fewer overlap candidates exist, the pool is smaller and the summary reports `overlap_shortfall`; it is never padded with extra seed-artist masters. |
 
 Only public ids and editorial labels belong here: no collection membership, scores or reviewer
 identity.
@@ -40,7 +42,11 @@ identity.
 One batched DuckDB query over the FULL parsed corpus for all themes. Performer overlap uses the
 graph's own rule (ADR 0068: a performer-role token via `is_performer_role_sql`, or a billing scope).
 Already-published and curated-excluded masters and the editorial non-studio genre/style set are dropped
-in SQL; studio-album eligibility then runs through `master_eligibility`. Rows keep their reason when
+in SQL; studio-album eligibility then runs through `master_eligibility`. Pool composition per theme: explicit seed masters, then seed-artist masters (capped per artist),
+fill `candidate_cap - overlap_quota` slots; overlap candidates fill the rest. Within each route
+candidates rank deterministically by distinct shared performers (descending), then master id.
+Each theme summary reports `route_mix` (pool and eligible, per route), `max_masters_per_artist_eligible`,
+`overlap_quota` and `overlap_shortfall`. Rows keep their reason when
 ineligible. Output is private and refused unless git-ignored.
 
 A synthetic example: `data/fixtures/round-seed-spec/synthetic-round-seed-spec-v1.json`. The real

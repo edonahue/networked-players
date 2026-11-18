@@ -22,11 +22,17 @@ per-theme or per-seed loop):
    must fall inside the optional `year_min..year_max` and clear the editorial
    non-studio genre/style gate. Already-published and curated-excluded masters
    are dropped in SQL.
-4. Ranked per theme (seed master, seed-artist master, then overlap desc) and
-   capped at the theme's `candidate_cap` BEFORE the eligibility verdict. The
-   cap bounds the per-master eligibility lookups below; a theme whose capped
-   pool is mostly ineligible yields fewer eligible rows, which the summary
-   reports per theme rather than hiding.
+4. Pool composition per theme (so a theme surfaces the SCENE, not one discography):
+   explicit seed masters, then seed-artist masters capped at
+   `max_masters_per_seed_artist` per artist, fill `candidate_cap - overlap_quota` slots
+   (`overlap_quota = ceil(cap * min_overlap_share_percent / 100)`); shared-performer
+   candidates fill the rest (including seed slots left unused). Within each route
+   candidates rank by distinct shared performers desc, then master id -- deterministic.
+   A master cut by the per-artist cap never re-enters as an overlap candidate. If fewer
+   overlap candidates exist than reserved, the pool is short and the summary reports
+   `overlap_shortfall`; it is never padded with extra seed-artist masters. The cap is
+   applied BEFORE the eligibility verdict, which bounds the per-master lookups below; a
+   theme whose pool is mostly ineligible yields fewer eligible rows, reported per theme.
 
 Studio-album eligibility then runs through `master_eligibility`
 (`master_studio_eligibility_reason` / `select_master_main_release_id`) exactly
@@ -75,6 +81,12 @@ def _progress(quiet: bool, message: str) -> None:
         print(message, file=sys.stderr)
 
 
+def overlap_quota(theme: Mapping[str, Any]) -> int:
+    """Pool slots reserved for shared-performer candidates: ceil(cap * share / 100)."""
+    cap, share = int(theme["candidate_cap"]), int(theme["min_overlap_share_percent"])
+    return -(-cap * share // 100)
+
+
 def _theme_pool_query(excluded_master_ids: Sequence[int]) -> str:
     exclusions_sql = ""
     if excluded_master_ids:
@@ -84,9 +96,10 @@ def _theme_pool_query(excluded_master_ids: Sequence[int]) -> str:
     not_placeholder = _not_placeholder_sql("c.artist_id")
     return f"""
         WITH seed_masters AS (
-            SELECT theme_idx, master_id, 0 AS source_rank FROM theme_seed_masters
+            SELECT theme_idx, master_id, 0 AS source_rank, NULL::BIGINT AS seed_artist_id
+            FROM theme_seed_masters
             UNION
-            SELECT ta.theme_idx, r.master_id, 1 AS source_rank
+            SELECT ta.theme_idx, r.master_id, 1 AS source_rank, ta.artist_id
             FROM theme_seed_artists ta
             JOIN credits c ON c.artist_id = ta.artist_id
             JOIN releases r ON r.release_id = c.release_id
@@ -116,27 +129,32 @@ def _theme_pool_query(excluded_master_ids: Sequence[int]) -> str:
               AND {qualifying}
             GROUP BY sp.theme_idx, r.master_id
         ),
-        pool AS (
-            SELECT theme_idx, master_id, min(source_rank) AS source_rank, max(shared) AS shared
-            FROM (
-                SELECT theme_idx, master_id, source_rank, NULL::BIGINT AS shared FROM seed_masters
-                UNION ALL
-                SELECT o.theme_idx, o.master_id, 2 AS source_rank, o.shared
-                FROM overlap o
-                JOIN themes t ON t.theme_idx = o.theme_idx
-                WHERE o.shared >= t.min_shared_performers
-            )
-            GROUP BY theme_idx, master_id
+        -- One row per (theme, master): its best route, the seed artist it is capped
+        -- under (route 1 only; a collaboration counts under the lowest seed artist id),
+        -- and its shared-performer count (used only to RANK within a route). Masters
+        -- under a seed artist or seed master never re-enter as overlap candidates, so a
+        -- per-artist cap cannot be bypassed through the overlap route.
+        candidates AS (
+            SELECT sm.theme_idx, sm.master_id, min(sm.source_rank) AS source_rank,
+                   min(sm.seed_artist_id) FILTER (WHERE sm.source_rank = 1) AS seed_artist_id,
+                   max(o.shared) AS shared
+            FROM seed_masters sm
+            LEFT JOIN overlap o ON o.theme_idx = sm.theme_idx AND o.master_id = sm.master_id
+            GROUP BY sm.theme_idx, sm.master_id
+            UNION ALL
+            SELECT o.theme_idx, o.master_id, 2, NULL::BIGINT, o.shared
+            FROM overlap o
+            JOIN themes t ON t.theme_idx = o.theme_idx
+            WHERE o.shared >= t.min_shared_performers
+              AND NOT EXISTS (
+                  SELECT 1 FROM seed_master_set s
+                  WHERE s.theme_idx = o.theme_idx AND s.master_id = o.master_id
+              )
         ),
         gated AS (
-            SELECT p.theme_idx, p.master_id, p.source_rank, p.shared,
-                   m.main_release_id, m.title, m.year, m.genres, m.styles,
-                   row_number() OVER (
-                       PARTITION BY p.theme_idx
-                       ORDER BY p.source_rank, p.shared DESC NULLS LAST, p.master_id
-                   ) AS rank_in_theme,
-                   t.candidate_cap
-            FROM pool p
+            SELECT p.theme_idx, p.master_id, p.source_rank, p.seed_artist_id, p.shared,
+                   m.main_release_id, m.title, m.year, m.genres, m.styles
+            FROM candidates p
             JOIN themes t ON t.theme_idx = p.theme_idx
             JOIN masters m ON m.master_id = p.master_id
             WHERE m.main_release_id IS NOT NULL
@@ -150,12 +168,53 @@ def _theme_pool_query(excluded_master_ids: Sequence[int]) -> str:
                   OR list_has_any(m.genres, t.genres)
               )
               {exclusions_sql}
+        ),
+        -- Route 1 is capped per seed artist; ranking within a route is deterministic:
+        -- more shared performers first, then lowest master id.
+        artist_capped AS (
+            SELECT g.*,
+                   row_number() OVER (
+                       PARTITION BY g.theme_idx, g.seed_artist_id
+                       ORDER BY g.shared DESC NULLS LAST, g.master_id
+                   ) AS artist_rank
+            FROM gated g
+        ),
+        seed_route AS (
+            SELECT a.*,
+                   row_number() OVER (
+                       PARTITION BY a.theme_idx
+                       ORDER BY a.source_rank, a.shared DESC NULLS LAST, a.master_id
+                   ) AS route_rank
+            FROM artist_capped a
+            JOIN themes t ON t.theme_idx = a.theme_idx
+            WHERE a.source_rank < 2
+              AND (a.source_rank = 0 OR a.artist_rank <= t.max_masters_per_seed_artist)
+        ),
+        seed_kept AS (
+            SELECT s.* FROM seed_route s
+            JOIN themes t ON t.theme_idx = s.theme_idx
+            WHERE s.route_rank <= t.candidate_cap - t.overlap_quota
+        ),
+        overlap_kept AS (
+            SELECT o.*
+            FROM (
+                SELECT g.*, 0 AS artist_rank,
+                       row_number() OVER (
+                           PARTITION BY g.theme_idx ORDER BY g.shared DESC, g.master_id
+                       ) AS route_rank
+                FROM gated g WHERE g.source_rank = 2
+            ) o
+            JOIN themes t ON t.theme_idx = o.theme_idx
+            -- slots the seed routes did not use go to overlap; never the reverse (no padding)
+            WHERE o.route_rank <= t.candidate_cap - coalesce(
+                (SELECT count(*) FROM seed_kept k WHERE k.theme_idx = o.theme_idx), 0)
         )
         SELECT theme_idx, master_id, source_rank, shared, main_release_id, title, year,
                genres, styles
-        FROM gated
-        WHERE rank_in_theme <= candidate_cap
-        ORDER BY theme_idx, rank_in_theme
+        FROM (
+            SELECT * FROM seed_kept UNION ALL SELECT * FROM overlap_kept
+        )
+        ORDER BY theme_idx, source_rank, shared DESC NULLS LAST, master_id
     """
 
 
@@ -237,12 +296,13 @@ def derive_theme_candidates(
         connection.execute(
             "CREATE TABLE themes (theme_idx INTEGER, min_shared_performers INTEGER, "
             "candidate_cap INTEGER, year_min INTEGER, year_max INTEGER, "
-            "styles VARCHAR[], genres VARCHAR[])"
+            "styles VARCHAR[], genres VARCHAR[], max_masters_per_seed_artist INTEGER, "
+            "overlap_quota INTEGER)"
         )
         connection.execute("CREATE TABLE theme_seed_artists (theme_idx INTEGER, artist_id BIGINT)")
         connection.execute("CREATE TABLE theme_seed_masters (theme_idx INTEGER, master_id BIGINT)")
         connection.executemany(
-            "INSERT INTO themes VALUES (?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO themes VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
             [
                 [
                     i,
@@ -252,6 +312,8 @@ def derive_theme_candidates(
                     t.get("year_max"),
                     list(t.get("styles", [])),
                     list(t.get("genres", [])),
+                    int(t["max_masters_per_seed_artist"]),
+                    overlap_quota(t),
                 ]
                 for i, t in enumerate(themes)
             ],
@@ -382,9 +444,31 @@ def derive_theme_candidates(
             for mid in theme.get("seed_master_ids", [])
             if int(mid) not in pool_ids_by_theme.get(i, set())
         ]
+        theme_rows = [r for r in rows if r["master_id"] in set(names)]
+        route_of = {
+            r["master_id"]: next(e["source"] for e in r["themes"] if e["theme"] == theme["name"])
+            for r in theme_rows
+        }
+        pool_mix = Counter(route_of.values())
+        eligible_mix = Counter(
+            route_of[r["master_id"]] for r in theme_rows if r["eligibility"] == "eligible"
+        )
+        per_artist = Counter(
+            r["artist_id"]
+            for r in theme_rows
+            if r["eligibility"] == "eligible" and r["artist_id"] is not None
+        )
+        quota = overlap_quota(theme)
         summaries.append(
             {
                 "theme": theme["name"],
+                "route_mix": {
+                    "pool": {n: pool_mix.get(n, 0) for n in _SOURCE_NAMES.values()},
+                    "eligible": {n: eligible_mix.get(n, 0) for n in _SOURCE_NAMES.values()},
+                },
+                "max_masters_per_artist_eligible": max(per_artist.values(), default=0),
+                "overlap_quota": quota,
+                "overlap_shortfall": max(0, quota - pool_mix.get("shared_performers", 0)),
                 "dropped_seed_masters": dropped,
                 "pool_size": pool_by_theme.get(i, 0),
                 "eligible_count": sum(1 for mid in names if eligible_by_master[mid]),

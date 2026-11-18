@@ -17,7 +17,8 @@ future round, copy
   and jazz fusion. For each: `seed_artist_ids` and/or `seed_master_ids` looked up on discogs.com
   or in the full parsed corpus, optional `styles`/`genres` tags (exact Discogs spellings),
   `year_min`/`year_max`, `min_shared_performers` (2 is the hub-trap-safe choice) and
-  `candidate_cap`.
+  `candidate_cap`, plus the pool-composition knobs `max_masters_per_seed_artist` and
+  `min_overlap_share_percent` (new in Round 2; owner-awareness parameters, see the contract).
 - Validate with `networked-players-catalog validate-round-seed-spec --spec <file>`.
 
 Never put collection membership, scores or reviewer identity in the file.
