@@ -56,6 +56,37 @@ _RESIDUAL_LIVE_SIGNAL_PATTERN = re.compile(
 )
 
 
+# Review-only title flags for theme-supply rows (never a rule: master eligibility is
+# unchanged and flags exclude nothing). The live pattern is the classifier's own
+# `_RESIDUAL_LIVE_SIGNAL_PATTERN`; the compilation pattern is the compilation-family
+# subset of `_TITLE_SIGNAL_PATTERN`.
+_COMPILATION_TITLE_PATTERN = re.compile(
+    r"\b(compilations?|samplers?|greatest hits|best of|antholog(?:y|ies)|"
+    r"collections?|rarit(?:y|ies)|box sets?|mixtapes?)\b",
+    re.IGNORECASE,
+)
+
+
+def title_review_flags(*titles: str | None) -> list[str]:
+    """Sorted review flags (`live_title`, `compilation_title`) for the given master /
+    main-release titles. Advisory only: surfaced for the owner's quick rejection."""
+    flags: set[str] = set()
+    for title in titles:
+        if not title:
+            continue
+        if _RESIDUAL_LIVE_SIGNAL_PATTERN.search(title):
+            flags.add("live_title")
+        if _COMPILATION_TITLE_PATTERN.search(title):
+            flags.add("compilation_title")
+    return sorted(flags)
+
+
+def safe_memory_limit(value: str) -> str:
+    from networked_players_graph_core.theme_supply import safe_memory_limit as _safe
+
+    return _safe(value)
+
+
 def load_master_exclusions(path: Path | None) -> frozenset[int]:
     """Load the curated human-reviewed master-ID deny-list (or an empty set).
 
@@ -162,7 +193,7 @@ def build_release_format_policy(
     connection = duckdb.connect(database=":memory:")
     try:
         if memory_limit is not None:
-            connection.execute(f"SET memory_limit = '{memory_limit}'")
+            connection.execute(f"SET memory_limit = '{safe_memory_limit(memory_limit)}'")
         if threads is not None:
             connection.execute(f"SET threads = {int(threads)}")
         release_glob = str(root / "table=releases" / "*.parquet")
@@ -258,6 +289,11 @@ def build_release_format_scoring_index(policy: dict[str, Any]) -> dict[str, Any]
         "policy_version": policy["policy_version"],
         "snapshot_date": policy["snapshot_date"],
         "source_policy_sha256": hashlib.sha256(canonical_policy).hexdigest(),
+        **{
+            key: policy[key]
+            for key in ("parser_version", "dataset_manifest_sha256")
+            if policy.get(key) is not None
+        },
         "allowed_release_count": len(allowed_release_ids),
         "allowed_release_ids": allowed_release_ids,
     }
@@ -284,6 +320,17 @@ def merge_release_format_scoring_indexes(
                     f"cannot union scoring indexes that disagree on {key}: "
                     f"{first.get(key)!r} vs {index.get(key)!r}"
                 )
+    # The parser version must match too whenever both sides record it (older indexes
+    # predate the field and cannot be verified). Dataset manifests legitimately differ
+    # between a one-hop and a full corpus of the same snapshot, so they are carried as
+    # provenance, not compared.
+    for index in indexes:
+        for key in ("parser_version",):
+            if None not in (index.get(key), first.get(key)) and index[key] != first[key]:
+                raise ValueError(
+                    f"cannot union scoring indexes that disagree on {key}: "
+                    f"{first.get(key)!r} vs {index.get(key)!r}"
+                )
     allowed = sorted({int(r) for index in indexes for r in index["allowed_release_ids"]})
     member_hashes = sorted(str(index.get("source_policy_sha256")) for index in indexes)
     return {
@@ -293,6 +340,14 @@ def merge_release_format_scoring_indexes(
         "policy_version": first["policy_version"],
         "snapshot_date": first["snapshot_date"],
         "source_policy_sha256": hashlib.sha256(",".join(member_hashes).encode()).hexdigest(),
+        "member_dataset_manifest_sha256s": sorted(
+            {str(i["dataset_manifest_sha256"]) for i in indexes if i.get("dataset_manifest_sha256")}
+        ),
+        **(
+            {"parser_version": first["parser_version"]}
+            if first.get("parser_version") is not None
+            else {}
+        ),
         "allowed_release_count": len(allowed),
         "allowed_release_ids": allowed,
     }

@@ -23,16 +23,15 @@ per-theme or per-seed loop):
    non-studio genre/style gate. Already-published and curated-excluded masters
    are dropped in SQL.
 4. Pool composition per theme (so a theme surfaces the SCENE, not one discography):
-   explicit seed masters, then seed-artist masters capped at
-   `max_masters_per_seed_artist` per artist, fill `candidate_cap - overlap_quota` slots
-   (`overlap_quota = ceil(cap * min_overlap_share_percent / 100)`); shared-performer
-   candidates fill the rest (including seed slots left unused). Within each route
-   candidates rank by distinct shared performers desc, then master id -- deterministic.
-   A master cut by the per-artist cap never re-enters as an overlap candidate. If fewer
-   overlap candidates exist than reserved, the pool is short and the summary reports
-   `overlap_shortfall`; it is never padded with extra seed-artist masters. The cap is
-   applied BEFORE the eligibility verdict, which bounds the per-master lookups below; a
-   theme whose pool is mostly ineligible yields fewer eligible rows, reported per theme.
+   the SQL gates give a PRE-CAP considered set (all seed-route masters; the best
+   `PRECAP_FACTOR * candidate_cap` overlap candidates). Eligibility is decided over it, and
+   `select_theme_pool` then applies the caps to ELIGIBLE masters only: explicit seed masters
+   are exempt from the per-artist cap and the overlap quota; seed-artist masters take at
+   most `max_masters_per_seed_artist` per seed artist; overlap fills the rest, with
+   `ceil(cap * min_overlap_share_percent / 100)` slots reserved. Within each route ranking
+   is shared performers desc, then master id. Ineligible masters are kept in the output
+   with their reason, outside the cap accounting. A shortfall of overlap is reported in the
+   summary, never padded.
 
 Studio-album eligibility then runs through `master_eligibility`
 (`master_studio_eligibility_reason` / `select_master_main_release_id`) exactly
@@ -57,6 +56,7 @@ re-widened only for approved albums.
 
 from __future__ import annotations
 
+import re
 import sys
 import time
 from collections import Counter
@@ -169,53 +169,82 @@ def _theme_pool_query(excluded_master_ids: Sequence[int]) -> str:
               )
               {exclusions_sql}
         ),
-        -- Route 1 is capped per seed artist; ranking within a route is deterministic:
-        -- more shared performers first, then lowest master id.
-        artist_capped AS (
+        -- Eligibility is decided in Python over THIS pre-cap set, and the per-artist cap,
+        -- overlap reservation and candidate_cap then apply to ELIGIBLE masters only (an
+        -- ineligible live album or box set must never push an eligible master out). The
+        -- seed routes are bounded by the seed artists' discographies; the overlap route is
+        -- cut to the best `precap` by shared performers, with the true total reported so a
+        -- truncation is visible.
+        ranked AS (
             SELECT g.*,
                    row_number() OVER (
-                       PARTITION BY g.theme_idx, g.seed_artist_id
+                       PARTITION BY g.theme_idx, g.source_rank
                        ORDER BY g.shared DESC NULLS LAST, g.master_id
-                   ) AS artist_rank
+                   ) AS rn,
+                   count(*) FILTER (WHERE g.source_rank = 2)
+                       OVER (PARTITION BY g.theme_idx) AS overlap_total
             FROM gated g
-        ),
-        seed_route AS (
-            SELECT a.*,
-                   row_number() OVER (
-                       PARTITION BY a.theme_idx
-                       ORDER BY a.source_rank, a.shared DESC NULLS LAST, a.master_id
-                   ) AS route_rank
-            FROM artist_capped a
-            JOIN themes t ON t.theme_idx = a.theme_idx
-            WHERE a.source_rank < 2
-              AND (a.source_rank = 0 OR a.artist_rank <= t.max_masters_per_seed_artist)
-        ),
-        seed_kept AS (
-            SELECT s.* FROM seed_route s
-            JOIN themes t ON t.theme_idx = s.theme_idx
-            WHERE s.route_rank <= t.candidate_cap - t.overlap_quota
-        ),
-        overlap_kept AS (
-            SELECT o.*
-            FROM (
-                SELECT g.*, 0 AS artist_rank,
-                       row_number() OVER (
-                           PARTITION BY g.theme_idx ORDER BY g.shared DESC, g.master_id
-                       ) AS route_rank
-                FROM gated g WHERE g.source_rank = 2
-            ) o
-            JOIN themes t ON t.theme_idx = o.theme_idx
-            -- slots the seed routes did not use go to overlap; never the reverse (no padding)
-            WHERE o.route_rank <= t.candidate_cap - coalesce(
-                (SELECT count(*) FROM seed_kept k WHERE k.theme_idx = o.theme_idx), 0)
         )
-        SELECT theme_idx, master_id, source_rank, shared, main_release_id, title, year,
-               genres, styles
-        FROM (
-            SELECT * FROM seed_kept UNION ALL SELECT * FROM overlap_kept
-        )
-        ORDER BY theme_idx, source_rank, shared DESC NULLS LAST, master_id
+        SELECT r.theme_idx, r.master_id, r.source_rank, r.shared, r.main_release_id, r.title,
+               r.year, r.genres, r.styles, r.seed_artist_id, r.overlap_total
+        FROM ranked r
+        JOIN themes t ON t.theme_idx = r.theme_idx
+        WHERE r.source_rank < 2 OR r.rn <= t.precap
+        ORDER BY r.theme_idx, r.source_rank, r.shared DESC NULLS LAST, r.master_id
     """
+
+
+PRECAP_FACTOR = 10  # overlap candidates considered per theme = factor * candidate_cap
+
+_MEMORY_LIMIT_PATTERN = re.compile(r"^\d+(\.\d+)?\s?(KB|MB|GB|TB|KiB|MiB|GiB|TiB)$", re.IGNORECASE)
+
+
+def safe_memory_limit(value: str) -> str:
+    """A DuckDB `memory_limit` literal, validated before it is interpolated into SET."""
+    if not _MEMORY_LIMIT_PATTERN.match(str(value)):
+        raise ValueError(f"invalid memory limit {value!r} (expected e.g. '2GB', '512MiB')")
+    return str(value)
+
+
+def select_theme_pool(
+    theme: Mapping[str, Any], considered: Sequence[Mapping[str, Any]]
+) -> list[int]:
+    """Master ids selected for one theme from its ELIGIBLE considered candidates.
+
+    `considered` entries carry `master_id`, `source_rank` (0 explicit seed master,
+    1 seed-artist master, 2 shared-performer overlap), `shared`, `seed_artist_id` and
+    `eligible`. Explicit seed masters are exempt from the per-artist cap and the overlap
+    quota (they neither count toward nor get cut by either). Seed-artist masters take
+    at most `max_masters_per_seed_artist` per seed artist, in `cap - n_seed - quota`
+    slots; overlap fills the remaining slots. Within each route ranking is shared
+    performers desc, then master id. Ineligible masters never occupy a slot.
+    """
+    cap = int(theme["candidate_cap"])
+    per_artist = int(theme["max_masters_per_seed_artist"])
+    quota = overlap_quota(theme)
+
+    def order(e: Mapping[str, Any]) -> tuple[int, int]:
+        return (-(e["shared"] or 0), int(e["master_id"]))
+
+    eligible = [e for e in considered if e["eligible"]]
+    seeds = sorted(
+        (e for e in eligible if e["source_rank"] == 0), key=lambda e: int(e["master_id"])
+    )[:cap]
+    seed_slots = max(0, cap - len(seeds) - quota)
+    per_artist_count: dict[Any, int] = {}
+    artist_kept: list[Mapping[str, Any]] = []
+    for e in sorted((e for e in eligible if e["source_rank"] == 1), key=order):
+        if len(artist_kept) >= seed_slots:
+            break
+        if per_artist_count.get(e["seed_artist_id"], 0) >= per_artist:
+            continue
+        per_artist_count[e["seed_artist_id"]] = per_artist_count.get(e["seed_artist_id"], 0) + 1
+        artist_kept.append(e)
+    overlap_slots = cap - len(seeds) - len(artist_kept)
+    overlap_kept = sorted((e for e in eligible if e["source_rank"] == 2), key=order)[
+        : max(0, overlap_slots)
+    ]
+    return [int(e["master_id"]) for e in (*seeds, *artist_kept, *overlap_kept)]
 
 
 def _seed_master_drop_reason(
@@ -266,18 +295,22 @@ def derive_theme_candidates(
     `round_seed_spec_failures` first). `graph` must be open over the same full
     corpus as `dataset_root` with masters attached.
 
-    One row per distinct master, sorted by `master_id`; `themes` lists each
-    theme that surfaced it. `theme_summaries` reports, per theme, the capped
-    pool size and the eligible count, so a theme that under-delivers is visible.
+    Per theme: SQL gates produce a PRE-CAP considered set, eligibility is decided over
+    it, and the per-artist cap, overlap reservation and `candidate_cap` then apply to
+    ELIGIBLE masters only (`select_theme_pool`). Rows: one per distinct master, sorted
+    by `master_id`: every selected (eligible) master, plus every considered INELIGIBLE
+    master with its reason (outside the cap accounting, so reviewable). `themes` lists
+    each theme that surfaced it and whether it was `selected` there.
 
     `allowed_release_ids` is the existing (one-hop) format allow-list, which has no
     entries for masters outside that corpus. `classify_pool_releases`, when given, is
-    called ONCE with every release id under the capped pool's masters and returns the
+    called ONCE with every release id under the considered masters and returns the
     subset the release-format rules allow (the catalog package supplies a bounded
     classification of the full corpus; graph-core never imports it). The effective
     allow-list is the explicit UNION of the two.
     """
     themes = list(spec["themes"])
+    memory_limit = safe_memory_limit(memory_limit)
     start = time.monotonic()
     _progress(quiet, f"supplying candidates for {len(themes)} themes from the full corpus...")
 
@@ -296,13 +329,12 @@ def derive_theme_candidates(
         connection.execute(
             "CREATE TABLE themes (theme_idx INTEGER, min_shared_performers INTEGER, "
             "candidate_cap INTEGER, year_min INTEGER, year_max INTEGER, "
-            "styles VARCHAR[], genres VARCHAR[], max_masters_per_seed_artist INTEGER, "
-            "overlap_quota INTEGER)"
+            "styles VARCHAR[], genres VARCHAR[], precap INTEGER)"
         )
         connection.execute("CREATE TABLE theme_seed_artists (theme_idx INTEGER, artist_id BIGINT)")
         connection.execute("CREATE TABLE theme_seed_masters (theme_idx INTEGER, master_id BIGINT)")
         connection.executemany(
-            "INSERT INTO themes VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO themes VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
             [
                 [
                     i,
@@ -312,32 +344,33 @@ def derive_theme_candidates(
                     t.get("year_max"),
                     list(t.get("styles", [])),
                     list(t.get("genres", [])),
-                    int(t["max_masters_per_seed_artist"]),
-                    overlap_quota(t),
+                    PRECAP_FACTOR * int(t["candidate_cap"]),
                 ]
                 for i, t in enumerate(themes)
             ],
         )
-        connection.executemany(
-            "INSERT INTO theme_seed_artists VALUES (?, ?)",
-            [[i, int(a)] for i, t in enumerate(themes) for a in t.get("seed_artist_ids", [])],
-        )
-        connection.executemany(
-            "INSERT INTO theme_seed_masters VALUES (?, ?)",
-            [[i, int(m)] for i, t in enumerate(themes) for m in t.get("seed_master_ids", [])],
-        )
+        seed_artist_rows = [
+            [i, int(a)] for i, t in enumerate(themes) for a in t.get("seed_artist_ids", [])
+        ]
+        if seed_artist_rows:
+            connection.executemany("INSERT INTO theme_seed_artists VALUES (?, ?)", seed_artist_rows)
+        seed_master_rows = [
+            [i, int(m)] for i, t in enumerate(themes) for m in t.get("seed_master_ids", [])
+        ]
+        if seed_master_rows:
+            connection.executemany("INSERT INTO theme_seed_masters VALUES (?, ?)", seed_master_rows)
         connection.execute(
             "CREATE TEMP TABLE theme_pool AS "
             + _theme_pool_query(sorted(master_exclusions | already_published_master_ids))
         )
         pool_rows = connection.execute(
             "SELECT theme_idx, master_id, source_rank, shared, main_release_id, title, year, "
-            "genres, styles FROM theme_pool"
+            "genres, styles, seed_artist_id, overlap_total FROM theme_pool"
         ).fetchall()
-        # Set-based eligibility inputs: every candidate master's releases in ONE query,
+        # Set-based eligibility inputs: every considered master's releases in ONE query,
         # not several full-corpus scans per master.
         release_rows = connection.execute(
-            "SELECT r.release_id, r.master_id, r.released FROM releases r "
+            "SELECT r.release_id, r.master_id, r.released, r.title FROM releases r "
             "WHERE r.master_id IN (SELECT DISTINCT master_id FROM theme_pool)"
         ).fetchall()
         seed_master_facts = connection.execute(
@@ -346,14 +379,25 @@ def derive_theme_candidates(
         ).fetchall()
     finally:
         connection.close()
-    _progress(quiet, f"{len(pool_rows)} theme/master pairs after SQL gates and per-theme caps")
+    _progress(quiet, f"{len(pool_rows)} theme/master pairs considered after SQL gates")
 
-    # Per distinct master: its facts once, and which themes surfaced it.
-    surfaced: dict[int, list[dict[str, Any]]] = {}
-    pool_by_theme: dict[int, int] = {}
-    pool_ids_by_theme: dict[int, set[int]] = {}
+    # Per distinct master: its facts once, and its per-theme entry.
+    entries: dict[int, dict[int, dict[str, Any]]] = {}  # master -> theme_idx -> entry
     facts: dict[int, dict[str, Any]] = {}
-    for theme_idx, master_id, source_rank, shared, main, title, year, genres, styles in pool_rows:
+    overlap_totals: dict[int, int] = {}
+    for (
+        theme_idx,
+        master_id,
+        source_rank,
+        shared,
+        main,
+        title,
+        year,
+        genres,
+        styles,
+        seed_artist_id,
+        overlap_total,
+    ) in pool_rows:
         facts[int(master_id)] = {
             "main_release_id": main,
             "title": title,
@@ -361,27 +405,26 @@ def derive_theme_candidates(
             "genres": genres,
             "styles": styles,
         }
-        pool_by_theme[int(theme_idx)] = pool_by_theme.get(int(theme_idx), 0) + 1
-        pool_ids_by_theme.setdefault(int(theme_idx), set()).add(int(master_id))
-        surfaced.setdefault(int(master_id), []).append(
-            {
-                "theme": themes[int(theme_idx)]["name"],
-                "source": _SOURCE_NAMES[int(source_rank)],
-                "shared_performers": None if shared is None else int(shared),
-            }
-        )
-    master_ids = sorted(surfaced)
+        overlap_totals[int(theme_idx)] = int(overlap_total or 0)
+        entries.setdefault(int(master_id), {})[int(theme_idx)] = {
+            "master_id": int(master_id),
+            "source_rank": int(source_rank),
+            "shared": None if shared is None else int(shared),
+            "seed_artist_id": None if seed_artist_id is None else int(seed_artist_id),
+        }
 
     releases_by_master: dict[int, list[tuple[int, str | None]]] = {}
-    for release_id, master_id, released in release_rows:
+    release_titles: dict[int, str | None] = {}
+    for release_id, master_id, released, release_title in release_rows:
         releases_by_master.setdefault(int(master_id), []).append((int(release_id), released))
+        release_titles[int(release_id)] = release_title
     if classify_pool_releases is not None:
         bounded_allowed = classify_pool_releases(
             sorted({r for rs in releases_by_master.values() for r, _ in rs})
         )
         _progress(
             quiet,
-            f"bounded classification allowed {len(bounded_allowed)} pool releases "
+            f"bounded classification allowed {len(bounded_allowed)} considered releases "
             f"(union with {len(allowed_release_ids)} supplied allowed ids)",
         )
         allowed_release_ids = allowed_release_ids | frozenset(bounded_allowed)
@@ -392,102 +435,145 @@ def derive_theme_candidates(
         master_exclusions=master_exclusions,
     )
 
-    # One batched credit query across every eligible candidate's selected main release.
+    # One batched credit query across every eligible considered master's main release.
     eligible_release_ids = sorted({r for _, r, _ in verdicts.values() if r is not None})
     credits_by_release = graph.credit_rows_for_releases(eligible_release_ids)
+    eligibility: dict[int, str] = {}
+    release_artist: dict[int, tuple[int | None, str | None]] = {}
+    for master_id in sorted(entries):
+        verdict, main_release_id, _reason = verdicts[master_id]
+        if main_release_id is not None:
+            artist = _release_artist(credits_by_release.get(main_release_id, []))
+            release_artist[master_id] = artist
+            if artist[0] is None:
+                verdict = "no_release_artist_credit"
+        eligibility[master_id] = verdict
+
+    # Select per theme over ELIGIBLE masters only.
+    selected_by_theme: dict[int, list[int]] = {}
+    for i, theme in enumerate(themes):
+        considered = [
+            {**per_theme[i], "eligible": eligibility[mid] == "eligible"}
+            for mid, per_theme in entries.items()
+            if i in per_theme
+        ]
+        selected_by_theme[i] = select_theme_pool(theme, considered)
+    selected_sets = {i: set(ids) for i, ids in selected_by_theme.items()}
 
     rows: list[dict[str, Any]] = []
-    for master_id in master_ids:
-        eligibility, main_release_id, release_reason = verdicts[master_id]
+    for master_id in sorted(entries):
+        selected_anywhere = any(master_id in selected_sets[i] for i in entries[master_id])
+        if eligibility[master_id] == "eligible" and not selected_anywhere:
+            continue  # eligible but cut by every theme's caps: not in the pool
+        _verdict, main_release_id, release_reason = verdicts[master_id]
         master = facts[master_id]
-        artist_id: int | None = None
-        artist_name: str | None = None
-        if main_release_id is not None:
-            artist_id, artist_name = _release_artist(credits_by_release.get(main_release_id, []))
-            if artist_id is None:
-                eligibility = "no_release_artist_credit"
+        artist_id, artist_name = release_artist.get(master_id, (None, None))
         rows.append(
             {
                 "master_id": master_id,
                 "artist_id": artist_id,
                 "artist_name": artist_name,
                 "sample_title": master["title"],
+                "main_release_title": (
+                    release_titles.get(main_release_id) if main_release_id is not None else None
+                ),
                 "main_release_id": main_release_id,
                 "year": master["year"],
-                "eligibility": eligibility,
+                "eligibility": eligibility[master_id],
                 "main_release_selection_reason": release_reason,
-                "themes": surfaced[master_id],
+                "themes": [
+                    {
+                        "theme": themes[i]["name"],
+                        "source": _SOURCE_NAMES[entry["source_rank"]],
+                        "shared_performers": entry["shared"],
+                        "selected": master_id in selected_sets[i],
+                    }
+                    for i, entry in sorted(entries[master_id].items())
+                    if master_id in selected_sets[i] or eligibility[master_id] != "eligible"
+                ],
             }
         )
 
     seed_facts = {int(r[0]): r for r in seed_master_facts}
-    eligible_by_master = {r["master_id"]: r["eligibility"] == "eligible" for r in rows}
-    eligibility_by_master = {r["master_id"]: r["eligibility"] for r in rows}
+    row_by_master = {r["master_id"]: r for r in rows}
     summaries = []
     for i, theme in enumerate(themes):
-        names = [
-            mid
-            for mid, entries in surfaced.items()
-            if any(e["theme"] == theme["name"] for e in entries)
-        ]
+        considered_ids = [mid for mid, per_theme in entries.items() if i in per_theme]
+        selected = selected_by_theme[i]
+        selected_set = selected_sets[i]
+        ineligible = [m for m in considered_ids if eligibility[m] != "eligible"]
+        route_of = {m: entries[m][i]["source_rank"] for m in considered_ids}
+        selected_mix = Counter(_SOURCE_NAMES[route_of[m]] for m in selected)
+        considered_mix = Counter(_SOURCE_NAMES[route_of[m]] for m in considered_ids)
+        per_seed_artist = Counter(
+            entries[m][i]["seed_artist_id"]
+            for m in selected
+            if route_of[m] == 1 and entries[m][i]["seed_artist_id"] is not None
+        )
+        per_billed_artist = Counter(
+            row_by_master[m]["artist_id"]
+            for m in selected
+            if row_by_master[m]["artist_id"] is not None
+        )
+        n_seed = sum(1 for m in selected if route_of[m] == 0)
+        quota = max(0, min(overlap_quota(theme), int(theme["candidate_cap"]) - n_seed))
+        overlap_selected = selected_mix.get("shared_performers", 0)
         dropped = [
             {
                 "master_id": int(mid),
-                "reason": _seed_master_drop_reason(
-                    int(mid),
-                    seed_facts.get(int(mid)),
-                    theme,
-                    excluded=master_exclusions,
-                    published=already_published_master_ids,
+                "reason": (
+                    eligibility[int(mid)]
+                    if int(mid) in entries and i in entries[int(mid)]
+                    else _seed_master_drop_reason(
+                        int(mid),
+                        seed_facts.get(int(mid)),
+                        theme,
+                        excluded=master_exclusions,
+                        published=already_published_master_ids,
+                    )
                 ),
             }
             for mid in theme.get("seed_master_ids", [])
-            if int(mid) not in pool_ids_by_theme.get(i, set())
+            if int(mid) not in selected_set
         ]
-        theme_rows = [r for r in rows if r["master_id"] in set(names)]
-        route_of = {
-            r["master_id"]: next(e["source"] for e in r["themes"] if e["theme"] == theme["name"])
-            for r in theme_rows
-        }
-        pool_mix = Counter(route_of.values())
-        eligible_mix = Counter(
-            route_of[r["master_id"]] for r in theme_rows if r["eligibility"] == "eligible"
-        )
-        per_artist = Counter(
-            r["artist_id"]
-            for r in theme_rows
-            if r["eligibility"] == "eligible" and r["artist_id"] is not None
-        )
-        quota = overlap_quota(theme)
         summaries.append(
             {
                 "theme": theme["name"],
-                "route_mix": {
-                    "pool": {n: pool_mix.get(n, 0) for n in _SOURCE_NAMES.values()},
-                    "eligible": {n: eligible_mix.get(n, 0) for n in _SOURCE_NAMES.values()},
+                "considered_count": len(considered_ids),
+                "considered_route_mix": {
+                    n: considered_mix.get(n, 0) for n in _SOURCE_NAMES.values()
                 },
-                "max_masters_per_artist_eligible": max(per_artist.values(), default=0),
-                "overlap_quota": quota,
-                "overlap_shortfall": max(0, quota - pool_mix.get("shared_performers", 0)),
-                "dropped_seed_masters": dropped,
-                "pool_size": pool_by_theme.get(i, 0),
-                "eligible_count": sum(1 for mid in names if eligible_by_master[mid]),
-                "ineligibility_reasons": dict(
-                    sorted(
-                        Counter(
-                            eligibility_by_master[mid]
-                            for mid in names
-                            if not eligible_by_master[mid]
-                        ).items()
-                    )
+                "overlap_candidates_total": overlap_totals.get(i, 0),
+                "overlap_candidates_truncated": max(
+                    0, overlap_totals.get(i, 0) - PRECAP_FACTOR * int(theme["candidate_cap"])
                 ),
+                "pool_size": len(selected),
+                "eligible_count": len(selected),
+                "eligible_unselected_count": sum(
+                    1
+                    for m in considered_ids
+                    if eligibility[m] == "eligible" and m not in selected_set
+                ),
+                "route_mix": {n: selected_mix.get(n, 0) for n in _SOURCE_NAMES.values()},
+                "ineligible_count": len(ineligible),
+                "ineligibility_reasons": dict(
+                    sorted(Counter(eligibility[m] for m in ineligible).items())
+                ),
+                "max_masters_per_seed_artist_selected": max(per_seed_artist.values(), default=0),
+                "max_masters_per_billed_artist_selected": max(
+                    per_billed_artist.values(), default=0
+                ),
+                "overlap_quota": quota,
+                "overlap_shortfall": max(0, quota - overlap_selected),
+                "dropped_seed_masters": dropped,
                 "candidate_cap": int(theme["candidate_cap"]),
             }
         )
     _progress(
         quiet,
         f"done in {time.monotonic() - start:.1f}s, "
-        f"{sum(eligible_by_master.values())} of {len(rows)} distinct masters eligible",
+        f"{sum(len(v) for v in selected_by_theme.values())} theme selections "
+        f"over {len(rows)} output masters",
     )
     return rows, summaries
 
@@ -528,7 +614,7 @@ def build_rewiden_seed(
         masters_glob = str(Path(masters_root) / "table=masters" / "*.parquet")
         connection = duckdb.connect(database=":memory:")
         try:
-            connection.execute(f"SET memory_limit = '{memory_limit}'")
+            connection.execute(f"SET memory_limit = '{safe_memory_limit(memory_limit)}'")
             connection.execute(f"SET threads = {int(threads)}")
             connection.execute(
                 f"CREATE VIEW credits AS SELECT * FROM {read_parquet_sql(credits_glob)}"

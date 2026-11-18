@@ -834,6 +834,9 @@ def test_theme_supply_stage_writes_private_candidates(
     text, failures = rr.plan_round(ctx, rr.select_stages(None, None, "theme-supply"))
     assert failures == [], failures
     assert "build-theme-candidates" in text and "--seed-spec" in text
+    # The one-hop format index cannot see out-of-corpus themes: the runner must request the
+    # bounded classification, or those themes silently come out ineligible.
+    assert "--classify-pool-releases" in text
     assert rr.run_round(ctx, only_stage="theme-supply") == 0
     rows = json.loads((ctx.work / rr.THEME_CANDIDATES).read_text())
     eligible = {r["master_id"] for r in rows if r["eligibility"] == "eligible"}

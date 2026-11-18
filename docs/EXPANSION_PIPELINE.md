@@ -153,7 +153,7 @@ These steps produce *proposals*. Nothing here authorises publication: the approv
    `build-release-format-scoring-index`. Output: `<work_dir>/theme-candidates.json`, private and
    git-ignored (the command refuses a committable path). Each row is `rank-album-candidates`
    shaped plus `eligibility` (via `master_eligibility`) and `themes` (which theme, by which
-   route: seed master, seed-artist master, or shared performers). Each theme's summary also lists `ineligibility_reasons` and `dropped_seed_masters` (explicit seed masters that did not reach the pool, with a reason) so a seed is never silently lost. Check each theme's
+   route: seed master, seed-artist master, or shared performers). Each theme's summary also lists `ineligibility_reasons` and `dropped_seed_masters` (explicit seed masters that did not reach the pool, with a reason) so a seed is never silently lost. Caps and the overlap reservation apply to eligible masters only; rows carry advisory `review_flags` (`live_title`, `compilation_title`) shown in the review packet. The runner's `theme-supply` stage passes `--classify-pool-releases` itself. Check each theme's
    `eligible_count` against its lane quota before going on. Then score with
    `score-expansion-candidates --candidates <that file> --onehop-root <FULL corpus>`: the
    scorer reads credits from `--onehop-root`, and the theme albums only exist in the full

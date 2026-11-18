@@ -219,6 +219,21 @@ def _build_theme_candidates(args: argparse.Namespace) -> int:
             threads=args.threads,
             quiet=args.quiet,
         )
+    from .discogs.release_format_policy import title_review_flags
+
+    flag_counts: dict[str, dict[str, int]] = {}
+    for row in rows:
+        # Advisory only: the owner can reject a live/compilation-looking album quickly.
+        row["review_flags"] = title_review_flags(
+            row.get("sample_title"), row.get("main_release_title")
+        )
+        for entry in row["themes"]:
+            if entry.get("selected"):
+                counts = flag_counts.setdefault(entry["theme"], {})
+                for flag in row["review_flags"]:
+                    counts[flag] = counts.get(flag, 0) + 1
+    for summary in summaries:
+        summary["review_flag_counts"] = dict(sorted(flag_counts.get(summary["theme"], {}).items()))
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(rows, indent=2) + "\n")
     eligible = sum(1 for row in rows if row["eligibility"] == "eligible")

@@ -964,6 +964,9 @@ def _argv_theme_supply(ctx: Ctx) -> list[list[str]]:
             "--dataset", str(ctx.inp("full_corpus_root")),
             "--masters-root", str(ctx.inp("masters_root")),
             "--release-format-policy", str(ctx.inp("release_format_policy")),
+            # The policy is a one-hop index; masters outside that corpus need the
+            # bounded classification of their releases from the full corpus.
+            "--classify-pool-releases",
             "--studio-album-exclusions", str(ctx.inp("studio_album_exclusions")),
             "--already-published-catalog", str(ctx.p(CATALOG)),
             "--output", str(ctx.work / THEME_CANDIDATES),

@@ -256,7 +256,9 @@ def test_per_theme_cap_ranks_seed_masters_first(world: dict[str, Path], tmp_path
     path.write_text(json.dumps(spec))
     assert main(_supply_argv(world, path)) == 0
     rows = _rows(world["out"])
-    assert 9100 in rows and 9101 not in rows and 9106 not in rows
+    assert 9100 in rows and 9101 not in rows
+    # Ineligible masters sit outside the cap accounting but stay reviewable with a reason.
+    assert rows[9106]["eligibility"] == "no_format_allowed_release_under_master"
 
 
 def test_candidates_flow_into_the_existing_scorer_and_review_packet(
@@ -345,7 +347,7 @@ def crowded_world(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> dict[str, 
     extended[33] = (9303, 1994, STONER, (9001, "Seed Band"), [])
     monkeypatch.setattr(module, "WORLD", extended)
     full, masters = _write_world(tmp_path)
-    allowed = [*ALLOWED, 30, 31, 32, 33]
+    allowed = [*ALLOWED, 30, 32, 33]  # release 31 (master 9301) is NOT format-allowed
     policy = tmp_path / "policy.json"
     policy.write_text(
         json.dumps(
@@ -375,7 +377,7 @@ def crowded_world(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> dict[str, 
     }
 
 
-def _theme1_spec(tmp_path: Path, **overrides: int) -> Path:
+def _theme1_spec(tmp_path: Path, **overrides: Any) -> Path:
     spec = json.loads(FIXTURE_SPEC.read_text())
     spec["themes"][0].update(overrides)
     path = tmp_path / "spec.json"
@@ -383,55 +385,158 @@ def _theme1_spec(tmp_path: Path, **overrides: int) -> Path:
     return path
 
 
-def test_per_seed_artist_cap_limits_one_discography_and_cut_masters_do_not_re_enter(
-    crowded_world: dict[str, Path], tmp_path: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
-    spec = _theme1_spec(tmp_path, max_masters_per_seed_artist=2)
-    assert main(_supply_argv(crowded_world, spec)) == 0
-    summary = json.loads(capsys.readouterr().out)
-    rows = _rows(crowded_world["out"])
-    # Deterministic: more shared performers first (9100, then 9301 over 9302 by master id).
-    assert {9100, 9301} <= set(rows)
-    # 9300/9302/9303 were cut by the artist cap; 9302 shares two performers but must NOT
-    # slip back in as an overlap candidate.
-    assert not {9300, 9302, 9303} & set(rows)
-    assert {e["source"] for e in rows[9301]["themes"]} == {"seed_artist_master"}
-    theme = {t["theme"]: t for t in summary["themes"]}["synthetic desert theme"]
-    assert theme["max_masters_per_artist_eligible"] == 2
-    assert theme["route_mix"]["pool"] == {
-        "seed_master": 0,
-        "seed_artist_master": 2,
-        "shared_performers": 2,
+def _theme1(capsys: pytest.CaptureFixture[str]) -> dict[str, Any]:
+    themes = {t["theme"]: t for t in json.loads(capsys.readouterr().out)["themes"]}
+    return themes["synthetic desert theme"]
+
+
+def _selected(rows: dict[int, dict[str, Any]], theme: str = "synthetic desert theme") -> set[int]:
+    return {
+        mid
+        for mid, row in rows.items()
+        if any(e["theme"] == theme and e["selected"] for e in row["themes"])
     }
 
 
-def test_reserved_overlap_share_keeps_seed_artist_masters_from_crowding_it_out(
+def test_ineligible_masters_never_occupy_cap_slots(
     crowded_world: dict[str, Path], tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    # cap 3, 34% -> 2 overlap slots reserved, so only ONE seed-artist slot.
-    spec = _theme1_spec(
-        tmp_path,
-        candidate_cap=3,
-        min_overlap_share_percent=34,
-        max_masters_per_seed_artist=4,
-    )
+    # 9301 shares two performers (ranks above 9300/9303) but is NOT format-allowed. A cap
+    # applied before eligibility would keep {9100, 9301} and yield ONE eligible master.
+    spec = _theme1_spec(tmp_path, max_masters_per_seed_artist=2)
     assert main(_supply_argv(crowded_world, spec)) == 0
-    theme = {t["theme"]: t for t in json.loads(capsys.readouterr().out)["themes"]}[
-        "synthetic desert theme"
-    ]
+    theme = _theme1(capsys)
     rows = _rows(crowded_world["out"])
-    assert set(rows) >= {9100, 9101, 9106} and not {9300, 9301, 9302, 9303} & set(rows)
-    assert theme["pool_size"] == 3 and theme["overlap_shortfall"] == 0
+    assert _selected(rows) >= {9100, 9302}
+    assert rows[9301]["eligibility"] == "no_format_allowed_release_under_master"
+    assert not _selected(rows) & {9300, 9301, 9303}
+    assert theme["max_masters_per_seed_artist_selected"] == 2
+    assert theme["ineligibility_reasons"]["no_format_allowed_release_under_master"] >= 1
+    # Eligible masters cut by the artist cap are not in the pool, and cannot slip back in
+    # through the overlap route.
+    assert 9300 not in rows and 9303 not in rows
 
-    # With 40% of 50 = 20 reserved slots but only 2 overlap candidates, the pool is
-    # reported short instead of being padded with seed-artist masters.
     spec = _theme1_spec(tmp_path, max_masters_per_seed_artist=1)
     assert main(_supply_argv(crowded_world, spec)) == 0
-    theme = {t["theme"]: t for t in json.loads(capsys.readouterr().out)["themes"]}[
-        "synthetic desert theme"
-    ]
-    assert theme["overlap_quota"] == 20 and theme["overlap_shortfall"] == 18
-    assert theme["pool_size"] == 3  # 9100 + two overlap candidates, not padded
+    assert 9302 not in _rows(crowded_world["out"])
+
+
+def test_reserved_overlap_share_and_shortfall_count_only_eligible_overlap(
+    crowded_world: dict[str, Path], tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    # cap 3, 34% -> 2 overlap slots reserved, so only ONE seed-artist slot (9100).
+    spec = _theme1_spec(
+        tmp_path, candidate_cap=3, min_overlap_share_percent=34, max_masters_per_seed_artist=4
+    )
+    assert main(_supply_argv(crowded_world, spec)) == 0
+    theme = _theme1(capsys)
+    rows = _rows(crowded_world["out"])
+    # 9106 is an ineligible overlap candidate: it neither fills a slot nor hides the
+    # shortfall, and 9302/9300 are NOT padded in to fill the pool.
+    assert _selected(rows) == {9100, 9101}
+    assert theme["pool_size"] == 2
+    assert theme["overlap_quota"] == 2 and theme["overlap_shortfall"] == 1
+    assert rows[9106]["eligibility"] == "no_format_allowed_release_under_master"
+
+
+def test_explicit_seed_masters_are_exempt_from_artist_cap_and_overlap_quota(
+    crowded_world: dict[str, Path], tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    # 9100 is an explicit seed master AND billed to seed artist 9001. It must neither
+    # use up that artist's single slot nor be cut by it.
+    spec = _theme1_spec(tmp_path, seed_master_ids=[9100], max_masters_per_seed_artist=1)
+    assert main(_supply_argv(crowded_world, spec)) == 0
+    theme = _theme1(capsys)
+    assert _selected(_rows(crowded_world["out"])) >= {9100, 9302}
+    assert theme["route_mix"]["seed_master"] == 1
+    assert theme["max_masters_per_seed_artist_selected"] == 1
+
+    # 100% overlap share must not drop the explicit seed master.
+    spec = _theme1_spec(
+        tmp_path,
+        seed_master_ids=[9100],
+        min_overlap_share_percent=100,
+        max_masters_per_seed_artist=1,
+    )
+    assert main(_supply_argv(crowded_world, spec)) == 0
+    theme = _theme1(capsys)
+    selected = _selected(_rows(crowded_world["out"]))
+    assert 9100 in selected and 9101 in selected and 9302 not in selected
+    assert theme["dropped_seed_masters"] == []
+
+
+def test_review_flags_mark_live_and_compilation_titles_without_changing_eligibility(
+    crowded_world: dict[str, Path], tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    path = crowded_world["full"] / "table=releases" / "part-00000.parquet"
+    table = pq.read_table(path).to_pylist()
+    for row in table:
+        if row["release_id"] == 32:
+            row["title"] = "Live In Tokyo"
+        if row["release_id"] == 30:
+            row["title"] = "Greatest Hits Collection"
+    pq.write_table(pa.Table.from_pylist(table, schema=SCHEMAS["releases"]), path)
+    spec = _theme1_spec(tmp_path, max_masters_per_seed_artist=4)
+    assert main(_supply_argv(crowded_world, spec)) == 0
+    theme = _theme1(capsys)
+    rows = _rows(crowded_world["out"])
+    assert rows[9302]["review_flags"] == ["live_title"]
+    assert rows[9300]["review_flags"] == ["compilation_title"]
+    assert rows[9100]["review_flags"] == []
+    # Advisory only: eligibility is untouched.
+    assert rows[9302]["eligibility"] == "eligible" and rows[9300]["eligibility"] == "eligible"
+    assert theme["review_flag_counts"] == {"compilation_title": 1, "live_title": 1}
+
+
+def test_review_flags_reach_the_review_packet_round_rows() -> None:
+    data = build_round_data(
+        {
+            "candidates": [
+                {"master_id": 1, "sample_title": "Live At X", "review_flags": ["live_title"]},
+                {"master_id": 2, "sample_title": "Plain"},
+            ]
+        },
+        round_number=99,
+    )
+    assert [r["review_flags"] for r in data["rows"]] == [["live_title"], []]
+
+
+def test_memory_limit_is_validated_before_it_reaches_sql() -> None:
+    from networked_players_graph_core.theme_supply import safe_memory_limit
+
+    assert safe_memory_limit("2GB") == "2GB" and safe_memory_limit("512 MiB") == "512 MiB"
+    with pytest.raises(ValueError):
+        safe_memory_limit("2GB'; DROP TABLE x; --")
+
+
+def test_merge_refuses_parser_version_mismatch_and_keeps_manifest_provenance() -> None:
+    from networked_players_catalog.discogs.release_format_policy import (
+        merge_release_format_scoring_indexes,
+    )
+
+    def index(parser: str | None, manifest: str, ids: list[int]) -> dict[str, Any]:
+        base: dict[str, Any] = {
+            "kind": "release-format-scoring-index",
+            "policy_name": "studio-album-v1",
+            "policy_version": 1,
+            "snapshot_date": SNAPSHOT,
+            "source_policy_sha256": manifest,
+            "dataset_manifest_sha256": manifest,
+            "allowed_release_ids": ids,
+        }
+        if parser is not None:
+            base["parser_version"] = parser
+        return base
+
+    merged = merge_release_format_scoring_indexes(
+        index("0.1.0", "aa", [1]), index("0.1.0", "bb", [2])
+    )
+    assert merged["member_dataset_manifest_sha256s"] == ["aa", "bb"]
+    assert merged["parser_version"] == "0.1.0"
+    with pytest.raises(ValueError, match="parser_version"):
+        merge_release_format_scoring_indexes(index("0.1.0", "aa", [1]), index("0.2.0", "bb", [2]))
+    # An older index with no recorded parser version cannot be compared, only unioned.
+    assert merge_release_format_scoring_indexes(index(None, "aa", [1]), index("0.2.0", "bb", [2]))
 
 
 # ------------------------------------------------------- bounded format classification
