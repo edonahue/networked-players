@@ -181,3 +181,62 @@ test("the contributors directory is reachable from the primary nav", async ({
     "people behind",
   );
 });
+
+test("the players directory offers only performance role chips", async ({
+  page,
+}) => {
+  await page.goto("/contributors/");
+  await expect(page.locator("[data-contributors-status]")).toHaveText(
+    /^Showing \d+ of \d+ players\.$/,
+    { timeout: 15000 },
+  );
+  const values = await page
+    .locator("[data-contributors-category]")
+    .evaluateAll((els) =>
+      els.map((e) => (e as HTMLElement).dataset.contributorsCategory),
+    );
+  expect(values).toEqual([
+    "vocals",
+    "strings",
+    "percussion_keys",
+    "brass_woodwind",
+    "performance",
+  ]);
+  for (const removed of [
+    "production",
+    "engineering",
+    "arrangement",
+    "composition",
+    "rework",
+    "packaging_business",
+    "audiovisual_production",
+    "unknown",
+  ]) {
+    await expect(
+      page.locator(`[data-contributors-category="${removed}"]`),
+    ).toHaveCount(0);
+  }
+  await expect(page.getByRole("button", { name: "Production" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Engineering" })).toHaveCount(
+    0,
+  );
+});
+
+test("an old ?category=production link degrades to the unfiltered directory", async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.goto("/contributors/?category=production");
+  await expect(page.locator("[data-contributors-status]")).toHaveText(
+    /^Showing \d+ of \d+ players\.$/,
+    { timeout: 15000 },
+  );
+  await expect(page.locator("[data-contributors-heading]")).toHaveText(
+    "Most connected",
+  );
+  await expect(
+    page.locator("[data-contributors-results] .contributor-card").first(),
+  ).toBeVisible();
+  expect(errors).toEqual([]);
+});
