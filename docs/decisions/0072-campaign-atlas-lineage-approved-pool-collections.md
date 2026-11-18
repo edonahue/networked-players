@@ -205,3 +205,38 @@ refused; a synthetic end-to-end round run twice must produce identical content v
   ADR 0069's eligibility.
 - After the first round has run through the runner end to end, revisit a stage cache with the
   measured cost of the stages it would skip.
+
+## Addendum (2026-11-18): the album-projection gate (§6) passes
+
+The study module (`networked-players-research`, album projection; PR #269) was run on the
+217-album catalog at its defaults (at least two shared performers, same-artist pairs excluded,
+Leiden resolution 2, ten seeds, twenty null samples). The measured criteria all pass:
+
+| Criterion | Threshold | Measured |
+| --- | --- | --- |
+| Largest cluster share | ≤ 25 % | 6.9 % |
+| Coverage (albums in clusters of ≥ 4 records and ≥ 3 artists) | ≥ 40 % | 50.2 % |
+| Modularity above a degree-preserving null | clearly above (z ≥ 3) | z = 4.2 |
+| Modularity above a bipartite (performer-preserving) null | clearly above (z ≥ 3) | z = 3.6 |
+| Owner legibility review | ≥ 7 of 10 clusters | **approved by the owner, 2026-11-18** |
+
+Twelve clusters qualify. Readable examples include London sessions around the former Beatles,
+the Los Angeles singer-songwriter section, Steely Dan and Toto's Los Angeles studio players,
+San Francisco and Crosby, Stills, Nash & Young, Quincy Jones's productions, the Heartbreakers'
+orbit and 1960s New York jazz.
+
+Consequences:
+
+- Clusters are now **candidate** Collections. Each still needs its own title, introduction,
+  journey and owner approval through `promote-collection` (ADR 0074). Passing the gate approves
+  no Collection and publishes nothing.
+- Not every cluster is a scene. Two of the twelve are held together by orchestral string
+  sections rather than a shared band or studio; they stay candidates only if a human finds a
+  musical story in them.
+- The result is stable only at the default threshold. At three or more shared performers,
+  coverage falls to 24 %, below the gate, so the threshold is part of the result and is
+  recorded with it.
+- The study is re-run after each expansion round. A round that drops coverage below the gate
+  returns Collections to seed-driven selection until the gate passes again.
+- ADR 0070's denials (Leiden on the performer graph, tiles) and ADR 0063's (betweenness) still
+  stand. This addendum concerns only the album projection.
