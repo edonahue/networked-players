@@ -287,11 +287,10 @@ test("findPath's edgeFilter restricts traversal to qualifying edges", () => {
 
 // Drift guard added with Phase 7's preflight, which introduced a new role
 // category (`audiovisual_production`) on the Python side. `ROLE_CATEGORY_LABEL`
-// is what builds the contributor directory's filter chips
-// (`contributorsDirectory.ts::ROLE_CATEGORY_CHIPS`), so a category the Python
-// taxonomy emits but this map doesn't name silently loses its chip -- the
-// contributor still renders (line 204 falls back to the raw value), but nobody
-// can filter for them. These goldens mirror
+// names every category for contributor pages and the Explorer (the Players
+// directory's chips are a performance-only subset,
+// `contributorsDirectory.ts::ROLE_CATEGORY_CHIPS`), so a category the Python
+// taxonomy emits but this map doesn't name falls back to the raw value. These goldens mirror
 // `networked_players_contracts.contributor_index._VALID_ROLE_CATEGORIES`
 // exactly; update both together or this fails.
 test.describe("ROLE_CATEGORY_LABEL parity", () => {
