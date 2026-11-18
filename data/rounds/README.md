@@ -4,10 +4,11 @@ Committed, public declarations of what an expansion round is seeded from
 (contract: [`data/contracts/round-seed-spec-v1.md`](../contracts/round-seed-spec-v1.md)).
 Naming a theme approves no album ([ADR 0072](../../docs/decisions/0072-campaign-atlas-lineage-approved-pool-collections.md) section 7).
 
-## TODO (owner/operator): the real Round 2 spec
+## Round 2 spec (DRAFT, awaiting owner review)
 
-`round-2-seed-spec-v1.json` is deliberately **not** in the repository yet. Its seed ids must be
-real, verified Discogs ids and none have been verified here. To create it, copy
+`round-2-seed-spec-v1.json` is a draft: its ids were verified against the local 20260601 parsed
+masters corpus, but the owner has not yet reviewed the seed choices. It approves no album. For a
+future round, copy
 `data/fixtures/round-seed-spec/synthetic-round-seed-spec-v1.json` and fill in:
 
 - `round`: 2; `target_count`: 60 (217 to about 277 albums); `lane_shares_percent`:
