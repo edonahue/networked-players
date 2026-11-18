@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "round": 2,
+  "target_count": 60,
+  "lane_shares_percent": { "theme": 60, "graph_value": 25, "coverage_repair": 15 },
+  "note": "Round 2 seed spec, DRAFT for owner review. Themes chosen by the owner on 2026-11-15; naming a theme or seed approves no album (ADR 0072 section 7). Every id was verified against the 20260601 parsed masters corpus (master_artists + masters); PAN artist ids only, with Discogs numeric disambiguators resolved by id. Jamiroquai (already published) is deliberately not a seed: the acid-jazz theme seeds from collaborators and peers.",
+  "themes": [
+    {
+      "name": "acid jazz / Jamiroquai orbit",
+      "seed_artist_ids": [1396, 763, 1561, 28348, 10373, 27594, 298810, 8292, 7449, 10447],
+      "seed_master_ids": [],
+      "styles": ["Acid Jazz"],
+      "genres": [],
+      "year_min": 1987,
+      "year_max": 2012,
+      "min_shared_performers": 2,
+      "candidate_cap": 100
+    },
+    {
+      "name": "desert rock / Palm Desert scene",
+      "seed_artist_ids": [105732, 56168, 64758, 252691, 1169798, 1205278, 289473, 276280, 255786, 238763],
+      "seed_master_ids": [],
+      "styles": ["Stoner Rock"],
+      "genres": [],
+      "year_min": 1988,
+      "year_max": 2025,
+      "min_shared_performers": 2,
+      "candidate_cap": 100
+    },
+    {
+      "name": "jazz fusion",
+      "seed_artist_ids": [10082, 41893, 70826, 35199, 298013, 30007, 257120, 10616, 87519],
+      "seed_master_ids": [47845, 47740, 47891, 47917, 47877, 8408, 8260, 8364, 51303, 62373],
+      "styles": ["Fusion", "Jazz-Rock"],
+      "genres": [],
+      "year_min": 1968,
+      "year_max": 1990,
+      "min_shared_performers": 2,
+      "candidate_cap": 150
+    }
+  ]
+}
