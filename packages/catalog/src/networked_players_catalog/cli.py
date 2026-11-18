@@ -239,6 +239,29 @@ def _parser() -> argparse.ArgumentParser:
         help="suppress the coarse per-pass progress lines this otherwise prints to stderr",
     )
 
+    scoring_corpus = subparsers.add_parser(
+        "build-scoring-corpus",
+        help=(
+            "write a bounded scoring corpus: the one-hop corpus plus every row of the "
+            "candidate masters' releases, extracted from the FULL corpus (Round 2, R2-2)"
+        ),
+    )
+    scoring_corpus.add_argument("--onehop-root", type=Path, required=True)
+    scoring_corpus.add_argument(
+        "--full-root", type=Path, required=True, help="FULL parsed snapshot root"
+    )
+    scoring_corpus.add_argument("--masters-root", type=Path, required=True)
+    scoring_corpus.add_argument(
+        "--candidates", type=Path, required=True, help="theme-candidates.json (rows with master_id)"
+    )
+    scoring_corpus.add_argument(
+        "--output-root", type=Path, required=True, help="must be under local/ (git-ignored)"
+    )
+    scoring_corpus.add_argument("--memory-limit", default="2GB")
+    scoring_corpus.add_argument("--threads", type=int, default=2)
+    scoring_corpus.add_argument("--overwrite", action="store_true")
+    scoring_corpus.add_argument("--quiet", action="store_true")
+
     resolve_editorial = subparsers.add_parser(
         "resolve-editorial-albums",
         help=(
@@ -2774,6 +2797,28 @@ def main(argv: Sequence[str] | None = None) -> int:
             quiet=args.quiet,
         )
         print(json.dumps(onehop_manifest, indent=2, sort_keys=True))
+        return 0
+
+    if args.command == "build-scoring-corpus":
+        from .discogs.scoring_corpus import build_scoring_corpus
+
+        _require_local_only_output(
+            args.output_root,
+            command="build-scoring-corpus",
+            why="the corpus embeds full-corpus rows for private candidate pools",
+        )
+        scoring_manifest = build_scoring_corpus(
+            args.onehop_root,
+            args.full_root,
+            args.masters_root,
+            args.candidates,
+            args.output_root,
+            memory_limit=args.memory_limit,
+            threads=args.threads,
+            overwrite=args.overwrite,
+            quiet=args.quiet,
+        )
+        print(json.dumps(scoring_manifest, indent=2, sort_keys=True))
         return 0
 
     if args.command == "resolve-editorial-albums":
