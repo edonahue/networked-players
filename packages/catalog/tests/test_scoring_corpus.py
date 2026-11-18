@@ -404,3 +404,47 @@ def test_scorer_output_is_identical_with_and_without_credit_edges(tmp_path: Path
                 )
             )
     assert outputs[0] == outputs[1]
+
+
+def test_refuses_onehop_with_wrong_schema_version(tmp_path: Path) -> None:
+    f = _fixtures(tmp_path)
+    manifest_path = f["onehop"] / "manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    manifest["schema_version"] = SCHEMA_VERSION + 1
+    manifest_path.write_text(json.dumps(manifest))
+    with pytest.raises(ScoringCorpusError, match="one-hop corpus schema_version"):
+        _build(tmp_path, f, tmp_path / "local" / "out")
+
+
+def test_refuses_onehop_derived_from_a_different_full_corpus(tmp_path: Path) -> None:
+    f = _fixtures(tmp_path)
+    manifest_path = f["onehop"] / "manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    manifest["expansion"] = {"source_manifest_sha256": "0" * 64}
+    manifest_path.write_text(json.dumps(manifest))
+    with pytest.raises(ScoringCorpusError, match="source_manifest_sha256"):
+        _build(tmp_path, f, tmp_path / "local" / "out")
+
+
+def test_accepts_onehop_recording_the_matching_source_sha(tmp_path: Path) -> None:
+    import hashlib
+
+    f = _fixtures(tmp_path)
+    manifest_path = f["onehop"] / "manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    digest = hashlib.sha256((f["full"] / "manifest.json").read_bytes()).hexdigest()
+    manifest["expansion"] = {"source_manifest_sha256": digest}
+    manifest_path.write_text(json.dumps(manifest))
+    assert _build(tmp_path, f, tmp_path / "local" / "out") == 0
+
+
+def test_self_check_catches_track_and_format_count_drift(tmp_path: Path) -> None:
+    """A one-hop corpus missing a track/format row of a release it already
+    holds is detected against the full corpus (credits were already checked)."""
+    f = _fixtures(tmp_path)
+    for table in ("tracks", "release_formats"):
+        path = f["onehop"] / f"table={table}" / "part-00000.parquet"
+        table_rows = pq.read_table(path)
+        pq.write_table(table_rows.slice(1), path)  # drop one row
+    with pytest.raises(ScoringCorpusError, match="count_mismatch_vs_full"):
+        _build(tmp_path, f, tmp_path / "local" / "out")

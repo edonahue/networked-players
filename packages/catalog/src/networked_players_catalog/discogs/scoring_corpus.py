@@ -131,10 +131,17 @@ def build_scoring_corpus(
                 f"{label} snapshot_date {manifest.get('snapshot_date')!r} does not match "
                 f"full corpus snapshot_date {snapshot_date!r} -- mismatched snapshots refused"
             )
-    if full_manifest.get("schema_version") != SCHEMA_VERSION:
+    for label, manifest in (("full corpus", full_manifest), ("one-hop corpus", onehop_manifest)):
+        if manifest.get("schema_version") != SCHEMA_VERSION:
+            raise ScoringCorpusError(
+                f"{label} schema_version={manifest.get('schema_version')!r}; "
+                f"this build writes {SCHEMA_VERSION}"
+            )
+    recorded_source = (onehop_manifest.get("expansion") or {}).get("source_manifest_sha256")  # type: ignore[attr-defined]
+    if recorded_source is not None and recorded_source != _sha256(full_root / "manifest.json"):
         raise ScoringCorpusError(
-            f"full corpus schema_version={full_manifest.get('schema_version')!r}; "
-            f"this build writes {SCHEMA_VERSION}"
+            "one-hop manifest's source_manifest_sha256 does not match the full corpus manifest "
+            "-- the one-hop corpus was not derived from this full corpus"
         )
 
     candidates = json.loads(candidates_path.read_text())
@@ -232,7 +239,6 @@ def build_scoring_corpus(
         # the full corpus is now present exactly once, with the full corpus's
         # own credit row count.
         staged_releases = str(staging_root / "table=releases" / "*.parquet")
-        staged_credits = str(staging_root / "table=credits" / "*.parquet")
         missing = _scalar(
             connection,
             "SELECT count(*) FROM candidate_releases c WHERE c.release_id IN "
@@ -244,29 +250,34 @@ def build_scoring_corpus(
             f"SELECT count(*) FROM (SELECT release_id FROM {_rp(staged_releases)} "
             "GROUP BY release_id HAVING count(*) > 1)",
         )
-        credit_mismatch = _scalar(
-            connection,
-            f"""
-            SELECT count(*) FROM (
-              SELECT release_id, count(*) n FROM {_rp(full_glob["credits"])}
-              WHERE release_id IN (SELECT release_id FROM candidate_releases)
-              GROUP BY release_id
-            ) f FULL JOIN (
-              SELECT release_id, count(*) n FROM {_rp(staged_credits)}
-              WHERE release_id IN (SELECT release_id FROM candidate_releases)
-              GROUP BY release_id
-            ) s USING (release_id)
-            WHERE f.n IS DISTINCT FROM s.n
-            """,
-        )
-        if missing or duplicated or credit_mismatch:
+        mismatches: dict[str, int] = {}
+        for table in ("credits", "tracks", "release_formats"):
+            if table not in tables:
+                continue
+            staged = str(staging_root / f"table={table}" / "*.parquet")
+            mismatches[f"{table}_count_mismatch_vs_full"] = _scalar(
+                connection,
+                f"""
+                SELECT count(*) FROM (
+                  SELECT release_id, count(*) n FROM {_rp(full_glob[table])}
+                  WHERE release_id IN (SELECT release_id FROM candidate_releases)
+                  GROUP BY release_id
+                ) f FULL JOIN (
+                  SELECT release_id, count(*) n FROM {_rp(staged)}
+                  WHERE release_id IN (SELECT release_id FROM candidate_releases)
+                  GROUP BY release_id
+                ) s USING (release_id)
+                WHERE f.n IS DISTINCT FROM s.n
+                """,
+            )
+        if missing or duplicated or any(mismatches.values()):
             raise ScoringCorpusError(
                 "scoring-corpus self-check failed: "
                 + json.dumps(
                     {
                         "candidate_releases_missing": missing,
                         "duplicated_release_ids": duplicated,
-                        "credit_count_mismatch_vs_full": credit_mismatch,
+                        **mismatches,
                     },
                     sort_keys=True,
                 )
