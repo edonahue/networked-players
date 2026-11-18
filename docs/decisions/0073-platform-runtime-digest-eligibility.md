@@ -1,6 +1,6 @@
 # ADR 0073: Worker eligibility by runtime digest, not exact commit
 
-- **Status:** Proposed
+- **Status:** Accepted (2026-11-18, after the real fleet rollout below)
 - **Date:** 2026-11-16
 - **Depends on:** [ADR 0034](0034-capability-routed-home-compute-platform.md) (the exact-commit rule this refines), [ADR 0056](0056-unify-pi-fleet-checks-onto-capability-platform.md), [ADR 0018](0018-benchmark-results-local-only.md)
 - **Campaign:** Atlas work package I1 (platform reliability)
@@ -256,3 +256,24 @@ addendum rather than a new ADR. **Nothing here is deployed or run against the re
   closed with "not installed locally". Real-fleet behaviour (queue timing, a genuine lost
   Pi, 1 GB memory under shard load) is unmeasured. Scoring needs the one-hop dataset, so it
   is x86-worker work; the Pi-sized path is the shard fan-out for bounded checks (I3).
+
+## Addendum (2026-11-18): real rollout
+
+Run on the real fleet (three Pi 3B workers and `zimaworker1`) following
+`docs/OPERATOR_SETUP.md`'s checklist:
+
+1. `make platform-build`: `release.json` records `runtime_digests` for every registered
+   workload, `uv_lock_sha256` and `contracts_digest`; `verify-wheels` matched the checkout.
+2. `make platform-deploy` to every worker group: no failures.
+3. `make platform-status`: all four workers advertise schema 2 with a live RQ worker record;
+   every workload digest and the contracts digest show `match`.
+4. `make catalog-check-distributed`: passed on all three Pis; each report carries
+   `contracts_version`, `contracts_digest`, `runtime_commit`, `runtime_digest` and
+   `worker_id`.
+5. A docs-only commit was then merged to `main` (#300). `platform-status` from the new
+   checkout still showed `match` for every workload on every worker, with the workers still
+   running the earlier deploy. This is the property the ADR exists for: documentation commits
+   no longer take the fleet out of service.
+
+The sharded scoring workload (#289) is still not registered; it is rolled out when Round 2
+needs it.

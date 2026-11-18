@@ -78,7 +78,7 @@ No catalog growth, no real collection published, no public data regenerated.
 | P4 | Games link onward; player page leads with performance; copy pass | P1 | todo |
 | P5 | Self-hosted body and mono faces, motif consistency, structured data, text-only share images, retire `/demo/` | P3 | P5a done (#283): fonts, JSON-LD, canonical, sitemap, demo retired; motif consistency (P5b: liner-note paper panel + groove rules on record/player/Explore/directories/collections, 45 inline styles replaced by utility classes and guarded by tests/no-inline-styles.spec.ts) done; text-only share images done (P5c: build-time satori + resvg PNG per record, reused for `/explore/<id>/`; player pages keep the site-wide image, since 639 more cards would add ~30 MB to dist) |
 | P6 | "How it's built" page from published-artifact facts | F1 | todo |
-| I1 | Runtime digest in place of exact-commit matching; skew report; honoured retries; `jobs` commands | I0 | todo |
+| I1 | Runtime digest in place of exact-commit matching; skew report; honoured retries; `jobs` commands | I0 | Done and rolled out to the real fleet 2026-11-18 (ADR 0073 Accepted) |
 | I2 | Multi-worker shard dispatch; sharded supply and scoring | I1 | Done in code (#289): select_workers, shard plan/gather, sharded scoring byte-identical to single-node; worker workload not registered and nothing deployed |
 | I3 | ADR plus platform migration and extension of the sharded hop re-check | I2 | todo |
 | I4 | Parse resume and atomic part writes | — | todo |
