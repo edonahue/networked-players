@@ -8,6 +8,8 @@ for the detail. Update the Status column in the same pull request that ships a w
 **Reading rule:** anything not marked `done` below does not exist yet. Do not describe it as
 shipped anywhere else.
 
+> Round 2 execution plan: [docs/ROUND_2_PLAN.md](ROUND_2_PLAN.md).
+
 ## Aim
 
 Collection-seeded catalog growth on a lineage-checked pipeline, presented record-first:
