@@ -22,3 +22,8 @@
 # unchanged file a cheap 304.
 /data/*
   Cache-Control: public, max-age=0, must-revalidate
+
+# Share images are regenerated from the catalog on every build and are not
+# content-addressed, so revalidate (cheap 304 via ETag) rather than cache hard.
+/og/*
+  Cache-Control: public, max-age=0, must-revalidate
