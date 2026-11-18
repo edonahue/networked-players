@@ -13,7 +13,10 @@ detail; this file is the quick orientation for agents working here.
   the private seed itself never leave `data/private/` on the coordination host. The old
   API-sourced `/demo/` and `challenge.v1.json` were retired (Campaign Atlas P5).
 - **Fonts** (Inter, IBM Plex Mono) are self-hosted latin woff2 under `public/fonts/` with OFL
-  texts; Georgia stays the system display face. No font npm dependency.
+  texts; Georgia stays the system display face. No font npm dependency. Share-image fonts
+  (satori needs ttf/otf/woff, not woff2) live under `src/og/fonts/` and are never shipped.
+- **Share images**: `/og/albums/<id>.png` are generated at build time (satori + resvg) from
+  text and vector shapes only; never add album art or any remote fetch to the generator.
 - **Static-first:** no live API may become required.
 - Preserve evidence-first framing: connections are documented musical performances (ADR 0068,
   performer-only public graph); credits are the evidence. Never inferred influence, and never a

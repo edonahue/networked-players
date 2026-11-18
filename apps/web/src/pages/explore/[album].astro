@@ -1,4 +1,5 @@
 ---
+import { albumOgPath, albumOgAlt } from '../../og/cards';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import NetworkExplorer from '../../components/NetworkExplorer.astro';
 import type { AlbumV2, ChallengeV2 } from '../../data/challenge';
@@ -45,7 +46,12 @@ const recordView = buildRecordView(
 const description = `Explore the players documented on ${album.title} and who they played with.`;
 ---
 
-<BaseLayout title={`Explore: ${album.title}`} description={description}>
+<BaseLayout
+  title={`Explore: ${album.title}`}
+  description={description}
+  ogImage={albumOgPath(album.id)}
+  ogImageAlt={albumOgAlt(album)}
+>
   <section class="prose shell u-pb-0 groove-head">
     <p class="eyebrow">Explore</p>
     <h1 class="h1-intro">{album.title}</h1>
