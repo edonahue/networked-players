@@ -89,5 +89,5 @@ amendments and addenda. Regenerate this table when adding a record.
 | [0070](0070-community-detection-and-explore-scaling-measurement.md) | Community detection is measured and denied; Explore scaling gets a real recenter budget | Accepted (superseded in part) | 2026-09-03 |
 | [0071](0071-pathfinding-graph-v4-role-dictionary.md) | Pathfinding graph v4 — role-text dictionary encoding | Accepted and fully rolled out | — |
 | [0072](0072-campaign-atlas-lineage-approved-pool-collections.md) | Campaign "Atlas" — lineage by content version, a checked approval boundary, and Collections over the catalog | Accepted (direction; contracts to build) | 2026-11-15 |
-| [0073](0073-platform-runtime-digest-eligibility.md) | Worker eligibility by runtime digest, not exact commit (platform reliability) | Proposed | 2026-11-16 |
+| [0073](0073-platform-runtime-digest-eligibility.md) | Worker eligibility by runtime digest, not exact commit (platform reliability) | Accepted | 2026-11-16 |
 | [0074](0074-collections-contracts.md) | Collections — `collection-v1`, `playable-cohort-v2` and the approval flow | Accepted (contract decision; publishes nothing) | 2026-11-17 |
