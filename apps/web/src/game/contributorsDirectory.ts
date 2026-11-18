@@ -81,10 +81,23 @@ export function searchContributors(
   return matches;
 }
 
+/** Connections are musical performances only (ADR 0068): producers,
+ * engineers, arrangers and other non-performance credits appear as evidence
+ * but never make connections, so the Players directory only offers
+ * performance categories as filters. `ROLE_CATEGORY_LABEL` still names every
+ * category for contributor pages and the Explorer. */
+export const PERFORMANCE_CATEGORIES = [
+  "vocals",
+  "strings",
+  "percussion_keys",
+  "brass_woodwind",
+  "performance",
+] as const;
+
 export const ROLE_CATEGORY_CHIPS: { value: string; label: string }[] =
-  Object.entries(ROLE_CATEGORY_LABEL).map(([value, label]) => ({
+  PERFORMANCE_CATEGORIES.map((value) => ({
     value,
-    label,
+    label: ROLE_CATEGORY_LABEL[value] ?? value,
   }));
 
 const CONTRIBUTOR_INDEX_URL = "/data/contributors/index.v1.json";

@@ -57,7 +57,7 @@ No catalog growth, no real collection published, no public data regenerated.
 | P3 | Navigation in four groups plus search, homepage led by Explore, mobile menu | — | at 390 px the header is one row; the primary action lands in Explore | done (#266 navigation, #268 homepage) |
 | I0 | Read-only verification of every node's model, memory and disk; correct topology docs | — | public docs consistent with verified facts; instance-specific numbers stay local | in progress — partial: health check ran; the x86 worker failed its disk floor before reporting hardware facts, so its model is still unverified |
 | RP | Local review-packet generator shared by rounds and collections | F2 | opens offline; exports only public fields | done (#273) |
-| S1 | Album-projection study (ADR 0072 §6 gate) and a private candidate packet for a first collection | RP | gate result recorded as an ADR 0072 addendum | in progress — study module merged (#269); numeric gate criteria hold at default parameters; owner legibility review pending; candidate packet waits on RP |
+| S1 | Album-projection study (ADR 0072 §6 gate) and a private candidate packet for a first collection | RP | gate result recorded as an ADR 0072 addendum | Done: gate passed, owner approved legibility 2026-11-18 (ADR 0072 addendum); clusters are candidate Collections only |
 
 ### Tranche 2 and later
 
@@ -70,11 +70,11 @@ No catalog growth, no real collection published, no public data regenerated.
 | G1a | One evidence-release selection policy for graph, challenge and routes (ships only with a rebuild) | F3 | todo |
 | G1b | Align the challenge edge rule with the graph's | F3 | Done (#288). Challenge path search now restricted to seed-touching edges via one shared scope predicate; carry-forward re-searched and counted; opt-in `check-challenge-hops-in-graph` (runner enables it for new rounds). Becomes mandatory, and the committed challenge.v3's 119 out-of-scope hops go away, only with the Round 2 rebuild (see docs/EXPANSION_PIPELINE.md) |
 | G1c | ADR plus graph-derived contributor index; owner reviews the page-set diff | F3 | todo |
-| G2 | Record-centred Explore prototype and decision | P1 | Prototype live (#290):  at `?mode=record`; owner preference decision pending |
+| G2 | Record-centred Explore prototype and decision | P1 | Decided 2026-11-18: the artist view stays the default; the record-centred prototype stays unlinked at `?mode=record` for later comparison (#290). |
 | G3 | Album-level atlas prototype and decision | S1 | todo |
 | G4 | Graph format change, only if a size or load-time trigger fires | F1 | todo |
 | P4 | Games link onward; player page leads with performance; copy pass | P1 | todo |
-| P5 | Self-hosted body and mono faces, motif consistency, structured data, text-only share images, retire `/demo/` | P3 | P5a done (#283): fonts, JSON-LD, canonical, sitemap, demo retired; motif consistency (P5b: liner-note paper panel + groove rules on record/player/Explore/directories/collections, 45 inline styles replaced by utility classes and guarded by tests/no-inline-styles.spec.ts) done; text-only share images remain |
+| P5 | Self-hosted body and mono faces, motif consistency, structured data, text-only share images, retire `/demo/` | P3 | P5a done (#283): fonts, JSON-LD, canonical, sitemap, demo retired; motif consistency (P5b: liner-note paper panel + groove rules on record/player/Explore/directories/collections, 45 inline styles replaced by utility classes and guarded by tests/no-inline-styles.spec.ts) done; text-only share images done (P5c: build-time satori + resvg PNG per record, reused for `/explore/<id>/`; player pages keep the site-wide image, since 639 more cards would add ~30 MB to dist) |
 | P6 | "How it's built" page from published-artifact facts | F1 | todo |
 | I1 | Runtime digest in place of exact-commit matching; skew report; honoured retries; `jobs` commands | I0 | todo |
 | I2 | Multi-worker shard dispatch; sharded supply and scoring | I1 | Done in code (#289): select_workers, shard plan/gather, sharded scoring byte-identical to single-node; worker workload not registered and nothing deployed |
