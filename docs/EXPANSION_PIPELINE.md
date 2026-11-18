@@ -141,10 +141,19 @@ These steps produce *proposals*. Nothing here authorises publication: the approv
    the real Round 2 file is an owner/operator TODO, see `data/rounds/README.md`), validate it
    (`validate-round-seed-spec --spec ...`), then run the runner's `theme-supply` stage
    (`round run --spec ... --only-stage theme-supply`) or the underlying
-   `build-theme-candidates` directly. Output: `<work_dir>/theme-candidates.json`, private and
+   `build-theme-candidates` directly. **Release-format coverage:** the usual
+   `--release-format-policy` scoring index was built over the one-hop corpus only, so masters
+   outside it (desert rock, much fusion) have no releases in it and would wrongly report
+   `no_format_allowed_release_under_master`. Pass `--classify-pool-releases`: after the capped
+   pool is chosen, ONLY the releases under the pool's masters are classified from the full
+   `--dataset` (bounded; the same `classify_formats` rules, never the whole corpus) and the
+   result is explicitly unioned with `--release-format-policy` (refused if policy version or
+   snapshot differ). The same bounded mode is available standalone:
+   `classify-release-formats --master-ids <json list> [--release-ids <json list>]`, then
+   `build-release-format-scoring-index`. Output: `<work_dir>/theme-candidates.json`, private and
    git-ignored (the command refuses a committable path). Each row is `rank-album-candidates`
    shaped plus `eligibility` (via `master_eligibility`) and `themes` (which theme, by which
-   route: seed master, seed-artist master, or shared performers). Each theme's summary also lists `dropped_seed_masters` (explicit seed masters that did not reach the pool, with a reason) so a seed is never silently lost. Check each theme's
+   route: seed master, seed-artist master, or shared performers). Each theme's summary also lists `ineligibility_reasons` and `dropped_seed_masters` (explicit seed masters that did not reach the pool, with a reason) so a seed is never silently lost. Check each theme's
    `eligible_count` against its lane quota before going on. Then score with
    `score-expansion-candidates --candidates <that file> --onehop-root <FULL corpus>`: the
    scorer reads credits from `--onehop-root`, and the theme albums only exist in the full

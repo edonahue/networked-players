@@ -327,6 +327,143 @@ def test_validate_round_seed_spec_command(
     assert main(["validate-round-seed-spec", "--spec", str(path)]) == 1
 
 
+# ------------------------------------------------------- bounded format classification
+
+
+def _fmt(rid: int, *descriptions: str) -> dict[str, Any]:
+    return {
+        "snapshot_date": SNAPSHOT,
+        "release_id": rid,
+        "format_index": 0,
+        "format_name": "Vinyl",
+        "quantity": 1,
+        "format_text": None,
+        "descriptions": list(descriptions),
+    }
+
+
+@pytest.fixture
+def format_world(world: dict[str, Path], tmp_path: Path) -> dict[str, Path]:
+    """The one-hop index only knows releases 1 and 20; the structured formats of the
+    full corpus say 2 and 21 are studio albums and 7 a compilation."""
+    rows = [
+        _fmt(1, "Album"),
+        _fmt(2, "Album"),
+        _fmt(7, "Compilation"),
+        _fmt(20, "Album"),
+        _fmt(21, "Album"),
+    ]
+    pq.write_table(
+        pa.Table.from_pylist(rows, schema=SCHEMAS["release_formats"]),
+        world["full"] / "table=release_formats" / "part-00000.parquet",
+    )
+    onehop = tmp_path / "onehop-index.json"
+    onehop.write_text(
+        json.dumps(
+            {
+                "kind": "release-format-scoring-index",
+                "policy_name": "studio-album-v1",
+                "policy_version": 1,
+                "schema_version": 1,
+                "snapshot_date": SNAPSHOT,
+                "allowed_release_ids": [1, 20],
+                "allowed_release_count": 2,
+                "source_policy_sha256": "deadbeef",
+            }
+        )
+    )
+    return {**world, "policy": onehop}
+
+
+def test_without_bounded_classification_masters_outside_onehop_index_are_ineligible(
+    format_world: dict[str, Path],
+) -> None:
+    assert main(_supply_argv(format_world)) == 0
+    rows = _rows(format_world["out"])
+    assert rows[9101]["eligibility"] == "no_format_allowed_release_under_master"
+    assert rows[9100]["eligibility"] == "eligible"
+
+
+def test_bounded_classification_makes_allowed_masters_eligible_and_keeps_disallowed_out(
+    format_world: dict[str, Path], capsys: pytest.CaptureFixture[str]
+) -> None:
+    assert main([*_supply_argv(format_world), "--classify-pool-releases"]) == 0
+    summary = json.loads(capsys.readouterr().out)
+    rows = _rows(format_world["out"])
+    for master_id in (9100, 9101, 9500, 9501):  # 9101/9501 only via the bounded index
+        assert rows[master_id]["eligibility"] == "eligible", master_id
+    assert rows[9106]["eligibility"] == "no_format_allowed_release_under_master"
+    by_theme = {t["theme"]: t for t in summary["themes"]}
+    desert = by_theme["synthetic desert theme"]
+    assert desert["eligible_count"] == 2
+    assert desert["ineligibility_reasons"] == {"no_format_allowed_release_under_master": 1}
+
+
+def test_bounded_classification_refuses_a_union_across_snapshots(
+    format_world: dict[str, Path],
+) -> None:
+    index = json.loads(format_world["policy"].read_text())
+    index["snapshot_date"] = "19990101"
+    format_world["policy"].write_text(json.dumps(index))
+    assert main([*_supply_argv(format_world), "--classify-pool-releases"]) == 1
+
+
+def test_bounded_classification_equals_full_classifier_on_the_subset(
+    format_world: dict[str, Path], tmp_path: Path
+) -> None:
+    from networked_players_catalog.discogs.release_format_policy import (
+        build_release_format_policy,
+        build_release_format_scoring_index,
+        merge_release_format_scoring_indexes,
+    )
+
+    def verdicts(policy: dict[str, Any]) -> dict[int, tuple[Any, ...]]:
+        return {
+            c["release_id"]: (c["decision"], c["shape"], tuple(c["signals"]))
+            for c in policy["classifications"]
+        }
+
+    full = build_release_format_policy(format_world["full"])
+    assert len(full["classifications"]) == len(WORLD)  # includes releases with no format rows
+    by_release = verdicts(full)
+
+    bounded = build_release_format_policy(format_world["full"], release_ids=[2, 7, 12345])
+    assert verdicts(bounded) == {r: by_release[r] for r in (2, 7)}
+
+    by_master = build_release_format_policy(format_world["full"], master_ids=[9101, 9106, 9500])
+    assert verdicts(by_master) == {r: by_release[r] for r in (2, 7, 20)}
+
+    union = build_release_format_policy(format_world["full"], release_ids=[1], master_ids=[9101])
+    assert set(verdicts(union)) == {1, 2}
+
+    assert (
+        build_release_format_policy(format_world["full"], release_ids=[])["classifications"] == []
+    )
+
+    # The bounded index merged with the one-hop one is an explicit, sorted union.
+    onehop = json.loads(format_world["policy"].read_text())
+    merged = merge_release_format_scoring_indexes(
+        onehop, build_release_format_scoring_index(bounded)
+    )
+    assert merged["allowed_release_ids"] == [1, 2, 20]
+    assert merged["allowed_release_count"] == 3
+
+
+def test_classify_release_formats_cli_bounded_mode(
+    format_world: dict[str, Path], tmp_path: Path
+) -> None:
+    masters = tmp_path / "masters.json"
+    masters.write_text(json.dumps([9101, 9106]))
+    out = tmp_path / "bounded-policy.json"
+    argv = ["classify-release-formats", "--dataset", str(format_world["full"])]
+    assert main([*argv, "--master-ids", str(masters), "--output", str(out)]) == 0
+    policy = json.loads(out.read_text())
+    assert {c["release_id"]: c["decision"] for c in policy["classifications"]} == {
+        2: "allow",
+        7: "exclude",
+    }
+
+
 # ------------------------------------------------------------------ re-widen seed
 
 

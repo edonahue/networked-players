@@ -166,6 +166,23 @@ def _parser() -> argparse.ArgumentParser:
     format_policy.add_argument("--dataset", type=Path, required=True)
     format_policy.add_argument("--output", type=Path, required=True)
     format_policy.add_argument("--policy", default="studio-album-v1")
+    format_policy.add_argument(
+        "--master-ids",
+        type=Path,
+        default=None,
+        help=(
+            "bounded mode: JSON list of master ids; classify only the releases under them "
+            "(same rules as the full run). Combine with --release-ids for a union"
+        ),
+    )
+    format_policy.add_argument(
+        "--release-ids",
+        type=Path,
+        default=None,
+        help="bounded mode: JSON list of release ids; classify only those releases",
+    )
+    format_policy.add_argument("--memory-limit", default=None)
+    format_policy.add_argument("--threads", type=int, default=None)
 
     format_shadow = subparsers.add_parser(
         "compare-release-format-policy",
@@ -2700,7 +2717,18 @@ def main(argv: Sequence[str] | None = None) -> int:
             write_release_format_policy,
         )
 
-        policy = build_release_format_policy(args.dataset, policy_name=args.policy)
+        policy = build_release_format_policy(
+            args.dataset,
+            policy_name=args.policy,
+            release_ids=(
+                None if args.release_ids is None else json.loads(args.release_ids.read_text())
+            ),
+            master_ids=(
+                None if args.master_ids is None else json.loads(args.master_ids.read_text())
+            ),
+            memory_limit=args.memory_limit,
+            threads=args.threads,
+        )
         write_release_format_policy(policy, args.output)
         counts: dict[str, int] = {}
         for item in policy["classifications"]:

@@ -53,7 +53,8 @@ from __future__ import annotations
 
 import sys
 import time
-from collections.abc import Mapping, Sequence
+from collections import Counter
+from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
@@ -195,6 +196,7 @@ def derive_theme_candidates(
     spec: Mapping[str, Any],
     *,
     allowed_release_ids: frozenset[int],
+    classify_pool_releases: Callable[[Sequence[int]], frozenset[int]] | None = None,
     master_exclusions: frozenset[int] = frozenset(),
     already_published_master_ids: frozenset[int] = frozenset(),
     memory_limit: str = "3GB",
@@ -208,6 +210,13 @@ def derive_theme_candidates(
     One row per distinct master, sorted by `master_id`; `themes` lists each
     theme that surfaced it. `theme_summaries` reports, per theme, the capped
     pool size and the eligible count, so a theme that under-delivers is visible.
+
+    `allowed_release_ids` is the existing (one-hop) format allow-list, which has no
+    entries for masters outside that corpus. `classify_pool_releases`, when given, is
+    called ONCE with every release id under the capped pool's masters and returns the
+    subset the release-format rules allow (the catalog package supplies a bounded
+    classification of the full corpus; graph-core never imports it). The effective
+    allow-list is the explicit UNION of the two.
     """
     themes = list(spec["themes"])
     start = time.monotonic()
@@ -304,6 +313,16 @@ def derive_theme_candidates(
     releases_by_master: dict[int, list[tuple[int, str | None]]] = {}
     for release_id, master_id, released in release_rows:
         releases_by_master.setdefault(int(master_id), []).append((int(release_id), released))
+    if classify_pool_releases is not None:
+        bounded_allowed = classify_pool_releases(
+            sorted({r for rs in releases_by_master.values() for r, _ in rs})
+        )
+        _progress(
+            quiet,
+            f"bounded classification allowed {len(bounded_allowed)} pool releases "
+            f"(union with {len(allowed_release_ids)} supplied allowed ids)",
+        )
+        allowed_release_ids = allowed_release_ids | frozenset(bounded_allowed)
     verdicts = master_studio_verdicts_batch(
         facts,
         releases_by_master,
@@ -341,6 +360,7 @@ def derive_theme_candidates(
 
     seed_facts = {int(r[0]): r for r in seed_master_facts}
     eligible_by_master = {r["master_id"]: r["eligibility"] == "eligible" for r in rows}
+    eligibility_by_master = {r["master_id"]: r["eligibility"] for r in rows}
     summaries = []
     for i, theme in enumerate(themes):
         names = [
@@ -368,6 +388,15 @@ def derive_theme_candidates(
                 "dropped_seed_masters": dropped,
                 "pool_size": pool_by_theme.get(i, 0),
                 "eligible_count": sum(1 for mid in names if eligible_by_master[mid]),
+                "ineligibility_reasons": dict(
+                    sorted(
+                        Counter(
+                            eligibility_by_master[mid]
+                            for mid in names
+                            if not eligible_by_master[mid]
+                        ).items()
+                    )
+                ),
                 "candidate_cap": int(theme["candidate_cap"]),
             }
         )

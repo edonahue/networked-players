@@ -6,6 +6,7 @@ import hashlib
 import json
 import re
 import uuid
+from collections.abc import Iterable
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -136,22 +137,55 @@ def classify_formats(formats: list[dict[str, Any]], *, title: str | None = None)
 
 
 def build_release_format_policy(
-    dataset_root: Path, *, policy_name: str = POLICY_NAME
+    dataset_root: Path,
+    *,
+    policy_name: str = POLICY_NAME,
+    release_ids: Iterable[int] | None = None,
+    master_ids: Iterable[int] | None = None,
+    memory_limit: str | None = None,
+    threads: int | None = None,
 ) -> dict[str, Any]:
+    """Classify releases of a parsed corpus with the (single) release-format rules.
+
+    Unbounded by default: every release. Bounded mode: pass ``release_ids`` and/or
+    ``master_ids`` (union) to classify ONLY those releases -- the releases listed plus
+    every release under the listed masters. The per-release verdicts are produced by
+    the same ``classify_formats`` function either way (parity-tested), so a bounded
+    policy is exactly the full policy restricted to those releases. An explicitly
+    empty bound classifies nothing (never silently falls back to the whole corpus).
+    """
     if policy_name != POLICY_NAME:
         raise ValueError(f"unsupported release format policy: {policy_name}")
     root = Path(dataset_root)
     manifest = json.loads((root / "manifest.json").read_text())
+    bounded = release_ids is not None or master_ids is not None
     connection = duckdb.connect(database=":memory:")
     try:
+        if memory_limit is not None:
+            connection.execute(f"SET memory_limit = '{memory_limit}'")
+        if threads is not None:
+            connection.execute(f"SET threads = {int(threads)}")
         release_glob = str(root / "table=releases" / "*.parquet")
         formats_glob = str(root / "table=release_formats" / "*.parquet")
+        scope_sql = ""
+        if bounded:
+            connection.execute("CREATE TABLE bound_releases (release_id BIGINT)")
+            connection.execute("CREATE TABLE bound_masters (master_id BIGINT)")
+            for table, ids in (("bound_releases", release_ids), ("bound_masters", master_ids)):
+                values = sorted({int(v) for v in ids or ()})
+                if values:
+                    connection.execute(f"INSERT INTO {table} SELECT unnest(?::BIGINT[])", [values])
+            scope_sql = (
+                "WHERE r.release_id IN (SELECT release_id FROM bound_releases) "
+                "OR r.master_id IN (SELECT master_id FROM bound_masters)"
+            )
         rows = connection.execute(
             f"""
             SELECT r.release_id, r.title, f.format_name, f.descriptions
             FROM read_parquet('{release_glob}', hive_partitioning = false) r
             LEFT JOIN read_parquet('{formats_glob}', hive_partitioning = false) f
               USING (release_id)
+            {scope_sql}
             ORDER BY r.release_id, f.format_index
             """
         ).fetchall()
@@ -226,6 +260,41 @@ def build_release_format_scoring_index(policy: dict[str, Any]) -> dict[str, Any]
         "source_policy_sha256": hashlib.sha256(canonical_policy).hexdigest(),
         "allowed_release_count": len(allowed_release_ids),
         "allowed_release_ids": allowed_release_ids,
+    }
+
+
+def merge_release_format_scoring_indexes(
+    *indexes: dict[str, Any],
+) -> dict[str, Any]:
+    """Explicit UNION of scoring indexes (e.g. the one-hop index plus a bounded index).
+
+    Refuses indexes that disagree on policy name/version or snapshot date, so a union
+    never silently mixes rule sets or corpus snapshots. ``source_policy_sha256`` of the
+    result hashes the sorted member hashes.
+    """
+    if not indexes:
+        raise ValueError("merge_release_format_scoring_indexes needs at least one index")
+    first = indexes[0]
+    for index in indexes:
+        if index.get("kind") != "release-format-scoring-index":
+            raise ValueError("not a release-format-scoring-index")
+        for key in ("policy_name", "policy_version", "snapshot_date"):
+            if index.get(key) != first.get(key):
+                raise ValueError(
+                    f"cannot union scoring indexes that disagree on {key}: "
+                    f"{first.get(key)!r} vs {index.get(key)!r}"
+                )
+    allowed = sorted({int(r) for index in indexes for r in index["allowed_release_ids"]})
+    member_hashes = sorted(str(index.get("source_policy_sha256")) for index in indexes)
+    return {
+        "schema_version": 1,
+        "kind": "release-format-scoring-index",
+        "policy_name": first["policy_name"],
+        "policy_version": first["policy_version"],
+        "snapshot_date": first["snapshot_date"],
+        "source_policy_sha256": hashlib.sha256(",".join(member_hashes).encode()).hexdigest(),
+        "allowed_release_count": len(allowed),
+        "allowed_release_ids": allowed,
     }
 
 
