@@ -63,6 +63,19 @@ def test_bounds_and_caps_must_be_stated_and_sane() -> None:
     assert "min_shared_performers" in failures
 
 
+def test_pool_composition_knobs_must_be_stated_and_sane() -> None:
+    spec = _spec()
+    theme = spec["themes"][0]
+    del theme["max_masters_per_seed_artist"]
+    theme["min_overlap_share_percent"] = 101
+    failures = " ".join(round_seed_spec_failures(spec))
+    assert "max_masters_per_seed_artist" in failures
+    assert "min_overlap_share_percent" in failures
+    spec = _spec()
+    spec["themes"][0]["max_masters_per_seed_artist"] = 0
+    assert any("max_masters_per_seed_artist" in f for f in round_seed_spec_failures(spec))
+
+
 def test_duplicate_theme_names_rejected() -> None:
     spec = _spec()
     spec["themes"][1] = copy.deepcopy(spec["themes"][0])

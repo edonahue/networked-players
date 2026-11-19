@@ -20,6 +20,7 @@ import argparse
 import json
 import subprocess
 import sys
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
@@ -89,7 +90,22 @@ def register_theme_supply_parsers(subparsers: Any) -> None:
         "--dataset", type=Path, required=True, help="FULL parsed snapshot root (not one-hop)"
     )
     theme.add_argument("--masters-root", type=Path, required=True)
-    theme.add_argument("--release-format-policy", type=Path, required=True)
+    theme.add_argument(
+        "--release-format-policy",
+        type=Path,
+        required=True,
+        help="release-format scoring index (the one-hop one is fine; it has no entries for "
+        "masters outside the one-hop corpus -- see --classify-pool-releases)",
+    )
+    theme.add_argument(
+        "--classify-pool-releases",
+        action="store_true",
+        help=(
+            "ALSO classify, from --dataset, only the releases under the capped theme pool's "
+            "masters (bounded; same rules) and use the explicit UNION with "
+            "--release-format-policy. Required for themes outside the one-hop corpus"
+        ),
+    )
     theme.add_argument("--studio-album-exclusions", type=Path, required=True)
     theme.add_argument(
         "--already-published-catalog",
@@ -97,7 +113,32 @@ def register_theme_supply_parsers(subparsers: Any) -> None:
         required=True,
         help="apps/web/public/data/catalog/albums.v1.json: published masters are dropped",
     )
-    theme.add_argument("--output", type=Path, required=True, help="private, git-ignored path")
+    theme.add_argument(
+        "--output",
+        type=Path,
+        required=True,
+        help="private, git-ignored path: SELECTED eligible rows only (what the scorer consumes)",
+    )
+    theme.add_argument(
+        "--diagnostics-output",
+        type=Path,
+        required=True,
+        help=(
+            "private, git-ignored path: per-theme summaries plus the considered INELIGIBLE "
+            "rows with their reasons (never fed to the scorer or the review packet)"
+        ),
+    )
+    theme.add_argument(
+        "--merged-format-index-output",
+        type=Path,
+        default=None,
+        help=(
+            "private, git-ignored path for the merged (--release-format-policy UNION bounded) "
+            "scoring index; REQUIRED with --classify-pool-releases. Pass it to "
+            "score-expansion-candidates as --release-format-policy, or the scorer re-derives "
+            "eligibility from the one-hop index and marks out-of-corpus themes ineligible"
+        ),
+    )
     theme.add_argument("--memory-limit", default="3GB")
     theme.add_argument("--threads", type=int, default=2)
     theme.add_argument("--quiet", action="store_true")
@@ -154,12 +195,50 @@ def _build_theme_candidates(args: argparse.Namespace) -> int:
     from .discogs.release_format_policy import load_master_exclusions
 
     require_private_ignored_output(args.output, command="build-theme-candidates")
+    require_private_ignored_output(args.diagnostics_output, command="build-theme-candidates")
+    if args.classify_pool_releases and args.merged_format_index_output is None:
+        raise ThemeSupplyError(
+            "--classify-pool-releases requires --merged-format-index-output: the merged "
+            "scoring index must be written so the scorer can use it"
+        )
+    if args.merged_format_index_output is not None:
+        require_private_ignored_output(
+            args.merged_format_index_output, command="build-theme-candidates"
+        )
     spec = load_valid_round_seed_spec(args.seed_spec)
     catalog = _read_json(args.already_published_catalog, "published catalog")
     published = frozenset(
         int(a["master_id"]) for a in catalog.get("albums", []) if a.get("master_id") is not None
     )
     allowed = frozenset(_read_json(args.release_format_policy, "policy")["allowed_release_ids"])
+    classify = None
+    merged_index: dict[str, Any] = {}
+    if args.classify_pool_releases:
+        from .discogs.release_format_policy import (
+            build_release_format_policy,
+            build_release_format_scoring_index,
+            merge_release_format_scoring_indexes,
+        )
+
+        base_index = _read_json(args.release_format_policy, "policy")
+
+        def classify(release_ids: Sequence[int]) -> frozenset[int]:
+            policy = build_release_format_policy(
+                args.dataset,
+                release_ids=release_ids,
+                memory_limit=args.memory_limit,
+                threads=args.threads,
+            )
+            bounded = build_release_format_scoring_index(policy)
+            try:
+                merged = merge_release_format_scoring_indexes(base_index, bounded)
+            except ValueError as error:
+                raise ThemeSupplyError(
+                    f"cannot union with --release-format-policy: {error}"
+                ) from error
+            merged_index.update(merged)
+            return frozenset(int(r) for r in merged["allowed_release_ids"])
+
     with CreditGraph.open(
         args.dataset, memory_limit=args.memory_limit, threads=args.threads, build_edges=False
     ) as graph:
@@ -170,22 +249,66 @@ def _build_theme_candidates(args: argparse.Namespace) -> int:
             args.masters_root,
             spec,
             allowed_release_ids=allowed,
+            classify_pool_releases=classify,
             master_exclusions=load_master_exclusions(args.studio_album_exclusions),
             already_published_master_ids=published,
             memory_limit=args.memory_limit,
             threads=args.threads,
             quiet=args.quiet,
         )
+    from .discogs.release_format_policy import title_review_flags
+
+    flag_counts: dict[str, dict[str, int]] = {}
+    for row in rows:
+        # Advisory only: the owner can reject a live/compilation-looking album quickly.
+        row["review_flags"] = title_review_flags(
+            row.get("sample_title"), row.get("main_release_title")
+        )
+        for entry in row["themes"]:
+            if entry.get("selected"):
+                counts = flag_counts.setdefault(entry["theme"], {})
+                for flag in row["review_flags"]:
+                    counts[flag] = counts.get(flag, 0) + 1
+    for summary in summaries:
+        summary["review_flag_counts"] = dict(sorted(flag_counts.get(summary["theme"], {}).items()))
+    # The scorer / review packet consume SELECTED rows only; considered-but-ineligible rows
+    # and the summaries go to the diagnostics file.
+    selected_rows = []
+    diagnostic_rows = []
+    for row in rows:
+        if row["eligibility"] == "eligible":
+            row["themes"] = [e for e in row["themes"] if e.get("selected")]
+            selected_rows.append(row)
+        else:
+            diagnostic_rows.append(row)
+    if merged_index:
+        from .discogs.release_format_policy import write_release_format_scoring_index
+
+        write_release_format_scoring_index(merged_index, args.merged_format_index_output)
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(rows, indent=2) + "\n")
-    eligible = sum(1 for row in rows if row["eligibility"] == "eligible")
+    args.output.write_text(json.dumps(selected_rows, indent=2) + "\n")
+    args.diagnostics_output.parent.mkdir(parents=True, exist_ok=True)
+    args.diagnostics_output.write_text(
+        json.dumps(
+            {"round": spec["round"], "themes": summaries, "ineligible_rows": diagnostic_rows},
+            indent=2,
+        )
+        + "\n"
+    )
     print(
         json.dumps(
             {
                 "output": str(args.output),
+                "diagnostics_output": str(args.diagnostics_output),
+                "merged_format_index_output": (
+                    None
+                    if args.merged_format_index_output is None
+                    else str(args.merged_format_index_output)
+                ),
                 "round": spec["round"],
-                "candidate_count": len(rows),
-                "eligible_count": eligible,
+                "candidate_count": len(selected_rows),
+                "eligible_count": len(selected_rows),
+                "diagnostic_ineligible_count": len(diagnostic_rows),
                 "themes": summaries,
             },
             indent=2,

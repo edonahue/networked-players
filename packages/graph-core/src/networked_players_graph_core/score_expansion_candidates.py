@@ -215,6 +215,7 @@ def score_expansion_candidates(
             "artist_id": candidate.get("artist_id"),
             "artist_name": candidate.get("artist_name"),
             "sample_title": candidate.get("sample_title"),
+            "review_flags": list(candidate.get("review_flags") or []),
             "eligibility": "eligible" if eligibility_reason is None else eligibility_reason,
             "main_release_id": main_release_id,
             "main_release_selection_reason": release_reason,

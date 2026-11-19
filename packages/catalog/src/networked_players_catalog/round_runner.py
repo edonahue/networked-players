@@ -145,6 +145,8 @@ INPUT_STAGES: dict[str, frozenset[str]] = {
     "editorial_seed": frozenset({"onehop-rewiden"}),
 }
 THEME_CANDIDATES = "theme-candidates.json"  # under work_dir (git-ignored)
+THEME_DIAGNOSTICS = "theme-candidates-diagnostics.json"  # ineligible rows + summaries
+THEME_FORMAT_INDEX = "theme-release-format-index.json"  # merged index: the scorer's policy
 REWIDEN_SEED = "rewiden-seed.json"  # under work_dir (git-ignored)
 
 PARAMETER_KEYS: dict[str, tuple[str, ...]] = {
@@ -964,9 +966,14 @@ def _argv_theme_supply(ctx: Ctx) -> list[list[str]]:
             "--dataset", str(ctx.inp("full_corpus_root")),
             "--masters-root", str(ctx.inp("masters_root")),
             "--release-format-policy", str(ctx.inp("release_format_policy")),
+            # The policy is a one-hop index; masters outside that corpus need the
+            # bounded classification of their releases from the full corpus.
+            "--classify-pool-releases",
             "--studio-album-exclusions", str(ctx.inp("studio_album_exclusions")),
             "--already-published-catalog", str(ctx.p(CATALOG)),
             "--output", str(ctx.work / THEME_CANDIDATES),
+            "--diagnostics-output", str(ctx.work / THEME_DIAGNOSTICS),
+            "--merged-format-index-output", str(ctx.work / THEME_FORMAT_INDEX),
             "--quiet",
         ]
     ]  # fmt: skip
@@ -1023,7 +1030,8 @@ def _pre_theme_supply(ctx: Ctx, planning: bool) -> list[str]:
 
     failures: list[str] = []
     try:
-        require_private_ignored_output(ctx.work / THEME_CANDIDATES, command="theme-supply")
+        for name in (THEME_CANDIDATES, THEME_DIAGNOSTICS, THEME_FORMAT_INDEX):
+            require_private_ignored_output(ctx.work / name, command="theme-supply")
     except ThemeSupplyError as error:
         failures.append(f"{error} (paths.work_dir must be a git-ignored local/ path)")
     path = ctx.inputs["round_seed_spec"]
@@ -1224,7 +1232,8 @@ STAGES: tuple[Stage, ...] = (
           "SUPPLY: theme-seed candidates from the FULL corpus (private output); naming a "
           "theme approves nothing. Scoring, review and approval follow by hand",
           "full corpus, masters, policy, exclusions, previous catalog, round seed spec",
-          ("<work>/theme-candidates.json",), _argv_theme_supply, _exec_argv_in_work_dir,
+          ("<work>/theme-candidates.json", "<work>/theme-candidates-diagnostics.json",
+           "<work>/theme-release-format-index.json"), _argv_theme_supply, _exec_argv_in_work_dir,
           _pre_theme_supply, True),
     Stage("prepare-output", "(internal)", "create O/W; take the daily-manifest baseline from P",
           "previous daily manifest + generations", (DAILY_MANIFEST,), _argv_prepare,

@@ -232,6 +232,7 @@ def build_round_data(
             "lane": str(lane),
             "eligibility": str(eligibility) if eligibility is not None else "unknown",
             "ambiguous": bool(cand.get("ambiguous") or cand.get("needs_review")),
+            "review_flags": sorted(str(f) for f in (cand.get("review_flags") or [])),
             "already_published": mid in published,
             "default_source": source,
             "connections": _connections(cand.get("connections")),
@@ -622,6 +623,9 @@ var Core = (function () {
       if (r.eligibility === "eligible") elig.appendChild(document.createTextNode("eligible"));
       else elig.appendChild(h("span", { "class": "warn", text: r.eligibility }));
       if (r.ambiguous) elig.appendChild(h("span", { "class": "tag warn", text: "ambiguous - needs review" }));
+      (r.review_flags || []).forEach(function (f) {
+        elig.appendChild(h("span", { "class": "tag warn", text: f.replace("_", " ") + " - check" }));
+      });
       if (r.already_published) elig.appendChild(h("span", { "class": "tag", text: "already published" }));
       COLS.forEach(function (c) {
         if (c[0] === "eligibility") { tr.appendChild(elig); return; }

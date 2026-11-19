@@ -14,7 +14,9 @@
       "year_min": 1990,
       "year_max": 2010,
       "min_shared_performers": 2,
-      "candidate_cap": 50
+      "candidate_cap": 50,
+      "max_masters_per_seed_artist": 4,
+      "min_overlap_share_percent": 40
     },
     {
       "name": "synthetic fusion theme",
@@ -25,7 +27,9 @@
       "year_min": null,
       "year_max": null,
       "min_shared_performers": 2,
-      "candidate_cap": 50
+      "candidate_cap": 50,
+      "max_masters_per_seed_artist": 4,
+      "min_overlap_share_percent": 40
     }
   ]
 }
