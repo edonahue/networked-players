@@ -522,7 +522,11 @@ def derive_theme_candidates(
             {
                 "master_id": int(mid),
                 "reason": (
-                    eligibility[int(mid)]
+                    (
+                        "cut_by_candidate_cap"
+                        if eligibility[int(mid)] == "eligible"
+                        else eligibility[int(mid)]
+                    )
                     if int(mid) in entries and i in entries[int(mid)]
                     else _seed_master_drop_reason(
                         int(mid),

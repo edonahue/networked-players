@@ -207,12 +207,23 @@ def _supply_argv(
         "--studio-album-exclusions", str(w["exclusions"]),
         "--already-published-catalog", str(w["catalog"]),
         "--output", str(out or w["out"]),
+        "--diagnostics-output", str((out or w["out"]).with_name("theme-diagnostics.json")),
+        "--merged-format-index-output", str((out or w["out"]).with_name("merged-index.json")),
         "--quiet",
     ]  # fmt: skip
 
 
-def _rows(path: Path) -> dict[int, dict[str, Any]]:
+def _selected_rows(path: Path) -> dict[int, dict[str, Any]]:
+    """The candidates file: SELECTED eligible rows only (what the scorer consumes)."""
     return {r["master_id"]: r for r in json.loads(path.read_text())}
+
+
+def _rows(path: Path) -> dict[int, dict[str, Any]]:
+    """Selected rows plus the diagnostics file's considered-but-ineligible rows."""
+    rows = _selected_rows(path)
+    diagnostics = json.loads(path.with_name("theme-diagnostics.json").read_text())
+    rows.update({r["master_id"]: r for r in diagnostics["ineligible_rows"]})
+    return rows
 
 
 def test_theme_seed_outside_onehop_corpus_yields_eligible_candidates(
@@ -239,7 +250,9 @@ def test_theme_seed_outside_onehop_corpus_yields_eligible_candidates(
     by_theme = {t["theme"]: t for t in summary["themes"]}
     assert by_theme["synthetic desert theme"]["eligible_count"] == 2
     assert by_theme["synthetic fusion theme"]["eligible_count"] == 2
-    assert summary["eligible_count"] == 4 and summary["candidate_count"] == 5
+    assert summary["eligible_count"] == 4 and summary["candidate_count"] == 4
+    assert summary["diagnostic_ineligible_count"] == 1  # 9106, in the diagnostics file only
+    assert 9106 not in _selected_rows(world["out"])
 
     why = {(e["theme"], e["source"]) for e in rows[9101]["themes"]}
     assert why == {("synthetic desert theme", "shared_performers")}
@@ -288,7 +301,7 @@ def test_candidates_flow_into_the_existing_scorer_and_review_packet(
     by_master = {r["master_id"]: r for r in payload["candidates"]}
     assert by_master[9101]["eligibility"] == "eligible"
     assert by_master[9101]["roster_size"] >= 2
-    assert by_master[9106]["eligibility"] != "eligible"
+    assert 9106 not in by_master  # ineligible rows never reach the scorer
     data = build_round_data(payload, round_number=99)
     assert {a["master_id"] for a in data["rows"]} >= {9100, 9101, 9500, 9501}
 
@@ -537,6 +550,81 @@ def test_merge_refuses_parser_version_mismatch_and_keeps_manifest_provenance() -
         merge_release_format_scoring_indexes(index("0.1.0", "aa", [1]), index("0.2.0", "bb", [2]))
     # An older index with no recorded parser version cannot be compared, only unioned.
     assert merge_release_format_scoring_indexes(index(None, "aa", [1]), index("0.2.0", "bb", [2]))
+
+
+def test_classify_pool_releases_requires_the_merged_index_output(
+    format_world: dict[str, Path],
+) -> None:
+    argv = [a for a in _supply_argv(format_world) if a != "--merged-format-index-output"]
+    argv = [a for a in argv if not a.endswith("merged-index.json")]
+    assert main([*argv, "--classify-pool-releases"]) == 1
+    assert not format_world["out"].exists()
+
+
+def test_out_of_onehop_theme_stays_eligible_end_to_end_through_scoring(
+    format_world: dict[str, Path], tmp_path: Path
+) -> None:
+    assert main([*_supply_argv(format_world), "--classify-pool-releases"]) == 0
+    merged = format_world["out"].with_name("merged-index.json")
+    assert json.loads(merged.read_text())["allowed_release_ids"] == [1, 2, 20, 21]
+    graph = tmp_path / "graph.v4.json"
+    graph.write_text(json.dumps({"node_ids": [7001], "offsets": [0, 0], "neighbors": []}))
+
+    def score(policy: Path, name: str) -> dict[int, dict[str, Any]]:
+        scored = tmp_path / "local" / "round" / name
+        code = main(
+            [
+                "score-expansion-candidates",
+                "--onehop-root", str(format_world["full"]),
+                "--masters-root", str(format_world["masters"]),
+                "--candidates", str(format_world["out"]),
+                "--pathfinding-graph", str(graph),
+                "--release-format-policy", str(policy),
+                "--output", str(scored),
+                "--quiet",
+            ]
+        )  # fmt: skip
+        assert code == 0
+        return {r["master_id"]: r for r in json.loads(scored.read_text())["candidates"]}
+
+    # The merged index keeps the out-of-one-hop masters (9101, 9501) eligible...
+    with_merged = score(merged, "merged.json")
+    assert with_merged[9101]["eligibility"] == "eligible"
+    assert with_merged[9501]["eligibility"] == "eligible"
+    # ...while the one-hop index alone would make the scorer re-derive them as ineligible.
+    with_onehop = score(format_world["policy"], "onehop.json")
+    assert with_onehop[9101]["eligibility"] == "no_format_allowed_release_under_master"
+
+
+def test_candidates_file_holds_selected_rows_only_and_diagnostics_the_rest(
+    format_world: dict[str, Path],
+) -> None:
+    assert main([*_supply_argv(format_world), "--classify-pool-releases"]) == 0
+    selected = _selected_rows(format_world["out"])
+    assert all(r["eligibility"] == "eligible" for r in selected.values())
+    assert all(e["selected"] for r in selected.values() for e in r["themes"])
+    diagnostics = json.loads(format_world["out"].with_name("theme-diagnostics.json").read_text())
+    assert {r["master_id"] for r in diagnostics["ineligible_rows"]} == {9106}
+    assert {t["theme"] for t in diagnostics["themes"]} == {
+        "synthetic desert theme",
+        "synthetic fusion theme",
+    }
+    assert not {r["master_id"] for r in diagnostics["ineligible_rows"]} & set(selected)
+
+
+def test_explicit_seed_masters_beyond_the_cap_report_cut_by_candidate_cap(
+    crowded_world: dict[str, Path], tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    spec = _theme1_spec(
+        tmp_path,
+        seed_master_ids=[9100, 9300],
+        candidate_cap=1,
+        min_overlap_share_percent=0,
+    )
+    assert main(_supply_argv(crowded_world, spec)) == 0
+    theme = _theme1(capsys)
+    assert _selected(_rows(crowded_world["out"])) == {9100}
+    assert theme["dropped_seed_masters"] == [{"master_id": 9300, "reason": "cut_by_candidate_cap"}]
 
 
 # ------------------------------------------------------- bounded format classification
