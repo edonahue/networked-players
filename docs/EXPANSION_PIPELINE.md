@@ -155,14 +155,22 @@ These steps produce *proposals*. Nothing here authorises publication: the approv
    shaped plus `eligibility` (via `master_eligibility`) and `themes` (which theme, by which
    route: seed master, seed-artist master, or shared performers). Each theme's summary also lists `ineligibility_reasons` and `dropped_seed_masters` (explicit seed masters that did not reach the pool, with a reason) so a seed is never silently lost. Caps and the overlap reservation apply to eligible masters only; rows carry advisory `review_flags` (`live_title`, `compilation_title`) shown in the review packet. The runner's `theme-supply` stage passes `--classify-pool-releases` itself. Check each theme's
    `eligible_count` against its lane quota before going on. Then score with
-   `score-expansion-candidates --candidates <that file> --onehop-root <FULL corpus>
+   `score-expansion-candidates --candidates <that file> --onehop-root <scoring corpus>
    --release-format-policy <the MERGED scoring index>` (`--merged-format-index-output`, which
    `build-theme-candidates` writes and the runner places beside the candidates; the one-hop
    index would make the scorer re-derive out-of-corpus themes as ineligible). The candidates
    file holds SELECTED eligible rows only; considered-but-ineligible rows and the per-theme
    summaries go to `--diagnostics-output`. The
    scorer reads credits from `--onehop-root`, and the theme albums only exist in the full
-   corpus (that opens the full corpus with edges built: workstation work, not measured here).
+   corpus. Do not point the scorer at the 12 GB full corpus; build a bounded scoring corpus
+   first with `build-scoring-corpus --onehop-root <one-hop> --full-root <FULL corpus>
+   --masters-root <masters> --candidates <that file> --output-root local/...` (one-hop corpus
+   plus every row of the candidate masters' releases; one batched DuckDB pass per table; atomic;
+   manifest records both source manifest digests and the candidates file's sha256). The scorer
+   reads only the candidate masters' releases and the credits of their selected main release
+   (bridge span reads the pathfinding graph JSON), so no other-release performer credits are
+   needed; a parity test pins byte-identical scoring against the full corpus. Rebuild it
+   whenever the candidates file changes.
    The scorer drops the `themes` column, so keep the supply file beside the scored one when
    reviewing.
 0. **Supply candidates first.** Scorers and re-rankers are consumers, not producers (Round 1
