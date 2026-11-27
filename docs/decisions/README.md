@@ -91,3 +91,5 @@ amendments and addenda. Regenerate this table when adding a record.
 | [0072](0072-campaign-atlas-lineage-approved-pool-collections.md) | Campaign "Atlas" — lineage by content version, a checked approval boundary, and Collections over the catalog | Accepted (direction; contracts to build) | 2026-11-15 |
 | [0073](0073-platform-runtime-digest-eligibility.md) | Worker eligibility by runtime digest, not exact commit (platform reliability) | Accepted | 2026-11-16 |
 | [0074](0074-collections-contracts.md) | Collections — `collection-v1`, `playable-cohort-v2` and the approval flow | Accepted (contract decision; publishes nothing) | 2026-11-17 |
+| [0075](0075-performing-credit-classifier.md) | One per-credit "is this a performing credit?" classifier | Proposed | 2026-11-27 |
+| [0076](0076-collection-coverage-release-master-catalog.md) | Collection coverage — owned release → master → catalog | Proposed (design only) | 2026-11-27 |
